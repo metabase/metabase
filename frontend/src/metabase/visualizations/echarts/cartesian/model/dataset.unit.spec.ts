@@ -43,7 +43,7 @@ describe("dataset transform functions", () => {
     const column = createMockColumn({ name: "count" });
 
     it("should return the column name if cardId and breakoutValue are undefined", () => {
-      expect(getDatasetKey(column)).toBe("count");
+      expect(getDatasetKey(column, undefined)).toBe("count");
     });
 
     it("should return the cardId concatenated with column name if cardId is provided and breakoutValue is undefined", () => {
@@ -220,7 +220,7 @@ describe("dataset transform functions", () => {
         dataKey,
         name: `name for ${dataKey}`,
         color: "red",
-        legacySeriesSettingsObjectKey: dataKey,
+        legacySeriesSettingsObjectKey: { card: { _seriesKey: dataKey } },
         vizSettingsKey: dataKey,
         column: createMockColumn({ name: dataKey }),
         columnIndex: index,
