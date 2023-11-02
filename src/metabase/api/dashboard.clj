@@ -617,12 +617,12 @@
                       (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards :updated-dashcards]))))))
        true))
     (let [dashboard (t2/select-one :model/Dashboard id)]
-      (when update-dashcards-and-tabs?
-        ;; true for old PUT /api/dashboard/:id/cards calls and new PUT /api/dashboard/:id calls, and false for old PUT /api/dashboard/:id calls
-        (track-dashcard-and-tab-events! dashboard @changes-stats))
       (when update-dashboard-itself?
-        ;; true for old PUT /api/dashboard/:id calls and new PUT /api/dashboard/:id calls, and false for old PUT/api/dashboard/:id/card calls
+        ;; execute these events for old PUT /api/dashboard/:id calls and new PUT /api/dashboard/:id calls, and not for old PUT/api/dashboard/:id/card calls
         (events/publish-event! :event/dashboard-update {:object dashboard :user-id api/*current-user-id*}))
+      (when update-dashcards-and-tabs?
+        ;; execute these events for old PUT /api/dashboard/:id/cards calls and new PUT /api/dashboard/:id calls, and not for old PUT /api/dashboard/:id calls
+        (track-dashcard-and-tab-events! dashboard @changes-stats))
       (-> (t2/hydrate dashboard [:collection :is_personal] [:dashcards :series] :tabs)
           (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))))
 
