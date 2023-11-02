@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import { useDashboardQuery } from "metabase/common/hooks";
@@ -25,7 +25,6 @@ import type {
   EntityCustomDestinationClickBehavior,
   DashboardTab,
 } from "metabase-types/api";
-import { isNotNull } from "metabase/lib/types";
 import type Question from "metabase-lib/Question";
 
 import { SidebarItem } from "../SidebarItem";
@@ -185,16 +184,6 @@ function LinkedEntityPicker({
 
     updateSettings({ ...clickBehavior, tabId: Number(value) });
   };
-
-  useEffect(() => {
-    if (
-      isDash &&
-      typeof clickBehavior.tabId === "undefined" &&
-      isNotNull(defaultDashboardTabId)
-    ) {
-      updateSettings({ ...clickBehavior, tabId: defaultDashboardTabId });
-    }
-  }, [isDash, clickBehavior, defaultDashboardTabId, updateSettings]);
 
   return (
     <div>
