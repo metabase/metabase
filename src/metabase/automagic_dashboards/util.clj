@@ -4,7 +4,6 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.predicates :as mbql.preds]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
