@@ -33,10 +33,10 @@ export function NumberInput({
   };
 
   useLayoutEffect(() => {
-    if (value != null && !isFocused) {
-      setInputValue(formatValue(value));
+    if (!isFocused) {
+      setInputValue(formatValue(value ?? parseValue(inputValue)));
     }
-  }, [value, isFocused]);
+  }, [value, inputValue, isFocused]);
 
   return (
     <TextInput
