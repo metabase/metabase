@@ -202,22 +202,6 @@ ReadOnlyMd.args = {
   <Story name="Read only, md">{ReadOnlyMd}</Story>
 </Canvas>
 
-#### Parser and formatter
-
-export const ParserFormatterMd = IconTemplate.bind({});
-VariantTemplate.args = {
-  defaultValue: sampleArgs.value,
-  label: sampleArgs.label,
-  description: sampleArgs.description,
-  placeholder: sampleArgs.placeholder,
-  parser: value => value.replace(/^\$/, ""),
-  formatter: value => (value != null ? `$${value}` : "$"),
-};
-
-<Canvas>
-  <Story name="Parser and formatter, md">{ParserFormatterMd}</Story>
-</Canvas>
-
 ### Size - xs
 
 export const EmptyXs = VariantTemplate.bind({});
@@ -312,16 +296,4 @@ ReadOnlyXs.args = {
 
 <Canvas>
   <Story name="Read only, xs">{ReadOnlyXs}</Story>
-</Canvas>
-
-#### Parser and formatter
-
-export const ParserFormatterXs = VariantTemplate.bind({});
-ParserFormatterXs.args = {
-  ...ParserFormatterMd.args,
-  size: "xs",
-};
-
-<Canvas>
-  <Story name="Parser and formatter, xs">{ParserFormatterXs}</Story>
 </Canvas>

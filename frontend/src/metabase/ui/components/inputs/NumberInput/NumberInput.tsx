@@ -1,57 +1,62 @@
-import { useLayoutEffect, useState } from "react";
+import { useState } from "react";
 import type { ChangeEvent, FocusEvent } from "react";
 import type { NumberInputProps } from "@mantine/core";
+import { useUncontrolled } from "@mantine/hooks";
 import { TextInput } from "../TextInput";
 
 export function NumberInput({
-  value,
-  defaultValue = value,
+  value: controlledValue,
+  defaultValue,
   onChange,
+  onFocus,
   onBlur,
   ...props
 }: NumberInputProps) {
-  const [inputValue, setInputValue] = useState(
-    defaultValue != null ? String(defaultValue) : "",
-  );
+  const [value, setValue] = useUncontrolled({
+    value: controlledValue,
+    defaultValue,
+    finalValue: "",
+    onChange,
+  });
+  const [inputValue, setInputValue] = useState(formatValue(value));
+  const [isFocused, setIsFocused] = useState(false);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newInputValue = event.target.value;
     setInputValue(newInputValue);
 
-    const newValue = parseNumber(newInputValue);
-    if (newInputValue === "") {
-      onChange?.("");
-    } else if (newValue != null) {
-      onChange?.(newValue);
-    }
+    const newValue = parseValue(newInputValue);
+    setValue(newValue);
+  };
+
+  const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
+    setInputValue(formatValue(value));
+    setIsFocused(true);
+    onFocus?.(event);
   };
 
   const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
-    if (value != null) {
-      setInputValue(String(value));
-    } else {
-      const newValue = parseNumber(inputValue);
-      setInputValue(newValue != null ? String(newValue) : "");
-    }
-
+    setInputValue(formatValue(value));
+    setIsFocused(false);
     onBlur?.(event);
   };
-
-  useLayoutEffect(() => {
-    value && setInputValue(String(value));
-  }, [value]);
 
   return (
     <TextInput
       {...props}
-      value={inputValue}
+      value={isFocused ? inputValue : formatValue(value)}
       onChange={handleChange}
+      onFocus={handleFocus}
       onBlur={handleBlur}
     />
   );
 }
 
-function parseNumber(value: string) {
+function parseValue(value: string) {
   const number = parseFloat(value);
-  return Number.isFinite(number) ? number : undefined;
+  return Number.isNaN(number) ? "" : number;
+}
+
+function formatValue(value: number | "") {
+  return String(value);
 }
