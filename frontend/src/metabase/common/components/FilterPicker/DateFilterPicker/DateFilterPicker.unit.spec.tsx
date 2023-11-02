@@ -163,4 +163,32 @@ describe("DateFilterPicker", () => {
       offsetBucket: null,
     });
   });
+
+  it("should update a relative date filter", () => {
+    const clause = Lib.relativeDateFilterClause({
+      column,
+      value: -20,
+      bucket: "day",
+      offsetValue: null,
+      offsetBucket: null,
+      options: {},
+    });
+    const { query, filter } = createFilteredQuery(initialQuery, clause);
+    const { getNextFilterColumnName, getNextRelativeFilterParts } = setup({
+      query,
+      column,
+      filter,
+    });
+
+    userEvent.click(screen.getByText("Next"));
+    userEvent.click(screen.getByText("Update filter"));
+
+    expect(getNextFilterColumnName()).toBe(COLUMN_NAME);
+    expect(getNextRelativeFilterParts()).toMatchObject({
+      value: 20,
+      bucket: "day",
+      offsetValue: null,
+      offsetBucket: null,
+    });
+  });
 });
