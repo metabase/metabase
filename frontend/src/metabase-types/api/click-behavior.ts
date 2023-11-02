@@ -1,6 +1,7 @@
 import type {
   CardId,
   DashboardId,
+  DashboardTabId,
   FieldReference,
   ParameterId,
   TemplateTagName,
@@ -69,6 +70,11 @@ export interface DashboardCustomDestinationClickBehavior {
   type: "link";
   linkType: "dashboard";
   targetId: DashboardId;
+  /**
+   * tabId will be undefined when user edits click behavior that
+   * was created before we supported links to dashboard tabs.
+   */
+  tabId?: DashboardTabId;
   parameterMapping?: ClickBehaviorParameterMapping;
 }
 
