@@ -567,60 +567,64 @@
 (defn- update-dashboard
   "Updates a Dashboard. Designed to be reused by PUT /api/dashboard/:id and PUT /api/dashboard/:id/cards"
   [id {:keys [dashcards tabs] :as dash-updates}]
-  (let [dashboard                  (-> (api/write-check Dashboard id)
+  (let [dash-before-update         (-> (api/write-check Dashboard id)
                                        api/check-not-archived
                                        (t2/hydrate [:dashcards :series :card] :tabs))
-        dash-before-update         dashboard
         changes-stats              (atom nil)
-        ;; tabs are sent in production as well, but there are lots of tests that exclude it
-        update-dashcards-and-tabs? (contains? dash-updates :dashcards)]
+        ;; tabs are sent in production as well, but there are lots of tests that exclude it. so this only checks for dashcards
+        update-dashcards-and-tabs? (contains? dash-updates :dashcards)
+        update-dashboard-itself?   (not-empty (select-keys dash-updates [:dashcards :tabs]))]
     (collection/check-allowed-to-change-collection dash-before-update dash-updates)
     (check-allowed-to-change-embedding dash-before-update dash-updates)
-    (when (and (seq (:tabs dashboard))
+    (when (and (seq (:tabs dash-before-update))
                (not (every? #(some? (:dashboard_tab_id %)) dashcards)))
       (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
                       {:status-code 400})))
     (api/check-500
-     (t2/with-transaction [_conn]
-       ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
-       ;; adjust the collection position of other dashboards in the collection
-       (api/maybe-reconcile-collection-position! dash-before-update dash-updates)
-       (when-let [updates (not-empty
-                           (u/select-keys-when
-                            dash-updates
-                            :present #{:description :position :collection_id :collection_position :cache_ttl}
-                            :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
-                                       :embedding_params :archived :auto_apply_filters}))]
-         (t2/update! Dashboard id updates))
-       (when update-dashcards-and-tabs?
-         (let [new-tabs                 (map-indexed (fn [idx tab] (assoc tab :position idx)) tabs)
-               {:keys [old->new-tab-id
-                       deleted-tab-ids]
-                :as tabs-changes-stats} (dashboard-tab/do-update-tabs! (:id dashboard) (:tabs dashboard) new-tabs)
-               deleted-tab-ids          (set deleted-tab-ids)
-               current-cards            (cond->> (:dashcards dashboard)
-                                          (seq deleted-tab-ids)
-                                          (remove (fn [dashcard]
-                                                    (contains? deleted-tab-ids (:dashboard_tab_id dashcard)))))
-               new-cards                (cond->> dashcards
-                                           ;; fixup the temporary tab ids with the real ones
-                                          (seq old->new-tab-id)
-                                          (map (fn [card]
-                                                 (if-let [real-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
-                                                   (assoc card :dashboard_tab_id real-tab-id)
-                                                   card))))
-               dashcards-changes-stats  (do-update-dashcards! dashboard current-cards new-cards)]
-           (reset! changes-stats
-                   (merge
-                    (select-keys tabs-changes-stats [:created-tab-ids :updated-tab-ids :deleted-tab-ids :total-num-tabs])
-                    (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards :updated-dashcards]))))))
-     true)
-    (u/prog1 (-> (t2/select-one :model/Dashboard id)
-                 (t2/hydrate [:collection :is_personal] [:dashcards :series] :tabs)
-                 (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
-      (if update-dashcards-and-tabs?
-        (track-dashcard-and-tab-events! <> @changes-stats)
-        (events/publish-event! :event/dashboard-update (assoc <> :actor_id api/*current-user-id*))))))
+     (do
+       (t2/with-transaction [_conn]
+         ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
+         ;; adjust the collection position of other dashboards in the collection
+         (api/maybe-reconcile-collection-position! dash-before-update dash-updates)
+         (when-let [updates (not-empty
+                             (u/select-keys-when
+                              dash-updates
+                              :present #{:description :position :collection_id :collection_position :cache_ttl}
+                              :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
+                                         :embedding_params :archived :auto_apply_filters}))]
+           (t2/update! Dashboard id updates))
+         (when update-dashcards-and-tabs?
+           (let [new-tabs                 (map-indexed (fn [idx tab] (assoc tab :position idx)) tabs)
+                 {:keys [old->new-tab-id
+                         deleted-tab-ids]
+                  :as tabs-changes-stats} (dashboard-tab/do-update-tabs! (:id dash-before-update) (:tabs dash-before-update) new-tabs)
+                 deleted-tab-ids          (set deleted-tab-ids)
+                 current-cards            (cond->> (:dashcards dash-before-update)
+                                            (seq deleted-tab-ids)
+                                            (remove (fn [dashcard]
+                                                      (contains? deleted-tab-ids (:dashboard_tab_id dashcard)))))
+                 new-cards                (cond->> dashcards
+                                            ;; fixup the temporary tab ids with the real ones
+                                            (seq old->new-tab-id)
+                                            (map (fn [card]
+                                                   (if-let [real-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
+                                                     (assoc card :dashboard_tab_id real-tab-id)
+                                                     card))))
+                 dashcards-changes-stats  (do-update-dashcards! dash-before-update current-cards new-cards)]
+             (reset! changes-stats
+                     (merge
+                      (select-keys tabs-changes-stats [:created-tab-ids :updated-tab-ids :deleted-tab-ids :total-num-tabs])
+                      (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards :updated-dashcards]))))))
+       true))
+    (let [dashboard (t2/select-one :model/Dashboard id)]
+      (when update-dashcards-and-tabs?
+        ;; true for old PUT /api/dashboard/:id/cards calls and new PUT /api/dashboard/:id calls, and false for old PUT /api/dashboard/:id calls
+        (track-dashcard-and-tab-events! dashboard @changes-stats))
+      (when update-dashboard-itself?
+        ;; true for old PUT /api/dashboard/:id calls and new PUT /api/dashboard/:id calls, and false for old PUT/api/dashboard/:id/card calls
+        (events/publish-event! :event/dashboard-update {:object dashboard :user-id api/*current-user-id*}))
+      (-> (t2/hydrate dashboard [:collection :is_personal] [:dashcards :series] :tabs)
+          (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))))
 
 (api/defendpoint PUT "/:id"
   "Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. The request body should be a JSON object with the same
