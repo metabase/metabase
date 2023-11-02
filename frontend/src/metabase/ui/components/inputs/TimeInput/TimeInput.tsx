@@ -17,7 +17,7 @@ export type TimeInputProps = Omit<
 
 export function TimeInput({
   value,
-  defaultValue = null,
+  defaultValue = value,
   onChange,
   onFocus,
   onBlur,
@@ -63,7 +63,7 @@ export function TimeInput({
   );
 }
 
-function formatValue(value: Date | null) {
+function formatValue(value: Date | null | undefined) {
   return value ? dayjs(value).format(TIME_FORMAT) : "";
 }
 

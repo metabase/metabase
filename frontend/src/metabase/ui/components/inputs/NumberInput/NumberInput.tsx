@@ -5,7 +5,7 @@ import { TextInput } from "../TextInput";
 
 export function NumberInput({
   value,
-  defaultValue,
+  defaultValue = value,
   onChange,
   onFocus,
   onBlur,
