@@ -639,6 +639,7 @@ function isExcludeDateBucket(
 
 const DATE_FORMAT = "yyyy-MM-DD";
 const TIME_FORMAT = "HH:mm:ss";
+const TIME_FORMATS = ["HH:mm:ss.sss[Z]", "HH:mm:SS.sss", "HH:mm:SS", "HH:mm"];
 const TIME_FORMAT_MS = "HH:mm:SS.sss";
 const DATE_TIME_FORMAT = `${DATE_FORMAT}T${TIME_FORMAT}`;
 const UTC_OFFSET_REGEX = /(Z|[+-]\d\d:?\d\d)$/;
@@ -671,7 +672,7 @@ function serializeTime(value: Date): string {
 }
 
 function deserializeTime(value: string): Date | null {
-  const time = moment(value, TIME_FORMAT_MS, true);
+  const time = moment(value, TIME_FORMATS, true);
   if (!time.isValid()) {
     return null;
   }
