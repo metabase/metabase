@@ -17,7 +17,7 @@ export const DistributionDrill: Drill<Lib.DistributionDrillThruInfo> = ({
       section: "summarize",
       icon: "bar",
       buttonType: "horizontal",
-      question: () => applyDrill(drill),
+      question: () => applyDrill(drill).setDisplay("bar"),
     },
   ];
 };
