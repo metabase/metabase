@@ -931,6 +931,69 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       })();
     });
 
+    it("should allow setting dashboard tab with parameter for a column", () => {
+      cy.createQuestion(TARGET_QUESTION);
+      cy.createDashboard(
+        {
+          ...TARGET_DASHBOARD,
+          parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
+        },
+        {
+          wrapId: true,
+          idAlias: "targetDashboardId",
+        },
+      );
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        cy.request("PUT", `/api/dashboard/${targetDashboardId}/cards`, {
+          cards: [],
+          tabs: [FIRST_TAB, SECOND_TAB, THIRD_TAB],
+        });
+      });
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+        },
+      );
+
+      editDashboard();
+
+      getDashboardCard().realHover().icon("click").click();
+      cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
+      addDashboardDestination();
+      cy.get("aside")
+        .findByLabelText("Select a dashboard tab")
+        .should("have.value", FIRST_TAB.name)
+        .click();
+      cy.findByRole("listbox").findByText(SECOND_TAB.name).click();
+      cy.get("aside").findByText("No available targets").should("not.exist");
+      addTextParameter();
+
+      cy.icon("chevronleft").click();
+
+      getCountToDashboardMapping().should("exist");
+      getDashboardCard()
+        .button()
+        .should("have.text", "1 column has custom behavior");
+
+      cy.get("aside").button("Done").click();
+      saveDashboard();
+
+      getTableCell(COLUMN_INDEX.COUNT)
+        .should("have.text", String(POINT_COUNT))
+        .click();
+      cy.findAllByTestId("field-set")
+        .should("have.length", 2)
+        .should("contain.text", POINT_COUNT);
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        cy.location().should(({ pathname, search }) => {
+          expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+          expect(search).to.equal(
+            `?tab=${SECOND_TAB_SLUG}&${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.slug}=`,
+          );
+        });
+      });
+    });
+
     it("should allow setting URL as custom destination and updating dashboard filters for different columns", () => {
       cy.createQuestion(TARGET_QUESTION);
       cy.createDashboard(
