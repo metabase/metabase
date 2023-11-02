@@ -10,9 +10,15 @@ import { MoveDashCardActionContainer } from "./DashCardTabMenu.styled";
 
 interface DashCardTabMenuProps {
   dashCardId: DashCardId;
+  onSubmenuOpen: () => void;
+  onSubmenuClose: () => void;
 }
 
-export function DashCardTabMenu({ dashCardId }: DashCardTabMenuProps) {
+export function DashCardTabMenu({
+  dashCardId,
+  onSubmenuClose,
+  onSubmenuOpen,
+}: DashCardTabMenuProps) {
   const dispatch = useDispatch();
   const tabs = useSelector(getTabs);
   const selectedTabId = useSelector(getSelectedTabId);
@@ -36,11 +42,7 @@ export function DashCardTabMenu({ dashCardId }: DashCardTabMenuProps) {
 
   return (
     <>
-      <Menu
-        trigger="hover"
-        // inline to not close the actions menu when hovered
-        withinPortal={false}
-      >
+      <Menu trigger="hover" onOpen={onSubmenuOpen} onClose={onSubmenuClose}>
         <Menu.Target>
           <MoveDashCardActionContainer>
             <DashCardActionButton.Icon name="move_card" />
