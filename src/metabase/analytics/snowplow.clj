@@ -209,7 +209,7 @@
    ::new-event-created              ::timeline
    ::new-task-history               ::task
    ::new-search-query               ::search
-   ::new-filtered-search-query      ::search
+   ::search-results-filtered        ::search
    ::action-created                 ::action
    ::action-updated                 ::action
    ::action-deleted                 ::action

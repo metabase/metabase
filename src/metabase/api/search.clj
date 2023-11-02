@@ -563,27 +563,26 @@
         has-advanced-filters (some some?
                                    [models created_by created_at last_edited_by
                                     last_edited_at search_native_query verified])]
-    (cond
-     ;; This is meant to track the performance of "Whole app search"
-     ;; On the UI, it's only accessible when you type on the nav search bar
-     (and (= context "global-search")
-          (not has-advanced-filters) (nil? models) (nil? table_db_id) (not archived))
-     (snowplow/track-event! ::snowplow/new-search-query api/*current-user-id* {:runtime-milliseconds duration})
+    (when (not (nil? context))
+      (cond
+        (and
+         (nil? table_db_id)
+         (not archived))
+        (snowplow/track-event! ::snowplow/new-search-query api/*current-user-id*
+                               {:runtime-milliseconds duration
+                                :context              context}))
+      (cond
+        has-advanced-filters
+        (snowplow/track-event! ::snowplow/search-results-filtered api/*current-user-id*
+                               {:runtime-milliseconds  duration
+                                :content-type          (u/one-or-many models)
+                                :creator               (some? created_by)
+                                :creation_date         (some? created_at)
+                                :last_editor           (some? last_edited_by)
+                                :last-edit-date        (some? last_edited_at)
+                                :verified_items        (some? verified)
+                                :search-native-queries (some? search_native_query)})))
 
-     ;; Track search that are made from the advanced search page
-     (and (= context "filtered-app") has-advanced-filters)
-     (when (and (nil? models)
-               (nil? table_db_id)
-               (not archived))
-      (snowplow/track-event! ::snowplow/new-filtered-search-query api/*current-user-id*
-                            {:runtime-milliseconds duration
-                             :models               (u/one-or-many models)
-                             :created-by           (some? created_by)
-                             :created-at           (some? created_at)
-                             :last-edited-by       (some? last_edited_by)
-                             :last-edited-at       (some? last_edited_at)
-                             :verified             (some? verified)
-                             :search-native-query  (some? search_native_query)})))
     results))
 
 (api/define-routes)

@@ -20,3 +20,8 @@ export const enabledSearchTypes: EnabledSearchModelType[] = [
   "action",
   "indexed-entity",
 ];
+
+export const SearchContextTypes = {
+  GLOBAL_SEARCH: "global-search",
+  FILTERED_SEARCH: "filtered-search",
+};

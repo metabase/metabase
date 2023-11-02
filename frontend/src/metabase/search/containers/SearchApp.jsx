@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import PropTypes from "prop-types";
 
 import { jt, t } from "ttag";
@@ -18,7 +18,10 @@ import {
   getSearchTextFromLocation,
 } from "metabase/search/utils";
 import { PAGE_SIZE } from "metabase/search/containers/constants";
-import { SearchFilterKeys } from "metabase/search/constants";
+import {
+  SearchContextTypes,
+  SearchFilterKeys,
+} from "metabase/search/constants";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import { useDispatch } from "metabase/lib/redux";
 import {
@@ -28,7 +31,6 @@ import {
   SearchResultContainer,
 } from "metabase/search/containers/SearchApp.styled";
 import { SearchResultSection } from "metabase/search/containers/SearchResultSection";
-import { trackSearchEvents } from "metabase/search/analytics";
 
 function SearchApp({ location }) {
   const dispatch = useDispatch();
@@ -51,13 +53,8 @@ function SearchApp({ location }) {
     models: searchFilters[SearchFilterKeys.Type] ?? undefined,
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
+    context: SearchContextTypes.FILTERED_SEARCH,
   };
-
-  useEffect(() => {
-    if (!_.isEmpty(searchFilters)) {
-      trackSearchEvents({ searchFilters });
-    }
-  }, [searchFilters]);
 
   const onChangeLocation = useCallback(
     nextLocation => dispatch(push(nextLocation)),
