@@ -68,7 +68,8 @@
               ctx
               (catch Exception e
                 (throw (ex-info (format "Failed to load into database for %s" (pr-str path))
-                                {:path       path
+                                {:path path
+                                 :rebuilt-path rebuilt-path
                                  :deps-chain expanding}
                                 e)))))))
 

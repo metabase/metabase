@@ -2,6 +2,7 @@
   (:require
    [babashka.fs :as fs]
    [clojure.java.io :as io]
+   [clojure.pprint :as pp]
    [clojure.string :as str]
    [metabase-enterprise.internal-user :as ee.internal-user]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
@@ -192,13 +193,15 @@
     (ia-content->plugins)
     (log/info (str "Loading Analytics Content from: " instance-analytics-plugin-dir))
     ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
-    (let [report (log/with-no-logs
-                   (serialization.cmd/v2-load-internal! (str instance-analytics-plugin-dir)
-                                                        {}
-                                                        :token-check? false))]
-      (if (not-empty (:errors report))
-        (log/info (str "Error Loading Analytics Content: " (pr-str report)))
-        (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))))
+    (let [report (try (serialization.cmd/v2-load-internal "plugins/instance_analytics" {} :token-check? false)
+                      (catch Exception e
+                        (log/fatal (str "Error Loading Analytics Content:\n"
+                                        (with-out-str (pp/pprint
+                                                       {:error (ex-message (ex-cause e))
+                                                        :message (:errors (ex-data (ex-cause e)))
+                                                        :long-message (ex-message e)
+                                                        :rebuilt-path (:rebuilt-path (ex-data e))}))))))]
+      (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded.")))
     (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
       (adjust-audit-db-to-host! audit-db))))
 
