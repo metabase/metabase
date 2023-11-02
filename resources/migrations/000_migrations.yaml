@@ -15667,12 +15667,16 @@ databaseChangeLog:
       comment: Added 0.48.0 - new view v_audit_log
       changes:
         - sqlFile:
-            dbms: postgresql,h2
+            dbms: postgresql
             path: instance_analytics_views/audit_log/v1/audit_log.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: mysql,mariadb
             path: instance_analytics_views/audit_log/v1/mysql-audit_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/audit_log/v1/h2-audit_log.sql
             relativeToChangelogFile: true
       rollback:
         - sql:
@@ -15750,7 +15754,16 @@ databaseChangeLog:
       comment: Added 0.48.0 - new view v_users
       changes:
         - sqlFile:
-            path: instance_analytics_views/users/v1/users.sql
+            dbms: postgresql
+            path: instance_analytics_views/users/v1/postgres-users.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/users/v1/mysql-users.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/users/v1/h2-users.sql
             relativeToChangelogFile: true
       rollback:
         - sql:
@@ -15762,7 +15775,7 @@ databaseChangeLog:
       comment: Added 0.48.0 - new view v_alerts
       changes:
         - sqlFile:
-            dbms: postgres,h2
+            dbms: postgres
             path: instance_analytics_views/alerts/v1/postgres-alerts.sql
             relativeToChangelogFile: true
         - sqlFile:
@@ -15795,7 +15808,16 @@ databaseChangeLog:
       comment: Added 0.48.0 - new view v_fields
       changes:
         - sqlFile:
-            path: instance_analytics_views/fields/v1/fields.sql
+            dbms: postgres
+            path: instance_analytics_views/fields/v1/postgres-fields.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/fields/v1/mysql-fields.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/fields/v1/h2-fields.sql
             relativeToChangelogFile: true
       rollback:
         - sql:
@@ -15807,7 +15829,16 @@ databaseChangeLog:
       comment: Added 0.48.0 - new view v_query_log
       changes:
         - sqlFile:
-            path: instance_analytics_views/query_log/v1/query_log.sql
+            dbms: postgres
+            path: instance_analytics_views/query_log/v1/postgres-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/query_log/v1/mysql-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/query_log/v1/h2-query_log.sql
             relativeToChangelogFile: true
       rollback:
         - sql:
@@ -15819,12 +15850,16 @@ databaseChangeLog:
       comment: Added 0.48.0 - new view v_tables
       changes:
         - sqlFile:
-            dbms: postgresql,h2
-            path: instance_analytics_views/tables/v1/tables.sql
+            dbms: postgresql
+            path: instance_analytics_views/tables/v1/postgres-tables.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: mysql,mariadb
             path: instance_analytics_views/tables/v1/mysql-tables.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/tables/v1/h2-tables.sql
             relativeToChangelogFile: true
       rollback:
         - sql:
@@ -15836,7 +15871,16 @@ databaseChangeLog:
       comment: Added 0.48.0 - new view v_view_log
       changes:
         - sqlFile:
-            path: instance_analytics_views/view_log/v1/view_log.sql
+            dbms: postgresql
+            path: instance_analytics_views/view_log/v1/postgres-view_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/view_log/v1/mysql-view_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/view_log/v1/h2-view_log.sql
             relativeToChangelogFile: true
       rollback:
         - sql:
