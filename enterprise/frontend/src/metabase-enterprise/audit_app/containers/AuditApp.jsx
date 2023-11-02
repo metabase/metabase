@@ -28,7 +28,7 @@ const DeprecationSection = () => {
 
   return (
     <DeprecationNotice>
-      <Flex align="center" px="lg" py="md">
+      <Flex align="center" px="xl" py="md">
         <Icon name="info_filled" />
         <Box pl="sm">
           <Box>
