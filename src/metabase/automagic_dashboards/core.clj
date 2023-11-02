@@ -783,11 +783,11 @@
   "Ensure that elements of an original dataset query are preserved in dashcard queries."
   [dashboard entity entity-element]
   (if-let [element-value (get-in entity [:dataset_query :query entity-element])]
-    (letfn [(splice-joins [dashcard]
+    (letfn [(splice-element [dashcard]
               (cond-> dashcard
                 (get-in dashcard [:card :dataset_query :query])
                 (assoc-in [:card :dataset_query :query entity-element] element-value)))]
-      (update dashboard :dashcards (partial map splice-joins)))
+      (update dashboard :dashcards (partial map splice-element)))
     dashboard))
 
 (defn- query-based-analysis
