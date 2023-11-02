@@ -2,16 +2,11 @@ import dayjs from "dayjs";
 import userEvent from "@testing-library/user-event";
 import { render, screen, within } from "__support__/ui";
 import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/lib/types";
 import { createMockField } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   createOrdersTable,
-  createOrdersIdField,
-  createOrdersProductIdField,
-  createOrdersUserIdField,
-  createOrdersDiscountField,
-  createOrdersQuantityField,
-  createOrdersCreatedAtField,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
@@ -30,24 +25,18 @@ const TIME_FIELD = createMockField({
   semantic_type: null,
 });
 
-const metadata = createMockMetadata({
-  databases: [
-    createSampleDatabase({
-      tables: [
-        createOrdersTable({
-          fields: [
-            createOrdersIdField(),
-            createOrdersProductIdField(),
-            createOrdersUserIdField(),
-            createOrdersDiscountField(),
-            createOrdersQuantityField(),
-            createOrdersCreatedAtField(),
-            TIME_FIELD,
-          ],
-        }),
-      ],
+const _ordersFields = createOrdersTable().fields?.filter(checkNotNull) ?? [];
+
+const database = createSampleDatabase({
+  tables: [
+    createOrdersTable({
+      fields: [..._ordersFields, TIME_FIELD],
     }),
   ],
+});
+
+const metadata = createMockMetadata({
+  databases: [database],
 });
 
 function findTimeColumn(query: Lib.Query) {
@@ -110,7 +99,20 @@ function setup({
     return Lib.timeFilterParts(query, 0, filter);
   }
 
-  return { query, column, getNextFilterParts, onChange, onBack };
+  function getNextFilterColumnName() {
+    const parts = getNextFilterParts();
+    const column = checkNotNull(parts?.column);
+    return Lib.displayInfo(query, 0, column).longDisplayName;
+  }
+
+  return {
+    query,
+    column,
+    getNextFilterParts,
+    getNextFilterColumnName,
+    onChange,
+    onBack,
+  };
 }
 
 async function setOperator(operator: string) {
@@ -143,7 +145,8 @@ describe("TimeFilterPicker", () => {
     });
 
     it("should apply a default filter", () => {
-      const { query, column, getNextFilterParts } = setup();
+      const { query, column, getNextFilterParts, getNextFilterColumnName } =
+        setup();
 
       userEvent.click(screen.getByText("Add filter"));
 
@@ -153,26 +156,26 @@ describe("TimeFilterPicker", () => {
       expect(columnInfo.displayName).toBe("Time");
       expect(columnInfo.table?.displayName).toBe("Orders");
       expect(filterParts?.values).toEqual([getDefaultValue()]);
+      expect(getNextFilterColumnName()).toBe("Time");
     });
 
     it("should add a filter with one value", async () => {
-      const { getNextFilterParts } = setup();
+      const { getNextFilterParts, getNextFilterColumnName } = setup();
 
-      userEvent.click(screen.getByDisplayValue("Before"));
-      userEvent.click(await screen.findByText("After"));
+      await setOperator("After");
       userEvent.type(screen.getByDisplayValue("00:00"), "11:15");
       userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
       expect(filterParts?.operator).toBe(">");
       expect(filterParts?.values).toEqual([dayjs("11:15", "HH:mm").toDate()]);
+      expect(getNextFilterColumnName()).toBe("Time");
     });
 
     it("should add a filter with two values", async () => {
-      const { getNextFilterParts } = setup();
+      const { getNextFilterParts, getNextFilterColumnName } = setup();
 
-      userEvent.click(screen.getByDisplayValue("Before"));
-      userEvent.click(await screen.findByText("Between"));
+      await setOperator("Between");
 
       const [leftInput, rightInput] = screen.getAllByDisplayValue("00:00");
       userEvent.type(leftInput, "11:15");
@@ -185,18 +188,19 @@ describe("TimeFilterPicker", () => {
         dayjs("11:15", "HH:mm").toDate(),
         dayjs("12:30", "HH:mm").toDate(),
       ]);
+      expect(getNextFilterColumnName()).toBe("Time");
     });
 
     it("should add a filter with no values", async () => {
-      const { getNextFilterParts } = setup();
+      const { getNextFilterParts, getNextFilterColumnName } = setup();
 
-      userEvent.click(screen.getByDisplayValue("Before"));
-      userEvent.click(await screen.findByText("Is empty"));
+      await setOperator("Is empty");
       userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
       expect(filterParts?.operator).toBe("is-null");
       expect(filterParts?.values).toEqual([]);
+      expect(getNextFilterColumnName()).toBe("Time");
     });
 
     it("should handle invalid input", () => {
@@ -218,104 +222,120 @@ describe("TimeFilterPicker", () => {
   });
 
   describe("existing filter", () => {
-    it("should render a filter with one value", () => {
-      const opts = createFilteredQuery({
-        operator: ">",
-        values: [dayjs("11:15", "HH:mm").toDate()],
+    describe("with one value", () => {
+      it("should render a filter", () => {
+        setup(
+          createFilteredQuery({
+            operator: ">",
+            values: [dayjs("11:15", "HH:mm").toDate()],
+          }),
+        );
+
+        expect(screen.getByText(TIME_FIELD.display_name)).toBeInTheDocument();
+        expect(screen.getByDisplayValue("After")).toBeInTheDocument();
+        expect(screen.getByDisplayValue("11:15")).toBeInTheDocument();
+        expect(screen.getByText("Update filter")).toBeEnabled();
       });
-      setup(opts);
 
-      expect(screen.getByText(TIME_FIELD.display_name)).toBeInTheDocument();
-      expect(screen.getByDisplayValue("After")).toBeInTheDocument();
-      expect(screen.getByDisplayValue("11:15")).toBeInTheDocument();
-      expect(screen.getByText("Update filter")).toBeEnabled();
+      it("should update a filter", () => {
+        const { getNextFilterParts, getNextFilterColumnName } = setup(
+          createFilteredQuery({ operator: ">" }),
+        );
+
+        userEvent.type(screen.getByDisplayValue("00:00"), "20:45");
+        userEvent.click(screen.getByText("Update filter"));
+
+        const filterParts = getNextFilterParts();
+        expect(filterParts?.operator).toBe(">");
+        expect(filterParts?.values).toEqual([dayjs("20:45", "HH:mm").toDate()]);
+        expect(getNextFilterColumnName()).toBe("Time");
+      });
     });
 
-    it("should update a filter with one value", () => {
-      const opts = createFilteredQuery({ operator: ">" });
-      const { getNextFilterParts } = setup(opts);
+    describe("with two values", () => {
+      it("should render a filter", () => {
+        setup(
+          createFilteredQuery({
+            operator: "between",
+            values: [
+              dayjs("11:15", "HH:mm").toDate(),
+              dayjs("13:00", "HH:mm").toDate(),
+            ],
+          }),
+        );
 
-      userEvent.type(screen.getByDisplayValue("00:00"), "20:45");
-      userEvent.click(screen.getByText("Update filter"));
+        expect(screen.getByText(TIME_FIELD.display_name)).toBeInTheDocument();
+        expect(screen.getByDisplayValue("Between")).toBeInTheDocument();
+        expect(screen.getByDisplayValue("11:15")).toBeInTheDocument();
+        expect(screen.getByDisplayValue("13:00")).toBeInTheDocument();
+        expect(screen.getByText("Update filter")).toBeEnabled();
+      });
 
-      const filterParts = getNextFilterParts();
-      expect(filterParts?.operator).toBe(">");
-      expect(filterParts?.values).toEqual([dayjs("20:45", "HH:mm").toDate()]);
-    });
+      it("should update a filter", () => {
+        const { getNextFilterParts, getNextFilterColumnName } = setup(
+          createFilteredQuery({
+            operator: "between",
+            values: [
+              dayjs("11:15", "HH:mm").toDate(),
+              dayjs("13:00", "HH:mm").toDate(),
+            ],
+          }),
+        );
 
-    it("should render a filter with two values", () => {
-      const opts = createFilteredQuery({
-        operator: "between",
-        values: [
-          dayjs("11:15", "HH:mm").toDate(),
+        userEvent.type(screen.getByDisplayValue("11:15"), "8:00");
+        userEvent.click(screen.getByText("Update filter"));
+
+        let filterParts = getNextFilterParts();
+        expect(filterParts?.operator).toBe("between");
+        expect(filterParts?.values).toEqual([
+          dayjs("08:00", "HH:mm").toDate(),
           dayjs("13:00", "HH:mm").toDate(),
-        ],
+        ]);
+
+        userEvent.type(screen.getByDisplayValue("13:00"), "17:31");
+        userEvent.click(screen.getByText("Update filter"));
+
+        filterParts = getNextFilterParts();
+        expect(filterParts?.operator).toBe("between");
+        expect(filterParts?.values).toEqual([
+          dayjs("08:00", "HH:mm").toDate(),
+          dayjs("17:31", "HH:mm").toDate(),
+        ]);
+        expect(getNextFilterColumnName()).toBe("Time");
       });
-      setup(opts);
-
-      expect(screen.getByText(TIME_FIELD.display_name)).toBeInTheDocument();
-      expect(screen.getByDisplayValue("Between")).toBeInTheDocument();
-      expect(screen.getByDisplayValue("11:15")).toBeInTheDocument();
-      expect(screen.getByDisplayValue("13:00")).toBeInTheDocument();
-      expect(screen.getByText("Update filter")).toBeEnabled();
     });
 
-    it("should update a filter with two values", () => {
-      const opts = createFilteredQuery({
-        operator: "between",
-        values: [
-          dayjs("11:15", "HH:mm").toDate(),
-          dayjs("13:00", "HH:mm").toDate(),
-        ],
+    describe("with no values", () => {
+      it("should render a filter", () => {
+        setup(
+          createFilteredQuery({
+            operator: "not-null",
+            values: [],
+          }),
+        );
+
+        expect(screen.getByText(TIME_FIELD.display_name)).toBeInTheDocument();
+        expect(screen.getByDisplayValue("Not empty")).toBeInTheDocument();
+        expect(screen.getByText("Update filter")).toBeEnabled();
       });
-      const { getNextFilterParts } = setup(opts);
 
-      userEvent.type(screen.getByDisplayValue("11:15"), "8:00");
-      userEvent.click(screen.getByText("Update filter"));
+      it("should update a filter", async () => {
+        const { getNextFilterParts, getNextFilterColumnName } = setup(
+          createFilteredQuery({ operator: "not-null", values: [] }),
+        );
 
-      let filterParts = getNextFilterParts();
-      expect(filterParts?.operator).toBe("between");
-      expect(filterParts?.values).toEqual([
-        dayjs("08:00", "HH:mm").toDate(),
-        dayjs("13:00", "HH:mm").toDate(),
-      ]);
+        await setOperator("Is empty");
+        userEvent.click(screen.getByText("Update filter"));
 
-      userEvent.type(screen.getByDisplayValue("13:00"), "17:31");
-      userEvent.click(screen.getByText("Update filter"));
-
-      filterParts = getNextFilterParts();
-      expect(filterParts?.operator).toBe("between");
-      expect(filterParts?.values).toEqual([
-        dayjs("08:00", "HH:mm").toDate(),
-        dayjs("17:31", "HH:mm").toDate(),
-      ]);
-    });
-
-    it("should render a filter with no values", () => {
-      const opts = createFilteredQuery({ operator: "not-null", values: [] });
-      setup(opts);
-
-      expect(screen.getByText(TIME_FIELD.display_name)).toBeInTheDocument();
-      expect(screen.getByDisplayValue("Not empty")).toBeInTheDocument();
-      expect(screen.getByText("Update filter")).toBeEnabled();
-    });
-
-    it("should update a filter with no values", async () => {
-      const opts = createFilteredQuery({ operator: "not-null", values: [] });
-      const { getNextFilterParts } = setup(opts);
-
-      userEvent.click(screen.getByDisplayValue("Not empty"));
-      userEvent.click(await screen.findByText("Is empty"));
-      userEvent.click(screen.getByText("Update filter"));
-
-      const filterParts = getNextFilterParts();
-      expect(filterParts?.operator).toBe("is-null");
-      expect(filterParts?.values).toEqual([]);
+        const filterParts = getNextFilterParts();
+        expect(filterParts?.operator).toBe("is-null");
+        expect(filterParts?.values).toEqual([]);
+        expect(getNextFilterColumnName()).toBe("Time");
+      });
     });
 
     it("should list operators", async () => {
-      const opts = createFilteredQuery({ operator: "<" });
-      setup(opts);
+      setup(createFilteredQuery({ operator: "<" }));
 
       userEvent.click(screen.getByDisplayValue("Before"));
       const listbox = await screen.findByRole("listbox");
@@ -328,11 +348,12 @@ describe("TimeFilterPicker", () => {
     });
 
     it("should change an operator", async () => {
-      const opts = createFilteredQuery({
-        operator: "<",
-        values: [dayjs("11:15", "HH:mm").toDate()],
-      });
-      const { getNextFilterParts } = setup(opts);
+      const { getNextFilterParts, getNextFilterColumnName } = setup(
+        createFilteredQuery({
+          operator: "<",
+          values: [dayjs("11:15", "HH:mm").toDate()],
+        }),
+      );
 
       await setOperator("After");
       userEvent.click(screen.getByText("Update filter"));
@@ -340,6 +361,7 @@ describe("TimeFilterPicker", () => {
       const filterParts = getNextFilterParts();
       expect(filterParts?.operator).toBe(">");
       expect(filterParts?.values).toEqual([dayjs("11:15", "HH:mm").toDate()]);
+      expect(getNextFilterColumnName()).toBe("Time");
     });
 
     it("should re-use values when changing an operator", async () => {
@@ -380,10 +402,11 @@ describe("TimeFilterPicker", () => {
     });
 
     it("should handle invalid filter value", () => {
-      const opts = createFilteredQuery({
-        values: [dayjs("32:66", "HH:mm").toDate()],
-      });
-      const { getNextFilterParts } = setup(opts);
+      const { getNextFilterParts } = setup(
+        createFilteredQuery({
+          values: [dayjs("32:66", "HH:mm").toDate()],
+        }),
+      );
 
       // There's no particular reason why 32:66 becomes 09:06
       // We trust the TimeInput to turn it into a valid time value
@@ -396,8 +419,9 @@ describe("TimeFilterPicker", () => {
     });
 
     it("should go back", () => {
-      const opts = createFilteredQuery({ operator: "<" });
-      const { onBack, onChange } = setup(opts);
+      const { onBack, onChange } = setup(
+        createFilteredQuery({ operator: "<" }),
+      );
 
       userEvent.click(screen.getByLabelText("Back"));
 
