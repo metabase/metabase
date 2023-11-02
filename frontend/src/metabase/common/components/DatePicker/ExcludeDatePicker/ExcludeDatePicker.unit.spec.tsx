@@ -10,11 +10,13 @@ import { ExcludeDatePicker } from "./ExcludeDatePicker";
 interface SetupOpts {
   availableOperators?: ReadonlyArray<DatePickerOperator>;
   availableUnits?: ReadonlyArray<DatePickerExtractionUnit>;
+  isNew?: boolean;
 }
 
 function setup({
   availableOperators = DATE_PICKER_OPERATORS,
   availableUnits = DATE_PICKER_EXTRACTION_UNITS,
+  isNew = false,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
@@ -23,6 +25,7 @@ function setup({
     <ExcludeDatePicker
       availableOperators={availableOperators}
       availableUnits={availableUnits}
+      isNew={isNew}
       onChange={onChange}
       onBack={onBack}
     />,
