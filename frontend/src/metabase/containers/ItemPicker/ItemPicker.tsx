@@ -124,11 +124,7 @@ function ItemPicker<TId>({
 
     const collectionItems = list
       .filter(canWriteToCollectionOrChildren)
-      .filter(
-        filterPersonalCollections === "only"
-          ? collection => collection.is_personal
-          : _.identity,
-      )
+      .filter(getCollectionFilter(filterPersonalCollections))
       .map(collection => ({
         ...collection,
         model: "collection",
@@ -151,8 +147,8 @@ function ItemPicker<TId>({
 
     if (searchString) {
       query.q = searchString;
-      if (filterPersonalCollections === "only") {
-        query.filter_items_in_personal_collection = "only";
+      if (filterPersonalCollections) {
+        query.filter_items_in_personal_collection = filterPersonalCollections;
       }
     } else {
       query.collection = openCollectionId;
@@ -269,6 +265,28 @@ function ItemPicker<TId>({
       </ItemPickerView>
     </ScrollAwareLoadingAndErrorWrapper>
   );
+}
+
+function getCollectionFilter(
+  filterPersonalCollections?: FilterItemsInPersonalCollection,
+) {
+  if (filterPersonalCollections === "only") {
+    return isPersonalCollection;
+  }
+
+  if (filterPersonalCollections === "exclude") {
+    return isPublicCollection;
+  }
+
+  return _.identity;
+}
+
+function isPersonalCollection(collection: Collection) {
+  return collection.is_personal;
+}
+
+function isPublicCollection(collection: Collection) {
+  return !collection.is_personal;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

@@ -25,7 +25,11 @@ import type {
   ClickBehavior,
   EntityCustomDestinationClickBehavior,
   DashboardTab,
+  Collection,
 } from "metabase-types/api";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { getDashboard } from "metabase/dashboard/selectors";
+import { useSelector } from "metabase/lib/redux";
 import type Question from "metabase-lib/Question";
 
 import { SidebarItem } from "../SidebarItem";
@@ -178,11 +182,11 @@ function LinkedEntityPicker({
     });
   }, [clickBehavior, updateSettings]);
 
-  const { data: dashboard } = useDashboardQuery({
+  const { data: targetDashboard } = useDashboardQuery({
     enabled: isDashboard,
     id: targetId,
   });
-  const dashboardTabs = dashboard?.tabs ?? NO_DASHBOARD_TABS;
+  const dashboardTabs = targetDashboard?.tabs ?? NO_DASHBOARD_TABS;
   const defaultDashboardTabId: number | undefined = dashboardTabs[0]?.id;
   const dashboardTabId = isDashboard
     ? clickBehavior.tabId ?? defaultDashboardTabId
@@ -241,6 +245,12 @@ function LinkedEntityPicker({
     ],
   );
 
+  const dashboard = useSelector(getDashboard);
+  const dashboardCollection = dashboard.collection ?? ROOT_COLLECTION;
+  const filterPersonalCollections = isPublicCollection(dashboardCollection)
+    ? "exclude"
+    : undefined;
+
   return (
     <div>
       <div className="pb1">
@@ -261,6 +271,7 @@ function LinkedEntityPicker({
               {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
               {/* @ts-ignore */}
               <PickerComponent
+                filterPersonalCollections={filterPersonalCollections}
                 value={clickBehavior.targetId}
                 onChange={(targetId: CardId | DashboardId) => {
                   handleSelectLinkTargetEntityId(targetId);
@@ -300,6 +311,10 @@ function LinkedEntityPicker({
       )}
     </div>
   );
+}
+
+function isPublicCollection(collection: Partial<Collection>) {
+  return !collection.is_personal;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
