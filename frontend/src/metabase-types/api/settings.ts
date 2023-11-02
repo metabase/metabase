@@ -172,6 +172,8 @@ export type PasswordComplexity = {
   digit?: number;
 };
 
+export type SessionCookieSameSite = "lax" | "strict" | "none";
+
 export interface SettingDefinition {
   key: string;
   env_name?: string;
@@ -243,6 +245,7 @@ export interface Settings {
   "search-typeahead-enabled": boolean;
   "setup-token": string | null;
   "session-cookies": boolean | null;
+  "session-cookie-samesite": SessionCookieSameSite;
   "snowplow-enabled": boolean;
   "snowplow-url": string;
   "show-database-syncing-modal": boolean;

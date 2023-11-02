@@ -1,23 +1,21 @@
 import { useState } from "react";
-import { useSelector } from "react-redux";
-import type { State } from "metabase-types/store";
-import { getSetting } from "metabase/selectors/settings";
 import { Button, Group, Menu, Text } from "metabase/ui";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/core/components/Icon";
+import type { SessionCookieSameSite } from "metabase-types/api";
 
 interface Options {
-  value: string;
+  value: SessionCookieSameSite;
   name: string;
   description: string;
 }
 
 interface SameSiteSelectWidgetProps {
-  onChange: (value: string) => void;
+  onChange: (value: SessionCookieSameSite) => void;
   setting: {
-    key: string;
-    value?: string;
-    defaultValue: string;
+    key: "session-cookie-samesite";
+    value?: SessionCookieSameSite;
+    defaultValue: SessionCookieSameSite;
     options: Options[];
   };
 }
@@ -27,15 +25,6 @@ export function SameSiteSelectWidget({
   onChange,
 }: SameSiteSelectWidgetProps) {
   const [opened, setOpened] = useState(false);
-  const authorizedOrigins = useSelector((state: State) =>
-    getSetting(state, "embedding-app-origin"),
-  );
-
-  // ! Use authorizedOrigins to add note if it does not match the MB
-  // ! instance domain
-  if (authorizedOrigins) {
-    authorizedOrigins ?? null;
-  }
 
   const selectedValue = setting.value ?? setting.defaultValue;
   const selectedOption = setting.options.find(
