@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
 import { t } from "ttag";
-import { isNotNull } from "metabase/core/utils/types";
+import { isNotNull } from "metabase/lib/types";
 import Button from "metabase/core/components/Button";
 import Input from "metabase/core/components/Input/Input";
 import Tooltip from "metabase/core/components/Tooltip";

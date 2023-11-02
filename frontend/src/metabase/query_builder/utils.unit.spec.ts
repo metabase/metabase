@@ -5,205 +5,439 @@ import {
   createMockCard,
   createMockNativeDatasetQuery,
 } from "metabase-types/api/mocks";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
+import { serializeCardForUrl } from "metabase/lib/card";
+import type Question from "metabase-lib/Question";
 
 import { isNavigationAllowed } from "./utils";
 
-const mockCard = createMockCard({
+const structuredCard = createMockCard({
   id: getNextId(),
+  name: "structured question",
 });
 
-const mockNativeCard = createMockCard({
+const nativeCard = createMockCard({
   id: getNextId(),
+  name: "native question",
   dataset_query: createMockNativeDatasetQuery(),
 });
 
-const mockModelCard = createMockCard({
+const structuredModelCard = createMockCard({
   id: getNextId(),
+  name: "structured model",
   dataset: true,
 });
 
-const mockNativeModelCard = createMockCard({
+const nativeModelCard = createMockCard({
   id: getNextId(),
+  name: "native model",
   dataset: true,
   dataset_query: createMockNativeDatasetQuery(),
 });
 
-const mockCards = [
-  mockCard,
-  mockNativeCard,
-  mockModelCard,
-  mockNativeModelCard,
+const cards = [
+  structuredCard,
+  nativeCard,
+  structuredModelCard,
+  nativeModelCard,
 ];
 
-const metadata = createMockMetadata({ questions: mockCards });
+const metadata = createMockMetadata({ questions: cards });
 
-const mockQuestion = checkNotNull(metadata.question(mockCard.id));
+const structuredQuestion = checkNotNull(metadata.question(structuredCard.id));
 
-const mockNativeQuestion = checkNotNull(metadata.question(mockNativeCard.id));
+const nativeQuestion = checkNotNull(metadata.question(nativeCard.id));
 
-const mockModelQuestion = checkNotNull(metadata.question(mockModelCard.id));
-
-const mockNativeModelQuestion = checkNotNull(
-  metadata.question(mockNativeModelCard.id),
+const structuredModelQuestion = checkNotNull(
+  metadata.question(structuredModelCard.id),
 );
 
-const mockQuestions = [
-  mockQuestion,
-  mockNativeQuestion,
-  mockModelQuestion,
-  mockNativeModelQuestion,
+const nativeModelQuestion = checkNotNull(metadata.question(nativeModelCard.id));
+
+const questions = [
+  structuredQuestion,
+  nativeQuestion,
+  structuredModelQuestion,
+  nativeModelQuestion,
 ];
 
-const anyLocation = createMockLocation();
-
-const mockModelQueryTabLocation = createMockLocation({
-  pathname: `/model/${mockModelCard.id}/query`,
+const anyLocation = createMockLocation({
+  pathname: "/",
 });
 
-const mockModelMetadataTabLocation = createMockLocation({
-  pathname: `/model/${mockModelCard.id}/metadata`,
+const newModelQueryTabLocation = createMockLocation({
+  pathname: "/model/query",
 });
 
-const mockRunQuestionLocation = createMockLocation({
+const newModelMetadataTabLocation = createMockLocation({
+  pathname: "/model/metadata",
+});
+
+const getModelLocations = (model: Question) => [
+  createMockLocation({ pathname: `/model/${model.id()}` }),
+  createMockLocation({ pathname: `/model/${model.slug()}` }),
+  createMockLocation({ pathname: `/model/${model.id()}/query` }),
+  createMockLocation({ pathname: `/model/${model.slug()}/query` }),
+  createMockLocation({ pathname: `/model/${model.id()}/metadata` }),
+  createMockLocation({ pathname: `/model/${model.slug()}/metadata` }),
+];
+
+const getStructuredQuestionLocations = (question: Question) => [
+  createMockLocation({ pathname: `/question/${question.id()}` }),
+  createMockLocation({ pathname: `/question/${question.slug()}` }),
+  createMockLocation({ pathname: `/question/${question.id()}/notebook` }),
+  createMockLocation({ pathname: `/question/${question.slug()}/notebook` }),
+];
+
+const getNativeQuestionLocations = (question: Question) => [
+  createMockLocation({ pathname: `/question/${question.id()}` }),
+  createMockLocation({ pathname: `/question/${question.slug()}` }),
+];
+
+const runModelLocation = createMockLocation({
+  pathname: "/model",
+  hash: `#${serializeCardForUrl(nativeModelCard)}`,
+});
+
+const runModelEditNotebookLocation = createMockLocation({
+  pathname: "/model/notebook",
+  hash: `#${serializeCardForUrl(nativeModelCard)}`,
+});
+
+const runQuestionLocation = createMockLocation({
   pathname: "/question",
-  hash: `#${window.btoa(JSON.stringify(mockNativeCard))}`,
+  hash: `#${serializeCardForUrl(nativeCard)}`,
 });
 
-const mockLocations = [
-  anyLocation,
-  mockModelQueryTabLocation,
-  mockModelMetadataTabLocation,
-  mockRunQuestionLocation,
-];
+const runQuestionEditNotebookLocation = createMockLocation({
+  pathname: "/question/notebook",
+  hash: `#${serializeCardForUrl(nativeCard)}`,
+});
 
 describe("isNavigationAllowed", () => {
   describe("when there is no destination (i.e. it's a beforeunload event)", () => {
     const destination = undefined;
-    const questions = [...mockQuestions, undefined];
 
-    it("always allows navigating away from creating new question", () => {
-      const isNewQuestion = true;
+    it.each(questions)(
+      "allows navigating away from creating new `$_card.name`",
+      question => {
+        const isNewQuestion = true;
 
-      for (const question of questions) {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
         ).toBe(true);
-      }
-    });
+      },
+    );
 
-    it("always allows navigating away from editing question", () => {
-      const isNewQuestion = false;
+    it.each(questions)(
+      "allows navigating away from editing `$_card.name`",
+      question => {
+        const isNewQuestion = false;
 
-      for (const question of questions) {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
         ).toBe(true);
-      }
+      },
+    );
+  });
+
+  describe("when there is no question", () => {
+    const question = undefined;
+
+    it.each([
+      anyLocation,
+      ...getModelLocations(structuredModelQuestion),
+      ...getModelLocations(nativeModelQuestion),
+      ...getStructuredQuestionLocations(structuredQuestion),
+      ...getNativeQuestionLocations(nativeQuestion),
+      newModelQueryTabLocation,
+      newModelMetadataTabLocation,
+      runModelLocation,
+      runModelEditNotebookLocation,
+      runQuestionLocation,
+      runQuestionEditNotebookLocation,
+    ])("allows navigating away to `$pathname`", destination => {
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion: true }),
+      ).toBe(true);
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion: false }),
+      ).toBe(true);
     });
   });
 
-  describe("when creating new question", () => {
+  describe("when creating new structured question", () => {
     const isNewQuestion = true;
+    const question = structuredQuestion;
 
-    it("always allows navigating away from creating new question", () => {
-      const questions = [...mockQuestions, undefined];
-      const destinations = [...mockLocations, undefined];
-
-      for (const question of questions) {
-        for (const destination of destinations) {
-          expect(
-            isNavigationAllowed({ destination, question, isNewQuestion }),
-          ).toBe(true);
-        }
-      }
-    });
-  });
-
-  describe("when editing notebook question", () => {
-    const isNewQuestion = false;
-    const question = mockQuestion;
-    const destinations = [...mockLocations, undefined];
-
-    it("always allows navigating away from editing notebook question", () => {
-      for (const destination of destinations) {
+    describe("allows navigating away", () => {
+      it.each([
+        anyLocation,
+        ...getModelLocations(structuredModelQuestion),
+        ...getModelLocations(nativeModelQuestion),
+        ...getStructuredQuestionLocations(structuredQuestion),
+        ...getNativeQuestionLocations(nativeQuestion),
+        newModelQueryTabLocation,
+        newModelMetadataTabLocation,
+        runModelLocation,
+        runModelEditNotebookLocation,
+        runQuestionLocation,
+        runQuestionEditNotebookLocation,
+      ])("to `$pathname`", destination => {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
         ).toBe(true);
-      }
+      });
     });
   });
 
-  describe("when editing native question", () => {
-    const isNewQuestion = false;
-    const question = mockNativeQuestion;
+  describe("when creating new native question", () => {
+    const isNewQuestion = true;
+    const question = nativeQuestion;
 
     it("allows to run the question", () => {
-      const destination = mockRunQuestionLocation;
+      const destination = runQuestionLocation;
 
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion }),
       ).toBe(true);
     });
 
-    it("disallows all other navigation", () => {
-      const destination = anyLocation;
-
-      expect(
-        isNavigationAllowed({ destination, question, isNewQuestion }),
-      ).toBe(false);
+    describe("disallows all other navigation", () => {
+      it.each([
+        anyLocation,
+        ...getModelLocations(structuredModelQuestion),
+        ...getModelLocations(nativeModelQuestion),
+        ...getStructuredQuestionLocations(structuredQuestion),
+        ...getNativeQuestionLocations(nativeQuestion),
+        newModelQueryTabLocation,
+        newModelMetadataTabLocation,
+        runModelLocation,
+        runModelEditNotebookLocation,
+        runQuestionEditNotebookLocation,
+      ])("to `$pathname`", destination => {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(false);
+      });
     });
   });
 
-  describe("when editing notebook model", () => {
+  describe("when editing structured question", () => {
     const isNewQuestion = false;
-    const question = mockModelQuestion;
+    const question = structuredQuestion;
 
-    it("allows navigating between model query & metadata tabs", () => {
-      const destinations = [
-        mockModelQueryTabLocation,
-        mockModelMetadataTabLocation,
-      ];
-
-      for (const destination of destinations) {
-        expect(
-          isNavigationAllowed({ destination, question, isNewQuestion }),
-        ).toBe(true);
-      }
-    });
-
-    it("disallows all other navigation", () => {
-      const destination = anyLocation;
+    it("allows to run the question", () => {
+      const destination = runQuestionLocation;
 
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion }),
-      ).toBe(false);
+      ).toBe(true);
+    });
+
+    it("allows to run the question and then edit it again", () => {
+      const destination = runQuestionEditNotebookLocation;
+
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion }),
+      ).toBe(true);
+    });
+
+    it("allows to run a model", () => {
+      const destination = runModelLocation;
+
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion }),
+      ).toBe(true);
+    });
+
+    describe("allows to open the question and the notebook editor", () => {
+      it.each(getStructuredQuestionLocations(question))(
+        "to `$pathname`",
+        destination => {
+          expect(
+            isNavigationAllowed({ destination, question, isNewQuestion }),
+          ).toBe(true);
+        },
+      );
+    });
+
+    describe("disallows all other navigation", () => {
+      it.each([
+        anyLocation,
+        ...getModelLocations(structuredModelQuestion),
+        ...getModelLocations(nativeModelQuestion),
+        ...getNativeQuestionLocations(nativeQuestion),
+        newModelQueryTabLocation,
+        newModelMetadataTabLocation,
+      ])("to `$pathname`", destination => {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(false);
+      });
+    });
+  });
+
+  describe("when editing native question", () => {
+    const isNewQuestion = false;
+    const question = nativeQuestion;
+
+    it("allows to run the question", () => {
+      const destination = runQuestionLocation;
+
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion }),
+      ).toBe(true);
+    });
+
+    describe("disallows all other navigation", () => {
+      it.each([
+        anyLocation,
+        ...getModelLocations(structuredModelQuestion),
+        ...getModelLocations(nativeModelQuestion),
+        ...getStructuredQuestionLocations(structuredQuestion),
+        ...getNativeQuestionLocations(nativeQuestion),
+        newModelQueryTabLocation,
+        newModelMetadataTabLocation,
+        runModelLocation,
+        runModelEditNotebookLocation,
+        runQuestionEditNotebookLocation,
+      ])("to `$pathname`", destination => {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(false);
+      });
+    });
+  });
+
+  describe("when creating new model", () => {
+    const isNewQuestion = true;
+    const question = structuredModelQuestion;
+
+    describe("allows navigating between model query & metadata tabs", () => {
+      it.each([newModelQueryTabLocation, newModelMetadataTabLocation])(
+        "to `$pathname`",
+        destination => {
+          expect(
+            isNavigationAllowed({ destination, question, isNewQuestion }),
+          ).toBe(true);
+        },
+      );
+    });
+
+    it("allows to run the model", () => {
+      const destination = runModelLocation;
+
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion }),
+      ).toBe(true);
+    });
+
+    it("allows to run the model and then edit it again", () => {
+      const destination = runModelEditNotebookLocation;
+
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion }),
+      ).toBe(true);
+    });
+
+    describe("disallows all other navigation", () => {
+      it.each([
+        anyLocation,
+        ...getModelLocations(structuredModelQuestion),
+        ...getModelLocations(nativeModelQuestion),
+        ...getStructuredQuestionLocations(structuredQuestion),
+        ...getNativeQuestionLocations(nativeQuestion),
+        runQuestionLocation,
+        runQuestionEditNotebookLocation,
+      ])("to `$pathname`", destination => {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(false);
+      });
+    });
+  });
+
+  describe("when editing structured model", () => {
+    const isNewQuestion = false;
+    const question = structuredModelQuestion;
+
+    describe("allows navigating between model query & metadata tabs", () => {
+      it.each(getModelLocations(question))("to `$pathname`", destination => {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(true);
+      });
+    });
+
+    it("allows to run the model", () => {
+      const destination = runModelLocation;
+
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion }),
+      ).toBe(true);
+    });
+
+    it("allows to run the model and then edit it again", () => {
+      const destination = runModelEditNotebookLocation;
+
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion }),
+      ).toBe(true);
+    });
+
+    describe("disallows all other navigation", () => {
+      it.each([
+        anyLocation,
+        ...getModelLocations(nativeModelQuestion),
+        ...getStructuredQuestionLocations(structuredQuestion),
+        ...getNativeQuestionLocations(nativeQuestion),
+        newModelMetadataTabLocation,
+        newModelQueryTabLocation,
+        runQuestionEditNotebookLocation,
+      ])("to `$pathname`", destination => {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(false);
+      });
     });
   });
 
   describe("when editing native-query model", () => {
     const isNewQuestion = false;
-    const question = mockNativeModelQuestion;
+    const question = nativeModelQuestion;
 
-    it("allows navigating between model query & metadata tabs", () => {
-      const destinations = [
-        mockModelQueryTabLocation,
-        mockModelMetadataTabLocation,
-      ];
-
-      for (const destination of destinations) {
+    describe("allows navigating between model query & metadata tabs", () => {
+      it.each(getModelLocations(question))("to `$pathname`", destination => {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
         ).toBe(true);
-      }
+      });
     });
 
-    it("disallows all other navigation", () => {
-      const destination = anyLocation;
+    it("allows to run the model", () => {
+      const destination = runModelLocation;
 
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion }),
-      ).toBe(false);
+      ).toBe(true);
+    });
+
+    describe("disallows all other navigation", () => {
+      it.each([
+        anyLocation,
+        ...getModelLocations(structuredModelQuestion),
+        ...getStructuredQuestionLocations(structuredQuestion),
+        ...getNativeQuestionLocations(nativeQuestion),
+        newModelMetadataTabLocation,
+        newModelQueryTabLocation,
+        runModelEditNotebookLocation,
+        runQuestionEditNotebookLocation,
+      ])("to `$pathname`", destination => {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(false);
+      });
     });
   });
 });

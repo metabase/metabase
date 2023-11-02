@@ -12,6 +12,7 @@
 .eastwood
 .idea/
 .nrepl-port
+.portal
 .vscode
 /*.h2.db
 /*.lock.db
@@ -25,6 +26,7 @@
 /.lein-repl-history
 /.sqlite.db
 /backend-checksums.txt
+/backend-docs/uberdoc.html
 /build.xml
 /checkouts
 /classes
@@ -32,7 +34,6 @@
 /crate-*
 /cypress
 /deploy/artifacts/*
-/docs/uberdoc.html
 /frontend/test/snapshots/*
 /e2e/snapshots/*
 /lein-plugins/*/target
@@ -78,13 +79,18 @@ dev/src/dev/nocommit/
 /frontend/src/cljs
 /frontend/src/cljs_release
 .shadow-cljs
+.clerk
 
 # lsp: ignore all but the config file
 .lsp/*
 !.lsp/config.edn
-.clj-kondo/.cache
-*.code-workspace
+modules/drivers/*/.lsp/*
+!modules/drivers/*/.lsp/config.edn
+**/.clj-kondo/.cache
 
+# Editor- or environment-specific local files
+*.code-workspace
+.java-version
 .calva/
 
 # malli + clj-kondo: ignore malli-types

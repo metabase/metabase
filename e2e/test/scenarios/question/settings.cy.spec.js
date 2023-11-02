@@ -72,10 +72,31 @@ describe("scenarios > question > settings", () => {
       cy.get("@table").contains("Total").should("not.exist");
     });
 
-    it("should allow you to re-order columns even when one has been removed (metabase2#9287)", () => {
+    it("should allow you to re-order columns even when one has been removed (metabase #14238, #29287)", () => {
       cy.viewport(1600, 800);
 
-      openOrdersTable();
+      visitQuestionAdhoc({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": ORDERS_ID,
+            joins: [
+              {
+                fields: "all",
+                alias: "Products",
+                "source-table": PRODUCTS_ID,
+                strategy: "left-join",
+                condition: [
+                  "=",
+                  ["field", ORDERS.PRODUCT_ID, {}],
+                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+                ],
+              },
+            ],
+          },
+          type: "query",
+        },
+      });
       cy.findByTestId("viz-settings-button").click();
 
       cy.findByTestId("Subtotal-hide-button").click();
@@ -86,6 +107,27 @@ describe("scenarios > question > settings", () => {
       moveColumnDown(cy.get("@total"), -2);
 
       getSidebarColumns().eq("1").should("contain.text", "Total");
+
+      getVisibleSidebarColumns()
+        .eq("9")
+        .as("title")
+        .should("have.text", "Products → Title");
+
+      cy.findByTestId("chartsettings-sidebar").scrollTo("top");
+      cy.findByTestId("chartsettings-sidebar").should(([$el]) => {
+        expect($el.scrollTop).to.eql(0);
+      });
+
+      cy.get("@title")
+        .trigger("mousedown", 0, 0, { force: true })
+        .trigger("mousemove", 5, 5, { force: true })
+        .trigger("mousemove", 0, 15, { force: true });
+      cy.wait(2000);
+      cy.get("@title").trigger("mouseup", 0, 15, { force: true });
+
+      cy.findByTestId("chartsettings-sidebar").should(([$el]) => {
+        expect($el.scrollTop).to.be.greaterThan(0);
+      });
     });
 
     it("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {
@@ -428,9 +470,7 @@ describe("scenarios > question > settings", () => {
       cy.contains("Orders in a dashboard").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Cancel").click();
-      modal().within(() => {
-        cy.button("Leave anyway").click();
-      });
+      modal().button("Discard changes").click();
 
       // create a new question to see if the "add to a dashboard" modal is still there
       openNavigationSidebar();

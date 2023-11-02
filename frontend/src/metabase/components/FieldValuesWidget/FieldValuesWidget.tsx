@@ -38,7 +38,7 @@ import type {
 } from "metabase-types/api";
 
 import { useDispatch } from "metabase/lib/redux";
-import { isNotNull } from "metabase/core/utils/types";
+import { isNotNull } from "metabase/lib/types";
 import type Field from "metabase-lib/metadata/Field";
 import type Question from "metabase-lib/Question";
 
@@ -102,7 +102,6 @@ export interface IFieldValuesWidgetProps {
   className?: string;
   prefix?: string;
   placeholder?: string;
-  forceTokenField?: boolean;
   checkedColor?: string;
 
   valueRenderer?: (value: string | number) => JSX.Element;
@@ -135,7 +134,6 @@ export function FieldValuesWidgetInner({
   className,
   prefix,
   placeholder,
-  forceTokenField = false,
   checkedColor,
   valueRenderer,
   optionRenderer,
@@ -214,7 +212,7 @@ export function FieldValuesWidgetInner({
 
       const results = await Promise.all(
         nonVirtualFields.map(field =>
-          dispatch(Fields.objectActions.fetchFieldValues({ id: field.id })),
+          dispatch(Fields.objectActions.fetchFieldValues(field)),
         ),
       );
 
@@ -224,7 +222,7 @@ export function FieldValuesWidgetInner({
         (field, index) =>
           results[index]?.payload?.values ??
           Fields.selectors.getFieldValues(results[index]?.payload, {
-            entityId: field.id,
+            entityId: field.getUniqueId(),
           }),
       );
 
@@ -411,8 +409,7 @@ export function FieldValuesWidgetInner({
   const isListMode =
     !disableList &&
     shouldList({ parameter, fields, disableSearch }) &&
-    valuesMode === "list" &&
-    !forceTokenField;
+    valuesMode === "list";
   const isLoading = loadingState === "LOADING";
   const hasListValues = hasList({
     parameter,

@@ -196,13 +196,13 @@
   (let [raw-card (t2/select-one Card :id id)
         card (-> raw-card
                  (t2/hydrate :creator
-                          :dashboard_count
-                          :parameter_usage_count
-                          :can_write
-                          :average_query_time
-                          :last_query_start
-                          :collection
-                          [:moderation_reviews :moderator_details])
+                             :dashboard_count
+                             :parameter_usage_count
+                             :can_write
+                             :average_query_time
+                             :last_query_start
+                             [:collection :is_personal]
+                             [:moderation_reviews :moderator_details])
                  collection.root/hydrate-root-collection
                  (cond-> ;; card
                    (:dataset raw-card) (t2/hydrate :persisted))
@@ -210,7 +210,7 @@
                  (last-edit/with-last-edit-info :card))]
     (u/prog1 card
       (when-not ignore_view
-        (events/publish-event! :event/card-read (assoc <> :actor_id api/*current-user-id*))))))
+        (events/publish-event! :event/card-read {:object <> :user-id api/*current-user-id*})))))
 
 (defn- card-columns-from-names
   [card names]
@@ -516,14 +516,14 @@ saved later when it is ready."
   transaction and work in the `:card-create` event cannot proceed because the cards would not be visible outside of
   the transaction yet. If you pass true here it is important to call the event after the cards are successfully
   created."
-  ([card] (create-card! card false))
-  ([{:keys [dataset_query result_metadata dataset parameters parameter_mappings], :as card-data} delay-event?]
+  ([card creator] (create-card! card creator false))
+  ([{:keys [dataset_query result_metadata dataset parameters parameter_mappings], :as card-data} creator delay-event?]
    ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
    ;; `api/maybe-reconcile-collection-position!`
    (let [data-keys            [:dataset_query :description :display :name :visualization_settings
                                :parameters :parameter_mappings :collection_id :collection_position :cache_ttl]
          card-data            (assoc (zipmap data-keys (map card-data data-keys))
-                                     :creator_id api/*current-user-id*
+                                     :creator_id (:id creator)
                                      :dataset (boolean (:dataset card-data))
                                      :parameters (or parameters [])
                                      :parameter_mappings (or parameter_mappings []))
@@ -541,19 +541,20 @@ saved later when it is ready."
                                                                              (and metadata (not timed-out?))
                                                                              (assoc :result_metadata metadata)))))]
      (when-not delay-event?
-       (events/publish-event! :event/card-create card))
+       (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*}))
      (when timed-out?
        (log/info (trs "Metadata not available soon enough. Saving new card and asynchronously updating metadata")))
      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with
      ;; returned one -- See #4283
      (u/prog1 (-> card
                   (t2/hydrate :creator
-                           :dashboard_count
-                           :can_write
-                           :average_query_time
-                           :last_query_start
-                           :collection [:moderation_reviews :moderator_details])
-                  (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
+                              :dashboard_count
+                              :can_write
+                              :average_query_time
+                              :last_query_start
+                              [:collection :is_personal]
+                              [:moderation_reviews :moderator_details])
+                  (assoc :last-edit-info (last-edit/edit-information-for-user creator)))
        (when timed-out?
          (schedule-metadata-saving result-metadata-chan <>))))))
 
@@ -577,7 +578,7 @@ saved later when it is ready."
   (check-data-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (collection/check-write-perms-for-collection collection_id)
-  (create-card! body))
+  (create-card! body @api/*current-user*))
 
 (api/defendpoint POST "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
@@ -586,7 +587,7 @@ saved later when it is ready."
   (let [orig-card (api/read-check Card id)
         new-name  (str (trs "Copy of ") (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
-    (create-card! new-card)))
+    (create-card! new-card @api/*current-user*)))
 
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
@@ -606,20 +607,6 @@ saved later when it is ready."
             (api/column-will-change? :embedding_params card-before-updates card-updates))
     (validation/check-embedding-enabled)
     (api/check-superuser)))
-
-(defn- publish-card-update!
-  "Publish an event appropriate for the update(s) done to this CARD (`:card-update`, or archiving/unarchiving
-  events)."
-  [card archived?]
-  (let [event (cond
-                ;; card was archived
-                (and archived?
-                     (not (:archived card))) :event/card-archive
-                ;; card was unarchived
-                (and (false? archived?)
-                     (:archived card))       :event/card-unarchive
-                :else                        :event/card-update)]
-    (events/publish-event! event (assoc card :actor_id api/*current-user-id*))))
 
 (defn- card-archived? [old-card new-card]
   (and (not (:archived old-card))
@@ -744,7 +731,7 @@ saved later when it is ready."
 (defn- update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
   included, otherwise the metadata will be saved to the database asynchronously."
-  [{:keys [id], :as card-before-update} {:keys [archived], :as card-updates}]
+  [{:keys [id] :as card-before-update} card-updates]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
   (t2/with-transaction [_conn]
    (api/maybe-reconcile-collection-position! card-before-update card-updates)
@@ -770,16 +757,17 @@ saved later when it is ready."
 
   (let [card (t2/select-one Card :id id)]
     (delete-alerts-if-needed! card-before-update card)
-    (publish-card-update! card archived)
+    (events/publish-event! :event/card-update {:object card :user-id api/*current-user-id*})
     ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
     ;; has with returned one -- See #4142
     (-> card
         (t2/hydrate :creator
-                 :dashboard_count
-                 :can_write
-                 :average_query_time
-                 :last_query_start
-                 :collection [:moderation_reviews :moderator_details])
+                    :dashboard_count
+                    :can_write
+                    :average_query_time
+                    :last_query_start
+                    [:collection :is_personal]
+                    [:moderation_reviews :moderator_details])
         (cond-> ;; card
           (:dataset card) (t2/hydrate :persisted))
         (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
@@ -847,7 +835,7 @@ saved later when it is ready."
   (log/warn (tru "DELETE /api/card/:id is deprecated. Instead, change its `archived` value via PUT /api/card/:id."))
   (let [card (api/write-check Card id)]
     (t2/delete! Card :id id)
-    (events/publish-event! :event/card-delete (assoc card :actor_id api/*current-user-id*)))
+    (events/publish-event! :event/card-delete {:object card :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------
@@ -1232,7 +1220,8 @@ saved later when it is ready."
                                                        :type     :query}
                               :display                :table
                               :name                   (humanization/name->human-readable-name filename-prefix)
-                              :visualization_settings {}})
+                              :visualization_settings {}}
+                             @api/*current-user*)
           upload-seconds    (/ (- (System/currentTimeMillis) start-time)
                                1000.0)]
       (snowplow/track-event! ::snowplow/csv-upload-successful

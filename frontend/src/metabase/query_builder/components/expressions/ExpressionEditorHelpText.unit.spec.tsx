@@ -1,5 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { createMockMetadata } from "__support__/metadata";
 import { getBrokenUpTextMatcher } from "__support__/ui";
 import {

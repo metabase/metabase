@@ -72,10 +72,13 @@ filters:
 groups:
 - Top10:
     title: Top performers
+    score: 90
 - Transactions:
     title: Transactions per country
+    score: 80
 - Users:
     title: User acquisition by country
+    score: 70
 dashboard_filters:
   - Timestamp
   - Source

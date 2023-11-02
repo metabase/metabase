@@ -68,7 +68,7 @@
   honeysql/honeysql                         {:mvn/version "1.0.461"             ; Transform Clojure data structures to SQL
                                              :exclusions  [org.clojure/clojurescript]}
   inflections/inflections                   {:mvn/version "0.14.1"}             ; Clojure/Script library used for prularizing words
-  info.sunng/ring-jetty9-adapter            {:mvn/version "0.22.1"}             ; Drop-in replacement for official Ring Jetty adapter. Supports Jetty 11 webserver.
+  info.sunng/ring-jetty9-adapter            {:mvn/version "0.22.3"}             ; Drop-in replacement for official Ring Jetty adapter. Supports Jetty 11 webserver.
   instaparse/instaparse                     {:mvn/version "1.4.12"}             ; Make your own parser
   clj-commons/clj-yaml                      {:mvn/version "1.0.27"}             ; Clojure wrapper for YAML library SnakeYAML
   io.github.camsaul/toucan2                 {:mvn/version "1.0.524"}
@@ -283,8 +283,8 @@
   {:extra-paths ["enterprise/backend/src"]}
 
   ;; Include EE tests.
-  ;; for ee dev: :dev:ee:ee-dev
-  ;; for ee tests: clojure -X:dev:ee:ee-dev:test
+  ;; for EE dev:   `clojure -X:dev:ee:ee-dev`
+  ;; for EE tests: `clojure -X:dev:ee:ee-dev:test`
   :ee-dev
   {:extra-paths ["enterprise/backend/test"]}
 
@@ -294,6 +294,15 @@
 
   :oss-dev
   {}
+
+  ;; Generate BE documentation with
+  ;; clojure -M:marginalia
+  :marginalia
+  {:extra-deps
+   {com.github.tsmacdonald/marginalia {:mvn/version "0.9.2"}}
+   :main-opts ["-m" "marginalia.main" "-n" "Metabase" "-d" "backend-docs" "-D"
+               "The simplest, fastest way to get business intelligence and analytics to everyone in your company 😋"
+               "dev" "src" "shared/src" "enterprise/backend/src"]}
 
   ;; Find outdated versions of dependencies. Run with `clojure -M:outdated`
   :outdated {;; Note that it is `:deps`, not `:extra-deps`

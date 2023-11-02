@@ -93,7 +93,7 @@
     [:truncation-size {:optional true} :int]
     [:limit           {:optional true} :int]
     [:order-by        {:optional true} (helpers/distinct (helpers/non-empty [:sequential mbql.s/OrderBy]))]
-    [:rff             {:optional true} :any]]])
+    [:rff             {:optional true} fn?]]])
 
 (defn- text-field?
   "Identify text fields which can accept our substring optimization.
@@ -145,11 +145,11 @@
 
   ([table  :- (ms/InstanceOf :model/Table)
     fields :- [:sequential (ms/InstanceOf :model/Field)]
-    rff
+    rff    :- fn?
     opts   :- TableRowsSampleOptions]
    (let [query (table-rows-sample-query table fields opts)
          qp    (requiring-resolve 'metabase.query-processor/process-query)]
-     (qp query {:rff rff}))))
+     (qp query rff nil))))
 
 (defmethod driver/table-rows-sample :default
   [_driver table fields rff opts]

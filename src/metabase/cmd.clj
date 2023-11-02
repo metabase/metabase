@@ -223,6 +223,13 @@
   (when-not (call-enterprise 'metabase-enterprise.serialization.cmd/seed-entity-ids)
     (throw (Exception. "Error encountered while seeding entity IDs"))))
 
+(defn ^:command drop-entity-ids
+  "Drop entity IDs for instances of serializable models. Useful for migrating from v1 serialization (x.46 and earlier)
+  to v2 (x.47+)."
+  []
+  (when-not (call-enterprise 'metabase-enterprise.serialization.cmd/drop-entity-ids)
+    (throw (Exception. "Error encountered while dropping entity IDs"))))
+
 (defn ^:command rotate-encryption-key
   "Rotate the encryption key of a metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to
   the current key, and the parameter `new-key` has to be the new key. `new-key` has to be at least 16 chars."

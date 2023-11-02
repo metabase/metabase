@@ -6,7 +6,7 @@
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
    [metabase.api.field :as api.field]
-   [metabase.db.query :as mdb.query]
+   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -60,7 +60,7 @@
   ;; store table id trivially iff we get a query with simple source-table
   (let [table-id (get-in query [:query :source-table])]
     (when (int? table-id)
-      (events/publish-event! :event/table-read (assoc (t2/select-one Table :id table-id) :actor_id api/*current-user-id*))))
+      (events/publish-event! :event/table-read {:object (t2/select-one Table :id table-id) :user-id api/*current-user-id*})))
   ;; add sensible constraints for results limits on our query
   (let [source-card-id (query->source-card-id query)
         source-card    (when source-card-id
@@ -71,8 +71,8 @@
                          (:dataset source-card)
                          (assoc :metadata/dataset-metadata (:result_metadata source-card)))]
     (binding [qp.perms/*card-id* source-card-id]
-      (qp.streaming/streaming-response [context export-format]
-        (qp-runner query info context)))))
+      (qp.streaming/streaming-response [{:keys [rff context]} export-format]
+        (qp-runner query info rff context)))))
 
 (api/defendpoint POST "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
@@ -164,13 +164,11 @@
    pretty  [:maybe :boolean]}
   (binding [persisted-info/*allow-persisted-substitution* false]
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
-    (let [{q :query :as compiled} (qp/compile-and-splice-parameters query)
-          driver          (driver.u/database->driver database)
-          ;; Format the query unless we explicitly do not want to
-          formatted-query (if (false? pretty)
-                            q
-                            (or (u/ignore-exceptions (mdb.query/format-sql q driver)) q))]
-      (assoc compiled :query formatted-query))))
+    (let [driver (driver.u/database->driver database)
+          prettify (partial driver/prettify-native-form driver)
+          compiled (qp/compile-and-splice-parameters query)]
+      (cond-> compiled
+        (not (false? pretty)) (update :query prettify)))))
 
 (api/defendpoint POST "/pivot"
   "Generate a pivoted dataset for an ad-hoc query"
@@ -181,8 +179,13 @@
   (api/read-check Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
-    (qp.streaming/streaming-response [context :api]
-      (qp.pivot/run-pivot-query (assoc query :async? true) info context))))
+    (qp.streaming/streaming-response [{:keys [rff context]} :api]
+      (qp.pivot/run-pivot-query (assoc query
+                                       :async? true
+                                       :constraints (qp.constraints/default-query-constraints))
+                                info
+                                rff
+                                context))))
 
 (defn- parameter-field-values
   [field-ids query]

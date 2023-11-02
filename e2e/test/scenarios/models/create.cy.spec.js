@@ -17,10 +17,8 @@ describe("scenarios > models > create", () => {
     navigateToNewModelPage();
 
     // Cancel creation with confirmation modal
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Cancel").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Discard").click();
+    cy.findByTestId("dataset-edit-bar").button("Cancel").click();
+    modal().button("Discard changes").click();
 
     // Now we will create a model
     navigateToNewModelPage();

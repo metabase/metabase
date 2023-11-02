@@ -27,4 +27,5 @@
 (defmulti streaming-results-writer
   "Given a `export-format` and `java.io.Writer`, return an object that implements `StreamingResultsWriter`."
   {:arglists '(^metabase.query_processor.streaming.interface.StreamingResultsWriter [export-format ^java.io.OutputStream os])}
-  (fn [export-format _] (keyword export-format)))
+  (fn [export-format _os]
+    (keyword export-format)))

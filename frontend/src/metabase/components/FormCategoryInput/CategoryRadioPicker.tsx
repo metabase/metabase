@@ -5,6 +5,7 @@ import Radio from "metabase/core/components/Radio";
 import Fields from "metabase/entities/fields";
 
 import type { State } from "metabase-types/store";
+import type Field from "metabase-lib/metadata/Field";
 
 import type { CategoryWidgetProps as CategoryWidgetOwnProps } from "./types";
 
@@ -13,7 +14,7 @@ interface CategoryWidgetStateProps {
 }
 
 interface CategoryWidgetDispatchProps {
-  fetchFieldValues: (opts: { id: number }) => void;
+  fetchFieldValues: (field: Field) => void;
 }
 
 interface CategoryWidgetProps
@@ -43,7 +44,7 @@ function CategoryRadioPicker({
 }: CategoryWidgetProps) {
   useMount(() => {
     if (typeof field.id === "number") {
-      fetchFieldValues({ id: field.id });
+      fetchFieldValues(field);
     }
   });
 

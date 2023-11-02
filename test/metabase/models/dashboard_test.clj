@@ -104,7 +104,7 @@
        :cards [{:id 1} {:id 2}]}
       {:name  "Next"
        :cards [{:id 1} {:id 3}]}
-      "renamed it from \"Apple\" to \"Next\" and modified the cards."
+      "renamed this Dashboard from \"Apple\" to \"Next\" and modified the cards."
 
       {:name               "Diff Test"
        :auto_apply_filters true}
@@ -435,11 +435,11 @@
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
   [dash-id is-creation?]
   (revision/push-revision!
-   :object       (t2/select-one Dashboard :id dash-id)
-   :entity       Dashboard
-   :id           dash-id
-   :user-id      (mt/user->id :crowberto)
-   :is-creation? is-creation?))
+   {:object       (t2/select-one Dashboard :id dash-id)
+    :entity       Dashboard
+    :id           dash-id
+    :user-id      (mt/user->id :crowberto)
+    :is-creation? is-creation?}))
 
 (defn- revert-to-previous-revision
   "Revert to a previous revision for a model.
@@ -452,7 +452,7 @@
   (let [ids (t2/select-pks-vec Revision :model (name model) :model_id model-id {:order-by [[:id :desc]]
                                                                                 :limit    n})]
    (assert (= n (count ids)), "There are less revisions than required to revert")
-   (revision/revert! :entity model :id model-id :user-id (mt/user->id :crowberto) :revision-id (last ids))))
+   (revision/revert! {:entity model :id model-id :user-id (mt/user->id :crowberto) :revision-id (last ids)})))
 
 (deftest revert-dashboard-with-tabs-basic-test
   (testing "revert adding tabs"
@@ -670,6 +670,22 @@
                     (:filteringParameters parameter)))
              (is (not (contains? parameter :filteringParameters))))))))))
 
+(deftest migrate-parameters-with-linked-filters-and-values-query-type-test
+  (testing "test that a Dashboard's :parameters filterParameters are cleared if the :values_query_type is 'none'"
+    (doseq [[values_query_type
+             keep-filtering-parameters?] {"none" false
+                                          "list" true}]
+      (testing (format "\nvalues_query_type=%s" values_query_type)
+       (mt/with-temp [:model/Dashboard dashboard {:parameters [(merge
+                                                                default-parameter
+                                                                {:filteringParameters ["other-param-id"]
+                                                                 :values_query_type   values_query_type})]}]
+         (let [parameter (first (:parameters dashboard))]
+           (if keep-filtering-parameters?
+             (is (= ["other-param-id"]
+                    (:filteringParameters parameter)))
+             (is (not (contains? parameter :filteringParameters))))))))))
+
 (deftest migrate-parameters-empty-name-test
   (testing "test that a Dashboard's :parameters is selected with a non-nil name and slug"
     (doseq [[name slug] [["" ""] ["" "slug"] ["name" ""]]]
@@ -791,7 +807,7 @@
           (let [dashboard       (magic/automagic-analysis (t2/select-one Table :id (mt/id :venues)) {})
                 saved-dashboard (dashboard/save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
             (is (= (t2/count DashboardCard :dashboard_id (u/the-id saved-dashboard))
-                   (-> dashboard :ordered_cards count)))))))))
+                   (-> dashboard :dashcards count)))))))))
 
 (deftest validate-collection-namespace-test
   (t2.with-temp/with-temp [Collection {collection-id :id} {:namespace "currency"}]

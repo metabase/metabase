@@ -236,7 +236,7 @@
                                         #(= (namespace %) "metadata")]]]]
   "Calculate an appropriate `:metadata/*` object for something. What this looks like depends on what we're calculating
   metadata for. If it's a reference or expression of some sort, this should return a single `:metadata/column`
-  map (i.e., something satisfying the [[metabase.lib.metadata/ColumnMetadata]] schema."
+  map (i.e., something satisfying the `::lib.schema.metadata/column` schema."
   ([query]
    (metadata query -1 query))
   ([query x]
@@ -359,7 +359,7 @@
         :is-implicitly-joinable (= source :source/implicitly-joinable)})
      (when-some [selected (:selected? x-metadata)]
        {:selected selected})
-     (select-keys x-metadata [:breakout-position :order-by-position]))))
+     (select-keys x-metadata [:breakout-position :order-by-position :filter-positions]))))
 
 (defmethod display-info-method :default
   [query stage-number x]
@@ -373,7 +373,7 @@
 (def ColumnMetadataWithSource
   "Schema for the column metadata that should be returned by [[metadata]]."
   [:merge
-   lib.metadata/ColumnMetadata
+   [:ref ::lib.schema.metadata/column]
    [:map
     [:lib/source ::lib.schema.metadata/column-source]]])
 
@@ -520,7 +520,7 @@
    (let [options (merge (default-visible-columns-options) options)]
      (visible-columns-method query stage-number x options))))
 
-(mu/defn primary-keys :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
   "Returns a list of primary keys for the source table of this query."
   [query        :- ::lib.schema/query]
   (if-let [table-id (lib.util/source-table-id query)]

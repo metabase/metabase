@@ -1,6 +1,5 @@
 import _ from "underscore";
 import {
-  createLinkCard,
   editDashboard,
   getDashboardCard,
   popover,
@@ -222,7 +221,7 @@ describe("scenarios > dashboard card resizing", () => {
       saveDashboard();
 
       cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
-        body.ordered_cards.forEach(({ card, size_x, size_y }) => {
+        body.dashcards.forEach(({ card, size_x, size_y }) => {
           const { height, width } = getDefaultSize(card.display);
           expect(size_x).to.equal(width);
           expect(size_y).to.equal(height);
@@ -253,11 +252,11 @@ describe("scenarios > dashboard card resizing", () => {
       editDashboard();
 
       cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
-        const orderedCards = body.ordered_cards;
-        orderedCards.forEach(({ card }) => {
-          const dashCard = cy.contains(".DashCard", card.name);
+        const dashcards = body.dashcards;
+        dashcards.forEach(({ card }) => {
+          const dashcard = cy.contains(".DashCard", card.name);
           resizeDashboardCard({
-            card: dashCard,
+            card: dashcard,
             x: getDefaultSize(card.display).width * 100,
             y: getDefaultSize(card.display).height * 100,
           });
@@ -266,11 +265,11 @@ describe("scenarios > dashboard card resizing", () => {
         saveDashboard();
         editDashboard();
 
-        orderedCards.forEach(({ card }) => {
-          const dashCard = cy.contains(".DashCard", card.name);
-          dashCard.within(() => {
+        dashcards.forEach(({ card }) => {
+          const dashcard = cy.contains(".DashCard", card.name);
+          dashcard.within(() => {
             resizeDashboardCard({
-              card: dashCard,
+              card: dashcard,
               x: -getDefaultSize(card.display).width * 200,
               y: -getDefaultSize(card.display).height * 200,
             });
@@ -280,7 +279,7 @@ describe("scenarios > dashboard card resizing", () => {
         saveDashboard();
 
         cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
-          body.ordered_cards.forEach(({ card, size_x, size_y }) => {
+          body.dashcards.forEach(({ card, size_x, size_y }) => {
             const { height, width } = getMinSize(card.display);
             expect(size_x).to.equal(width);
             expect(size_y).to.equal(height);
@@ -344,8 +343,8 @@ const createLinkDashboard = () => {
   });
 
   editDashboard();
-  createLinkCard();
-  createLinkCard();
+  cy.icon("link").click();
+  cy.icon("link").click();
 
   const entityCard = getDashboardCard(0);
   const customCard = getDashboardCard(1);

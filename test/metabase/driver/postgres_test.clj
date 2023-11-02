@@ -9,10 +9,10 @@
    [metabase.actions.error :as actions.error]
    [metabase.config :as config]
    [metabase.db.metadata-queries :as metadata-queries]
-   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.postgres :as postgres]
    [metabase.driver.postgres.actions :as postgres.actions]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -90,7 +90,7 @@
          (as-> [:datetime-diff "2021-10-03T09:00:00" "2021-10-03T09:00:00" :year] <>
            (sql.qp/->honeysql :postgres <>)
            (sql.qp/format-honeysql :postgres <>)
-           (update (vec <>) 0 #(str/split-lines (mdb.query/format-sql % :postgres)))))))
+           (update (vec <>) 0 #(str/split-lines (driver/prettify-native-form :postgres %)))))))
 
 (defn drop-if-exists-and-create-db!
   "Drop a Postgres database named `db-name` if it already exists; then create a new empty one with that name."
@@ -452,7 +452,7 @@
                   "  \"json_alias_test\""
                   "ORDER BY"
                   "  \"json_alias_test\" ASC"]
-                 (str/split-lines (mdb.query/format-sql (:query compile-res) :postgres))))
+                 (str/split-lines (driver/prettify-native-form :postgres (:query compile-res)))))
           (is (= ["injection' OR 1=1--' AND released = 1"
                   "injection' OR 1=1--' AND released = 1"]
                  (:params compile-res))))))))
@@ -475,7 +475,7 @@
                   "  \"json_alias_test\" ASC"
                   "LIMIT"
                   "  1048575"]
-                 (str/split-lines (mdb.query/format-sql (:query only-order) :postgres)))))))))
+                 (str/split-lines (driver/prettify-native-form :postgres (:query only-order))))))))))
 
 (deftest describe-nested-field-columns-identifier-test
   (mt/test-driver :postgres
@@ -1266,3 +1266,18 @@
                             "REVOKE ALL PRIVILEGES ON SCHEMA \"dotted.schema\" FROM privilege_rows_test_example_role;"
                             "DROP ROLE privilege_rows_test_example_role;"]]
                 (jdbc/execute! conn-spec stmt)))))))))
+
+(deftest set-role-statement-test
+  (testing "set-role-statement should return a SET ROLE command, with the role quoted if it contains special characters"
+    ;; No special characters
+    (is (= "SET ROLE MY_ROLE;"        (driver.sql/set-role-statement :postgres "MY_ROLE")))
+    (is (= "SET ROLE ROLE123;"        (driver.sql/set-role-statement :postgres "ROLE123")))
+    (is (= "SET ROLE lowercase_role;" (driver.sql/set-role-statement :postgres "lowercase_role")))
+
+    ;; None (special role in Postgres to revert back to login role; should not be quoted)
+    (is (= "SET ROLE none;"      (driver.sql/set-role-statement :postgres "none")))
+    (is (= "SET ROLE NONE;"      (driver.sql/set-role-statement :postgres "NONE")))
+
+    ;; Special characters
+    (is (= "SET ROLE \"Role.123\";"   (driver.sql/set-role-statement :postgres "Role.123")))
+    (is (= "SET ROLE \"$role\";"      (driver.sql/set-role-statement :postgres "$role")))))

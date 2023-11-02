@@ -15098,6 +15098,31 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
+      id: v47.00-058
+      author: qnkhuat
+      comment: 'Drop parameter_card.entity_id'
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: parameter_card
+            columnName: entity_id
+      changes:
+        - dropColumn:
+            tableName: parameter_card
+            columnName: entity_id
+      rollback:
+        - addColumn:
+            tableName: parameter_card
+            columns:
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+
+  - changeSet:
       id: v48.00-001
       author: qnkhuat
       comment: Added 0.47.0 - Migrate database.options to database.settings
@@ -15174,6 +15199,52 @@ databaseChangeLog:
                 name: action_id
 
   - changeSet:
+      id: v48.00-007
+      author: qnkhuat
+      comment: Added 0.48.0 - Add revision.most_recent
+      changes:
+        - addColumn:
+            tableName: revision
+            columns:
+              - column:
+                  name: most_recent
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: 'Whether a revision is the most recent one'
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v48.00-008
+      author: qnkhuat
+      comment: Set revision.most_recent = true for latest revisions
+      changes:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE revision r
+              SET most_recent = true
+              WHERE (model, model_id, timestamp) IN (
+                                 SELECT model, model_id, MAX(timestamp)
+                                 FROM revision
+                                 GROUP BY model, model_id);
+          # mysql and mariadb does not allow update on a table that is in the select part
+          # so it we join for them
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE revision r
+              JOIN (
+                  SELECT model, model_id, MAX(timestamp) AS max_timestamp
+                  FROM revision
+                  GROUP BY model, model_id
+              ) AS subquery
+              ON r.model = subquery.model AND r.model_id = subquery.model_id AND r.timestamp = subquery.max_timestamp
+              SET r.most_recent = true;
+      rollback: # nothing to do since the most_recent will be dropped anyway
+
+
+  - changeSet:
       id: v48.00-009
       author: calherries
       comment: Added 0.48.0 - Create table_privileges table
@@ -15228,6 +15299,33 @@ databaseChangeLog:
               - unique:
                   columnNames: table_id, role
                   name: uq_table_privileges_table_id_role
+
+
+  - changeSet:
+      id: v48.00-010
+      author: qnkhuat
+      comment: Remove ON UPDATE for revision.timestamp on mysql, mariadb
+      preConditions:
+          # If preconditions fail (i.e., dbms is not mysql or mariadb) then mark this migration as 'ran'
+          - onFail: MARK_RAN
+          - dbms:
+              type: mysql,mariadb
+      changes:
+          - sql:
+                sql: ALTER TABLE `revision` CHANGE `timestamp` `timestamp` timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+      rollback: # no need
+
+  - changeSet:
+      id: v48.00-011
+      author: qnkhuat
+      comment: Index revision.most_recent
+      changes:
+        - createIndex:
+            tableName: revision
+            indexName: idx_revision_most_recent
+            columns:
+              column:
+                name: most_recent
 
   - changeSet:
       id: v48.00-013
@@ -15336,6 +15434,136 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                   defaultValue: '#31698A'
+
+  - changeSet:
+      id: v48.00-021
+      author: piranha
+      comment: 'Cards store Metabase version used to create them'
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: metabase_version
+                  type: varchar(100)
+                  remarks: 'Metabase version used to create the card.'
+
+  - changeSet:
+      id: v48.00-022
+      author: johnswanson
+      comment: Migrate migrate-click-through to a custom migration
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM data_migrations WHERE id = 'migrate-click-through';
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateClickThrough"
+
+  - changeSet:
+      id: v48.00-023
+      author: piranha
+      comment: Data migration migrate-remove-admin-from-group-mapping-if-needed
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM data_migrations WHERE id = 'migrate-remove-admin-from-group-mapping-if-needed';
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateRemoveAdminFromGroupMappingIfNeeded"
+
+  - changeSet:
+      id: v48.00-024
+      author: piranha
+      comment: All data migrations were transferred to custom_migrations!
+      changes:
+        - dropTable:
+            tableName: data_migrations
+      rollback:
+        - sql:
+            sql: >-
+              CREATE TABLE data_migrations (
+                id varchar(254) primary key,
+                timestamp ${timestamp_type} not null
+              );
+              INSERT INTO data_migrations VALUES
+                  ('set-card-database-and-table-ids', current_timestamp),
+                  ('set-mongodb-databases-ssl-false', current_timestamp),
+                  ('set-default-schemas', current_timestamp),
+                  ('set-admin-email', current_timestamp),
+                  ('remove-database-sync-activity-entries', current_timestamp),
+                  ('remove-duplicate-fk-entries', current_timestamp),
+                  ('update-dashboards-to-new-grid', current_timestamp),
+                  ('migrate-field-visibility-type', current_timestamp),
+                  ('fix-dashboard-cards-without-positions', current_timestamp),
+                  ('migrate-fk-metadata', current_timestamp),
+                  ('create-raw-tables', current_timestamp),
+                  ('migrate-base-types', current_timestamp),
+                  ('migrate-field-types', current_timestamp),
+                  ('fix-invalid-field-types', current_timestamp),
+                  ('add-users-to-default-permissions-groups', current_timestamp),
+                  ('add-admin-group-root-entry', current_timestamp),
+                  ('add-databases-to-magic-permissions-groups', current_timestamp),
+                  ('fix-legacy-magic-group-names', current_timestamp),
+                  ('remove-trailing-slashes-from-site-url-setting', current_timestamp),
+                  ('copy-site-url-setting-and-remove-trailing-slashes', current_timestamp),
+                  ('migrate-query-executions', current_timestamp),
+                  ('drop-old-query-execution-table', current_timestamp),
+                  ('ensure-protocol-specified-in-site-url', current_timestamp),
+                  ('populate-card-database-id', current_timestamp),
+                  ('migrate-humanization-setting', current_timestamp),
+                  ('populate-card-read-permissions', current_timestamp),
+                  ('mark-category-fields-as-list', current_timestamp),
+                  ('repopulate-card-read-permissions', current_timestamp),
+                  ('add-legacy-sql-directive-to-bigquery-sql-cards', current_timestamp),
+                  ('clear-ldap-user-local-passwords', current_timestamp),
+                  ('add-migrated-collections', current_timestamp),
+                  ('migrate-map-regions', current_timestamp),
+                  ('migrate-click-through', current_timestamp),
+                  ('migrate-remove-admin-from-group-mapping-if-needed', current_timestamp);
+
+  - changeSet:
+      id: v48.00-025
+      author: piranha
+      comment: 'Revisions store Metabase version used to create them'
+      changes:
+        - addColumn:
+            tableName: revision
+            columns:
+              - column:
+                  name: metabase_version
+                  type: varchar(100)
+                  remarks: 'Metabase version used to create the revision.'
+
+  - changeSet:
+      id: v48.00-026
+      author: lbrdnk
+      comment: Set semantic_type with value type/Number to null (#18754)
+      changes:
+        - update:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: semantic_type
+                  value: NULL
+            where: semantic_type = 'type/Number'
+      rollback:
+
+  # this is a no op, it was previously used to Drop parameter_card.entity_id,
+  # now it's moved to v47.00-058
+  # this is still here because we want the change set id to be consistent
+  # see #35239 for details
+  - changeSet:
+      id: v48.00-027
+      author: qnkhuat
+      validCheckSum: ANY
+      comment: 'No op migration'
+      changes:
+        - sql:
+          sql: SELECT 1;
+      rollback:
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

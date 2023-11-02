@@ -6,7 +6,7 @@ import { getVisualizationRaw } from "metabase/visualizations";
 
 import type {
   Dashboard,
-  DashboardOrderedCard,
+  DashboardCard,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -14,6 +14,7 @@ import type {
 import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard } from "metabase/dashboard/utils";
 
+import { DashCardTabMenu } from "../DashCardTabMenu/DashCardTabMenu";
 import DashCardActionButton from "./DashCardActionButton";
 
 import AddSeriesButton from "./AddSeriesButton";
@@ -26,7 +27,7 @@ import LinkCardEditButton from "./LinkCardEditButton";
 interface Props {
   series: Series;
   dashboard: Dashboard;
-  dashcard?: DashboardOrderedCard;
+  dashcard?: DashboardCard;
   isLoading: boolean;
   isVirtualDashCard: boolean;
   isPreviewing: boolean;
@@ -65,9 +66,14 @@ function DashCardActionButtons({
 
   const buttons = [];
 
+  if (dashcard) {
+    buttons.push(<DashCardTabMenu key="tabs" dashCardId={dashcard.id} />);
+  }
+
   if (supportPreviewing) {
     buttons.push(
       <DashCardActionButton
+        key="preview"
         onClick={onPreviewToggle}
         tooltip={isPreviewing ? t`Edit` : t`Preview`}
         aria-label={isPreviewing ? t`Edit card` : t`Preview card`}

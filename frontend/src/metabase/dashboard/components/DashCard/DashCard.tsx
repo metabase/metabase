@@ -23,7 +23,7 @@ import type {
   Card,
   CardId,
   Dashboard,
-  DashboardOrderedCard,
+  DashboardCard,
   DashCardId,
   ParameterId,
   ParameterValueOrArray,
@@ -52,7 +52,7 @@ function preventDragging(event: React.SyntheticEvent) {
 
 export interface DashCardProps {
   dashboard: Dashboard;
-  dashcard: DashboardOrderedCard & { justAdded?: boolean };
+  dashcard: DashboardCard & { justAdded?: boolean };
   gridItemWidth: number;
   totalNumGridCols: number;
   dashcardData: Record<DashCardId, Record<CardId, Dataset>>;
@@ -61,7 +61,7 @@ export interface DashCardProps {
   metadata: Metadata;
   mode?: Mode;
 
-  clickBehaviorSidebarDashcard?: DashboardOrderedCard | null;
+  clickBehaviorSidebarDashcard?: DashboardCard | null;
 
   isEditing?: boolean;
   isEditingParameter?: boolean;

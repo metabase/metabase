@@ -153,9 +153,15 @@
                                       :pivot-cols [2])
                                (assoc-in [:query :aggregation] [[:count] [:sum (mt/$ids $orders.quantity)]])
                                (assoc-in [:query :source-table] (mt/$ids $$orders))))
-                actual   (map (fn [actual-val] (dissoc actual-val :database)) (#'qp.pivot/generate-queries request))]
+                actual   (map (fn [actual-val] (dissoc actual-val :database))
+                              (#'qp.pivot/generate-queries request {:pivot-rows [1 0] :pivot-cols [2]}))]
             (is (= 6 (count actual)))
             (is (= expected actual))))))))
+
+(deftest pivot-options-test
+  (testing "`pivot-options` correctly generates pivot-rows and pivot-cols from a card's viz settings"
+    (is (= {:pivot-rows [1 0] :pivot-cols [2]}
+           (qp.pivot/pivot-options (api.pivots/pivot-query false) (:visualization_settings (api.pivots/pivot-card)))))))
 
 (deftest dont-return-too-many-rows-test
   (testing "Make sure pivot queries don't return too many rows (#14329)"
@@ -224,7 +230,7 @@
               ([acc] acc)
               ([acc _] (inc acc))))]
     (is (= (count (mt/rows (qp.pivot/run-pivot-query (api.pivots/pivot-query))))
-           (qp.pivot/run-pivot-query (api.pivots/pivot-query) nil {:rff rff})))))
+           (qp.pivot/run-pivot-query (api.pivots/pivot-query) nil rff nil)))))
 
 (deftest parameters-query-test
   (mt/dataset sample-dataset

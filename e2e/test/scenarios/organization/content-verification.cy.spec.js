@@ -87,13 +87,13 @@ describeEE("scenarios > premium > content verification", () => {
         cy.findByPlaceholderText("Search…").click();
         cy.findByTestId("recently-viewed-item")
           .should("contain", "Orders, Count")
-          .find(".Icon-verified");
+          .find(".Icon-verified_filled");
 
         // 4. Search results
         cy.findByPlaceholderText("Search…").type("orders{enter}");
         cy.findAllByTestId("search-result-item")
           .contains("Orders, Count")
-          .siblings(".Icon-verified");
+          .siblings(".Icon-verified_filled");
 
         // 5. Question's collection
         cy.visit("/collection/root");
@@ -124,14 +124,14 @@ describeEE("scenarios > premium > content verification", () => {
         cy.findByPlaceholderText("Search…").click();
         cy.findByTestId("recently-viewed-item")
           .should("contain", "Orders, Count")
-          .find(".Icon-verified")
+          .find(".Icon-verified_filed")
           .should("not.exist");
 
         // 4. Search results
         cy.findByPlaceholderText("Search…").type("orders{enter}");
         cy.findAllByTestId("search-result-item")
           .contains("Orders, Count")
-          .siblings(".Icon-verified")
+          .siblings(".Icon-verified_filed")
           .should("not.exist");
 
         // 5. Question's collection
@@ -180,7 +180,7 @@ describeEE("scenarios > premium > content verification", () => {
           .first()
           .within(() => {
             cy.findByText("Orders, Count");
-            cy.icon("verified");
+            cy.icon("verified_filled");
           });
 
         cy.visit("/collection/root");
