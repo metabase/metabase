@@ -1265,6 +1265,27 @@ describe("filter", () => {
       expect(columnInfo?.name).toBe(columnName);
     });
 
+    it.each([
+      ["HH:mm:ss.sss[Z]", "11:08:13.1313Z"],
+      ["HH:mm:SS.sss", "11:08:13.1313"],
+      ["HH:mm:SS", "11:08:13"],
+      ["HH:mm", "11:08"],
+    ])("should support %s time format", (format, arg) => {
+      const { filterParts } = addTimeFilter(
+        query,
+        Lib.expressionClause(">", [column, arg]),
+      );
+      expect(filterParts).toMatchObject({
+        operator: ">",
+        column: expect.anything(),
+        values: [expect.any(Date)],
+      });
+
+      const value = filterParts?.values[0];
+      expect(value?.getHours()).toBe(11);
+      expect(value?.getMinutes()).toBe(8);
+    });
+
     it("should ignore expressions with not supported operators", () => {
       const { filterParts } = addTimeFilter(
         query,
