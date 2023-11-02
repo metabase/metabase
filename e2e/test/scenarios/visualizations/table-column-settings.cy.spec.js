@@ -485,6 +485,7 @@ describe("scenarios > visualizations > table column settings", () => {
         column: "Math",
         columnName: "Math",
         table: "orders",
+        scrollTimes: 2,
       };
 
       _hideColumn(testData);
