@@ -851,8 +851,7 @@
                          "last_editor"           false
                          "content_type"          ["card"]
                          "search_native_queries" false
-                         "verified_items"        false
-                         "context"               "search-app"}
+                         "verified_items"        false}
                :user-id (str (mt/user->id :crowberto))}
               (last (snowplow-test/pop-event-data-and-user-id!)))))
 
@@ -874,8 +873,7 @@
                          "last_editor"           true
                          "content_type"          ["card" "dashboard"]
                          "search_native_queries" true
-                         "verified_items"        false
-                         "context"               "search-app"}
+                         "verified_items"        false}
                :user-id (str (mt/user->id :crowberto))}
               (last (snowplow-test/pop-event-data-and-user-id!))))))
 
