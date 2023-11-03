@@ -50,8 +50,8 @@ const COLUMN_INDEX = {
 const FIRST_TAB = { id: 1, name: "first" };
 const FIRST_TAB_SLUG = `${FIRST_TAB.id}-${FIRST_TAB.name}`;
 const SECOND_TAB = { id: 2, name: "second" };
-const THIRD_TAB = { id: 3, name: "third" };
 const SECOND_TAB_SLUG = `${SECOND_TAB.id}-${SECOND_TAB.name}`;
+const THIRD_TAB = { id: 3, name: "third" };
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
