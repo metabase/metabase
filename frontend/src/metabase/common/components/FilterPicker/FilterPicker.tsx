@@ -14,6 +14,7 @@ import LegacyFilter from "metabase-lib/queries/structured/Filter";
 import type LegacyQuery from "metabase-lib/queries/StructuredQuery";
 
 import type { ColumnListItem, SegmentListItem } from "./types";
+import { MIN_WIDTH } from "./constants";
 
 import { BooleanFilterPicker } from "./BooleanFilterPicker";
 import { DateFilterPicker } from "./DateFilterPicker";
@@ -36,8 +37,6 @@ export interface FilterPickerProps {
   onSelect: (filter: Lib.ExpressionClause | Lib.SegmentMetadata) => void;
   onClose?: () => void;
 }
-
-const MIN_WIDTH = 300;
 
 export function FilterPicker({
   query,
