@@ -47,7 +47,9 @@ describe("scenarios > question > custom column", () => {
       .findByText(/Automatic Insights/i)
       .click();
     popover().findByText(/X-ray/i);
-    popover().findByText(/Compare to the rest/i);
+    popover()
+      .findByText(/Compare to the rest/i)
+      .click();
   });
 
   it("can create a custom column (metabase#13241)", () => {
