@@ -5,7 +5,7 @@ import type {
 } from "metabase/visualizations/types";
 import type { CartesianChartModel } from "../model/types";
 
-export function getGoalLineEChartsSeries(
+export function getGoalLineSeriesOption(
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
