@@ -363,7 +363,7 @@ class StructuredQuery extends AtomicQuery {
   /**
    * Removes invalid clauses from the query (and source-query, recursively)
    */
-  clean(): StructuredQuery {
+  clean({ skipFilters = false } = {}): StructuredQuery {
     if (!this.hasMetadata()) {
       console.warn("Warning: can't clean query without metadata!");
       return this;
@@ -377,12 +377,13 @@ class StructuredQuery extends AtomicQuery {
       query = query.setSourceQuery(sourceQuery.clean());
     }
 
-    return query
-      .cleanJoins()
-      .cleanExpressions()
-      .cleanFilters()
-      .cleanFields()
-      .cleanEmpty();
+    query = query.cleanJoins().cleanExpressions().cleanFields();
+
+    if (!skipFilters) {
+      query = query.cleanFilters();
+    }
+
+    return query.cleanEmpty();
   }
 
   /**
