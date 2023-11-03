@@ -116,8 +116,7 @@ function DashCard({
   const [isPreviewingCard, setIsPreviewingCard] = useState(false);
   const cardRootRef = useRef<HTMLDivElement>(null);
 
-  const [isActionPanelSubmenuOpen, setIsActionPanelSubmenuOpen] =
-    useState(false);
+  const [isDashCardTabMenuOpen, setIsDashCardTabMenuOpen] = useState(false);
 
   const handlePreviewToggle = useCallback(() => {
     setIsPreviewingCard(wasPreviewingCard => !wasPreviewingCard);
@@ -257,7 +256,7 @@ function DashCard({
         <DashboardCardActionsPanel
           onMouseDown={preventDragging}
           data-testid="dashboardcard-actions-panel"
-          isSubMenuOpen={isActionPanelSubmenuOpen}
+          isDashCardTabMenuOpen={isDashCardTabMenuOpen}
         >
           <DashCardActionButtons
             series={series}
@@ -275,8 +274,8 @@ function DashCard({
             }
             showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
             onPreviewToggle={handlePreviewToggle}
-            onSubmenuClose={() => setIsActionPanelSubmenuOpen(false)}
-            onSubmenuOpen={() => setIsActionPanelSubmenuOpen(true)}
+            onDashCardMenuClose={() => setIsDashCardTabMenuOpen(false)}
+            onDashCardMenuOpen={() => setIsDashCardTabMenuOpen(true)}
           />
         </DashboardCardActionsPanel>
       );
@@ -297,7 +296,7 @@ function DashCard({
     onUpdateVisualizationSettings,
     handlePreviewToggle,
     handleShowClickBehaviorSidebar,
-    isActionPanelSubmenuOpen,
+    isDashCardTabMenuOpen,
   ]);
 
   return (

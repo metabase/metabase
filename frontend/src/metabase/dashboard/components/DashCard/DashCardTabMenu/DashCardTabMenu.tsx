@@ -10,14 +10,14 @@ import { MoveDashCardActionContainer } from "./DashCardTabMenu.styled";
 
 interface DashCardTabMenuProps {
   dashCardId: DashCardId;
-  onSubmenuOpen: () => void;
-  onSubmenuClose: () => void;
+  onOpen: () => void;
+  onClose: () => void;
 }
 
 export function DashCardTabMenu({
   dashCardId,
-  onSubmenuClose,
-  onSubmenuOpen,
+  onClose,
+  onOpen,
 }: DashCardTabMenuProps) {
   const dispatch = useDispatch();
   const tabs = useSelector(getTabs);
@@ -42,7 +42,7 @@ export function DashCardTabMenu({
 
   return (
     <>
-      <Menu trigger="hover" onOpen={onSubmenuOpen} onClose={onSubmenuClose}>
+      <Menu trigger="hover" onOpen={onOpen} onClose={onClose}>
         <Menu.Target>
           <MoveDashCardActionContainer>
             <DashCardActionButton.Icon name="move_card" />
