@@ -3,8 +3,8 @@
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase-enterprise.audit-app.pages.common.cards :as cards]
-   [metabase-enterprise.audit-db :as audit-db]
    [metabase.db.connection :as mdb.connection]
+   [metabase.models.permissions :as perms]
    [metabase.util.honey-sql-2 :as h2x]))
 
 ;; DEPRECATED Query that returns data for a two-series timeseries chart with number of queries ran and average query
@@ -122,7 +122,7 @@
                   :where     [:and
                               [:= :card.archived false]
                               [:<> :latest_qe.error nil]
-                              [:not= :card.database_id (audit-db/default-audit-db-id)]]}
+                              [:not= :card.database_id perms/audit-db-id]]}
                  (common/add-search-clause error-filter :latest_qe.error)
                  (common/add-search-clause db-filter :db.name)
                  (common/add-search-clause collection-filter coll-name)
@@ -210,7 +210,7 @@
                              :query_runs              [:= :card.id :query_runs.card_id]]
                  :where     [:and
                              [:= :card.archived false]
-                             [:not= :card.database_id (audit-db/default-audit-db-id)]]}
+                             [:not= :card.database_id perms/audit-db-id]]}
                 (common/add-search-clause question-filter :card.name)
                 (common/add-search-clause collection-filter :coll.name)
                 (common/add-sort-clause
