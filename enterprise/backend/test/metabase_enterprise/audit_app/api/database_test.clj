@@ -18,4 +18,4 @@
                              [:delete "database/%d"]]
                 user [:crowberto :lucky]]
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request user verb 403 (format path (perms/default-audit-db-id))))))))))
+                 (mt/user-http-request user verb 403 (format path perms/audit-db-id)))))))))

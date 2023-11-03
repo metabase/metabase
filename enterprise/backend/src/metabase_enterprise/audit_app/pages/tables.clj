@@ -2,7 +2,7 @@
   (:require
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
-   [metabase-enterprise.audit-db :as audit-db]
+   [metabase.models.permissions :as perms]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]))
 
@@ -34,7 +34,7 @@
                                                      [:metabase_table :t]     [:= :card.table_id :t.id]]
                                           :group-by [:t.id]
                                           :order-by [[:%count.* asc-or-desc]]
-                                          :where    [:not= :t.db_id (audit-db/default-audit-db-id)]
+                                          :where    [:not= :t.db_id perms/audit-db-id]
                                           :limit    10}]]
                :select [:tx.table_id
                         [(h2x/concat :db.name (h2x/literal " ") :t.schema (h2x/literal " ") :t.name) :table_name]
@@ -82,5 +82,5 @@
                            [[:lower :t.name]   :asc]]
                 :where    [:and
                            [:= :t.active true]
-                           [:not= :t.db_id (audit-db/default-audit-db-id)]]}
+                           [:not= :t.db_id perms/audit-db-id]]}
                (common/add-search-clause query-string :db.name :t.schema :t.name :t.display_name)))}))

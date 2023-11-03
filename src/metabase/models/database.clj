@@ -52,7 +52,7 @@
 (defn- should-read-audit-db?
   "Audit Database should only be fetched if audit app is enabled."
   [database-id]
-  (and (not (premium-features/enable-audit-app?)) (= database-id (perms/default-audit-db-id))))
+  (and (not (premium-features/enable-audit-app?)) (= database-id perms/audit-db-id)))
 
 (defmethod mi/can-read? Database
   ([instance]
@@ -66,10 +66,10 @@
 
 (defmethod mi/can-write? :model/Database
   ([instance]
-   (and (not= (u/the-id instance) (perms/default-audit-db-id))
+   (and (not= (u/the-id instance) perms/audit-db-id)
         ((get-method mi/can-write? ::mi/write-policy.full-perms-for-perms-set) instance)))
   ([model pk]
-   (and (not= pk (perms/default-audit-db-id))
+   (and (not= pk perms/audit-db-id)
         ((get-method mi/can-write? ::mi/write-policy.full-perms-for-perms-set) model pk))))
 
 (defn- schedule-tasks!
