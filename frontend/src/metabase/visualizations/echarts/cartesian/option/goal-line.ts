@@ -1,3 +1,4 @@
+import type { RegisteredSeriesOption } from "echarts";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -6,14 +7,18 @@ import type {
 export function getGoalLineEChartsSeries(
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
-) {
+): RegisteredSeriesOption["line"] | null {
+  if (!settings["graph.show_goal"]) {
+    return null;
+  }
+
   return {
     type: "line",
     markLine: {
       data: [{ name: "goal-line", yAxis: settings["graph.goal_value"] }],
       label: {
         position: "insideEndTop",
-        formatter: () => settings["graph.goal_label"],
+        formatter: () => settings["graph.goal_label"] ?? "",
         fontFamily: renderingContext.fontFamily,
         fontSize: 14,
         fontWeight: 700,

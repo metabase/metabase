@@ -16,8 +16,8 @@ export const getCartesianChartOption = (
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): EChartsOption => {
-  const dataSeries = buildEChartsSeries(chartModel, settings, renderingContext);
   const goalLineSeries = getGoalLineEChartsSeries(settings, renderingContext);
+  const dataSeries = buildEChartsSeries(chartModel, settings, renderingContext);
 
   const axesFormatters = getAxesFormatters(
     chartModel,
@@ -36,7 +36,7 @@ export const getCartesianChartOption = (
   return {
     grid: getChartGrid(chartModel, settings),
     dataset: echartsDataset,
-    series: [goalLineSeries, ...dataSeries],
+    series: goalLineSeries ? [goalLineSeries, ...dataSeries] : dataSeries,
     ...buildAxes(chartModel, settings, axesFormatters, renderingContext),
   } as EChartsOption;
 };
