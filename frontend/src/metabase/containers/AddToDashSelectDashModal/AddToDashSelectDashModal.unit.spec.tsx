@@ -664,7 +664,7 @@ describe("AddToDashSelectDashModal", () => {
 
     describe("search dashboards", () => {
       describe("questions in the root collection (public collection)", () => {
-        it("should search questions only in public collections", async () => {
+        it("should search dashboards only in public collections", async () => {
           await setup({
             card: CARD_IN_ROOT_COLLECTION,
           });
@@ -709,7 +709,7 @@ describe("AddToDashSelectDashModal", () => {
       });
 
       describe("questions in public collections", () => {
-        it("should search questions only in public collections", async () => {
+        it("should search dashboards only in public collections", async () => {
           await setup({
             card: CARD_IN_PUBLIC_COLLECTION,
           });
@@ -754,7 +754,7 @@ describe("AddToDashSelectDashModal", () => {
       });
 
       describe("questions in personal collections", () => {
-        it("should search all questions", async () => {
+        it("should search all dashboards", async () => {
           await setup({
             card: CARD_IN_PERSONAL_COLLECTION,
           });

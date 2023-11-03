@@ -177,7 +177,7 @@ describe("AddCardSideBar", () => {
       });
     });
 
-    it("should search dashboard only in public collections", async () => {
+    it("should search questions only in public collections", async () => {
       await setup({
         collections: COLLECTIONS,
         dashboard: dashboardInRootCollection,
@@ -249,7 +249,7 @@ describe("AddCardSideBar", () => {
       });
     });
 
-    it("should search dashboard only in public collections", async () => {
+    it("should search questions only in public collections", async () => {
       await setup({
         collections: COLLECTIONS,
         dashboard: dashboardInPublicSubcollection,
@@ -340,7 +340,7 @@ describe("AddCardSideBar", () => {
       });
     });
 
-    it("should search all dashboards", async () => {
+    it("should search all questions", async () => {
       await setup({
         collections: COLLECTIONS,
         dashboard: dashboardInPersonalSubcollection,
