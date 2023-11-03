@@ -1,10 +1,7 @@
 import {
   restore,
-  getDimensionByName,
   visitQuestionAdhoc,
-  summarize,
-  visualize,
-  startNewQuestion,
+  main,
   addOrUpdateDashboardCard,
   visitDashboardAndCreateTab,
   popover,
@@ -24,6 +21,8 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     restore();
     cy.signInAsAdmin();
   });
+
+  const XRAY_DATASETS = 5; // enough to load most questions
 
   it("should not display x-rays if the feature is disabled in admin settings (metabase#26571)", () => {
     cy.request("PUT", "api/setting/enable-xrays", { value: false });
@@ -102,27 +101,45 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       cy.createNativeQuestion({
         name: "15655",
         native: { query: "select * from people" },
-      });
+      }).then(({ body: { id } }) => {
+        cy.createQuestion(
+          {
+            name: "Count of 15655 by SOURCE",
+            display: "bar",
+            query: {
+              "source-table": `card__${id}`,
+              aggregation: [["count"]],
+              breakout: [["field", "SOURCE", { "base-type": "type/Text" }]],
+            },
+          },
+          { visitQuestion: true },
+        );
 
-      startNewQuestion();
+        cy.get(".bar").first().click({ force: true });
 
-      popover().within(() => {
-        cy.findByText("Saved Questions").click();
-        cy.findByText("15655").click();
-      });
+        popover().within(() => {
+          cy.findByText("Automatic insights…").click();
+          cy.findByText(action).click();
+        });
 
-      visualize();
-      summarize();
-      getDimensionByName({ name: "SOURCE" }).click();
+        // At this point, we ensure that the dashboard is created and displayed
+        // There are corresponding unit tests so if the timing/flake burden becomes too great, the rest of this test can be removed
+        cy.intercept("POST", "/api/dataset").as("postDataset");
 
-      cy.intercept("POST", "/api/dataset").as("postDataset");
+        cy.wait(Array(XRAY_DATASETS).fill("@postDataset"), {
+          timeout: 15 * 1000,
+        });
 
-      cy.button("Done").click();
-      cy.get(".bar").first().click({ force: true });
+        cy.wait("@xray").then(xhr => {
+          expect(xhr.response.body.cause).not.to.exist;
+          expect(xhr.response.statusCode).not.to.eq(500);
+        });
 
-      popover().within(() => {
-        cy.findByText("Automatic insights…").click();
-        cy.findByText(action).click();
+        main().within(() => {
+          cy.findByText("A look at the number of 15655").should("exist");
+        });
+
+        cy.get(".DashCard");
       });
     });
 
