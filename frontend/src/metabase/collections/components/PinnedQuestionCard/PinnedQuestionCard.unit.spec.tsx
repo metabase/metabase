@@ -11,12 +11,9 @@ import {
   setupCardQueryEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import registerVisualizations from "metabase/visualizations/register";
 import { createMockState } from "metabase-types/store/mocks";
 import { createMockEntitiesState } from "__support__/store";
 import PinnedQuestionCard from "./PinnedQuestionCard";
-
-registerVisualizations();
 
 function setup() {
   const card = createMockCard({
@@ -24,7 +21,7 @@ function setup() {
   });
   const collectionItem = createMockCollectionItem({
     id: card.id,
-    type: "card",
+    model: "card",
     collection_preview: true,
   });
   setupCardEndpoints(card);
