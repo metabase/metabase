@@ -47,8 +47,8 @@ const setup = ({
   return renderWithProviders(
     <DashCardTabMenu
       dashCardId={DASHCARD.id}
-      onSubmenuClose={jest.fn()}
-      onSubmenuOpen={jest.fn()}
+      onClose={jest.fn()}
+      onOpen={jest.fn()}
     />,
     {
       storeInitialState: createMockState({

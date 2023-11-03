@@ -41,7 +41,9 @@ export const DashCardRoot = styled.div<DashCardRootProps>`
     shouldForceHiddenBackground && hiddenBackgroundStyle}
 `;
 
-export const DashboardCardActionsPanel = styled.div<{ isSubMenuOpen: boolean }>`
+export const DashboardCardActionsPanel = styled.div<{
+  isDashCardTabMenuOpen: boolean;
+}>`
   padding: 0.125em 0.25em;
   position: absolute;
   background: white;
@@ -52,8 +54,9 @@ export const DashboardCardActionsPanel = styled.div<{ isSubMenuOpen: boolean }>`
   box-shadow: 0px 1px 3px rgb(0 0 0 / 13%);
   cursor: default;
   transition: opacity 200ms;
-  opacity: ${({ isSubMenuOpen }) => (isSubMenuOpen ? 1 : 0)};
-  pointer-events: ${({ isSubMenuOpen }) => (isSubMenuOpen ? "all" : "none")};
+  opacity: ${({ isDashCardTabMenuOpen }) => (isDashCardTabMenuOpen ? 1 : 0)};
+  pointer-events: ${({ isDashCardTabMenuOpen }) =>
+    isDashCardTabMenuOpen ? "all" : "none"};
   // react-resizable covers panel, we have to override it
   z-index: 2;
 
