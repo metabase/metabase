@@ -10,7 +10,7 @@ export function getGoalLineEChartsSeries(
   return {
     type: "line",
     markLine: {
-      data: [{ name: "goal-line", yAxis: settings["graph.goal_value"] }], // todo, how does this work with normalization?
+      data: [{ name: "goal-line", yAxis: settings["graph.goal_value"] }],
       label: {
         position: "insideEndTop",
         formatter: () => settings["graph.goal_label"],
