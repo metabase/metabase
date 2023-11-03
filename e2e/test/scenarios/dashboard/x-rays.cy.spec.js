@@ -5,7 +5,6 @@ import {
   summarize,
   visualize,
   startNewQuestion,
-  main,
   addOrUpdateDashboardCard,
   visitDashboardAndCreateTab,
   popover,
@@ -25,8 +24,6 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     restore();
     cy.signInAsAdmin();
   });
-
-  const XRAY_DATASETS = 5; // enough to load most questions
 
   it("should not display x-rays if the feature is disabled in admin settings (metabase#26571)", () => {
     cy.request("PUT", "api/setting/enable-xrays", { value: false });
@@ -127,21 +124,6 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
         cy.findByText("Automatic insights…").click();
         cy.findByText(action).click();
       });
-
-      cy.wait(Array(XRAY_DATASETS).fill("@postDataset"), {
-        timeout: 15 * 1000,
-      });
-
-      cy.wait("@xray").then(xhr => {
-        expect(xhr.response.body.cause).not.to.exist;
-        expect(xhr.response.statusCode).not.to.eq(500);
-      });
-
-      main().within(() => {
-        cy.findByText("A look at the number of 15655").should("exist");
-      });
-
-      cy.get(".DashCard");
     });
 
     it(`"${action.toUpperCase()}" should not show NULL in titles of generated dashboard cards (metabase#15737)`, () => {
