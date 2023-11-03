@@ -41,10 +41,11 @@ const PinnedQuestionLoader = ({
 
   return (
     <Questions.Loader id={id} loadingAndErrorWrapper={false}>
-      {({
-        loading: questionLoading,
-        question: loadedQuestion,
-      }: QuestionLoaderProps) => {
+      {({ loading, question: loadedQuestion }: QuestionLoaderProps) => {
+        if (loading !== false || !loadedQuestion.query()) {
+          return children({ loading: true });
+        }
+
         const question = questionRef.current ?? loadedQuestion;
         questionRef.current = question;
 
@@ -59,7 +60,7 @@ const PinnedQuestionLoader = ({
             }: QuestionResultLoaderProps) =>
               children({
                 question,
-                loading: questionLoading || loading || results == null,
+                loading: loading || results == null,
                 rawSeries: getRawSeries(rawSeries),
                 error: getError(error, result),
                 errorIcon: getErrorIcon(error, result),
