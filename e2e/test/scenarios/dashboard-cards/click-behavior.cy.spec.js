@@ -365,6 +365,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .findByLabelText("Select a dashboard tab")
         .should("have.value", FIRST_TAB.name)
         .click();
+      cy.findByRole("listbox").findByText(SECOND_TAB.name).should("not.exist");
       cy.get("header").button("Cancel").click();
       // migrateDeletedTab and migrateUndefinedDashboardTabId cause
       // detection of changes even though user did not change anything
