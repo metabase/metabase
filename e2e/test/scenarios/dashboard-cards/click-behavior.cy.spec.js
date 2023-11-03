@@ -367,8 +367,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .click();
       cy.findByRole("listbox").findByText(SECOND_TAB.name).should("not.exist");
       cy.get("header").button("Cancel").click();
-      // migrateDeletedTab and migrateUndefinedDashboardTabId cause
-      // detection of changes even though user did not change anything
+      // migrateDeletedTab causes detection of changes even though user did not change anything
       modal().button("Discard changes").click();
       cy.button("Cancel").should("not.exist");
 
@@ -382,6 +381,56 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           expect(search).to.equal(
             `?tab=${FIRST_TAB_SLUG}&${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}`,
           );
+        });
+      });
+    });
+
+    it("dashboard click behavior works without tabId previously saved", () => {
+      cy.createDashboard(TARGET_DASHBOARD, {
+        wrapId: true,
+        idAlias: "targetDashboardId",
+      });
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        cy.request("PUT", `/api/dashboard/${targetDashboardId}/cards`, {
+          cards: [],
+          tabs: [FIRST_TAB, SECOND_TAB, THIRD_TAB],
+        });
+        const cardDetails = {
+          visualization_settings: {
+            click_behavior: {
+              parameterMapping: {},
+              targetId: targetDashboardId,
+              tabId: undefined,
+              linkType: "dashboard",
+              type: "link",
+            },
+          },
+        };
+        cy.createQuestionAndDashboard({
+          questionDetails,
+          cardDetails,
+        }).then(({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+          cy.wrap(card.dashboard_id).as("dashboardId");
+        });
+      });
+
+      editDashboard();
+
+      getDashboardCard().realHover().icon("click").click();
+      cy.get("aside")
+        .findByLabelText("Select a dashboard tab")
+        .should("have.value", FIRST_TAB.name);
+      cy.get("header").button("Cancel").click();
+      // migrateUndefinedDashboardTabId causes detection of changes even though user did not change anything
+      modal().button("Discard changes").click();
+      cy.button("Cancel").should("not.exist");
+
+      clickLineChartPoint();
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        cy.location().should(({ pathname, search }) => {
+          expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+          expect(search).to.equal(`?tab=${FIRST_TAB_SLUG}`);
         });
       });
     });
