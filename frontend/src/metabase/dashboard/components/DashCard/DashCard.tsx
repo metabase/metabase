@@ -44,7 +44,7 @@ import type {
 } from "./types";
 import DashCardActionButtons from "./DashCardActionButtons";
 import DashCardVisualization from "./DashCardVisualization";
-import { DashCardRoot, DashboardCardActionsPanel } from "./DashCard.styled";
+import { DashCardRoot } from "./DashCard.styled";
 
 function preventDragging(event: React.SyntheticEvent) {
   event.stopPropagation();
@@ -253,32 +253,26 @@ function DashCard({
   const renderDashCardActions = useCallback(() => {
     if (isEditingDashboardLayout) {
       return (
-        <DashboardCardActionsPanel
+        <DashCardActionButtons
           onMouseDown={preventDragging}
-          data-testid="dashboardcard-actions-panel"
           isDashCardTabMenuOpen={isDashCardTabMenuOpen}
           onLeftEdge={dashcard.col === 0}
-        >
-          <DashCardActionButtons
-            series={series}
-            dashboard={dashboard}
-            dashcard={dashcard}
-            isLoading={isLoading}
-            isPreviewing={isPreviewingCard}
-            isVirtualDashCard={isVirtualDashCard(dashcard)}
-            hasError={hasError}
-            onAddSeries={onAddSeries}
-            onRemove={onRemove}
-            onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-            onReplaceAllVisualizationSettings={
-              onReplaceAllVisualizationSettings
-            }
-            showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
-            onPreviewToggle={handlePreviewToggle}
-            onDashCardMenuClose={() => setIsDashCardTabMenuOpen(false)}
-            onDashCardMenuOpen={() => setIsDashCardTabMenuOpen(true)}
-          />
-        </DashboardCardActionsPanel>
+          series={series}
+          dashboard={dashboard}
+          dashcard={dashcard}
+          isLoading={isLoading}
+          isPreviewing={isPreviewingCard}
+          isVirtualDashCard={isVirtualDashCard(dashcard)}
+          hasError={hasError}
+          onAddSeries={onAddSeries}
+          onRemove={onRemove}
+          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+          onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
+          showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
+          onPreviewToggle={handlePreviewToggle}
+          onDashCardMenuClose={() => setIsDashCardTabMenuOpen(false)}
+          onDashCardMenuOpen={() => setIsDashCardTabMenuOpen(true)}
+        />
       );
     }
 

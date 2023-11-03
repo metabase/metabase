@@ -23,6 +23,7 @@ import ChartSettingsButton from "./ChartSettingsButton";
 import { DashCardActionButtonsContainer } from "./DashCardActionButtons.styled";
 import ActionSettingsButton from "./ActionSettingsButton";
 import LinkCardEditButton from "./LinkCardEditButton";
+import { DashboardCardActionsPanel } from "./DashboardCardActionsPanel.styled";
 
 interface Props {
   series: Series;
@@ -42,6 +43,9 @@ interface Props {
   onPreviewToggle: () => void;
   onDashCardMenuClose: () => void;
   onDashCardMenuOpen: () => void;
+  isDashCardTabMenuOpen: boolean;
+  onLeftEdge: boolean;
+  onMouseDown: (event: React.MouseEvent) => void;
 }
 
 function DashCardActionButtons({
@@ -60,6 +64,9 @@ function DashCardActionButtons({
   onPreviewToggle,
   onDashCardMenuClose,
   onDashCardMenuOpen,
+  isDashCardTabMenuOpen,
+  onLeftEdge,
+  onMouseDown,
 }: Props) {
   const {
     disableSettingsConfig,
@@ -157,16 +164,23 @@ function DashCardActionButtons({
   }
 
   return (
-    <DashCardActionButtonsContainer>
-      {buttons}
-      <DashCardActionButton
-        onClick={onRemove}
-        tooltip={t`Remove`}
-        analyticsEvent="Dashboard;Remove Card Modal"
-      >
-        <DashCardActionButton.Icon name="close" />
-      </DashCardActionButton>
-    </DashCardActionButtonsContainer>
+    <DashboardCardActionsPanel
+      data-testid="dashboardcard-actions-panel"
+      onMouseDown={onMouseDown}
+      isDashCardTabMenuOpen={isDashCardTabMenuOpen}
+      onLeftEdge={onLeftEdge}
+    >
+      <DashCardActionButtonsContainer>
+        {buttons}
+        <DashCardActionButton
+          onClick={onRemove}
+          tooltip={t`Remove`}
+          analyticsEvent="Dashboard;Remove Card Modal"
+        >
+          <DashCardActionButton.Icon name="close" />
+        </DashCardActionButton>
+      </DashCardActionButtonsContainer>
+    </DashboardCardActionsPanel>
   );
 }
 
