@@ -40,8 +40,8 @@ interface Props {
   ) => void;
   showClickBehaviorSidebar: () => void;
   onPreviewToggle: () => void;
-  onSubmenuOpen: () => void;
-  onSubmenuClose: () => void;
+  onDashCardMenuClose: () => void;
+  onDashCardMenuOpen: () => void;
 }
 
 function DashCardActionButtons({
@@ -58,8 +58,8 @@ function DashCardActionButtons({
   onUpdateVisualizationSettings,
   showClickBehaviorSidebar,
   onPreviewToggle,
-  onSubmenuOpen,
-  onSubmenuClose,
+  onDashCardMenuClose,
+  onDashCardMenuOpen,
 }: Props) {
   const {
     disableSettingsConfig,
@@ -75,8 +75,8 @@ function DashCardActionButtons({
       <DashCardTabMenu
         key="tabs"
         dashCardId={dashcard.id}
-        onSubmenuClose={onSubmenuClose}
-        onSubmenuOpen={onSubmenuOpen}
+        onClose={onDashCardMenuClose}
+        onOpen={onDashCardMenuOpen}
       />,
     );
   }
