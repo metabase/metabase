@@ -18,4 +18,5 @@ export const enabledSearchTypes: EnabledSearchModelType[] = [
   "database",
   "table",
   "action",
+  "indexed-entity",
 ];

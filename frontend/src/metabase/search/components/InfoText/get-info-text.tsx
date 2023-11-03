@@ -24,10 +24,10 @@ export const getInfoText = (result: WrappedResult): InfoTextData => {
     case "database":
       return getDatabaseInfoText();
     case "action":
+    case "indexed-entity":
       return getActionInfoText(result);
     case "card":
     case "dataset":
-    case "indexed-entity":
     default:
       return getCollectionResult(result);
   }
