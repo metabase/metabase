@@ -34,6 +34,7 @@ const { ORDERS_ID } = SAMPLE_DATABASE;
 const PG_DB_ID = 2;
 const PERMISSION_ERROR = "Sorry, you don't have permission to see this card.";
 const MAX_CARDS = 5;
+const MAX_XRAY_WAIT_TIMEOUT = 5000;
 
 describe("scenarios > dashboard > dashboard back navigation", () => {
   beforeEach(() => {
@@ -106,7 +107,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     () => {
       const cardTitle = "Sales per state";
       cy.visit(`/auto/dashboard/table/${ORDERS_ID}?show=${MAX_CARDS}`);
-      cy.wait("@dataset");
+      cy.wait("@dataset", { timeout: MAX_XRAY_WAIT_TIMEOUT });
 
       getDashboardCards()
         .filter(`:contains("${cardTitle}")`)
@@ -129,7 +130,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
       const cardTitle = "Orders by Subtotal";
       cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
       cy.visit(`/auto/dashboard/model/${ORDERS_QUESTION_ID}?show=${MAX_CARDS}`);
-      cy.wait("@dataset");
+      cy.wait("@dataset", { timeout: MAX_XRAY_WAIT_TIMEOUT });
 
       getDashboardCards()
         .filter(`:contains("${cardTitle}")`)
