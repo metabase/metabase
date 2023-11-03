@@ -34,7 +34,7 @@ const { ORDERS_ID } = SAMPLE_DATABASE;
 const PG_DB_ID = 2;
 const PERMISSION_ERROR = "Sorry, you don't have permission to see this card.";
 const MAX_CARDS = 5;
-const MAX_XRAY_WAIT_TIMEOUT = 5000;
+const MAX_XRAY_WAIT_TIMEOUT = 15000;
 
 describe("scenarios > dashboard > dashboard back navigation", () => {
   beforeEach(() => {
