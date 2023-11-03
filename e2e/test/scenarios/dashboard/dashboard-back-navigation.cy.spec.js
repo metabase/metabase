@@ -33,6 +33,7 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 const { ORDERS_ID } = SAMPLE_DATABASE;
 const PG_DB_ID = 2;
 const PERMISSION_ERROR = "Sorry, you don't have permission to see this card.";
+const MAX_CARDS = 5;
 
 describe("scenarios > dashboard > dashboard back navigation", () => {
   beforeEach(() => {
@@ -104,7 +105,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     { tags: "@slow" },
     () => {
       const cardTitle = "Sales per state";
-      cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
+      cy.visit(`/auto/dashboard/table/${ORDERS_ID}?show=${MAX_CARDS}`);
       cy.wait("@dataset");
 
       getDashboardCards()
@@ -127,7 +128,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     () => {
       const cardTitle = "Orders by Subtotal";
       cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
-      cy.visit(`/auto/dashboard/model/${ORDERS_QUESTION_ID}`);
+      cy.visit(`/auto/dashboard/model/${ORDERS_QUESTION_ID}?show=${MAX_CARDS}`);
       cy.wait("@dataset");
 
       getDashboardCards()
