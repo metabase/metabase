@@ -1697,3 +1697,78 @@
                :expressions)
              :dashcards
              (mapv (comp :expressions :query :dataset_query :card)))))))
+
+(deftest compare-to-the-rest-15655-test
+  (testing "Questions based on native questions should produce a valid dashboard."
+    (mt/dataset sample-dataset
+      (mt/with-test-user :rasta
+        (let [native-query {:native   {:query "select * from people"}
+                            :type     :native
+                            :database (mt/id)}]
+          (mt/with-temp
+            [Card {native-card-id :id :as native-card} {:table_id        nil
+                                                        :name            "15655"
+                                                        :dataset_query   native-query
+                                                        :result_metadata (mt/with-test-user :rasta (result-metadata-for-query native-query))}
+             ;card__19169
+             Card card {:table_id      (mt/id :orders)
+                        :dataset_query {:query    {:source-table (format "card__%s" native-card-id)
+                                                   :aggregation  [[:count]]
+                                                   :breakout     [[:field "SOURCE" {:base-type :type/Text}]]}
+                                        :type     :query
+                                        :database (mt/id)}}]
+            (let [{:keys [description dashcards] :as dashboard} (magic/automagic-analysis card {})]
+              (testing "Questions based on native queries produce a dashboard"
+                (is (= "A closer look at the metrics and dimensions used in this saved question."
+                       description))
+                (is (set/subset?
+                      #{{:group-name "# A look at the SOURCE fields", :card-name nil}
+                        {:group-name "## The number of 15655 over time", :card-name nil}
+                        {:group-name nil, :card-name "Over time"}
+                        {:group-name nil, :card-name "Number of 15655 per day of the week"}
+                        {:group-name "## How this metric is distributed across different categories", :card-name nil}
+                        {:group-name nil, :card-name "Number of 15655 per NAME over time"}
+                        {:group-name nil, :card-name "Number of 15655 per CITY over time"}
+                        {:group-name "## Overview", :card-name nil}
+                        {:group-name nil, :card-name "Count"}
+                        {:group-name nil, :card-name "How the SOURCE is distributed"}
+                        {:group-name "## How the SOURCE fields is distributed", :card-name nil}
+                        {:group-name nil, :card-name "SOURCE by NAME"}
+                        {:group-name nil, :card-name "SOURCE by CITY"}}
+                      (set (map (fn [dashcard]
+                                  {:group-name (get-in dashcard [:visualization_settings :text])
+                                   :card-name  (get-in dashcard [:card :name])})
+                                dashcards)))))
+              (let [cell-query ["=" ["field" "SOURCE" {:base-type "type/Text"}] "Affiliate"]
+                    {comparison-description :description
+                     comparison-dashcards   :dashcards
+                     transient_name         :transient_name} (comparison/comparison-dashboard
+                                                               dashboard
+                                                               card
+                                                               native-card
+                                                               {:left {:cell-query cell-query}})]
+                (testing "Questions based on native queries produce a comparable dashboard"
+                  (is (= "Comparison of Number of 15655 where SOURCE is Affiliate and \"15655\", all 15655"
+                         transient_name))
+                  (is (= "Automatically generated comparison dashboard comparing Number of 15655 where SOURCE is Affiliate and \"15655\", all 15655"
+                         comparison-description))
+                  (is (= (take 10
+                               [{:group-name nil, :card-name "SOURCE by CITY"}
+                                {:group-name nil, :card-name "SOURCE by CITY"}
+                                {:group-name nil, :card-name "SOURCE by NAME"}
+                                {:group-name nil, :card-name "SOURCE by NAME"}
+                                {:group-name "## How the SOURCE fields is distributed", :card-name nil}
+                                {:group-name nil, :card-name "How the SOURCE is distributed (Number of 15655 where SOURCE is Affiliate)"}
+                                {:group-name nil, :card-name "Distinct values"}
+                                {:group-name nil, :card-name "Distinct values"}
+                                {:group-name nil, :card-name "Null values"}
+                                {:group-name nil, :card-name "Null values"}])
+                         (->> comparison-dashcards
+                              (take 10)
+                              (map (fn [dashcard]
+                                     {:group-name (get-in dashcard [:visualization_settings :text])
+                                      :card-name  (get-in dashcard [:card :name])})))))
+                  (mapv (fn [dashcard]
+                          {:group-name (get-in dashcard [:visualization_settings :text])
+                           :card-name  (get-in dashcard [:card :name])})
+                        comparison-dashcards))))))))))
