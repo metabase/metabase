@@ -1,4 +1,5 @@
 import { Fragment, useMemo } from "react";
+import type { MouseEvent } from "react";
 import cx from "classnames";
 import { t } from "ttag";
 
@@ -87,7 +88,7 @@ export function DetailsTableCell({
     isLink = isID(column);
   }
 
-  const isClickable = onVisualizationClick && visualizationIsClickable(clicked);
+  const isClickable = onVisualizationClick != null;
 
   const isImage =
     !isColumnName &&
@@ -95,23 +96,23 @@ export function DetailsTableCell({
     typeof value === "string" &&
     value.startsWith("http");
 
+  const handleClick = (e: MouseEvent<HTMLSpanElement>) => {
+    if (onVisualizationClick && visualizationIsClickable(clicked)) {
+      onVisualizationClick({ ...clicked, element: e.currentTarget });
+    }
+  };
+
   return (
     <div>
       <span
         className={cx(
           {
-            "cursor-pointer": isClickable,
+            "cursor-pointer": onVisualizationClick,
             link: isClickable && isLink,
           },
           className,
         )}
-        onClick={
-          isClickable
-            ? e => {
-                onVisualizationClick({ ...clicked, element: e.currentTarget });
-              }
-            : undefined
-        }
+        onClick={handleClick}
       >
         {cellValue}
       </span>

@@ -26,6 +26,7 @@ import {
   goToTab,
   moveDashCardToTab,
   addTextBoxWhileEditing,
+  expectGoodSnowplowEvent,
 } from "e2e/support/helpers";
 
 import {
@@ -39,7 +40,6 @@ import {
 
 describe("scenarios > dashboard > tabs", () => {
   beforeEach(() => {
-    cy.in;
     restore();
     cy.signInAsAdmin();
   });
@@ -362,5 +362,31 @@ describeWithSnowplow("scenarios > dashboard > tabs", () => {
     deleteTab("Tab 2");
     saveDashboard();
     expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 2); // dashboard_tab_deleted
+  });
+
+  it("should send snowplow events when cards are moved between tabs", () => {
+    const cardMovedEventName = "card_moved_to_tab";
+
+    visitDashboard(ORDERS_DASHBOARD_ID);
+
+    expectGoodSnowplowEvent(
+      {
+        event: cardMovedEventName,
+      },
+      0,
+    );
+
+    editDashboard();
+    createNewTab();
+    goToTab("Tab 1");
+
+    moveDashCardToTab({ tabName: "Tab 2" });
+
+    expectGoodSnowplowEvent(
+      {
+        event: cardMovedEventName,
+      },
+      1,
+    );
   });
 });

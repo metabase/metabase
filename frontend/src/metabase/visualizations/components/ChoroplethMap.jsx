@@ -280,20 +280,20 @@ export default class ChoroplethMap extends Component {
             settings,
           };
 
-    const isClickable =
-      onVisualizationClick &&
-      visualizationIsClickable(getFeatureClickObject(rows[0]));
+    const isClickable = onVisualizationClick != null;
 
     const onClickFeature =
       isClickable &&
       (click => {
-        const featureKey = getFeatureKey(click.feature);
-        const row = rowByFeatureKey.get(featureKey);
-        if (onVisualizationClick) {
-          onVisualizationClick({
-            ...getFeatureClickObject(row, click.feature),
-            event: click.event,
-          });
+        if (visualizationIsClickable(getFeatureClickObject(rows[0]))) {
+          const featureKey = getFeatureKey(click.feature);
+          const row = rowByFeatureKey.get(featureKey);
+          if (onVisualizationClick) {
+            onVisualizationClick({
+              ...getFeatureClickObject(row, click.feature),
+              event: click.event,
+            });
+          }
         }
       });
     const onHoverFeature =
