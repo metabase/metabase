@@ -1,7 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import type { Location } from "history";
 
-import * as Urls from "metabase/lib/urls/collections";
+import * as Urls from "metabase/lib/urls";
 
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 
