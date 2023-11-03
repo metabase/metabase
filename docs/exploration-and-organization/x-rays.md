@@ -24,9 +24,12 @@ To see how the value of a bar, point, or geographic region compares to the rest 
 
 If you're already looking at an X-ray of a table, Metabase will give you the option to look at X-rays of certain fields, if there are any.
 
-## Table X-rays
+## Model and table X-rays
 
-Another great way to get to know your data is by X-raying your tables. From left nav, click on **Browse Data** and click the lightning bolt icon on a table to view an X-ray of it.
+Another great way to get to know your data is by X-raying your models and tables. 
+
+- Table X-rays: From the left nav, click on **Browse Data**, pick a database, hover over a table card, and click the lightning bolt icon table to view an X-ray of the table.
+- Model X-rays: Click on the ellipses for a model and select **X-ray this**.
 
 ## X-rays in the data browser and data reference
 
@@ -52,7 +55,7 @@ Depending on the X-ray you're currently viewing, you'll see suggestions that wil
 
 ## Saving X-rays
 
-If you come across an X-ray that's particularly interesting, you can save it as a dashboard by clicking the green Save button. Metabase will create a new dashboard and put it and all of its charts in a new collection, and will save this new collection wherever you choose.
+If you come across an X-ray that's particularly interesting, you can save it as a dashboard by clicking the green **Save this** button. Metabase will create a new dashboard and put it and all of its charts in a new collection, and will save this new collection wherever you choose.
 
 ## Disabling X-rays
 
