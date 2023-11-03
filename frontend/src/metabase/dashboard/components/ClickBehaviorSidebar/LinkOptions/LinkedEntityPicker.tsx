@@ -181,7 +181,6 @@ function LinkedEntityPicker({
   const { data: dashboard } = useDashboardQuery({
     enabled: isDashboard,
     id: targetId,
-    // reload: true,
   });
   const dashboardTabs = dashboard?.tabs ?? NO_DASHBOARD_TABS;
   const defaultDashboardTabId: number | undefined = dashboardTabs[0]?.id;
