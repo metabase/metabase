@@ -14,7 +14,7 @@ export const FilterContainer = styled.div`
 `;
 
 export const Content = styled.div<{ isClickable: boolean }>`
-  flex: 0 0 auto;
+  flex: 1 0 auto;
   display: flex;
   align-items: center;
   padding: 0.5rem;
