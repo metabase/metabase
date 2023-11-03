@@ -10,6 +10,7 @@ import {
   TriggerButton,
   TriggerIcon,
   SelectListItem,
+  TriggerContent,
 } from "./BaseBucketPickerPopover.styled";
 
 export const INITIALLY_VISIBLE_ITEMS_COUNT = 7;
@@ -93,7 +94,9 @@ function _BaseBucketPickerPopover({
           // Prefer using a11y role selectors
           data-testid="dimension-list-item-binning"
         >
-          {renderTriggerContent(triggerContentBucketDisplayInfo)}
+          <TriggerContent>
+            {renderTriggerContent(triggerContentBucketDisplayInfo)}
+          </TriggerContent>
           {hasArrowIcon && <TriggerIcon name="chevronright" />}
         </TriggerButton>
       )}
