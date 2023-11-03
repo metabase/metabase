@@ -13,18 +13,18 @@
 (def audit-db-view-names
   "Used for giving granular permissions into the audit db. Instead of granting permissions to
    all of the audit db, we query the audit db using the names of each view that starts with v_."
-  #{"v_users"
+  #{"v_audit_log"
     "v_content"
-    "v_group_members"
-    "v_alerts_subscriptions"
-    "v_audit_log"
     "v_dashboardcard"
-    "v_view_log"
+    "v_group_members"
+    "v_subscriptions"
+    "v_users"
+    "v_alerts"
     "v_databases"
-    "v_tables"
     "v_fields"
     "v_query_log"
-    "v_task_log"})
+    "v_tables"
+    "v_view_log"})
 
 (defenterprise check-audit-db-permissions
   "Checks that a given query is not a native query, and only includes table IDs corresponding to the audit views
