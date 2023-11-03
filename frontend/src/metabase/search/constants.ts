@@ -22,6 +22,6 @@ export const enabledSearchTypes: EnabledSearchModelType[] = [
 ];
 
 export const SearchContextTypes = {
-  GLOBAL_SEARCH: "global-search",
-  FILTERED_SEARCH: "filtered-search",
+  SEARCH_BAR: "search-bar",
+  SEARCH_APP: "search-app",
 };

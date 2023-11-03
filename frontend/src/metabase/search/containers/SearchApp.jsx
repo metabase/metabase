@@ -53,7 +53,7 @@ function SearchApp({ location }) {
     models: searchFilters[SearchFilterKeys.Type] ?? undefined,
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
-    context: SearchContextTypes.FILTERED_SEARCH,
+    context: SearchContextTypes.SEARCH_APP,
   };
 
   const onChangeLocation = useCallback(

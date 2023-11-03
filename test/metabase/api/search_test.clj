@@ -814,17 +814,17 @@
 (deftest snowplow-new-search-query-event-test
   (testing "Send a snowplow event when a search query is triggered and context is passed"
     (snowplow-test/with-fake-snowplow-collector
-      (mt/user-http-request :crowberto :get 200 "search?q=test" :context "global-search")
+      (mt/user-http-request :crowberto :get 200 "search?q=test" :context "search-bar")
       (is (=? {:data    {"event"                "new_search_query"
                          "runtime_milliseconds" pos?
-                         "context"              "global-search"}
+                         "context"              "search-bar"}
                :user-id (str (mt/user->id :crowberto))}
               (last (snowplow-test/pop-event-data-and-user-id!)))))
     (snowplow-test/with-fake-snowplow-collector
-      (mt/user-http-request :crowberto :get 200 "search?q=test" :context "filtered-search")
+      (mt/user-http-request :crowberto :get 200 "search?q=test" :context "search-app")
       (is (=? {:data    {"event"                "new_search_query"
                          "runtime_milliseconds" pos?
-                         "context"              "filtered-search"}
+                         "context"              "search-app"}
                :user-id (str (mt/user->id :crowberto))}
               (last (snowplow-test/pop-event-data-and-user-id!))))))
 
@@ -842,7 +842,7 @@
 (deftest snowplow-search-results-filtered-event-test
   (testing "Send a snowplow event when a new filtered search query is made"
     (snowplow-test/with-fake-snowplow-collector
-      (mt/user-http-request :crowberto :get 200 "search" :q "test" :context "filtered-search"
+      (mt/user-http-request :crowberto :get 200 "search" :q "test" :context "search-app"
                             :models                         "card")
       (is (=? {:data    {"event"                 "search_results_filtered"
                          "runtime_milliseconds"  pos?
@@ -853,12 +853,12 @@
                          "content_type"          ["card"]
                          "search_native_queries" false
                          "verified_items"        false
-                         "context"               "filtered-search"}
+                         "context"               "search-app"}
                :user-id (str (mt/user->id :crowberto))}
               (last (snowplow-test/pop-event-data-and-user-id!)))))
 
     (snowplow-test/with-fake-snowplow-collector
-      (mt/user-http-request :crowberto :get 200 "search" :q "test" :context "filtered-search"
+      (mt/user-http-request :crowberto :get 200 "search" :q "test" :context "search-app"
                             :models                         "card" :models "dashboard"
                             :created_at                     "2000-01-01" :created_by (mt/user->id :crowberto)
                             :last_edited_at                 "2000-01-01" :last_edited_by (mt/user->id :crowberto)
@@ -872,18 +872,18 @@
                          "content_type"          ["card" "dashboard"]
                          "search_native_queries" true
                          "verified_items"        false
-                         "context"               "filtered-search"}
+                         "context"               "search-app"}
                :user-id (str (mt/user->id :crowberto))}
               (last (snowplow-test/pop-event-data-and-user-id!))))))
 
   (snowplow-test/with-fake-snowplow-collector
     (testing "Send a snowplow event even if the search doesn't have any advanced filters"
-      (mt/user-http-request :crowberto :get 200 "search" :q "test" :context "filtered-search")
+      (mt/user-http-request :crowberto :get 200 "search" :q "test" :context "search-app")
       (is
        (=?
         {:data    {"event"                "new_search_query"
                    "runtime_milliseconds" pos?
-                   "context"              "filtered-search"}
+                   "context"              "search-app"}
          :user-id (str (mt/user->id :crowberto))}
         (last (snowplow-test/pop-event-data-and-user-id!)))))
 

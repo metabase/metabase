@@ -94,7 +94,7 @@ export const SearchResults = ({
   };
 
   if (isSearchBar) {
-    query.context = SearchContextTypes.GLOBAL_SEARCH;
+    query.context = SearchContextTypes.SEARCH_BAR;
   }
 
   const {
