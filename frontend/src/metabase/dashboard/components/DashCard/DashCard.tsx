@@ -248,46 +248,6 @@ function DashCard({
     return handler;
   }, [dashcard, navigateToNewCardFromDashboard]);
 
-  const renderDashCardActions = useCallback(() => {
-    if (isEditingDashboardLayout) {
-      return (
-        <DashCardActionButtons
-          onMouseDown={preventDragging}
-          onLeftEdge={dashcard.col === 0}
-          series={series}
-          dashboard={dashboard}
-          dashcard={dashcard}
-          isLoading={isLoading}
-          isPreviewing={isPreviewingCard}
-          isVirtualDashCard={isVirtualDashCard(dashcard)}
-          hasError={hasError}
-          onAddSeries={onAddSeries}
-          onRemove={onRemove}
-          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-          onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
-          showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
-          onPreviewToggle={handlePreviewToggle}
-        />
-      );
-    }
-
-    return null;
-  }, [
-    dashcard,
-    dashboard,
-    series,
-    hasError,
-    isLoading,
-    isPreviewingCard,
-    isEditingDashboardLayout,
-    onAddSeries,
-    onRemove,
-    onReplaceAllVisualizationSettings,
-    onUpdateVisualizationSettings,
-    handlePreviewToggle,
-    handleShowClickBehaviorSidebar,
-  ]);
-
   return (
     <ErrorBoundary>
       <DashCardRoot
@@ -299,7 +259,27 @@ function DashCard({
         isUsuallySlow={isSlow === "usually-slow"}
         ref={cardRootRef}
       >
-        {renderDashCardActions()}
+        {isEditingDashboardLayout && (
+          <DashCardActionButtons
+            onMouseDown={preventDragging}
+            onLeftEdge={dashcard.col === 0}
+            series={series}
+            dashboard={dashboard}
+            dashcard={dashcard}
+            isLoading={isLoading}
+            isPreviewing={isPreviewingCard}
+            isVirtualDashCard={isVirtualDashCard(dashcard)}
+            hasError={hasError}
+            onAddSeries={onAddSeries}
+            onRemove={onRemove}
+            onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+            onReplaceAllVisualizationSettings={
+              onReplaceAllVisualizationSettings
+            }
+            showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
+            onPreviewToggle={handlePreviewToggle}
+          />
+        )}
         <DashCardVisualization
           dashboard={dashboard}
           dashcard={dashcard}
