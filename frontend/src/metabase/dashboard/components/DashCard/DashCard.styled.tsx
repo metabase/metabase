@@ -53,7 +53,7 @@ export const DashboardCardActionsPanel = styled.div<{ isSubMenuOpen: boolean }>`
   cursor: default;
   transition: opacity 200ms;
   opacity: ${({ isSubMenuOpen }) => (isSubMenuOpen ? 1 : 0)};
-  pointer-events: none;
+  pointer-events: ${({ isSubMenuOpen }) => (isSubMenuOpen ? "all" : "none")};
   // react-resizable covers panel, we have to override it
   z-index: 2;
 
