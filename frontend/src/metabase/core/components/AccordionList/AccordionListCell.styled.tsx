@@ -14,9 +14,9 @@ export const FilterContainer = styled.div`
 `;
 
 export const Content = styled.div<{ isClickable: boolean }>`
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
-  flex: auto;
   padding: 0.5rem;
   cursor: ${props => (props.isClickable ? "pointer" : "default")};
 `;
