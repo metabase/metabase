@@ -567,9 +567,7 @@
 (defn- update-dashboard
   "Updates a Dashboard. Designed to be reused by PUT /api/dashboard/:id and PUT /api/dashboard/:id/cards"
   [id {:keys [dashcards tabs] :as dash-updates}]
-  (let [dash-before-update         (-> (api/write-check Dashboard id)
-                                       api/check-not-archived
-                                       (t2/hydrate [:dashcards :series :card] :tabs))
+  (let [dash-before-update         (api/write-check Dashboard id)
         changes-stats              (atom nil)
         ;; tabs are sent in production as well, but there are lots of tests that exclude it. so this only checks for dashcards
         update-dashcards-and-tabs? (contains? dash-updates :dashcards)
@@ -594,23 +592,25 @@
                                          :embedding_params :archived :auto_apply_filters}))]
            (t2/update! Dashboard id updates))
          (when update-dashcards-and-tabs?
-           (let [new-tabs                 (map-indexed (fn [idx tab] (assoc tab :position idx)) tabs)
+           (api/check-not-archived dash-before-update)
+           (let [{current-dashcards :dashcards
+                  current-tabs      :tabs}  (t2/hydrate dash-before-update [:dashcards :series :card] :tabs)
+                 new-tabs                   (map-indexed (fn [idx tab] (assoc tab :position idx)) tabs)
                  {:keys [old->new-tab-id
                          deleted-tab-ids]
-                  :as tabs-changes-stats} (dashboard-tab/do-update-tabs! (:id dash-before-update) (:tabs dash-before-update) new-tabs)
-                 deleted-tab-ids          (set deleted-tab-ids)
-                 current-cards            (cond->> (:dashcards dash-before-update)
-                                            (seq deleted-tab-ids)
-                                            (remove (fn [dashcard]
-                                                      (contains? deleted-tab-ids (:dashboard_tab_id dashcard)))))
-                 new-cards                (cond->> dashcards
-                                            ;; fixup the temporary tab ids with the real ones
-                                            (seq old->new-tab-id)
-                                            (map (fn [card]
-                                                   (if-let [real-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
-                                                     (assoc card :dashboard_tab_id real-tab-id)
-                                                     card))))
-                 dashcards-changes-stats  (do-update-dashcards! dash-before-update current-cards new-cards)]
+                  :as   tabs-changes-stats} (dashboard-tab/do-update-tabs! (:id dash-before-update) current-tabs new-tabs)
+                 deleted-tab-ids            (set deleted-tab-ids)
+                 current-dashcards          (remove (fn [dashcard]
+                                                      (contains? deleted-tab-ids (:dashboard_tab_id dashcard)))
+                                                    current-dashcards)
+                 new-dashcards              (cond->> dashcards
+                                              ;; fixup the temporary tab ids with the real ones
+                                              (seq old->new-tab-id)
+                                              (map (fn [card]
+                                                     (if-let [real-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
+                                                       (assoc card :dashboard_tab_id real-tab-id)
+                                                       card))))
+                 dashcards-changes-stats    (do-update-dashcards! dash-before-update current-dashcards new-dashcards)]
              (reset! changes-stats
                      (merge
                       (select-keys tabs-changes-stats [:created-tab-ids :updated-tab-ids :deleted-tab-ids :total-num-tabs])
