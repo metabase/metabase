@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { useState } from "react";
 import { Icon } from "metabase/core/components/Icon";
 
 import { getVisualizationRaw } from "metabase/visualizations";
@@ -41,9 +42,6 @@ interface Props {
   ) => void;
   showClickBehaviorSidebar: () => void;
   onPreviewToggle: () => void;
-  onDashCardMenuClose: () => void;
-  onDashCardMenuOpen: () => void;
-  isDashCardTabMenuOpen: boolean;
   onLeftEdge: boolean;
   onMouseDown: (event: React.MouseEvent) => void;
 }
@@ -62,9 +60,6 @@ function DashCardActionButtons({
   onUpdateVisualizationSettings,
   showClickBehaviorSidebar,
   onPreviewToggle,
-  onDashCardMenuClose,
-  onDashCardMenuOpen,
-  isDashCardTabMenuOpen,
   onLeftEdge,
   onMouseDown,
 }: Props) {
@@ -75,6 +70,8 @@ function DashCardActionButtons({
     disableClickBehavior,
   } = getVisualizationRaw(series) ?? {};
 
+  const [isDashCardTabMenuOpen, setIsDashCardTabMenuOpen] = useState(false);
+
   const buttons = [];
 
   if (dashcard) {
@@ -82,8 +79,8 @@ function DashCardActionButtons({
       <DashCardTabMenu
         key="tabs"
         dashCardId={dashcard.id}
-        onClose={onDashCardMenuClose}
-        onOpen={onDashCardMenuOpen}
+        onClose={() => setIsDashCardTabMenuOpen(false)}
+        onOpen={() => setIsDashCardTabMenuOpen(true)}
       />,
     );
   }

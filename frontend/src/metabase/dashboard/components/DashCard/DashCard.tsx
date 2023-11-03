@@ -116,8 +116,6 @@ function DashCard({
   const [isPreviewingCard, setIsPreviewingCard] = useState(false);
   const cardRootRef = useRef<HTMLDivElement>(null);
 
-  const [isDashCardTabMenuOpen, setIsDashCardTabMenuOpen] = useState(false);
-
   const handlePreviewToggle = useCallback(() => {
     setIsPreviewingCard(wasPreviewingCard => !wasPreviewingCard);
   }, []);
@@ -255,7 +253,6 @@ function DashCard({
       return (
         <DashCardActionButtons
           onMouseDown={preventDragging}
-          isDashCardTabMenuOpen={isDashCardTabMenuOpen}
           onLeftEdge={dashcard.col === 0}
           series={series}
           dashboard={dashboard}
@@ -270,8 +267,6 @@ function DashCard({
           onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
           showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
           onPreviewToggle={handlePreviewToggle}
-          onDashCardMenuClose={() => setIsDashCardTabMenuOpen(false)}
-          onDashCardMenuOpen={() => setIsDashCardTabMenuOpen(true)}
         />
       );
     }
@@ -291,7 +286,6 @@ function DashCard({
     onUpdateVisualizationSettings,
     handlePreviewToggle,
     handleShowClickBehaviorSidebar,
-    isDashCardTabMenuOpen,
   ]);
 
   return (
