@@ -1,7 +1,6 @@
 (ns metabase.cmd.load-from-h2-test
   (:require
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [metabase.cmd.copy :as copy]
    [metabase.cmd.dump-to-h2 :as dump-to-h2]
    [metabase.cmd.load-from-h2 :as load-from-h2]
@@ -16,6 +15,7 @@
    [metabase.models :refer [Table]]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.util.log :as log]
    [toucan2.connection :as t2.conn]
    [toucan2.core :as t2])
   (:import
