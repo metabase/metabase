@@ -14,7 +14,7 @@ import LegacyFilter from "metabase-lib/queries/structured/Filter";
 import type LegacyQuery from "metabase-lib/queries/StructuredQuery";
 
 import type { ColumnListItem, SegmentListItem } from "./types";
-import { MIN_WIDTH } from "./constants";
+import { MIN_WIDTH, MAX_WIDTH } from "./constants";
 
 import { BooleanFilterPicker } from "./BooleanFilterPicker";
 import { DateFilterPicker } from "./DateFilterPicker";
@@ -117,7 +117,7 @@ export function FilterPicker({
 
   if (!column) {
     return (
-      <Box miw={MIN_WIDTH}>
+      <Box miw={MIN_WIDTH} maw={MAX_WIDTH}>
         <FilterColumnPicker
           query={query}
           stageIndex={stageIndex}
