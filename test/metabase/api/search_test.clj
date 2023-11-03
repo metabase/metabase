@@ -551,42 +551,42 @@
 (deftest indexed-entity-test
   (testing "Should search indexed entities"
     (mt/dataset airports
-                (let [query (mt/mbql-query municipality)]
-                  (mt/with-temp [Card model {:dataset       true
-                                             :dataset_query query}]
-                    (let [model-index (model-index/create
-                                       (mt/$ids {:model-id   (:id model)
-                                                 :pk-ref     $municipality.id
-                                                 :value-ref  $municipality.name
-                                                 :creator-id (mt/user->id :rasta)}))
-                          relevant    (comp (filter (comp #{(:id model)} :model_id))
-                                            (filter (comp #{"indexed-entity"} :model)))
-                          search!     (fn [search-term]
-                                        (:data (make-search-request :crowberto [:q search-term])))]
-                      (model-index/add-values! model-index)
+      (let [query (mt/mbql-query municipality)]
+        (mt/with-temp [Card model {:dataset       true
+                                   :dataset_query query}]
+          (let [model-index (model-index/create
+                             (mt/$ids {:model-id   (:id model)
+                                       :pk-ref     $municipality.id
+                                       :value-ref  $municipality.name
+                                       :creator-id (mt/user->id :rasta)}))
+                relevant    (comp (filter (comp #{(:id model)} :model_id))
+                                  (filter (comp #{"indexed-entity"} :model)))
+                search!     (fn [search-term]
+                              (:data (make-search-request :crowberto [:q search-term])))]
+            (model-index/add-values! model-index)
 
-                      (is (= #{"Dallas-Fort Worth" "Fort Lauderdale" "Fort Myers"
-                               "Fort Worth" "Fort Smith" "Fort Wayne"}
-                             (into #{} (comp relevant (map :name)) (search! "fort"))))
+            (is (= #{"Dallas-Fort Worth" "Fort Lauderdale" "Fort Myers"
+                     "Fort Worth" "Fort Smith" "Fort Wayne"}
+                   (into #{} (comp relevant (map :name)) (search! "fort"))))
 
-                      (testing "Sandboxed users do not see indexed entities in search"
-                        (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
-                          (is (= #{}
-                                 (into #{} (comp relevant (map :name)) (search! "fort"))))))
+            (testing "Sandboxed users do not see indexed entities in search"
+              (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
+                (is (= #{}
+                       (into #{} (comp relevant (map :name)) (search! "fort"))))))
 
-                      (let [normalize (fn [x] (-> x (update :pk_ref mbql.normalize/normalize)))]
-                        (is (=? {"Rome"   {:pk_ref         (mt/$ids $municipality.id)
-                                           :name           "Rome"
-                                           :model_id       (:id model)
-                                           :model_name     (:name model)
-                                           :model_index_id #hawk/malli :int}
-                                 "Tromsø" {:pk_ref         (mt/$ids $municipality.id)
-                                           :name           "Tromsø"
-                                           :model_id       (:id model)
-                                           :model_name     (:name model)
-                                           :model_index_id #hawk/malli :int}}
-                                (into {} (comp relevant (map (juxt :name normalize)))
-                                      (search! "rom")))))))))))
+            (let [normalize (fn [x] (-> x (update :pk_ref mbql.normalize/normalize)))]
+              (is (=? {"Rome"   {:pk_ref         (mt/$ids $municipality.id)
+                                 :name           "Rome"
+                                 :model_id       (:id model)
+                                 :model_name     (:name model)
+                                 :model_index_id #hawk/malli :int}
+                       "Tromsø" {:pk_ref         (mt/$ids $municipality.id)
+                                 :name           "Tromsø"
+                                 :model_id       (:id model)
+                                 :model_name     (:name model)
+                                 :model_index_id #hawk/malli :int}}
+                      (into {} (comp relevant (map (juxt :name normalize)))
+                            (search! "rom")))))))))))
 
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
@@ -679,38 +679,38 @@
   (testing "You should see Tables in the search results!\n"
     (mt/with-temp [Table _ {:name "RoundTable"}]
       (do-test-users [user [:crowberto :rasta]]
-                     (is (= [(default-table-search-row "RoundTable")]
-                            (search-request-data user :q "RoundTable"))))))
+        (is (= [(default-table-search-row "RoundTable")]
+               (search-request-data user :q "RoundTable"))))))
   (testing "You should not see hidden tables"
     (mt/with-temp [Table _normal {:name "Foo Visible"}
                    Table _hidden {:name "Foo Hidden", :visibility_type "hidden"}]
       (do-test-users [user [:crowberto :rasta]]
-                     (is (= [(default-table-search-row "Foo Visible")]
-                            (search-request-data user :q "Foo"))))))
+        (is (= [(default-table-search-row "Foo Visible")]
+               (search-request-data user :q "Foo"))))))
   (testing "You should be able to search by their display name"
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp [Table _ {:name "RoundTable" :display_name lancelot}]
         (do-test-users [user [:crowberto :rasta]]
-                       (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
-                              (search-request-data user :q "Lancelot")))))))
+          (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
+                 (search-request-data user :q "Lancelot")))))))
   (testing "You should be able to search by their description"
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp [Table _ {:name "RoundTable" :description lancelot}]
         (do-test-users [user [:crowberto :rasta]]
-                       (is (= [(assoc (default-table-search-row "RoundTable") :description lancelot :table_description lancelot)]
-                              (search-request-data user :q "Lancelot")))))))
+          (is (= [(assoc (default-table-search-row "RoundTable") :description lancelot :table_description lancelot)]
+                 (search-request-data user :q "Lancelot")))))))
   (testing "When searching with ?archived=true, normal Tables should not show up in the results"
     (let [table-name (mt/random-name)]
       (mt/with-temp [Table _ {:name table-name}]
         (do-test-users [user [:crowberto :rasta]]
-                       (is (= []
-                              (search-request-data user :q table-name :archived true)))))))
+          (is (= []
+                 (search-request-data user :q table-name :archived true)))))))
   (testing "*archived* tables should not appear in search results"
     (let [table-name (mt/random-name)]
       (mt/with-temp [Table _ {:name table-name, :active false}]
         (do-test-users [user [:crowberto :rasta]]
-                       (is (= []
-                              (search-request-data user :q table-name)))))))
+          (is (= []
+                 (search-request-data user :q table-name)))))))
   (testing "you should not be able to see a Table if the current user doesn't have permissions for that Table"
     (mt/with-temp [Database {db-id :id} {}
                    Table    table {:db_id db-id}]
@@ -729,9 +729,9 @@
       (perms/revoke-data-perms! (perms-group/all-users) db-id (:schema table) (:id table))
       (perms/grant-permissions! group-id (perms/table-read-path table))
       (do-test-users [user [:crowberto :rasta]]
-                     (is (= [(default-table-search-row "RoundTable")]
-                            (binding [*search-request-results-database-id* db-id]
-                              (search-request-data user :q "RoundTable"))))))))
+        (is (= [(default-table-search-row "RoundTable")]
+               (binding [*search-request-results-database-id* db-id]
+                 (search-request-data user :q "RoundTable"))))))))
 
 (deftest all-users-no-data-perms-table-test
   (testing "If the All Users group doesn't have perms to view a Table they sholdn't see it (#16855)"
