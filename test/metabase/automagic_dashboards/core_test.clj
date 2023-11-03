@@ -1599,6 +1599,105 @@
               (is (some? filtered-data))
               (is (not= base-data filtered-data)))))))))
 
+(deftest compare-to-the-rest-with-expression-16680-test
+  (testing "Ensure a valid comparison dashboard is generated with custom expressions (fixes 16680)"
+    (mt/dataset sample-dataset
+      (mt/with-test-user :rasta
+        (let [left                 (query/adhoc-query
+                                     {:database (mt/id)
+                                      :type     :query
+                                      :query
+                                      {:source-table (mt/id :orders)
+                                       :expressions  {"TestColumn" [:+ 1 1]}
+                                       :aggregation  [[:count]]
+                                       :breakout     [[:expression "TestColumn"]
+                                                      [:field (mt/id :orders :created_at)
+                                                       {:temporal-unit :month}]]}})
+              right                (t2/select-one :model/Table (mt/id :orders))
+              cell-query           [:and
+                                    [:= [:expression "TestColumn"] 2]
+                                    [:= [:field (mt/id :orders :created_at)
+                                         {:temporal-unit :month}]
+                                     "2019-02-01T00:00:00Z"]]
+              dashboard            (magic/automagic-analysis left {:show         nil
+                                                                   :query-filter nil
+                                                                   :comparison?  true})
+              {:keys [dashcards]} (comparison/comparison-dashboard dashboard left right {:left {:cell-query cell-query}})
+              ;; Select a few cards to compare -- there are many more but we're just going to sample
+              distinct-values-card-label "Distinct values"
+              [{base-query :dataset_query :as card-without-cell-query}
+               {filtered-query :dataset_query :as card-with-cell-query}] (->> dashcards
+                                                                              (filter (comp #{distinct-values-card-label} :name :card))
+                                                                              (map :card))
+
+              series-card-label    "Number of Orders per day of the week (Number of Orders where TestColumn is 2 and Created At is in February 2019)"
+              {[{series-dataset-query :dataset_query}] :series
+               {card-dataset-query :dataset_query} :card
+               :as                                     series-card} (some
+                                                                      (fn [{{card-name :name} :card :as dashcard}]
+                                                                        (when (= series-card-label card-name)
+                                                                          dashcard))
+                                                                      dashcards)]
+          (testing "Comparisons that exist on two cards"
+            (testing "Comparison cards exist"
+              (is (some? card-with-cell-query))
+              (is (some? card-without-cell-query)))
+            (testing "The cell-query exists in only one of the cards"
+              (is (not= cell-query (get-in base-query [:query :filter])))
+              (is (= cell-query (get-in filtered-query [:query :filter]))))
+            (testing "Expressions exist in the queries"
+              (is (= {"TestColumn" [:+ 1 1]} (get-in base-query [:query :expressions])))
+              (is (= {"TestColumn" [:+ 1 1]} (get-in filtered-query [:query :expressions]))))
+            (testing "Card queries are both executable and produce different results"
+              (let [base-data     (get-in (qp/process-query base-query) [:data :rows])
+                    filtered-data (get-in (qp/process-query filtered-query) [:data :rows])]
+                (is (some? base-data))
+                (is (some? filtered-data))
+                (is (not= base-data filtered-data)))))
+          (testing "Comparisons that exist on the same card"
+            (testing "Both series (original and comparison) are present on the same chart"
+              (is (= ["Number of Orders per day of the week (Number of Orders where TestColumn is 2 and Created At is in February 2019)"
+                      "Number of Orders per day of the week (All Orders)"]
+                     (get-in series-card [:visualization_settings :graph.series_labels]))))
+            (testing "Both the series and card datasets are present and queryable"
+              (is (some? series-dataset-query))
+              (is (= 7 (:row_count (qp/process-query series-dataset-query))))
+              (is (some? card-dataset-query))
+              (is (= 7 (:row_count (qp/process-query card-dataset-query)))))))))))
+
+(deftest preserve-entity-element-test
+  (testing "Join preservation scenarios: merge, empty expressions, no expressions, no card"
+    (is (= [[{:strategy :left-join, :alias "Orders"}
+             {:strategy :left-join, :alias "Products"}]
+            [{:strategy :left-join, :alias "Products"}]
+            [{:strategy :left-join, :alias "Products"}]
+            nil]
+           (->>
+             (#'magic/preserve-entity-element
+               {:dashcards [{:card {:dataset_query {:query {:joins [{:strategy :left-join :alias "Orders"}]}}}}
+                            {:card {:dataset_query {:query {:joins []}}}}
+                            {:card {:dataset_query {:query {}}}}
+                            {:viz_settings nil}]}
+               {:dataset_query {:query {:joins [{:strategy :left-join :alias "Products"}]}}}
+               :joins)
+             :dashcards
+             (mapv (comp :joins :query :dataset_query :card))))))
+  (testing "Expression preservation scenarios: merge, empty expressions, no expressions, no card"
+    (is (= [{"Existing" [:- 1 1] "TestColumn" [:+ 1 1]}
+            {"TestColumn" [:+ 1 1]}
+            {"TestColumn" [:+ 1 1]}
+            nil]
+           (->>
+             (#'magic/preserve-entity-element
+               {:dashcards [{:card {:dataset_query {:query {:expressions {"Existing" [:- 1 1]}}}}}
+                            {:card {:dataset_query {:query {:expressions {}}}}}
+                            {:card {:dataset_query {:query {}}}}
+                            {:viz_settings nil}]}
+               {:dataset_query {:query {:expressions {"TestColumn" [:+ 1 1]}}}}
+               :expressions)
+             :dashcards
+             (mapv (comp :expressions :query :dataset_query :card)))))))
+
 (deftest compare-to-the-rest-15655-test
   (testing "Questions based on native questions should produce a valid dashboard."
     (mt/dataset sample-dataset
