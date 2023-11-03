@@ -23,7 +23,12 @@ import {
 const NO_TRANSITION = { duration: 0 };
 
 const FilterPill = (props: ViewPillProps) => (
-  <ViewPill color={color("filter")} {...props} />
+  <ViewPill
+    color={color("filter")}
+    {...props}
+    data-testid="filter-pill"
+    removeButtonLabel={t`Remove`}
+  />
 );
 
 interface FilterHeaderToggleProps {

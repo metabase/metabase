@@ -8,6 +8,7 @@ export interface ViewPillProps {
   color?: string;
   invert?: boolean;
   icon?: IconName;
+  removeButtonLabel?: string;
   children?: React.ReactNode;
   style?: React.CSSProperties;
   onClick?: React.MouseEventHandler<HTMLSpanElement>;
@@ -20,6 +21,7 @@ function ViewPill({
   color = c("brand"),
   invert,
   children,
+  removeButtonLabel,
   onClick,
   onRemove,
   icon,
@@ -51,6 +53,8 @@ function ViewPill({
           name="close"
           size={12}
           className="ml1"
+          role="button"
+          aria-label={removeButtonLabel}
           onClick={e => {
             e.stopPropagation();
             onRemove();
