@@ -153,7 +153,7 @@ const nestedQuestionWithJoin = card => ({
       "source-table": `card__${card.id}`,
       joins: [
         {
-          alias: "Products - PRODUCT_ID",
+          alias: "Products",
           strategy: "left-join",
           fields: "all",
           condition: [
@@ -164,7 +164,7 @@ const nestedQuestionWithJoin = card => ({
               PRODUCTS.ID,
               {
                 "base-type": "type/BigInteger",
-                "join-alias": "Products - PRODUCT_ID",
+                "join-alias": "Products",
               },
             ],
           ],
@@ -185,15 +185,9 @@ const nestedQuestionWithJoinAndFields = card => ({
       "source-table": `card__${card.id}`,
       joins: [
         {
-          alias: "Products - PRODUCT_ID",
+          alias: "Products",
           strategy: "left-join",
-          fields: [
-            [
-              "field",
-              PRODUCTS.RATING,
-              { "join-alias": "Products - PRODUCT_ID" },
-            ],
-          ],
+          fields: [["field", PRODUCTS.RATING, { "join-alias": "Products" }]],
           condition: [
             "=",
             ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
@@ -202,7 +196,7 @@ const nestedQuestionWithJoinAndFields = card => ({
               PRODUCTS.ID,
               {
                 "base-type": "type/BigInteger",
-                "join-alias": "Products - PRODUCT_ID",
+                "join-alias": "Products",
               },
             ],
           ],
@@ -395,7 +389,7 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByText("Aufderhar-Boehm").click();
         cy.button("Add filter").click();
       });
-      assertFilterName("Products - PRODUCT_ID → Vendor is Aufderhar-Boehm");
+      assertFilterName("Products → Vendor is Aufderhar-Boehm");
       visualize();
       assertQueryBuilderRowCount(95);
     });
@@ -413,7 +407,7 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByPlaceholderText("Enter a number").type("3.7");
         cy.button("Add filter").click();
       });
-      assertFilterName("Products - PRODUCT_ID → Rating is equal to 3.7");
+      assertFilterName("Products → Rating is equal to 3.7");
       visualize();
       assertQueryBuilderRowCount(883);
     });
@@ -431,7 +425,7 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByText("0001664425970").click();
         cy.button("Add filter").click();
       });
-      assertFilterName("Products - PRODUCT_ID → Ean is 0001664425970");
+      assertFilterName("Products → Ean is 0001664425970");
       visualize();
       assertQueryBuilderRowCount(104);
     });
@@ -536,7 +530,7 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByText("Aufderhar-Boehm").click();
         cy.button("Add filter").click();
       });
-      assertFilterName("Products - PRODUCT_ID → Vendor is Aufderhar-Boehm");
+      assertFilterName("Products → Vendor is Aufderhar-Boehm");
       visualize();
       assertQueryBuilderRowCount(95);
     });
@@ -554,7 +548,7 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByPlaceholderText("Enter a number").type("3.7");
         cy.button("Add filter").click();
       });
-      assertFilterName("Products - PRODUCT_ID → Rating is equal to 3.7");
+      assertFilterName("Products → Rating is equal to 3.7");
       visualize();
       assertQueryBuilderRowCount(883);
     });
@@ -572,7 +566,7 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByText("0001664425970").click();
         cy.button("Add filter").click();
       });
-      assertFilterName("Products - PRODUCT_ID → Ean is 0001664425970");
+      assertFilterName("Products → Ean is 0001664425970");
       visualize();
       assertQueryBuilderRowCount(104);
     });
