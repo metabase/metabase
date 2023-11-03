@@ -571,12 +571,12 @@
        (snowplow/track-event! ::snowplow/search-results-filtered api/*current-user-id*
                               {:runtime-milliseconds  duration
                                :content-type          (u/one-or-many models)
-                                :creator               (some? created_by)
-                                :creation-date         (some? created_at)
-                                :last-editor           (some? last_edited_by)
-                                :last-edit-date        (some? last_edited_at)
-                                :verified-items        (some? verified)
-                                :search-native-queries (some? search_native_query)})))
+                               :creator               (some? created_by)
+                               :creation-date         (some? created_at)
+                               :last-editor           (some? last_edited_by)
+                               :last-edit-date        (some? last_edited_at)
+                               :verified-items        (some? verified)
+                               :search-native-queries (some? search_native_query)})))
 
     results))
 
