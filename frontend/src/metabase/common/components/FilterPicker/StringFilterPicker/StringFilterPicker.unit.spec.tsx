@@ -10,96 +10,20 @@ import {
   setupFieldsValuesEndpoints,
   setupFieldSearchValuesEndpoints,
 } from "__support__/server-mocks";
-import { createMockEntitiesState } from "__support__/store";
 import { checkNotNull } from "metabase/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
-import { createMockField } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
-  createOrdersTable,
-  createPeopleTable,
-  createProductsTable,
-  PRODUCTS_ID,
   PRODUCT_CATEGORY_VALUES,
   PRODUCT_VENDOR_VALUES,
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 import * as Lib from "metabase-lib";
-import { createQuery, columnFinder } from "metabase-lib/test-helpers";
+import {
+  createQuery,
+  createQueryWithStringFilter,
+  findStringColumn,
+  storeInitialState,
+} from "../test-utils";
 import { StringFilterPicker } from "./StringFilterPicker";
-
-const regularProductFields =
-  createProductsTable().fields?.filter(checkNotNull) ?? [];
-
-// String column without field values
-const productDescriptionField = createMockField({
-  id: 100,
-  table_id: PRODUCTS_ID,
-  name: "DESCRIPTION",
-  display_name: "Description",
-
-  base_type: "type/Text",
-  effective_type: "type/Text",
-  semantic_type: null,
-
-  has_field_values: "none",
-});
-
-const database = createSampleDatabase({
-  tables: [
-    createOrdersTable(),
-    createPeopleTable(),
-    createProductsTable({
-      fields: [...regularProductFields, productDescriptionField],
-    }),
-  ],
-});
-
-const storeInitialState = createMockState({
-  entities: createMockEntitiesState({
-    databases: [database],
-  }),
-});
-
-const metadata = getMetadata(storeInitialState);
-
-function findStringColumn(
-  query: Lib.Query,
-  { table = "PRODUCTS", column = "DESCRIPTION" } = {},
-) {
-  const columns = Lib.filterableColumns(query, 0);
-  const findColumn = columnFinder(query, columns);
-  return findColumn(table, column);
-}
-
-type CreateFilterQueryOpts = Partial<Omit<Lib.StringFilterParts, "column">> & {
-  column?: { table?: string; name: string };
-};
-
-function createFilteredQuery({
-  operator = "=",
-  values = ["Great product"],
-  column: _column = { table: "PRODUCTS", name: "DESCRIPTION" },
-}: CreateFilterQueryOpts = {}) {
-  const initialQuery = createQuery({ metadata });
-  const column = findStringColumn(initialQuery, {
-    table: _column.table,
-    column: _column.name,
-  });
-
-  const clause = Lib.stringFilterClause({
-    operator,
-    column,
-    values,
-    options: {},
-  });
-
-  const query = Lib.filter(initialQuery, 0, clause);
-  const [filter] = Lib.filters(query, 0);
-
-  return { query, column, filter };
-}
 
 type SetupOpts = {
   query?: Lib.Query;
@@ -119,7 +43,7 @@ const EXPECTED_OPERATORS = [
 ];
 
 function setup({
-  query = createQuery({ metadata }),
+  query = createQuery(),
   column = findStringColumn(query),
   filter,
 }: SetupOpts = {}) {
@@ -127,11 +51,6 @@ function setup({
   const onBack = jest.fn();
 
   setupFieldsValuesEndpoints([PRODUCT_CATEGORY_VALUES, PRODUCT_VENDOR_VALUES]);
-  setupFieldSearchValuesEndpoints(
-    PRODUCTS.VENDOR,
-    "Ven",
-    PRODUCT_VENDOR_VALUES.values,
-  );
 
   renderWithProviders(
     <StringFilterPicker
@@ -197,8 +116,8 @@ describe("StringFilterPicker", () => {
     });
 
     it("should handle fields with listable values", async () => {
-      const query = createQuery({ metadata });
-      const column = findStringColumn(query, { column: "CATEGORY" });
+      const query = createQuery();
+      const column = findStringColumn(query, { fieldValues: "list" });
       const { getNextFilterParts, getNextFilterColumnName } = setup({
         query,
         column,
@@ -227,8 +146,13 @@ describe("StringFilterPicker", () => {
     });
 
     it("should handle fields with searchable values", async () => {
-      const query = createQuery({ metadata });
-      const column = findStringColumn(query, { column: "VENDOR" });
+      setupFieldSearchValuesEndpoints(
+        PRODUCTS.VENDOR,
+        "Ven",
+        PRODUCT_VENDOR_VALUES.values,
+      );
+      const query = createQuery();
+      const column = findStringColumn(query, { fieldValues: "search" });
       const { getNextFilterParts, getNextFilterColumnName } = setup({
         query,
         column,
@@ -290,8 +214,8 @@ describe("StringFilterPicker", () => {
     });
 
     it("should add a filter with many values", async () => {
-      const query = createQuery({ metadata });
-      const column = findStringColumn(query, { column: "CATEGORY" });
+      const query = createQuery();
+      const column = findStringColumn(query, { fieldValues: "list" });
       const { getNextFilterParts, getNextFilterColumnName } = setup({
         query,
         column,
@@ -386,7 +310,7 @@ describe("StringFilterPicker", () => {
 
   describe("existing filter", () => {
     describe("with one value", () => {
-      const opts = createFilteredQuery({
+      const opts = createQueryWithStringFilter({
         operator: "contains",
         values: ["abc"],
         options: { "case-sensitive": false },
@@ -426,10 +350,12 @@ describe("StringFilterPicker", () => {
     });
 
     describe("with many values", () => {
-      const opts = createFilteredQuery({
+      const query = createQuery();
+      const opts = createQueryWithStringFilter({
+        query,
         operator: "=",
+        column: findStringColumn(query, { fieldValues: "list" }),
         values: ["Gadget", "Gizmo"],
-        column: { name: "CATEGORY" },
       });
 
       it("should render a filter", async () => {
@@ -465,7 +391,7 @@ describe("StringFilterPicker", () => {
     });
 
     describe("without a value", () => {
-      const opts = createFilteredQuery({
+      const opts = createQueryWithStringFilter({
         operator: "is-empty",
         values: [],
       });
@@ -498,7 +424,7 @@ describe("StringFilterPicker", () => {
     });
 
     it("should list operators", async () => {
-      setup(createFilteredQuery());
+      setup(createQueryWithStringFilter());
 
       userEvent.click(screen.getByLabelText("Filter operator"));
       const listbox = await screen.findByRole("listbox");
@@ -512,7 +438,7 @@ describe("StringFilterPicker", () => {
 
     it("should change an operator", async () => {
       const { getNextFilterParts, getNextFilterColumnName } = setup(
-        createFilteredQuery({ operator: "=", values: ["foo"] }),
+        createQueryWithStringFilter({ operator: "=", values: ["foo"] }),
       );
 
       await setOperator("Contains");
@@ -528,11 +454,13 @@ describe("StringFilterPicker", () => {
     });
 
     it("should re-use values when changing an operator", async () => {
+      const query = createQuery();
       setup(
-        createFilteredQuery({
+        createQueryWithStringFilter({
+          query,
           operator: "=",
           values: ["Gadget", "Gizmo"],
-          column: { name: "CATEGORY" },
+          column: findStringColumn(query, { fieldValues: "list" }),
         }),
       );
       await waitForLoaderToBeRemoved();
@@ -569,7 +497,7 @@ describe("StringFilterPicker", () => {
     });
 
     it("should go back", async () => {
-      const { onBack, onChange } = await setup(createFilteredQuery());
+      const { onBack, onChange } = await setup(createQueryWithStringFilter());
       userEvent.click(screen.getByLabelText("Back"));
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();

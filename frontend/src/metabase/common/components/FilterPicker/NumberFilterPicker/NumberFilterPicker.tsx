@@ -67,7 +67,7 @@ export function NumberFilterPicker({
   };
 
   return (
-    <>
+    <div data-testid="number-filter-picker">
       <Header>
         <BackButton onClick={onBack}>{columnName}</BackButton>
         <FilterOperatorPicker
@@ -92,7 +92,7 @@ export function NumberFilterPicker({
           {isNew ? t`Add filter` : t`Update filter`}
         </Button>
       </Footer>
-    </>
+    </div>
   );
 }
 

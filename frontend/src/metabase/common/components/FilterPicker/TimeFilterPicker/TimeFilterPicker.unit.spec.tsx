@@ -1,63 +1,15 @@
 import dayjs from "dayjs";
 import userEvent from "@testing-library/user-event";
 import { render, screen, within } from "__support__/ui";
-import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
-import { createMockField } from "metabase-types/api/mocks";
-import {
-  createSampleDatabase,
-  createOrdersTable,
-  ORDERS_ID,
-} from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
-import { TYPE } from "metabase-lib/types/constants";
-import { createQuery, columnFinder } from "metabase-lib/test-helpers";
+import {
+  createQuery,
+  createQueryWithTimeFilter,
+  findTimeColumn,
+} from "../test-utils";
 import { getDefaultValue } from "./utils";
 import { TimeFilterPicker } from "./TimeFilterPicker";
-
-const TIME_FIELD = createMockField({
-  id: 100,
-  name: "TIME",
-  display_name: "Time",
-  table_id: ORDERS_ID,
-  base_type: TYPE.Time,
-  effective_type: TYPE.Time,
-  semantic_type: null,
-});
-
-const _ordersFields = createOrdersTable().fields?.filter(checkNotNull) ?? [];
-
-const database = createSampleDatabase({
-  tables: [
-    createOrdersTable({
-      fields: [..._ordersFields, TIME_FIELD],
-    }),
-  ],
-});
-
-const metadata = createMockMetadata({
-  databases: [database],
-});
-
-function findTimeColumn(query: Lib.Query) {
-  const columns = Lib.filterableColumns(query, 0);
-  const findColumn = columnFinder(query, columns);
-  return findColumn("ORDERS", "TIME");
-}
-
-function createFilteredQuery({
-  operator = ">",
-  values = [getDefaultValue()],
-}: Partial<Lib.TimeFilterParts> = {}) {
-  const initialQuery = createQuery({ metadata });
-  const column = findTimeColumn(initialQuery);
-
-  const clause = Lib.timeFilterClause({ operator, column, values });
-  const query = Lib.filter(initialQuery, 0, clause);
-  const [filter] = Lib.filters(query, 0);
-
-  return { query, column, filter };
-}
 
 type SetupOpts = {
   query?: Lib.Query;
@@ -74,7 +26,7 @@ const EXPECTED_OPERATORS = [
 ];
 
 function setup({
-  query = createQuery({ metadata }),
+  query = createQuery(),
   column = findTimeColumn(query),
   filter,
 }: SetupOpts = {}) {
@@ -94,8 +46,7 @@ function setup({
   );
 
   function getNextFilterParts() {
-    const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1];
-    const [filter] = lastCall;
+    const [filter] = onChange.mock.lastCall;
     return Lib.timeFilterParts(query, 0, filter);
   }
 
@@ -125,7 +76,7 @@ describe("TimeFilterPicker", () => {
     it("should render a blank editor", () => {
       setup();
 
-      expect(screen.getByText(TIME_FIELD.display_name)).toBeInTheDocument();
+      expect(screen.getByText("Time")).toBeInTheDocument();
       expect(screen.getByDisplayValue("Before")).toBeInTheDocument();
       expect(screen.getByDisplayValue("00:00")).toBeInTheDocument();
       expect(screen.getByText("Add filter")).toBeEnabled();
@@ -145,17 +96,16 @@ describe("TimeFilterPicker", () => {
     });
 
     it("should apply a default filter", () => {
-      const { query, column, getNextFilterParts, getNextFilterColumnName } =
-        setup();
+      const { getNextFilterParts, getNextFilterColumnName } = setup();
 
       userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
-      const columnInfo = Lib.displayInfo(query, 0, column);
-      expect(filterParts?.operator).toBe("<");
-      expect(columnInfo.displayName).toBe("Time");
-      expect(columnInfo.table?.displayName).toBe("Orders");
-      expect(filterParts?.values).toEqual([getDefaultValue()]);
+      expect(filterParts).toMatchObject({
+        operator: "<",
+        column: expect.anything(),
+        values: [getDefaultValue()],
+      });
       expect(getNextFilterColumnName()).toBe("Time");
     });
 
@@ -167,8 +117,11 @@ describe("TimeFilterPicker", () => {
       userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
-      expect(filterParts?.operator).toBe(">");
-      expect(filterParts?.values).toEqual([dayjs("11:15", "HH:mm").toDate()]);
+      expect(filterParts).toMatchObject({
+        operator: ">",
+        column: expect.anything(),
+        values: [dayjs("11:15", "HH:mm").toDate()],
+      });
       expect(getNextFilterColumnName()).toBe("Time");
     });
 
@@ -183,11 +136,14 @@ describe("TimeFilterPicker", () => {
       userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
-      expect(filterParts?.operator).toBe("between");
-      expect(filterParts?.values).toEqual([
-        dayjs("11:15", "HH:mm").toDate(),
-        dayjs("12:30", "HH:mm").toDate(),
-      ]);
+      expect(filterParts).toMatchObject({
+        operator: "between",
+        column: expect.anything(),
+        values: [
+          dayjs("11:15", "HH:mm").toDate(),
+          dayjs("12:30", "HH:mm").toDate(),
+        ],
+      });
       expect(getNextFilterColumnName()).toBe("Time");
     });
 
@@ -198,8 +154,11 @@ describe("TimeFilterPicker", () => {
       userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
-      expect(filterParts?.operator).toBe("is-null");
-      expect(filterParts?.values).toEqual([]);
+      expect(filterParts).toMatchObject({
+        operator: "is-null",
+        column: expect.anything(),
+        values: [],
+      });
       expect(getNextFilterColumnName()).toBe("Time");
     });
 
@@ -210,7 +169,11 @@ describe("TimeFilterPicker", () => {
       userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
-      expect(filterParts?.values).toEqual([dayjs("03:59", "HH:mm").toDate()]);
+      expect(filterParts).toMatchObject({
+        operator: "<",
+        column: expect.anything(),
+        values: [dayjs("03:59", "HH:mm").toDate()],
+      });
     });
 
     it("should go back", () => {
@@ -225,13 +188,13 @@ describe("TimeFilterPicker", () => {
     describe("with one value", () => {
       it("should render a filter", () => {
         setup(
-          createFilteredQuery({
+          createQueryWithTimeFilter({
             operator: ">",
             values: [dayjs("11:15", "HH:mm").toDate()],
           }),
         );
 
-        expect(screen.getByText(TIME_FIELD.display_name)).toBeInTheDocument();
+        expect(screen.getByText("Time")).toBeInTheDocument();
         expect(screen.getByDisplayValue("After")).toBeInTheDocument();
         expect(screen.getByDisplayValue("11:15")).toBeInTheDocument();
         expect(screen.getByText("Update filter")).toBeEnabled();
@@ -239,15 +202,18 @@ describe("TimeFilterPicker", () => {
 
       it("should update a filter", () => {
         const { getNextFilterParts, getNextFilterColumnName } = setup(
-          createFilteredQuery({ operator: ">" }),
+          createQueryWithTimeFilter({ operator: ">" }),
         );
 
         userEvent.type(screen.getByDisplayValue("00:00"), "20:45");
         userEvent.click(screen.getByText("Update filter"));
 
         const filterParts = getNextFilterParts();
-        expect(filterParts?.operator).toBe(">");
-        expect(filterParts?.values).toEqual([dayjs("20:45", "HH:mm").toDate()]);
+        expect(filterParts).toMatchObject({
+          operator: ">",
+          column: expect.anything(),
+          values: [dayjs("20:45", "HH:mm").toDate()],
+        });
         expect(getNextFilterColumnName()).toBe("Time");
       });
     });
@@ -255,7 +221,7 @@ describe("TimeFilterPicker", () => {
     describe("with two values", () => {
       it("should render a filter", () => {
         setup(
-          createFilteredQuery({
+          createQueryWithTimeFilter({
             operator: "between",
             values: [
               dayjs("11:15", "HH:mm").toDate(),
@@ -264,7 +230,7 @@ describe("TimeFilterPicker", () => {
           }),
         );
 
-        expect(screen.getByText(TIME_FIELD.display_name)).toBeInTheDocument();
+        expect(screen.getByText("Time")).toBeInTheDocument();
         expect(screen.getByDisplayValue("Between")).toBeInTheDocument();
         expect(screen.getByDisplayValue("11:15")).toBeInTheDocument();
         expect(screen.getByDisplayValue("13:00")).toBeInTheDocument();
@@ -273,7 +239,7 @@ describe("TimeFilterPicker", () => {
 
       it("should update a filter", () => {
         const { getNextFilterParts, getNextFilterColumnName } = setup(
-          createFilteredQuery({
+          createQueryWithTimeFilter({
             operator: "between",
             values: [
               dayjs("11:15", "HH:mm").toDate(),
@@ -286,21 +252,27 @@ describe("TimeFilterPicker", () => {
         userEvent.click(screen.getByText("Update filter"));
 
         let filterParts = getNextFilterParts();
-        expect(filterParts?.operator).toBe("between");
-        expect(filterParts?.values).toEqual([
-          dayjs("08:00", "HH:mm").toDate(),
-          dayjs("13:00", "HH:mm").toDate(),
-        ]);
+        expect(filterParts).toMatchObject({
+          operator: "between",
+          column: expect.anything(),
+          values: [
+            dayjs("08:00", "HH:mm").toDate(),
+            dayjs("13:00", "HH:mm").toDate(),
+          ],
+        });
 
         userEvent.type(screen.getByDisplayValue("13:00"), "17:31");
         userEvent.click(screen.getByText("Update filter"));
 
         filterParts = getNextFilterParts();
-        expect(filterParts?.operator).toBe("between");
-        expect(filterParts?.values).toEqual([
-          dayjs("08:00", "HH:mm").toDate(),
-          dayjs("17:31", "HH:mm").toDate(),
-        ]);
+        expect(filterParts).toMatchObject({
+          operator: "between",
+          column: expect.anything(),
+          values: [
+            dayjs("08:00", "HH:mm").toDate(),
+            dayjs("17:31", "HH:mm").toDate(),
+          ],
+        });
         expect(getNextFilterColumnName()).toBe("Time");
       });
     });
@@ -308,34 +280,37 @@ describe("TimeFilterPicker", () => {
     describe("with no values", () => {
       it("should render a filter", () => {
         setup(
-          createFilteredQuery({
+          createQueryWithTimeFilter({
             operator: "not-null",
             values: [],
           }),
         );
 
-        expect(screen.getByText(TIME_FIELD.display_name)).toBeInTheDocument();
+        expect(screen.getByText("Time")).toBeInTheDocument();
         expect(screen.getByDisplayValue("Not empty")).toBeInTheDocument();
         expect(screen.getByText("Update filter")).toBeEnabled();
       });
 
       it("should update a filter", async () => {
         const { getNextFilterParts, getNextFilterColumnName } = setup(
-          createFilteredQuery({ operator: "not-null", values: [] }),
+          createQueryWithTimeFilter({ operator: "not-null", values: [] }),
         );
 
         await setOperator("Is empty");
         userEvent.click(screen.getByText("Update filter"));
 
         const filterParts = getNextFilterParts();
-        expect(filterParts?.operator).toBe("is-null");
-        expect(filterParts?.values).toEqual([]);
+        expect(filterParts).toMatchObject({
+          operator: "is-null",
+          column: expect.anything(),
+          values: [],
+        });
         expect(getNextFilterColumnName()).toBe("Time");
       });
     });
 
     it("should list operators", async () => {
-      setup(createFilteredQuery({ operator: "<" }));
+      setup(createQueryWithTimeFilter({ operator: "<" }));
 
       userEvent.click(screen.getByDisplayValue("Before"));
       const listbox = await screen.findByRole("listbox");
@@ -349,7 +324,7 @@ describe("TimeFilterPicker", () => {
 
     it("should change an operator", async () => {
       const { getNextFilterParts, getNextFilterColumnName } = setup(
-        createFilteredQuery({
+        createQueryWithTimeFilter({
           operator: "<",
           values: [dayjs("11:15", "HH:mm").toDate()],
         }),
@@ -359,14 +334,17 @@ describe("TimeFilterPicker", () => {
       userEvent.click(screen.getByText("Update filter"));
 
       const filterParts = getNextFilterParts();
-      expect(filterParts?.operator).toBe(">");
-      expect(filterParts?.values).toEqual([dayjs("11:15", "HH:mm").toDate()]);
+      expect(filterParts).toMatchObject({
+        operator: ">",
+        column: expect.anything(),
+        values: [dayjs("11:15", "HH:mm").toDate()],
+      });
       expect(getNextFilterColumnName()).toBe("Time");
     });
 
     it("should re-use values when changing an operator", async () => {
       setup(
-        createFilteredQuery({
+        createQueryWithTimeFilter({
           operator: "between",
           values: [
             dayjs("11:15", "HH:mm").toDate(),
@@ -403,7 +381,7 @@ describe("TimeFilterPicker", () => {
 
     it("should handle invalid filter value", () => {
       const { getNextFilterParts } = setup(
-        createFilteredQuery({
+        createQueryWithTimeFilter({
           values: [dayjs("32:66", "HH:mm").toDate()],
         }),
       );
@@ -415,12 +393,16 @@ describe("TimeFilterPicker", () => {
       userEvent.click(screen.getByText("Update filter"));
 
       const filterParts = getNextFilterParts();
-      expect(filterParts?.values).toEqual([dayjs("11:00", "HH:mm").toDate()]);
+      expect(filterParts).toMatchObject({
+        operator: ">",
+        column: expect.anything(),
+        values: [dayjs("11:00", "HH:mm").toDate()],
+      });
     });
 
     it("should go back", () => {
       const { onBack, onChange } = setup(
-        createFilteredQuery({ operator: "<" }),
+        createQueryWithTimeFilter({ operator: "<" }),
       );
 
       userEvent.click(screen.getByLabelText("Back"));
