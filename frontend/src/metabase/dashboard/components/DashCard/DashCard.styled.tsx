@@ -30,6 +30,7 @@ const hiddenBackgroundStyle = css`
 `;
 
 export const DashCardRoot = styled.div<DashCardRootProps>`
+  container-type: inline-size;
   background-color: ${color("white")};
 
   ${({ isNightMode }) => isNightMode && rootNightModeStyle}
@@ -43,6 +44,7 @@ export const DashCardRoot = styled.div<DashCardRootProps>`
 
 export const DashboardCardActionsPanel = styled.div<{
   isDashCardTabMenuOpen: boolean;
+  onLeftEdge: boolean;
 }>`
   padding: 0.125em 0.25em;
   position: absolute;
@@ -59,6 +61,11 @@ export const DashboardCardActionsPanel = styled.div<{
     isDashCardTabMenuOpen ? "all" : "none"};
   // react-resizable covers panel, we have to override it
   z-index: 2;
+  // left align on small cards on the left edge to not make the actions go out of the viewport
+  @container (max-width: 12rem) {
+    ${({ onLeftEdge }) => onLeftEdge && "right: unset;"}
+    ${({ onLeftEdge }) => onLeftEdge && "left: 20px;"}
+  }
 
   .Card:hover &,
   .Card:focus-within & {
