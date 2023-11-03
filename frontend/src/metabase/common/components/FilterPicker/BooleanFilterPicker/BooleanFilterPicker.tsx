@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 import { Icon } from "metabase/core/components/Icon";
-import { Button, Divider, Group, Radio, Stack } from "metabase/ui";
+import { Button, Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { BackButton } from "../BackButton";
+import { SimpleLayout } from "../SimpleLayout";
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
 import { OPTIONS } from "./constants";
@@ -19,10 +19,7 @@ export function BooleanFilterPicker({
   onBack,
   onChange,
 }: FilterPickerWidgetProps) {
-  const columnInfo = useMemo(
-    () => Lib.displayInfo(query, stageIndex, column),
-    [query, stageIndex, column],
-  );
+  const columnName = Lib.displayInfo(query, stageIndex, column).longDisplayName;
 
   const options = useMemo(
     () => getAvailableOperatorOptions(query, stageIndex, column, OPTIONS),
@@ -50,9 +47,14 @@ export function BooleanFilterPicker({
   };
 
   return (
-    <div data-testid="boolean-filter-picker">
-      <BackButton onClick={onBack}>{columnInfo.longDisplayName}</BackButton>
-      <Divider />
+    <SimpleLayout
+      columnName={columnName}
+      isNew={isNew}
+      canSubmit
+      onSubmit={handleSubmit}
+      onBack={onBack}
+      testID="boolean-filter-picker"
+    >
       <Radio.Group value={optionType} onChange={handleOptionChange}>
         <Stack p="md" pb={isExpanded ? "md" : 0} spacing="sm">
           {visibleOptions.map(option => (
@@ -77,12 +79,6 @@ export function BooleanFilterPicker({
           {t`More options`}
         </Button>
       )}
-      <Divider />
-      <Group p="sm" position="right">
-        <Button variant="filled" onClick={handleSubmit}>
-          {isNew ? t`Add filter` : t`Update filter`}
-        </Button>
-      </Group>
-    </div>
+    </SimpleLayout>
   );
 }

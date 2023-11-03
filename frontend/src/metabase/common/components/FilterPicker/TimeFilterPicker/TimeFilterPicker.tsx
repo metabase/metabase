@@ -1,15 +1,12 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Button, Flex, Text, TimeInput } from "metabase/ui";
-
+import { Flex, Text, TimeInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
-import { BackButton } from "../BackButton";
-import { Header } from "../Header";
-import { Footer } from "../Footer";
+import { SimpleLayout } from "../SimpleLayout";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 
 import { OPERATOR_OPTIONS } from "./constants";
@@ -76,15 +73,21 @@ export function TimeFilterPicker({
   };
 
   return (
-    <div data-testid="time-filter-picker">
-      <Header>
-        <BackButton onClick={onBack}>{columnName}</BackButton>
+    <SimpleLayout
+      columnName={columnName}
+      isNew={isNew}
+      canSubmit={isValid}
+      onSubmit={handleFilterChange}
+      onBack={onBack}
+      headerRight={
         <FilterOperatorPicker
           value={operatorName}
           options={availableOperators}
           onChange={handleOperatorChange}
         />
-      </Header>
+      }
+      testID="time-filter-picker"
+    >
       {valueCount > 0 && (
         <Flex p="md">
           <ValuesInput
@@ -94,29 +97,17 @@ export function TimeFilterPicker({
           />
         </Flex>
       )}
-      <Footer mt={valueCount === 0 ? -1 : undefined} /* to collapse borders */>
-        <Box />
-        <Button
-          variant="filled"
-          disabled={!isValid}
-          onClick={handleFilterChange}
-        >
-          {isNew ? t`Add filter` : t`Update filter`}
-        </Button>
-      </Footer>
-    </div>
+    </SimpleLayout>
   );
 }
 
-function ValuesInput({
-  values,
-  valueCount,
-  onChange,
-}: {
+interface ValuesInputProps {
   values: Date[];
   valueCount: number;
   onChange: (values: Date[]) => void;
-}) {
+}
+
+function ValuesInput({ values, valueCount, onChange }: ValuesInputProps) {
   if (valueCount === 1) {
     const [value = getDefaultValue()] = values;
     return (

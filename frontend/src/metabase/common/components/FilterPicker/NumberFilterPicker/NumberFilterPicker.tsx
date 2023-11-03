@@ -1,14 +1,12 @@
 import { t } from "ttag";
 import { useState, useMemo } from "react";
-import { Box, Button, Flex, NumberInput, Text } from "metabase/ui";
+import { Flex, NumberInput, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
-import { BackButton } from "../BackButton";
-import { Header } from "../Header";
+import { SimpleLayout } from "../SimpleLayout";
 import { ColumnValuesWidget } from "../ColumnValuesWidget";
-import { Footer } from "../Footer";
 import { FlexWithScroll } from "../FilterPicker.styled";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { OPERATOR_OPTIONS } from "./constants";
@@ -67,32 +65,28 @@ export function NumberFilterPicker({
   };
 
   return (
-    <div data-testid="number-filter-picker">
-      <Header>
-        <BackButton onClick={onBack}>{columnName}</BackButton>
+    <SimpleLayout
+      columnName={columnName}
+      isNew={isNew}
+      canSubmit={isValid}
+      onSubmit={handleFilterChange}
+      onBack={onBack}
+      headerRight={
         <FilterOperatorPicker
           value={operatorName}
           options={availableOperators}
           onChange={handleOperatorChange}
         />
-      </Header>
+      }
+      testID="number-filter-picker"
+    >
       <NumberValueInput
         values={values}
         valueCount={valueCount}
         column={column}
         onChange={setValues}
       />
-      <Footer mt={valueCount === 0 ? -1 : undefined} /* to collapse borders */>
-        <Box />
-        <Button
-          variant="filled"
-          disabled={!isValid}
-          onClick={handleFilterChange}
-        >
-          {isNew ? t`Add filter` : t`Update filter`}
-        </Button>
-      </Footer>
-    </div>
+    </SimpleLayout>
   );
 }
 

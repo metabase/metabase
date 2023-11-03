@@ -1,20 +1,20 @@
 import { t } from "ttag";
 import { useState, useMemo } from "react";
-import { Box, Button, Checkbox, Flex } from "metabase/ui";
+import { Checkbox, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
-import { BackButton } from "../BackButton";
-import { Header } from "../Header";
+import { SimpleLayout } from "../SimpleLayout";
 import { ColumnValuesWidget } from "../ColumnValuesWidget";
-import { Footer } from "../Footer";
 
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
 
 import { OPERATOR_OPTIONS } from "./constants";
 import { isFilterValid } from "./utils";
+
+const MAX_HEIGHT = 300;
 
 export function StringFilterPicker({
   query,
@@ -78,17 +78,31 @@ export function StringFilterPicker({
   const canHaveManyValues = !Number.isFinite(valueCount);
 
   return (
-    <div data-testid="string-filter-picker">
-      <Header>
-        <BackButton onClick={onBack}>{columnName}</BackButton>
+    <SimpleLayout
+      columnName={columnName}
+      isNew={isNew}
+      canSubmit={isValid}
+      onSubmit={handleFilterChange}
+      onBack={onBack}
+      headerRight={
         <FilterOperatorPicker
           value={operatorName}
           options={availableOperators}
           onChange={handleOperatorChange}
         />
-      </Header>
+      }
+      footerLeft={
+        hasCaseSensitiveOption && (
+          <CaseSensitiveOption
+            value={options["case-sensitive"] ?? false}
+            onChange={newValue => setOptions({ "case-sensitive": newValue })}
+          />
+        )
+      }
+      testID="string-filter-picker"
+    >
       {valueCount > 0 && (
-        <FlexWithScroll p="md" mah={300}>
+        <FlexWithScroll p="md" mah={MAX_HEIGHT}>
           <ColumnValuesWidget
             column={column}
             value={values}
@@ -97,34 +111,16 @@ export function StringFilterPicker({
           />
         </FlexWithScroll>
       )}
-      <Footer mt={valueCount === 0 ? -1 : undefined} /* to collapse borders */>
-        {hasCaseSensitiveOption ? (
-          <CaseSensitiveOption
-            value={options["case-sensitive"] ?? false}
-            onChange={newValue => setOptions({ "case-sensitive": newValue })}
-          />
-        ) : (
-          <Box />
-        )}
-        <Button
-          variant="filled"
-          disabled={!isValid}
-          onClick={handleFilterChange}
-        >
-          {isNew ? t`Add filter` : t`Update filter`}
-        </Button>
-      </Footer>
-    </div>
+    </SimpleLayout>
   );
 }
 
-function CaseSensitiveOption({
-  value,
-  onChange,
-}: {
+interface CaseSensitiveOptionProps {
   value: boolean;
   onChange: (value: boolean) => void;
-}) {
+}
+
+function CaseSensitiveOption({ value, onChange }: CaseSensitiveOptionProps) {
   return (
     <Flex align="center" px="sm">
       <Checkbox
