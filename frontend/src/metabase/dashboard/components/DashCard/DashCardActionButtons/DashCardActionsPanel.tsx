@@ -21,10 +21,12 @@ import DashCardActionButton from "./DashCardActionButton";
 import AddSeriesButton from "./AddSeriesButton";
 import ChartSettingsButton from "./ChartSettingsButton";
 
-import { DashCardActionButtonsContainer } from "./DashCardActionButtons.styled";
 import ActionSettingsButton from "./ActionSettingsButton";
 import LinkCardEditButton from "./LinkCardEditButton";
-import { DashboardCardActionsPanel } from "./DashboardCardActionsPanel.styled";
+import {
+  DashCardActionButtonsContainer,
+  DashCardActionsPanelContainer,
+} from "./DashCardActionsPanel.styled";
 
 interface Props {
   series: Series;
@@ -46,7 +48,7 @@ interface Props {
   onMouseDown: (event: React.MouseEvent) => void;
 }
 
-function DashCardActionButtons({
+export function DashCardActionsPanel({
   series,
   dashboard,
   dashcard,
@@ -161,7 +163,7 @@ function DashCardActionButtons({
   }
 
   return (
-    <DashboardCardActionsPanel
+    <DashCardActionsPanelContainer
       data-testid="dashboardcard-actions-panel"
       onMouseDown={onMouseDown}
       isDashCardTabMenuOpen={isDashCardTabMenuOpen}
@@ -177,9 +179,6 @@ function DashCardActionButtons({
           <DashCardActionButton.Icon name="close" />
         </DashCardActionButton>
       </DashCardActionButtonsContainer>
-    </DashboardCardActionsPanel>
+    </DashCardActionsPanelContainer>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DashCardActionButtons;

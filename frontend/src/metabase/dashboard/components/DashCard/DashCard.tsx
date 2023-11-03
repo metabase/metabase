@@ -42,7 +42,7 @@ import type {
   NavigateToNewCardFromDashboardOpts,
   DashCardOnChangeCardAndRunHandler,
 } from "./types";
-import DashCardActionButtons from "./DashCardActionButtons";
+import { DashCardActionsPanel } from "./DashCardActionButtons";
 import DashCardVisualization from "./DashCardVisualization";
 import { DashCardRoot } from "./DashCard.styled";
 
@@ -260,7 +260,7 @@ function DashCard({
         ref={cardRootRef}
       >
         {isEditingDashboardLayout && (
-          <DashCardActionButtons
+          <DashCardActionsPanel
             onMouseDown={preventDragging}
             onLeftEdge={dashcard.col === 0}
             series={series}

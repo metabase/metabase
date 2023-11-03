@@ -1,6 +1,8 @@
 import styled from "@emotion/styled";
 
-export const DashboardCardActionsPanel = styled.div<{
+import { color } from "metabase/lib/colors";
+
+export const DashCardActionsPanelContainer = styled.div<{
   isDashCardTabMenuOpen: boolean;
   onLeftEdge: boolean;
 }>`
@@ -34,4 +36,12 @@ export const DashboardCardActionsPanel = styled.div<{
   .Dash--dragging & {
     display: none;
   }
+`;
+
+export const DashCardActionButtonsContainer = styled.span`
+  display: flex;
+  align-items: center;
+  color: ${color("text-medium")};
+  line-height: 1px;
+  gap: 0.5rem;
 `;
