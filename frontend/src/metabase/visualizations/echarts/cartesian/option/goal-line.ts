@@ -3,21 +3,25 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
+import type { CartesianChartModel } from "../model/types";
 
 export function getGoalLineEChartsSeries(
+  chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): RegisteredSeriesOption["line"] | null {
   if (!settings["graph.show_goal"]) {
     return null;
   }
+  const [_leftAxisKeys, rightAxisKeys] = chartModel.yAxisSplit;
 
   return {
     type: "line",
     markLine: {
       data: [{ name: "goal-line", yAxis: settings["graph.goal_value"] }],
       label: {
-        position: "insideEndTop",
+        position:
+          rightAxisKeys.length === 0 ? "insideEndTop" : "insideStartTop",
         formatter: () => settings["graph.goal_label"] ?? "",
         fontFamily: renderingContext.fontFamily,
         fontSize: 14,
