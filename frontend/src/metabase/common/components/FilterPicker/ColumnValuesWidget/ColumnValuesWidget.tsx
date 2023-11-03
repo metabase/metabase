@@ -23,7 +23,8 @@ export function ColumnValuesWidget<T extends string | number>({
   const fields = useMemo(() => {
     const fieldId = Lib._fieldId(column);
     if (typeof fieldId === "number") {
-      const field = metadata.field(fieldId);
+      const tableId = Lib._cardOrTableId(column);
+      const field = metadata.field(fieldId, tableId);
       return field ? [field] : [];
     }
     const fieldRef = Lib.legacyFieldRef(column);

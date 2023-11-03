@@ -2,26 +2,17 @@ import userEvent from "@testing-library/user-event";
 import { checkNotNull } from "metabase/lib/types";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import {
+  createQuery,
+  createQueryWithSpecificDateFilter,
+  createQueryWithRelativeDateFilter,
+  createQueryWithExcludeDateFilter,
+  findDateTimeColumn,
+} from "../test-utils";
 import { DateFilterPicker } from "./DateFilterPicker";
 
 const STAGE_INDEX = 0;
 const COLUMN_NAME = "CREATED_AT";
-
-function findDateColumn(query: Lib.Query) {
-  const columns = Lib.filterableColumns(query, STAGE_INDEX);
-  const findColumn = columnFinder(query, columns);
-  return findColumn("PRODUCTS", "CREATED_AT");
-}
-
-function createFilteredQuery(
-  initialQuery: Lib.Query,
-  clause: Lib.ExpressionClause,
-) {
-  const query = Lib.filter(initialQuery, STAGE_INDEX, clause);
-  const [filter] = Lib.filters(query, STAGE_INDEX);
-  return { query, filter };
-}
 
 interface SetupOpts {
   query: Lib.Query;
@@ -78,7 +69,7 @@ function setup({ query, column, filter, isNew = false }: SetupOpts) {
 
 describe("DateFilterPicker", () => {
   const initialQuery = createQuery();
-  const column = findDateColumn(initialQuery);
+  const column = findDateTimeColumn(initialQuery);
 
   it("should add a filter via shortcut", () => {
     const { getNextFilterColumnName, getNextRelativeFilterParts } = setup({
@@ -119,12 +110,9 @@ describe("DateFilterPicker", () => {
   });
 
   it("should update a specific date filter", () => {
-    const clause = Lib.specificDateFilterClause(initialQuery, STAGE_INDEX, {
-      operator: "=",
-      column,
-      values: [new Date(2020, 1, 15)],
+    const { query, filter } = createQueryWithSpecificDateFilter({
+      query: initialQuery,
     });
-    const { query, filter } = createFilteredQuery(initialQuery, clause);
     const { getNextFilterColumnName, getNextSpecificFilterParts } = setup({
       query,
       column,
@@ -165,15 +153,9 @@ describe("DateFilterPicker", () => {
   });
 
   it("should update a relative date filter", () => {
-    const clause = Lib.relativeDateFilterClause({
-      column,
-      value: -20,
-      bucket: "day",
-      offsetValue: null,
-      offsetBucket: null,
-      options: {},
+    const { query, filter } = createQueryWithRelativeDateFilter({
+      query: initialQuery,
     });
-    const { query, filter } = createFilteredQuery(initialQuery, clause);
     const { getNextFilterColumnName, getNextRelativeFilterParts } = setup({
       query,
       column,
@@ -214,13 +196,9 @@ describe("DateFilterPicker", () => {
   });
 
   it("should update an exclude date filter", () => {
-    const clause = Lib.excludeDateFilterClause(initialQuery, STAGE_INDEX, {
-      column,
-      operator: "!=",
-      values: [1],
-      bucket: "day-of-week",
+    const { query, filter } = createQueryWithExcludeDateFilter({
+      query: initialQuery,
     });
-    const { query, filter } = createFilteredQuery(initialQuery, clause);
     const { getNextFilterColumnName, getNextExcludeFilterParts } = setup({
       query,
       column,

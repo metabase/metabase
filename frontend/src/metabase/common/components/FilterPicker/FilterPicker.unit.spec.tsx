@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
-import { createMockMetadata } from "__support__/metadata";
 import {
   act,
   renderWithProviders,
@@ -9,162 +8,73 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
-import { createMockEntitiesState } from "__support__/store";
+
+import { checkNotNull } from "metabase/lib/types";
 
 import type { StructuredDatasetQuery } from "metabase-types/api";
-import { createMockField, createMockSegment } from "metabase-types/api/mocks";
 import {
   createAdHocCard,
-  createOrdersTable,
-  createOrdersIdField,
-  createOrdersProductIdField,
-  createOrdersUserIdField,
-  createOrdersTotalField,
-  createOrdersDiscountField,
-  createOrdersQuantityField,
-  createOrdersCreatedAtField,
-  createProductsTable,
-  createSampleDatabase,
   ORDERS,
-  ORDERS_ID,
   PRODUCT_CATEGORY_VALUES,
   PRODUCT_VENDOR_VALUES,
 } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import * as Lib from "metabase-lib";
-import { TYPE } from "metabase-lib/types/constants";
 import * as Lib_ColumnTypes from "metabase-lib/column_types";
 import Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import { createQuery, columnFinder } from "metabase-lib/test-helpers";
 
+import {
+  createQuery,
+  createFilteredQuery,
+  createQueryWithBooleanFilter,
+  createQueryWithCoordinateFilter,
+  createQueryWithNumberFilter,
+  createQueryWithStringFilter,
+  createQueryWithTimeFilter,
+  findBooleanColumn,
+  findNumericColumn,
+  findStringColumn,
+  metadata,
+  storeInitialState,
+  createQueryWithSpecificDateFilter,
+  findDateColumn,
+  createQueryWithExcludeDateFilter,
+  createQueryWithRelativeDateFilter,
+} from "./test-utils";
 import { FilterPicker } from "./FilterPicker";
-
-const TIME_FIELD = createMockField({
-  id: 100,
-  name: "TIME",
-  display_name: "Time",
-  table_id: ORDERS_ID,
-  base_type: TYPE.Time,
-  effective_type: TYPE.Time,
-  semantic_type: null,
-});
-
-const SEGMENT_1 = createMockSegment({
-  id: 1,
-  table_id: ORDERS_ID,
-  name: "Discounted",
-  description: "Orders with a discount",
-  definition: {
-    "source-table": ORDERS_ID,
-    filter: ["not-null", ["field", ORDERS.DISCOUNT, null]],
-  },
-});
-
-const SEGMENT_2 = createMockSegment({
-  id: 2,
-  table_id: ORDERS_ID,
-  name: "Many items",
-  description: "Orders with more than 5 items",
-  definition: {
-    "source-table": ORDERS_ID,
-    filter: [">", ["field", ORDERS.QUANTITY, null], 20],
-  },
-});
 
 const productCategories = PRODUCT_CATEGORY_VALUES.values.flat() as string[];
 const productVendors = PRODUCT_VENDOR_VALUES.values.flat() as string[];
 
-const db = createSampleDatabase({
-  tables: [
-    createOrdersTable({
-      fields: [
-        createOrdersIdField(),
-        createOrdersProductIdField(),
-        createOrdersUserIdField(),
-        createOrdersTotalField(),
-        createOrdersDiscountField(),
-        createOrdersQuantityField(),
-        createOrdersCreatedAtField(),
-        TIME_FIELD,
-      ],
-      segments: [SEGMENT_1, SEGMENT_2],
-    }),
-    createProductsTable(),
-  ],
-});
-
-const metadata = createMockMetadata({
-  databases: [db],
-  segments: [SEGMENT_1, SEGMENT_2],
-});
-
-const storeInitialState = createMockState({
-  entities: createMockEntitiesState({
-    databases: [db],
-    segments: [SEGMENT_1, SEGMENT_2],
-  }),
-});
-
-function createQueryWithFilter() {
-  const initialQuery = createQuery({ metadata });
-  const columns = Lib.filterableColumns(initialQuery, 0);
-  const findColumn = columnFinder(initialQuery, columns);
-
-  const totalColumn = findColumn("ORDERS", "TOTAL");
-  const clause = Lib.numberFilterClause({
-    operator: ">",
-    column: totalColumn,
-    values: [20],
-  });
-
-  const query = Lib.filter(initialQuery, 0, clause);
-  const [filter] = Lib.filters(query, 0);
-
-  return { query, filter };
-}
-
 function createQueryWithMultipleValuesFilter() {
-  const initialQuery = createQuery({ metadata });
-  const columns = Lib.filterableColumns(initialQuery, 0);
-  const findColumn = columnFinder(initialQuery, columns);
+  const query = createQuery();
+  const column = findStringColumn(query, { fieldValues: "search" });
 
-  const productVendorColumn = findColumn("PRODUCTS", "VENDOR");
   const clause = Lib.stringFilterClause({
     operator: "!=",
-    column: productVendorColumn,
+    column,
     values: ["Vendor 1", "Vendor 2"],
     options: {},
   });
 
-  const query = Lib.filter(initialQuery, 0, clause);
-  const [filter] = Lib.filters(query, 0);
-
-  return { query, filter };
+  return createFilteredQuery(query, clause);
 }
 
 function createQueryWithSegmentFilter() {
-  const initialQuery = createQuery({ metadata });
-  const [segment] = Lib.availableSegments(initialQuery, 0);
-  const query = Lib.filter(initialQuery, 0, segment);
-  const [filter] = Lib.filters(query, 0);
-  return { query, filter };
+  const query = createQuery();
+  const [segment] = Lib.availableSegments(query, 0);
+  return createFilteredQuery(query, segment);
 }
 
 function createQueryWithCustomFilter() {
-  const initialQuery = createQuery({ metadata });
-  const columns = Lib.filterableColumns(initialQuery, 0);
-  const findColumn = columnFinder(initialQuery, columns);
+  const query = createQuery();
 
-  const totalColumn = findColumn("ORDERS", "TOTAL");
-  const discountColumn = findColumn("ORDERS", "DISCOUNT");
-  const clause = Lib.expressionClause(">", [totalColumn, discountColumn], null);
+  const column1 = findBooleanColumn(query);
+  const column2 = findNumericColumn(query);
+  const clause = Lib.expressionClause(">", [column1, column2], null);
 
-  const query = Lib.filter(initialQuery, 0, clause);
-  const [filter] = Lib.filters(query, 0);
-
-  return { query, filter };
+  return createFilteredQuery(query, clause);
 }
 
 type SetupOpts = {
@@ -172,7 +82,69 @@ type SetupOpts = {
   filter?: Lib.FilterClause;
 };
 
-function setup({ query = createQuery({ metadata }), filter }: SetupOpts = {}) {
+type WidgetTestCase = [
+  string,
+  Partial<SetupOpts>,
+  { section?: string; columnName: string; pickerId: string },
+];
+
+const WIDGET_TEST_CASES: WidgetTestCase[] = [
+  [
+    "boolean",
+    createQueryWithBooleanFilter(),
+    {
+      section: "User",
+      columnName: "Is Active",
+      pickerId: "boolean-filter-picker",
+    },
+  ],
+  [
+    "coordinate",
+    createQueryWithCoordinateFilter(),
+    {
+      section: "User",
+      columnName: "Latitude",
+      pickerId: "coordinate-filter-picker",
+    },
+  ],
+  [
+    "date",
+    createQueryWithSpecificDateFilter({
+      column: findDateColumn(createQuery()),
+    }),
+    {
+      section: "User",
+      columnName: "Birth Date",
+      pickerId: "datetime-filter-picker",
+    },
+  ],
+  [
+    "datetime",
+    createQueryWithSpecificDateFilter(),
+    { columnName: "Created At", pickerId: "datetime-filter-picker" },
+  ],
+  [
+    "number",
+    createQueryWithNumberFilter(),
+    { columnName: "Discount", pickerId: "number-filter-picker" },
+  ],
+  [
+    "string",
+    createQueryWithStringFilter(),
+    {
+      section: "Product",
+      columnName: "Category",
+      pickerId: "string-filter-picker",
+    },
+  ],
+  [
+    "time",
+    createQueryWithTimeFilter(),
+    { columnName: "Time", pickerId: "time-filter-picker" },
+  ],
+];
+
+function setup({ query = createQuery(), filter }: SetupOpts = {}) {
   const dataset_query = Lib.toLegacyQuery(query) as StructuredDatasetQuery;
   const question = new Question(createAdHocCard({ dataset_query }), metadata);
   const legacyQuery = question.query() as StructuredQuery;
@@ -196,12 +168,24 @@ function setup({ query = createQuery({ metadata }), filter }: SetupOpts = {}) {
   );
 
   function getNextFilter() {
-    const lastCall = onSelect.mock.calls[onSelect.mock.calls.length - 1];
-    const [filter] = lastCall;
+    const [filter] = onSelect.mock.lastCall;
     return filter;
   }
 
-  return { query, getNextFilter, onSelect, onSelectLegacy };
+  function getNextFilterColumnName() {
+    const filter = getNextFilter();
+    const parts = Lib.filterParts(query, 0, filter);
+    const column = checkNotNull(parts?.column);
+    return Lib.displayInfo(query, 0, column).longDisplayName;
+  }
+
+  return {
+    query,
+    getNextFilter,
+    getNextFilterColumnName,
+    onSelect,
+    onSelectLegacy,
+  };
 }
 
 describe("FilterPicker", () => {
@@ -215,16 +199,71 @@ describe("FilterPicker", () => {
       userEvent.click(screen.getByText("Product"));
       expect(screen.getByText("Category")).toBeInTheDocument();
     });
+
+    it("should list segments", () => {
+      setup();
+
+      expect(screen.getByText("Discounted")).toBeInTheDocument();
+      expect(screen.getByText("Many items")).toBeInTheDocument();
+    });
+
+    it("should not highlight anything", () => {
+      setup();
+
+      expect(screen.getByLabelText("Total")).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+      expect(screen.getByLabelText("Discount")).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+      expect(screen.getByLabelText("Discounted")).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+      expect(screen.getByLabelText("Many items")).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+    });
+
+    it("should add a segment filter", async () => {
+      const { query, getNextFilter } = setup();
+
+      userEvent.click(screen.getByText("Discounted"));
+
+      const filter = getNextFilter();
+      const name = Lib.displayInfo(query, 0, filter).displayName;
+      expect(name).toBe("Discounted");
+    });
+
+    describe("filter pickers", () => {
+      it.each(WIDGET_TEST_CASES)(
+        "should open correct picker for a %s column",
+        (type, query, { section, columnName, pickerId }) => {
+          setup();
+
+          if (section) {
+            userEvent.click(screen.getByText(section));
+          }
+          userEvent.click(screen.getByText(columnName));
+
+          expect(screen.getByTestId(pickerId)).toBeInTheDocument();
+        },
+      );
+
+      it("should open a number picker for a numeric column", () => {
+        setup();
+        userEvent.click(screen.getByText("Total"));
+        expect(screen.getByTestId("number-filter-picker")).toBeInTheDocument();
+      });
+    });
   });
 
   describe("with a filter", () => {
-    it("should show the filter editor", () => {
-      setup(createQueryWithFilter());
-      expect(screen.getByText("Update filter")).toBeInTheDocument();
-    });
-
     it("should highlight the selected column", async () => {
-      setup(createQueryWithFilter());
+      setup(createQueryWithNumberFilter());
 
       userEvent.click(screen.getByLabelText("Back"));
 
@@ -236,7 +275,7 @@ describe("FilterPicker", () => {
         "aria-selected",
         "false",
       );
-      expect(screen.getByLabelText(SEGMENT_1.name)).toHaveAttribute(
+      expect(screen.getByLabelText("Discounted")).toHaveAttribute(
         "aria-selected",
         "false",
       );
@@ -245,11 +284,11 @@ describe("FilterPicker", () => {
     it("should highlight the selected segment", async () => {
       setup(createQueryWithSegmentFilter());
 
-      expect(await screen.findByLabelText(SEGMENT_1.name)).toHaveAttribute(
+      expect(await screen.findByLabelText("Discounted")).toHaveAttribute(
         "aria-selected",
         "true",
       );
-      expect(screen.getByLabelText(SEGMENT_2.name)).toHaveAttribute(
+      expect(screen.getByLabelText("Many items")).toHaveAttribute(
         "aria-selected",
         "false",
       );
@@ -260,7 +299,7 @@ describe("FilterPicker", () => {
     });
 
     it("should ignore the existing filter state when changing a column", async () => {
-      const { query, getNextFilter } = setup(
+      const { query, getNextFilter, getNextFilterColumnName } = setup(
         createQueryWithMultipleValuesFilter(),
       );
       await waitForLoaderToBeRemoved(); // fetching Vendor field values
@@ -282,30 +321,50 @@ describe("FilterPicker", () => {
 
       const filter = getNextFilter();
       const filterParts = Lib.stringFilterParts(query, 0, filter);
-      const column = filterParts?.column as Lib.ColumnMetadata;
       expect(filterParts?.operator).toBe("=");
       expect(filterParts?.values).toEqual(["Gadget", "Gizmo"]);
-      expect(Lib.displayInfo(query, 0, column).name).toBe("CATEGORY");
+      expect(getNextFilterColumnName()).toBe("Product → Category");
     });
 
-    it("should open the expression editor when column type isn't supported", () => {
-      const spy = jest
-        .spyOn(Lib_ColumnTypes, "isNumeric")
-        .mockReturnValue(false);
+    describe("filter pickers", () => {
+      it.each(WIDGET_TEST_CASES)(
+        "should open correct picker for a %s column",
+        (type, opts, { pickerId }) => {
+          setup(opts);
+          expect(screen.getByTestId(pickerId)).toBeInTheDocument();
+        },
+      );
 
-      setup(createQueryWithFilter());
-      expect(screen.getByText(/Custom expression/i)).toBeInTheDocument();
+      it.each([
+        ["specific", createQueryWithSpecificDateFilter()],
+        ["relative", createQueryWithRelativeDateFilter()],
+        ["exclude", createQueryWithExcludeDateFilter()],
+      ])(`should open the date picker for a %s date filter`, (type, opts) => {
+        setup(opts);
+        expect(
+          screen.getByTestId("datetime-filter-picker"),
+        ).toBeInTheDocument();
+      });
 
-      spy.mockRestore();
+      it("should open the expression editor when column type isn't supported", () => {
+        const spy = jest
+          .spyOn(Lib_ColumnTypes, "isNumeric")
+          .mockReturnValue(false);
+
+        setup(createQueryWithNumberFilter());
+        expect(screen.getByText(/Custom expression/i)).toBeInTheDocument();
+
+        spy.mockRestore();
+      });
     });
-  });
 
-  describe("time filter picker", () => {
-    it("should initialize correctly after changing a column", () => {
-      const { query, getNextFilter } = setup(createQueryWithFilter());
+    it("should initialize widgets correctly after changing a column", () => {
+      const { query, getNextFilter, getNextFilterColumnName } = setup(
+        createQueryWithNumberFilter(),
+      );
 
       userEvent.click(screen.getByLabelText("Back"));
-      userEvent.click(screen.getByText(TIME_FIELD.display_name));
+      userEvent.click(screen.getByText("Time"));
 
       expect(screen.getByLabelText("Filter operator")).toHaveValue("Before");
       expect(screen.getByDisplayValue("00:00")).toBeInTheDocument();
@@ -313,12 +372,38 @@ describe("FilterPicker", () => {
       userEvent.click(screen.getByText("Update filter"));
 
       const filterParts = Lib.timeFilterParts(query, 0, getNextFilter());
-      const column = filterParts?.column as Lib.ColumnMetadata;
       expect(filterParts?.operator).toBe("<");
       expect(filterParts?.values).toEqual([dayjs("00:00", "HH:mm").toDate()]);
-      expect(Lib.displayInfo(query, 0, column).longDisplayName).toBe(
-        TIME_FIELD.display_name,
+      expect(getNextFilterColumnName()).toBe("Time");
+    });
+
+    it("should change a filter segment", () => {
+      const { query, getNextFilter } = setup(createQueryWithSegmentFilter());
+
+      userEvent.click(screen.getByText("Many items"));
+
+      const filter = getNextFilter();
+      const name = Lib.displayInfo(query, 0, filter).displayName;
+      expect(name).toBe("Many items");
+    });
+
+    it("should replace a segment filter with a column filter", () => {
+      const { query, getNextFilter, getNextFilterColumnName } = setup(
+        createQueryWithSegmentFilter(),
       );
+
+      userEvent.click(screen.getByText("Total"));
+      userEvent.type(screen.getByPlaceholderText("Enter a number"), "100");
+      userEvent.click(screen.getByText("Update filter"));
+
+      const filter = getNextFilter();
+      const filterParts = Lib.numberFilterParts(query, 0, filter);
+      expect(filterParts).toMatchObject({
+        operator: "=",
+        column: expect.anything(),
+        values: [100],
+      });
+      expect(getNextFilterColumnName()).toBe("Total");
     });
   });
 
