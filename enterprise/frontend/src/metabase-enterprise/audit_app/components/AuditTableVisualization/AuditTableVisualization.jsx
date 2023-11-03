@@ -181,10 +181,19 @@ export class AuditTableVisualization extends Component {
                 const value = row[colIndex];
                 const column = cols[colIndex];
                 const clicked = { column, value, origin: { row, cols } };
-                const clickable = visualizationIsClickable(clicked);
+                const clickable = onVisualizationClick != null;
                 const columnSettings = {
                   ...settings.column(column),
                   ...settings["table.columns"][colIndex],
+                };
+
+                const handleClick = () => {
+                  if (
+                    onVisualizationClick &&
+                    visualizationIsClickable(clicked)
+                  ) {
+                    onVisualizationClick(clicked);
+                  }
                 };
 
                 return (
@@ -192,9 +201,7 @@ export class AuditTableVisualization extends Component {
                     key={colIndex}
                     isClickable={clickable}
                     isRightAligned={isColumnRightAligned(column)}
-                    onClick={
-                      clickable ? () => onVisualizationClick(clicked) : null
-                    }
+                    onClick={handleClick}
                   >
                     <div
                       className={cx({

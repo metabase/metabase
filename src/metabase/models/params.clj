@@ -120,7 +120,7 @@
              (template-tag->field-form dimension card)
              dimension))
           (catch Throwable e
-            (log/error e (tru "Could not find matching Field ID for target:") target)))))))
+            (log/error e "Could not find matching Field ID for target:" target)))))))
 
 (defn- pk-fields
   "Return the `fields` that are PK Fields."

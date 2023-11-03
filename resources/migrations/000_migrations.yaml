@@ -15098,6 +15098,31 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
+      id: v47.00-058
+      author: qnkhuat
+      comment: 'Drop parameter_card.entity_id'
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: parameter_card
+            columnName: entity_id
+      changes:
+        - dropColumn:
+            tableName: parameter_card
+            columnName: entity_id
+      rollback:
+        - addColumn:
+            tableName: parameter_card
+            columns:
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+
+  - changeSet:
       id: v48.00-001
       author: qnkhuat
       comment: Added 0.47.0 - Migrate database.options to database.settings
@@ -15524,6 +15549,20 @@ databaseChangeLog:
                   name: semantic_type
                   value: NULL
             where: semantic_type = 'type/Number'
+      rollback:
+
+  # this is a no op, it was previously used to Drop parameter_card.entity_id,
+  # now it's moved to v47.00-058
+  # this is still here because we want the change set id to be consistent
+  # see #35239 for details
+  - changeSet:
+      id: v48.00-027
+      author: qnkhuat
+      validCheckSum: ANY
+      comment: 'No op migration'
+      changes:
+        - sql:
+          sql: SELECT 1;
       rollback:
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<

@@ -1,8 +1,10 @@
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  addOrUpdateDashboardCard,
   editDashboard,
   getActionCardDetails,
+  getBrokenUpTextMatcher,
   getDashboardCard,
   getHeadingCardDetails,
   getLinkCardDetails,
@@ -13,22 +15,36 @@ import {
   saveDashboard,
   updateDashboardCards,
   visitDashboard,
+  visitEmbeddedPage,
 } from "e2e/support/helpers";
 
 import { createMockActionParameter } from "metabase-types/api/mocks";
 import { b64hash_to_utf8 } from "metabase/lib/encoding";
 
-const URL = "https://metabase.com/";
 const COUNT_COLUMN_ID = "count";
 const COUNT_COLUMN_NAME = "Count";
+const COUNT_COLUMN_SOURCE = {
+  type: "column",
+  id: COUNT_COLUMN_ID,
+  name: COUNT_COLUMN_NAME,
+};
 const CREATED_AT_COLUMN_ID = "CREATED_AT";
 const CREATED_AT_COLUMN_NAME = "Created At";
+const CREATED_AT_COLUMN_SOURCE = {
+  type: "column",
+  id: CREATED_AT_COLUMN_ID,
+  name: CREATED_AT_COLUMN_NAME,
+};
 const FILTER_VALUE = "123";
 const POINT_COUNT = 79;
 const POINT_CREATED_AT = "2022-08";
 const POINT_CREATED_AT_FORMATTED = "August 2022";
 const POINT_INDEX = 4;
 const RESTRICTED_COLLECTION_NAME = "Restricted collection";
+const COLUMN_INDEX = {
+  CREATED_AT: 0,
+  COUNT: 1,
+};
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
@@ -45,6 +61,12 @@ const QUESTION_LINE_CHART = {
     "source-table": ORDERS_ID,
     limit: 5,
   },
+};
+
+const QUESTION_TABLE = {
+  name: "Table",
+  display: "table",
+  query: QUESTION_LINE_CHART.query,
 };
 
 const OBJECT_DETAIL_CHART = {
@@ -87,6 +109,15 @@ const QUERY_FILTER_QUANTITY = [
   ["field", ORDERS.QUANTITY, null],
   POINT_COUNT,
 ];
+
+const URL = "https://metabase.com/";
+const URL_WITH_PARAMS = `${URL}{{${DASHBOARD_FILTER_TEXT.slug}}}/{{${COUNT_COLUMN_ID}}}/{{${CREATED_AT_COLUMN_ID}}}`;
+const URL_WITH_FILLED_PARAMS = URL_WITH_PARAMS.replace(
+  `{{${COUNT_COLUMN_ID}}}`,
+  POINT_COUNT,
+)
+  .replace(`{{${CREATED_AT_COLUMN_ID}}}`, POINT_CREATED_AT)
+  .replace(`{{${DASHBOARD_FILTER_TEXT.slug}}}`, FILTER_VALUE);
 
 describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
@@ -377,14 +408,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       saveDashboard();
 
       clickLineChartPoint();
-      cy.findByTestId("qb-filters-panel").should(
-        "contain.text",
-        "Created At is August 1–31, 2022",
-      );
-      cy.findByTestId("qb-filters-panel").should(
-        "contain.text",
-        "Quantity is equal to 79",
-      );
+      cy.findByTestId("qb-filters-panel")
+        .should("contain.text", "Created At is August 1–31, 2022")
+        .should("contain.text", "Quantity is equal to 79");
       cy.location().should(({ hash, pathname }) => {
         expect(pathname).to.equal("/question");
         const card = deserializeCardFromUrl(hash);
@@ -441,8 +467,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       editDashboard();
 
       getDashboardCard().realHover().icon("click").click();
-      cy.get("aside").findByText("Go to a custom destination").click();
-      cy.get("aside").findByText("URL").click();
+      addUrlDestination();
       modal().within(() => {
         cy.findByRole("textbox").type(URL);
         cy.button("Done").click();
@@ -462,12 +487,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     it("allows setting URL with parameters as custom destination", () => {
-      const urlWithParams = `${URL}{{${DASHBOARD_FILTER_TEXT.slug}}}/{{${COUNT_COLUMN_ID}}}/{{${CREATED_AT_COLUMN_ID}}}`;
-      const expectedUrlWithParams = urlWithParams
-        .replace(`{{${COUNT_COLUMN_ID}}}`, POINT_COUNT)
-        .replace(`{{${CREATED_AT_COLUMN_ID}}}`, POINT_CREATED_AT)
-        .replace(`{{${DASHBOARD_FILTER_TEXT.slug}}}`, FILTER_VALUE);
-
       const dashboardDetails = {
         parameters: [DASHBOARD_FILTER_TEXT],
       };
@@ -481,8 +500,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       editDashboard();
 
       getDashboardCard().realHover().icon("click").click();
-      cy.get("aside").findByText("Go to a custom destination").click();
-      cy.get("aside").findByText("URL").click();
+      addUrlDestination();
       modal().findByText("Values you can reference").click();
       popover().within(() => {
         cy.findByText(COUNT_COLUMN_ID).should("exist");
@@ -491,7 +509,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.realPress("Escape");
       });
       modal().within(() => {
-        cy.findByRole("textbox").type(urlWithParams, {
+        cy.findByRole("textbox").type(URL_WITH_PARAMS, {
           parseSpecialCharSequences: false,
         });
         cy.button("Done").click();
@@ -500,14 +518,14 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       saveDashboard();
 
-      cy.findByTestId("field-set").click();
+      cy.button(DASHBOARD_FILTER_TEXT.name).click();
       popover().within(() => {
         cy.findByPlaceholderText("Enter some text").type(FILTER_VALUE);
         cy.button("Add filter").click();
       });
 
       onNextAnchorClick(anchor => {
-        expect(anchor).to.have.attr("href", expectedUrlWithParams);
+        expect(anchor).to.have.attr("href", URL_WITH_FILLED_PARAMS);
         expect(anchor).to.have.attr("rel", "noopener");
         expect(anchor).to.have.attr("target", "_blank");
       });
@@ -569,6 +587,62 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       testChangingBackToDefaultBehavior();
     });
 
+    it("behavior is updated after linked dashboard filter has been removed", () => {
+      const dashboardDetails = {
+        parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
+      };
+
+      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+          cy.location().then(({ pathname }) => {
+            cy.wrap(pathname).as("originalPathname");
+          });
+        },
+      );
+
+      editDashboard();
+
+      getDashboardCard().realHover().icon("click").click();
+      cy.get("aside").findByText("Update a dashboard filter").click();
+      addTextParameter();
+      addTimeParameter();
+      cy.get("aside")
+        .should("contain.text", DASHBOARD_FILTER_TEXT.name)
+        .should("contain.text", COUNT_COLUMN_NAME);
+      cy.get("aside").button("Done").click();
+
+      saveDashboard();
+
+      editDashboard();
+      cy.findByTestId("edit-dashboard-parameters-widget-container")
+        .findByText(DASHBOARD_FILTER_TEXT.name)
+        .click();
+      cy.get("aside").button("Remove").click();
+
+      saveDashboard();
+
+      clickLineChartPoint();
+      cy.findAllByTestId("field-set")
+        .should("have.length", 1)
+        .should("contain.text", POINT_CREATED_AT_FORMATTED);
+      cy.get("@originalPathname").then(originalPathname => {
+        cy.location().should(({ pathname, search }) => {
+          expect(pathname).to.equal(originalPathname);
+          expect(search).to.equal(
+            `?${DASHBOARD_FILTER_TIME.slug}=${POINT_CREATED_AT}`,
+          );
+        });
+      });
+
+      editDashboard();
+
+      getDashboardCard().realHover().icon("click").click();
+      cy.get("aside")
+        .should("not.contain.text", DASHBOARD_FILTER_TEXT.name)
+        .should("not.contain.text", COUNT_COLUMN_NAME);
+    });
+
     it("allows updating multiple dashboard filters", () => {
       const dashboardDetails = {
         parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
@@ -606,6 +680,492 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           );
         });
       });
+    });
+  });
+
+  describe("table", () => {
+    const questionDetails = QUESTION_TABLE;
+    const dashboardDetails = {
+      parameters: [DASHBOARD_FILTER_TEXT],
+    };
+
+    it("should open drill-through menu as a default click-behavior", () => {
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+        },
+      );
+
+      getTableCell(COLUMN_INDEX.COUNT).click();
+      popover().should("contain.text", "Filter by this value");
+
+      getTableCell(COLUMN_INDEX.CREATED_AT).click();
+      popover().should("contain.text", "Filter by this date");
+
+      editDashboard();
+
+      getDashboardCard().realHover().icon("click").click();
+      getDashboardCard()
+        .button()
+        .should("have.text", "Open the drill-through menu");
+    });
+
+    it("should allow setting dashboard and saved question as custom destination for different columns", () => {
+      cy.createQuestion(TARGET_QUESTION);
+      cy.createDashboard(
+        {
+          ...TARGET_DASHBOARD,
+          parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
+        },
+        {
+          wrapId: true,
+          idAlias: "targetDashboardId",
+        },
+      );
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+        },
+      );
+
+      editDashboard();
+
+      getDashboardCard().realHover().icon("click").click();
+
+      (function addCustomDashboardDestination() {
+        cy.log("custom destination (dashboard) behavior for 'Count' column");
+
+        getCountToDashboardMapping().should("not.exist");
+        cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
+        addDashboardDestination();
+        cy.get("aside").findByText("No available targets").should("not.exist");
+        addTextParameter();
+        addTimeParameter();
+        cy.get("aside")
+          .findByRole("textbox")
+          .type(`Count: {{${COUNT_COLUMN_ID}}}`, {
+            parseSpecialCharSequences: false,
+          });
+
+        cy.icon("chevronleft").click();
+
+        getCountToDashboardMapping().should("exist");
+        getDashboardCard()
+          .button()
+          .should("have.text", "1 column has custom behavior");
+      })();
+
+      (function addCustomQuestionDestination() {
+        cy.log(
+          "custom destination (question) behavior for 'Created at' column",
+        );
+
+        getCreatedAtToQuestionMapping().should("not.exist");
+        cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
+        /**
+         * TODO: remove the next line when metabase#34845 is fixed
+         * @see https://github.com/metabase/metabase/issues/34845
+         */
+        cy.get("aside").findByText("Unknown").click();
+        addSavedQuestionDestination();
+        addSavedQuestionCreatedAtParameter();
+        addSavedQuestionQuantityParameter();
+        cy.get("aside")
+          .findByRole("textbox")
+          .type(`Created at: {{${CREATED_AT_COLUMN_ID}}}`, {
+            parseSpecialCharSequences: false,
+          });
+
+        cy.icon("chevronleft").click();
+
+        getCreatedAtToQuestionMapping().should("exist");
+        getDashboardCard()
+          .button()
+          .should("have.text", "2 columns have custom behavior");
+      })();
+
+      cy.get("aside").button("Done").click();
+      saveDashboard();
+
+      (function testDashboardDestinationClick() {
+        cy.log("it handles 'Count' column click");
+
+        getTableCell(COLUMN_INDEX.COUNT)
+          .should("have.text", `Count: ${POINT_COUNT}`)
+          .click();
+        cy.findAllByTestId("field-set")
+          .should("have.length", 2)
+          .should("contain.text", POINT_COUNT)
+          .should("contain.text", POINT_CREATED_AT_FORMATTED);
+        cy.get("@targetDashboardId").then(targetDashboardId => {
+          cy.location().should(({ pathname, search }) => {
+            expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+            expect(search).to.equal(
+              `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.slug}=${POINT_CREATED_AT}`,
+            );
+          });
+        });
+      })();
+
+      cy.go("back");
+
+      (function testQuestionDestinationClick() {
+        cy.log("it handles 'Created at' column click");
+
+        getTableCell(COLUMN_INDEX.CREATED_AT)
+          .should("have.text", `Created at: ${POINT_CREATED_AT_FORMATTED}`)
+          .click();
+        cy.findByTestId("qb-filters-panel")
+          .should("contain.text", "Created At is August 1–31, 2022")
+          .should("contain.text", "Quantity is equal to 79");
+        cy.location().should(({ hash, pathname }) => {
+          expect(pathname).to.equal("/question");
+          const card = deserializeCardFromUrl(hash);
+          expect(card.name).to.deep.equal(TARGET_QUESTION.name);
+          expect(card.display).to.deep.equal(TARGET_QUESTION.display);
+          expect(card.dataset_query.query).to.deep.equal({
+            ...TARGET_QUESTION.query,
+            filter: ["and", QUERY_FILTER_CREATED_AT, QUERY_FILTER_QUANTITY],
+          });
+        });
+      })();
+    });
+
+    it("should allow setting URL as custom destination and updating dashboard filters for different columns", () => {
+      cy.createQuestion(TARGET_QUESTION);
+      cy.createDashboard(
+        {
+          ...TARGET_DASHBOARD,
+          parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
+        },
+        {
+          wrapId: true,
+          idAlias: "targetDashboardId",
+        },
+      );
+      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+          cy.location().then(({ pathname }) => {
+            cy.wrap(pathname).as("originalPathname");
+          });
+        },
+      );
+
+      editDashboard();
+
+      getDashboardCard().realHover().icon("click").click();
+
+      (function addUpdateDashboardFilters() {
+        cy.log("update dashboard filters behavior for 'Count' column");
+
+        getCountToDashboardFilterMapping().should("not.exist");
+        cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
+        cy.get("aside").findByText("Update a dashboard filter").click();
+        addTextParameter();
+        cy.get("aside").findByRole("textbox").should("not.exist");
+
+        cy.icon("chevronleft").click();
+
+        getCountToDashboardFilterMapping().should("exist");
+      })();
+
+      getDashboardCard()
+        .button()
+        .should("have.text", "1 column has custom behavior");
+
+      (function addCustomUrlDestination() {
+        cy.log("custom destination (URL) behavior for 'Created At' column");
+
+        getCreatedAtToUrlMapping().should("not.exist");
+        cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
+        /**
+         * TODO: remove the next line when metabase#34845 is fixed
+         * @see https://github.com/metabase/metabase/issues/34845
+         */
+        cy.get("aside").findByText("Unknown").click();
+        addUrlDestination();
+        modal().within(() => {
+          const urlInput = cy.findAllByRole("textbox").eq(0);
+          const customLinkTextInput = cy.findAllByRole("textbox").eq(1);
+          urlInput.type(URL_WITH_PARAMS, {
+            parseSpecialCharSequences: false,
+          });
+          customLinkTextInput.type(`Created at: {{${CREATED_AT_COLUMN_ID}}}`, {
+            parseSpecialCharSequences: false,
+          });
+          cy.button("Done").click();
+        });
+
+        cy.icon("chevronleft").click();
+
+        getCreatedAtToUrlMapping().should("exist");
+      })();
+
+      getDashboardCard()
+        .button()
+        .should("have.text", "2 columns have custom behavior");
+
+      cy.get("aside").button("Done").click();
+      saveDashboard();
+
+      (function testUpdateDashboardFiltersClick() {
+        cy.log("it handles 'Count' column click");
+
+        getTableCell(COLUMN_INDEX.COUNT).click();
+        cy.findAllByTestId("field-set")
+          .should("have.length", 1)
+          .should("contain.text", POINT_COUNT);
+        cy.get("@originalPathname").then(originalPathname => {
+          cy.location().should(({ pathname, search }) => {
+            expect(pathname).to.equal(originalPathname);
+            expect(search).to.equal(
+              `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}`,
+            );
+          });
+        });
+      })();
+
+      (function testCustomUrlDestinationClick() {
+        cy.log("it handles 'Created at' column click");
+
+        cy.button(DASHBOARD_FILTER_TEXT.name).click();
+        popover().within(() => {
+          cy.icon("close").click();
+          cy.findByPlaceholderText("Enter some text").type(FILTER_VALUE);
+          cy.button("Update filter").click();
+        });
+        onNextAnchorClick(anchor => {
+          expect(anchor).to.have.attr("href", URL_WITH_FILLED_PARAMS);
+          expect(anchor).to.have.attr("rel", "noopener");
+          expect(anchor).to.have.attr("target", "_blank");
+        });
+        getTableCell(COLUMN_INDEX.CREATED_AT)
+          .should("have.text", `Created at: ${POINT_CREATED_AT_FORMATTED}`)
+          .click();
+      })();
+    });
+  });
+
+  describe("full app embedding", () => {
+    const questionDetails = QUESTION_LINE_CHART;
+
+    beforeEach(() => {
+      cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
+      cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
+    });
+
+    it("does not allow opening custom dashboard destination", () => {
+      const dashboardDetails = {
+        enable_embedding: true,
+        embedding_params: {},
+      };
+
+      cy.createDashboard(
+        {
+          ...TARGET_DASHBOARD,
+          enable_embedding: true,
+          embedding_params: {},
+        },
+        {
+          wrapId: true,
+          idAlias: "targetDashboardId",
+        },
+      );
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        cy.createQuestionAndDashboard({
+          questionDetails,
+          dashboardDetails,
+        }).then(({ body: card }) => {
+          addOrUpdateDashboardCard({
+            dashboard_id: card.dashboard_id,
+            card_id: card.card_id,
+            card: {
+              id: card.id,
+              visualization_settings: {
+                click_behavior: {
+                  parameterMapping: {},
+                  targetId: targetDashboardId,
+                  linkType: "dashboard",
+                  type: "link",
+                },
+              },
+            },
+          });
+
+          visitEmbeddedPage({
+            resource: { dashboard: card.dashboard_id },
+            params: {},
+          });
+          cy.wait("@dashboard");
+          cy.wait("@cardQuery");
+        });
+      });
+
+      cy.url().then(originalUrl => {
+        clickLineChartPoint();
+        cy.url().should("eq", originalUrl);
+      });
+      cy.get("header").findByText(TARGET_DASHBOARD.name).should("not.exist");
+    });
+
+    it("does not allow opening custom question destination", () => {
+      const dashboardDetails = {
+        enable_embedding: true,
+        embedding_params: {},
+      };
+
+      cy.createQuestion(
+        {
+          ...TARGET_QUESTION,
+          enable_embedding: true,
+          embedding_params: {},
+        },
+        {
+          wrapId: true,
+          idAlias: "targetQuestionId",
+        },
+      );
+      cy.get("@targetQuestionId").then(targetQuestionId => {
+        cy.createQuestionAndDashboard({
+          questionDetails,
+          dashboardDetails,
+        }).then(({ body: card }) => {
+          addOrUpdateDashboardCard({
+            dashboard_id: card.dashboard_id,
+            card_id: card.card_id,
+            card: {
+              id: card.id,
+              visualization_settings: {
+                click_behavior: {
+                  parameterMapping: {},
+                  targetId: targetQuestionId,
+                  linkType: "question",
+                  type: "link",
+                },
+              },
+            },
+          });
+
+          visitEmbeddedPage({
+            resource: { dashboard: card.dashboard_id },
+            params: {},
+          });
+          cy.wait("@dashboard");
+          cy.wait("@cardQuery");
+        });
+      });
+
+      cy.url().then(originalUrl => {
+        clickLineChartPoint();
+        cy.url().should("eq", originalUrl);
+      });
+      cy.get("header").findByText(TARGET_QUESTION.name).should("not.exist");
+    });
+
+    it("allows opening custom URL destination with parameters", () => {
+      const dashboardDetails = {
+        parameters: [DASHBOARD_FILTER_TEXT],
+        enable_embedding: true,
+        embedding_params: {
+          [DASHBOARD_FILTER_TEXT.slug]: "enabled",
+        },
+      };
+
+      cy.createQuestionAndDashboard({
+        questionDetails,
+        dashboardDetails,
+      }).then(({ body: card }) => {
+        addOrUpdateDashboardCard({
+          dashboard_id: card.dashboard_id,
+          card_id: card.card_id,
+          card: {
+            id: card.id,
+            visualization_settings: {
+              click_behavior: {
+                type: "link",
+                linkType: "url",
+                linkTemplate: URL_WITH_PARAMS,
+              },
+            },
+          },
+        });
+
+        visitEmbeddedPage({
+          resource: { dashboard: card.dashboard_id },
+          params: {},
+        });
+        cy.wait("@dashboard");
+        cy.wait("@cardQuery");
+      });
+
+      cy.button(DASHBOARD_FILTER_TEXT.name).click();
+      popover().within(() => {
+        cy.findByPlaceholderText("Enter some text").type(FILTER_VALUE);
+        cy.button("Add filter").click();
+      });
+      onNextAnchorClick(anchor => {
+        expect(anchor).to.have.attr("href", URL_WITH_FILLED_PARAMS);
+        expect(anchor).to.have.attr("rel", "noopener");
+        expect(anchor).to.have.attr("target", "_blank");
+      });
+      clickLineChartPoint();
+    });
+
+    it("allows updating multiple dashboard filters", () => {
+      const dashboardDetails = {
+        parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
+        enable_embedding: true,
+        embedding_params: {
+          [DASHBOARD_FILTER_TEXT.slug]: "enabled",
+          [DASHBOARD_FILTER_TIME.slug]: "enabled",
+        },
+      };
+      const countParameterId = "1";
+      const createdAtParameterId = "2";
+
+      cy.createQuestionAndDashboard({
+        questionDetails,
+        dashboardDetails,
+      }).then(({ body: card }) => {
+        addOrUpdateDashboardCard({
+          dashboard_id: card.dashboard_id,
+          card_id: card.card_id,
+          card: {
+            id: card.id,
+            visualization_settings: {
+              click_behavior: {
+                type: "crossfilter",
+                parameterMapping: {
+                  [countParameterId]: {
+                    source: COUNT_COLUMN_SOURCE,
+                    target: { type: "parameter", id: countParameterId },
+                    id: countParameterId,
+                  },
+                  [createdAtParameterId]: {
+                    source: CREATED_AT_COLUMN_SOURCE,
+                    target: { type: "parameter", id: createdAtParameterId },
+                    id: createdAtParameterId,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        visitEmbeddedPage({
+          resource: { dashboard: card.dashboard_id },
+          params: {},
+        });
+        cy.wait("@dashboard");
+        cy.wait("@cardQuery");
+      });
+
+      clickLineChartPoint();
+      cy.findAllByTestId("field-set")
+        .should("have.length", 2)
+        .should("contain.text", POINT_COUNT)
+        .should("contain.text", POINT_CREATED_AT_FORMATTED);
     });
   });
 });
@@ -660,6 +1220,11 @@ const addDashboardDestination = () => {
   cy.get("aside").findByText("Go to a custom destination").click();
   cy.get("aside").findByText("Dashboard").click();
   modal().findByText(TARGET_DASHBOARD.name).click();
+};
+
+const addUrlDestination = () => {
+  cy.get("aside").findByText("Go to a custom destination").click();
+  cy.get("aside").findByText("URL").click();
 };
 
 const addSavedQuestionDestination = () => {
@@ -726,4 +1291,48 @@ const testChangingBackToDefaultBehavior = () => {
 
   clickLineChartPoint();
   assertDrillThroughMenuOpen();
+};
+
+const getTableCell = index => {
+  return cy
+    .findAllByTestId("table-row")
+    .eq(POINT_INDEX)
+    .findAllByTestId("cell-data")
+    .eq(index);
+};
+
+const getCreatedAtToQuestionMapping = () => {
+  return cy
+    .get("aside")
+    .findByText(
+      getBrokenUpTextMatcher(
+        `${CREATED_AT_COLUMN_NAME} goes to "${TARGET_QUESTION.name}"`,
+      ),
+    );
+};
+
+const getCountToDashboardMapping = () => {
+  return cy
+    .get("aside")
+    .findByText(
+      getBrokenUpTextMatcher(
+        `${COUNT_COLUMN_NAME} goes to "${TARGET_DASHBOARD.name}"`,
+      ),
+    );
+};
+
+const getCreatedAtToUrlMapping = () => {
+  return cy
+    .get("aside")
+    .findByText(
+      getBrokenUpTextMatcher(`${CREATED_AT_COLUMN_NAME} goes to URL`),
+    );
+};
+
+const getCountToDashboardFilterMapping = () => {
+  return cy
+    .get("aside")
+    .findByText(
+      getBrokenUpTextMatcher(`${COUNT_COLUMN_NAME} updates 1 filter`),
+    );
 };

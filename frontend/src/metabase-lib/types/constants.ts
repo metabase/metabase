@@ -1,6 +1,6 @@
 import { TYPE as cljs_TYPE } from "cljs/metabase.types";
 
-export const TYPE = cljs_TYPE;
+export const TYPE: Record<string, string> = cljs_TYPE;
 
 // primary field types used for picking operators, etc
 export const NUMBER = "NUMBER";
