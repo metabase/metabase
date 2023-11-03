@@ -106,7 +106,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     { tags: "@slow" },
     () => {
       const cardTitle = "Sales per state";
-      cy.visit(`/auto/dashboard/table/${ORDERS_ID}?show=${MAX_CARDS}`);
+      cy.visit(`/auto/dashboard/table/${ORDERS_ID}?#show=${MAX_CARDS}`);
       cy.wait("@dataset", { timeout: MAX_XRAY_WAIT_TIMEOUT });
 
       getDashboardCards()
@@ -129,7 +129,9 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     () => {
       const cardTitle = "Orders by Subtotal";
       cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
-      cy.visit(`/auto/dashboard/model/${ORDERS_QUESTION_ID}?show=${MAX_CARDS}`);
+      cy.visit(
+        `/auto/dashboard/model/${ORDERS_QUESTION_ID}?#show=${MAX_CARDS}`,
+      );
       cy.wait("@dataset", { timeout: MAX_XRAY_WAIT_TIMEOUT });
 
       getDashboardCards()
