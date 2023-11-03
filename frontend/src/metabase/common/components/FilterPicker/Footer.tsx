@@ -3,7 +3,9 @@ import { color } from "metabase/lib/colors";
 import { Flex } from "metabase/ui";
 
 export const Footer = styled(Flex)`
-  border-top: 1px solid ${color("border")};
+  &:not(:only-child) {
+    border-top: 1px solid ${color("border")};
+  }
 `;
 
 Footer.defaultProps = {
