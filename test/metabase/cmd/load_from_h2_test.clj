@@ -54,7 +54,7 @@
 (deftest ^:parallel load-from-h2-copy-details-enabled-test
   (binding [copy/*copy-h2-database-details* true]
     (load-from-h2-test*
-     "dump-test-2"1
+     "dump-test-2"
      (fn []
        (testing "H2 connection details SHOULD have been copied"
          (is (=? {:db string?}
