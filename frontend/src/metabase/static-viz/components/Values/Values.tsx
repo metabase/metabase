@@ -6,7 +6,7 @@ import { scaleBand } from "@visx/scale";
 import type { TextProps } from "@visx/text";
 import type { AnyScaleBand, PositionScale } from "@visx/shape/lib/types";
 import OutlinedText from "metabase/static-viz/components/Text/OutlinedText";
-import { getValueStep, getY, setY } from "../XYChart/utils";
+import { getValueStep, getY, setY } from "./utils";
 
 import type {
   HydratedSeries,
@@ -14,7 +14,7 @@ import type {
   StackedDatum,
   VisualizationType,
   XScale,
-} from "../XYChart/types";
+} from "./types";
 
 type XYAccessor<
   T extends SeriesDatum | StackedDatum = SeriesDatum | StackedDatum,
@@ -73,12 +73,10 @@ export default function Values({
   const barSeriesIndexMap = new WeakMap();
   let innerBarScale: AnyScaleBand | undefined = undefined;
   if (containBars && xScale.bandwidth) {
-    const innerBarScaleDomain = multipleSeries
-      .filter(series => series.type === "bar")
-      .map((barSeries, index) => {
-        barSeriesIndexMap.set(barSeries, index);
-        return index;
-      });
+    const innerBarScaleDomain = multipleSeries.map((barSeries, index) => {
+      barSeriesIndexMap.set(barSeries, index);
+      return index;
+    });
     innerBarScale = scaleBand({
       domain: innerBarScaleDomain,
       range: [0, xScale.bandwidth],
@@ -86,13 +84,7 @@ export default function Values({
   }
 
   const multiSeriesValues: MultiSeriesValue[][] = multipleSeries.map(series => {
-    const singleSeriesValues =
-      series.type === "bar"
-        ? fixSmallBarChartValues(
-            getValues(series, areStacked, settings),
-            innerBarScale?.domain().length ?? 0,
-          )
-        : getValues(series, areStacked, settings);
+    const singleSeriesValues = getValues(series, areStacked, settings);
 
     return singleSeriesValues.map(value => {
       return {
@@ -105,21 +97,6 @@ export default function Values({
       };
     });
   });
-
-  function fixSmallBarChartValues(
-    singleSeriesValues: Value[],
-    numberOfBarSeries: number,
-  ) {
-    const barWidth = innerBarScale?.bandwidth() ?? Infinity;
-    const MIN_BAR_WIDTH = 20;
-    // Use the same logic as in https://github.com/metabase/metabase/blob/cb51e574de31c7d4485a9dfbef3261f67c0b7495/frontend/src/metabase/visualizations/lib/chart_values.js#L138
-    if (numberOfBarSeries > 1 && barWidth < MIN_BAR_WIDTH) {
-      singleSeriesValues.forEach(value => {
-        value.hidden = true;
-      });
-    }
-    return singleSeriesValues;
-  }
 
   function getBarXOffset(series: HydratedSeries) {
     if (containBars && innerBarScale) {
@@ -155,7 +132,7 @@ export default function Values({
             return null;
           }
 
-          const { xAccessor, yAccessor, dataYAccessor } = getXyAccessors(
+          const { xAccessor, yAccessor } = getXyAccessors(
             value.series.type,
             value.xScale,
             value.yScale,
@@ -163,9 +140,6 @@ export default function Values({
             value.flipped,
           );
 
-          const shouldRenderDataPoint = (
-            ["line", "area"] as VisualizationType[]
-          ).includes(value.series.type);
           return (
             <Fragment key={index}>
               <OutlinedText
@@ -177,16 +151,6 @@ export default function Values({
               >
                 {formatter(getY(value.datumForLabel), compact)}
               </OutlinedText>
-              {shouldRenderDataPoint && (
-                <circle
-                  r={3}
-                  fill="white"
-                  stroke={value.series.color}
-                  strokeWidth={2}
-                  cx={xAccessor(value.datum)}
-                  cy={dataYAccessor(value.datum)}
-                />
-              )}
             </Fragment>
           );
         });
@@ -228,17 +192,9 @@ function getValues(
   areStacked: boolean,
   settings?: Settings,
 ): Value[] {
-  const data = getData(series, areStacked);
+  const data = series.data;
 
   return transformDataToValues(series.type, data, settings);
-}
-
-function getData(series: HydratedSeries, areStacked: boolean) {
-  if (series.type === "area" && areStacked) {
-    return series.stackedData as StackedDatum[];
-  }
-
-  return series.data;
 }
 
 function getXyAccessors(
@@ -267,10 +223,6 @@ function getXAccessor(
   barXOffset: number,
 ): XYAccessor {
   switch (type) {
-    case "bar":
-      return datum => (xScale.barAccessor as XYAccessor)(datum) + barXOffset;
-    case "line":
-    case "area":
     case "waterfall":
       return xScale.lineAccessor as XYAccessor;
     default:
@@ -287,50 +239,15 @@ function transformDataToValues(
   data: (SeriesDatum | StackedDatum)[],
   settings?: Settings,
 ): Value[] {
-  switch (type) {
-    case "line":
-      return data.map((datum, index) => {
-        // Use the similar logic as presented in https://github.com/metabase/metabase/blob/3f4ca9c70bd263a7579613971ea8d7c47b1f776e/frontend/src/metabase/visualizations/lib/chart_values.js#L130
-        const previousValue = data[index - 1];
-        const nextValue = data[index + 1];
-        const showLabelBelow =
-          // first point or prior is greater than y
-          (index === 0 || getY(previousValue) > getY(datum)) &&
-          // last point point or next is greater than y
-          (index >= data.length - 1 || getY(nextValue) > getY(datum));
-
-        return {
-          datum,
-          datumForLabel: datum,
-          flipped: showLabelBelow,
-        };
-      });
-    case "bar":
-      return data.map(datum => {
-        const isNegative = getY(datum) < 0;
-        return { datum, datumForLabel: datum, flipped: isNegative };
-      });
-    case "area":
-      return data.map(datum => {
-        return {
-          datum,
-          datumForLabel: datum,
-        };
-      });
-    case "waterfall": {
-      let total = 0;
-      return data.map((datum, index) => {
-        total = total + getY(datum);
-        const isShowingTotal = settings?.showTotal && index === data.length - 1;
-        return {
-          datum: !isShowingTotal ? setY(datum, total) : datum,
-          datumForLabel: datum,
-        };
-      });
-    }
-    default:
-      exhaustiveCheck(type);
-  }
+  let total = 0;
+  return data.map((datum, index) => {
+    total = total + getY(datum);
+    const isShowingTotal = settings?.showTotal && index === data.length - 1;
+    return {
+      datum: !isShowingTotal ? setY(datum, total) : datum,
+      datumForLabel: datum,
+    };
+  });
 }
 
 interface Position {
