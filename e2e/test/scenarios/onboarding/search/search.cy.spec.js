@@ -21,6 +21,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { createModelIndex } from "e2e/support/helpers/e2e-model-index-helper";
 
 const typeFilters = [
   {
@@ -51,9 +52,13 @@ const typeFilters = [
     label: "Action",
     type: "action",
   },
+  {
+    label: "Indexed record",
+    type: "indexed-entity",
+  },
 ];
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const NORMAL_USER_TEST_QUESTION = {
   name: `Robert's Super Duper Reviews`,
@@ -241,6 +246,23 @@ describe("scenarios > search", () => {
             visualization_settings: {
               type: "button",
             },
+          });
+        });
+
+        cy.createQuestion(
+          {
+            name: "Products Model",
+            query: { "source-table": PRODUCTS_ID },
+            dataset: true,
+          },
+          { wrapId: true, idAlias: "modelId" },
+        );
+
+        cy.get("@modelId").then(modelId => {
+          createModelIndex({
+            modelId,
+            pkName: "ID",
+            valueName: "TITLE",
           });
         });
       });

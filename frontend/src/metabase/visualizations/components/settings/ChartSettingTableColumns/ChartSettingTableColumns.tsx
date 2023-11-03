@@ -16,6 +16,7 @@ interface ChartSettingTableColumnsProps {
   getColumnName: (column: DatasetColumn) => string;
   onChange: (value: TableColumnOrderSetting[], question?: Question) => void;
   onShowWidget: (config: EditWidgetConfig, targetElement: HTMLElement) => void;
+  onWidgetOverride: (key: string) => void;
 }
 
 export const ChartSettingTableColumns = ({
@@ -25,6 +26,7 @@ export const ChartSettingTableColumns = ({
   getColumnName,
   onChange,
   onShowWidget,
+  onWidgetOverride,
 }: ChartSettingTableColumnsProps) => {
   const handleChange = useCallback(
     (newValue: TableColumnOrderSetting[], newQuery?: Lib.Query) => {
@@ -42,6 +44,7 @@ export const ChartSettingTableColumns = ({
 
     return (
       <QueryColumnSelector
+        handleWidgetOverride={onWidgetOverride}
         value={value}
         query={query}
         columns={columns}

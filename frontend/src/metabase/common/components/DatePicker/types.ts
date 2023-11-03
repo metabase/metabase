@@ -46,7 +46,7 @@ export interface RelativeDatePickerOptions {
 export interface ExcludeDatePickerValue {
   type: "exclude";
   operator: ExcludeDatePickerOperator;
-  unit: DatePickerExtractionUnit | null;
+  unit?: DatePickerExtractionUnit;
   values: number[];
 }
 

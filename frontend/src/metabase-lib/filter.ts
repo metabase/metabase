@@ -639,9 +639,9 @@ function isExcludeDateBucket(
 
 const DATE_FORMAT = "yyyy-MM-DD";
 const TIME_FORMAT = "HH:mm:ss";
+const TIME_FORMATS = ["HH:mm:ss.sss[Z]", "HH:mm:SS.sss", "HH:mm:SS", "HH:mm"];
 const TIME_FORMAT_MS = "HH:mm:SS.sss";
 const DATE_TIME_FORMAT = `${DATE_FORMAT}T${TIME_FORMAT}`;
-const UTC_OFFSET_REGEX = /(Z|[+-]\d\d:?\d\d)$/;
 
 function hasTimeParts(date: Date): boolean {
   return date.getHours() !== 0 || date.getMinutes() !== 0;
@@ -656,14 +656,12 @@ function serializeDateTime(date: Date): string {
 }
 
 function deserializeDateTime(value: string): Date | null {
-  const dateTime = UTC_OFFSET_REGEX.test(value)
-    ? moment.parseZone(value, moment.ISO_8601, true)
-    : moment(value, moment.ISO_8601, true);
+  const dateTime = moment.parseZone(value, moment.ISO_8601, true);
   if (!dateTime.isValid()) {
     return null;
   }
 
-  return dateTime.toDate();
+  return dateTime.local(true).toDate();
 }
 
 function serializeTime(value: Date): string {
@@ -671,7 +669,7 @@ function serializeTime(value: Date): string {
 }
 
 function deserializeTime(value: string): Date | null {
-  const time = moment(value, TIME_FORMAT_MS, true);
+  const time = moment(value, TIME_FORMATS, true);
   if (!time.isValid()) {
     return null;
   }

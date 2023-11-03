@@ -39,6 +39,7 @@ const TYPE_FILTER_LABELS: Record<EnabledSearchModelType, string> = {
   table: "Table",
   card: "Question",
   action: "Action",
+  "indexed-entity": "Indexed record",
 };
 
 const TEST_ITEMS: Partial<SearchResult>[] = [

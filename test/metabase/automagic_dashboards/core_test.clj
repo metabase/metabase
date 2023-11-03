@@ -5,8 +5,10 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.combination :as combination]
+   [metabase.automagic-dashboards.comparison :as comparison]
    [metabase.automagic-dashboards.core :as magic]
    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.automagic-dashboards.interesting :as interesting]
@@ -18,6 +20,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.query :as query :refer [Query]]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.async :as qp.async]
    [metabase.sync :as sync]
    [metabase.test :as mt]
@@ -1322,7 +1325,7 @@
 (deftest singular-cell-dimensions-test
   (testing "Find the cell dimensions for a cell query"
     (is (= #{1 2 "TOTAL"}
-           (#'magic/singular-cell-dimensions
+           (#'magic/singular-cell-dimension-field-ids
             {:cell-query
              [:and
               [:= [:field 1 nil]]
@@ -1495,15 +1498,16 @@
                                               ;; Why do we need (or do we) the last remove form?
                                               :filters (->> dashboard_filters
                                                             (mapcat (comp :matches ground-dimensions))
-                                                            (remove (comp (#'magic/singular-cell-dimensions root) #'magic/id-or-name)))
+                                                            (remove (comp (#'magic/singular-cell-dimension-field-ids root) #'magic/id-or-name)))
                                               :cards dashcards)
-                final-dashboard             (populate/create-dashboard base-dashboard show)]
+                final-dashboard             (populate/create-dashboard base-dashboard show)
+                strip-ids                   (partial walk/prewalk (fn [v] (cond-> v (map? v) (dissoc :id :card_id))))]
             (is (pos? (count (:dashcards final-dashboard))))
-            (is (= (count (:dashcards final-dashboard))
-                   (count (:dashcards (#'magic/generate-dashboard base-context template
-                                        {:dimensions ground-dimensions
-                                         :metrics    grounded-metrics
-                                         :filters    ground-filters})))))))))))
+            (is (= (strip-ids (:dashcards final-dashboard))
+                   (strip-ids (:dashcards (#'magic/generate-dashboard base-context template
+                                            {:dimensions ground-dimensions
+                                             :metrics    grounded-metrics
+                                             :filters    ground-filters})))))))))))
 
 (deftest adhoc-query-with-explicit-joins-14793-test
   (testing "A verification of the fix for https://github.com/metabase/metabase/issues/14793,
@@ -1542,3 +1546,55 @@
             (testing "An expectation check -- this dashboard should produce this group heading"
               (is (= expected-section
                      (section-headings expected-section))))))))))
+
+(deftest compare-to-the-rest-25278+32557-test
+  (testing "Ensure valid queries are generated for an automatic comparison dashboard (fixes 25278 & 32557)"
+    (mt/dataset sample-dataset
+      (mt/with-test-user :rasta
+        (let [left                 (query/adhoc-query
+                                     {:database (mt/id)
+                                      :type     :query
+                                      :query
+                                      {:source-table (mt/id :orders)
+                                       :joins
+                                       [{:strategy     :left-join
+                                         :alias        "Products"
+                                         :condition
+                                         [:=
+                                          [:field (mt/id :orders :product_id) {:base-type :type/Integer}]
+                                          [:field (mt/id :products :id) {:base-type :type/BigInteger :join-alias "Products"}]]
+                                         :source-table (mt/id :products)}]
+                                       :aggregation  [[:avg [:field (mt/id :orders :tax) {:base-type :type/Float}]]]
+                                       :breakout     [[:field (mt/id :products :title)
+                                                       {:base-type :type/Text :join-alias "Products"}]]}})
+              right                (t2/select-one :model/Table (mt/id :orders))
+              cell-query           [:= [:field (mt/id :products :title)
+                                        {:base-type :type/Text :join-alias "Products"}]
+                                    "Intelligent Granite Hat"]
+              dashboard            (magic/automagic-analysis left {:show         nil
+                                                                   :query-filter nil
+                                                                   :comparison?  true})
+              comparison-dashboard (comparison/comparison-dashboard dashboard left right {:left {:cell-query cell-query}})
+              sample-card-title "Average of Tax per state"
+              [{base-query :dataset_query :as card-without-cell-query}
+               {filtered-query :dataset_query :as card-with-cell-query}] (->> comparison-dashboard
+                                                                              :dashcards
+                                                                              (filter (comp #{sample-card-title} :name :card))
+                                                                              (map :card))]
+          (testing "Comparison cards exist"
+            (is (some? card-with-cell-query))
+            (is (some? card-without-cell-query)))
+          (testing "The cell-query exists in only one of the cards"
+            (is (not= cell-query (get-in base-query [:query :filter])))
+            (is (= cell-query (get-in filtered-query [:query :filter]))))
+          (testing "Join aliases exist in the queries"
+            ;; The reason issues 25278 & 32557 would blow up is the lack of join aliases.
+            (is (= ["Products"] (map :alias (get-in base-query [:query :joins]))))
+            (is (= ["Products"] (map :alias (get-in filtered-query [:query :joins])))))
+          (testing "Card queries are both executable and produce different results"
+            ;; Note that issues 25278 & 32557 would blow up on the filtered queries.
+            (let [base-data           (get-in (qp/process-query base-query) [:data :rows])
+                  filtered-data       (get-in (qp/process-query filtered-query) [:data :rows])]
+              (is (some? base-data))
+              (is (some? filtered-data))
+              (is (not= base-data filtered-data)))))))))

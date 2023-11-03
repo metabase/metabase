@@ -128,17 +128,20 @@ export default class Filter extends MBQLClause {
       // has an operator name and dimension or expression
       const dimension = this.dimension().getMLv1CompatibleDimension();
 
-      if (!dimension && isExpression(this[1])) {
-        return true;
+      if (!dimension) {
+        return isExpression(this[1]);
       }
 
       const query = this.query();
+      const dimensionOptions = query.filterDimensionOptions();
 
-      if (
-        !dimension ||
-        !(query && query.filterDimensionOptions().hasDimension(dimension))
-      ) {
-        return false;
+      if (query && !dimensionOptions.hasDimension(dimension)) {
+        const dimensions = dimensionOptions.all();
+
+        // workaround for https://github.com/metabase/metabase/issues/29763
+        if (!dimensions.some(d => d.columnName() === dimension.columnName())) {
+          return false;
+        }
       }
 
       if (!this.operatorName()) {

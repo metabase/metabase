@@ -86,7 +86,7 @@ function getExcludeDateValue(
   return {
     type: "exclude",
     operator: filterParts.operator,
-    unit: filterParts.bucket,
+    unit: filterParts.bucket ?? undefined,
     values: filterParts.values,
   };
 }
@@ -144,7 +144,7 @@ function getExcludeFilterClause(
 ): Lib.ExpressionClause {
   return Lib.excludeDateFilterClause(query, stageIndex, {
     operator: value.operator,
-    bucket: value.unit,
+    bucket: value.unit ?? null,
     column,
     values: value.values,
   });
