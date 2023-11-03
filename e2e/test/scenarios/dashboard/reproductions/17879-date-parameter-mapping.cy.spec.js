@@ -21,7 +21,7 @@ describe("issue 17879", () => {
   it("should map dashcard date parameter to correct date range filter in target question - month -> day (metabase#17879)", () => {
     setupDashcardAndDrillToQuestion({
       sourceDateUnit: "month",
-      expectedFilterText: "Created At is April 1–30, 2022",
+      expectedFilterText: "Created At is Apr 1–30, 2022",
     });
   });
 
