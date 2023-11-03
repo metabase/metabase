@@ -574,10 +574,6 @@
         update-dashboard-itself?   (not-empty (select-keys dash-updates [:dashcards :tabs]))]
     (collection/check-allowed-to-change-collection current-dash dash-updates)
     (check-allowed-to-change-embedding current-dash dash-updates)
-    (when (and (seq (:tabs current-dash))
-               (not (every? #(some? (:dashboard_tab_id %)) dashcards)))
-      (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
-                      {:status-code 400})))
     (api/check-500
      (do
        (t2/with-transaction [_conn]
@@ -597,6 +593,10 @@
            (let [{current-dashcards :dashcards
                   current-tabs      :tabs
                   :as hydrated-current-dash} (t2/hydrate current-dash [:dashcards :series :card] :tabs)
+                 _                           (when (and (seq current-tabs)
+                                                        (not (every? #(some? (:dashboard_tab_id %)) dashcards)))
+                                               (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
+                                                               {:status-code 400})))
                  new-tabs                    (map-indexed (fn [idx tab] (assoc tab :position idx)) tabs)
                  {:keys [old->new-tab-id
                          deleted-tab-ids]
