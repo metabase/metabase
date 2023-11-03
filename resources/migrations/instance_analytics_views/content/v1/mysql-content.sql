@@ -1,15 +1,18 @@
+drop view if exists v_content;
+
 create or replace view v_content as
 select
-    concat('action_', id) as id,
+    action.id as entity_id,
+    concat('action_', action.id) as entity_qualified_id,
     'action' as entity_type,
     created_at,
     updated_at,
     creator_id,
     name,
     description,
-    cast(null as int) as collection_id,
+    null as collection_id,
     made_public_by_id as made_public_by_user,
-    cast(null as boolean) as is_embedding_enabled,
+    null as is_embedding_enabled,
     archived,
     type as action_type,
     model_id as action_model_id,
@@ -17,12 +20,13 @@ select
     null as collection_is_personal,
     null as question_viz_type,
     null as question_database_id,
-    cast(null as boolean) as question_is_native,
-    cast(null as timestamp) as event_timestamp
+    null as question_is_native,
+    null as event_timestamp
     from action
 union
 select
-    concat('collection_', id) as id,
+    collection.id as entity_id,
+    concat('collection_', collection.id) as entity_qualified_id,
     'collection' as entity_type,
     created_at,
     null as updated_at,
@@ -44,11 +48,8 @@ select
     from collection
 union
 select
-    concat(
-        case when dataset
-            then 'model_'
-            else 'question_'
-        end, id) as id,
+    report_card.id as entity_id,
+    concat('card_', report_card.id) as entity_qualified_id,
     case when dataset then 'model' else 'question' end as entity_type,
     created_at,
     updated_at,
@@ -70,7 +71,8 @@ select
     from report_card
 union
 select
-    concat('dashboard_', id) as id,
+    report_dashboard.id as entity_id,
+    concat('dashboard_', report_dashboard.id) as entity_qualified_id,
     'dashboard' as entity_type,
     created_at,
     updated_at,
@@ -92,7 +94,8 @@ select
     from report_dashboard
 union
 select
-    concat('event_', event.id) as id,
+    event.id as entity_id,
+    concat('event_', event.id) as entity_qualified_id,
     'event' as entity_type,
     event.created_at,
     event.updated_at,
