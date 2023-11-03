@@ -563,11 +563,10 @@
         has-advanced-filters (some some?
                                    [models created_by created_at last_edited_by
                                     last_edited_at search_native_query verified])]
-    
-    (when (contains? #{"search-app" "search-bar"} context) 
+    (when (contains? #{"search-app" "search-bar"} context)
      (snowplow/track-event! ::snowplow/new-search-query api/*current-user-id*
                             {:runtime-milliseconds duration
-                             :context              context}) 
+                             :context              context})
      (when has-advanced-filters
        (snowplow/track-event! ::snowplow/search-results-filtered api/*current-user-id*
                               {:runtime-milliseconds  duration
