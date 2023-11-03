@@ -564,19 +564,19 @@
                                    [models created_by created_at last_edited_by
                                     last_edited_at search_native_query verified])]
     (when (contains? #{"search-app" "search-bar"} context)
-     (snowplow/track-event! ::snowplow/new-search-query api/*current-user-id*
-                            {:runtime-milliseconds duration
-                             :context              context})
-     (when has-advanced-filters
-       (snowplow/track-event! ::snowplow/search-results-filtered api/*current-user-id*
-                              {:runtime-milliseconds  duration
-                               :content-type          (u/one-or-many models)
-                               :creator               (some? created_by)
-                               :creation-date         (some? created_at)
-                               :last-editor           (some? last_edited_by)
-                               :last-edit-date        (some? last_edited_at)
-                               :verified-items        (some? verified)
-                               :search-native-queries (some? search_native_query)})))
+      (snowplow/track-event! ::snowplow/new-search-query api/*current-user-id*
+                             {:runtime-milliseconds duration
+                              :context              context})
+      (when has-advanced-filters
+        (snowplow/track-event! ::snowplow/search-results-filtered api/*current-user-id*
+                               {:runtime-milliseconds  duration
+                                :content-type          (u/one-or-many models)
+                                :creator               (some? created_by)
+                                :creation-date         (some? created_at)
+                                :last-editor           (some? last_edited_by)
+                                :last-edit-date        (some? last_edited_at)
+                                :verified-items        (some? verified)
+                                :search-native-queries (some? search_native_query)})))
 
     results))
 
