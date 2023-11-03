@@ -20,3 +20,6 @@ Also known as Signed Embedding, Static embedding offers drill-through with custo
 
 You can pass parameters between Metabase and your website via the embedding URL to specify how Metabase items should look and behave inside the iframe on your website.
 
+## [Public embeds](../questions/sharing/public-links.md)
+
+You can also create unsecured public links or embeds of questions and dashboards.

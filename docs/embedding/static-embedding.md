@@ -8,9 +8,9 @@ redirect_from:
 
 Also known as: static embedding.
 
-In general, embedding works by displaying a Metabase URL inside an iframe on your website. A **signed embed** (or static embed) is an iframe that's secured with a signed JSON Web Token (JWT). The signed JWT will prevent website visitors from poking around in your Metabase through the iframe.
+In general, embedding works by displaying a Metabase URL inside an iframe on your website. A **static embed** (or signed embed) is an iframe that's secured with a signed JSON Web Token (JWT). The signed JWT will prevent website visitors from poking around in your Metabase through the iframe.
 
-Signed embeds can't be used with [data sandboxes](../permissions/data-sandboxes.md) or [auditing tools](../usage-and-performance-tools/audit.md) because signed JWTs don't create user sessions (server-side sessions).
+You can can't use static embeds with [data sandboxes](../permissions/data-sandboxes.md) or [auditing tools](../usage-and-performance-tools/audit.md) because signed JWTs don't create user sessions (server-side sessions).
 
 To restrict data in static embeds for specific people or groups, set up [locked parameters](./static-embedding-parameters.md#restricting-data-in-a-signed-embed) instead.
 
@@ -30,7 +30,7 @@ To prevent people from editing the embedding URL to get access to other parts of
 your_metabase_embedding_url/your_signed_jwt?filter=true
 ```
 
-The signed JWT is generated using your [Metabase secret key](#regenerating-the-secret-key). It tells Metabase that the request for filtered data can be trusted, so it's safe to display the results at the new embedding URL.
+The signed JWT is generated using your [Metabase secret key](#regenerating-the-secret-key). The secret key tells Metabase that the request for filtered data can be trusted, so it's safe to display the results at the new embedding URL. Note that this secret key is shared for all static embeds, so whoever has access to that key will have access to all embedded artifacts. 
 
 If you want to embed charts with additional interactive features, like [drill-down](https://www.metabase.com/learn/questions/drill-through) and [self-service querying](../questions/query-builder/introduction.md), see [Interactive embedding](./interactive-embedding.md).
 
