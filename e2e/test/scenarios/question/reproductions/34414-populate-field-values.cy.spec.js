@@ -43,7 +43,7 @@ describe("issue 34414", () => {
       assertPlanFieldValues();
 
       cy.log("Open filter again");
-      cy.findByTestId("sidebar-header-title").click();
+      cy.findByLabelText("Back").click();
 
       cy.log("Open plan field again");
       cy.findByText("Plan").click();
