@@ -242,7 +242,7 @@
       (is (= ...)))
 
   For convenience `migration-range` can be either a range of migrations IDs to test (e.g. `[100 105]`) or just a
-  single migration ID (e.g. `100`). A single ID in a list (e.g. `[100]`) is treated as the start of an open-ended
+  single migration ID (e.g. `100`). A single ID in a vector (e.g. `[100]`) is treated as the start of an open-ended
   range.
 
   These run against the current set of test `DRIVERS` (by default H2), so if you want to run against more than H2
