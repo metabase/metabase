@@ -61,9 +61,8 @@ export const DashboardCardActionsPanel = styled.div<{
     isDashCardTabMenuOpen ? "all" : "none"};
   // react-resizable covers panel, we have to override it
   z-index: 2;
-
   // left align on small cards on the left edge to not make the actions go out of the viewport
-  @container (max-width: 200px) {
+  @container (max-width: 12rem) {
     ${({ onLeftEdge }) => onLeftEdge && "right: unset;"}
     ${({ onLeftEdge }) => onLeftEdge && "left: 20px;"}
   }
