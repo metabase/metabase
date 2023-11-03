@@ -93,15 +93,15 @@ describe("SearchResult", () => {
         "indexed-entity",
       );
 
-      expect(screen.getByLabelText("bolt icon")).toBeInTheDocument();
+      expect(getIcon("bolt")).toBeInTheDocument();
     });
 
     it("redirects to x-ray page when clicking on x-ray button", () => {
       const { history } = setup({ result: TEST_RESULT_INDEXED_ENTITY });
 
-      expect(screen.getByLabelText("bolt icon")).toBeInTheDocument();
+      expect(getIcon("bolt")).toBeInTheDocument();
 
-      userEvent.click(screen.getByLabelText("bolt icon"));
+      userEvent.click(getIcon("bolt"));
 
       const expectedPath = `/auto/dashboard/model_index/${TEST_RESULT_INDEXED_ENTITY.model_index_id}/primary_key/${TEST_RESULT_INDEXED_ENTITY.id}`;
 
