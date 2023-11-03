@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import SelectList from "metabase/components/SelectList";
@@ -31,7 +32,7 @@ export interface BaseBucketPickerPopoverProps {
   hasArrowIcon?: boolean;
   color?: ColorName;
   checkBucketIsSelected: (item: BucketListItem) => boolean;
-  renderTriggerContent: (bucket?: Lib.BucketDisplayInfo) => void;
+  renderTriggerContent: (bucket?: Lib.BucketDisplayInfo) => ReactNode;
   onSelect: (column: Lib.Bucket | NoBucket) => void;
 }
 
