@@ -127,7 +127,6 @@ const setup = async ({
     new Set([dashboard, mostRecentlyViewedDashboard].filter(isNotNull)),
   );
 
-  // setupSearchEndpoints([]);
   setupCollectionsEndpoints({ collections, rootCollection: ROOT_COLLECTION });
   setupDashboardCollectionItemsEndpoint(dashboards);
   setupCollectionByIdEndpoint({ collections, error });
