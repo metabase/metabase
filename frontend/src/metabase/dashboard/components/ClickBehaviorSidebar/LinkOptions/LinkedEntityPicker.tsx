@@ -5,6 +5,7 @@ import { useDashboardQuery } from "metabase/common/hooks";
 import { Icon } from "metabase/core/components/Icon";
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import { Select } from "metabase/ui";
 
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
@@ -34,7 +35,6 @@ import {
   SelectedEntityPickerIcon,
   SelectedEntityPickerContent,
 } from "./LinkOptions.styled";
-import { DashboardTabSelect } from "./LinkedEntityPicker.styled";
 
 const LINK_TARGETS = {
   question: {
@@ -181,6 +181,7 @@ function LinkedEntityPicker({
   const { data: dashboard } = useDashboardQuery({
     enabled: isDashboard,
     id: targetId,
+    // reload: true,
   });
   const dashboardTabs = dashboard?.tabs ?? NO_DASHBOARD_TABS;
   const defaultDashboardTabId: number | undefined = dashboardTabs[0]?.id;
@@ -265,12 +266,13 @@ function LinkedEntityPicker({
       </div>
 
       {isDashboard && dashboardTabs.length > 1 && (
-        <DashboardTabSelect
+        <Select
           data={dashboardTabs.map(tab => ({
             label: tab.name,
             value: String(tab.id),
           }))}
           label={t`Select a dashboard tab`}
+          mt="md"
           value={dashboardTabIdValue}
           onChange={handleDashboardTabChange}
         />
