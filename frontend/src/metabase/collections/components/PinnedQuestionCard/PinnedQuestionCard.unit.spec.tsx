@@ -47,7 +47,7 @@ function setup() {
 }
 
 describe("PinnedQuestionCard", () => {
-  it("should render query card once", async () => {
+  it("should render query card once (metabase#25848)", async () => {
     setup();
 
     expect(await screen.findByTestId("visualization-root")).toBeInTheDocument();
