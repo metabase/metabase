@@ -42,6 +42,7 @@ export const EmbeddingAppSameSiteCookieDescription = () => {
 function AuthorizedOriginsNote() {
   return (
     <Center
+      data-testid="authorized-origins-note"
       bg={alpha("warning", 0.1)}
       w="22rem"
       p="0.75rem"
