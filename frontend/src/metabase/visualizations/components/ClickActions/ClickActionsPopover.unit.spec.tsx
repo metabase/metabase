@@ -73,9 +73,10 @@ describe("ClickActionsPopover", function () {
         expect(props.onUpdateVisualizationSettings).toHaveBeenCalledTimes(1);
         expect(props.onUpdateVisualizationSettings).toHaveBeenLastCalledWith({
           column_settings: {
-            [`["ref",["field",${ORDERS.ID},null]]`]: {
-              column_title: "ID NEW NAME",
-            },
+            [`["ref",["field",${ORDERS.ID},{\"base-type\":\"type/Integer\"}]]`]:
+              {
+                column_title: "ID NEW NAME",
+              },
           },
         });
       });
@@ -103,7 +104,11 @@ describe("ClickActionsPopover", function () {
             dataset_query: {
               database: SAMPLE_DB_ID,
               query: {
-                filter: ["=", ["field", ORDERS.ID, null], filterValue],
+                filter: [
+                  "=",
+                  ["field", ORDERS.ID, { "base-type": "type/Integer" }],
+                  filterValue,
+                ],
                 "source-table": ORDERS_ID,
               },
               type: "query",
@@ -295,6 +300,7 @@ describe("ClickActionsPopover", function () {
             dataset_query: getQuickFilterResultDatasetQuery({
               filteredColumnId: ORDERS.TOTAL,
               filterOperator: ">",
+              filterColumnType: "type/Float",
               cellValue: ORDERS_ROW_VALUES.TOTAL,
             }),
             display: "table",
@@ -310,6 +316,7 @@ describe("ClickActionsPopover", function () {
             dataset_query: getQuickFilterResultDatasetQuery({
               filteredColumnId: ORDERS.CREATED_AT,
               filterOperator: "<",
+              filterColumnType: "type/DateTime",
               cellValue: ORDERS_ROW_VALUES.CREATED_AT,
             }),
             display: "table",
@@ -325,6 +332,7 @@ describe("ClickActionsPopover", function () {
             dataset_query: getQuickFilterResultDatasetQuery({
               filteredColumnId: ORDERS.DISCOUNT,
               filterOperator: "is-null",
+              filterColumnType: "type/Float",
               cellValue: null,
             }),
             display: "table",
@@ -531,17 +539,22 @@ function getFKFilteredResultDatasetQuery(
 function getQuickFilterResultDatasetQuery({
   filteredColumnId,
   filterOperator,
+  filterColumnType,
   cellValue,
 }: {
   filteredColumnId: number;
   filterOperator: "=" | "!=" | ">" | "<" | "is-null" | "not-null";
+  filterColumnType: string;
   cellValue: string | number | null | undefined;
 }): DatasetQuery {
   const filterClause = ["is-null", "not-null"].includes(filterOperator)
-    ? ([filterOperator, ["field", filteredColumnId, null]] as Filter)
+    ? ([
+        filterOperator,
+        ["field", filteredColumnId, { "base-type": filterColumnType }],
+      ] as Filter)
     : ([
         filterOperator,
-        ["field", filteredColumnId, null],
+        ["field", filteredColumnId, { "base-type": filterColumnType }],
         cellValue,
       ] as Filter);
 

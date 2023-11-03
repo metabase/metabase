@@ -100,7 +100,7 @@ export function CoordinateFilterPicker({
   };
 
   return (
-    <>
+    <div data-testid="coordinate-filter-picker">
       <Header>
         <BackButton onClick={onBack}>{columnName}</BackButton>
         <FilterOperatorPicker
@@ -134,7 +134,7 @@ export function CoordinateFilterPicker({
           {isNew ? t`Add filter` : t`Update filter`}
         </Button>
       </Footer>
-    </>
+    </div>
   );
 }
 

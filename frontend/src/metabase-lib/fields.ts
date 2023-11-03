@@ -48,6 +48,10 @@ export function _fieldId(column: ColumnMetadata): number | string | null {
   return ML.field_id(column);
 }
 
+export function _cardOrTableId(column: ColumnMetadata): number | string | null {
+  return ML.legacy_card_or_table_id(column);
+}
+
 // TODO: This should be removed and usage replaced with calls to `visibleColumns` and `findColumnIndexesFromLegacyRefs`.
 export function findVisibleColumnForLegacyRef(
   query: Query,
