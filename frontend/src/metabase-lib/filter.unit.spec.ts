@@ -895,6 +895,9 @@ describe("filter", () => {
       });
 
       const value = filterParts?.values[0];
+      expect(value?.getFullYear()).toBe(2020);
+      expect(value?.getMonth()).toBe(0);
+      expect(value?.getDate()).toBe(5);
       expect(value?.getHours()).toBe(10);
       expect(value?.getMinutes()).toBe(20);
     });
