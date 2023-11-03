@@ -592,7 +592,8 @@
                                          :embedding_params :archived :auto_apply_filters}))]
            (t2/update! Dashboard id updates))
          (when update-dashcards-and-tabs?
-           (api/check-not-archived dash-before-update)
+           (when (not (false? (:archived false)))
+             (api/check-not-archived dash-before-update))
            (let [{current-dashcards :dashcards
                   current-tabs      :tabs}  (t2/hydrate dash-before-update [:dashcards :series :card] :tabs)
                  new-tabs                   (map-indexed (fn [idx tab] (assoc tab :position idx)) tabs)
