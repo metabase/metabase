@@ -15680,7 +15680,6 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
-
   - changeSet:
       id: v48.00-029
       author: noahmoss

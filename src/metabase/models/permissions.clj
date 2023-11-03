@@ -1081,10 +1081,9 @@
 
 ; Audit Permissions helper fns
 
-(defenterprise default-audit-db-id
-  "OSS implementation of `audit-db/default-audit-db-id`, which is an enterprise feature, so does nothing in the OSS
-  version."
-  metabase-enterprise.audit-db [] ::noop)
+(def audit-db-id
+  "ID of Audit DB which is loaded when running an EE build. ID is placed in OSS code to facilitate permission checks."
+  13371337)
 
 (defenterprise default-audit-collection
   "OSS implementation of `audit-db/default-audit-collection`, which is an enterprise feature, so does nothing in the OSS
@@ -1104,7 +1103,7 @@
                          vals
                          (map keys)
                          (apply concat))]
-    (when (some #{(default-audit-db-id)} changes-ids)
+    (when (some #{audit-db-id} changes-ids)
       (throw (ex-info (tru
                        (str "Audit database permissions can only be changed by updating audit collection permissions."))
                       {:status-code 400})))))

@@ -6,8 +6,8 @@
    [metabase-enterprise.audit-app.pages.common.card-and-dashboard-detail
     :as card-and-dash-detail]
    [metabase-enterprise.audit-app.pages.common.cards :as cards]
-   [metabase-enterprise.audit-db :as audit-db]
    [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.permissions :as perms]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
@@ -51,7 +51,7 @@
                                    :join   [[:report_card :card] [:= :card.id :dc.card_id]]
                                    :where  [:and
                                             [:= :dc.dashboard_id dashboard-id]
-                                            [:not= :card.database_id (audit-db/default-audit-db-id)]]}]
+                                            [:not= :card.database_id perms/audit-db-id]]}]
                            cards/avg-exec-time
                            cards/views]
                :select    [[:card.id :card_id]

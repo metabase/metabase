@@ -625,7 +625,7 @@
     (mt/with-temp [PermissionsGroup group    {}
                    Database         database {}
                    Table            table    {:db_id (u/the-id database)}]
-      (with-redefs [perms/default-audit-db-id (constantly (u/the-id database))]
+      (with-redefs [perms/audit-db-id (u/the-id database)]
         (is (thrown-with-msg?
              Exception
              #"Audit database permissions can only be changed by updating audit collection permissions."

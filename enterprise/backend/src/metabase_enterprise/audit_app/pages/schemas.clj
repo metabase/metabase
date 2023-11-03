@@ -2,7 +2,7 @@
   (:require
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
-   [metabase-enterprise.audit-db :as audit-db]
+   [metabase.models.permissions :as perms]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]))
 
@@ -43,7 +43,7 @@
                                                 [:not= :qe.card_id nil]
                                                 [:not= :card.database_id nil]
                                                 [:not= :card.table_id nil]
-                                                [:not= :db.id (audit-db/default-audit-db-id)]]}]]
+                                                [:not= :db.id perms/audit-db-id]]}]]
                :select   [[(h2x/concat :db_name (h2x/literal " ") :db_schema) :schema]
                           [:%count.* :executions]]
                :from     [:counts]
@@ -89,7 +89,7 @@
                                                 [:not= :qe.card_id nil]
                                                 [:not= :card.database_id nil]
                                                 [:not= :card.table_id nil]
-                                                [:not= :db.id (audit-db/default-audit-db-id)]]}]]
+                                                [:not= :db.id perms/audit-db-id]]}]]
                :select   [[(h2x/concat :db_name (h2x/literal " ") :db_schema) :schema]
                           [[:avg :running_time] :avg_running_time]]
                :from     [:counts]
@@ -149,7 +149,7 @@
                                                     [:%count.* :tables]]
                                         :from      [[:metabase_table :t]]
                                         :left-join [[:metabase_database :db] [:= :t.db_id :db.id]]
-                                        :where     [:not= :db.id (audit-db/default-audit-db-id)]
+                                        :where     [:not= :db.id perms/audit-db-id]
                                         :group-by  [:db.id :t.schema]
                                         :order-by  [[:db.id :asc] [:t.schema :asc]]}]]
                  :select    [:s.database_id
