@@ -205,3 +205,13 @@
 (methodical/defmethod events/publish-event! ::database-update-event
   [topic event]
   (audit-log/record-event! topic event))
+
+(derive ::permission-failure-event ::event)
+(derive :event/read-permission-failure ::permission-failure-event)
+(derive :event/write-permission-failure ::permission-failure-event)
+(derive :event/update-permission-failure ::permission-failure-event)
+(derive :event/create-permission-failure ::permission-failure-event)
+
+(methodical/defmethod events/publish-event! ::permission-failure-event
+  [topic event]
+  (audit-log/record-event! topic event))
