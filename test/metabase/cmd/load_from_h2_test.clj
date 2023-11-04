@@ -19,7 +19,6 @@
    [toucan2.connection :as t2.conn]
    [toucan2.core :as t2])
   (:import
-   (liquibase LabelExpression Liquibase)
    (liquibase.changelog ChangeSet)))
 
 (set! *warn-on-reflection* true)
@@ -78,11 +77,16 @@
   []
   (t2.conn/with-connection [conn]
     (liquibase/with-liquibase [liquibase conn]
-      (let [change-sets (.listUnrunChangeSets ^Liquibase liquibase nil (LabelExpression.))
+      (let [change-sets (.. liquibase getDatabaseChangeLog getChangeSets)
             size (count change-sets)]
-        (when (pos? size)
-          (when-let [[_ major] (re-find #"v(\d+).*" (.getId ^ChangeSet (.get change-sets (dec size))))]
-            (parse-long major)))))))
+        (if (pos? size)
+          (let [change-set-id (.getId ^ChangeSet (.get change-sets (dec size)))
+                [_ major] (re-find #"v(\d+).*" change-set-id)]
+            (if major
+              (parse-long major)
+              (throw (ex-info "couldn't parse major version from change-set-id " change-set-id
+                              {:change-set-id change-set-id}))))
+          (throw (ex-info "no changesets found" {})))))))
 
 (def ^:private current-major-version
   (delay (or (config/current-major-version)
