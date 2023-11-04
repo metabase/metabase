@@ -46,6 +46,7 @@ export type CartesianChartModel = {
   dataset: GroupedDataset;
   normalizedDataset: GroupedDataset;
   yAxisSplit: AxisSplit;
+  extents: SeriesExtents;
 
   leftAxisColumn?: DatasetColumn;
   rightAxisColumn?: DatasetColumn;

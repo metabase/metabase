@@ -120,5 +120,6 @@ export const getCartesianChartModel = (
     yAxisSplit,
     leftAxisColumn,
     rightAxisColumn,
+    extents,
   };
 };
