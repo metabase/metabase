@@ -571,7 +571,7 @@
         changes-stats              (atom nil)
         ;; tabs are sent in production as well, but there are lots of tests that exclude it. so this only checks for dashcards
         update-dashcards-and-tabs? (contains? dash-updates :dashcards)
-        update-dashboard-itself?   (not-empty (select-keys dash-updates [:dashcards :tabs]))]
+        update-dashboard-itself?   (not-empty (dissoc dash-updates :dashcards :tabs))]
     (collection/check-allowed-to-change-collection current-dash dash-updates)
     (check-allowed-to-change-embedding current-dash dash-updates)
     (api/check-500
