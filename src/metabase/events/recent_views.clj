@@ -38,7 +38,7 @@
             ;; `:context` comes
             ;; from [[metabase.query-processor.middleware.process-userland-query/add-and-save-execution-info-xform!]],
             ;; and it should only be present for `:event/card-query`
-            {:keys [has_access context] :or {context "card"}} object]
+            {:keys [has_access context]} object]
         (when (and (#{:event/card-read :event/dashboard-read :event/table-read} topic)
                    ;; we do want to count pinned card views since there is now an option to turn off viz
                    ((complement #{:dashboard}) context))
@@ -46,7 +46,7 @@
           (record-view! {:model      model
                          :model-id   model-id
                          :user-id    user-id
-                         :context    (name context)
+                         :context    context
                          :has_access has_access}))))
     (catch Throwable e
       (log/warnf e "Failed to process activity event. %s" topic))))
