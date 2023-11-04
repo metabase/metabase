@@ -356,15 +356,18 @@
         (.setReadOnly conn read-only?)
         (catch Throwable e
           (log/debugf e "Error setting connection readOnly to %s" (pr-str read-only?)))))
-    ;; if this is (supposedly) a read-only connection, enable auto-commit so this IS NOT ran inside of a transaction.
+    ;; If this is (supposedly) a read-only connection, we would prefer enable auto-commit
+    ;; so this IS NOT ran inside of a transaction, but without transaction the read-only
+    ;; flag has no effect for most of the drivers.
+    ;; TODO Enable auto-commit after having communicated this change in behvaior to our users.
     ;;
     ;; TODO -- for `write?` connections, we should probably disable autoCommit and then manually call `.commit` at after
     ;; `f`... we need to check and make sure that won't mess anything up, since some existing code is already doing it
     ;; manually.
     (when-not write?
       (try
-        (log/trace (pr-str '(.setAutoCommit conn true)))
-        (.setAutoCommit conn true)
+        (log/trace (pr-str '(.setAutoCommit conn false)))
+        (.setAutoCommit conn false)
         (catch Throwable e
           (log/debug e "Error enabling connection autoCommit"))))
     (try
@@ -699,7 +702,8 @@
   (try
     (do-with-connection-with-options
      driver
-     {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (qp.store/database))}
+     {:write? true
+      :session-timezone (qp.timezone/report-timezone-id-if-supported driver (qp.store/database))}
      (fn [^Connection conn]
        (with-open [stmt (statement-or-prepared-statement driver conn sql params nil)]
          {:rows-affected (if (instance? PreparedStatement stmt)
