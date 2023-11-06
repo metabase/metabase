@@ -237,7 +237,7 @@
      :prepared-statement-args args}))
 
 (mu/defn ^:private field->clause :- mbql.s/field
-  [driver    :- :keyword
+  [driver     :- :keyword
    field      :- lib.metadata/ColumnMetadata
    param-type :- ::mbql.s/ParameterType]
   ;; The [[metabase.query-processor.middleware.parameters/substitute-parameters]] QP middleware actually happens before
