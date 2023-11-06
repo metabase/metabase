@@ -516,7 +516,7 @@
         (testing "Only \"limit\" cards are produced"
           (is (= show-limit show-count)))))))
 
-(deftest metric-xray-show-param-test
+(deftest segment-xray-show-param-test
   (testing "x-ray of a segment with show set reduces the number of returned cards"
     (t2.with-temp/with-temp [Segment {segment-id :id} {:table_id   (mt/id :venues)
                                                        :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
