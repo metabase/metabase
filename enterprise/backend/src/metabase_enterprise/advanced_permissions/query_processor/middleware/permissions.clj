@@ -87,7 +87,6 @@
   :feature :advanced-permissions
   [{query-type :type, {original-limit :limit} :query, :as query}]
   (if (and (is-download? query)
-           (premium-features/has-feature? :advanced-permissions)
            (= query-type :query)
            (= (current-user-download-perms-level query) :limited))
     (assoc-in query
@@ -116,17 +115,15 @@
   :feature :advanced-permissions
   [qp]
   (fn [query rff context]
-    (if (premium-features/has-feature? :advanced-permissions)
-      (let [download-perms-level (if api/*current-user-permissions-set*
-                                   (current-user-download-perms-level query)
-                                   ;; If no user is bound, assume full download permissions (e.g. for public questions)
-                                   :full)]
-        (when (and (is-download? query)
-                   (= download-perms-level :none))
-          (throw (ex-info (tru "You do not have permissions to download the results of this query.")
-                          {:type qp.error-type/missing-required-permissions
-                           :permissions-error? true})))
-        (qp query
-            (fn [metadata] (rff (some-> metadata (assoc :download_perms download-perms-level))))
-            context))
-      (qp query rff context))))
+    (let [download-perms-level (if api/*current-user-permissions-set*
+                                 (current-user-download-perms-level query)
+                                 ;; If no user is bound, assume full download permissions (e.g. for public questions)
+                                 :full)]
+      (when (and (is-download? query)
+                 (= download-perms-level :none))
+        (throw (ex-info (tru "You do not have permissions to download the results of this query.")
+                        {:type qp.error-type/missing-required-permissions
+                         :permissions-error? true})))
+      (qp query
+          (fn [metadata] (rff (some-> metadata (assoc :download_perms download-perms-level))))
+          context))))
