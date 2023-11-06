@@ -74,4 +74,6 @@
   ([n unit offset-n offset-unit]
    (format-relative-date-range n unit offset-n offset-unit nil))
   ([n unit offset-n offset-unit options]
-   (internal/format-relative-date-range n unit offset-n offset-unit options)))
+   (internal/format-relative-date-range n unit offset-n offset-unit options))
+  ([t n unit offset-n offset-unit options]
+   (internal/format-relative-date-range (coerce-to-timestamp t) n unit offset-n offset-unit options)))

@@ -400,11 +400,10 @@
                 {:row 36 :col 23 :size_x 1  :size_y 1}]
                (-> (t2/select-one (t2/table-name :model/Revision) :id revision-id)
                    :object (json/parse-string true) :cards))))
-     (migrate! :down 46)
-     (testing "downgrade works correctly"
-       (is (= cards
-              (-> (t2/select-one (t2/table-name :model/Revision) :id revision-id)
-                  :object (json/parse-string true) :cards)))))))
+      (migrate! :down 46)
+      (testing "downgrade works correctly"
+        (is (= cards (-> (t2/select-one (t2/table-name :model/Revision) :id revision-id)
+                         :object (json/parse-string true) :cards)))))))
 
 (deftest migrate-dashboard-revision-grid-from-18-to-24-handle-faliure-test
   (impl/test-migrations ["v47.00-032" "v47.00-033"] [migrate!]
@@ -900,24 +899,24 @@
                                                                           :updated_at :%now
                                                                           :details    "{}"})
             [card-id]          (t2/insert-returning-pks! (t2/table-name :model/Card)
-                                {:name                   "My Saved Question"
-                                 :created_at             :%now
-                                 :updated_at             :%now
-                                 :creator_id             user-id
-                                 :display                "table"
-                                 :dataset_query          (json/generate-string {:database 1
-                                                                                :query    {:joins [{:alias        "Joined table"
-                                                                                                    :condition    [:=
-                                                                                                                   [:field 43 nil]
-                                                                                                                   [:field 46 {:join-alias "Joined table"}]]
-                                                                                                    :fields       :all
-                                                                                                    :source-table 5}]
-                                                                                           :source-table 2}
-                                                                                :type     :query})
-                                 :result_metadata        "{}"
-                                 :visualization_settings "{}"
-                                 :database_id            database-id
-                                 :collection_id          nil})
+                                                         {:name                   "My Saved Question"
+                                                          :created_at             :%now
+                                                          :updated_at             :%now
+                                                          :creator_id             user-id
+                                                          :display                "table"
+                                                          :dataset_query          (json/generate-string {:database 1
+                                                                                                         :query    {:joins [{:alias        "Joined table"
+                                                                                                                             :condition    [:=
+                                                                                                                                            [:field 43 nil]
+                                                                                                                                            [:field 46 {:join-alias "Joined table"}]]
+                                                                                                                             :fields       :all
+                                                                                                                             :source-table 5}]
+                                                                                                                    :source-table 2}
+                                                                                                         :type     :query})
+                                                          :result_metadata        "{}"
+                                                          :visualization_settings "{}"
+                                                          :database_id            database-id
+                                                          :collection_id          nil})
             dashboard   {:cards [{:card_id                card-id
                                   :visualization_settings visualization-settings}]}
             revision-id (t2/insert-returning-pks! (t2/table-name :model/Revision)
@@ -926,25 +925,25 @@
                                                    :user_id   user-id
                                                    :object    (json/generate-string dashboard)
                                                    :timestamp :%now})]
-        (migrate!)
-        (testing "column_settings field refs are updated"
-          (is (= expected
-                 (-> (t2/query-one {:select [:object]
-                                    :from   [:revision]
-                                    :where  [:= :id revision-id]})
-                     :object
-                     json/parse-string
-                     (get-in ["cards" 0 "visualization_settings"])))))
-        (migrate! :down 46)
-        (testing "down migration restores original visualization_settings, except it's okay if join-alias are missing"
-          (is (= (m/dissoc-in visualization-settings
-                              ["column_settings" (json/generate-string ["ref" ["field" 1 {"join-alias" "Joined table"}]])])
-                 (-> (t2/query-one {:select [:object]
-                                    :from   [:revision]
-                                    :where  [:= :id revision-id]})
-                     :object
-                     json/parse-string
-                     (get-in ["cards" 0 "visualization_settings"])))))))))
+       (migrate!)
+       (testing "column_settings field refs are updated"
+         (is (= expected
+                (-> (t2/query-one {:select [:object]
+                                   :from   [:revision]
+                                   :where  [:= :id revision-id]})
+                    :object
+                    json/parse-string
+                    (get-in ["cards" 0 "visualization_settings"])))))
+       (migrate! :down 46)
+       (testing "down migration restores original visualization_settings, except it's okay if join-alias are missing"
+         (is (= (m/dissoc-in visualization-settings
+                             ["column_settings" (json/generate-string ["ref" ["field" 1 {"join-alias" "Joined table"}]])])
+                (-> (t2/query-one {:select [:object]
+                                   :from   [:revision]
+                                   :where  [:= :id revision-id]})
+                    :object
+                    json/parse-string
+                    (get-in ["cards" 0 "visualization_settings"])))))))))
 
 (deftest migrate-database-options-to-database-settings-test
   (let [do-test

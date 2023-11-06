@@ -9,7 +9,6 @@
    [metabase.actions.error :as actions.error]
    [metabase.config :as config]
    [metabase.db.metadata-queries :as metadata-queries]
-   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.postgres :as postgres]
    [metabase.driver.postgres.actions :as postgres.actions]
@@ -91,7 +90,7 @@
          (as-> [:datetime-diff "2021-10-03T09:00:00" "2021-10-03T09:00:00" :year] <>
            (sql.qp/->honeysql :postgres <>)
            (sql.qp/format-honeysql :postgres <>)
-           (update (vec <>) 0 #(str/split-lines (mdb.query/format-sql % :postgres)))))))
+           (update (vec <>) 0 #(str/split-lines (driver/prettify-native-form :postgres %)))))))
 
 (defn drop-if-exists-and-create-db!
   "Drop a Postgres database named `db-name` if it already exists; then create a new empty one with that name."
@@ -453,7 +452,7 @@
                   "  \"json_alias_test\""
                   "ORDER BY"
                   "  \"json_alias_test\" ASC"]
-                 (str/split-lines (mdb.query/format-sql (:query compile-res) :postgres))))
+                 (str/split-lines (driver/prettify-native-form :postgres (:query compile-res)))))
           (is (= ["injection' OR 1=1--' AND released = 1"
                   "injection' OR 1=1--' AND released = 1"]
                  (:params compile-res))))))))
@@ -476,7 +475,7 @@
                   "  \"json_alias_test\" ASC"
                   "LIMIT"
                   "  1048575"]
-                 (str/split-lines (mdb.query/format-sql (:query only-order) :postgres)))))))))
+                 (str/split-lines (driver/prettify-native-form :postgres (:query only-order))))))))))
 
 (deftest describe-nested-field-columns-identifier-test
   (mt/test-driver :postgres

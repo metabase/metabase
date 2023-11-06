@@ -258,13 +258,19 @@
 
 (mu/defn assert-has-feature
   "Check if an token with `feature` is present. If not, throw an error with a message using `feature-name`.
-   `feature-name` should be a localized string unless used in a CLI context.
-
+  `feature-name` should be a localized string unless used in a CLI context.
   (assert-has-feature :sandboxes (tru \"Sandboxing\"))
   => throws an error with a message using \"Sandboxing\" as the feature name."
   [feature-flag :- keyword?
    feature-name :- [:or string? mu/localized-string-schema]]
   (when-not (has-feature? feature-flag)
+    (throw (ee-feature-error feature-name))))
+
+(mu/defn assert-has-any-features
+  "Check if has at least one of feature in `features`. Throw an error if none of the features are available."
+  [feature-flag :- [:sequential keyword?]
+   feature-name :- [:or string? mu/localized-string-schema]]
+  (when-not (some has-feature? feature-flag)
     (throw (ee-feature-error feature-name))))
 
 (defn- default-premium-feature-getter [feature]
@@ -382,7 +388,7 @@
 
 (define-premium-feature ^{:added "0.47.0"} enable-email-restrict-recipients?
   "Enable restrict email recipients?"
-  :serialization)
+  :email-restrict-recipients)
 
 (defsetting is-hosted?
   "Is the Metabase instance running in the cloud?"

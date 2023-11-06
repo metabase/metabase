@@ -1246,6 +1246,31 @@
       (is (malli= [:map [:personal_collection_id ms/PositiveInt]]
                   (t2/hydrate temp-user :personal_collection_id))))))
 
+(deftest hydrate-is-personal-test
+  (binding [collection/*allow-deleting-personal-collections* true]
+    (mt/with-temp
+      [:model/User       {user-id :id}               {}
+       :model/Collection {personal-coll :id}         {:personal_owner_id user-id}
+       :model/Collection {nested-personal-coll :id}  {:location          (format "/%d/" personal-coll)
+                                                      :personal_owner_id nil}
+       :model/Collection {top-level-coll :id}        {:location "/"}
+       :model/Collection {nested-top-level-coll :id} {:location (format "/%d/" top-level-coll)}]
+      (let [check-is-personal (fn [id-or-ids]
+                                (if (int? id-or-ids)
+                                  (-> (t2/select-one :model/Collection id-or-ids)
+                                      (t2/hydrate :is_personal)
+                                      :is_personal)
+                                  (as-> (t2/select :model/Collection :id [:in id-or-ids] {:order-by [:id]}) collections
+                                    (t2/hydrate collections :is_personal)
+                                    (map :is_personal collections))))]
+
+        (testing "simple hydration and batched hydration should return correctly"
+          (is (= [true true false false]
+                 (map check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll])
+                 (check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll]))))
+        (testing "root collection shouldn't be hydrated"
+          (is (= nil (t2/hydrate nil :is_personal)))
+          (is (= [nil true] (map :is_personal (t2/hydrate [nil (t2/select-one :model/Collection personal-coll)] :is_personal)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    Moving Collections "Across the Boundary"                                    |

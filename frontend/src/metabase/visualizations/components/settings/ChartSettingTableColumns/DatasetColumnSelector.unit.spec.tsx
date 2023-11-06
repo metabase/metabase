@@ -31,6 +31,12 @@ const COLUMNS = [
     display_name: "Tax",
     field_ref: ["field", ORDERS.TAX, null],
   }),
+  createMockColumn({
+    id: ORDERS.SUBTOTAL,
+    name: "SUBTOTAL",
+    display_name: "Subtotal",
+    field_ref: ["field", ORDERS.SUBTOTAL, null],
+  }),
 ];
 
 const COLUMN_SETTINGS = [
@@ -84,12 +90,14 @@ const setup = ({
 };
 
 describe("DatasetColumnSelector", () => {
-  it("should display enabled columns in the order of the setting", () => {
+  it("should display columns in the order of the setting", () => {
     setup();
     const items = screen.getAllByTestId(/draggable-item/);
-    expect(items).toHaveLength(2);
+    expect(items).toHaveLength(4);
     expect(items[0]).toHaveTextContent("Total");
     expect(items[1]).toHaveTextContent("ID");
+    expect(items[2]).toHaveTextContent("Tax");
+    expect(items[3]).toHaveTextContent("Subtotal");
   });
 
   it("should allow to enable a column", () => {
@@ -111,15 +119,10 @@ describe("DatasetColumnSelector", () => {
       assocIn(COLUMN_SETTINGS, [columnIndex, "enabled"], false),
     );
   });
-
-  it("should not show columns which don't exist in the query response", () => {
-    setup();
-    expect(screen.queryByText("Subtotal")).not.toBeInTheDocument();
-  });
 });
 
 const enableColumn = (columnName: string) => {
-  userEvent.click(screen.getByTestId(`${columnName}-add-button`));
+  userEvent.click(screen.getByTestId(`${columnName}-show-button`));
 };
 
 const disableColumn = (columnName: string) => {

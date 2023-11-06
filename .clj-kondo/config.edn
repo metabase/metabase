@@ -361,6 +361,9 @@
     metabase.query-processor.timezone                               qp.timezone
     metabase.query-processor.util                                   qp.util
     metabase.related                                                related
+    metabase.search.config                                          search.config
+    metabase.search.filter                                          search.filter
+    metabase.search.util                                            search.util
     metabase.search.scoring                                         scoring
     metabase.server.middleware.auth                                 mw.auth
     metabase.server.middleware.browser-cookie                       mw.browser-cookie

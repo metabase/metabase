@@ -27,14 +27,14 @@
   ;; TODO - why can't set the other properties like `show_in_getting_started` when you create a Metric?
   (api/create-check Metric body)
   (let [metric (api/check-500
-                 (first (t2/insert-returning-instances! Metric
-                                                        :table_id    table_id
-                                                        :creator_id  api/*current-user-id*
-                                                        :name        name
-                                                        :description description
-                                                        :definition  definition)))]
-    (-> (events/publish-event! :event/metric-create metric)
-        (t2/hydrate :creator))))
+                (first (t2/insert-returning-instances! Metric
+                                                       :table_id    table_id
+                                                       :creator_id  api/*current-user-id*
+                                                       :name        name
+                                                       :description description
+                                                       :definition  definition)))]
+    (events/publish-event! :event/metric-create {:object metric :user-id api/*current-user-id*})
+    (t2/hydrate metric :creator)))
 
 (mu/defn ^:private hydrated-metric [id :- ms/PositiveInt]
   (-> (api/read-check (t2/select-one Metric :id id))
@@ -82,7 +82,8 @@
       (t2/update! Metric id changes))
     (u/prog1 (hydrated-metric id)
       (events/publish-event! (if archive? :event/metric-delete :event/metric-update)
-        (assoc <> :actor_id api/*current-user-id*, :revision_message revision_message)))))
+                             {:object <>  :user-id api/*current-user-id* :revision-message revision_message}))))
+
 
 (api/defendpoint PUT "/:id"
   "Update a `Metric` with ID."
@@ -146,10 +147,10 @@
    revision_id ms/PositiveInt}
   (api/write-check Metric id)
   (revision/revert!
-    :entity      Metric
+   {:entity      Metric
     :id          id
     :user-id     api/*current-user-id*
-    :revision-id revision_id))
+    :revision-id revision_id}))
 
 (api/defendpoint GET "/:id/related"
   "Return related entities."

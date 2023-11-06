@@ -15,10 +15,10 @@
 (derive :event/database-delete ::event)
 
 (methodical/defmethod events/publish-event! ::event
-  [topic database]
+  [topic {database :object :as _event}]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
-    ;; notify the appropriate driver about the updated database
-    (driver/notify-database-updated (:engine database) database)
-    (catch Throwable e
-      (log/warnf e "Failed to process driver notifications event. %s" topic))))
+   ;; notify the appropriate driver about the updated database
+   (driver/notify-database-updated (:engine database) database)
+   (catch Throwable e
+     (log/warnf e "Failed to process driver notifications event. %s" topic))))

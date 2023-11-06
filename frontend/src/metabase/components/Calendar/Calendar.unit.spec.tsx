@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import mockDate from "mockdate";
 import userEvent from "@testing-library/user-event";
