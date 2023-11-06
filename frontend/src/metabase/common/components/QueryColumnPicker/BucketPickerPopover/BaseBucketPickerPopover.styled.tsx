@@ -17,6 +17,7 @@ export const TriggerButton = styled.button`
   display: flex;
   align-items: center;
   min-width: 0;
+  max-width: 50%;
   gap: 0.5rem;
 
   color: ${alpha(color("white"), 0.5)};

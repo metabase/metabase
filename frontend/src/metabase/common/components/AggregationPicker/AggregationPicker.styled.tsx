@@ -32,6 +32,7 @@ export const ColumnPickerHeaderTitle = styled.span`
 `;
 
 export const InfoIconContainer = styled.div`
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
