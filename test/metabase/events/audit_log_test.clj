@@ -503,7 +503,8 @@
         (is (partial=
              {:model_id (mt/user->id :lucky)
               :user_id  (mt/user->id :rasta)
-              :details  {:previous-object {:last_name "Charms"}}
+              :details  {:previous {:last_name "Charms"}
+                         :new      {:last_name "Pigeon"}}
               :topic    :user-update
               :model    "User"}
              (latest-event :user-update (mt/user->id :lucky))))))))
