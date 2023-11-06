@@ -28,6 +28,7 @@ create index idx_user_full_name
     on core_user((first_name || ' ' || last_name));
 
 -- view_log
+drop index idx_view_log_timestamp;
 create index idx_view_log_timestamp
     on view_log(timestamp);
 
