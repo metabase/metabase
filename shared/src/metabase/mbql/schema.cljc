@@ -1684,8 +1684,8 @@
    ;; results? Used by [[metabase.query-processor.middleware.format-rows]]; default `false`
    [:format-rows? {:optional true} :boolean]
    ;; disable the MBQL->native middleware. If you do this, the query will not work at all, so there are no cases where
-   ;; you should set this yourself. This is only used by the [[metabase.query-processor/preprocess]] function to get
-   ;; the fully pre-processed query without attempting to convert it to native.
+   ;; you should set this yourself. This is only used by the [[metabase.query-processor.preprocess/preprocess]]
+   ;; function to get the fully pre-processed query without attempting to convert it to native.
    [:disable-mbql->native? {:optional true} :boolean]
    ;; Disable applying a default limit on the query results. Handled in the `add-default-limit` middleware.
    ;; If true, this will override the `:max-results` and `:max-results-bare-rows` values in [[Constraints]].

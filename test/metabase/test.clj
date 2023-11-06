@@ -156,7 +156,6 @@
 
  [qp
   compile
-  preprocess
   process-query]
 
  [qp.store

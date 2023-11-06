@@ -156,9 +156,9 @@
         (assert (:resultf context) "Incomplete query processor context!")
         (let [extra-info (delay
                            {:native       (u/ignore-exceptions
-                                            ((resolve 'metabase.query-processor/compile) query))
+                                            (:native ((requiring-resolve 'metabase.query-processor.compile/compile) query)))
                             :preprocessed (u/ignore-exceptions
-                                            ((resolve 'metabase.query-processor/preprocess) query))})]
+                                            ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query))})]
           (letfn [(raisef* [e context]
                     ;; format the Exception and return it
                     (let [formatted-exception (format-exception* query e @extra-info)]
