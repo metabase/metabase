@@ -747,12 +747,6 @@
               (assoc :valid false))
       details)))
 
-(defn- db->db-version
-  [db]
- (some-> (driver.u/database->driver db)
-         (driver/dbms-version db)
-         :version))
-
 (api/defendpoint POST "/"
   "Add a new `Database`."
   [:as {{:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl]} :body}]
@@ -796,7 +790,7 @@
         (snowplow/track-event! ::snowplow/database-connection-successful
                                api/*current-user-id*
                                {:database engine :database-id (u/the-id <>)
-                                :source :admin :dbms_version (db->db-version <>)}))
+                                :source :admin :dbms_version (:version (driver/dbms-version (keyword engine) <>))}))
       ;; failed to connect, return error
       (do
         (snowplow/track-event! ::snowplow/database-connection-failed
