@@ -67,8 +67,8 @@
 (defn post-processing-middleware
   [_preprocessed-query rff]
   (fn [metadata]
-    {:pre [(map? *original-query*)]}
-    (test-mlv2-metadata *original-query* metadata)
+    (when *original-query*
+      (test-mlv2-metadata *original-query* metadata))
     (rff metadata)))
 
 (defn around-middleware

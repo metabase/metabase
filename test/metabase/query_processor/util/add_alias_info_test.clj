@@ -8,9 +8,9 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.fix-bad-references
     :as fix-bad-refs]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.test :as mt]))
@@ -42,7 +42,7 @@
                                (qp.store/metadata-provider)
                                meta/metadata-provider)
     (driver/with-driver (or driver/*driver* :h2)
-      (-> query qp/preprocess add/add-alias-info remove-source-metadata (dissoc :middleware)))))
+      (-> query qp.preprocess/preprocess add/add-alias-info remove-source-metadata (dissoc :middleware)))))
 
 (deftest ^:parallel join-in-source-query-test
   (is (query= (lib.tu.macros/mbql-query venues
@@ -607,7 +607,7 @@
                     :field_ref    [:field (meta/id :people :address) {:join-alias "Question 54"}]
                     :display_name "Question 54 → Address"
                     :source_alias "Question 54"}]
-                  (qp/query->expected-cols query))))))))
+                  (qp.preprocess/query->expected-cols query))))))))
 
 (deftest ^:parallel use-source-unique-aliases-test
   (testing "Make sure uniquified aliases in the source query end up getting used for `::add/source-alias`"

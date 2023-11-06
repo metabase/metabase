@@ -11,6 +11,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.sync.analyze.query-results :as qr]
@@ -277,7 +278,7 @@
       (letfn [(do-test [num-expected-columns]
                 (let [results-metadata (get-in (mt/run-mbql-query orders {:limit 10})
                                                [:data :results_metadata :columns])
-                      expected-cols    (qp/query->expected-cols (mt/mbql-query orders))]
+                      expected-cols    (qp.preprocess/query->expected-cols (mt/mbql-query orders))]
                   (is (= num-expected-columns
                          (count results-metadata)))
                   (is (= num-expected-columns

@@ -7,6 +7,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -45,12 +46,14 @@
   [query]
   (binding [qp.i/*disable-qp-logging* true]
     ;; for MBQL queries we can infer the columns just by preprocessing the query.
-    (if-let [inferred-columns (not-empty (u/ignore-exceptions (qp/query->expected-cols query)))]
+    (if-let [inferred-columns (not-empty (u/ignore-exceptions (qp.preprocess/query->expected-cols query)))]
       (let [chan (a/promise-chan)]
         (a/>!! chan inferred-columns)
         (a/close! chan)
         chan)
       ;; for *native* queries we actually have to run it.
       (let [query (query-for-result-metadata query)]
-        (qp/process-query-async query {:reducedf async-result-metadata-reducedf
-                                       :raisef   async-result-metdata-raisef})))))
+        (qp/process-query query
+                          (qp.context/async-context
+                           {:reducedf async-result-metadata-reducedf
+                            :raisef   async-result-metdata-raisef}))))))

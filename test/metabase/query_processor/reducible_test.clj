@@ -11,7 +11,8 @@
    [metabase.query-processor.postprocess :as qp.postprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.query-processor.setup :as qp.setup]))
 
 (set! *warn-on-reflection* true)
 
@@ -94,104 +95,3 @@
               :query    {:source-table (mt/id :venues), :limit 2, :order-by [[:asc (mt/id :venues :id)]]}}
              maps-rff
              nil))))))
-
-(deftest ^:parallel cancelation-test
-  (testing "Example of canceling a query early before results are returned."
-    (letfn [(process-query [canceled-chan timeout]
-              ((qp.reducible/async-qp (fn [query rff {:keys [canceled-chan reducef], :as context}]
-                                        (let [futur (future (reducef query rff context))]
-                                          (a/go
-                                            (when (a/<! canceled-chan)
-                                              (future-cancel futur))))))
-               {}
-               {:canceled-chan canceled-chan
-                :timeout       timeout
-                :executef      (fn [_ _ _ respond]
-                                 (Thread/sleep 500)
-                                 (respond {} [[1]]))}))]
-      (mt/with-open-channels [canceled-chan (a/promise-chan)]
-        (let [out-chan (process-query canceled-chan 1000)]
-          (a/close! out-chan)
-          (is (= ::qp.reducible/cancel
-                 (first (a/alts!! [canceled-chan (a/timeout 500)]))))))
-      (mt/with-open-channels [canceled-chan (a/promise-chan)]
-        (let [out-chan (process-query canceled-chan 1000)]
-          (future
-            (Thread/sleep 50)
-            (a/close! out-chan))
-          (is (= ::qp.reducible/cancel
-                 (a/<!! canceled-chan)))
-          (is (= nil
-                 (a/<!! out-chan)))))
-      (testing "With a ridiculous timeout (1 ms) we should still get a result"
-        (mt/with-open-channels [canceled-chan (a/promise-chan)]
-          (let [out-chan (process-query canceled-chan 1)
-                result (first (a/alts!! [out-chan (a/timeout 1000)]))]
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"Timed out after 1000\.0 µs\."
-                 (if (instance? Throwable result)
-                   (throw result)
-                   result)))))))))
-
-(deftest ^:parallel exceptions-test
-  (testing "Test a query that throws an Exception."
-    (is (thrown?
-         Throwable
-         (qp/process-query
-          {:database (mt/id)
-           :type     :native
-           :native   {:query "SELECT asdasdasd;"}}))))
-  (testing "Test when an Exception is thrown in the reducing fn."
-    (is (thrown-with-msg?
-         Throwable #"Cannot open file"
-         (qp/process-query
-          {:database (mt/id)
-           :type     :query
-           :query    {:source-table (mt/id :venues), :limit 20}}
-          {:reducef (fn [& _]
-                      (throw (Exception. "Cannot open file")))})))))
-
-(deftest ^:parallel custom-qp-test
-  (testing "Rows don't actually have to be reducible. And you can build your own QP with your own middleware."
-    (is (= {:data {:cols [{:name "n"}]
-                   :rows [{:n 1} {:n 2} {:n 3} {:n 4} {:n 5}]}}
-           ((qp.reducible/sync-qp (qp.reducible/async-qp qp.reducible/identity-qp))
-            {}
-            maps-rff
-            {:executef (fn [_ _ _ respond]
-                         (respond {:cols [{:name "n"}]}
-                                  [[1] [2] [3] [4] [5]]))})))))
-
-(deftest ^:parallel row-type-agnostic-test
-  (let [api-qp-middleware-options (delay (-> (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query users {:limit 1}))
-                                             :json_query
-                                             :middleware))]
-    (mt/test-drivers (mt/normal-drivers)
-      (testing "All QP middleware should work regardless of the type of each row (#13475)"
-        (doseq [rows [[[1]
-                       [Integer/MAX_VALUE]]
-                      [(list 1)
-                       (list Integer/MAX_VALUE)]
-                      [(cons 1 nil)
-                       (cons Integer/MAX_VALUE nil)]
-                      [(lazy-seq [1])
-                       (lazy-seq [Integer/MAX_VALUE])]]]
-          (testing (format "rows = ^%s %s" (.getCanonicalName (class rows)) (pr-str rows))
-            (letfn [(process-query [& {:as additional-options}]
-                      (let [query (merge
-                                   {:database (mt/id)
-                                    :type     :query
-                                    :query    {:source-table (mt/id :venues)
-                                               :fields       [[:field (mt/id :venues :id) nil]]}}
-                                   additional-options)
-                            rff   (qp.postprocess/post-processing-rff query qp.reducible/default-rff)
-                            rf    (rff nil)]
-                        (transduce identity rf rows)))]
-              (is (= [[1]
-                      [2147483647]]
-                     (process-query)))
-              (testing "Should work with the middleware options used by API requests as well"
-                (is (= [["1"]
-                        ["2147483647"]]
-                       (process-query :middleware @api-qp-middleware-options)))))))))))

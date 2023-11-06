@@ -6,7 +6,7 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.table :as table]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -27,7 +27,7 @@
                        ;; around
                        dataset? (assoc :original-model "card"))
         query       (when (seq query)
-                      (try (qp/preprocess query)
+                      (try (qp.preprocess/preprocess query)
                            (catch Throwable e
                              (log/error e (tru "Error preprocessing query:")))))
         database-id (some-> query :database u/the-id)

@@ -22,6 +22,7 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.setup :as qp.setup]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 ;;; This is a namespace that adds middleware to test MLv2 stuff every time we run a query. It lives in a `./test`
@@ -59,19 +60,34 @@
    #'catch-exceptions/catch-exceptions])
 ;; ↑↑↑ PRE-PROCESSING ↑↑↑ happens from BOTTOM TO TOP
 
-(defn- async-context [context]
-  context)
-
-(defn- process-query* [query rff context]
+(defn- process-query** [query rff context]
   (let [preprocessed (qp.preprocess/preprocess query)
         compiled     (qp.compile/compile preprocessed)
         rff          (qp.postprocess/post-processing-rff preprocessed rff)]
     (qp.execute/execute compiled rff context)))
 
+(def ^:private process-query* nil)
+
+(defn- rebuild-process-query-fn! []
+  (alter-var-root #'process-query* (constantly
+                                    (reduce
+                                     (fn [qp middleware]
+                                       (middleware qp))
+                                     process-query**
+                                     around-middleware))))
+
+(rebuild-process-query-fn!)
+
+(doseq [varr  around-middleware
+        :when varr]
+  (add-watch varr ::reload (fn [_key _ref _old-state _new-state]
+                             (log/infof "%s changed, rebuilding %s" varr `process-query*)
+                             (rebuild-process-query-fn!))))
+
 (mu/defn process-query
   "Process an MBQL query. This is the main entrypoint to the magical realm of the Query Processor. Returns a *single*
-  core.async channel if option `:async?` is true; otherwise returns results in the usual format. For async queries, if
-  the core.async channel is closed, the query will be canceled."
+  core.async channel if option `:async?` is true or if passed a [[qp.context/async-context]]; otherwise returns
+  results in the usual format. For async queries, if the core.async channel is closed, the query will be canceled."
   ([query]
    (process-query query nil nil))
 
@@ -85,19 +101,11 @@
      (let [rff     (or rff qp.reducible/default-rff)
            context (if async?
                      (qp.context/async-context context)
-                     (qp.context/sync-context context))
-           qp      (reduce
-                     (fn [qp middleware]
-                       (middleware qp))
-                     process-query*
-                     around-middleware)]
+                     (qp.context/sync-context context))]
        (try
-         (qp query rff context)
+         (process-query* query rff context)
          (catch Throwable e
            (qp.context/raisef e context)))))))
-
-;; NOCOMMIT
-
 
 (mu/defn userland-query :- :map
   "Add middleware options and `:info` to a `query` so it is ran as a 'userland' query, which slightly changes the QP
@@ -136,37 +144,7 @@
 
 ;;;; DEPRECATED
 
-(defn ^:deprecated process-query-async
-  "DEPRECATED: use [[process-query]] directly."
-  ([query]
-   (process-query-async query nil))
-
-  ([query context]
-   (process-query-async query nil context))
-
-  ([query rff context]
-   (process-query query rff (async-context context))))
-
-(def ^{:arglists '([query] [query context] [query rff context])} ^:deprecated process-query-sync
-  "DEPRECATED: use [[process-query]] instead."
-  process-query)
-
-(mu/defn ^:deprecated preprocess :- :map
-  "DEPRECATED: use [[qp.preprocess/preprocess]] instead."
-  [query :- :map]
-  (qp.preprocess/preprocess query))
-
-(defn ^:deprecated query->expected-cols
-  "DEPRECATED: use [[qp.preprocess/query->expected-cols]] instead."
-  [query]
-  (qp.preprocess/query->expected-cols query))
-
 (defn ^:deprecated compile
   "DEPRECATED: use [[qp.compile/compile]] instead."
   [query]
   (:native (qp.compile/compile query)))
-
-(defn ^:deprecated compile-and-splice-parameters
-  "DEPRECATED: use [[qp.compile/compile-and-splice-parameters]] instead."
-  [query]
-  (qp.compile/compile-and-splice-parameters query))

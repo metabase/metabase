@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.splice-params-in-response
     :as splice-params-in-response]
    [metabase.test.data :as data]))
@@ -46,20 +46,20 @@
               :limit 1}})
 
 (deftest compile-and-splice-parameters
-  (testing "`qp/compile-and-splice-parameters`, should, as the name implies, attempt to splice the params into the query"
+  (testing "`qp.compile/compile-and-splice-parameters`, should, as the name implies, attempt to splice the params into the query"
     (with-splice-params-call?
       (is (= '(splice-parameters-into-native-query
                :h2
                {:query  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1"
                 :params ["Beyond Sushi"]})
-             (qp/compile-and-splice-parameters (sushi-query)))))))
+             (qp.compile/compile-and-splice-parameters (sushi-query)))))))
 
 (deftest compile-test
   (testing "`compile` should not call `splice-parameters-into-native-query`"
     (with-splice-params-call?
-      (is (= {:query  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1"
-              :params ["Beyond Sushi"]}
-             (qp/compile (sushi-query)))))))
+      (is (=? {:native {:query  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1"
+                        :params ["Beyond Sushi"]}}
+              (qp.compile/compile (sushi-query)))))))
 
 (deftest e2e-test
   (testing (str "`splice-parameters-into-native-query` should get called on the `:native_form` returned in query "

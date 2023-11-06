@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.timezones-test :as timezones-test]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]))
 
@@ -563,7 +564,7 @@
           (let [query (mt/mbql-query venues
                         {:aggregation [[:count]]
                          :filter      [:= $name v]})]
-            (testing (format "\nquery = %s" (pr-str (:query (qp/compile-and-splice-parameters query))))
+            (testing (format "\nquery = %s" (pr-str (:query (qp.compile/compile-and-splice-parameters query))))
               ;; Mongo returns empty results if count is zero -- see #5419
               (is (= (if (and (= driver/*driver* :mongo)
                               (zero? expected-count))

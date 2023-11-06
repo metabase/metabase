@@ -21,6 +21,7 @@
    [metabase.query-processor.middleware.cache-test :as cache-test]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -880,7 +881,7 @@
                                                                                             :id (mt/id :products :category))
                                                           :database_type "CHARACTER VARYING"
                                                           :name          "CATEGORY"}]]
-                                       (get-in (qp/preprocess drill-thru-query) [:query :filter])))))]
+                                       (get-in (qp.preprocess/preprocess drill-thru-query) [:query :filter])))))]
                         (testing "As an admin"
                           (mt/with-test-user :crowberto
                             (test-preprocessing)

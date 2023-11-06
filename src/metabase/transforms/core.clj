@@ -12,7 +12,7 @@
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.table :as table :refer [Table]]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.transforms.materialize :as tf.materialize]
    [metabase.transforms.specs :refer [Step transform-specs TransformSpec]]
    [metabase.util :as u]
@@ -46,7 +46,7 @@
    query                :- (s/pred mbql.s/valid-query?)]
   (let [flattened-bindings (merge (apply merge (map (comp :dimensions bindings :source) joins))
                                   (get-in bindings [name :dimensions]))]
-    (into {} (for [{:keys [name] :as col} (qp/query->expected-cols query)]
+    (into {} (for [{:keys [name] :as col} (qp.preprocess/query->expected-cols query)]
                [(if (flattened-bindings name)
                   name
                   ;; If the col is not one of our own we have to reconstruct to what it refers in

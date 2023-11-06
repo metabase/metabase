@@ -9,6 +9,7 @@
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.models :refer [Database Field Table]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
@@ -515,6 +516,6 @@
      (testing "native queries are compiled and formatted without whitespace errors (#30676)"
        (is (= (str (format "SELECT\n  count(*) AS `count`\nFROM\n  `%s.venues`" test-db-name))
               (->> (mt/mbql-query venues {:aggregation [:count]})
-                   qp/compile-and-splice-parameters
+                   qp.compile/compile-and-splice-parameters
                    :query
                    (driver/prettify-native-form :bigquery-cloud-sdk)))))))

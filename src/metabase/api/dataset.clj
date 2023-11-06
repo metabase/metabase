@@ -19,6 +19,7 @@
    [metabase.models.query :as query]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -171,7 +172,7 @@
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
     (let [driver (driver.u/database->driver database)
           prettify (partial driver/prettify-native-form driver)
-          compiled (qp/compile-and-splice-parameters query)]
+          compiled (qp.compile/compile-and-splice-parameters query)]
       (cond-> compiled
         (not (false? pretty)) (update :query prettify)))))
 

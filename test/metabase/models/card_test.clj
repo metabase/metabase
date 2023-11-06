@@ -5,11 +5,16 @@
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.models
-    :refer [Collection Dashboard DashboardCard ParameterCard NativeQuerySnippet Revision]]
+    :refer [Collection
+            Dashboard
+            DashboardCard
+            NativeQuerySnippet
+            ParameterCard
+            Revision]]
    [metabase.models.card :as card]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
@@ -232,7 +237,7 @@
 
 (deftest normalize-result-metadata-test
   (testing "Should normalize result metadata keys when fetching a Card from the DB"
-    (let [metadata (qp/query->expected-cols (mt/mbql-query venues))]
+    (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query venues))]
       (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query   (mt/mbql-query venues)
                                                           :result_metadata metadata}]
         (is (= (mt/derecordize metadata)
@@ -245,7 +250,7 @@
                           (f (t2/select-one-fn :result_metadata :model/Card :id card-id))))
            "updating" (fn [changes f]
                         (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query   (mt/mbql-query checkins)
-                                                                            :result_metadata (qp/query->expected-cols (mt/mbql-query checkins))}]
+                                                                            :result_metadata (qp.preprocess/query->expected-cols (mt/mbql-query checkins))}]
                           (t2/update! :model/Card card-id changes)
                           (f (t2/select-one-fn :result_metadata :model/Card :id card-id))))}]
 
@@ -253,10 +258,10 @@
       (testing "If result_metadata is empty, we should attempt to populate it"
         (f {:dataset_query (mt/mbql-query venues)}
            (fn [metadata]
-             (is (= (map :name (qp/query->expected-cols (mt/mbql-query venues)))
+             (is (= (map :name (qp.preprocess/query->expected-cols (mt/mbql-query venues)))
                     (map :name metadata))))))
       (testing "Don't overwrite result_metadata that was passed in"
-        (let [metadata (take 1 (qp/query->expected-cols (mt/mbql-query venues)))]
+        (let [metadata (take 1 (qp.preprocess/query->expected-cols (mt/mbql-query venues)))]
           (f {:dataset_query   (mt/mbql-query venues)
               :result_metadata metadata}
              (fn [new-metadata]
@@ -595,7 +600,7 @@
              (serdes/descendants "Card" (:id card2)))))))
 
 (deftest extract-test
-  (let [metadata (qp/query->expected-cols (mt/mbql-query venues))
+  (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query venues))
         query    (mt/mbql-query venues)]
     (testing "normal cards omit result_metadata"
       (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query   query

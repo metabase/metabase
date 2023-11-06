@@ -24,7 +24,7 @@
                                                 (Thread/sleep 5000)
                                                 (throw (Exception. "Don't actually run!")))]
 
-            (let [out-chan (qp/process-query-async query)]
+            (let [out-chan (qp/process-query query (qp.context/async-context))]
               ;; wait for query to start running, then close `out-chan`
               (a/go
                 (a/<! running-chan)
@@ -40,7 +40,7 @@
         (with-redefs [druid.client/do-query-with-cancellation (fn [_chan _details query]
                                                                 (reset! executed-query query)
                                                                 [])]
-          (qp/process-query-sync query)
+          (qp/process-query query)
           (is (partial= {:context {:timeout qp.context/query-timeout-ms}}
                         @executed-query)))))))
 

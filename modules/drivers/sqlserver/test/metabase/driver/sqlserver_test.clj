@@ -17,6 +17,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -154,7 +155,7 @@
                                              :fields       [$name]
                                              :order-by     [[:asc $id]]}
                               :order-by     [[:asc $id]]})
-                           qp/preprocess
+                           qp.preprocess/preprocess
                            (m/dissoc-in [:query :limit]))]
       (mt/with-metadata-provider (mt/id)
         (is (= {:query  (str "SELECT \"source\".\"name\" AS \"name\" "

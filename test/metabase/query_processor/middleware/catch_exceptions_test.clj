@@ -4,10 +4,12 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.catch-exceptions
     :as catch-exceptions]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]))
 
@@ -66,8 +68,8 @@
   (testing "compile and preprocess should not be called if no exception occurs"
     (let [compile-call-count (atom 0)
           preprocess-call-count (atom 0)]
-      (with-redefs [qp/compile    (fn [_] (swap! compile-call-count inc))
-                    qp/preprocess (fn [_] (swap! preprocess-call-count inc))]
+      (with-redefs [qp.compile/compile       (fn [_] (swap! compile-call-count inc))
+                    qp.preprocess/preprocess (fn [_] (swap! preprocess-call-count inc))]
         (is (= {:data {}, :row_count 0, :status :completed}
                (catch-exceptions
                 (fn []))))

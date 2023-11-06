@@ -14,6 +14,7 @@
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.timezones-test :as timezones-test]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -358,7 +359,7 @@
                                    {:source-table "card__3"
                                     :limit        3})
                   [cid cuser-id ccount cuser-id2 ccount2] (->> top-card-query
-                                                               qp/query->expected-cols
+                                                               qp.preprocess/query->expected-cols
                                                                (map :name))
                   cid2 (str cid "_2")
                   col-data-fn   (juxt            :id       :name     :source_alias)

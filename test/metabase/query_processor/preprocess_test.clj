@@ -1,12 +1,10 @@
-(ns metabase.query-processor-test
-  "Helper functions for various query processor tests. The tests themselves can be found in various
-  `metabase.query-processor-test.*` namespaces; there are so many that it is no longer feasible to keep them all in
-  this one. Event-based DBs such as Druid are tested in `metabase.driver.event-query-processor-test`."
+(ns metabase.query-processor.preprocess-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
    [schema.core :as s]))
 
@@ -23,7 +21,7 @@
                                  (let [results (qp/process-query query)]
                                    {:cached?  (boolean (:cached results))
                                     :num-rows (count (mt/rows results))}))
-              expected-results (qp/preprocess query)]
+              expected-results (qp.preprocess/preprocess query)]
           (testing "Check preprocess before caching to make sure results make sense"
             (is (schema= {:database (s/eq (mt/id))
                           s/Keyword s/Any}
@@ -42,7 +40,7 @@
                      (run-query))))
             (testing "preprocess should return same results even when query was cached."
               (is (= expected-results
-                     (qp/preprocess query))))))))))
+                     (qp.preprocess/preprocess query))))))))))
 
 (driver/register! ::custom-escape-spaces-to-underscores :parent :h2)
 
@@ -88,4 +86,29 @@
                     :field_ref [:field (mt/id :people :address) {:join-alias "Question 54"}]
                     :display_name "Question 54 → Address"
                     :source_alias "Question 54"}]
-                  (qp/query->expected-cols query))))))))
+                  (qp.preprocess/query->expected-cols query))))))))
+
+(deftest ^:parallel deduplicate-column-names-test
+  (testing "`query->expected-cols` should return deduplicated column names"
+    (is (= ["ID" "DATE" "USER_ID" "VENUE_ID" "ID_2" "NAME" "LAST_LOGIN"]
+           (map :name (qp.preprocess/query->expected-cols
+                       (mt/mbql-query checkins
+                         {:source-table $$checkins
+                          :joins
+                          [{:fields       :all
+                            :alias        "u"
+                            :source-table $$users
+                            :condition    [:= $user_id &u.users.id]}]})))))))
+
+(deftest ^:parallel remapped-fks-test
+  (testing "Sanity check: query->expected-cols should not include MLv2 dimension remapping keys"
+    (mt/dataset sample-dataset
+      ;; Add column remapping from Orders Product ID -> Products.Title
+      (mt/with-temp [:model/Dimension _ (mt/$ids orders
+                                          {:field_id                %product_id
+                                           :name                    "Product ID"
+                                           :type                    :external
+                                           :human_readable_field_id %products.title})]
+        (let [expected-cols (qp.preprocess/query->expected-cols (mt/mbql-query orders))]
+          (is (not (some (some-fn :lib/external_remap :lib/internal_remap)
+                         expected-cols))))))))

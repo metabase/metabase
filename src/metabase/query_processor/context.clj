@@ -210,7 +210,13 @@
 
 (defn- default-reducef [rff context metadata reducible-rows]
   (when-not (canceled? context)
-    (let [rf (rff metadata)]
+    (let [rf (try
+               (rff metadata)
+               (catch Throwable e
+                 (raisef (ex-info (i18n/tru "Error building query results reducing function: {0}" (ex-message e))
+                                  {:type qp.error-type/qp}
+                                  e)
+                         context)))]
       (when-let [reduced-rows (try
                                 (transduce identity rf reducible-rows)
                                 (catch Throwable e
@@ -273,13 +279,15 @@
            ^Runnable (bound-fn*
                       (^:once fn* []
                        (sync-runf query rff context))))
-  nil)
+  (out-chan context))
 
 (defn- async-resultf [result context]
   (a/close! (canceled-chan context))
   (a/>!! (out-chan context) result)
   (a/close! out-chan)
-  result)
+  (if (instance? Throwable result)
+    (throw result)
+    result))
 
 (def ^:private base-async-context
   (merge base-sync-context
@@ -317,7 +325,8 @@
    (async-context nil))
 
   ([context]
-   (let [context (merge base-async-context context)]
+   (let [context (merge base-async-context context)
+         context (cond-> context
+                   (not (:canceled-chan context)) (assoc :canceled-chan (make-canceled-chan context)))]
      (cond-> context
-       (not (:canceled-chan context)) (assoc :canceled-chan (make-canceled-chan context))
-       (not (:out-chan context))      (assoc :out-chan (make-async-out-chan context))))))
+       (not (:out-chan context)) (assoc :out-chan (make-async-out-chan context))))))

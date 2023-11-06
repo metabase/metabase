@@ -19,6 +19,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-implicit-joins
     :as qp.add-implicit-joins]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test.data :as data]
@@ -497,9 +498,10 @@
    (lib.tu/metadata-provider-with-cards-for-queries parent-metadata-provider queries)))
 
 (mu/defn metadata-provider-with-cards-with-metadata-for-queries :- lib.metadata/MetadataProvider
-  "Like [[metadata-provider-with-cards-for-queries]], but includes the results of [[qp/query->expected-cols]] as
-  `:result-metadata` for each Card. The metadata provider is built up progressively, meaning metadata for previous Cards
-  is available when calculating metadata for subsequent Cards."
+  "Like [[metadata-provider-with-cards-for-queries]], but includes the results
+  of [[metabase.query-processor.preprocess/query->expected-cols]] as `:result-metadata` for each Card. The metadata
+  provider is built up progressively, meaning metadata for previous Cards is available when calculating metadata for
+  subsequent Cards."
   ([queries]
    (metadata-provider-with-cards-with-metadata-for-queries
     (lib.metadata.jvm/application-database-metadata-provider (data/id))
@@ -519,7 +521,7 @@
      (fn [metadata-provider {query :dataset-query, :as card}]
        (qp.store/with-metadata-provider metadata-provider
          (let [result-metadata (if (= (:type query) :query)
-                                 (qp/query->expected-cols query)
+                                 (qp.preprocess/query->expected-cols query)
                                  (actual-query-results query))
                card            (assoc card :result-metadata result-metadata)]
            (lib.tu/mock-metadata-provider metadata-provider {:cards [card]})))))

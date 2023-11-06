@@ -9,6 +9,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.resolve-database-and-driver
     :as qp.resolve-database-and-driver]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
@@ -151,7 +152,7 @@
       (try
         (let [query (cond-> query
                       (seq info) (qp/userland-query info))]
-          (qp/process-query-sync query rff context))
+          (qp/process-query query rff context))
         (catch Throwable e
           (log/error e (trs "Error processing additional pivot table query"))
           (throw e))))))
@@ -246,7 +247,7 @@
                                       (pivot-options query (get-in query [:info :visualization-settings])))
              main-breakout           (:breakout (:query query))
              col-determination-query (add-grouping-field query main-breakout 0)
-             all-expected-cols       (qp/query->expected-cols col-determination-query)
+             all-expected-cols       (qp.preprocess/query->expected-cols col-determination-query)
              all-queries             (generate-queries query pivot-options)]
          (process-multiple-queries
           all-queries
@@ -255,7 +256,7 @@
                  ;; this function needs to be executed at the start of every new query to
                  ;; determine the mapping for maintaining query shape
                  :column-mapping-fn (fn [query]
-                                      (let [query-cols (map-indexed vector (qp/query->expected-cols query))]
+                                      (let [query-cols (map-indexed vector (qp.preprocess/query->expected-cols query))]
                                         (map (fn [item]
                                                (some #(when (= (:name item) (:name (second %)))
                                                         (first %)) query-cols))

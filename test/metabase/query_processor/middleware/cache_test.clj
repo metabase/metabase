@@ -118,9 +118,7 @@
   ;; clear out stale values in save/purge channels
   (while (a/poll! *save-chan*))
   (while (a/poll! *purge-chan*))
-  (let [qp       (qp.reducible/sync-qp
-                  (qp.reducible/async-qp
-                   (cache/maybe-return-cached-results qp.reducible/identity-qp)))
+  (let [qp       (cache/maybe-return-cached-results qp.reducible/identity-qp)
         metadata {}
         rows     [[:toucan      71]
                   [:bald-eagle  92]
@@ -135,7 +133,7 @@
                   :executef (fn [_driver _query _context respond]
                               (Thread/sleep *query-execution-delay-ms*)
                               (respond metadata rows))}]
-    (-> (qp query context)
+    (-> (qp query qp.reducible/default-rff context)
         (assoc :data {}))))
 
 (defn- run-query [& args]

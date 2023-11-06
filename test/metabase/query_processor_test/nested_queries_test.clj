@@ -22,6 +22,7 @@
    [metabase.models.query.permissions :as query-perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -905,7 +906,7 @@
                                                      result)))
                                       (get-in result [:data :results_metadata :columns])))
             expected-cols         (qp.store/with-metadata-provider provider
-                                    (qp/query->expected-cols (mt/mbql-query orders)))]
+                                    (qp.preprocess/query->expected-cols (mt/mbql-query orders)))]
         (is (not (some (some-fn :lib/external_remap :lib/internal_remap)
                        expected-cols))
             "Sanity check: query->expected-cols should not include MLv2 dimension remapping keys")
@@ -1115,7 +1116,7 @@
                                     :condition    [:= $product_id &ℙ.products.id]}]
                         :order-by [[:asc $id]]
                         :limit    2})
-            metadata (qp/query->expected-cols query)]
+            metadata (qp.preprocess/query->expected-cols query)]
         (testing "x.38.0+: metadata should include `:field_ref`"
           (is (= (mt/$ids orders
                    [$id
