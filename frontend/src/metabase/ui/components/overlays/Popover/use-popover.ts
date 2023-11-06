@@ -78,17 +78,15 @@ export function usePopover(options: UsePopoverOptions) {
     placement: options.position,
     middleware: [
       ...getPopoverMiddlewares(options),
-      ...(options.width === "target"
-        ? [
-            size({
-              apply({ rects }) {
-                Object.assign(floating.refs.floating.current?.style ?? {}, {
-                  width: `${rects.reference.width}px`,
-                });
-              },
-            }),
-          ]
-        : []),
+      size({
+        apply({ rects, availableHeight, availableWidth }) {
+          Object.assign(floating.refs.floating.current?.style ?? {}, {
+            width: options.width === "auto" ? `${rects.reference.width}px` : "",
+            maxHeight: `${availableHeight}px`,
+            maxWidth: `${availableWidth}px`,
+          });
+        },
+      }),
     ],
   });
 
