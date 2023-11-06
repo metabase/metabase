@@ -191,7 +191,7 @@ export const ChartSettingAddRemoveColumns = ({
                     label={
                       <Text
                         fw={700}
-                        ml="0.5rem"
+                        ml="0.375rem"
                         lh="1.5rem"
                       >{t`Remove all`}</Text>
                     }
@@ -205,7 +205,7 @@ export const ChartSettingAddRemoveColumns = ({
                     label={
                       <Text
                         fw={700}
-                        ml="0.75rem"
+                        ml="0.375rem"
                         lh="1.5rem"
                       >{t`Add all`}</Text>
                     }
@@ -219,9 +219,9 @@ export const ChartSettingAddRemoveColumns = ({
               <Box mb="1rem" key={`column-${columnItem.displayName}`}>
                 <Checkbox
                   label={
-                    <Flex ml="0.5rem" align="center">
+                    <Flex ml="0.25rem" align="center">
                       <Icon name={getColumnIcon(columnItem.column)}></Icon>
-                      <Text span ml="0.625rem" lh="1.5rem" fw={400}>
+                      <Text span ml="0.5rem" lh="1.5rem" fw={400}>
                         {columnItem.displayName}
                       </Text>
                     </Flex>
