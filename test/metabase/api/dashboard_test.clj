@@ -1429,8 +1429,8 @@
                                                              {:dashcards [new-dashcard-info]
                                                               :tabs      []}))}))))))
 
-(deftest e2e-update-cards-and-tabs-test
-  (testing "PUT /api/dashboard/:id/cards with create/update/delete in a single req"
+(deftest e2e-update-dashboard-cards-and-tabs-test
+  (testing "PUT /api/dashboard/:id with updating dashboard and create/update/delete of dashcards and tabs in a single req"
     (mt/with-ensure-with-temp-no-transaction!
       (t2.with-temp/with-temp
         [Dashboard               {dashboard-id :id}  {}
@@ -1443,7 +1443,8 @@
          DashboardCard           {dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-2}
          DashboardCard           {dashcard-id-3 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-2}]
         (let [resp (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
-                                         {:tabs      [{:id   dashtab-id-1
+                                         {:name      "Updated dashboard name"
+                                          :tabs      [{:id   dashtab-id-1
                                                        :name "Tab 1 edited"}
                                                       {:id   dashtab-id-2
                                                        :name "Tab 2"}
@@ -1472,6 +1473,11 @@
                                                        :row              3
                                                        :dashboard_tab_id -1
                                                        :card_id          card-id-2}]})]
+          (testing "name got updated correctly"
+            (is (= "Updated dashboard name"
+                   (t2/select-one-fn :name :model/Dashboard :id dashboard-id)
+                   (:name resp))))
+
           (testing "tabs got updated correctly "
             (is (=? [{:id           dashtab-id-1
                       :dashboard_id dashboard-id
