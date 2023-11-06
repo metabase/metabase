@@ -112,7 +112,7 @@ describeEE("scenarios > Instance Analytics Collection", () => {
 
       navigationSidebar().findByText(ANALYTICS_COLLECTION_NAME).click();
 
-      cy.findByTestId("pinned-items").findByText("Single person view").click();
+      cy.findByTestId("pinned-items").findByText("Person overview").click();
 
       cy.findByTestId("dashboard-header").findByText("Make a copy").click();
 
