@@ -25,7 +25,7 @@ interface PopoverContext {
   opened: boolean;
   transitionProps?: TransitionOverride;
   reference: (node: ReferenceType) => void;
-  floating: (node: HTMLElement) => void;
+  floating: (node: HTMLElement | null) => void;
   width?: PopoverProps["width"];
   withArrow: boolean;
   arrowSize: number;
