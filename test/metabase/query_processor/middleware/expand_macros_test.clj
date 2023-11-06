@@ -389,7 +389,6 @@
 
 ;; (deftest metric-expand-filter-test)
 
-;; (deftest metric-breakout-test)
 
 ;; (deftest metric-naming-test)
 
@@ -422,62 +421,6 @@
 
 ;;;; - [ ] use of metrics with named expressions, maybe think of order by updates
 
-;;;; This test sample query which I'm using during development. Test will probably be factored out later.
-;;;; TODO: Double check correctness of values.
-(deftest multiple-metrics-wip-test
-  ;; TODO: Consider other features that should be tested for, to support metrics expansion correctly!
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
-    (t2.with-temp/with-temp
-      [:model/Metric {m1-id :id} {:name "venues, count"
-                                  :description "Metric doing count with no filtering."
-                                  :table_id (mt/id :venues)
-                                  :definition (mt/$ids venues {:source-table $$venues
-                                                               ;;;; Here we will be testing also correct handling 
-                                                               ;;;; of unnamed aggregation.
-                                                               :aggregation [[:count]]})}
-       :model/Metric {m2-id :id} {:name "venues, sum price, cat id lt 50"
-                                  :description (str "This is metric doing sum of price with filter for category id "
-                                                    "less than 50.")
-                                  :table_id (mt/id :venues)
-                                  :definition (mt/$ids venues {:source-table $$venues
-                                                               :filter [:< $category_id 50]
-                                                               :aggregation [[:sum $price]]})}
-       ;;;; Following metric requires ids of previously defined metrics. Those ids are autogenrated, hence available
-       ;;;;   in body of `with-temp`. Because of that, definition for this metrics will be set there.
-       :model/Metric {m3-id :id} {:name "venues, count metric div sum metric, cat id gt 30"
-                                  :description (str "Metric that combines another metrics. "
-                                                    "It divides values of `m1` by values of `m2`, filtering for "
-                                                    "category ids greater than 20")
-                                  :table_id (mt/id :venues)}]
-      (t2/update! :model/Metric m3-id {:definition (mt/$ids venues
-                                                            {:source-table $$venues
-                                                             :filter [:> $category_id 20]
-                                                             :aggregation
-                                                             [[:aggregation-options
-                                                               [:/ [:metric m1-id] [:metric m2-id]]
-                                                               {:name "Metric dividing metric"
-                                                                :display-name "Metric dividing metric"}]]})})
-      ;; for setting non temp metrics in app db
-      (def m1 (t2/select :model/Metric :id m1-id))
-      (def m2 (t2/select :model/Metric :id m2-id))
-      (def m3 (t2/select :model/Metric :id m3-id))
-      (let [query @(def q (mt/mbql-query venues
-                            {:aggregation [[:metric m3-id]
-                                           [:metric m2-id]
-                                           [:metric m1-id]]
-                             :breakout [$category_id]
-                             :order-by [[:asc $category_id]]
-                             ;; TODO: Change limit so non-nil col 1 is checked!
-                             :limit 5}))
-            prepr @(def pp (qp/preprocess query))]
-        (is (= [[2 nil 20 8]
-               [3 nil 4 2]
-               [4 nil 4 2]
-               [5 nil 14 7]
-               [6 nil 3 2]]
-             (mt/formatted-rows [int num int int]
-                                @(def p (qp/process-query q)))))))))
-
 ;;;; TODO: Here make more tests for expansion rather then query execution.
 (deftest simple-metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
@@ -486,6 +429,7 @@
        {id :id}
        {:name "venues, count"
         :description "Metric doing count with no filtering."
+        :table_id (mt/id :venues)
         :definition (mt/$ids venues {:aggregation [[:count]]})}]
       (testing "Query containing metric returns correct results"
         (testing "no query filter, no breakout"
@@ -534,6 +478,7 @@
       [:model/Metric
        {id :id}
        {:name "venues, count"
+        :table_id (mt/id :venues)
         :description "Metric doing count with no filtering."
         :definition (mt/$ids venues {:source-table $$venues
                                      :aggregation [[:count]]
@@ -583,6 +528,7 @@
        {metric-id :id}
        {:name "venues, count"
         :description "Metric doing count with no filtering."
+        :table_id (mt/id :venues)
         :definition (mt/$ids venues {:source-table $$venues
                                      :aggregation [[:count]]
                                      :filter [:segment segment->2]})}]
@@ -615,6 +561,7 @@
       [:model/Metric
        {metric-id :id}
        {:name "venues, count"
+        :table_id (mt/id :venues)
         :description "Metric doing count with no filtering."
         :definition (mt/$ids venues {:source-table $$venues
                                      :aggregation [[:count]]})}]
@@ -664,6 +611,7 @@
        {metric-id :id}
        {:name "venues, count"
         :description "x"
+        :table_id (mt/id :venues)
         :definition (mt/$ids venues {:source-table $$venues
                                      :aggregation [[:count]]})}]
       (let [query @(def qqq (mt/mbql-query venues {:aggregation [[:metric metric-id]]
@@ -687,12 +635,14 @@
       [:model/Metric
        {nesting-metric-id :id}
        {:name "Just nesting"
+        :table_id (mt/id :venues)
         :description "x"}
 
        :model/Metric
        {nested-metric-id :id}
        {:name "venues, count"
         :description "x"
+        :table_id (mt/id :venues)
         :definition (mt/$ids venues {:source-table $$venues
                                      :aggregation [[:count]]})}]
       (t2/update! :model/Metric nesting-metric-id 
@@ -714,6 +664,7 @@
        {metric-id :id}
        {:name "venues_count"
         :description "x"
+        :table_id (mt/id :venues)
         :definition (mt/$ids venues {:source-table $$venues
                                      :aggregation [[:count]]})}
 
@@ -743,6 +694,7 @@
        {metric-id :id}
        {:name "venues_count"
         :description "x"
+        :table_id (mt/id :venues)
         :definition (mt/$ids venues {:source-table $$venues
                                      :aggregation [[:count]]})}]
       (let [query @(def qqq (mt/mbql-query venues {:aggregation [[:metric metric-id] [:max &Q2.$users.last_login]]
@@ -773,6 +725,7 @@
        {metric-id :id}
        {:name "venues_count"
         :description "x"
+        :table_id (mt/id :venues)
         :definition (mt/$ids venues {:source-table $$venues
                                      :aggregation [[:count]]})}]
       (testing ""
@@ -852,7 +805,6 @@
                    #_#'metabase.query-processor.middleware.expand-macros-test/aggregation-with-expression-using-one-metric-test
                    #_#'metabase.query-processor.middleware.expand-macros-test/segments-in-share-clauses-test
                    #'metabase.query-processor.middleware.expand-macros-test/simple-metric-test
-                   #'metabase.query-processor.middleware.expand-macros-test/duplicate-those-fields-test
                    #_#'metabase.query-processor.middleware.expand-macros-test/segments-test
                    #'metabase.query-processor.middleware.expand-macros-test/expression-in-breakout-of-metric-query-test
                    #_#'metabase.query-processor.middleware.expand-macros-test/metric-with-nested-segments-test
@@ -867,3 +819,185 @@
                    ;;;; TODO
                    #_#'metabase.query-processor.middleware.expand-macros-test/same-metric-as-only-metric-test])
   )
+
+;; complex for examples
+(deftest multiple-metrics-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+                   (t2.with-temp/with-temp
+                     [:model/Metric {m1-id :id} {:name "venues, count"
+                                                 :description "Metric doing count with no filtering."
+                                                 :table_id (mt/id :venues)
+                                                 :definition (mt/$ids venues {:source-table $$venues
+                                                                              :aggregation [[:count]]})}
+                      :model/Metric {m2-id :id} {:name "venues, sum price, cat id lt 50"
+                                                 :description (str "This is metric doing sum of price with filter for category id "
+                                                                   "less than 50.")
+                                                 :table_id (mt/id :venues)
+                                                 :definition (mt/$ids venues {:source-table $$venues
+                                                                              :filter [:< $category_id 50]
+                                                                              :aggregation [[:sum $price]]})}
+       ;;;; Following metric requires ids of previously defined metrics. Those ids are autogenrated, hence available
+       ;;;;   in body of `with-temp`. Because of that, definition for this metrics will be set there.
+                      :model/Metric {m3-id :id} {:name "venues, count metric div sum metric, cat id gt 30"
+                                                 :description (str "Metric that combines another metrics. "
+                                                                   "It divides values of `m1` by values of `m2`, filtering for "
+                                                                   "category ids greater than 20")
+                                                 :table_id (mt/id :venues)}]
+                     (t2/update! :model/Metric m3-id {:definition (mt/$ids venues
+                                                                           {:source-table $$venues
+                                                                            :filter [:> $category_id 20]
+                                                                            :aggregation
+                                                                            [[:aggregation-options
+                                                                              [:/ [:metric m1-id] [:metric m2-id]]
+                                                                              {:name "Metric dividing metric"
+                                                                               :display-name "Metric dividing metric"}]]})})
+                     (let [query @(def q (mt/mbql-query venues
+                                                        {:aggregation [[:metric m3-id]
+                                                                       [:metric m2-id]
+                                                                       [:metric m1-id]]
+                                                         :breakout [$category_id]
+                                                         :order-by [[:asc $category_id]]
+                             ;; TODO: Change limit so non-nil col 1 is checked!
+                                                         :limit 5}))
+                           preprocessed @(def pp (qp/preprocess query))]
+                       #_(is (=?))
+                       (is (= [[2 nil 20 8]
+                               [3 nil 4 2]
+                               [4 nil 4 2]
+                               [5 nil 14 7]
+                               [6 nil 3 2]]
+                              (mt/formatted-rows [int num int int]
+                                                 @(def p (qp/process-query q)))))))))
+
+(comment
+  ;; snippet for initializing.
+  (def m1 (t2/select :model/Metric :id m1-id))
+  (def m2 (t2/select :model/Metric :id m2-id))
+  (def m3 (t2/select :model/Metric :id m3-id))
+  )
+
+(deftest metrics-transformation-sanity-test
+  (mt/test-drivers
+   (mt/normal-drivers-with-feature :nested-queries :left-join)
+   (t2.with-temp/with-temp
+     [:model/Metric {m1-id :id} {:name "Just count"
+                                 :description "Some description."
+                                 :table_id (mt/id :venues)
+                                 :definition (mt/$ids venues {:source-table $$venues
+                                                              :aggregation [[:count]]})}]
+     (let [query @(def q (mt/mbql-query venues
+                                        {:aggregation [[:metric m1-id]]
+                                         :breakout [$category_id]
+                                         :order-by [[:asc $category_id]]
+                                         :limit 5}))]
+       (is (partial= (mt/$ids
+                      venues
+                      {:query
+                       {:fields [[:field (mt/id :venues :category_id) nil]
+                                 [:field "Just count" {:join-alias "metric__0"}]]
+                        :source-query {:expressions {"Just count" [:field "Just count" {}]}
+                                       :breakout [[:field (mt/id :venues :category_id) nil]
+                                                  [:expression "Just count"]]
+                                       :order-by [[:asc [:field (mt/id :venues :category_id) nil]]]}}})
+                     @(def exex (mt/with-metadata-provider (mt/id)
+                                  (#'expand-macros/expand-metrics-and-segments query)))))))))
+
+(deftest metrics-transformation-nested-definition-test)
+
+(deftest metrics-cyclic-definition-test)
+
+;;;; OK
+(deftest metrics-no-breakout-test
+  (mt/test-drivers
+   (mt/normal-drivers-with-feature :nested-queries :left-join)
+   (t2.with-temp/with-temp
+     [:model/Metric {m1-id :id} {:name "Just count"
+                                 :description "Some description."
+                                 :table_id (mt/id :venues)
+                                 :definition (mt/$ids venues {:source-table $$venues
+                                                              :aggregation [[:count]]})}]
+     (let [query @(def q (mt/mbql-query venues
+                                        {:aggregation [[:metric m1-id]]}))]
+       (is (partial= (mt/$ids venues
+                              {:query
+                               {:fields [[:field "Just count" {:join-alias "metric__0"}]]
+                                :source-query {:expressions {"Just count" [:field "Just count" {}]}
+                                               :breakout [[:expression "Just count"]]}}})
+                     @(def exex (mt/with-metadata-provider (mt/id)
+                                  (#'expand-macros/expand-metrics-and-segments query)))))
+       (testing "No breakout query containing metric produces expected results"
+         (is (= [[100]]
+                (mt/rows (qp/process-query q)))))))))
+
+(deftest metrics-in-custom-expression-test
+  )
+
+(deftest metric-column-order-test)
+
+;;;; TODO: also breakout examples!
+(deftest metrics-exclusive-filters-test
+  (mt/test-drivers
+   (mt/normal-drivers-with-feature :nested-queries :left-join)
+   (testing "Metrics with exclusive filters used in one query work correctly"
+    (t2.with-temp/with-temp
+      [:model/Metric {m1-id :id} {:name "Sum of Price for category_id lt 30"
+                                  :description "Some description."
+                                  :table_id (mt/id :venues)
+                                  :definition (mt/$ids venues {:source-table $$venues
+                                                               :aggregation [[:sum $price]]
+                                                               :filter [:< $category_id 30]})}
+       :model/Metric {m2-id :id} {:name "Sum of Price for category_id gt 50"
+                                  :description "Some description."
+                                  :table_id (mt/id :venues)
+                                  :definition (mt/$ids venues {:source-table $$venues
+                                                               :aggregation [[:sum $price]]
+                                                               :filter [:> $category_id 50]})}]
+      (let [query @(def q (mt/mbql-query venues
+                                         {:aggregation [[:metric m1-id]
+                                                        [:metric m2-id]]}))
+            verif-query-1 @(def v1 (mt/run-mbql-query venues {:fields [$price] :filter [:< $category_id 30]}))
+            verif-query-2 @(def v2 (mt/run-mbql-query venues {:fields [$price] :filter [:> $category_id 50]}))
+           ;;;; TODO I can do with redefs?
+           ;; dummy
+            join-alias-lt-30 (#'expand-macros/query->join-alias (mt/$ids venues {:filter [:< $category_id 30]}))
+            join-alias-gt-50 (#'expand-macros/query->join-alias (mt/$ids venues {:filter [:> $category_id 50]}))
+           ;; for verification
+            lt-30-sum (transduce (map first) + (mt/rows verif-query-1))
+            gt-50-sum (transduce (map first) + (mt/rows verif-query-2))]
+        (testing "Query transformation is correct"
+          (is (partial= (mt/$ids venues
+                                 {:query
+                                  {:fields [[:field "Sum of Price for category_id lt 30" {:join-alias join-alias-lt-30}]
+                                            [:field "Sum of Price for category_id gt 50" {:join-alias join-alias-gt-50}]]
+                                   :source-query
+                                   {:joins [{:alias join-alias-lt-30
+                                             :source-query
+                                             {:source-table $$venues
+                                              :filter [:< $category_id 30]
+                                              :aggregation [[:aggregation-options [:sum $price]
+                                                             {:display-name "Sum of Price for category_id lt 30"
+                                                              :name "Sum of Price for category_id lt 30"}]]}}
+                                            {:alias join-alias-gt-50
+                                             :source-query
+                                             {:source-table $$venues
+                                              :filter [:> $category_id 50]
+                                              :aggregation [[:aggregation-options [:sum $price]
+                                                             {:display-name "Sum of Price for category_id gt 50"
+                                                              :name "Sum of Price for category_id gt 50"}]]}}]}}})
+                        @(def exex (mt/with-metadata-provider (mt/id)
+                                     (#'expand-macros/expand-metrics-and-segments query))))))
+        (testing "Query results are correct"
+         (is (= [[lt-30-sum gt-50-sum]]
+                (mt/rows (qp/process-query query))))))))))
+
+#_(testing "x"
+    (is (= nil
+           (mt/rows @(def rrr (qp/process-query q))))))
+
+#_(is (partial= (mt/$ids venues
+                         {:query
+                                 ;; nil = i dont care
+                          {:fields [[:field "Sum of Price for category_id lt 30" nil]
+                                    [:field "Sum of Price for category_id gt 50" nil]]}})
+                @(def exex (mt/with-metadata-provider (mt/id)
+                             (#'expand-macros/expand-metrics-and-segments query)))))
