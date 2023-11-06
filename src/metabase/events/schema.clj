@@ -89,7 +89,6 @@
 
   (def ^:private database-events
     {:event/database-create with-user
-
      :event/database-update default-schema
      :event/database-delete default-schema}))
 
