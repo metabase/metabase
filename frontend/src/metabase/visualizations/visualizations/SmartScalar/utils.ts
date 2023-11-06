@@ -1,5 +1,5 @@
 import { formatNumber } from "metabase/lib/formatting";
-import { measureTextWidth } from "metabase/lib/measure-text";
+import { measureText } from "metabase/lib/measure-text";
 
 import {
   ICON_MARGIN_RIGHT,
@@ -25,11 +25,11 @@ export const formatChangeAutoPrecision = (
     .map(n => formatChange(change, { maximumFractionDigits: n }))
     .find(
       formatted =>
-        measureTextWidth(formatted, {
+        measureText(formatted, {
           size: "1rem",
           family: fontFamily,
           weight: fontWeight,
-        }) <= width,
+        }).width <= width,
     ) ?? formatChange(change, { maximumFractionDigits: 0 });
 
 export const formatChange = (
