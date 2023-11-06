@@ -18,9 +18,9 @@
   [topic object]
   (try
     (when object
-      (let [model                          (events/topic->model topic)
-            model-id                       (events/object->model-id topic object)
-            user-id                        api/*current-user-id*
+      (let [model             (events/topic->model topic)
+            model-id          (events/object->model-id topic object)
+            user-id           (or (:user-id object) api/*current-user-id*)
             ;; `:context` comes
             ;; from [[metabase.query-processor.middleware.process-userland-query/add-and-save-execution-info-xform!]],
             ;; and it should only be present for `:event/card-query`

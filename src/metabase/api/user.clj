@@ -452,7 +452,8 @@
                                          api/*is-superuser?* (conj :is_superuser))))]
           (t2/update! User id changes)
           (events/publish-event! :event/user-update {:object (t2/select-one User :id id)
-                                                     :previous-object user-before-update}))
+                                                     :previous-object user-before-update
+                                                     :user-id api/*current-user-id*}))
         (maybe-update-user-personal-collection-name! user-before-update body))
       (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)
@@ -486,7 +487,7 @@
     ;; Can only reactivate inactive users
     (api/check (not (:is_active user))
       [400 {:message (tru "Not able to reactivate an active user")}])
-    (events/publish-event! :event/user-reactivated {:object user})
+    (events/publish-event! :event/user-reactivated {:object user :user-id api/*current-user-id*})
     (reactivate-user! (dissoc user [:email :first_name :last_name]))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -527,7 +528,7 @@
   (check-not-internal-user id)
   (api/check-500
    (when (pos? (t2/update! User id {:is_active false}))
-     (events/publish-event! :event/user-deactivated {:object (t2/select-one User :id id)})))
+     (events/publish-event! :event/user-deactivated {:object (t2/select-one User :id id) :user-id api/*current-user-id*})))
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

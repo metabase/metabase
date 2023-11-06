@@ -43,20 +43,18 @@
 (derive ::query-event :metabase/event)
 (derive :event/card-query ::query-event)
 
-#_(m/defmethod events/publish-event! ::query-event
-    "Handle processing for a single read event notification received on the view-log-channel"
-    [topic event]
-    (def topic topic)
-    (def event event)
-    (try
-      (when event
-        (let [model    "card"
-              model-id (:card-id event)
-              user-id  (or (:user-id event) api/*current-user-id*)
-              metadata (events/object->metadata event)]
-          (record-view! model model-id user-id metadata)))
-      (catch Throwable e
-        (log/warnf e "Failed to process activity event. %s" topic))))
+(m/defmethod events/publish-event! ::query-event
+  "Handle processing for a single read event notification received on the view-log-channel"
+  [topic {:keys [user-id card-id] :as event}]
+  (try
+    (when event
+      (let [model    "card"
+            model-id card-id
+            user-id  (or user-id api/*current-user-id*)
+            metadata (events/object->metadata event)]
+        (record-view! model model-id user-id metadata)))
+    (catch Throwable e
+      (log/warnf e "Failed to process activity event. %s" topic))))
 
 (defsetting dismissed-custom-dashboard-toast
   (deferred-tru "Toggle which is true after a user has dismissed the custom dashboard toast.")

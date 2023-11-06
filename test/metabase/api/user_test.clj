@@ -478,7 +478,7 @@
   (testing "GET /api/user/:id"
     (testing "should return a smaller set of fields"
       (let [resp (mt/user-http-request :rasta :get 200 (str "user/" (mt/user->id :rasta)))]
-        (is (= [{:id (:id (perms-group/all-users))}]
+        (is (= [{:id (:id (perms-group/all-users)) :is_group_manager false}]
                (:user_group_memberships resp)))
         (is (= (-> (merge
                     @user-defaults
@@ -497,7 +497,7 @@
 
     (testing "A superuser should be allowed to fetch another users data"
       (let [resp (mt/user-http-request :crowberto :get 200 (str "user/" (mt/user->id :rasta)))]
-        (is (= [{:id (:id (perms-group/all-users))}]
+        (is (= [{:id (:id (perms-group/all-users)) :is_group_manager false}]
                (:user_group_memberships resp)))
         (is (= (-> (merge
                     @user-defaults
@@ -542,7 +542,7 @@
                      (-> resp
                          mt/boolean-ids-and-timestamps
                          (dissoc :user_group_memberships))))
-              (is (= [{:id (:id (perms-group/all-users))}]
+              (is (= [{:id (:id (perms-group/all-users)), :is_group_manager false}]
                      (:user_group_memberships resp))))))))
 
     (testing "Check that non-superusers are denied access"
