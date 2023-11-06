@@ -62,14 +62,14 @@
 
 (deftest bcc-enabled-pulse-test
   (testing "When bcc is not enabled, return an email that uses to:"
-    (mt/with-temp [Card                  pulse-card {}
-                   Pulse                 pulse {:name "Test Pulse"}
-                   PulseCard             _ {:pulse_id (:id pulse), :card_id (:id pulse-card)}
-                   PulseChannel          pc {:channel_type :email
-                                             :pulse_id     (:id pulse)
-                                             :enabled      true}
-                   PulseChannelRecipient _ {:pulse_channel_id (:id pc)
-                                            :user_id          (mt/user->id :rasta)}]
+    (t2.with-temp/with-temp [Card                  pulse-card {}
+                             Pulse                 pulse {:name "Test Pulse"}
+                             PulseCard             _ {:pulse_id (:id pulse), :card_id (:id pulse-card)}
+                             PulseChannel          pc {:channel_type :email
+                                                       :pulse_id     (:id pulse)
+                                                       :enabled      true}
+                             PulseChannelRecipient _ {:pulse_channel_id (:id pc)
+                                                      :user_id          (mt/user->id :rasta)}]
       (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
         (mt/with-fake-inbox
           (with-redefs [messages/render-pulse-email  (fn [_ _ _ [{:keys [result]}] _]
