@@ -129,8 +129,7 @@
                                  :source-card (:id (lib.tu/mock-cards :orders))}]}
           own-fields (for [field (lib.metadata/fields lib.tu/metadata-provider-with-mock-cards (meta/id :orders))]
                        (-> field
-                           (assoc :lib/source :source/card)
-                           (dissoc :id :table-id)))]
+                           (assoc :lib/source :source/card)))]
       (testing "implicitly joinable columns"
         (testing "are included by visible-columns"
           (is (=? (->> (concat own-fields

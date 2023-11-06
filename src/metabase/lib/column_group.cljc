@@ -115,7 +115,9 @@
 
 (defmethod column-group-info-method :source/implicitly-joinable
   [column-metadata]
-  {::group-type :group-type/join.implicit, :fk-field-id (:fk-field-id column-metadata)})
+  {::group-type :group-type/join.implicit,
+   :fk-field-id (:fk-field-id column-metadata)
+   :fk-join-alias (:fk-join-alias column-metadata)})
 
 (defmethod column-group-info-method :source/joins
   [{:keys [table-id], :lib/keys [card-id], :as column-metadata}]
