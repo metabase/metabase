@@ -292,8 +292,8 @@
           (let [{session-uuid :id, :as session} (create-session! :password user (request.u/device-info request))
                 response                        {:success    true
                                                  :session_id (str session-uuid)}]
-            (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))
-        (api/throw-invalid-param-exception :password (tru "Invalid reset token")))))
+            (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
+      (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
 (api/defendpoint GET "/password_reset_token_valid"
   "Check is a password reset token is valid and isn't expired."
