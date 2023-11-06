@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase.models :refer [Collection Dashboard]]
-   [metabase.test :as mt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -50,9 +49,9 @@
 (deftest drop-entity-ids-test
   (testing "With a temp Collection with an entity ID"
     (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
-      (mt/with-temp! [Collection c {:name       "No Entity ID Collection"
-                                    :slug       "no_entity_id_collection"
-                                    :created_at now}]
+      (t2.with-temp/with-temp [Collection c {:name       "No Entity ID Collection"
+                                             :slug       "no_entity_id_collection"
+                                             :created_at now}]
         (letfn [(entity-id []
                   (some-> (t2/select-one-fn :entity_id Collection :id (:id c)) str/trim))]
           (is (some? (entity-id)))
@@ -62,8 +61,8 @@
           (is (nil? (entity-id)))))))
   (testing "empty table"
     (testing "has no entity ids"
-      (mt/with-temp! [Collection _ {:name       "No Entity ID Collection"
-                                    :slug       "no_entity_id_collection"}]
+      (t2.with-temp/with-temp [Collection _ {:name       "No Entity ID Collection"
+                                             :slug       "no_entity_id_collection"}]
         (is (nil? (t2/select-fn-set :entity-id Dashboard)))
         (testing "but doesn't crash drop-entity-ids"
           (is (= true
