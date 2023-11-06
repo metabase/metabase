@@ -15,14 +15,13 @@
   objects, _keeping only fields that changed_.
 
   If `:audit-db/previous` is missing, this is a noop."
-  [event]
-  (if-let [previous (:audit-log/previous event)]
-    (let [new (dissoc event :audit-log/previous)
-          [previous-only new-only _both] (data/diff previous new)
+  [object previous-object]
+  (if previous-object
+    (let [[previous-only new-only _both] (data/diff previous-object object)
           updated-keys (distinct (concat (keys previous-only) (keys new-only)))]
-      {:previous (select-keys previous updated-keys)
-       :new (select-keys new updated-keys)})
-    event))
+      {:previous (select-keys previous-object updated-keys)
+       :new (select-keys object updated-keys)})
+    object))
 
 (derive ::card-event ::event)
 (derive :event/card-create ::card-event)
@@ -164,7 +163,6 @@
                                   :details (when revision-message {:revision-message revision-message})}))
 
 (derive ::user-event ::event)
-(derive :event/user-joined ::user-event)
 (derive :event/user-invited ::user-event)
 (derive :event/user-update ::user-event)
 (derive :event/user-deactivated ::user-event)
@@ -175,6 +173,16 @@
 (methodical/defmethod events/publish-event! ::user-event
   [topic event]
   (audit-log/record-event! topic event))
+
+(derive ::user-joined-event ::event)
+(derive :event/user-joined ::user-joined-event)
+
+(methodical/defmethod events/publish-event! ::user-joined-event
+  [topic {:keys [user-id]}]
+  (audit-log/record-event! topic
+                           {:user-id  user-id
+                            :model    :model/User
+                            :model-id user-id}))
 
 (derive ::install-event ::event)
 (derive :event/install ::install-event)
@@ -199,9 +207,9 @@
 (derive :event/database-update ::database-update-event)
 
 (methodical/defmethod events/publish-event! ::database-update-event
-  [topic event]
+  [topic {:keys [object previous-object] :as _event}]
   (audit-log/record-event!
    topic
-   {:details  (maybe-prepare-update-event-data event)
+   {:details  (maybe-prepare-update-event-data object previous-object)
     :model    :model/Database
-    :model-id (:id event)}))
+    :model-id (:id object)}))

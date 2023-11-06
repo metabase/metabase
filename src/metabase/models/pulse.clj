@@ -510,7 +510,8 @@
   (let [pulse-id (create-notification-and-add-cards-and-channels! kvs cards channels)]
     ;; return the full Pulse (and record our create event).
     (u/prog1 (retrieve-pulse pulse-id)
-      (events/publish-event! :event/subscription-create {:object <>}))))
+      (events/publish-event! :event/subscription-create {:object <>
+                                                         :user-id api/*current-user-id*}))))
 
 (defn create-alert!
   "Creates a pulse with the correct fields specified for an alert"
@@ -571,7 +572,7 @@
   (update-notification! pulse)
   ;; fetch the fully updated pulse, log an update event, and return it
   (u/prog1 (retrieve-pulse (u/the-id pulse))
-    (events/publish-event! :event/subscription-update {:object <>})))
+    (events/publish-event! :event/subscription-update {:object <> :user-id api/*current-user-id*})))
 
 (defn- alert->notification
   "Convert an 'Alert` back into the generic 'Notification' format."
@@ -588,7 +589,8 @@
   [alert]
   (update-notification! (alert->notification alert))
   ;; fetch the fully updated pulse, log an update event, and return it
-  (events/publish-event! :event/alert-update (retrieve-alert (u/the-id alert))))
+  (events/publish-event! :event/alert-update {:object (retrieve-alert (u/the-id alert))
+                                              :user-id api/*current-user-id*}))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

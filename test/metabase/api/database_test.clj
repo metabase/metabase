@@ -334,12 +334,11 @@
 (deftest create-db-audit-log-test
   (testing "POST /api/database"
     (testing "The id captured in the database-create event matches the new db's id"
-      (mt/with-model-cleanup [:model/Activity :model/AuditLog]
-        (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
-          (let [{:keys [id] :as _db} (create-db-via-api! {:id 19999999})
-                audit-entry (mt/latest-audit-log-entry "database-create")]
-            (is (= id (-> audit-entry :model_id)))
-            (is (= id (-> audit-entry :details :id)))))))))
+      (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
+        (let [{:keys [id] :as _db} (create-db-via-api! {:id 19999999})
+              audit-entry (mt/latest-audit-log-entry "database-create")]
+          (is (= id (-> audit-entry :model_id)))
+          (is (= id (-> audit-entry :details :id))))))))
 
 (deftest disallow-creating-h2-database-test
   (testing "POST /api/database/:id"
