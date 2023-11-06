@@ -11,6 +11,10 @@ on:
         description: 'Number of times to run the test (e.g. 20)'
         type: string
         required: true
+      grep:
+        description: 'Grep and filter tests to run in isolation'
+        type: string
+        required: false
 
 jobs:
   stress-test-flake-fix:
@@ -66,7 +70,7 @@ jobs:
         run: |
           yarn run test-cypress-run \
           --spec '${{ github.event.inputs.spec }}' \
-          --env burn=${{ github.event.inputs.burn_in }} \
+          --env burn=${{ github.event.inputs.burn_in }},grep='${{ github.event.inputs.grep }}' \
           --config-file e2e/support/cypress-stress-test.config.js \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
