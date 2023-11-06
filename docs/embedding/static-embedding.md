@@ -30,7 +30,7 @@ To prevent people from editing the embedding URL to get access to other parts of
 your_metabase_embedding_url/your_signed_jwt?filter=true
 ```
 
-The signed JWT is generated using your [Metabase secret key](#regenerating-the-secret-key). The secret key tells Metabase that the request for filtered data can be trusted, so it's safe to display the results at the new embedding URL. Note that this secret key is shared for all static embeds, so whoever has access to that key will have access to all embedded artifacts. 
+The signed JWT is generated using your [Metabase secret key](#regenerating-the-secret-key). The secret key tells Metabase that the request for filtered data can be trusted, so it's safe to display the results at the new embedding URL. Note that this secret key is shared for all static embeds, so whoever has access to that key will have access to all embedded artifacts.
 
 If you want to embed charts with additional interactive features, like [drill-down](https://www.metabase.com/learn/questions/drill-through) and [self-service querying](../questions/query-builder/introduction.md), see [Interactive embedding](./interactive-embedding.md).
 
@@ -129,11 +129,13 @@ For global appearance settings, such as the colors and fonts used across your en
 
 ![Powered by Metabase](./images/powered-by-metabase.png)
 
-The banner appears on signed embeds created with the Metabase open source version. You'll need to upgrade to a [paid plan](https://www.metabase.com/pricing) to remove the banner.
+The banner appears on signed embeds created with Metabase's open-source version. You'll need to upgrade to a [Pro or Enterprise plan](https://www.metabase.com/pricing) to remove the banner.
 
 ## Regenerating the secret key
 
 Your embedding secret key is used to sign JWTs for all of your [embedding URLs](#adding-the-embedding-url-to-your-website). You can find it under **Settings** > **Admin settings** > **Embedding**.
+
+To reiterate: this key is shared across all static embeds. Whoever has access to this key could get access to all embedded artifacts, so keep this key secure.
 
 **Regenerate key** will create a new secret key, and break any embedding URLs that used the old key.
 
