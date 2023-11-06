@@ -7,12 +7,14 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.query :as query :refer [Query]]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
@@ -129,12 +131,14 @@
                   [:osprey      72]
                   [:flamingo    70]]
         query    (test-query query-kvs)
-        context  {:timeout  2000
-                  :executef (fn [_driver _query _context respond]
-                              (Thread/sleep *query-execution-delay-ms*)
-                              (respond metadata rows))}]
-    (-> (qp query qp.reducible/default-rff context)
-        (assoc :data {}))))
+        context  (qp.context/sync-context
+                  {:timeout  2000
+                   :executef (fn [_driver _query _context respond]
+                               (Thread/sleep *query-execution-delay-ms*)
+                               (respond metadata rows))})]
+    (driver/with-driver :h2
+      (-> (qp query qp.reducible/default-rff context)
+          (assoc :data {})))))
 
 (defn- run-query [& args]
   (let [result (apply run-query* args)]

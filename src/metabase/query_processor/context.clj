@@ -39,12 +39,19 @@
 
 ;;; these aliases are mostly to make the function signature schemas below a little clearer.
 (mr/def ::query          :map)
-(mr/def ::rff            fn?)
 (mr/def ::driver         :keyword)
 (mr/def ::metadata       :any)
-(mr/def ::reducible-rows :any)
-(mr/def ::reduced-rows   :any)
-(mr/def ::result         :any)
+(mr/def ::reducible-rows :some)
+(mr/def ::reduced-rows   :some)
+(mr/def ::result         :some)
+
+(mr/def ::rff
+  [:=>
+   [:cat ::metadata]
+   [:function
+    [:=> [:cat]           :any]
+    [:=> [:cat :any]      :any]
+    [:=> [:cat :any :any] :any]]])
 
 (mr/def ::raisef
   [:=>
@@ -54,16 +61,17 @@
 (mr/def ::runf
   [:=>
    [:cat ::query ::rff ::context]
-   :any])
+   :some])
 
 (mr/def ::respond
   [:=>
    [:cat ::metadata ::reducible-rows]
-   :any])
+   :some])
+
 (mr/def ::executef
   [:=>
    [:cat ::driver ::query ::context ::respond]
-   :any])
+   :some])
 
 (mr/def ::reducef
   [:=>
@@ -115,7 +123,7 @@
    context :- ::context]
   ((:raisef context) e context))
 
-(mu/defn runf :- :any
+(mu/defn runf :- :some
   "Called by the [[metabase.query-processor.reducible/identity-qp]] fn to run preprocessed query. Normally, this simply
   calls [[executef]], but you can override this for test purposes. The result of this function is ignored."
   [query   :- ::query
@@ -123,7 +131,7 @@
    context :- ::context]
   ((:runf context) query rff context))
 
-(mu/defn executef :- :any
+(mu/defn executef :- :some
   "Called by [[runf]] to have driver run query. By default, [[metabase.driver/execute-reducible-query]]. `respond` is a
   callback with the signature:
 
@@ -158,7 +166,7 @@
   [context :- ::context]
   ((:timeoutf context) context))
 
-(mu/defn resultf :- :any
+(mu/defn resultf :- :some
   "Called exactly once with the final result, which is the result of either [[reducedf]] or [[raisef]]."
   [result  :- ::result
    context :- ::context]
@@ -196,6 +204,7 @@
   (a/poll! (canceled-chan context)))
 
 (defn- sync-runf [query rff context]
+  (assert driver/*driver* "driver/*driver* should be bound")
   (when-not (canceled? context)
     (letfn [(respond [metadata reducible-rows]
               (reducef rff context metadata reducible-rows))]
@@ -208,25 +217,33 @@
   (when-not (canceled? context)
     (driver/execute-reducible-query driver query context respond)))
 
-(defn- default-reducef [rff context metadata reducible-rows]
+(mu/defn ^:private default-reducef :- ::reduced-rows
+  [rff            :- ::rff
+   context        :- ::context
+   metadata       :- ::metadata
+   reducible-rows :- ::reducible-rows]
   (when-not (canceled? context)
-    (let [rf (try
-               (rff metadata)
-               (catch Throwable e
-                 (raisef (ex-info (i18n/tru "Error building query results reducing function: {0}" (ex-message e))
-                                  {:type qp.error-type/qp}
-                                  e)
-                         context)))]
-      (when-let [reduced-rows (try
-                                (transduce identity rf reducible-rows)
-                                (catch Throwable e
-                                  (raisef (ex-info (i18n/tru "Error reducing result rows: {0}" (ex-message e))
-                                                   {:type qp.error-type/qp}
-                                                   e)
-                                          context)))]
-        (reducedf reduced-rows context)))))
+    (let [rf              (try
+                            (rff metadata)
+                            (catch Throwable e
+                              (raisef (ex-info (i18n/tru "Error building query results reducing function: {0}" (ex-message e))
+                                               {:type qp.error-type/qp}
+                                               e)
+                                      context)))
+          [status result] (try
+                            [::success (transduce identity rf reducible-rows)]
+                            (catch Throwable e
+                              [::error (raisef (ex-info (i18n/tru "Error reducing result rows: {0}" (ex-message e))
+                                                        {:type qp.error-type/qp}
+                                                        e)
+                                               context)]))]
+      (case status
+        ::success (reducedf result context)
+        ::error   result))))
 
-(defn- default-reducedf [reduced-result context]
+(mu/defn ^:private default-reducedf :- :some
+  [reduced-result :- :some
+   context        :- ::context]
   (resultf reduced-result context))
 
 (defn- default-timeoutf
@@ -238,7 +255,9 @@
                       :type   qp.error-type/timed-out})
             context)))
 
-(defn- sync-resultf [result context]
+(mu/defn ^:private sync-resultf :- :some
+  [result  :- :some
+   context :- ::context]
   (a/close! (canceled-chan context))
   (if (instance? Throwable result)
     (throw result)
@@ -263,14 +282,16 @@
         (resultf ::timed-out context)))
     chan))
 
-;; TODO -- rename to [[context]] or [[default-context]] or something that makes it clearer this will not turn an async
-;; context back into a sync one.
 (mu/defn sync-context :- ::context
+  "Create a new synchronous QP context. A synchronous context will execute the query on the current thread and block
+  until it has been completed, and return its results directly.
+
+  Note that passing in an async context will not magically turn it into a synchronous context."
   ([]
    (sync-context nil))
 
-  ([context]
-   (let [context (merge base-sync-context context)]
+  ([overrides :- [:maybe :map]]
+   (let [context (merge base-sync-context overrides)]
      (cond-> context
        (not (:canceled-chan context)) (assoc :canceled-chan (make-canceled-chan context))))))
 
@@ -321,11 +342,15 @@
     out-chan))
 
 (mu/defn async-context :- ::context.async
+  "Create a new asynchronous context. Queries are preprocessed and compiled synchronously, but when we are ready to
+  execute the query, a core.async promise channel is returned immediately. The query will be executed asynchronously on
+  a background thread. The core.async channel will eventually receive the reduced results (or Exception, if one was
+  encountered). Closing the core.async channel before the query finishes will cancel the query."
   ([]
    (async-context nil))
 
-  ([context]
-   (let [context (merge base-async-context context)
+  ([overrides :- [:maybe :map]]
+   (let [context (merge base-async-context overrides)
          context (cond-> context
                    (not (:canceled-chan context)) (assoc :canceled-chan (make-canceled-chan context)))]
      (cond-> context

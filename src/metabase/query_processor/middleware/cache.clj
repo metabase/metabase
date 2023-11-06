@@ -22,7 +22,8 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu])
   (:import
    (org.eclipse.jetty.io EofException)))
 
@@ -150,7 +151,11 @@
            (vreset! final-metadata row)
            (rf acc row)))))))
 
-(defn- maybe-reduce-cached-results
+(mu/defn ^:private maybe-reduce-cached-results :- [:tuple
+                                                   #_status
+                                                   [:enum ::ok ::miss ::canceled]
+                                                   #_result
+                                                   :any]
   "Reduces cached results if there is a hit. Otherwise, returns `::miss` directly."
   [ignore-cache? query-hash max-age-seconds rff context]
   (try
@@ -164,31 +169,42 @@
                 (when (and (= (:cache-version metadata) cache-version)
                            reducible-rows)
                   (log/tracef "Reducing cached rows...")
-                  (qp.context/reducef (cached-results-rff rff) context metadata reducible-rows)
-                  (log/tracef "All cached rows reduced")
-                  ::ok)))))
-        ::miss)
+                  (let [result (qp.context/reducef (cached-results-rff rff) context metadata reducible-rows)]
+                    (log/tracef "All cached rows reduced")
+                    [::ok result]))))))
+        [::miss nil])
     (catch EofException _
       (log/debug (trs "Request is closed; no one to return cached results to"))
-      ::canceled)
+      [::canceled nil])
     (catch Throwable e
       (log/error e (trs "Error attempting to fetch cached results for query with hash {0}: {1}"
                         (i/short-hex-hash query-hash) (ex-message e)))
-      ::miss)))
+      [::miss nil])))
 
 
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
 
-(defn- run-query-with-cache
-  [qp {:keys [cache-ttl middleware], :as query} rff {:keys [reducef], :as context}]
+(mu/defn ^:private run-query-with-cache :- :some
+  [qp {:keys [cache-ttl middleware], :as query} :- :map
+   rff                                          :- ::qp.context/rff
+   {:keys [reducef], :as context}               :- ::qp.context/context]
   ;; TODO - Query will already have `info.hash` if it's a userland query. I'm not 100% sure it will be the same hash,
   ;; because this is calculated after normalization, instead of before
-  (let [query-hash (qp.util/query-hash query)
-        result     (maybe-reduce-cached-results (:ignore-cached-results? middleware) query-hash cache-ttl rff context)]
-    (when (= result ::miss)
+  (let [query-hash      (qp.util/query-hash query)
+        [status result] (maybe-reduce-cached-results (:ignore-cached-results? middleware) query-hash cache-ttl rff context)]
+    (case status
+      ::ok
+      result
+
+      ::canceled
+      ::canceled
+
+      ::miss
       (let [start-time-ms (System/currentTimeMillis)]
         (log/trace "Running query and saving cached results (if eligible)...")
-        (let [reducef' (fn [rff context metadata rows]
+        (let [reducef' (fn reduce'
+                         [rff context metadata rows]
+                         {:post [(some? %)]}
                          (impl/do-with-serialization
                           (fn [in-fn result-fn]
                             (binding [*in-fn*     in-fn

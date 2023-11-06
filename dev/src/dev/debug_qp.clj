@@ -1,7 +1,6 @@
 (ns dev.debug-qp
   "TODO -- I think this should be moved to something like [[metabase.test.util.debug-qp]]"
   (:require
-   [clojure.pprint :as pprint]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [lambdaisland.deep-diff2 :as ddiff]
@@ -12,8 +11,6 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.reducible :as qp.reducible]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -394,7 +391,7 @@
             (*printer* [::transformed-row @before row]))
           (rf result row)))))))
 
-(defn- default-debug-middleware
+#_(defn- default-debug-middleware
   "The default set of middleware applied to queries ran via [[process-query-debug]].
   Analogous to [[qp/default-middleware]]."
   []
@@ -410,7 +407,7 @@
     (reverse @#'qp/pre-processing-middleware)
     @#'qp/around-middleware]))
 
-(defn- alter-pre-processing-middleware
+#_(defn- alter-pre-processing-middleware
   "Takes a pre-processing middleware function, and converts it to a transducing middleware with the signature:
 
     (f (f query rff context)) -> (f query rff context)"
@@ -427,7 +424,7 @@
          rff
          context)))))
 
-(defn- alter-post-processing-middleware
+#_(defn- alter-post-processing-middleware
   "Takes a pre-processing middleware function, and converts it to a transducing middleware with the signature:
 
     (f (f query rff context)) -> (f query rff context)"
@@ -436,7 +433,7 @@
     (fn [query rff context]
       (qp query (middleware query rff) context))))
 
-(defn- with-altered-middleware-fn
+#_(defn- with-altered-middleware-fn
   "Implementation function for [[with-altered-middleware]]. Temporarily alters the root bindings for pre- and
   post-processing middleware vars, changing them to transducing middleware which can individually be wrapped with
   debug middleware in [[process-query-debug]]."
@@ -456,13 +453,13 @@
                 (alter-var-root middleware-var (constantly middleware-fn)))
               (merge pre-processing-original-fns post-processing-original-fns))))))
 
-(defmacro ^:private with-altered-middleware
+#_(defmacro ^:private with-altered-middleware
   "Temporarily redefines pre-processing and post-processing middleware vars to equivalent transducing middlewares,
   so that [[process-query-debug]] can print the transformations for each middleware individually."
   [& body]
   `(with-altered-middleware-fn (fn [] ~@body)))
 
-(defn process-query-debug
+#_(defn process-query-debug
   "Process a query using a special QP that wraps all of the normal QP middleware and prints any transformations done
   during pre or post-processing.
 

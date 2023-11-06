@@ -23,7 +23,8 @@
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.async.util :as async.u]))
 
 ;;; This is a namespace that adds middleware to test MLv2 stuff every time we run a query. It lives in a `./test`
 ;;; namespace, so it's only around when running with `:dev` or the like.
@@ -84,10 +85,20 @@
                              (log/infof "%s changed, rebuilding %s" varr `process-query*)
                              (rebuild-process-query-fn!))))
 
-(mu/defn process-query
-  "Process an MBQL query. This is the main entrypoint to the magical realm of the Query Processor. Returns a *single*
-  core.async channel if option `:async?` is true or if passed a [[qp.context/async-context]]; otherwise returns
-  results in the usual format. For async queries, if the core.async channel is closed, the query will be canceled."
+(mu/defn process-query :- [:fn {:error/message "process-query unexpectedly returned nil."} some?]
+  "Process an MBQL query. This is the main entrypoint to the magical realm of the Query Processor. What this returns
+  depends on the `context`:
+
+  * A synchronous context will return results in the standard map format with `:status`, `:data`, etc. This is the
+    default context used if `context` is not explicitly specified.
+
+  * An async context will return a core.async promise channel. If this core.async channel is closed at any time before
+    the query finishes running, the query will be canceled. If `context` is not explicitly specified, an async context
+    will be used if the `query` includes `:async?` true. (TODO: we should deprecate this usage and have people
+    explicitly specify async contexts instead)
+
+  * Some other contexts like those used in streaming API endpoints or CSV/XLSX/JSON downloads might return something
+    different... refer to those usages for more information."
   ([query]
    (process-query query nil nil))
 
@@ -95,7 +106,7 @@
    (process-query query nil context))
 
   ([{:keys [async?], :as query} :- :map
-    rff                         :- [:maybe fn?]
+    rff                         :- [:maybe ::qp.context/rff]
     context                     :- [:maybe :map]]
    (qp.setup/with-qp-setup [query query]
      (let [rff     (or rff qp.reducible/default-rff)
