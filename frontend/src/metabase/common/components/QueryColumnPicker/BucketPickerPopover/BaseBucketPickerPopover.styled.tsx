@@ -1,12 +1,9 @@
 import styled from "@emotion/styled";
 import Button from "metabase/core/components/Button";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { Icon } from "metabase/core/components/Icon";
 import BaseSelectList from "metabase/components/SelectList";
 import { alpha, color } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
-
-export const TriggerContent = styled(Ellipsified)``;
 
 export const TriggerIcon = styled(Icon)`
   color: ${color("white")} !important;

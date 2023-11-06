@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import SelectList from "metabase/components/SelectList";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import type { ColorName } from "metabase/lib/colors/types";
 import * as Lib from "metabase-lib";
 import {
@@ -11,7 +12,6 @@ import {
   TriggerButton,
   TriggerIcon,
   SelectListItem,
-  TriggerContent,
 } from "./BaseBucketPickerPopover.styled";
 
 export const INITIALLY_VISIBLE_ITEMS_COUNT = 7;
@@ -95,9 +95,9 @@ function _BaseBucketPickerPopover({
           // Prefer using a11y role selectors
           data-testid="dimension-list-item-binning"
         >
-          <TriggerContent>
+          <Ellipsified>
             {renderTriggerContent(triggerContentBucketDisplayInfo)}
-          </TriggerContent>
+          </Ellipsified>
           {hasArrowIcon && <TriggerIcon name="chevronright" />}
         </TriggerButton>
       )}
