@@ -214,7 +214,20 @@ your_embedding_url?top_nav=false&side_nav=false
 
 ![Top nav and side nav disabled](./images/no-top-no-side.png)
 
-### action_buttons
+Options include:
+
+- [Action buttons](#action_buttons)
+- [Additional info](#additional_info)
+- [Breadcrumbs](#breadcrumbs)
+- [Header](#header)
+- [Locale](#locale)
+- [Logo](#logo)
+- [New button](#new_button)
+- [Search](#search)
+- [Side nav](#side_nav)
+- [Top nav](#top_nav)
+
+### `action_buttons`
 
 Visible by default on question pages when the [header](#header) is enabled.
 
@@ -226,7 +239,7 @@ header=false&action_buttons=false
 
 ![Action buttons](./images/action-buttons.png)
 
-### additional_info
+### `additional_info`
 
 Visible by default on question and dashboard pages, when the [header](#header) is enabled.
 
@@ -236,15 +249,15 @@ To hide the gray text "Edited X days ago by FirstName LastName", as well as the 
 
 ![Additional info](./images/additional-info.png)
 
-### breadcrumbs
+### `breadcrumbs`
 
 Shown by default in the top nav bar. Collection breadcrumbs show the path to the item (i.e., the collection(s) the item is in). To hide the breadcrumbs:
 
 ```
 breadcrumbs=false
-``````
+```
 
-### header
+### `header`
 
 Visible by default on question and dashboard pages.
 
@@ -252,7 +265,7 @@ To hide a question or dashboard's title, [additional info](#additional_info), an
 
 `header=false`
 
-### locale
+### `locale`
 
 You can localize the user interface via a parameter. For example, to set the locale to Spanish
 
@@ -262,7 +275,7 @@ locale=es
 
 Check out the [locales Metabase supports](https://github.com/metabase/metabase/tree/master/locales).
 
-### logo
+### `logo`
 
 Whether to show the logo that opens and closes the sidebar nav. Default is true. How Metabase displays the logo depends on the `side_nav` setting. Here's a rough breakdown of how these two parameters interact:
 
@@ -276,7 +289,7 @@ If `logo=false` and:
 - `side_nav=true`: Metabase shows the generic sidebar icon, with a gray color in normal state, and a brand color on hover.
 - `side_nav=false`: There is no side nav nor logo, so the breadcrumbs move all the way to the left of the screen.
 
-### new_button
+### `new_button`
 
 Hidden by default. To show the **+ New** button used to create queries or dashboards:
 
@@ -284,7 +297,7 @@ Hidden by default. To show the **+ New** button used to create queries or dashbo
 top_nav=true&new_button=true
 ```
 
-### search
+### `search`
 
 Hidden by default. To show the search box in the top nav:
 
@@ -292,7 +305,7 @@ Hidden by default. To show the search box in the top nav:
 top_nav=true&search=true
 ```
 
-### side_nav
+### `side_nav`
 
 The navigation sidebar is shown on `/collection` and home page routes, and hidden everywhere else by default.
 
@@ -304,7 +317,7 @@ top_nav=true&side_nav=true
 
 ![Side nav](./images/side-nav.png)
 
-### top_nav
+### `top_nav`
 
 Shown by default. To hide the top navigation bar:
 
