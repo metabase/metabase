@@ -6,16 +6,6 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(deftest card-create-test
-  (mt/with-temp [User user {}
-                 Card card {:creator_id (:id user)}]
-
-    (events/publish-event! :event/card-create {:object card :user-id (:id user)})
-    (is (= {:user_id  (:id user)
-            :model    "card"
-            :model_id (:id card)}
-           (t2/select-one [ViewLog :user_id :model :model_id], :user_id (:id user))))))
-
 (deftest card-read-test
   (mt/with-temp [User user {}
                  Card card {:creator_id (:id user)}]
