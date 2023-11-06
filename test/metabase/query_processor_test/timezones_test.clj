@@ -332,7 +332,7 @@
           (doseq [timezone ["UTC" "Asia/Hong_Kong" "US/Hawaii" "America/Puerto_Rico"]]
             (mt/with-temporary-setting-values [report-timezone timezone]
               (let [query (mt/mbql-query relative_filter {:fields [$created]
-                                                          :filter [:time-interval $created -2 :day]})]
+                                                          :filter [:time-interval $created -1 :day]})]
                 (mt/with-native-query-testing-context query
                   (let [results (qp/process-query query)]
                     (is (=? {:status :completed}
