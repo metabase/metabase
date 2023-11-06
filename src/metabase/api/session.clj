@@ -292,8 +292,8 @@
           (let [{session-uuid :id, :as session} (create-session! :password user (request.u/device-info request))
                 response                        {:success    true
                                                  :session_id (str session-uuid)}]
-            (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
-        (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
+            (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))
+        (api/throw-invalid-param-exception :password (tru "Invalid reset token")))))
 
 (api/defendpoint GET "/password_reset_token_valid"
   "Check is a password reset token is valid and isn't expired."
@@ -364,7 +364,7 @@
         (throw (ex-info (tru "Email for pulse-id doesn't exist.")
                         {:type        type
                          :status-code 400}))))
-    (events/publish-event! :event/subscription-unsubscribe {:details {:email email}})
+    (events/publish-event! :event/subscription-unsubscribe {:object {:email email}})
     {:status :success :title (:name (pulse/retrieve-notification pulse-id :archived false))}))
 
 (api/defendpoint POST "/pulse/unsubscribe/undo"
@@ -382,7 +382,7 @@
                         {:type        type
                          :status-code 400}))
         (t2/update! PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] conj email))))
-    (events/publish-event! :event/subscription-unsubscribe-undo {:details {:email email}})
+    (events/publish-event! :event/subscription-unsubscribe-undo {:object {:email email}})
     {:status :success :title (:name (pulse/retrieve-notification pulse-id :archived false))}))
 
 (api/define-routes +log-all-request-failures)
