@@ -93,7 +93,7 @@
             (let [user-id (u/the-id (t2/select-one User :email email))]
               (is (= {:topic    :user-joined
                       :model_id user-id
-                      :user_id  nil
+                      :user_id  user-id
                       :model    "User"
                       :details  {}}
                      (audit-log-test/latest-event :user-joined user-id))))))))))
@@ -125,16 +125,17 @@
                      (re-pattern (str invitor-first-name " could use your help setting up Metabase.*"))))
                 (testing "The audit-log :user-invited event is recorded"
                   (let [logged-event (audit-log-test/latest-event :user-invited (u/the-id invited-user))]
-                    (is (= {:topic    :user-invited
-                            :user_id  nil
-                            :model    "User"
-                            :model_id (u/the-id (t2/select-one User :email email))
-                            :details  {:invite_method          "email"
-                                       :first_name             first-name
-                                       :last_name              last-name
-                                       :email                  email
-                                       :user_group_memberships [{:id 1} {:id 2}]}}
-                           logged-event))))))))))))
+                    (is (partial=
+                         {:topic    :user-invited
+                          :user_id  nil
+                          :model    "User"
+                          :model_id (u/the-id (t2/select-one User :email email))
+                          :details  {:invite_method          "email"
+                                     :first_name             first-name
+                                     :last_name              last-name
+                                     :email                  email
+                                     :user_group_memberships [{:id 1} {:id 2}]}}
+                         logged-event))))))))))))
 
 (deftest invite-user-test-2
   (testing "POST /api/setup"

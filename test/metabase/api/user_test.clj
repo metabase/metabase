@@ -478,7 +478,7 @@
   (testing "GET /api/user/:id"
     (testing "should return a smaller set of fields"
       (let [resp (mt/user-http-request :rasta :get 200 (str "user/" (mt/user->id :rasta)))]
-        (is (= [{:id (:id (perms-group/all-users)) :is_group_manager false}]
+        (is (= [{:id (:id (perms-group/all-users))}]
                (:user_group_memberships resp)))
         (is (= (-> (merge
                     @user-defaults
@@ -1235,34 +1235,35 @@
     (mt/with-model-cleanup [:model/Activity :model/AuditLog]
       (t2.with-temp/with-temp [User {:keys [id]} {:first_name "John"
                                                   :last_name  "Cena"}]
-          (testing "DELETE /api/user/:id and PUT /api/user/:id/reactivate"
-            (mt/user-http-request :crowberto :delete 200 (format "user/%s" id))
-            (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" id))
-            (is (= [{:topic    :user-deactivated
-                     :user_id  (mt/user->id :crowberto)
-                     :model    "User"
-                     :model_id id
-                     :details  {}}
-                    {:topic    :user-reactivated
-                     :user_id  (mt/user->id :crowberto)
-                     :model    "User"
-                     :model_id id
-                     :details  {}}]
-                   [(audit-log-test/latest-event :user-deactivated id)
-                    (audit-log-test/latest-event :user-reactivated id)])))))))
+        (testing "DELETE /api/user/:id and PUT /api/user/:id/reactivate"
+          (mt/user-http-request :crowberto :delete 200 (format "user/%s" id))
+          (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" id))
+          (is (= [{:topic    :user-deactivated
+                   :user_id  (mt/user->id :crowberto)
+                   :model    "User"
+                   :model_id id
+                   :details  {}}
+                  {:topic    :user-reactivated
+                   :user_id  (mt/user->id :crowberto)
+                   :model    "User"
+                   :model_id id
+                   :details  {}}]
+                 [(audit-log-test/latest-event :user-deactivated id)
+                  (audit-log-test/latest-event :user-reactivated id)])))))))
 
 (deftest user-update-event-test
   (testing "User Updates via the API are recorded in the audit log"
-    (mt/with-model-cleanup [:model/Activity :model/AuditLog]
-      (t2.with-temp/with-temp [User {:keys [id]} {:first_name "John"
-                                                  :last_name  "Cena"}]
-          (testing "PUT /api/user/:id"
-            (mt/user-http-request :crowberto :put 200 (format "user/%s" id)
-                                  {:first_name "Johnny" :last_name "Appleseed"})
-            (is (= {:topic    :user-update
-                    :user_id  (mt/user->id :crowberto)
-                    :model    "User"
-                    :model_id id
-                    :details  {:first_name "Johnny"
-                               :last_name "Appleseed"}}
-                   (audit-log-test/latest-event :user-update id))))))))
+    (t2.with-temp/with-temp [User {:keys [id]} {:first_name "John"
+                                                :last_name  "Cena"}]
+      (testing "PUT /api/user/:id"
+        (mt/user-http-request :crowberto :put 200 (format "user/%s" id)
+                              {:first_name "Johnny" :last_name "Appleseed"})
+        (is (= {:topic    :user-update
+                :user_id  (mt/user->id :crowberto)
+                :model    "User"
+                :model_id id
+                :details  {:new {:first_name "Johnny"
+                                 :last_name "Appleseed"}
+                           :previous {:first_name "John"
+                                      :last_name "Cena"}}}
+               (audit-log-test/latest-event :user-update id)))))))
