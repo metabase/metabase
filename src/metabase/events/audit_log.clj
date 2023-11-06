@@ -1,7 +1,6 @@
 (ns metabase.events.audit-log
   "This namespace is responsible for publishing events to the audit log. "
   (:require
-   [clojure.data :as data]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
    [metabase.util :as u]
@@ -9,7 +8,6 @@
    [toucan2.core :as t2]))
 
 (derive ::event :metabase/event)
-
 
 (derive ::card-event ::event)
 (derive :event/card-create ::card-event)
@@ -201,10 +199,5 @@
 (derive :event/database-update ::database-update-event)
 
 (methodical/defmethod events/publish-event! ::database-update-event
-  [topic {:keys [object previous-object] :as _event}]
-  (audit-log/record-event!
-   topic
-   {:object          object
-    :previous-object previous-object
-    :model           :model/Database
-    :model-id        (:id object)}))
+  [topic event]
+  (audit-log/record-event! topic event))
