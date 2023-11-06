@@ -197,8 +197,7 @@
                   (str "'Empty' application DB is not actually empty. Found tables:\n"
                        (u/pprint-to-str tables))))))
     (log/debugf "Finding and running migrations before %s..." start-id)
-    (#'mdb.setup/initialize-db! driver conn)
-    (run-migrations-in-range! conn [1 start-id] {:inclusive-end? false})
+    (run-migrations-in-range! conn ["v00.00-000" start-id] {:inclusive-end? false})
     (letfn [(migrate
               ([]
                (migrate :up nil))

@@ -56,28 +56,6 @@
                    "\n"))
     (throw (Exception. (trs "Database requires manual upgrade.")))))
 
-(mu/defn ^:private initialize-db!
-  "Initialize the application database by running an initialization sql script."
-  [db-type             :- :keyword
-   conn-or-data-source :- [:or (ms/InstanceOfClass javax.sql.DataSource) (ms/InstanceOfClass java.sql.Connection)]]
-  (let [init-file (case db-type
-                    :h2       "initialization/metabase_h2.sql"
-                    :mysql    "initialization/metabase_mysql.sql"
-                    :postgres "initialization/metabase_postgres.sql")
-        stmts     (->> (str/split (slurp (io/resource init-file)) #"(;(\r)?\n)|(--\n)")
-                       (map str/trim)
-                       (remove (fn [s] (or
-                                        (str/blank? s)
-                                        (str/starts-with? s "--")))))
-        f (fn [^java.sql.Connection conn]
-            (jdbc/with-db-transaction [tx {:connection conn}]
-              (doseq [stmt stmts]
-                (jdbc/execute! tx [stmt]))))]
-    (if (instance? java.sql.Connection conn-or-data-source)
-      (f conn-or-data-source)
-      (with-open [conn (.getConnection ^javax.sql.DataSource conn-or-data-source)]
-        (f conn)))))
-
 (mu/defn migrate!
   "Migrate the application database specified by `data-source`.
 
@@ -151,12 +129,6 @@
   (migrate! db-type data-source (if auto-migrate? :up :print))
   (log/info (trs "Database Migrations Current ... ") (u/emoji "✅")))
 
-(defn- fresh-install?
-  [db-type data-source]
-  (not (liquibase/table-exists? (if (= :h2 db-type)
-                                  "CORE_USER"
-                                  "core_user") data-source)))
-
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
 ;;
 ;; TODO -- consider whether this should be done automatically the first time someone calls `getConnection`
@@ -171,10 +143,6 @@
        (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
                  setting/*disable-cache*         true]
          (verify-db-connection db-type data-source)
-         (when (fresh-install? db-type data-source)
-           (log/info "Running database initialization")
-           (initialize-db! db-type data-source)
-           (log/info "Done database initialization"))
          (run-schema-migrations! db-type data-source auto-migrate?))))
   :done)
 

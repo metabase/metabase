@@ -314,11 +314,13 @@
   see https://github.com/metabase/metabase/issues/3715"
   [conn :- (ms/InstanceOfClass java.sql.Connection)]
   (let [liquibase-table-name (changelog-table-name conn)
-        statement            (format "UPDATE %s SET FILENAME = CASE WHEN ID < ? THEN ? ELSE ? END" liquibase-table-name)]
+        statement            (format "UPDATE %s SET FILENAME = CASE WHEN ID = ? THEN ? WHEN ID < ? THEN ? ELSE ? END" liquibase-table-name)]
     (when-not (fresh-install? conn)
       (jdbc/execute!
        {:connection conn}
-       [statement "v45.00-001" "migrations/000_legacy_migrations.yaml" "migrations/001_update_migrations.yaml"]))))
+       [statement
+        "v00.00-000" "migrations/001_update_migrations.yaml"
+        "v45.00-001" "migrations/000_legacy_migrations.yaml" "migrations/001_update_migrations.yaml"]))))
 
 (defn- extract-numbers
   "Returns contiguous integers parsed from string s"

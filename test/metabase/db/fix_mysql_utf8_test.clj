@@ -64,7 +64,6 @@
     (mt/test-driver :mysql
       ;; create a new application DB and run migrations.
       (create-test-db!)
-      (#'mdb.setup/initialize-db! driver/*driver* (test-data-source))
       (let [data-source (test-data-source)]
         (mdb.setup/migrate! :mysql data-source :up)
         (is (= {:character-set "utf8mb4", :collation "utf8mb4_unicode_ci"}
