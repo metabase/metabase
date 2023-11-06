@@ -589,8 +589,8 @@
   [alert]
   (update-notification! (alert->notification alert))
   ;; fetch the fully updated pulse, log an update event, and return it
-  (events/publish-event! :event/alert-update {:object (retrieve-alert (u/the-id alert))
-                                              :user-id api/*current-user-id*}))
+  (u/prog1 (retrieve-alert (u/the-id alert))
+    (events/publish-event! :event/alert-update {:object <> :user-id api/*current-user-id*})))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

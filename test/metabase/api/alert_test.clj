@@ -494,7 +494,7 @@
 (deftest update-alerts-admin-test
   (testing "Admin users can update any alert"
     (mt/with-temp [Pulse                 alert (basic-alert)
-                   Card                  card {}
+                   Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    PulseChannel          pc    (pulse-channel alert)
                    PulseChannelRecipient _     (recipient pc :rasta)]
@@ -506,7 +506,7 @@
 
   (testing "Admin users can update any alert, changing the related alert attributes"
     (mt/with-temp [Pulse                 alert (basic-alert)
-                   Card                  card {}
+                   Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    PulseChannel          pc    (pulse-channel alert)
                    PulseChannelRecipient _     (recipient pc :rasta)]
@@ -522,7 +522,7 @@
 
   (testing "Admin users can add a recipient, that recipient should be notified"
     (mt/with-temp [Pulse                 alert (basic-alert)
-                   Card                  card {}
+                   Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    PulseChannel          pc    (pulse-channel alert)
                    PulseChannelRecipient _     (recipient pc :crowberto)]
@@ -543,7 +543,7 @@
 (deftest update-alerts-non-admin-test
   (testing "Non-admin users can update alerts they created"
     (mt/with-temp [Pulse                 alert (basic-alert)
-                   Card                  card {}
+                   Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    PulseChannel          pc    (pulse-channel alert)
                    PulseChannelRecipient _     (recipient pc :rasta)]
@@ -557,7 +557,7 @@
 
   (testing "Non-admin users cannot change the recipients of an alert"
     (mt/with-temp [Pulse                 alert (basic-alert)
-                   Card                  card {}
+                   Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    PulseChannel          pc    (pulse-channel alert)
                    PulseChannelRecipient _     (recipient pc :rasta)]
@@ -571,7 +571,7 @@
 (deftest admin-users-remove-recipient-test
   (testing "admin users can remove a recipieint, that recipient should be notified"
     (mt/with-temp [Pulse                 alert (basic-alert)
-                   Card                  card {}
+                   Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    PulseChannel          pc    (pulse-channel alert)
                    PulseChannelRecipient _     (recipient pc :crowberto)
