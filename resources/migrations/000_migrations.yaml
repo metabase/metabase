@@ -15905,6 +15905,40 @@ databaseChangeLog:
         - sql:
             sql: drop view if exists v_view_log;
 
+  - changeSet:
+      id: v48.00-047
+      author: noahmoss
+      comment: Drop foreign key on recent_views so that it can be recreated with onDelete policy
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: recent_views
+            constraintName: fk_recent_views_ref_user_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: recent_views
+            constraintName: fk_recent_views_ref_user_id
+            referencedTableName: core_user
+            baseColumnNames: user_id
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v48.00-048
+      author: noahmoss
+      comment: Add foreign key on recent_views with onDelete CASCADE
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: recent_views
+            constraintName: fk_recent_views_ref_user_id
+            referencedTableName: core_user
+            baseColumnNames: user_id
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: recent_views
+            constraintName: fk_recent_views_ref_user_id
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

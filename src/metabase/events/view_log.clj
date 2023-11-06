@@ -24,7 +24,7 @@
 (derive :event/dashboard-read ::read-event)
 (derive :event/table-read ::read-event)
 
-(m/defmethod events/publish-event! ::event
+(m/defmethod events/publish-event! ::read-event
   "Handle processing for a single read event notification received on the view-log-channel"
   [topic {object :object :as event}]
   (try
