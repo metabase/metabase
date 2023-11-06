@@ -271,7 +271,8 @@
    :reducef  #'default-reducef
    :reducedf #'default-reducedf
    :timeoutf #'default-timeoutf
-   :resultf  #'sync-resultf})
+   :resultf  #'sync-resultf
+   ::type    ::sync})
 
 (mu/defn ^:private make-canceled-chan :- async.u/PromiseChan
   [context]
@@ -296,10 +297,14 @@
        (not (:canceled-chan context)) (assoc :canceled-chan (make-canceled-chan context))))))
 
 (defn- async-runf [query rff context]
-  (.submit clojure.lang.Agent/pooledExecutor
-           ^Runnable (bound-fn*
-                      (^:once fn* []
-                       (sync-runf query rff context))))
+  (let [futur         (.submit clojure.lang.Agent/pooledExecutor
+                               ^Runnable (bound-fn*
+                                          (^:once fn* []
+                                           (sync-runf query rff context))))
+        canceled-chan (canceled-chan context)]
+    (a/go
+      (when (some? (a/<! canceled-chan))
+        (future-cancel futur))))
   (out-chan context))
 
 (defn- async-resultf [result context]
@@ -313,7 +318,8 @@
 (def ^:private base-async-context
   (merge base-sync-context
          {:runf    #'async-runf
-          :resultf #'async-resultf}))
+          :resultf #'async-resultf
+          ::type   ::async}))
 
 (mu/defn ^:private make-async-out-chan :- async.u/PromiseChan
   "Wire up the core.async channels in a QP `context`

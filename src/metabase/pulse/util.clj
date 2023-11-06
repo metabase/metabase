@@ -22,8 +22,7 @@
   (let [card-id (u/the-id card-or-id)]
     (try
       (when-let [{query :dataset_query, :as card} (t2/select-one Card :id card-id, :archived false)]
-        (let [query         (assoc query :async? false)
-              process-query (^:once fn* []
+        (let [process-query (^:once fn* []
                              (binding [qp.perms/*card-id* card-id]
                                (qp/process-query
                                 (qp/userland-query-with-default-constraints

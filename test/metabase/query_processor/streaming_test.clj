@@ -304,22 +304,25 @@
                             :limit 2}}
 
     :assertions {:csv (fn [results]
+                        (is (string? results))
                         (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
                                 ["1" "Red Medicine" "4" "10.0646" "-165.374" "3"]
                                 ["2" "Stout Burgers & Beers" "11" "34.0996" "-118.329" "2"]]
                                (csv/read-csv results))))
 
                  :json (fn [results]
+                         (is (string? results))
                          (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
                                  [1 "Red Medicine" 4 10.0646 -165.374 3]
                                  [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
                                 (parse-json-results results))))
 
                  :xlsx (fn [results]
-                        (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
-                                [1.0 "Red Medicine" 4.0 10.0646 -165.374 3.0]
-                                [2.0 "Stout Burgers & Beers" 11.0 34.0996 -118.329 2.0]]
-                               (xlsx-test/parse-xlsx-results results))))}}))
+                         (is (bytes? results))
+                         (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
+                                 [1.0 "Red Medicine" 4.0 10.0646 -165.374 3.0]
+                                 [2.0 "Stout Burgers & Beers" 11.0 34.0996 -118.329 2.0]]
+                                (xlsx-test/parse-xlsx-results results))))}}))
 
 (deftest reordered-columns-test
   (do-test

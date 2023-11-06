@@ -252,7 +252,6 @@
     (qp/process-query
      (qp/userland-query
       (assoc query
-             :async? false
              :middleware {:process-viz-settings? true
                           :js-int-to-string?     false})
       {:executed-by api/*current-user-id*

@@ -1022,23 +1022,14 @@
                                           :bcc?    true})
                      (mt/regex-email-bodies #"A Pulse"))))))))))
 
-(deftest pulse-card-query-results-test
-  (testing "A Card saved with `:async?` true should not be ran async for a Pulse"
-    (is (map? (#'api.pulse/pulse-card-query-results
-               {:id            1
-                :dataset_query {:database (mt/id)
-                                :type     :query
-                                :query    {:source-table (mt/id :venues)
-                                           :limit        1}
-                                :async?   true}}))))
+(deftest ^:parallel pulse-card-query-results-test
   (testing "viz-settings saved in the DB for a Card should be loaded"
     (is (some? (get-in (#'api.pulse/pulse-card-query-results
                         {:id            1
                          :dataset_query {:database (mt/id)
                                          :type     :query
                                          :query    {:source-table (mt/id :venues)
-                                                    :limit        1}
-                                         :async?   true}})
+                                                    :limit        1}}})
                        [:data :viz-settings])))))
 
 (deftest form-input-test

@@ -46,7 +46,7 @@
     (api/read-check Card source-card-id)
     source-card-id))
 
-(defn- run-query-async
+(mu/defn ^:private run-streaming-query :- (ms/InstanceOfClass metabase.async.streaming_response.StreamingResponse)
   [{:keys [database], :as query}
    & {:keys [context export-format qp]
       :or   {context       :ad-hoc
@@ -83,7 +83,7 @@
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [:as {{:keys [database] :as query} :body}]
   {database [:maybe :int]}
-  (run-query-async (update-in query [:middleware :js-int-to-string?] (fnil identity true))))
+  (run-streaming-query (update-in query [:middleware :js-int-to-string?] (fnil identity true))))
 
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
@@ -131,16 +131,15 @@
         viz-settings (-> (json/parse-string visualization_settings viz-setting-key-fn)
                          (update :table.columns mbql.normalize/normalize)
                          mb.viz/db->norm)
-        query        (-> (assoc query
-                                :async? true
-                                :viz-settings viz-settings)
+        query        (-> query
+                         (assoc :viz-settings viz-settings)
                          (dissoc :constraints)
                          (update :middleware #(-> %
                                                   (dissoc :add-default-userland-constraints? :js-int-to-string?)
                                                   (assoc :process-viz-settings? true
                                                          :skip-results-metadata? true
                                                          :format-rows? false))))]
-    (run-query-async
+    (run-streaming-query
      query
      :export-format export-format
      :context       (export-format->context export-format)
@@ -187,7 +186,6 @@
               :context     :ad-hoc}]
     (qp.streaming/streaming-response [{:keys [rff context]} :api]
       (qp.pivot/run-pivot-query (assoc query
-                                       :async?      true
                                        :constraints (qp.constraints/default-query-constraints)
                                        :info        info)
                                 rff

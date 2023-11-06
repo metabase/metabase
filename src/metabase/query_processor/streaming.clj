@@ -9,7 +9,9 @@
    [metabase.query-processor.streaming.json :as qp.json]
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
    [metabase.shared.models.visualization-settings :as mb.viz]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (java.io OutputStream)
@@ -105,7 +107,8 @@
                         deduped-cols)]
     [ordered-cols output-order]))
 
-(defn- streaming-rff [results-writer]
+(mu/defn ^:private streaming-rff :- ::qp.context/rff
+  [results-writer :- (ms/InstanceOfClass metabase.query_processor.streaming.interface.StreamingResultsWriter)]
   (fn [{:keys [cols viz-settings] :as initial-metadata}]
     (let [[ordered-cols output-order] (order-cols cols viz-settings)
           viz-settings'               (assoc viz-settings :output-order output-order)
@@ -126,8 +129,12 @@
          (qp.si/write-row! results-writer row (dec (vswap! row-count inc)) ordered-cols viz-settings')
          metadata)))))
 
-(defn- streaming-reducedf [results-writer ^OutputStream os]
-  (fn [final-metadata context]
+(mu/defn ^:private streaming-reducedf :- ::qp.context/reducedf
+  [results-writer   :- (ms/InstanceOfClass metabase.query_processor.streaming.interface.StreamingResultsWriter)
+   ^OutputStream os :- (ms/InstanceOfClass OutputStream)]
+  (mu/fn :- :some
+    [final-metadata :- :some
+     context        :- ::qp.context/context]
     (qp.si/finish! results-writer final-metadata)
     (u/ignore-exceptions
       (.flush os)
@@ -146,20 +153,12 @@
 
   ([export-format os canceled-chan]
    (let [results-writer (qp.si/streaming-results-writer export-format os)]
-     {:context (qp.context/async-context
+     {:context (qp.context/sync-context
                 (merge
                  {:reducedf (streaming-reducedf results-writer os)}
                  (when canceled-chan
                    {:canceled-chan canceled-chan})))
       :rff     (streaming-rff results-writer)})))
-
-(defn- await-async-result [out-chan canceled-chan]
-  ;; if we get a cancel message, close `out-chan` so the query will be canceled
-  (a/go
-    (when (a/<! canceled-chan)
-      (a/close! out-chan)))
-  ;; block until `out-chan` closes or gets a result
-  (a/<!! out-chan))
 
 (defn streaming-response*
   "Impl for `streaming-response`."
@@ -169,10 +168,9 @@
           result                (try
                                   (f {:rff rff, :context context})
                                   (catch Throwable e
-                                    e))
-          result                (if (instance? ManyToManyChannel result)
-                                  (await-async-result result canceled-chan)
-                                  result)]
+                                    e))]
+      (assert (not (instance? ManyToManyChannel result))
+              "streaming context should be a synchronous context")
       (when (or (instance? Throwable result)
                 (= (:status result) :failed))
         (streaming-response/write-error! os result)))))

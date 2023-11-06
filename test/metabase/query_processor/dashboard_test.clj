@@ -17,12 +17,11 @@
   ;; TODO -- we shouldn't do the perms checks if there is no current User context. It seems like API-level perms check
   ;; stuff doesn't belong in the Dashboard QP namespace
   (binding [api/*current-user-permissions-set* (atom #{"/"})]
-    (apply qp.dashboard/run-query-for-dashcard-async
+    (apply qp.dashboard/process-query-for-dashcard
      :dashboard-id dashboard-id
      :card-id      card-id
      :dashcard-id  dashcard-id
-     :run          (fn [query info]
-                     (qp/process-query (assoc query :async? false) info))
+     :run          qp/process-query
      options)))
 
 (deftest resolve-parameters-validation-test

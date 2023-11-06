@@ -40,7 +40,7 @@
   {token ms/NonBlankString}
   (let [unsigned-token (check-and-unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
-    (api.embed/run-query-for-card-with-params-async
+    (api.embed/process-query-for-card-with-params
       :export-format    :api
       :card-id          card-id
       :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
@@ -66,7 +66,7 @@
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
         token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
-    (api.embed/dashcard-results-async
+    (api.embed/process-query-for-dashcard
       :export-format    :api
       :dashboard-id     dashboard-id
       :dashcard-id      dashcard-id
@@ -81,7 +81,7 @@
   {token ms/NonBlankString}
   (let [unsigned-token (check-and-unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
-    (api.embed/run-query-for-card-with-params-async
+    (api.embed/process-query-for-card-with-params
       :export-format    :api
       :card-id          card-id
       :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
@@ -99,7 +99,7 @@
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
         token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
-    (api.embed/dashcard-results-async
+    (api.embed/process-query-for-dashcard
       :export-format    :api
       :dashboard-id     dashboard-id
       :dashcard-id      dashcard-id

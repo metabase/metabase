@@ -72,7 +72,7 @@
   (try
     (let [card-id (u/the-id card-or-id)
           card    (t2/select-one Card :id card-id)
-          result  (qp.dashboard/run-query-for-dashcard-async
+          result  (qp.dashboard/process-query-for-dashcard
                    :dashboard-id  (u/the-id dashboard)
                    :card-id       card-id
                    :dashcard-id   (u/the-id dashcard)
@@ -83,7 +83,7 @@
                                    :js-int-to-string?     false}
                    :run           (^:once fn* [query info]
                                    (qp/process-query
-                                    (qp/userland-query-with-default-constraints (assoc query :async? false) info))))]
+                                    (qp/userland-query-with-default-constraints query info))))]
       (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty]) (is-card-empty? result))
         {:card     card
          :dashcard dashcard

@@ -20,10 +20,10 @@
   ;; TODO -- we shouldn't do the perms checks if there is no current User context. It seems like API-level perms check
   ;; stuff doesn't belong in the Dashboard QP namespace
   (binding [api/*current-user-permissions-set* (atom #{"/"})]
-    (qp.card/run-query-for-card-async
+    (qp.card/process-query-for-card
      card-id :api
      :run (fn [query info]
-            (qp/process-query (assoc query :async? false, :info info))))))
+            (qp/process-query (assoc query :info info))))))
 
 (deftest query-cache-ttl-hierarchy-test
   (mt/discard-setting-changes [enable-query-caching]

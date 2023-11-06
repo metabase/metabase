@@ -947,7 +947,7 @@ saved later when it is ready."
   ;;    POST /api/dashboard/:dashboard-id/card/:card-id/query
   ;;
   ;; endpoint instead. Or error in that situtation? We're not even validating that you have access to this Dashboard.
-  (qp.card/run-query-for-card-async
+  (qp.card/process-query-for-card
    card-id :api
    :parameters   parameters
    :ignore-cache ignore_cache
@@ -964,7 +964,7 @@ saved later when it is ready."
   {card-id       ms/PositiveInt
    parameters    [:maybe ms/JSONString]
    export-format (into [:enum] api.dataset/export-formats)}
-  (qp.card/run-query-for-card-async
+  (qp.card/process-query-for-card
    card-id export-format
    :parameters  (json/parse-string parameters keyword)
    :constraints nil
@@ -1037,7 +1037,7 @@ saved later when it is ready."
                  :or   {ignore_cache false}} :body}]
   {card-id      ms/PositiveInt
    ignore_cache [:maybe :boolean]}
-  (qp.card/run-query-for-card-async card-id :api
+  (qp.card/process-query-for-card card-id :api
                                     :parameters   parameters
                                     :qp           qp.pivot/run-pivot-query
                                     :ignore-cache ignore_cache))

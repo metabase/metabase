@@ -57,8 +57,7 @@
                                    [:field 576 nil]]
                           :limit 2000
                           :filter [:inside [:field 574 nil] [:field 576 nil]]}
-                  :type :query
-                  :async? false}
+                  :type :query}
                  (clean (#'api.tiles/query->tiles-query query
                                                         {:zoom 2 :x 3 :y 1
                                                          :lat-field [:field 574 nil]
@@ -77,8 +76,7 @@
                                    [:field "latitude" {:base-type :type/Float}]
                                    [:field "longitude" {:base-type :type/Float}]]
                           :limit  2000}
-                  :type :query
-                  :async? false}
+                  :type :query}
                  (clean (@#'api.tiles/query->tiles-query query
                                                          {:zoom 2 :x 2 :y 1
                                                           :lat-field [:field "latitude" {:base-type :type/Float}]
@@ -105,29 +103,16 @@
                   [36.8311004 -95.0253779]]
                  (take 3 result))))))))
 
-(deftest failure-test
+(deftest ^:parallel failure-test
   (testing "if the query fails, don't attempt to generate a map without any points -- the endpoint should return a 400"
-    (is (schema= {:status   (s/eq "failed")
-                  s/Keyword s/Any}
-                 (mt/user-http-request
-                  :rasta :get 400 (format "tiles/1/1/1/%d/%d"
-                                          (mt/id :venues :latitude)
-                                          (mt/id :venues :longitude))
-                  :query "{}")))))
+    (is (=? {:status "failed"}
+            (mt/user-http-request
+             :rasta :get 400 (format "tiles/1/1/1/%d/%d"
+                                     (mt/id :venues :latitude)
+                                     (mt/id :venues :longitude))
+             :query "{}")))))
 
-(deftest always-run-sync-test
-  (testing "even if the original query was saved as `:async?` we shouldn't run the query as async"
-    (is (png? (mt/user-http-request
-               :rasta :get 200 (format "tiles/1/1/1/%d/%d"
-                                       (mt/id :venues :latitude)
-                                       (mt/id :venues :longitude))
-               :query (json/generate-string
-                       {:database (mt/id)
-                        :type     :query
-                        :query    {:source-table (mt/id :venues)}
-                        :async?   true}))))))
-
-(deftest field-ref-test
+(deftest ^:parallel field-ref-test
   (testing "Field refs can be constructed from strings representing integer field IDs or field names"
     (is (= [:field 1 nil]
            (@#'api.tiles/field-ref "1")))

@@ -4,6 +4,7 @@
    [clojure.core.async :as a]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.async.util :as async.u]
    [metabase.events :as events]
    [metabase.query-processor :as qp]
    [metabase.query-processor.context :as qp.context]
@@ -137,10 +138,11 @@
         (future
           (let [out-chan (mt/test-qp-middleware [process-userland-query/save-query-execution-and-add-running-time async-middleware]
                                                 {} {} []
-                                                {:canceled-chan canceled-chan
-                                                 :async?        true
-                                                 :runf          (fn [_ _ _]
-                                                                  (Thread/sleep 1000))})]
+                                                (qp.context/async-context
+                                                 {:canceled-chan canceled-chan
+                                                  :runf          (fn [_query _rff _context]
+                                                                   (Thread/sleep 1000))}))]
+            (is (async.u/promise-chan? out-chan))
             (Thread/sleep 100)
             (a/close! out-chan)))
         (testing "canceled-chan should get get a :cancel message"

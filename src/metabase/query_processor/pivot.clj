@@ -148,7 +148,8 @@
                   ([]        init)
                   ([acc]     acc)
                   ([acc row] (rf acc ((:row-mapping-fn context) row context)))))
-          context {:canceled-chan (qp.context/canceled-chan context)}]
+          context (qp.context/sync-context
+                   {:canceled-chan (qp.context/canceled-chan context)})]
       (try
         (let [query (cond-> query
                       (seq info) (qp/userland-query info))]

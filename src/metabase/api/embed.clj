@@ -189,7 +189,7 @@
 (mu/defn ^:private resolve-dashboard-parameters :- [:sequential api.dashboard/ParameterWithID]
   "Given a `dashboard-id` and parameters map in the format `slug->value`, return a sequence of parameters with `:id`s
   that can be passed to various functions in the `metabase.api.dashboard` namespace such as
-  [[metabase.api.dashboard/run-query-for-dashcard-async]]."
+  [[metabase.api.dashboard/process-query-for-dashcard]]."
   [dashboard-id :- ms/PositiveInt
    slug->value  :- :map]
   (let [parameters (t2/select-one-fn :parameters Dashboard :id dashboard-id)
@@ -231,18 +231,17 @@
         (remove-locked-and-disabled-params (or embedding-params
                                                (t2/select-one-fn :embedding_params Card :id card-id))))))
 
-(defn run-query-for-card-with-params-async
+(defn process-query-for-card-with-params
   "Run the query associated with Card with `card-id` using JWT `token-params`, user-supplied URL `query-params`,
    an `embedding-params` whitelist, and additional query `options`. Returns `StreamingResponse` that should be
   returned as the API endpoint result."
-  {:style/indent 0}
   [& {:keys [export-format card-id embedding-params token-params query-params qp constraints options]
       :or   {qp (^:once fn* [query rff context]
                   (qp/process-query (qp/userland-query query) rff context))}}]
   {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
   (let [merged-slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters         (apply-slug->value (resolve-card-parameters card-id) merged-slug->value)]
-    (m/mapply api.public/run-query-for-card-with-id-async
+    (m/mapply api.public/process-query-for-card-with-id
               card-id export-format parameters
               :context     :embedded-question
               :constraints constraints
@@ -265,9 +264,8 @@
         (remove-locked-and-disabled-params (or embedding-params
                                                (t2/select-one-fn :embedding_params Dashboard, :id dashboard-id))))))
 
-(defn dashcard-results-async
+(defn process-query-for-dashcard
   "Return results for running the query belonging to a DashboardCard. Returns a `StreamingResponse`."
-  {:style/indent 0}
   [& {:keys [dashboard-id dashcard-id card-id export-format embedding-params token-params
              query-params constraints qp]
       :or   {constraints (qp.constraints/default-query-constraints)
@@ -277,7 +275,7 @@
          (map? token-params) (map? query-params)]}
   (let [slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters  (resolve-dashboard-parameters dashboard-id slug->value)]
-    (api.public/public-dashcard-results-async
+    (api.public/process-query-for-dashcard
      :dashboard-id  dashboard-id
      :card-id       card-id
      :dashcard-id   dashcard-id
@@ -334,7 +332,7 @@
                                                 :as   options}]
   (let [card-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (check-embedding-enabled-for-card card-id)
-    (run-query-for-card-with-params-async
+    (process-query-for-card-with-params
       :export-format     export-format
       :card-id           card-id
       :token-params      (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
@@ -393,7 +391,6 @@
   Additional dashboard parameters can be provided in the query string, but params in the JWT token take precedence.
 
   Returns a `StreamingResponse`."
-  {:style/indent 1}
   [token dashcard-id card-id export-format query-params
    & {:keys [constraints qp]
       :or   {constraints (qp.constraints/default-query-constraints)
@@ -402,7 +399,7 @@
   (let [unsigned-token (embed/unsign token)
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (check-embedding-enabled-for-dashboard dashboard-id)
-    (dashcard-results-async
+    (process-query-for-dashcard
       :export-format    export-format
       :dashboard-id     dashboard-id
       :dashcard-id      dashcard-id

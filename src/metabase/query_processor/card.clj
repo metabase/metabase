@@ -181,11 +181,12 @@
           ;; now make sure the type agrees as well
           (check-allowed-parameter-value-type parameter-name matching-widget-type (:type request-parameter)))))))
 
-(defn run-query-for-card-async
-  "Run the query for Card with `parameters` and `constraints`, and return results in a
+(defn process-query-for-card
+  "Run the query for Card with `parameters` and `constraints`. By default, returns results in a
   `metabase.async.streaming_response.StreamingResponse` (see [[metabase.async.streaming-response]]) that should be
-  returned as the result of an API endpoint fn. Will throw an Exception if preconditions (such as read perms) are not
-  met before returning the `StreamingResponse`.
+  returned as the result of an API endpoint fn, but you can return something different by passing a different `:run`
+  option. Will throw an Exception if preconditions (such as read perms) are not met *before* returning the
+  `StreamingResponse`.
 
   `context` is a keyword describing the situation in which this query is being ran, e.g. `:question` (from a Saved
   Question) or `:dashboard` (from a Saved Question in a Dashboard). See [[metabase.mbql.schema/Context]] for all valid
@@ -206,7 +207,7 @@
         card  (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :cache_ttl :collection_id
                                               :dataset :result_metadata :visualization_settings]
                                              :id card-id))
-        query (-> (assoc (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id}) :async? true)
+        query (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
                   (update :middleware (fn [middleware]
                                         (merge
                                          {:js-int-to-string? true, :ignore-cached-results? ignore-cache}

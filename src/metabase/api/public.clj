@@ -133,21 +133,21 @@
   (fn [final-metadata context]
     (orig-reducedf (transform-results final-metadata) context)))
 
-(defn- run-query-for-card-with-id-async-run-fn
-  "Create the `:run` function used for [[run-query-for-card-with-id-async]] and [[public-dashcard-results-async]]."
+(defn- process-query-for-card-with-id-run-fn
+  "Create the `:run` function used for [[process-query-for-card-with-id]] and [[process-query-for-dashcard]]."
   [qp export-format]
   (fn [query info]
     (qp.streaming/streaming-response [{:keys [rff], {:keys [reducedf], :as context} :context}
                                       export-format
                                       (u/slugify (:card-name info))]
-      (let [context  (assoc context :reducedf (public-reducedf reducedf))
-            in-chan  (mw.session/as-admin
-                       (qp (update query :info merge info) rff context))
-            out-chan (a/promise-chan (map transform-results))]
-        (async.u/promise-pipe in-chan out-chan)
-        out-chan))))
+      (let [context (assoc context :reducedf (public-reducedf reducedf))
+            rff'    (fn [metadata]
+                      (let [rf (rff metadata)]
+                        ((map transform-results) rf)))]
+        (mw.session/as-admin
+          (qp (update query :info merge info) rff' context))))))
 
-(defn run-query-for-card-with-id-async
+(defn process-query-for-card-with-id
   "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`).
   Returns a `StreamingResponse` object that should be returned as the result of an API endpoint."
   [card-id export-format parameters & {:keys [qp]
@@ -161,19 +161,19 @@
   ;; tries to do the `read-check`, and a second time for when the query is ran (async) so the QP middleware will have
   ;; the correct perms
   (mw.session/as-admin
-    (m/mapply qp.card/run-query-for-card-async card-id export-format
+    (m/mapply qp.card/process-query-for-card card-id export-format
               :parameters parameters
               :context    :public-question
-              :run        (run-query-for-card-with-id-async-run-fn qp export-format)
+              :run        (process-query-for-card-with-id-run-fn qp export-format)
               options)))
 
-(s/defn ^:private run-query-for-card-with-public-uuid-async
+(s/defn ^:private process-query-for-card-with-public-uuid
   "Run query for a *public* Card with UUID. If public sharing is not enabled, this throws an exception. Returns a
   `StreamingResponse` object that should be returned as the result of an API endpoint."
   [uuid export-format parameters & options]
   (validation/check-public-sharing-enabled)
   (let [card-id (api/check-404 (t2/select-one-pk Card :public_uuid uuid, :archived false))]
-    (apply run-query-for-card-with-id-async card-id export-format parameters options)))
+    (apply process-query-for-card-with-id card-id export-format parameters options)))
 
 (api/defendpoint GET "/card/:uuid/query"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
@@ -181,7 +181,7 @@
   [uuid parameters]
   {uuid       ms/UUIDString
    parameters [:maybe ms/JSONString]}
-  (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword)))
+  (process-query-for-card-with-public-uuid uuid :api (json/parse-string parameters keyword)))
 
 (api/defendpoint GET "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
@@ -190,7 +190,7 @@
   {uuid          ms/UUIDString
    export-format api.dataset/ExportFormat
    parameters    [:maybe ms/JSONString]}
-  (run-query-for-card-with-public-uuid-async
+  (process-query-for-card-with-public-uuid
    uuid
    export-format
    (json/parse-string parameters keyword)
@@ -254,9 +254,7 @@
   (validation/check-public-sharing-enabled)
   (dashboard-with-uuid uuid))
 
-;; TODO -- this should probably have a name like `run-query-for-dashcard...` so it matches up with
-;; [[run-query-for-card-with-id-async]]
-(defn public-dashcard-results-async
+(defn process-query-for-dashcard
   "Return the results of running a query for Card with `card-id` belonging to Dashboard with `dashboard-id` via
   `dashcard-id`. `card-id`, `dashboard-id`, and `dashcard-id` are all required; other parameters are optional:
 
@@ -279,12 +277,12 @@
                                    (string? parameters) (json/parse-string keyword))
                   :export-format export-format
                   :qp            qp
-                  :run           (run-query-for-card-with-id-async-run-fn qp export-format)})]
+                  :run           (process-query-for-card-with-id-run-fn qp export-format)})]
     ;; Run this query with full superuser perms. We don't want the various perms checks failing because there are no
     ;; current user perms; if this Dashcard is public you're by definition allowed to run it without a perms check
     ;; anyway
     (mw.session/as-admin
-      (m/mapply qp.dashboard/run-query-for-dashcard-async options))))
+      (m/mapply qp.dashboard/process-query-for-dashcard options))))
 
 (api/defendpoint GET "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
@@ -296,7 +294,7 @@
    parameters  [:maybe ms/JSONString]}
   (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
-    (public-dashcard-results-async
+    (process-query-for-dashcard
      :dashboard-id  dashboard-id
      :card-id       card-id
      :dashcard-id   dashcard-id
@@ -604,7 +602,7 @@
   [uuid parameters]
   {uuid       ms/UUIDString
    parameters [:maybe ms/JSONString]}
-  (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword)
+  (process-query-for-card-with-public-uuid uuid :api (json/parse-string parameters keyword)
                                              :qp qp.pivot/run-pivot-query))
 
 (api/defendpoint GET "/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
@@ -617,7 +615,7 @@
    parameters  [:maybe ms/JSONString]}
   (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
-    (public-dashcard-results-async
+    (process-query-for-dashcard
      :dashboard-id  dashboard-id
      :card-id       card-id
      :dashcard-id   dashcard-id

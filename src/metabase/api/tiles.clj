@@ -161,8 +161,7 @@
               lat-field lon-field
               x y zoom)
       (assoc-in [:query :fields] [lat-field lon-field])
-      (assoc-in [:query :limit] tile-coordinate-limit)
-      (assoc :async? false)))
+      (assoc-in [:query :limit] tile-coordinate-limit)))
 
 ;; TODO - this can be reworked to be `defendpoint-async` instead
 ;;

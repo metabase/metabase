@@ -93,9 +93,7 @@
     default context used if `context` is not explicitly specified.
 
   * An async context will return a core.async promise channel. If this core.async channel is closed at any time before
-    the query finishes running, the query will be canceled. If `context` is not explicitly specified, an async context
-    will be used if the `query` includes `:async?` true. (TODO: we should deprecate this usage and have people
-    explicitly specify async contexts instead)
+    the query finishes running, the query will be canceled.
 
   * Some other contexts like those used in streaming API endpoints or CSV/XLSX/JSON downloads might return something
     different... refer to those usages for more information."
@@ -105,14 +103,14 @@
   ([query context]
    (process-query query nil context))
 
-  ([{:keys [async?], :as query} :- :map
-    rff                         :- [:maybe ::qp.context/rff]
-    context                     :- [:maybe :map]]
+  ([query   :- :map
+    rff     :- [:maybe ::qp.context/rff]
+    context :- [:maybe ::qp.context/context]]
+   (when (contains? query :async?)
+     (log/warn ":async? as an query option is deprecated and ignored; pass an explicit async context."))
    (qp.setup/with-qp-setup [query query]
      (let [rff     (or rff qp.reducible/default-rff)
-           context (if async?
-                     (qp.context/async-context context)
-                     (qp.context/sync-context context))]
+           context (or context (qp.context/sync-context))]
        (try
          (process-query* query rff context)
          (catch Throwable e

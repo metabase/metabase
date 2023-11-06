@@ -537,7 +537,6 @@
                                          (qp/process-query
                                            (qp/userland-query
                                             (-> dataset_query
-                                               (assoc :async? false)
                                                (assoc-in [:middleware :process-viz-settings?] true))
                                             {:executed-by (:id user)
                                              :context     :pulse

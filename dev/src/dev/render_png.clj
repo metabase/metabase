@@ -55,7 +55,6 @@
                                            (qp/process-query
                                             (-> query
                                                 (qp/userland-query info)
-                                                (assoc :async? false)
                                                 (assoc-in [:middleware :process-viz-settings?] true))))
         png-bytes                        (render/render-pulse-card-to-png (pulse/defaulted-timezone card)
                                                                           card

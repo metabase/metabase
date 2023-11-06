@@ -134,7 +134,7 @@
                                                           {:database (mt/id)
                                                            :type     "native"
                                                            :native   {:query {:sleep 5000}}})
-                  futur         (http/post url (assoc request :async? true) identity (fn [e] (throw e)))]
+                  futur         (http/post url request identity (fn [e] (throw e)))]
               (is (future? futur))
               ;; wait a little while for the query to start running -- this should usually happen fairly quickly
               (mt/wait-for-result start-chan (u/seconds->ms 15))
@@ -145,8 +145,8 @@
                        (or @canceled?
                            (if wait
                              (do
-                              (Thread/sleep (long wait))
-                              (recur more))
+                               (Thread/sleep (long wait))
+                               (recur more))
                              ::timed-out))))))))))))
 
 (def ^:private ^:dynamic *number-of-cans* nil)
