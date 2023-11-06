@@ -1,5 +1,5 @@
-import { restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -63,8 +63,21 @@ describe("issue 19893", { tags: "@external" }, () => {
       });
     });
 
-    const notebookCellItems = cy.findAllByTestId("notebook-cell-item");
-    notebookCellItems.eq(0).should("contain", QUESTION_1.name);
-    notebookCellItems.eq(1).should("contain", QUESTION_2.name);
+    cy.findAllByTestId("notebook-cell-item").then(items => {
+      cy.wrap(items[0]).should("contain", QUESTION_1.name);
+      cy.wrap(items[1]).should("contain", QUESTION_2.name);
+    });
+
+    cy.findByTestId("join-condition-0").within(() => {
+      cy.findByLabelText("Left column").within(() => {
+        cy.findByText(QUESTION_1.name).should("exist");
+        cy.findByText("Category").should("exist");
+      });
+
+      cy.findByLabelText("Right column").within(() => {
+        cy.findByText(QUESTION_2.name).should("exist");
+        cy.findByText("Category").should("exist");
+      });
+    });
   });
 });
