@@ -3,7 +3,7 @@ import { Popover } from "@mantine/core";
 import type { PopoverDropdownProps } from "@mantine/core";
 
 export function PopoverDropdown({ children, ...props }: PopoverDropdownProps) {
-  const observer = useMemo(() => createObserver(), []);
+  const observer = useMemo(createObserver, []);
   const [target, setTarget] = useState<HTMLElement | null>(null);
 
   useLayoutEffect(() => {
