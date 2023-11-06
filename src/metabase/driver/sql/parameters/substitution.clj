@@ -94,7 +94,7 @@
   [_driver t]
   (make-stmt-subs "?" [t]))
 
-(defmulti ->temporal-unit
+(defmulti align-temporal-unit-with-param-type
   "Returns a suitable temporal unit conversion keyword for `field`, `param-type` and the given driver. The resulting keyword
   will be used to call the corresponding `metabase.driver.sql.query-processor/date` implementation to convert the `field`.
   Returns `nil` if the conversion is not necessary for this `field` and `param-type` combination."
@@ -102,7 +102,7 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod ->temporal-unit :default
+(defmethod align-temporal-unit-with-param-type :default
   [_driver _field param-type]
   (when (params.dates/date-type? param-type)
     :day))
@@ -249,7 +249,7 @@
   [:field
    (u/the-id field)
    {:base-type                (:base-type field)
-    :temporal-unit            (->temporal-unit driver field param-type)
+    :temporal-unit            (align-temporal-unit-with-param-type driver field param-type)
     ::add/source-table        (:table-id field)
     ;; in case anyone needs to know we're compiling a Field filter.
     ::compiling-field-filter? true}])
