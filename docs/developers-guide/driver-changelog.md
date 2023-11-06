@@ -42,6 +42,9 @@ title: Driver interface changelog
   `database` argument for the arity which previously had one argument. This function might be used in the implementation
   of a driver's multimethods.
 
+- `metabase.driver/prettify-native-form` was added to enable driver developers use native form formatting
+  specific to their driver. For details see the PR [#34991](https://github.com/metabase/metabase/pull/34991).
+
 ## Metabase 0.46.0
 
 - The process for building a driver has changed slightly in Metabase 0.46.0. Your build command should now look

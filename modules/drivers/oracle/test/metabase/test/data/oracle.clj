@@ -7,7 +7,7 @@
    [honey.sql :as sql]
    [medley.core :as m]
    [metabase.db :as mdb]
-   [metabase.db.query :as mdb.query]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -254,7 +254,7 @@
             "Felipinho Asklepios"
             #t "2014-12-05T15:15"]
            (-> (sql/format-expr hsql)
-               (update 0 mdb.query/format-sql :oracle)
+               (update 0 (partial driver/prettify-native-form :oracle))
                (update 0 str/split-lines))))))
 
 (defn- dbspec [& _]
