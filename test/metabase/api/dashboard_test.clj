@@ -2077,7 +2077,7 @@
                  (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id)))))))))
 
 (deftest delete-tabs-test
-  (testing "PUT /api/dashboard/id/:cards to delete"
+  (testing "PUT /api/dashboard/:id to delete"
     (testing "partial delete"
       (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-1 dashtab-id-2]}]
         (testing "we have 2 tabs, each has 1 card to begin with"
@@ -2104,8 +2104,8 @@
                  (t2/count DashboardCard, :dashboard_id dashboard-id)))
           (is (= 2
                  (t2/count :model/DashboardTab :dashboard_id dashboard-id))))
-        (is (=? {:tabs  []
-                 :cards []}
+        (is (=? {:tabs      []
+                 :dashcards []}
                 (mt/user-http-request :rasta :put 200
                                       (format "dashboard/%d" dashboard-id)
                                       {:tabs      []
