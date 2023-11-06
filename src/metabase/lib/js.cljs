@@ -145,6 +145,12 @@
   [field-metadata]
   (lib.core/field-id field-metadata))
 
+(defn ^:export legacy-card-or-table-id
+  "Find the legacy card id or table id for a given ColumnMetadata or nil.
+   Returns a either `\"card__<id>\"` or integer table id."
+  [field-metadata]
+  (lib.core/legacy-card-or-table-id field-metadata))
+
 (defn ^:export order-by-clause
   "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
   ([orderable]
