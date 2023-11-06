@@ -229,7 +229,7 @@
   (re-matches #"^\d\d\d\d-\d\d-\d\d$" input))
 
 (defn- matches-date-time? [input]
-  (re-matches #"^\d\d\d\d-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d+)?)?(?:Z|-\d\d:\d\d)?$" input))
+  (re-matches #"\d\d\d\d-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d+)?)?(?:Z|[+-]\d\d(?::?\d\d)?)?" input))
 
 (defn- coerce-local-date-time [input]
   (cond-> input
