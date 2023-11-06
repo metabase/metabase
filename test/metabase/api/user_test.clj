@@ -1248,8 +1248,8 @@
                      :model    "User"
                      :model_id id
                      :details  {}}]
-                   [(audit-log-test/event :user-deactivated id)
-                    (audit-log-test/event :user-reactivated id)])))))))
+                   [(audit-log-test/latest-event :user-deactivated id)
+                    (audit-log-test/latest-event :user-reactivated id)])))))))
 
 (deftest user-update-event-test
   (testing "User Updates via the API are recorded in the audit log"
@@ -1265,4 +1265,4 @@
                     :model_id id
                     :details  {:first_name "Johnny"
                                :last_name "Appleseed"}}
-                   (audit-log-test/event :user-update id))))))))
+                   (audit-log-test/latest-event :user-update id))))))))

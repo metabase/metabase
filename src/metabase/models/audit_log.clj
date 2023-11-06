@@ -36,7 +36,7 @@
   [model]
   (some-> (or (t2/model model) model) name))
 
-(mu/defn record-event-2!
+(mu/defn record-event!
   "Records an event in the Audit Log.
 
   `topic` is a keyword representing the type of event being recorded, e.g. `:dashboard-create`. If the keyword is
@@ -90,7 +90,7 @@
         :model-id model-id
         :user-id  user-id}))))
 
-(defn record-event!
+(defn record-event-old!
   "Record an event in the Audit Log.
 
   `topic` is a keyword representing the type of event being recorded, e.g. `:dashboard-create`. If the keyword is
@@ -103,13 +103,13 @@
   `object` can also be a map of arbitrary details relavent to the event, which is recorded as-is. If the name and/or ID
   of a model are also relevant to the event and should be recorded, they can be passed as fourth and fifth arguments."
   ([topic object]
-   (record-event! topic object api/*current-user-id*))
+   (record-event-old! topic object api/*current-user-id*))
 
   ([topic object user-id]
-   (record-event! topic object user-id (some-> (t2/model object) name)))
+   (record-event-old! topic object user-id (some-> (t2/model object) name)))
 
   ([topic object user-id model]
-   (record-event! topic object user-id model (u/id object)))
+   (record-event-old! topic object user-id model (u/id object)))
 
   ([topic object user-id model model-id]
    (let [unqualified-topic (keyword (name topic))

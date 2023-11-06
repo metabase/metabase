@@ -207,7 +207,7 @@
                              :channel      ["email"],
                              :schedule     ["daily"],
                              :recipients   [[{:email "foo@bar.com"}]]}}
-                 (audit-log-test/event :subscription-create (u/the-id pulse)))))))))
+                 (audit-log-test/latest-event :subscription-create (u/the-id pulse)))))))))
 
 (deftest create-dashboard-subscription-test
   (testing "Make sure that the dashboard_id is set correctly when creating a Dashboard Subscription pulse"
@@ -304,7 +304,7 @@
                                         :email       "crowberto@metabase.com"
                                         :common_name "Crowberto Corv"
                                         :id          (mt/user->id :crowberto)}]]}}
-           (audit-log-test/event :subscription-update (u/the-id pulse))))))
+           (audit-log-test/latest-event :subscription-update (u/the-id pulse))))))
 
 (deftest dashboard-subscription-update-test
   (testing "collection_id and dashboard_id of a dashboard subscription cannot be directly modified"

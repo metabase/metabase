@@ -509,7 +509,8 @@
                 [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
   (let [pulse-id (create-notification-and-add-cards-and-channels! kvs cards channels)]
     ;; return the full Pulse (and record our create event).
-    (events/publish-event! :event/subscription-create {:object (retrieve-pulse pulse-id)})))
+    (u/prog1 (retrieve-pulse pulse-id)
+      (events/publish-event! :event/subscription-create {:object <>}))))
 
 (defn create-alert!
   "Creates a pulse with the correct fields specified for an alert"
@@ -569,7 +570,8 @@
   [pulse]
   (update-notification! pulse)
   ;; fetch the fully updated pulse, log an update event, and return it
-  (events/publish-event! :event/subscription-update (retrieve-pulse (u/the-id pulse))))
+  (u/prog1 (retrieve-pulse (u/the-id pulse))
+    (events/publish-event! :event/subscription-update {:object <>})))
 
 (defn- alert->notification
   "Convert an 'Alert` back into the generic 'Notification' format."

@@ -658,7 +658,7 @@
                                    :channel      ["email"]
                                    :schedule     ["daily"]
                                    :recipients   [[]]}}
-                       (audit-log-test/event :alert-create (u/the-id alert)))))
+                       (audit-log-test/latest-event :alert-create (u/the-id alert)))))
               (testing "Updating alert also logs event."
                 (mt/user-http-request :crowberto :put 200 (alert-url alert) alert-details)
                 (is (= {:topic    :alert-update
@@ -672,7 +672,7 @@
                                    :channel    ["email"]
                                    :schedule   ["daily"]
                                    :recipients [[]]}}
-                       (audit-log-test/event :alert-update (u/the-id alert)))))))))))
+                       (audit-log-test/latest-event :alert-update (u/the-id alert)))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            GET /alert/question/:id                                             |
@@ -939,4 +939,4 @@
                 :model    "Pulse"
                 :model_id nil
                 :details  {:email "rasta@metabase.com"}}
-               (audit-log-test/event :alert-unsubscribe)))))))
+               (audit-log-test/latest-event :alert-unsubscribe)))))))
