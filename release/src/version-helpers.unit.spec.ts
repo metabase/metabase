@@ -214,7 +214,7 @@ describe("version-helpers", () => {
         ["v0.71", ["v0.24", "v0.25.1", "v0.25.2", "v0.80.0"]],
       ];
       cases.forEach(([input, releases]) => {
-        expect(isLatestVersion(input, releases),).toEqual(false);
+        expect(isLatestVersion(input, releases)).toEqual(false);
         expect(isLatestVersion(input, releases.reverse())).toEqual(false);
       });
     });
@@ -314,7 +314,7 @@ describe("version-helpers", () => {
       expect(() => getBuildRequirements("v2.47.6")).toThrow();
     });
 
-    it('should use the latest build requirements for a version that has not been released', () => {
+    it("should use the latest build requirements for a version that has not been released", () => {
       expect(getBuildRequirements("v0.99.0")).toEqual({
         node: 18,
         java: 11,
@@ -322,11 +322,11 @@ describe("version-helpers", () => {
     });
   });
 
-  describe('getNextVersions', () => {
-    it('should get next versions for a major release', () => {
+  describe("getNextVersions", () => {
+    it("should get next versions for a major release", () => {
       const testCases: [string, string[]][] = [
-        ['v0.75.0', ['v0.75.1', 'v0.76.0']],
-        ['v0.99.0', ['v0.99.1', 'v0.100.0']],
+        ["v0.75.0", ["v0.75.1", "v0.76.0"]],
+        ["v0.99.0", ["v0.99.1", "v0.100.0"]],
       ];
 
       testCases.forEach(([input, expected]) => {
@@ -334,10 +334,10 @@ describe("version-helpers", () => {
       });
     });
 
-    it('should handle ee and oss versions', () => {
+    it("should handle ee and oss versions", () => {
       const testCases: [string, string[]][] = [
-        ['v0.75.1', ['v0.75.2']],
-        ['v1.75.1', ['v1.75.2']],
+        ["v0.75.1", ["v0.75.2"]],
+        ["v1.75.1", ["v1.75.2"]],
       ];
 
       testCases.forEach(([input, expected]) => {
@@ -345,12 +345,12 @@ describe("version-helpers", () => {
       });
     });
 
-    it('should get next versions for a minor release', () => {
+    it("should get next versions for a minor release", () => {
       const testCases: [string, string[]][] = [
-        ['v0.75.1', ['v0.75.2']],
-        ['v0.75.1.0', ['v0.75.2']], // disregards extra .0
-        ['v0.79.99', ['v0.79.100']],
-        ['v0.79.99.0', ['v0.79.100']],
+        ["v0.75.1", ["v0.75.2"]],
+        ["v0.75.1.0", ["v0.75.2"]], // disregards extra .0
+        ["v0.79.99", ["v0.79.100"]],
+        ["v0.79.99.0", ["v0.79.100"]],
       ];
 
       testCases.forEach(([input, expected]) => {
@@ -358,10 +358,10 @@ describe("version-helpers", () => {
       });
     });
 
-    it('should not get next versions for a patch release', () => {
+    it("should not get next versions for a patch release", () => {
       const testCases: [string, string[]][] = [
-        ['v0.75.1.1', []],
-        ['v0.79.99.3', []],
+        ["v0.75.1.1", []],
+        ["v0.79.99.3", []],
       ];
 
       testCases.forEach(([input, expected]) => {
@@ -369,10 +369,10 @@ describe("version-helpers", () => {
       });
     });
 
-    it('should not get next versions for an RC release', () => {
+    it("should not get next versions for an RC release", () => {
       const testCases: [string, string[]][] = [
-        ['v0.75.0-RC2', []],
-        ['v0.79.0-rc99', []],
+        ["v0.75.0-RC2", []],
+        ["v0.79.0-rc99", []],
       ];
 
       testCases.forEach(([input, expected]) => {
@@ -380,10 +380,10 @@ describe("version-helpers", () => {
       });
     });
 
-    it('should throw an error for an invalid version string', () => {
-      expect(() => getNextVersions('foo')).toThrow();
-      expect(() => getNextVersions('v2.75')).toThrow();
-      expect(() => getNextVersions('v0.75-RC2')).toThrow();
+    it("should throw an error for an invalid version string", () => {
+      expect(() => getNextVersions("foo")).toThrow();
+      expect(() => getNextVersions("v2.75")).toThrow();
+      expect(() => getNextVersions("v0.75-RC2")).toThrow();
     });
   });
 });

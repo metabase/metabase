@@ -15,8 +15,26 @@ There are 3 ways to release
 
 ## Github action-less release
 
-Coming soon ...
+> _Note_
+> Use this only if for some reason the automated release in CI is not available.
+
+1. Copy the `.env-template` file to `.env` and fill in all environment variables
+2. Run `cd release && yarn && yarn release-offline v0.77.77 1234567890abcdef1234567890abcdef12345678 --build`
+3. Wait for the build and test jobs to finish
+4. Test the built jar locally: `MB_JETTY_PORT=3033 java -jar target/uberjar/metabase.jar`
+5. If everything is successful, run `yarn release-offline v0.77.77 1234567890abcdef1234567890abcdef12345678 --release`
+
+You can also run publish steps in isolation using these flags instead of `--publish`
+
+- `--check-jar`
+- `--s3`
+- `--docker`
+- `--version-info`
+- `--tag`
+- `--release-notes`
+
+Alternatively, you can put any properly built jar in `target/uberjar` folder and run the publish script from there.
 
 ## Totally github-less release
 
-Coming soon...
+Coming soon?

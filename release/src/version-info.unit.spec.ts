@@ -110,7 +110,7 @@ describe("version-info", () => {
       jest.resetModules();
       process.env.AWS_S3_STATIC_BUCKET = "my.metabase.com";
       process.env.AWS_REGION = "us-north-9";
-    })
+    });
 
     it("should generate oss version info url", () => {
       expect(getVersionInfoUrl("v0.99.3")).toEqual(
