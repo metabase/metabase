@@ -10,7 +10,7 @@ database_id: Internal Metabase Database
 enable_embedding: false
 collection_id: vG58R8k-QddHWA7_47umn
 query_type: query
-name: Last user activity
+name: Recent activity
 creator_id: internal@metabase.com
 made_public_by_id: null
 embedding_params: null
@@ -77,7 +77,7 @@ parameter_mappings: []
 serdes/meta:
 - model: Card
   id: WlQ-en2l-iRRCvO2-v5j1
-  label: last_user_activity
+  label: recent_activity
 display: table
 entity_id: WlQ-en2l-iRRCvO2-v5j1
 collection_preview: true

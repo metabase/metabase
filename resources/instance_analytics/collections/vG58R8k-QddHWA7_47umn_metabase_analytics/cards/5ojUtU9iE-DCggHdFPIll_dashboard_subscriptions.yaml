@@ -1,4 +1,4 @@
-description: Data from alerts and subscriptions including recipients
+description: Which subscriptions are active, who created them, who's subscribed to them, when they're sent, and more.
 archived: false
 collection_position: 13
 table_id:

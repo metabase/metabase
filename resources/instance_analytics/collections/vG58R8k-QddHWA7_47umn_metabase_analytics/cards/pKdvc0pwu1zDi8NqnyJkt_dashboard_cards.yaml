@@ -1,4 +1,4 @@
-description: Each row is a dashboard card. Can be a question or a text card.
+description: Records of all dashboard cards (including text cards).
 archived: false
 collection_position: 14
 table_id:

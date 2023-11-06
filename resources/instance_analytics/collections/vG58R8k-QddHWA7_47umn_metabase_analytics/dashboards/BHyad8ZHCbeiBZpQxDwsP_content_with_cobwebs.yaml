@@ -1,4 +1,4 @@
-description: Consider archiving these
+description: Dashboards and questions that you could consider archiving.
 archived: false
 collection_position: 8
 dashcards:
@@ -60,7 +60,7 @@ tabs: []
 enable_embedding: false
 collection_id: vG58R8k-QddHWA7_47umn
 show_in_getting_started: false
-name: Unused content
+name: Content with cobwebs
 caveats: null
 creator_id: internal@metabase.com
 made_public_by_id: null
@@ -69,7 +69,7 @@ cache_ttl: null
 serdes/meta:
 - model: Dashboard
   id: BHyad8ZHCbeiBZpQxDwsP
-  label: unused_content
+  label: content_with_cobwebs
 position: null
 entity_id: BHyad8ZHCbeiBZpQxDwsP
 parameters:

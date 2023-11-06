@@ -18,7 +18,7 @@ result_metadata:
     - public
     - v_view_log
     - id
-  - null
+  - base-type: type/Integer
   effective_type: type/Integer
   id:
   - Internal Metabase Database
@@ -41,7 +41,8 @@ result_metadata:
     - public
     - v_view_log
     - timestamp
-  - temporal-unit: default
+  - base-type: type/DateTimeWithLocalTZ
+    temporal-unit: default
   effective_type: type/DateTimeWithLocalTZ
   id:
   - Internal Metabase Database
@@ -63,7 +64,7 @@ result_metadata:
     - public
     - v_view_log
     - user_id
-  - null
+  - base-type: type/Integer
   effective_type: type/Integer
   id:
   - Internal Metabase Database
@@ -85,7 +86,7 @@ result_metadata:
     - public
     - v_view_log
     - entity_type
-  - null
+  - base-type: type/Text
   effective_type: type/Text
   id:
   - Internal Metabase Database
@@ -107,7 +108,7 @@ result_metadata:
     - public
     - v_view_log
     - entity_id
-  - null
+  - base-type: type/Integer
   effective_type: type/Integer
   id:
   - Internal Metabase Database
@@ -129,7 +130,7 @@ result_metadata:
     - public
     - v_view_log
     - entity_qualified_id
-  - null
+  - base-type: type/Text
   effective_type: type/Text
   id:
   - Internal Metabase Database
@@ -138,28 +139,6 @@ result_metadata:
   - entity_qualified_id
   visibility_type: normal
   display_name: Entity Qualified ID
-  base_type: type/Text
-- description: null
-  semantic_type: type/Category
-  coercion_strategy: null
-  name: details
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_view_log
-    - details
-  - null
-  effective_type: type/Text
-  id:
-  - Internal Metabase Database
-  - public
-  - v_view_log
-  - details
-  visibility_type: normal
-  display_name: Details
   base_type: type/Text
 database_id: Internal Metabase Database
 enable_embedding: false
@@ -186,6 +165,43 @@ dataset_query:
           - v_view_log
           - timestamp
         - base-type: type/DateTimeWithLocalTZ
+    fields:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - id
+      - base-type: type/Integer
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - user_id
+      - base-type: type/Integer
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - entity_type
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - entity_id
+      - base-type: type/Integer
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - entity_qualified_id
+      - base-type: type/Text
 parameter_mappings: []
 serdes/meta:
 - model: Card

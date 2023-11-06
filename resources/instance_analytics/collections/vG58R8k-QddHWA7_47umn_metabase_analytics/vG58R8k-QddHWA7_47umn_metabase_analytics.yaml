@@ -1,5 +1,5 @@
 authority_level: null
-description: Your instance data and our analysis. This content isn’t editable, but you can duplicate any of it to create your own explorations and reports.
+description: Your instance data. To customize these questions and dashboards, you can duplicate them and save them in the custom reports collection.
 archived: false
 slug: metabase_analytics
 name: Metabase analytics
