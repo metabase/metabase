@@ -127,12 +127,9 @@
 (methodical/defmethod events/publish-event! ::pulse-event
   [topic {:keys [object user-id] :as _event}]
   ;; Check if topic is a pulse or not (can be an unsubscribe event, which only contains email)
-  (def object object)
-  (def user-id user-id)
   (let [details-map (if (some? (:id object))
                       (create-details-map object (:name object) false (:dashboard_id object))
                       object)]
-    (def details-map details-map)
     (audit-log/record-event! topic
                              {:details  details-map
                               :user-id  user-id

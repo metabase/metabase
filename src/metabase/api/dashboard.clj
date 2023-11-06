@@ -379,49 +379,6 @@
     (validation/check-embedding-enabled)
     (api/check-superuser)))
 
-(api/defendpoint PUT "/:id"
-  "Update a Dashboard.
-
-  Usually, you just need write permissions for this Dashboard to do this (which means you have appropriate
-  permissions for the Cards belonging to this Dashboard), but to change the value of `enable_embedding` you must be a
-  superuser."
-  [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
-                   embedding_params position archived collection_id collection_position cache_ttl]
-            :as dash-updates} :body}]
-  {id                      ms/PositiveInt
-   name                    [:maybe ms/NonBlankString]
-   description             [:maybe :string]
-   caveats                 [:maybe :string]
-   points_of_interest      [:maybe :string]
-   show_in_getting_started [:maybe :boolean]
-   enable_embedding        [:maybe :boolean]
-   embedding_params        [:maybe ms/EmbeddingParams]
-   parameters              [:maybe [:sequential ms/Parameter]]
-   position                [:maybe ms/PositiveInt]
-   archived                [:maybe :boolean]
-   collection_id           [:maybe ms/PositiveInt]
-   collection_position     [:maybe ms/PositiveInt]
-   cache_ttl               [:maybe ms/PositiveInt]}
-  (let [dash-before-update (api/write-check :model/Dashboard id)]
-    ;; Do various permissions checks as needed
-    (collection/check-allowed-to-change-collection dash-before-update dash-updates)
-    (check-allowed-to-change-embedding dash-before-update dash-updates)
-    (t2/with-transaction [_conn]
-      ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
-      ;; adjust the collection position of other dashboards in the collection
-      (api/maybe-reconcile-collection-position! dash-before-update dash-updates)
-      ;; description, position, collection_id, and collection_position are allowed to be `nil`. Everything else must be
-      ;; non-nil
-      (when-let [updates (not-empty (u/select-keys-when dash-updates
-                                                        :present #{:description :position :collection_id :collection_position :cache_ttl}
-                                                        :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
-                                                                   :embedding_params :archived :auto_apply_filters}))]
-        (t2/update! Dashboard id updates))))
-  ;; now publish an event and return the updated Dashboard
-  (let [dashboard (t2/hydrate (t2/select-one :model/Dashboard :id id) [:collection :is_personal])]
-    (events/publish-event! :event/dashboard-update {:object dashboard})
-    (assoc dashboard :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
-
 ;; TODO - We can probably remove this in the near future since it should no longer be needed now that we're going to
 ;; be setting `:archived` to `true` via the `PUT` endpoint instead
 (api/defendpoint DELETE "/:id"
