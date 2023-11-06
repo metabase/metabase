@@ -10,7 +10,7 @@ database_id: Internal Metabase Database
 enable_embedding: false
 collection_id: vG58R8k-QddHWA7_47umn
 query_type: query
-name: Last activity on dashboard
+name: Recent activity on dashboard
 creator_id: internal@metabase.com
 made_public_by_id: null
 embedding_params: null
@@ -113,7 +113,7 @@ parameter_mappings: []
 serdes/meta:
 - model: Card
   id: xrgv7nzXe_v8ORWIbq839
-  label: last_activity_on_dashboard
+  label: recent_activity_on_dashboard
 display: table
 entity_id: xrgv7nzXe_v8ORWIbq839
 collection_preview: true

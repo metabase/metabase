@@ -1,4 +1,4 @@
-description: All executed queries
+description: Information about all queries Metabase ran across all dashboards
 archived: false
 collection_position: 10
 table_id:

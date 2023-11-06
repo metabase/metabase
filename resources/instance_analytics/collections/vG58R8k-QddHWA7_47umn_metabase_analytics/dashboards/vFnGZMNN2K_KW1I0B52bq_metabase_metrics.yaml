@@ -1,4 +1,4 @@
-description: Metrics around active users, content generation, views.
+description: General information about people viewing and creating dashboards, questions, subscriptions, and alerts.
 archived: false
 collection_position: 1
 dashcards:
@@ -309,7 +309,7 @@ tabs: []
 enable_embedding: false
 collection_id: vG58R8k-QddHWA7_47umn
 show_in_getting_started: false
-name: Metabase usage metrics
+name: Metabase metrics
 caveats: null
 creator_id: internal@metabase.com
 made_public_by_id: null
@@ -318,7 +318,7 @@ cache_ttl: null
 serdes/meta:
 - model: Dashboard
   id: vFnGZMNN2K_KW1I0B52bq
-  label: metabase_usage_metrics
+  label: metabase_metrics
 position: null
 entity_id: vFnGZMNN2K_KW1I0B52bq
 parameters:
