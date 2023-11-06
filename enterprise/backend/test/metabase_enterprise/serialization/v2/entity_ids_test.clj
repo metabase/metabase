@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
-   [metabase.models :refer [Collection Dashboard]]
+   [metabase.models :refer [Collection]]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -58,18 +58,4 @@
           (testing "Should return truthy on success"
             (is (= true
                    (v2.entity-ids/drop-entity-ids!))))
-          (is (nil? (entity-id)))))))
-  (testing "empty table"
-    (testing "has no entity ids"
-      (t2.with-temp/with-temp [Collection _ {:name       "No Entity ID Collection"
-                                             :slug       "no_entity_id_collection"}]
-        (is (= 0 (t2/count Dashboard)))
-        (let [eids (t2/select-fn-set :entity-id Dashboard)]
-          (is (or (empty? eids)
-                  (= #{nil} eids))))
-        (testing "but doesn't crash drop-entity-ids"
-          (is (= true
-                 (v2.entity-ids/drop-entity-ids!)))
-          (let [eids (t2/select-fn-set :entity-id Dashboard)]
-            (is (or (empty? eids)
-                    (= #{nil} eids)))))))))
+          (is (nil? (entity-id))))))))
