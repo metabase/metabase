@@ -23,7 +23,7 @@ const QUESTION_2 = {
   },
 };
 
-describe("issue 19893", { tags: "@external" }, () => {
+describe("issue 19893", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
