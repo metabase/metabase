@@ -391,7 +391,7 @@
                  "`archived` value via PUT /api/dashboard/:id."))
   (let [dashboard (api/write-check :model/Dashboard id)]
     (t2/delete! :model/Dashboard :id id)
-    (events/publish-event! :event/dashboard-delete {:object dashboard}))
+    (events/publish-event! :event/dashboard-delete {:object dashboard :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
 (defn- param-target->field-id [target query]
@@ -537,20 +537,24 @@
           :when             (pos-int? card_id)]
       (snowplow/track-event! ::snowplow/question-added-to-dashboard
                              api/*current-user-id*
-                             {:dashboard-id dashboard-id :question-id card_id})))
+                             {:dashboard-id dashboard-id :question-id card_id :user-id api/*current-user-id*})))
   ;; Tabs events
   (when (seq deleted-tab-ids)
     (snowplow/track-event! ::snowplow/dashboard-tab-deleted
                            api/*current-user-id*
                            {:dashboard-id   dashboard-id
                             :num-tabs       (count deleted-tab-ids)
-                            :total-num-tabs total-num-tabs}))
+                            :total-num-tabs total-num-tabs})
+    (events/publish-event! :event/dashboard-remove-tabs
+                           {:object dashboard :tab-ids deleted-tab-ids :user-id api/*current-user-id*}))
   (when (seq created-tab-ids)
     (snowplow/track-event! ::snowplow/dashboard-tab-created
                            api/*current-user-id*
                            {:dashboard-id   dashboard-id
                             :num-tabs       (count created-tab-ids)
-                            :total-num-tabs total-num-tabs})))
+                            :total-num-tabs total-num-tabs})
+    (events/publish-event! :event/dashboard-add-tabs
+                           {:object dashboard :tab-ids created-tab-ids :user-id api/*current-user-id*})))
 
 (defn- update-dashboard
   "Updates a Dashboard. Designed to be reused by PUT /api/dashboard/:id and PUT /api/dashboard/:id/cards"
