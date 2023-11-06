@@ -374,7 +374,7 @@ export const tabsReducer = createReducer<DashboardState>(
     );
 
     builder.addCase(
-      Dashboards.action.update,
+      Dashboards.actions.update,
       (state, { payload: { dashboard } }) => {
         const { dashcards: newDashcards, tabs: newTabs } = dashboard;
 
