@@ -532,7 +532,11 @@
   - `search_native_query`: set to true to search the content of native queries
   - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
 
-  Note that not all item types support all filters, and the results will include only models that support the provided filters."
+  Note that not all item types support all filters, and the results will include only models that support the provided filters.
+  For example:
+  - `created-by` filter supports dashboard, model, action, card
+  - `verified` filter supports model and card
+  a search query that has both filters will only return items for model and card."
   [q archived context created_at created_by table_db_id models last_edited_at last_edited_by
    filter_items_in_personal_collection search_native_query verified]
   {q                                   [:maybe ms/NonBlankString]
