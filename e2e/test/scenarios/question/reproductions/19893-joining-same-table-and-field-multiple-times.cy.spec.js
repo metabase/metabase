@@ -29,7 +29,7 @@ describe("issue 19893", () => {
     cy.signInAsAdmin();
   });
 
-  it("should display correct source table (metabase#19893)", () => {
+  it("should display correct join source table (metabase#19893)", () => {
     cy.createQuestion(QUESTION_1, { wrapId: true, idAlias: "questionId1" });
     cy.createQuestion(QUESTION_2, { wrapId: true, idAlias: "questionId2" });
 
