@@ -50,9 +50,8 @@
 (defn table-field-names->cols
   "Return a mapping of field names to corresponding cols for given table."
   [table-id]
-  (classloader/require 'metabase.query-processor)
   (into {} (for [col (mw.session/with-current-user nil
-                       ((resolve 'metabase.query-processor/query->expected-cols)
+                       ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols)
                         {:database (table/table-id->database-id table-id)
                          :type     :query
                          :query    {:source-table table-id}}))]

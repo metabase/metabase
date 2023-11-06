@@ -38,6 +38,7 @@
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (def ^:private middleware
@@ -83,19 +84,26 @@
    #'check-features/check-features])
 
 (mu/defn preprocess :- :map
+  "Fully preprocess a query, but do not compile it to a native query or execute it."
   [query :- :map]
   (qp.setup/with-qp-setup [query query]
-    (reduce
-     (fn [query middleware-fn]
-       (try
-         ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
-         (u/prog1 (middleware-fn query)
-           (when-not (map? <>)
-             (throw (ex-info (format "Middleware did not return a valid query.")
-                             {:fn middleware-fn, :query query, :type qp.error-type/qp}))))
-         (catch Throwable e
-           (throw (ex-info (i18n/tru "Error preprocessing query in {0}: {1}" middleware-fn (ex-message e))
-                           {:fn middleware-fn, :query query, :type qp.error-type/qp})))))
+    (transduce
+     identity
+     (fn
+       ([preprocessed]
+        (log/debugf "Preprocessed query:\n\n%s" (u/pprint-to-str preprocessed))
+        preprocessed)
+       ([query middleware-fn]
+        (try
+          (assert (ifn? middleware-fn))
+          ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
+          (u/prog1 (middleware-fn query)
+            (when-not (map? <>)
+              (throw (ex-info (format "Middleware did not return a valid query.")
+                              {:fn middleware-fn, :query query, :type qp.error-type/qp}))))
+          (catch Throwable e
+            (throw (ex-info (i18n/tru "Error preprocessing query in {0}: {1}" middleware-fn (ex-message e))
+                            {:fn middleware-fn, :query query, :type qp.error-type/qp}))))))
      query
      middleware)))
 

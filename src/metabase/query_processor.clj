@@ -62,11 +62,11 @@
 
 (defn- process-query** [query rff context]
   (let [preprocessed (qp.preprocess/preprocess query)
-        compiled     (qp.compile/compile preprocessed)
+        compiled     (qp.compile/compile-preprocessed preprocessed)
         rff          (qp.postprocess/post-processing-rff preprocessed rff)]
     (qp.execute/execute compiled rff context)))
 
-(def ^:private process-query* nil)
+(def ^:private ^{:arglists '([query rff context])} process-query* nil)
 
 (defn- rebuild-process-query-fn! []
   (alter-var-root #'process-query* (constantly

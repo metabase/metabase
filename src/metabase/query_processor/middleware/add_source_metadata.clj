@@ -50,7 +50,7 @@
   [source-query :- mbql.s/MBQLQuery]
   (try
     (let [cols (binding [api/*current-user-id* nil]
-                 ((requiring-resolve 'metabase.query-processor/query->expected-cols)
+                 ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols)
                   {:database (:id (lib.metadata/database (qp.store/metadata-provider)))
                    :type     :query
                    ;; don't add remapped columns to the source metadata for the source query, otherwise we're going

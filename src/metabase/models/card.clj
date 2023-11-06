@@ -18,7 +18,6 @@
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
-   [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.query-processor.util :as qp.util]
@@ -178,9 +177,8 @@
     (do
       (log/debug "Attempting to infer result metadata for Card")
       (let [inferred-metadata (not-empty (mw.session/with-current-user nil
-                                           (classloader/require 'metabase.query-processor)
                                            (u/ignore-exceptions
-                                             ((resolve 'metabase.query-processor/query->expected-cols) query))))]
+                                             ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols) query))))]
         (assoc card :result_metadata inferred-metadata)))))
 
 (defn- check-for-circular-source-query-references

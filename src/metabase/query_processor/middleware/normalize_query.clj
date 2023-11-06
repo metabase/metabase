@@ -20,6 +20,8 @@
       (update :type keyword)))
 
 (mu/defn normalize-preprocessing-middleware :- :map
+  "Preprocessing middleware. Normalize a query, meaning do things like convert keys and MBQL clause tags to kebab-case
+  keywords. Convert MLv2 pMBQL queries to legacy (temporary, until the QP is updated to process MLv2 directly)."
   [query :- :map]
   (try
     (let [query-type (keyword (some #(get query %) [:lib/type "lib/type" :type "type"]))
