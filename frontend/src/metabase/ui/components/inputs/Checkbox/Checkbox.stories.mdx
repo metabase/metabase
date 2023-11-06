@@ -25,6 +25,10 @@ export const argTypes = {
   size: {
     control: { type: "text" },
   },
+  variant: {
+    options: ["default", "stacked"],
+    control: { type: "inline-radio" },
+  },
 };
 
 <Meta
@@ -56,8 +60,6 @@ Checkbox buttons allow users to select a single option from a list of mutually e
 ## Examples
 
 export const DefaultTemplate = args => <Checkbox {...args} />;
-
-export const StackedTemplate = args => <Checkbox {...args} variant="stacked" />;
 
 export const CheckboxGroupTemplate = args => (
   <Checkbox.Group
@@ -154,7 +156,12 @@ DescriptionLeft.args = {
   <Story name="Description, left position">{DescriptionLeft}</Story>
 </Canvas>
 
-export const Stacked = StackedTemplate.bind({});
+#### Stacked Variant
+
+export const Stacked = StateTemplate.bind({});
+Stacked.args = {
+  variant: "stacked",
+};
 
 <Canvas>
   <Story name="Stacked">{Stacked}</Story>

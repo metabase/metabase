@@ -4,7 +4,6 @@ import type {
   MantineTheme,
   MantineThemeOverride,
 } from "@mantine/core";
-import { color } from "metabase/lib/colors";
 import { CheckboxIcon } from "./CheckboxIcon";
 
 const SIZES = {
@@ -48,6 +47,7 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
         height: getSize({ size, sizes: SIZES }),
         cursor: "pointer",
         borderRadius: theme.radius.xs,
+        border: `1px solid ${theme.colors.bg[2]}`,
 
         "&:checked": {
           borderColor: theme.colors.brand[1],
@@ -79,6 +79,9 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
         ref: getStylesRef("icon"),
         color: theme.colors.text[0],
       },
+      body: {
+        alignItems: "center",
+      },
     }),
     variants: {
       stacked: (theme, { labelPosition }) => ({
@@ -92,26 +95,28 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
         input: {
           "&:after": {
             content: "''",
-            border: `1px solid ${theme.colors.gray[4]}`,
+            border: `1px solid ${theme.colors.bg[2]}`,
             position: "absolute",
-            top: "-4px",
-            left: "4px",
+            top: rem(-4),
+            left: rem(4),
             height: "100%",
             width: "100%",
-            borderRadius: "4px",
+            borderRadius: rem(4),
             zIndex: -1,
-            backgroundColor: "white",
+            backgroundColor: theme.white,
             boxSizing: "border-box",
           },
-          "&:checked:after": {
-            border: `2px solid ${color("brand")}`,
+
+          "&:checked:not([disabled]):after": {
+            border: `${rem(2)} solid ${theme.colors.brand[1]}`,
+          },
+
+          "&:disabled:after": {
+            border: `${rem(2)} solid ${theme.colors.border[0]}`,
           },
         },
-        body: {
-          alignItems: "center",
-        },
         labelWrapper: {
-          paddingBottom: "2px",
+          paddingBottom: rem(2),
         },
       }),
     },
