@@ -150,21 +150,18 @@ Please follow these steps:
 - Create a new branch with your proposed fix and push it to the remote
 - Either skip opening a PR altogether or open a **draft** pull request
 
-### Obtain the artifact ID
-- Go to the latest successful commit on `master` branch
-- Click on the green checkmark next to that commit
-- Choose either "E2E Tests / build (ee)" job or "Build + Docker Uberjar / Build MB ee" job and click on the _Details_ link next to it (it will take you to that job's summary page within a related workflow)
-- Click on the workflow _Summary_
-- Scroll to the bottom of the page where you'll find the _Artifacts_ section that contains `metabase-oss-uberjar` and `metabase-ee-uberjar` artifacts
-- Right click on any of the two (but prefer EE one, unless you specifically need to test OSS changes) and copy its link
-- The link will look like this: `https://github.com/metabase/metabase/suites/13087680507/artifacts/710350560`
-- `710350560` is the artifact id that you'll need in the next step
-
 ### Trigger the stress-test workflow manually
 - Go to `https://github.com/metabase/metabase/actions/workflows/e2e-stress-test-flake-fix.yml`
 - Click on _Run workflow_ trigger next to "This workflow has a workflow_dispatch event trigger."
 1. Choose your own branch in the first field "Use workflow from" (this part is crucial!)
-2. Provide previously obtained artifact id to the related field
-3. Copy and paste the relative path of the spec you want to test (e.g. `e2e/test/scenarios/onboarding/urls.cy.spec.js`) - you don't have to wrap it in quotes
-4. Set the desired number of times to run the test
+2. Copy and paste the relative path of the spec you want to test (e.g. `e2e/test/scenarios/onboarding/urls.cy.spec.js`) - you don't have to wrap it in quotes
+3. Set the desired number of times to run the test
+4. Optionally provide a grep filter, according to [the documentation](https://github.com/cypress-io/cypress/tree/develop/npm/grep)
 5. Click the green "Run workflow" button and wait for the results
+
+### Things to keep in mind when using this workflow
+- It will automatically try to find and download the previously built Metabase uberjar stored as an artifact from one of the past commits / CI runs.
+- It was intended to be used for pure E2E fixes that don't require new Metabase uberjar.
+- If the fix required a source-code change (either backend of frontend), please open a regular PR instead and let the CI run all tests first. After this,
+you can trigger the stress-test workflow manually, as explained above, and it will automatically download newly built artifact from this CI run. Please,
+keep in mind that CI needs to fully finish running first. The workflow uses GitHub REST API which doesn't see artifacts otherwise.

@@ -12,10 +12,11 @@ export type EnabledSearchModelType =
   | "database"
   | "table"
   | "dataset"
-  | "action";
+  | "action"
+  | "indexed-entity";
 
 export type SearchModelType =
-  | ("segment" | "metric" | "pulse" | "indexed-entity" | "snippet")
+  | ("segment" | "metric" | "pulse" | "snippet")
   | EnabledSearchModelType;
 
 export interface SearchScore {
