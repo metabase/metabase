@@ -125,11 +125,13 @@
      driver/*driver*
      spec-1
      nil
-     (fn [_]
-       (sql-jdbc.execute/do-with-connection-with-options
-        driver/*driver*
-        spec-2
-        nil
-        (fn [_]
-          (or (different-table-names? spec-1 spec-2)
-              (different-rows? spec-1 spec-2))))))))
+     (fn [db-1-connection]
+       (let [spec-1 {:connection db-1-connection}]
+         (sql-jdbc.execute/do-with-connection-with-options
+          driver/*driver*
+          spec-2
+          nil
+          (fn [db-2-connection]
+            (let [spec-2 {:connection db-2-connection}]
+              (or (different-table-names? spec-1 spec-2)
+                  (different-rows? spec-1 spec-2))))))))))
