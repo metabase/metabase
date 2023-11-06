@@ -936,38 +936,54 @@
     (keyword (name type))
     :=))
 
+(defn- reverse-join [join]
+  {:rhs (:lhs join)
+   :lhs (:rhs join)})
+
 (mu/defn ^:private param->fields
-  [{:keys [mappings] :as param} :- mbql.s/Parameter]
+  [{:keys [mappings] :as param} :- mbql.s/Parameter top-level?]
   (for [{:keys [target] {:keys [card]} :dashcard} mappings
         :let  [[_ dimension] (->> (mbql.normalize/normalize-tokens target :ignore-path)
                                   (mbql.u/check-clause :dimension))]
         :when dimension
-        :let  [ttag      (get-template-tag dimension card)
-               dimension (condp mbql.u/is-clause? dimension
-                           :field        dimension
-                           :expression   dimension
-                           :template-tag (:dimension ttag)
-                           (log/error "cannot handle this dimension" {:dimension dimension}))
-               field-id  (or
-                          ;; Get the field id from the field-clause if it contains it. This is the common case
-                          ;; for mbql queries.
-                          (lib.util.match/match-one dimension [:field (id :guard integer?) _] id)
-                          ;; Attempt to get the field clause from the model metadata corresponding to the field.
-                          ;; This is the common case for native queries in which mappings from original columns
-                          ;; have been performed using model metadata.
-                          (:id (qp.util/field->field-info dimension (:result_metadata card))))]
-        :when field-id]
-    {:field-id field-id
+        :let  [ttag         (get-template-tag dimension card)
+               dimension    (condp mbql.u/is-clause? dimension
+                              :field        dimension
+                              :expression   dimension
+                              :template-tag (:dimension ttag)
+                              (log/error "cannot handle this dimension" {:dimension dimension}))
+               [id options] (or
+                             ;; Get the field id from the field-clause if it contains it. This is the common case
+                             ;; for mbql queries.
+                             (lib.util.match/match-one dimension [:field (id :guard integer?) options] [id options])
+                             ;; Attempt to get the field clause from the model metadata corresponding to the field.
+                             ;; This is the common case for native queries in which mappings from original columns
+                             ;; have been performed using model metadata.
+                             ((juxt :id #(nth (:field_ref %) 2))
+                              (qp.util/field->field-info dimension (:result_metadata card))))]
+        :when id
+        :let [query     (-> card :dataset_query :query)
+              join      (when (:join-alias options)
+                          (u/seek= :alias (:join-alias options) (:joins query)))
+              ;;[lhs rhs] (mbql.u/match (:condition join) [:field (id :guard integer?) _] id)
+              [[_ lhs _] [_ rhs _]] (filter #(mbql.u/is-clause? :field %) (:condition join))]]
+    {:field-id id
      :op       (param-type->op (:type param))
      :options  (merge (:options ttag)
-                      (:options param))}))
+                      (:options param))
+     :value    nil
+     :join     (when join
+                 (cond-> {:lhs {:table (:source-table query) :field lhs}
+                          :rhs {:table (:source-table join) :field rhs}}
+                   ;; when it's a parameter we're looking for, we need a reverse join
+                   top-level? reverse-join))}))
 
 (mu/defn ^:private chain-filter-constraints :- chain-filter/Constraints
   [dashboard constraint-param-key->value]
   (vec (for [[param-key value] constraint-param-key->value
              :let              [param (get-in dashboard [:resolved-params param-key])]
              :when             param
-             field             (param->fields param)]
+             field             (param->fields param false)]
          (assoc field :value value))))
 
 (defn filter-values-from-field-refs
@@ -1004,30 +1020,30 @@
    (let [dashboard   (t2/hydrate dashboard :resolved-params)
          constraints (chain-filter-constraints dashboard constraint-param-key->value)
          param       (get-in dashboard [:resolved-params param-key])
-         field-ids   (into #{} (map :field-id (param->fields param)))]
-     (if (empty? field-ids)
+         fields      (param->fields param true)]
+     (when (empty? fields)
        (or (filter-values-from-field-refs dashboard param-key)
            (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
                            {:param       (get (:resolved-params dashboard) param-key)
-                            :status-code 400})))
-       (try
-         (let [results         (map (if (seq query)
-                                      #(chain-filter/chain-filter-search % constraints query :limit result-limit)
-                                      #(chain-filter/chain-filter % constraints :limit result-limit))
-                                    field-ids)
-               values          (distinct (mapcat :values results))
-               has_more_values (boolean (some true? (map :has_more_values results)))]
-           ;; results can come back as [[v] ...] *or* as [[orig remapped] ...]. Sort by remapped value if it's there
-           {:values          (cond->> values
-                                      (seq values)
-                                      (sort-by (case (count (first values))
-                                                 2 second
-                                                 1 first)))
-            :has_more_values has_more_values})
-         (catch clojure.lang.ExceptionInfo e
-           (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
-             (api/throw-403 e)
-             (throw e))))))))
+                            :status-code 400}))))
+     (try
+       (let [results         (map (if (seq query)
+                                    #(chain-filter/chain-filter-search % constraints query :limit result-limit)
+                                    #(chain-filter/chain-filter % constraints :limit result-limit))
+                                  fields)
+             values          (distinct (mapcat :values results))
+             has_more_values (boolean (some true? (map :has_more_values results)))]
+         ;; results can come back as [[v] ...] *or* as [[orig remapped] ...]. Sort by remapped value if it's there
+         {:values          (cond->> values
+                             (seq values)
+                             (sort-by (case (count (first values))
+                                        2 second
+                                        1 first)))
+          :has_more_values has_more_values})
+       (catch clojure.lang.ExceptionInfo e
+         (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+           (api/throw-403 e)
+           (throw e)))))))
 
 (mu/defn param-values
   "Fetch values for a parameter.

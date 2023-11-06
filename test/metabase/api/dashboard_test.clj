@@ -3271,9 +3271,9 @@
       (let [dashboard (t2/hydrate dashboard :resolved-params)]
         (testing "Should correctly retrieve fields"
           (is (=? [{:op := :options nil}]
-                  (#'api.dashboard/param->fields (get-in dashboard [:resolved-params "_CATEGORY_NAME_"]))))
+                  (#'api.dashboard/param->fields (get-in dashboard [:resolved-params "_CATEGORY_NAME_"]) false)))
           (is (=? [{:op :contains :options {:case-sensitive false}}]
-                  (#'api.dashboard/param->fields (get-in dashboard [:resolved-params "_CATEGORY_CONTAINS_"])))))))))
+                  (#'api.dashboard/param->fields (get-in dashboard [:resolved-params "_CATEGORY_CONTAINS_"]) false))))))))
 
 (deftest chain-filter-constraints-test
   (testing "chain-filter-constraints"
@@ -4587,3 +4587,60 @@
               (update :fields #(map (fn [x] (select-keys x [:id])) %))
               (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
               (update :tables #(map (fn [x] (select-keys x [:id :name])) %)))))))
+
+(deftest double-join-mbql-16872-test
+  (testing "values should return correct data when there are two joins to a same table"
+    (mt/dataset avian-singles
+      (mt/with-temp
+        [Dashboard     dashboard {:parameters [{:name "Sender"
+                                                :slug "sender"
+                                                :id   "sender"
+                                                :type :string/=}
+                                               {:name "Receiver"
+                                                :slug "receiver"
+                                                :id   "receiver"
+                                                :type :string/=}]}
+         Card          card      {:database_id   (mt/id)
+                                  :table_id      (mt/id :messages)
+                                  :dataset_query (mt/mbql-query messages
+                                                   {:fields [$text &snd.users.name &rcv.users.name]
+                                                    :joins  [{:source-table $$users
+                                                              :condition    [:= $sender_id &snd.users.id]
+                                                              :strategy     :left-join
+                                                              :alias        "snd"}
+                                                             {:source-table $$users
+                                                              :condition    [:= $receiver_id &snd.users.id]
+                                                              :strategy     :left-join
+                                                              :alias        "rcv"}]})}
+         DashboardCard _         {:dashboard_id (:id dashboard)
+                                  :card_id      (:id card)
+                                  :parameter_mappings
+                                  [{:card_id      (:id card)
+                                    :parameter_id "sender"
+                                    :target       [:dimension (mt/$ids &snd.users.name)]}
+                                   {:card_id      (:id card)
+                                    :parameter_id "receiver"
+                                    :target       [:dimension (mt/$ids &rcv.users.name)]}]}]
+        (let [dashboard (t2/hydrate dashboard :resolved-params)]
+          (testing "Should return correct join information after looking up for a field"
+            (mt/$ids nil
+              (is (= [{:field-id %users.name
+                       :join     {:lhs {:table $$messages :field %messages.sender_id}
+                                  :rhs {:table $$users :field %users.id}}
+                       :op       :=
+                       :options  nil
+                       :value    nil}]
+                     (#'api.dashboard/param->fields (get-in dashboard [:resolved-params "sender"]) false)))
+              (testing "Top-level should have reverse join going on"
+                (is (= [{:field-id %users.name
+                         :join     {:lhs {:table $$users :field %users.id}
+                                    :rhs {:table $$messages :field %messages.receiver_id}}
+                         :op       :=
+                         :options  nil
+                         :value    nil}]
+                       (#'api.dashboard/param->fields (get-in dashboard [:resolved-params "receiver"]) true)))))))
+        (testing "GET /api/dashboard/:id/params/:param-key/values"
+          (mt/let-url [url (chain-filter-values-url dashboard "receiver")]
+            (is (= {:values [["Annie Albatross"] ["Bob the Sea Gull"] ["Brenda Blackbird"]]
+                    :has_more_values false}
+                   (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))))))

@@ -943,11 +943,18 @@
 (defn seek
   "Like (first (filter ... )), but doesn't realize chunks of the sequence. Returns the first item in `coll` for which
   `pred` returns a truthy value, or `nil` if no such item is found."
-  [pred coll]
-  (reduce
-   (fn [acc x] (if (pred x) (reduced x) acc))
-   nil
-   coll))
+  ([pred coll] (seek pred coll nil))
+  ([pred coll not-found]
+   (reduce
+    (fn [default x] (if (pred x) (reduced x) default))
+    not-found
+    coll)))
+
+(defn seek=
+  "(seek= :idx 1 [{:idx 0} {:idx 1}]) ; => {:idx 1}"
+  [key value items]
+  (seek #(= (get % key) value) items))
+
 
 #?(:clj
    (let [sym->enum (fn ^Enum [sym]

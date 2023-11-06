@@ -6,6 +6,7 @@
    [metabase.models.field-values :as field-values]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.field-values :as params.field-values]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -29,18 +30,18 @@
 
 (defmacro ^:private chain-filter [field field->value & options]
   `(chain-filter/chain-filter
-    (mt/$ids nil ~(symbol (str \% (name field))))
+    (mt/$ids nil ~(shorthand->constraint (symbol (str \% (name field))) nil))
     (mt/$ids nil ~(vec (for [[k v] field->value]
                          (shorthand->constraint (symbol (str \% k)) v))))
     ~@options))
 
 (defmacro ^:private chain-filter-search [field field->value query & options]
   `(chain-filter/chain-filter-search
-     (mt/$ids nil ~(symbol (str \% (name field))))
-     (mt/$ids nil ~(vec (for [[k v] field->value]
-                          (shorthand->constraint (symbol (str \% k)) v))))
-     ~query
-     ~@options))
+    (mt/$ids nil ~(shorthand->constraint (symbol (str \% (name field))) nil))
+    (mt/$ids nil ~(vec (for [[k v] field->value]
+                         (shorthand->constraint (symbol (str \% k)) v))))
+    ~query
+    ~@options))
 
 (defn take-n-values
   "Call `take` on the result of chain-filter function.
@@ -251,6 +252,123 @@
                    :rhs {:table $$region, :field %region.id}}]
                  (#'chain-filter/find-all-joins $$airport #{%region.name %municipality.name %region.id}))))))))
 
+(deftest database-fk-relationships-test
+  (testing "We can find all database FK relationships"
+    (mt/$ids nil
+      (mt/dataset avian-singles
+        (testing "Should find all direct FKs"
+          (is (= {$$messages
+                  {$$users
+                   [{:lhs {:table $$messages, :field %messages.receiver_id} :rhs {:table $$users, :field %users.id}}
+                    {:lhs {:table $$messages, :field %messages.sender_id} :rhs {:table $$users, :field %users.id}}]}}
+                 (-> (#'chain-filter/database-fk-relationships (mt/id) false)
+                     (update-in [$$messages $$users] (partial sort-by str))))))
+        (testing "Should find all direct and reverse FKs"
+          (is (= {$$messages
+                  {$$users
+                   [{:lhs {:table $$messages, :field %messages.receiver_id} :rhs {:table $$users, :field %users.id}}
+                    {:lhs {:table $$messages, :field %messages.sender_id} :rhs {:table $$users, :field %users.id}}]},
+                  $$users
+                  {$$messages
+                   [{:lhs {:table $$users, :field %users.id}, :rhs {:table $$messages, :field %messages.receiver_id}}
+                    {:lhs {:table $$users, :field %users.id}, :rhs {:table $$messages, :field %messages.sender_id}}]}}
+                 (-> (#'chain-filter/database-fk-relationships (mt/id) true)
+                     (update-in [$$messages $$users] (partial sort-by str))
+                     (update-in [$$users $$messages] (partial sort-by str))))))))))
+
+(deftest double-joins-test
+  (testing "Tests for when there two joins between same tables"
+    (mt/$ids nil
+      (mt/dataset avian-singles
+        (testing "find-joins should find both joins"
+          (is (= [{:lhs {:table $$messages, :field %messages.receiver_id} :rhs {:table $$users, :field %users.id}}
+                  {:lhs {:table $$messages, :field %messages.sender_id} :rhs {:table $$users, :field %users.id}}]
+                 (->> (#'chain-filter/find-joins (mt/id) $$messages $$users)
+                      (sort-by str)))))
+
+        (testing "add-filters should check if fields are connected through supplied joins"
+          (= [:and
+              [:not-null &reverse_msgs.messages.receiver_id]
+              [:= &senders.users.name "Rasta Toucan"]]
+             (:filter
+              (#'chain-filter/add-filters
+               {:source-table $$users
+                :breakout     [&reverse_msgs.messages.receiver_id
+                               $users.name]
+                :limit        3
+                :filter       [:not-null &reverse_msgs.messages.receiver_id]
+                :order-by     [[:asc $users.name]]
+                :joins        [{:source-table $$messages
+                                :condition    [:= $users.id &reverse_msgs.messages.receiver_id]
+                                :alias        "reverse_msgs"}
+                               {:source-table $$users
+                                :condition    [:=  &reverse_msgs.messages.sender_id &senders.users.id]
+                                :alias        "senders"}]}
+               $$users
+               #{$$users $$messages}
+               [{:field-id %users.name
+                 :join     {:lhs {:table $$messages :field %messages.sender_id} :rhs {:table $$users :field %users.id}}
+                 :op       :=
+                 :options  nil
+                 :value    "Rasta Toucan"}]))))))))
+
+(deftest chain-filter-mbql-double-joins-test
+  (testing "Should choose correct join when supplied with one"
+    (mt/dataset avian-singles
+      (mt/$ids nil
+        (testing "Query generation"
+          (let [users-id $$users
+                messages-id $$messages
+                users-alias (str "table_" users-id)
+                messages-alias (str "table_" messages-id)]
+            (is (= {:database   (mt/id)
+                    :type       :query
+                    :query
+                    {:source-table $$users
+                     :breakout     [[:field %messages.receiver_id {:join-alias messages-alias}]
+                                    $users.name]
+                     :limit        3
+                     :filter       [:and
+                                    [:not-null [:field %messages.receiver_id {:join-alias messages-alias}]]
+                                    [:= [:field %users.name {:join-alias users-alias}] "Rasta Toucan"]]
+                     :order-by     [[:asc $users.name]]
+                     :joins        [{:source-table $$messages
+                                     :condition    [:= $users.id [:field %messages.receiver_id {:join-alias messages-alias}]]
+                                     :alias        messages-alias}
+                                    {:source-table $$users
+                                     :condition    [:=
+                                                    [:field %messages.sender_id {:join-alias messages-alias}]
+                                                    [:field %users.id {:join-alias users-alias}]]
+                                     :alias        users-alias}]}
+                    :middleware {:disable-remaps? true}}
+
+                   (#'chain-filter/chain-filter-mbql-query
+                    {:field-id %users.name
+                     :join     {:lhs {:table $$users :field %users.id} :rhs {:table $$messages :field %messages.receiver_id}}
+                     :op       :=}
+                    [{:field-id %users.name
+                      :join     {:lhs {:table $$messages :field %messages.sender_id} :rhs {:table $$users :field %users.id}}
+                      :op       :=
+                      :value    "Rasta Toucan"}]
+                    {:original-field-id %messages.receiver_id
+                     :limit             3})))))
+
+        (testing "Fetches correct data"
+          (is (= [[8 "Annie Albatross"] [4 "Bob the Sea Gull"] [7 "Brenda Blackbird"]]
+                 (mt/rows
+                  (qp/process-query
+                   (#'chain-filter/chain-filter-mbql-query
+                    {:field-id %users.name
+                     :join     {:lhs {:table $$users :field %users.id} :rhs {:table $$messages :field %messages.receiver_id}}
+                     :op       :=}
+                    [{:field-id %users.name
+                      :join     {:lhs {:table $$messages :field %messages.sender_id} :rhs {:table $$users :field %users.id}}
+                      :op       :=
+                      :options  nil
+                      :value    "Rasta Toucan"}]
+                    {:original-field-id %messages.receiver_id
+                     :limit             3}))))))))))
+
 (deftest multi-hop-test
   (mt/dataset airports
     (testing "Should be able to filter against other tables with that require multiple joins\n"
@@ -324,12 +442,12 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Field [\d,]+ does not exist"
-         (chain-filter/chain-filter-search Integer/MAX_VALUE nil "s"))))
+         (chain-filter/chain-filter-search {:field-id Integer/MAX_VALUE} nil "s"))))
   (testing "Field that isn't type/Text should throw a 400"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Cannot search against non-Text Field"
-         (chain-filter/chain-filter-search (mt/$ids %venues.price) nil "s")))))
+         (chain-filter/chain-filter-search {:field-id (mt/$ids %venues.price)} nil "s")))))
 
 
 ;;; --------------------------------------------------- Remapping ----------------------------------------------------
@@ -546,19 +664,19 @@
       (mt/with-column-remappings [venues.category_id categories.name]
         (is (= {:values          [[2 "American"] [3 "Artisan"] [4 "Asian"]]
                 :has_more_values false}
-               (take-n-values 3 (chain-filter/chain-filter (mt/id :venues :category_id) nil))))
+               (take-n-values 3 (chain-filter/chain-filter (shorthand->constraint (mt/id :venues :category_id) nil) nil))))
 
         (is (= {:values          [[4 "Asian"]]
                 :has_more_values false}
-               (chain-filter/chain-filter-search (mt/id :venues :category_id) nil "sian")))))))
+               (chain-filter/chain-filter-search (shorthand->constraint (mt/id :venues :category_id) nil) nil "sian")))))))
 
 (deftest time-interval-test
   (testing "chain-filter should accept time interval strings like `past32weeks` for temporal Fields"
     (mt/$ids
       (is (= [:time-interval $checkins.date -32 :week {:include-current false}]
-             (#'chain-filter/filter-clause $$checkins {:field-id %checkins.date
-                                                       :op       :=
-                                                       :value    "past32weeks"}))))))
+             (#'chain-filter/filter-clause $$checkins nil {:field-id %checkins.date
+                                                           :op       :=
+                                                           :value    "past32weeks"}))))))
 
 (mt/defdataset nil-values-dataset
   [["tbl"
@@ -581,11 +699,12 @@
                       ;; sorting can differ a bit based on whether we use FieldValues or not... not sure why this is
                       ;; the case, but that's not important for this test anyway. Just sort everything
                       (is (= expected-values
-                             (update (chain-filter/chain-filter (mt/id :tbl field) []) :values sort))))
+                             (-> (chain-filter/chain-filter (shorthand->constraint (mt/id :tbl field) nil) [])
+                                 (update :values sort)))))
                     (testing "chain-filter-search"
                       (is (= {:values          [["value"]]
                               :has_more_values false}
-                             (chain-filter/chain-filter-search (mt/id :tbl field) [] "val"))))))]
+                             (chain-filter/chain-filter-search (shorthand->constraint (mt/id :tbl field) nil) [] "val"))))))]
           (testing "no FieldValues"
             (thunk))
           (testing "with FieldValues for myfield"
