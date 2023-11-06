@@ -1,4 +1,4 @@
-description: Information about dashboards, questions, models, and tables
+description: Information on the performance, views, activity, and more for a particular dashboard.
 archived: false
 collection_position: 5
 dashcards:
@@ -194,7 +194,7 @@ dashcards:
   entity_id: _8MUvI8zFhQ2_vzIf5kw3
   visualization_settings:
     column_settings: null
-  size_y: 7
+  size_y: 14
   created_at: '2023-08-18T18:53:47.157159Z'
   row: 13
 - size_x: 24
@@ -319,7 +319,7 @@ tabs: []
 enable_embedding: false
 collection_id: vG58R8k-QddHWA7_47umn
 show_in_getting_started: false
-name: Single dashboard view
+name: Dashboard overview
 caveats: null
 creator_id: internal@metabase.com
 made_public_by_id: null
@@ -328,7 +328,7 @@ cache_ttl: null
 serdes/meta:
 - model: Dashboard
   id: bJEYb0o5CXlfWFcIztDwJ
-  label: single_dashboard_view
+  label: dashboard_overview
 position: null
 entity_id: bJEYb0o5CXlfWFcIztDwJ
 parameters:

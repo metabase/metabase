@@ -1,4 +1,4 @@
-description: Analysis of a single question
+description: Views, performance, activity, and other data for a particular question.
 archived: false
 collection_position: 6
 dashcards:
@@ -169,7 +169,7 @@ tabs: []
 enable_embedding: false
 collection_id: vG58R8k-QddHWA7_47umn
 show_in_getting_started: false
-name: Single question view
+name: Question overview
 caveats: null
 creator_id: internal@metabase.com
 made_public_by_id: null
@@ -178,7 +178,7 @@ cache_ttl: null
 serdes/meta:
 - model: Dashboard
   id: jm7KgY6IuS6pQjkBZ7WUI
-  label: single_question_view
+  label: question_overview
 position: null
 entity_id: jm7KgY6IuS6pQjkBZ7WUI
 parameters:
