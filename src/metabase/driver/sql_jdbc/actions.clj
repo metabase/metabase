@@ -6,24 +6,24 @@
    [flatland.ordered.set :as ordered-set]
    [medley.core :as m]
    [metabase.actions :as actions]
-   [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
-   [metabase.models.field :refer [Field]]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [schema.core :as s]
-   [toucan2.core :as t2])
+   [metabase.util.malli :as mu]
+   [schema.core :as s])
   (:import
-   (java.sql Connection PreparedStatement SQLException)))
+   (java.sql Connection SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -41,7 +41,7 @@
     If non per-column error is available, returns an empty map.
 
   Or return `nil` if the parser doesn't match."
-  {:arglists '([driver error-type database action-type error-message]), :added "0.48.0"}
+  {:changelog-test/ignore true, :arglists '([driver error-type database action-type error-message]), :added "0.48.0"}
   (fn [driver error-type _database _action-type _error-message]
    [(driver/dispatch-on-initialized-driver driver) error-type])
   :hierarchy #'driver/hierarchy)
@@ -84,9 +84,10 @@
   `(do-with-auto-parse-sql-error ~driver ~database ~action-type (fn [] ~@body)))
 
 (defn- mbql-query->raw-hsql
-  [driver query]
-  (qp.store/with-store
-    (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
+  [driver {database-id :database, :as query}]
+  (qp.store/with-metadata-provider database-id
+    ;; catch errors in the query
+    (qp/preprocess query)
     (sql.qp/mbql->honeysql driver query)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -98,7 +99,7 @@
   "Return a map of [[metabase.types]] type to SQL string type name. Used for casting. Looks like we're just copypasting
   this from implementations of [[metabase.test.data.sql/field-base-type->sql-type]] so go find that stuff if you need
   to write more implementations for this."
-  {:arglists '([driver]), :added "0.44.0"}
+  {:changelog-test/ignore true, :arglists '([driver]), :added "0.44.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -106,12 +107,16 @@
   "Certain value types need to have their honeysql form updated to work properly during update/creation. This function
   uses honeysql casting to wrap values in the map that need to be cast with their column's type, and passes through
   types that do not need casting like integer or string."
-  [driver column->value table-id]
+  [driver column->value database-id table-id]
   (let [type->sql-type (base-type->sql-type-map driver)
         column->field  (actions/cached-value
                         [::cast-values table-id]
                         (fn []
-                          (m/index-by :name (t2/select Field :table_id table-id))))]
+                          (into {}
+                                #_{:clj-kondo/ignore [:deprecated-var]}
+                                (map (juxt :name qp.store/->legacy-metadata))
+                                (qp.store/with-metadata-provider database-id
+                                  (lib.metadata.protocols/fields (qp.store/metadata-provider) table-id)))))]
     (m/map-kv-vals (fn [col-name value]
                      (let [col-name                         (u/qualified-name col-name)
                            {base-type :base_type :as field} (get column->field col-name)]
@@ -185,7 +190,7 @@
   "Multimethod for preparing a honeysql query `hsql-query` for a given action type `action`.
   `action` is a keyword like `:row/create` or `:bulk/create`; `hsql-query` is a generic
   query of the type corresponding to `action`."
-  {:arglists '([driver action hsql-query]), :added "0.46.0"}
+  {:changelog-test/ignore true, :arglists '([driver action hsql-query]), :added "0.46.0"}
   (fn [driver action _]
     [(driver/dispatch-on-initialized-driver driver)
      (keyword action)])
@@ -225,7 +230,7 @@
         update-hsql  (-> raw-hsql
                          (select-keys [:where])
                          (assoc :update target-table
-                                :set (cast-values driver update-row (get-in query [:query :source-table])))
+                                :set (cast-values driver update-row database-id (get-in query [:query :source-table])))
                          (prepare-query driver action))
         sql-args     (sql.qp/format-honeysql driver update-hsql)]
     (with-jdbc-transaction [conn database-id]
@@ -244,7 +249,7 @@
   `create-hsql` is the honeysql query used to insert the new row,
   `conn` is the DB connection used to insert the new row and
   `result` is the value returned by the insert command."
-  {:arglists '([driver create-hsql conn result]), :added "0.46.0"}
+  {:changelog-test/ignore true, :arglists '([driver create-hsql conn result]), :added "0.46.0"}
   (fn [driver _ _ _]
     (driver/dispatch-on-initialized-driver driver))
   :hierarchy #'driver/hierarchy)
@@ -273,7 +278,7 @@
         raw-hsql    (mbql-query->raw-hsql driver query)
         create-hsql (-> raw-hsql
                         (assoc :insert-into (first (:from raw-hsql)))
-                        (assoc :values [(cast-values driver create-row (get-in query [:query :source-table]))])
+                        (assoc :values [(cast-values driver create-row database-id (get-in query [:query :source-table]))])
                         (dissoc :select :from)
                         (prepare-query driver action))
         sql-args    (sql.qp/format-honeysql driver create-hsql)]
@@ -306,7 +311,7 @@
 
   So the point of using nested transactions is that if 2 is done inside a nested transaction we can rollback the
   nested transaction which allows the top-level transaction to proceed even tho part of it errored."
-  {:arglists '([driver ^java.sql.Connection connection thunk]), :added "0.44.0"}
+  {:changelog-test/ignore true :arglists '([driver ^java.sql.Connection connection thunk]), :added "0.44.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -340,21 +345,6 @@
              successes]))))
      rows)))
 
-(defmethod driver/execute-write-query! :sql-jdbc
-  [driver {{sql :query, :keys [params]} :native}]
-  {:pre [(string? sql)]}
-  (try
-    (let [{db-id :id} (qp.store/database)]
-      (with-jdbc-transaction [conn db-id]
-        (with-open [stmt (sql-jdbc.execute/statement-or-prepared-statement driver conn sql params nil)]
-          {:rows-affected (if (instance? PreparedStatement stmt)
-                            (.executeUpdate ^PreparedStatement stmt)
-                            (.executeUpdate stmt sql))})))
-    (catch Throwable e
-      (throw (ex-info (tru "Error executing write query: {0}" (ex-message e))
-                      {:sql sql, :params params, :type qp.error-type/invalid-query}
-                      e)))))
-
 ;;;; `:bulk/create`
 
 (defmethod actions/perform-action!* [:sql-jdbc :bulk/create]
@@ -378,13 +368,18 @@
 
 ;;;; Shared stuff for both `:bulk/delete` and `:bulk/update`
 
-(defn- table-id->pk-field-name->id
+(mu/defn ^:private table-id->pk-field-name->id :- [:map-of ::lib.schema.common/non-blank-string ::lib.schema.id/field]
   "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
-  [table-id]
-  (t2/select-fn->pk :name Field
-    {:where [:and
-             [:= :table_id table-id]
-             (mdb.u/isa :semantic_type :type/PK)]}))
+  [database-id :- ::lib.schema.id/database
+   table-id    :- ::lib.schema.id/table]
+  (into {}
+        (comp (filter (fn [{:keys [semantic-type], :as _field}]
+                        (isa? semantic-type :type/PK)))
+              (map (juxt :name :id)))
+        (qp.store/with-metadata-provider database-id
+          (lib.metadata.protocols/fields
+           (qp.store/metadata-provider)
+           table-id))))
 
 (defn- row->mbql-filter-clause
   "Given [[field-name->id]] as returned by [[table-id->pk-field-name->id]] or similar and a `row` of column name to
@@ -453,7 +448,7 @@
 (defmethod actions/perform-action!* [:sql-jdbc :bulk/delete]
   [driver _action {database-id :id, :as database} {:keys [table-id rows]}]
   (log/tracef "Deleting %d rows" (count rows))
-  (let [pk-name->id (table-id->pk-field-name->id table-id)]
+  (let [pk-name->id (table-id->pk-field-name->id database-id table-id)]
     ;; validate the keys in `rows`
     (check-consistent-row-keys rows)
     (check-rows-have-expected-columns-and-no-other-keys rows (keys pk-name->id))
@@ -505,7 +500,7 @@
   passed to `:row/update`."
   [{database-id :id, :as _database} table-id]
   ;; TODO -- make sure all rows specify the PK columns
-  (let [pk-name->id (table-id->pk-field-name->id table-id)
+  (let [pk-name->id (table-id->pk-field-name->id database-id table-id)
         pk-names    (set (keys pk-name->id))]
     (fn [row]
       (check-row-has-all-pk-columns row pk-names)

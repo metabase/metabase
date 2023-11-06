@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [colorize.core :as colorize]
    [honeysql.core :as hsql]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.driver :as driver]
@@ -156,7 +156,7 @@
                               :order-by     [[:asc $id]]})
                            qp/preprocess
                            (m/dissoc-in [:query :limit]))]
-      (mt/with-everything-store
+      (mt/with-metadata-provider (mt/id)
         (is (= {:query  (str "SELECT \"source\".\"name\" AS \"name\" "
                              "FROM ("
                              "SELECT TOP 1048575 "

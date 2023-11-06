@@ -2,10 +2,10 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 import _ from "underscore";
-import FormProvider from "metabase/core/components/FormProvider";
+import { FormProvider } from "metabase/forms";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import * as Errors from "metabase/core/utils/errors";
+import * as Errors from "metabase/lib/errors";
 import type { UserInfo } from "metabase-types/store";
 import { UserFieldGroup, UserFormRoot } from "./UserForm.styled";
 

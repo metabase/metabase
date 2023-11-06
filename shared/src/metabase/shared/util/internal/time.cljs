@@ -57,11 +57,20 @@
   {})
 
 ;;; ------------------------------------------------ to-range --------------------------------------------------------
-(defmethod common/to-range :default [^moment/Moment value {:keys [unit]}]
+(defn- apply-offset
+    [^moment/Moment value offset-n offset-unit]
+      (.add
+            (moment value)
+                offset-n
+                    (name offset-unit)))
+
+(defmethod common/to-range :default [^moment/Moment value {:keys [n unit]}]
   (let [^moment/Moment c1 (.clone value)
         ^moment/Moment c2 (.clone value)]
     [(.startOf c1 (name unit))
-     (.endOf   c2 (name unit))]))
+     (cond-> c2
+       (> n 1) (.add (dec n) (name unit))
+       :always ^moment/Moment (.endOf (name unit)))]))
 
 ;; NB: Only the :default for to-range is needed in CLJS, since Moment's startOf and endOf methods are doing the work.
 
@@ -155,3 +164,125 @@
   "Returns the time elapsed between `before` and `after` in days."
   [^moment/Moment before ^moment/Moment after]
   (.diff after before "day"))
+
+(defn- matches-time? [input]
+  (re-matches #"\d\d:\d\d(?::\d\d(?:\.\d+)?)?" input))
+
+(defn- matches-date? [input]
+  (re-matches #"\d\d\d\d-\d\d-\d\d" input))
+
+(defn- matches-date-time? [input]
+  (re-matches #"\d\d\d\d-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d+)?)?" input))
+
+(defn format-unit
+  "Formats a temporal-value (iso date/time string, int for hour/minute) given the temporal-bucketing unit.
+   If unit is nil, formats the full date/time.
+   Time input formatting is only defined with time units."
+  [input unit]
+  (if (string? input)
+    (let [time? (matches-time? input)
+          date? (matches-date? input)
+          date-time? (matches-date-time? input)
+          t (if time?
+              ;; Anchor to an arbitrary date since time inputs are only defined for
+              ;; :hour-of-day and :minute-of-hour.
+              (moment/utc (str "2023-01-01T" input) moment/ISO_8601)
+              (moment/utc input moment/ISO_8601))]
+      (if (and t (.isValid t))
+        (case unit
+          :day-of-week (.format t "dddd")
+          :month-of-year (.format t "MMM")
+          :minute-of-hour (.format t "m")
+          :hour-of-day (.format t "h A")
+          :day-of-month (.format t "D")
+          :day-of-year (.format t "DDD")
+          :week-of-year (.format t "w")
+          :quarter-of-year (.format t "[Q]Q")
+          (cond
+            time? (.format t "h:mm A")
+            date? (.format t "MMM D, YYYY")
+            date-time? (.format t "MMM D, YYYY, h:mm A")))
+        input))
+    (if (= unit :hour-of-day)
+      (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
+      (str input))))
+
+(defn format-diff
+  "Formats a time difference between two temporal values.
+   Drops redundant information."
+  [temporal-value-1 temporal-value-2]
+  (let [default-format #(str (format-unit temporal-value-1 nil)
+                             " – "
+                             (format-unit temporal-value-2 nil))]
+    (cond
+      (some (complement string?) [temporal-value-1 temporal-value-2])
+      (default-format)
+
+      (= temporal-value-1 temporal-value-2)
+      (format-unit temporal-value-1 nil)
+
+      (and (matches-time? temporal-value-1)
+           (matches-time? temporal-value-2))
+      (default-format)
+
+      (and (matches-date-time? temporal-value-1)
+           (matches-date-time? temporal-value-2))
+      (let [lhs (moment/utc temporal-value-1 moment/ISO_8601)
+            rhs (moment/utc temporal-value-2 moment/ISO_8601)
+            year-matches? (= (.format lhs "YYYY") (.format rhs "YYYY"))
+            month-matches? (= (.format lhs "MMM") (.format rhs "MMM"))
+            day-matches? (= (.format lhs "D") (.format rhs "D"))
+            hour-matches? (= (.format lhs "HH") (.format rhs "HH"))
+            [lhs-fmt rhs-fmt] (cond
+                                (and year-matches? month-matches? day-matches? hour-matches?)
+                                ["MMM D, YYYY, h:mm A " " h:mm A"]
+
+                                (and year-matches? month-matches? day-matches?)
+                                ["MMM D, YYYY, h:mm A " " h:mm A"]
+
+                                year-matches?
+                                ["MMM D, h:mm A " " MMM D, YYYY, h:mm A"])]
+
+        (if lhs-fmt
+          (str (.format lhs lhs-fmt) "–" (.format rhs rhs-fmt))
+          (default-format)))
+
+      (and (matches-date? temporal-value-1)
+           (matches-date? temporal-value-2))
+      (let [lhs (moment/utc temporal-value-1 moment/ISO_8601)
+            rhs (moment/utc temporal-value-2 moment/ISO_8601)
+            year-matches? (= (.format lhs "YYYY") (.format rhs "YYYY"))
+            month-matches? (= (.format lhs "MMM") (.format rhs "MMM"))
+            [lhs-fmt rhs-fmt] (cond
+                                (and year-matches? month-matches?)
+                                ["MMM D" "D, YYYY"]
+
+                                year-matches?
+                                ["MMM D " " MMM D, YYYY"])]
+        (if lhs-fmt
+          (str (.format lhs lhs-fmt) "–" (.format rhs rhs-fmt))
+          (default-format)))
+
+      :else
+      (default-format))))
+
+(defn format-relative-date-range
+  "Given a `n` `unit` time interval and the current date, return a string representing the date-time range.
+   Provide an `offset-n` and `offset-unit` time interval to change the date used relative to the current date.
+   `options` is a map and supports `:include-current` to include the current given unit of time in the range."
+  ([n unit offset-n offset-unit opts]
+   (format-relative-date-range (now) n unit offset-n offset-unit opts))
+  ([t n unit offset-n offset-unit {:keys [include-current]}]
+   (let [offset-now (cond-> t
+                      (neg? n) (apply-offset n unit)
+                      (and (pos? n) (not include-current)) (apply-offset 1 unit)
+                      (and offset-n offset-unit) (apply-offset offset-n offset-unit))
+         pos-n (cond-> (abs n)
+                 include-current inc)
+         date-ranges (map #(.format % (if (#{:hour :minute} unit) "YYYY-MM-DDTHH:mm" "YYYY-MM-DD"))
+                          (common/to-range offset-now
+                                           {:unit unit
+                                            :n pos-n
+                                            :offset-n offset-n
+                                            :offset-unit offset-unit}))]
+     (apply format-diff date-ranges))))

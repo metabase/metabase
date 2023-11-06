@@ -18,7 +18,6 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -105,7 +104,7 @@
        :cards [{:id 1} {:id 2}]}
       {:name  "Next"
        :cards [{:id 1} {:id 3}]}
-      "renamed it from \"Apple\" to \"Next\" and modified the cards."
+      "renamed this Dashboard from \"Apple\" to \"Next\" and modified the cards."
 
       {:name               "Diff Test"
        :auto_apply_filters true}
@@ -436,11 +435,11 @@
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
   [dash-id is-creation?]
   (revision/push-revision!
-   :object       (t2/select-one Dashboard :id dash-id)
-   :entity       Dashboard
-   :id           dash-id
-   :user-id      (mt/user->id :crowberto)
-   :is-creation? is-creation?))
+   {:object       (t2/select-one Dashboard :id dash-id)
+    :entity       Dashboard
+    :id           dash-id
+    :user-id      (mt/user->id :crowberto)
+    :is-creation? is-creation?}))
 
 (defn- revert-to-previous-revision
   "Revert to a previous revision for a model.
@@ -453,7 +452,7 @@
   (let [ids (t2/select-pks-vec Revision :model (name model) :model_id model-id {:order-by [[:id :desc]]
                                                                                 :limit    n})]
    (assert (= n (count ids)), "There are less revisions than required to revert")
-   (revision/revert! :entity model :id model-id :user-id (mt/user->id :crowberto) :revision-id (last ids))))
+   (revision/revert! {:entity model :id model-id :user-id (mt/user->id :crowberto) :revision-id (last ids)})))
 
 (deftest revert-dashboard-with-tabs-basic-test
   (testing "revert adding tabs"
@@ -542,7 +541,7 @@
                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))
        ;; revert
        (revert-to-previous-revision Dashboard dashboard-id 2)
-       (is (=? [{:id #hawk/schema (s/pred pos-int?) :name "Tab 1" :position 0}
+       (is (=? [{:id #hawk/malli [:fn pos-int?] :name "Tab 1" :position 0}
                 {:id tab-2-id :name "Tab 2" :position 1}]
                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
 
@@ -635,6 +634,61 @@
      (testing "there are no \"Tab 3\""
        (is (false? (t2/exists? :model/DashboardTab :dashboard_id dashboard-id :name "Tab 3")))))))
 
+(deftest revert-dashboard-skip-archived-or-deleted-card-test
+  (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id}          {:name "A dashboard"}
+                           :model/Card      {will-be-archived-card :id} {}
+                           :model/Card      {will-be-deleted-card :id}  {}
+                           :model/Card      {unchanged-card       :id}  {}]
+    ;; 0. create a dashboard
+    (create-dashboard-revision! dashboard-id true)
+    ;; 1. add 3 cards and 1 text card
+    (t2/insert! :model/DashboardCard
+                [{:dashboard_id     dashboard-id
+                  :dashboard_tab_id nil
+                  :card_id          will-be-archived-card
+                  :row              0
+                  :col              0
+                  :size_x           4
+                  :size_y           4}
+                 {:dashboard_id     dashboard-id
+                  :dashboard_tab_id nil
+                  :card_id          will-be-deleted-card
+                  :row              4
+                  :col              4
+                  :size_x           4
+                  :size_y           4}
+                 {:dashboard_id     dashboard-id
+                  :dashboard_tab_id nil
+                  :card_id          unchanged-card
+                  :row              0
+                  :col              0
+                  :size_x           4
+                  :size_y           4}
+                 {:dashboard_id           dashboard-id
+                  :dashboard_tab_id       nil
+                  :row                    4
+                  :col                    4
+                  :size_x                 4
+                  :size_y                 4
+                  :visualization_settings {:text "Metabase"}}])
+    (create-dashboard-revision! dashboard-id false)
+
+    ;; 2. delete all the dashcards
+    (t2/delete! :model/DashboardCard :dashboard_id dashboard-id)
+    (create-dashboard-revision! dashboard-id false)
+
+    (t2/delete! :model/Card will-be-deleted-card)
+    (t2/update! :model/Card :id will-be-archived-card {:archived true})
+
+    (testing "revert should not include archived or deleted card ids (#34884)"
+      (revert-to-previous-revision Dashboard dashboard-id 2)
+      (is (=? #{{:card_id                unchanged-card
+                 :visualization_settings {}}
+                {:card_id                nil
+                 :visualization_settings {:text "Metabase"}}}
+              (t2/select-fn-set #(select-keys % [:card_id :visualization_settings])
+                                :model/DashboardCard :dashboard_id dashboard-id))))))
+
 (deftest public-sharing-test
   (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."
     (tu/with-temporary-setting-values [enable-public-sharing true]
@@ -647,6 +701,56 @@
         (t2.with-temp/with-temp [Dashboard dashboard {:public_uuid (str (random-uuid))}]
           (is (= nil
                  (:public_uuid dashboard))))))))
+
+(def default-parameter
+  {:id   "_CATEGORY_NAME_"
+   :type "category"
+   :name "Category Name"
+   :slug "category_name"})
+
+(deftest migrate-parameters-with-linked-filters-and-values-source-type-test
+  (testing "test that a Dashboard's :parameters filterParameters are cleared if the :values_source_type is not nil"
+    (doseq [[values_source_type
+             keep-filtering-parameters?] {"card"        false
+                                          "static-list" false
+                                          nil           true}]
+      (testing (format "\nvalues_source_type=%s" values_source_type)
+       (mt/with-temp [:model/Dashboard dashboard {:parameters [(merge
+                                                                default-parameter
+                                                                {:filteringParameters ["other-param-id"]
+                                                                 :values_source_type  values_source_type})]}]
+         (let [parameter (first (:parameters dashboard))]
+           (if keep-filtering-parameters?
+             (is (= ["other-param-id"]
+                    (:filteringParameters parameter)))
+             (is (not (contains? parameter :filteringParameters))))))))))
+
+(deftest migrate-parameters-with-linked-filters-and-values-query-type-test
+  (testing "test that a Dashboard's :parameters filterParameters are cleared if the :values_query_type is 'none'"
+    (doseq [[values_query_type
+             keep-filtering-parameters?] {"none" false
+                                          "list" true}]
+      (testing (format "\nvalues_query_type=%s" values_query_type)
+       (mt/with-temp [:model/Dashboard dashboard {:parameters [(merge
+                                                                default-parameter
+                                                                {:filteringParameters ["other-param-id"]
+                                                                 :values_query_type   values_query_type})]}]
+         (let [parameter (first (:parameters dashboard))]
+           (if keep-filtering-parameters?
+             (is (= ["other-param-id"]
+                    (:filteringParameters parameter)))
+             (is (not (contains? parameter :filteringParameters))))))))))
+
+(deftest migrate-parameters-empty-name-test
+  (testing "test that a Dashboard's :parameters is selected with a non-nil name and slug"
+    (doseq [[name slug] [["" ""] ["" "slug"] ["name" ""]]]
+      (mt/with-temp [:model/Dashboard dashboard {:parameters [(merge
+                                                               default-parameter
+                                                               {:name name
+                                                                :slug slug})]}]
+        (is (=? {:name "unnamed"
+                 :slug "unnamed"}
+                (first (:parameters dashboard))))))))
 
 (deftest post-update-test
   (t2.with-temp/with-temp [Collection    {collection-id-1 :id} {}
@@ -673,42 +777,38 @@
         (is (not (nil? (t2/select-one PulseCard :card_id new-card-id))))))))
 
 (deftest parameter-card-test
-  (let [default-params {:name       "Category Name"
-                        :slug       "category_name"
-                        :id         "_CATEGORY_NAME_"
-                        :type       "category"}]
-    (testing "A new dashboard creates a new ParameterCard"
-      (t2.with-temp/with-temp [Card      {card-id :id}      {}
-                               Dashboard {dashboard-id :id} {:parameters [(merge default-params
-                                                                                 {:values_source_type    "card"
-                                                                                  :values_source_config {:card_id card-id}})]}]
-        (is (=? {:card_id                   card-id
-                 :parameterized_object_type :dashboard
-                 :parameterized_object_id   dashboard-id
-                 :parameter_id              "_CATEGORY_NAME_"}
-                (t2/select-one 'ParameterCard :card_id card-id)))))
+  (testing "A new dashboard creates a new ParameterCard"
+    (t2.with-temp/with-temp [Card      {card-id :id}      {}
+                             Dashboard {dashboard-id :id} {:parameters [(merge default-parameter
+                                                                               {:values_source_type    "card"
+                                                                                :values_source_config {:card_id card-id}})]}]
+      (is (=? {:card_id                   card-id
+               :parameterized_object_type :dashboard
+               :parameterized_object_id   dashboard-id
+               :parameter_id              "_CATEGORY_NAME_"}
+              (t2/select-one 'ParameterCard :card_id card-id)))))
 
-    (testing "Adding a card_id creates a new ParameterCard"
-      (t2.with-temp/with-temp [Card      {card-id :id}      {}
-                               Dashboard {dashboard-id :id} {:parameters [default-params]}]
-        (is (nil? (t2/select-one 'ParameterCard :card_id card-id)))
-        (t2/update! Dashboard dashboard-id {:parameters [(merge default-params
-                                                                {:values_source_type    "card"
-                                                                 :values_source_config {:card_id card-id}})]})
-        (is (=? {:card_id                   card-id
-                 :parameterized_object_type :dashboard
-                 :parameterized_object_id   dashboard-id
-                 :parameter_id              "_CATEGORY_NAME_"}
-                (t2/select-one 'ParameterCard :card_id card-id)))))
+  (testing "Adding a card_id creates a new ParameterCard"
+    (t2.with-temp/with-temp [Card      {card-id :id}      {}
+                             Dashboard {dashboard-id :id} {:parameters [default-parameter]}]
+      (is (nil? (t2/select-one 'ParameterCard :card_id card-id)))
+      (t2/update! Dashboard dashboard-id {:parameters [(merge default-parameter
+                                                              {:values_source_type    "card"
+                                                               :values_source_config {:card_id card-id}})]})
+      (is (=? {:card_id                   card-id
+               :parameterized_object_type :dashboard
+               :parameterized_object_id   dashboard-id
+               :parameter_id              "_CATEGORY_NAME_"}
+              (t2/select-one 'ParameterCard :card_id card-id)))))
 
-    (testing "Removing a card_id deletes old ParameterCards"
-      (t2.with-temp/with-temp [Card      {card-id :id}      {}
-                               Dashboard {dashboard-id :id} {:parameters [(merge default-params
-                                                                                 {:values_source_type    "card"
-                                                                                  :values_source_config {:card_id card-id}})]}]
+  (testing "Removing a card_id deletes old ParameterCards"
+    (t2.with-temp/with-temp [Card      {card-id :id}      {}
+                             Dashboard {dashboard-id :id} {:parameters [(merge default-parameter
+                                                                               {:values_source_type    "card"
+                                                                                :values_source_config {:card_id card-id}})]}]
         ;; same setup as earlier test, we know the ParameterCard exists right now
-        (t2/delete! Dashboard :id dashboard-id)
-        (is (nil? (t2/select-one 'ParameterCard :card_id card-id)))))))
+      (t2/delete! Dashboard :id dashboard-id)
+      (is (nil? (t2/select-one 'ParameterCard :card_id card-id))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Collections Permissions Tests                                          |
@@ -762,7 +862,7 @@
           (let [dashboard       (magic/automagic-analysis (t2/select-one Table :id (mt/id :venues)) {})
                 saved-dashboard (dashboard/save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
             (is (= (t2/count DashboardCard :dashboard_id (u/the-id saved-dashboard))
-                   (-> dashboard :ordered_cards count)))))))))
+                   (-> dashboard :dashcards count)))))))))
 
 (deftest validate-collection-namespace-test
   (t2.with-temp/with-temp [Collection {collection-id :id} {:namespace "currency"}]
@@ -802,16 +902,16 @@
     (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
                                [:field-id 1000]              [:field 1000 nil]}]
       (testing (format "target = %s" (pr-str target))
-        (mt/with-temp* [Card      [{card-id :id}]
-                        Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
-                                                                     :slug   "category_name"
-                                                                     :id     "_CATEGORY_NAME_"
-                                                                     :type   "category"
-                                                                     :values_query_type    "list"
-                                                                     :values_source_type   "card"
-                                                                     :values_source_config {:card_id card-id
-                                                                                            :value_field [:field 2 nil]}
-                                                                     :target target}]}]]
+        (mt/with-temp [Card      {card-id :id} {}
+                       Dashboard {dashboard-id :id} {:parameters [{:name   "Category Name"
+                                                                   :slug   "category_name"
+                                                                   :id     "_CATEGORY_NAME_"
+                                                                   :type   "category"
+                                                                   :values_query_type    "list"
+                                                                   :values_source_type   "card"
+                                                                   :values_source_config {:card_id card-id
+                                                                                          :value_field [:field 2 nil]}
+                                                                   :target target}]}]
           (is (= [{:name   "Category Name"
                    :slug   "category_name"
                    :id     "_CATEGORY_NAME_"
@@ -835,15 +935,15 @@
               (t2/select-one-fn :parameters Dashboard :id dashboard-id)))))
 
   (testing "shoudld not override if existsed "
-    (mt/with-temp* [Card      [{card-id :id}]
-                    Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
-                                                                 :slug   "category_name"
-                                                                 :id     "_CATEGORY_NAME_"
-                                                                 :type   "category"
-                                                                 :values_query_type    "list"
-                                                                 :values_source_type   "card"
-                                                                 :values_source_config {:card_id card-id
-                                                                                        :value_field [:field 2 nil]}}]}]]
+    (mt/with-temp [Card      {card-id :id} {}
+                   Dashboard {dashboard-id :id} {:parameters [{:name   "Category Name"
+                                                               :slug   "category_name"
+                                                               :id     "_CATEGORY_NAME_"
+                                                               :type   "category"
+                                                               :values_query_type    "list"
+                                                               :values_source_type   "card"
+                                                               :values_source_config {:card_id card-id
+                                                                                      :value_field [:field 2 nil]}}]}]
       (is (=? [{:name                 "Category Name"
                 :slug                 "category_name"
                 :id                   "_CATEGORY_NAME_"
@@ -877,10 +977,10 @@
 
   (testing "dashboard which has a dashcard with an action"
     (mt/with-actions [{:keys [action-id]} {}]
-      (mt/with-temp* [Dashboard [dashboard {:name "A dashboard"}]
-                      DashboardCard [_ {:action_id          action-id
-                                        :dashboard_id       (:id dashboard)
-                                        :parameter_mappings []}]]
+      (mt/with-temp [Dashboard dashboard {:name "A dashboard"}
+                     DashboardCard _ {:action_id          action-id
+                                      :dashboard_id       (:id dashboard)
+                                      :parameter_mappings []}]
         (is (= #{["Action" action-id]}
                (serdes/descendants "Dashboard" (:id dashboard)))))))
 

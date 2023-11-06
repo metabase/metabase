@@ -93,7 +93,7 @@
         (cond->> collections
           (mi/can-read? root)
           (cons root))))
-    (t2/hydrate collections :can_write)
+    (t2/hydrate collections :can_write :is_personal)
     ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
     ;; and for personal collections we translate the name to user's locale
     (for [collection collections]
@@ -330,17 +330,10 @@
                     dataset?
                     (conj :c.database_id))
        :from      [[:report_card :c]]
-       ;; todo: should there be a flag, or a realized view?
-       :left-join [[{:select    [:r1.*]
-                     :from      [[:revision :r1]]
-                     :left-join [[:revision :r2] [:and
-                                                  [:= :r1.model_id :r2.model_id]
-                                                  [:= :r1.model :r2.model]
-                                                  [:< :r1.id :r2.id]]]
-                     :where     [:and
-                                 [:= :r2.id nil]
-                                 [:= :r1.model (h2x/literal "Card")]]} :r]
-                   [:= :r.model_id :c.id]
+       :left-join [[:revision :r] [:and
+                                   [:= :r.model_id :c.id]
+                                   [:= :r.most_recent true]
+                                   [:= :r.model (h2x/literal "Card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    [:= :collection_id (:id collection)]
@@ -419,16 +412,10 @@
                    [:u.last_name :last_edit_last_name]
                    [:r.timestamp :last_edit_timestamp]]
        :from      [[:report_dashboard :d]]
-       :left-join [[{:select    [:r1.*]
-                     :from      [[:revision :r1]]
-                     :left-join [[:revision :r2] [:and
-                                                  [:= :r1.model_id :r2.model_id]
-                                                  [:= :r1.model :r2.model]
-                                                  [:< :r1.id :r2.id]]]
-                     :where     [:and
-                                 [:= :r2.id nil]
-                                 [:= :r1.model (h2x/literal "Dashboard")]]} :r]
-                   [:= :r.model_id :d.id]
+       :left-join [[:revision :r] [:and
+                                   [:= :r.model_id :d.id]
+                                   [:= :r.most_recent true]
+                                   [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    [:= :collection_id (:id collection)]
@@ -697,7 +684,7 @@
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
       collection/personal-collection-with-ui-details
-      (t2/hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
+      (t2/hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write :is_personal)))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific Collection with standard details added"
@@ -819,7 +806,7 @@
 
 (defn create-collection!
   "Create a new collection."
-  [{:keys [name color description parent_id namespace authority_level]}]
+  [{:keys [name description parent_id namespace authority_level]}]
   ;; To create a new collection, you need write perms for the location you are going to be putting it in...
   (write-check-collection-or-root-collection parent_id namespace)
   (when (some? authority_level)
@@ -832,7 +819,6 @@
       Collection
       (merge
         {:name        name
-         :color       color
          :description description
          :authority_level authority_level
          :namespace   namespace}
@@ -841,9 +827,8 @@
 
 (api/defendpoint POST "/"
   "Create a new Collection."
-  [:as {{:keys [name color description parent_id namespace authority_level] :as body} :body}]
+  [:as {{:keys [name description parent_id namespace authority_level] :as body} :body}]
   {name            ms/NonBlankString
-   color           [:maybe [:re collection/hex-color-regex]]
    description     [:maybe ms/NonBlankString]
    parent_id       [:maybe ms/PositiveInt]
    namespace       [:maybe ms/NonBlankString]
@@ -899,10 +884,9 @@
 
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
-  [id, :as {{:keys [name color description archived parent_id authority_level], :as collection-updates} :body}]
+  [id, :as {{:keys [name description archived parent_id authority_level], :as collection-updates} :body}]
   {id              ms/PositiveInt
    name            [:maybe ms/NonBlankString]
-   color           [:maybe [:re collection/hex-color-regex]]
    description     [:maybe ms/NonBlankString]
    archived        [:maybe ms/BooleanValue]
    parent_id       [:maybe ms/PositiveInt]
@@ -922,7 +906,7 @@
                           (not (collection/is-personal-collection-or-descendant-of-one? collection-before-update)))))
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
-    (let [updates (u/select-keys-when collection-updates :present [:name :color :description :archived :authority_level])]
+    (let [updates (u/select-keys-when collection-updates :present [:name :description :archived :authority_level])]
       (when (seq updates)
         (t2/update! Collection id updates)))
     ;; if we're trying to *move* the Collection (instead or as well) go ahead and do that

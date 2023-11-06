@@ -104,10 +104,11 @@ export interface Version {
 }
 
 export interface VersionInfoRecord {
-  version?: string; // tag
+  version: string; // tag
   released?: string; // year-month-day
   patch?: boolean;
   highlights?: string[];
+  announcement_url?: string;
 }
 
 export interface VersionInfo {
@@ -122,12 +123,13 @@ export type LoadingMessage =
   | "running-query"
   | "loading-results";
 
-export type TokenStatusStatus = "unpaid" | "past-due" | string;
+export type TokenStatusStatus = "unpaid" | "past-due" | "invalid" | string;
 
 export interface TokenStatus {
   status?: TokenStatusStatus;
   valid: boolean;
   "valid-thru"?: string;
+  "error-details"?: string;
   trial: boolean;
 }
 
@@ -268,6 +270,7 @@ export interface Settings {
   "uploads-schema-name": string | null;
   "uploads-table-prefix": string | null;
   "user-visibility": string | null;
+  "last-acknowledged-version": string | null;
 }
 
 export type SettingKey = keyof Settings;

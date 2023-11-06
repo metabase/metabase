@@ -9,6 +9,7 @@ export const createMockCollection = (
   location: "/",
   can_write: true,
   archived: false,
+  is_personal: false,
   ...opts,
 });
 
@@ -22,7 +23,7 @@ export const createMockCollectionItem = (
   collection_position: null,
   collection_preview: true,
   fully_parametrized: true,
-  getIcon: () => ({ name: "card" }),
+  getIcon: () => ({ name: "question" }),
   getUrl: () => "/question/1",
   ...opts,
 });

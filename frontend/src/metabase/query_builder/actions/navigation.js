@@ -3,7 +3,7 @@ import { createAction } from "redux-actions";
 import { push, replace } from "react-router-redux";
 
 import { createThunkAction } from "metabase/lib/redux";
-import Utils from "metabase/lib/utils";
+import { equals } from "metabase/lib/utils";
 
 import { isEqualCard } from "metabase/lib/card";
 
@@ -26,7 +26,7 @@ import {
 import { initializeQB, setCardAndRun } from "./core";
 import { zoomInRow, resetRowZoom } from "./object-detail";
 import { cancelQuery } from "./querying";
-import { setQueryBuilderMode } from "./ui";
+import { resetUIControls, setQueryBuilderMode } from "./ui";
 
 export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE";
 const setCurrentState = createAction(SET_CURRENT_STATE);
@@ -56,10 +56,11 @@ export const popState = createThunkAction(
 
     const card = getCard(getState());
     if (location.state && location.state.card) {
-      if (!Utils.equals(card, location.state.card)) {
+      if (!equals(card, location.state.card)) {
         const shouldRefreshUrl = location.state.card.dataset;
         await dispatch(setCardAndRun(location.state.card, shouldRefreshUrl));
         await dispatch(setCurrentState(location.state));
+        await dispatch(resetUIControls());
       }
     }
 
@@ -95,6 +96,7 @@ export const locationChanged =
           getURL(location, { includeMode: true })
         ) {
           // the browser forward/back button was pressed
+
           dispatch(popState(nextLocation));
         }
       } else if (

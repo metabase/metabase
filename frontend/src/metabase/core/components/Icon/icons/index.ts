@@ -29,6 +29,8 @@ import arrow_left_component from "./arrow_left.svg?component";
 import arrow_left_source from "./arrow_left.svg?source";
 import arrow_left_to_line_component from "./arrow_left_to_line.svg?component";
 import arrow_left_to_line_source from "./arrow_left_to_line.svg?source";
+import arrow_right_component from "./arrow_right.svg?component";
+import arrow_right_source from "./arrow_right.svg?source";
 import arrow_split_component from "./arrow_split.svg?component";
 import arrow_split_source from "./arrow_split.svg?source";
 import badge_component from "./badge.svg?component";
@@ -211,6 +213,8 @@ import moon_component from "./moon.svg?component";
 import moon_source from "./moon.svg?source";
 import move_component from "./move.svg?component";
 import move_source from "./move.svg?source";
+import move_card_component from "./move_card.svg?component";
+import move_card_source from "./move_card.svg?source";
 import new_folder_component from "./new_folder.svg?component";
 import new_folder_source from "./new_folder.svg?source";
 import notebook_component from "./notebook.svg?component";
@@ -333,6 +337,8 @@ import variable_component from "./variable.svg?component";
 import variable_source from "./variable.svg?source";
 import verified_component from "./verified.svg?component";
 import verified_source from "./verified.svg?source";
+import verified_filled_component from "./verified_filled.svg?component";
+import verified_filled_source from "./verified_filled.svg?source";
 import view_archive_component from "./view_archive.svg?component";
 import view_archive_source from "./view_archive.svg?source";
 import warning_component from "./warning.svg?component";
@@ -408,6 +414,10 @@ export const Icons = {
   arrow_left_to_line: {
     component: arrow_left_to_line_component,
     source: arrow_left_to_line_source,
+  },
+  arrow_right: {
+    component: arrow_right_component,
+    source: arrow_right_source,
   },
   arrow_split: {
     component: arrow_split_component,
@@ -773,6 +783,10 @@ export const Icons = {
     component: move_component,
     source: move_source,
   },
+  move_card: {
+    component: move_card_component,
+    source: move_card_source,
+  },
   new_folder: {
     component: new_folder_component,
     source: new_folder_source,
@@ -1017,6 +1031,10 @@ export const Icons = {
     component: verified_component,
     source: verified_source,
   },
+  verified_filled: {
+    component: verified_filled_component,
+    source: verified_filled_source,
+  },
   view_archive: {
     component: view_archive_component,
     source: view_archive_source,
@@ -1049,7 +1067,7 @@ export const Icons = {
     component: number_component,
     source: number_source,
   },
-  balloons: {
+  cake: {
     component: birthday_component,
     source: birthday_source,
   },

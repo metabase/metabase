@@ -4,16 +4,11 @@ import {
   visitQuestion,
   openQuestionActions,
   questionInfoButton,
-  getFullName,
   setTokenFeatures,
   popover,
 } from "e2e/support/helpers";
 
-import { USERS } from "e2e/support/cypress_data";
 import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-
-const { admin } = USERS;
-const adminFullName = getFullName(admin);
 
 describeEE("scenarios > premium > content verification", () => {
   beforeEach(() => {
@@ -92,13 +87,13 @@ describeEE("scenarios > premium > content verification", () => {
         cy.findByPlaceholderText("Search…").click();
         cy.findByTestId("recently-viewed-item")
           .should("contain", "Orders, Count")
-          .find(".Icon-verified");
+          .find(".Icon-verified_filled");
 
         // 4. Search results
         cy.findByPlaceholderText("Search…").type("orders{enter}");
         cy.findAllByTestId("search-result-item")
           .contains("Orders, Count")
-          .siblings(".Icon-verified");
+          .siblings(".Icon-verified_filled");
 
         // 5. Question's collection
         cy.visit("/collection/root");
@@ -129,14 +124,14 @@ describeEE("scenarios > premium > content verification", () => {
         cy.findByPlaceholderText("Search…").click();
         cy.findByTestId("recently-viewed-item")
           .should("contain", "Orders, Count")
-          .find(".Icon-verified")
+          .find(".Icon-verified_filed")
           .should("not.exist");
 
         // 4. Search results
         cy.findByPlaceholderText("Search…").type("orders{enter}");
         cy.findAllByTestId("search-result-item")
           .contains("Orders, Count")
-          .siblings(".Icon-verified")
+          .siblings(".Icon-verified_filed")
           .should("not.exist");
 
         // 5. Question's collection
@@ -176,7 +171,7 @@ describeEE("scenarios > premium > content verification", () => {
 
         questionInfoButton().click();
         cy.findByTestId("sidebar-right")
-          .findAllByText(`${adminFullName} verified this`)
+          .findAllByText(`A moderator verified this`)
           .should("have.length", 2);
 
         cy.findByPlaceholderText("Search…").type("orders{enter}");
@@ -185,7 +180,7 @@ describeEE("scenarios > premium > content verification", () => {
           .first()
           .within(() => {
             cy.findByText("Orders, Count");
-            cy.icon("verified");
+            cy.icon("verified_filled");
           });
 
         cy.visit("/collection/root");

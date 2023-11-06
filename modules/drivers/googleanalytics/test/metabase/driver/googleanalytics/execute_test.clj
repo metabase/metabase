@@ -1,7 +1,8 @@
 (ns metabase.driver.googleanalytics.execute-test
   (:require
    [clojure.test :refer :all]
-   [metabase.driver.googleanalytics.execute :as ga.execute])
+   [metabase.driver.googleanalytics.execute :as ga.execute]
+   [metabase.test :as mt])
   (:import
    (com.google.api.services.analytics.model GaData$ColumnHeaders)))
 
@@ -11,7 +12,7 @@
   (#'ga.execute/header->getter-fn (doto (GaData$ColumnHeaders.)
                                     (.setName column-name))))
 
-(deftest parse-temporal-result-values-test
+(deftest ^:parallel parse-temporal-result-values-test
   (testing "day (int)"
     (is (= 10
            ((column-name->getter "ga:day") "10"))))
@@ -42,19 +43,22 @@
   (testing "date hour minute (`yyyyMMddHHmm`)"
     (is (= #t "2020-01-10T11:25:00"
            ((column-name->getter "ga:dateHourMinute") "202001101125"))))
-  (testing "year weeks"
-    (testing "ISO year weeks (#9244)"
-      (let [f (column-name->getter "ga:isoYearIsoWeek")]
-        (is (= #t "2018-12-31"
-               (f "201901")))
-        (is (= #t "2019-12-09"
-               (f "201950")))))
-    (testing "non-ISO year weeks"
-      (let [f (column-name->getter "ga:yearWeek")]
-        (is (= #t "2018-12-30"
-               (f "201901")))
-        (is (= #t "2019-12-08"
-               (f "201950"))))))
   (testing "year month (`yyyyMM`) (#11489)"
     (is (= #t "2020-01-01"
            ((column-name->getter "ga:yearMonth") "202001")))))
+
+(deftest parse-temporal-result-values-year-week-test
+  (mt/with-temporary-setting-values [start-of-week :sunday]
+    (testing "year weeks"
+      (testing "ISO year weeks (#9244)"
+        (let [f (column-name->getter "ga:isoYearIsoWeek")]
+          (is (= #t "2018-12-31"
+                 (f "201901")))
+          (is (= #t "2019-12-09"
+                 (f "201950")))))
+      (testing "non-ISO year weeks"
+        (let [f (column-name->getter "ga:yearWeek")]
+          (is (= #t "2018-12-30"
+                 (f "201901")))
+          (is (= #t "2019-12-08"
+                 (f "201950"))))))))

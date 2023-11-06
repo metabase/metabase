@@ -7,6 +7,7 @@ import type {
   StructuredDatasetQuery,
   NativeDatasetQuery,
   PublicCard,
+  TableColumnOrderSetting,
 } from "metabase-types/api";
 
 import {
@@ -26,6 +27,7 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   dataset: false,
   can_write: true,
   cache_ttl: null,
+  collection: null,
   collection_id: null,
   last_query_start: null,
   average_query_time: null,
@@ -93,5 +95,13 @@ export const createMockModerationReview = (
   status: "verified",
   created_at: "2015-01-01T20:10:30.200",
   most_recent: true,
+  ...opts,
+});
+
+export const createMockTableColumnOrderSetting = (
+  opts?: Partial<TableColumnOrderSetting>,
+): TableColumnOrderSetting => ({
+  name: "Column",
+  enabled: true,
   ...opts,
 });

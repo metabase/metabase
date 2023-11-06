@@ -1,9 +1,14 @@
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
 import {
   createMockDashboard,
-  createMockDashboardOrderedCard,
+  createMockDashboardCard,
 } from "metabase-types/api/mocks";
 import { setupBookmarksEndpoints } from "__support__/server-mocks";
 import { createMockDashboardState } from "metabase-types/store/mocks";
@@ -13,14 +18,14 @@ import DashboardHeader from "./DashboardHeader";
 console.warn = jest.fn();
 console.error = jest.fn();
 
-const DASHCARD = createMockDashboardOrderedCard();
+const DASHCARD = createMockDashboardCard();
 
 const TEST_DASHBOARD = createMockDashboard({
-  ordered_cards: [DASHCARD],
+  dashcards: [DASHCARD],
 });
 
 const TEST_DASHBOARD_WITH_TABS = createMockDashboard({
-  ordered_tabs: [
+  tabs: [
     getDefaultTab({ tabId: 1, dashId: 1, name: "Tab 1" }),
     getDefaultTab({
       tabId: 2,
@@ -123,7 +128,7 @@ const setup = async ({
         dashboards: {
           [dashboard.id]: {
             ...dashboard,
-            ordered_cards: dashboard.ordered_cards.map(c => c.id),
+            dashcards: dashboard.dashcards.map(c => c.id),
           },
         },
         dashcards: {
@@ -137,9 +142,7 @@ const setup = async ({
     },
   });
 
-  await waitFor(() => {
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-  });
+  await waitForLoaderToBeRemoved();
 };
 
 describe("DashboardHeader", () => {

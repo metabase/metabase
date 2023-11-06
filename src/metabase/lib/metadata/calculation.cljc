@@ -3,13 +3,16 @@
    [clojure.string :as str]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expresssion]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
@@ -133,7 +136,7 @@
 
 (def ^:private TopLevelKey
   "In the interest of making this easy to use in JS-land we'll accept either strings or keywords."
-  [:enum :aggregation :breakout :filters :limit :order-by :source-table :source-card])
+  [:enum :aggregation :breakout :filters :limit :order-by :source-table :source-card :joins])
 
 (mu/defn describe-top-level-key :- [:maybe ::lib.schema.common/non-blank-string]
   "'top-level' here means the top level of an individual stage. Generate a human-friendly string describing a specific
@@ -233,7 +236,7 @@
                                         #(= (namespace %) "metadata")]]]]
   "Calculate an appropriate `:metadata/*` object for something. What this looks like depends on what we're calculating
   metadata for. If it's a reference or expression of some sort, this should return a single `:metadata/column`
-  map (i.e., something satisfying the [[metabase.lib.metadata/ColumnMetadata]] schema."
+  map (i.e., something satisfying the `::lib.schema.metadata/column` schema."
   ([query]
    (metadata query -1 query))
   ([query x]
@@ -268,42 +271,42 @@
   :hierarchy lib.hierarchy/hierarchy)
 
 (mr/register! ::display-info
-  [:map
-   [:display-name :string]
-   [:long-display-name {:optional true} :string]
+              [:map
+               [:display-name :string]
+               [:long-display-name {:optional true} :string]
    ;; for things that have a Table, e.g. a Field
-   [:table {:optional true} [:maybe [:ref ::display-info]]]
-   ;; these are derived from the `:lib/source`/`:metabase.lib.metadata/column-source`, but instead of using that value
-   ;; directly we're returning a different property so the FE doesn't break if we change those keys in the future,
-   ;; e.g. if we consolidate or split some of those keys. This is all the FE really needs to know.
+               [:table {:optional true} [:maybe [:ref ::display-info]]]
+   ;; these are derived from the `:lib/source`/`:metabase.lib.schema.metadata/column-source`, but instead of using
+   ;; that value directly we're returning a different property so the FE doesn't break if we change those keys in the
+   ;; future, e.g. if we consolidate or split some of those keys. This is all the FE really needs to know.
    ;;
    ;; if this is a Column, does it come from a previous stage?
-   [:is-from-previous-stage {:optional true} [:maybe :boolean]]
+               [:is-from-previous-stage {:optional true} [:maybe :boolean]]
    ;; if this is a Column, does it come from a join in this stage?
-   [:is-from-join {:optional true} [:maybe :boolean]]
+               [:is-from-join {:optional true} [:maybe :boolean]]
    ;; if this is a Column, is it 'calculated', i.e. does it come from an expression in this stage?
-   [:is-calculated {:optional true} [:maybe :boolean]]
+               [:is-calculated {:optional true} [:maybe :boolean]]
    ;; if this is a Column, is it an implicitly joinable one? I.e. is it from a different table that we have not
    ;; already joined, but could implicitly join against?
-   [:is-implicitly-joinable {:optional true} [:maybe :boolean]]
+               [:is-implicitly-joinable {:optional true} [:maybe :boolean]]
    ;; For the `:table` field of a Column, is this the source table, or a joined table?
-   [:is-source-table {:optional true} [:maybe :boolean]]
+               [:is-source-table {:optional true} [:maybe :boolean]]
    ;; does this column occur in the breakout clause?
-   [:is-breakout-column {:optional true} [:maybe :boolean]]
+               [:is-breakout-column {:optional true} [:maybe :boolean]]
    ;; does this column occur in the order-by clause?
-   [:is-order-by-column {:optional true} [:maybe :boolean]]
+               [:is-order-by-column {:optional true} [:maybe :boolean]]
    ;; for joins
-   [:name {:optional true} :string]
+               [:name {:optional true} :string]
    ;; for aggregation operators
-   [:column-name {:optional true} :string]
-   [:description {:optional true} :string]
-   [:short-name {:optional true} :string]
-   [:requires-column {:optional true} :boolean]
-   [:selected {:optional true} :boolean]
+               [:column-name {:optional true} :string]
+               [:description {:optional true} :string]
+               [:short-name {:optional true} :string]
+               [:requires-column {:optional true} :boolean]
+               [:selected {:optional true} :boolean]
    ;; for binning and bucketing
-   [:default {:optional true} :boolean]
+               [:default {:optional true} :boolean]
    ;; for order by
-   [:direction {:optional true} [:enum :asc :desc]]])
+               [:direction {:optional true} [:enum :asc :desc]]])
 
 (mu/defn display-info :- ::display-info
   "Given some sort of Cljs object, return a map with the info you'd need to implement UI for it. This is mostly meant to
@@ -353,10 +356,12 @@
        {:is-from-previous-stage (= source :source/previous-stage)
         :is-from-join           (= source :source/joins)
         :is-calculated          (= source :source/expressions)
-        :is-implicitly-joinable (= source :source/implicitly-joinable)})
+        :is-implicitly-joinable (= source :source/implicitly-joinable)
+        :is-aggregation         (= source :source/aggregations)
+        :is-breakout            (= source :source/breakouts)})
      (when-some [selected (:selected? x-metadata)]
        {:selected selected})
-     (select-keys x-metadata [:breakout-position :order-by-position]))))
+     (select-keys x-metadata [:breakout-position :order-by-position :filter-positions]))))
 
 (defmethod display-info-method :default
   [query stage-number x]
@@ -370,9 +375,9 @@
 (def ColumnMetadataWithSource
   "Schema for the column metadata that should be returned by [[metadata]]."
   [:merge
-   lib.metadata/ColumnMetadata
+   [:ref ::lib.schema.metadata/column]
    [:map
-    [:lib/source ::lib.metadata/column-source]]])
+    [:lib/source ::lib.schema.metadata/column-source]]])
 
 (def ColumnsWithUniqueAliases
   "Schema for column metadata that should be returned by [[visible-columns]]. This is mostly used
@@ -449,17 +454,19 @@
    ReturnedColumnsOptions
    [:map
     ;; these all default to true
-    [:include-joined?              {:optional true} :boolean]
-    [:include-expressions?         {:optional true} :boolean]
-    [:include-implicitly-joinable? {:optional true} :boolean]]])
+    [:include-joined?                              {:optional true} :boolean]
+    [:include-expressions?                         {:optional true} :boolean]
+    [:include-implicitly-joinable?                 {:optional true} :boolean]
+    [:include-implicitly-joinable-for-source-card? {:optional true} :boolean]]])
 
 (mu/defn ^:private default-visible-columns-options :- VisibleColumnsOptions
   []
   (merge
    (default-returned-columns-options)
-   {:include-joined?              true
-    :include-expressions?         true
-    :include-implicitly-joinable? true}))
+   {:include-joined?                              true
+    :include-expressions?                         true
+    :include-implicitly-joinable?                 true
+    :include-implicitly-joinable-for-source-card? true}))
 
 (defmulti visible-columns-method
   "Impl for [[visible-columns]].
@@ -514,3 +521,40 @@
     options        :- [:maybe VisibleColumnsOptions]]
    (let [options (merge (default-visible-columns-options) options)]
      (visible-columns-method query stage-number x options))))
+
+(mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
+  "Returns a list of primary keys for the source table of this query."
+  [query        :- ::lib.schema/query]
+  (if-let [table-id (lib.util/source-table-id query)]
+    (filter lib.types.isa/primary-key? (lib.metadata/fields query table-id))
+    []))
+
+(defn implicitly-joinable-columns
+  "Columns that are implicitly joinable from some other columns in `column-metadatas`. To be joinable, the column has to
+  have appropriate FK metadata, i.e. have an `:fk-target-field-id` pointing to another Field. (I think we only include
+  this information for Databases that support FKs and joins, so I don't think we need to do an additional DB feature
+  check here.)
+
+  Does not include columns from any Tables that are already explicitly joined.
+
+  Does not include columns that would be implicitly joinable via multiple hops."
+  [query stage-number column-metadatas unique-name-fn]
+  (let [existing-table-ids (into #{} (map :table-id) column-metadatas)]
+    (into []
+          (comp (filter :fk-target-field-id)
+                (map (fn [{source-field-id :id, :keys [fk-target-field-id]}]
+                       (-> (lib.metadata/field query fk-target-field-id)
+                           (assoc ::source-field-id source-field-id))))
+                (remove #(contains? existing-table-ids (:table-id %)))
+                (mapcat (fn [{:keys [table-id], ::keys [source-field-id]}]
+                          (let [table-metadata (lib.metadata/table query table-id)
+                                options        {:unique-name-fn               unique-name-fn
+                                                :include-implicitly-joinable? false}]
+                            (for [field (visible-columns-method query stage-number table-metadata options)
+                                  :let  [field (assoc field
+                                                      :fk-field-id              source-field-id
+                                                      :lib/source               :source/implicitly-joinable
+                                                      :lib/source-column-alias  (:name field))]]
+                              (assoc field :lib/desired-column-alias (unique-name-fn
+                                                                      (lib.join.util/desired-alias query field))))))))
+          column-metadatas)))

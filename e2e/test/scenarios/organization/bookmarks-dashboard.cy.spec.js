@@ -4,6 +4,7 @@ import {
   openNavigationSidebar,
   visitDashboard,
 } from "e2e/support/helpers";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > dashboard > bookmarks", () => {
   beforeEach(() => {
@@ -12,7 +13,7 @@ describe("scenarios > dashboard > bookmarks", () => {
   });
 
   it("should add, update bookmark name when dashboard name is updated, and then remove bookmark", () => {
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
     openNavigationSidebar();
 
     // Add bookmark

@@ -46,13 +46,15 @@
 
 (mu/defn ^:private resolve-fields! :- :nil
   [joins :- Joins]
-  (qp.store/fetch-and-store-fields! (mbql.u/match joins [:field (id :guard integer?) _] id)))
+  (qp.store/bulk-metadata :metadata/column (mbql.u/match joins [:field (id :guard integer?) _] id))
+  nil)
 
 (mu/defn ^:private resolve-tables! :- :nil
   "Add Tables referenced by `:joins` to the Query Processor Store. This is only really needed for implicit joins,
   because their Table references are added after `resolve-source-tables` runs."
   [joins :- Joins]
-  (qp.store/fetch-and-store-tables! (remove nil? (map :source-table joins))))
+  (qp.store/bulk-metadata :metadata/table (remove nil? (map :source-table joins)))
+  nil)
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -69,10 +71,16 @@
   (when-not (seq source-metadata)
     (throw (ex-info (tru "Cannot use :fields :all in join against source query unless it has :source-metadata.")
                     {:join join})))
-  (for [{field-name :name, base-type :base_type, field-id :id} source-metadata]
-    (if field-id
-      [:field field-id   {:join-alias alias}]
-      [:field field-name {:base-type base-type, :join-alias alias}])))
+  (let [duplicate-ids (into #{}
+                            (keep (fn [[item freq]]
+                                    (when (> freq 1)
+                                      item)))
+                            (frequencies (map :id source-metadata)))]
+    (for [{field-name :name, base-type :base_type, field-id :id} source-metadata]
+      (if (and field-id (not (contains? duplicate-ids field-id)))
+        ;; field-id is a unique reference, use it
+        [:field field-id   {:join-alias alias}]
+        [:field field-name {:base-type base-type, :join-alias alias}]))))
 
 (mu/defn ^:private handle-all-fields :- mbql.s/Join
   "Replace `:fields :all` in a join with an appropriate list of Fields."
@@ -81,9 +89,9 @@
    join
    (when (= fields :all)
      {:fields (if source-query
-               (source-metadata->fields join source-metadata)
-               (for [[_ id-or-name opts] (qp.add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
-                 [:field id-or-name (assoc opts :join-alias alias)]))})))
+                (source-metadata->fields join source-metadata)
+                (for [[_ id-or-name opts] (qp.add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
+                  [:field id-or-name (assoc opts :join-alias alias)]))})))
 
 (mu/defn ^:private resolve-references :- Joins
   [joins :- Joins]
@@ -172,25 +180,11 @@
 ;;; |                                Middleware & Boring Recursive Application Stuff                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- ^:deprecated maybe-resolve-source-table
-  "Resolve the `source-table` of any `source-query` inside a join.
-
-  TODO - this is no longer needed. `resolve-source-tables` middleware handles all table resolution."
-  [{:keys [source-table], :as query}]
-  (qp.store/fetch-and-store-tables! [source-table])
-  query)
-
 (defn- resolve-joins-in-mbql-query-all-levels
-  [{:keys [joins source-query source-table], :as query}]
+  [{:keys [joins source-query], :as query}]
   (cond-> query
-    (seq joins)
-    resolve-joins-in-mbql-query
-
-    source-table
-    maybe-resolve-source-table
-
-    source-query
-    (update :source-query resolve-joins-in-mbql-query-all-levels)))
+    (seq joins)  resolve-joins-in-mbql-query
+    source-query (update :source-query resolve-joins-in-mbql-query-all-levels)))
 
 (defn resolve-joins
   "Add any Tables and Fields referenced by the `:joins` clause to the QP store."

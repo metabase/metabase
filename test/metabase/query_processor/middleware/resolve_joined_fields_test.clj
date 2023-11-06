@@ -8,7 +8,7 @@
    [metabase.util :as u]))
 
 (defn- wrap-joined-fields [query]
-  (mt/with-everything-store
+  (mt/with-metadata-provider (mt/id)
     (resolve-joined-fields/resolve-joined-fields query)))
 
 (deftest wrap-fields-in-joined-field-test

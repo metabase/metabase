@@ -4,11 +4,11 @@
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [honeysql.format :as hformat]
    [honeysql.helpers :as hh]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.config :as config]
    [metabase.driver :as driver]
-   [metabase.driver.common :as driver.common]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -20,6 +20,7 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util :as u]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs]]
@@ -33,7 +34,6 @@
 (driver/register! :sqlserver, :parent :sql-jdbc)
 
 (doseq [[feature supported?] {:regex                                  false
-                              :percentile-aggregations                false
                               :case-sensitivity-string-filter-options false
                               :now                                    true
                               :datetime-diff                          true
@@ -41,9 +41,20 @@
                               :test/jvm-timezone-setting              false}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
+(defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
+  [_ _ db]
+  (let [major-version (get-in db [:dbms_version :semantic-version 0] 0)]
+    (when (zero? major-version)
+      (log/warn (trs "Unable to determine sqlserver's dbms major version. Fallback to 0.")))
+    (>= major-version 16)))
+
 (defmethod driver/db-start-of-week :sqlserver
   [_]
   :sunday)
+
+(defmethod driver/prettify-native-form :sqlserver
+  [_ native-form]
+  (sql.u/format-sql-and-fix-params :tsql native-form))
 
 ;; See the list here: https://docs.microsoft.com/en-us/sql/connect/jdbc/using-basic-data-types
 (defmethod sql-jdbc.sync/database-type->base-type :sqlserver
@@ -473,21 +484,30 @@
   [driver [_ arg power]]
   (hx/call :power (hx/cast :float (sql.qp/->honeysql driver arg)) (sql.qp/->honeysql driver power)))
 
+(defmethod hformat/fn-handler (u/qualified-name ::approx-percentile-cont)
+  [_ field p]
+  (str "APPROX_PERCENTILE_CONT(" (hformat/to-sql p) ") WITHIN GROUP (ORDER BY " (hformat/to-sql field) ")"))
+
+(defmethod sql.qp/->honeysql [:sqlserver :percentile]
+  [driver [_ arg val]]
+  (hx/call (u/qualified-name ::approx-percentile-cont)
+           (sql.qp/->honeysql driver arg)
+           (sql.qp/->honeysql driver val)))
+
 (defmethod sql.qp/->honeysql [:sqlserver :median]
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
-(defmethod driver.common/current-db-time-date-formatters :sqlserver
-  [_]
-  (driver.common/create-db-time-formatters "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSZ"))
-
-(defmethod driver.common/current-db-time-native-query :sqlserver
-  [_]
-  "select CONVERT(nvarchar(30), SYSDATETIMEOFFSET(), 127)")
-
-(defmethod driver/current-db-time :sqlserver
-  [& args]
-  (apply driver.common/current-db-time args))
+(defmethod driver/db-default-timezone :sqlserver
+  [driver database]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver database nil
+   (fn [^java.sql.Connection conn]
+     (with-open [stmt (.prepareStatement conn "SELECT sysdatetimeoffset();")
+                 rset (.executeQuery stmt)]
+       (when (.next rset)
+         (when-let [offset-date-time (.getObject rset 1 java.time.OffsetDateTime)]
+           (t/zone-offset offset-date-time)))))))
 
 (defmethod sql.qp/current-datetime-honeysql-form :sqlserver
   [_]

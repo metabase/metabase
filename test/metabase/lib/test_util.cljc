@@ -1,25 +1,40 @@
 (ns metabase.lib.test-util
   "Misc test utils for Metabase lib."
   (:require
-   [clojure.core.protocols]
    [clojure.test :refer [deftest is]]
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.protocols :as metadata.protocols]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util.metadata-providers.merged-mock :as providers.merged-mock]
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.lib.test-util.metadata-providers.remap :as providers.remap]
+   [metabase.lib.test-util.metadata-providers.with-cards-for-queries :as providers.cards-for-queries]
    [metabase.lib.util :as lib.util]
+   [metabase.shared.util.namespaces :as shared.ns]
    [metabase.util.malli :as mu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
+(comment providers.cards-for-queries/keep-me
+         providers.merged-mock/keep-me
+         providers.mock/keep-me
+         providers.remap/keep-me)
+
 #?(:cljs
    (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(shared.ns/import-fns
+ [providers.cards-for-queries metadata-provider-with-cards-for-queries]
+ [providers.merged-mock       merged-mock-metadata-provider]
+ [providers.mock              mock-metadata-provider]
+ [providers.remap             remap-metadata-provider])
 
 (def venues-query
   "A mock query against the `VENUES` test data table."
@@ -40,71 +55,11 @@
            options)
     (meta/id table field)]))
 
-(defn- with-optional-lib-type
-  "Create a version of `schema` where `:lib/type` is optional rather than required."
-  [schema lib-type]
-  [:merge
-   schema
-   [:map
-    [:lib/type {:optional true} [:= lib-type]]]])
-
-(def ^:private MockMetadata
-  [:map
-   [:database {:optional true} [:maybe (with-optional-lib-type lib.metadata/DatabaseMetadata :metadata/database)]]
-   [:tables   {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/TableMetadata   :metadata/table)]]]
-   [:fields   {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/ColumnMetadata  :metadata/column)]]]
-   [:cards    {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/CardMetadata    :metadata/card)]]]
-   [:metrics  {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/MetricMetadata  :metadata/metric)]]]
-   [:segments {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/SegmentMetadata :metadata/segment)]]]])
-
-(mu/defn mock-metadata-provider :- lib.metadata/MetadataProvider
-  "Create a mock metadata provider to facilitate writing tests. All keys except `:database` should be a sequence of maps
-  e.g.
-
-    {:database <some-database>, :tables [<table-1> <table-2>], ...}
-
-  Normally you can probably get away with using [[metabase.lib.test-metadata/metadata-provider]] instead of using
-  this; but this is available for situations when you need to test something not covered by the default test metadata,
-  e.g. nested Fields."
-  [{:keys [database tables fields cards metrics segments] :as m} :- MockMetadata]
-  (reify
-    metadata.protocols/MetadataProvider
-    (database [_this]            (some-> database
-                                         (assoc :lib/type :metadata/database)
-                                         (dissoc :tables)))
-    (table    [_this table-id]   (some-> (m/find-first #(= (:id %) table-id) tables)
-                                         (assoc :lib/type :metadata/table)
-                                         (dissoc :fields)))
-    (field    [_this field-id]   (some-> (m/find-first #(= (:id %) field-id) fields)
-                                         (assoc :lib/type :metadata/column)))
-    (card     [_this card-id]    (some-> (m/find-first #(= (:id %) card-id) cards)
-                                         (assoc :lib/type :metadata/card)))
-    (metric   [_this metric-id]  (some-> (m/find-first #(= (:id %) metric-id) metrics)
-                                         (assoc :lib/type :metadata/metric)))
-    (segment  [_this segment-id] (some-> (m/find-first #(= (:id %) segment-id) segments)
-                                         (assoc :lib/type :metadata/segment)))
-    (tables   [_this]            (for [table tables]
-                                   (-> (assoc table :lib/type :metadata/table)
-                                       (dissoc :fields))))
-    (fields   [_this table-id]   (for [field fields
-                                       :when (= (:table-id field) table-id)]
-                                   (assoc field :lib/type :metadata/column)))
-    (metrics  [_this table-id]   (for [metric metrics
-                                       :when (= (:table-id metric) table-id)]
-                                   (assoc metric :lib/type :metadata/metric)))
-    (segments [_this table-id]   (for [segment segments
-                                       :when (= (:table-id segment) table-id)]
-                                   (assoc segment :lib/type :metadata/segment)))
-
-    clojure.core.protocols/Datafiable
-    (datafy [_this]
-      (list `mock-metadata-provider m))))
-
 (def metadata-provider-with-card
   "[[meta/metadata-provider]], but with a Card with ID 1."
   (lib/composed-metadata-provider
    meta/metadata-provider
-   (mock-metadata-provider
+   (providers.mock/mock-metadata-provider
     {:cards [{:name          "My Card"
               :id            1
               :dataset-query {:database (meta/id)
@@ -123,13 +78,14 @@
    :stages       [{:lib/type    :mbql.stage/mbql
                    :source-card 1}]})
 
-(def metadata-provider-with-card-with-result-metadata
+(def ^:private metadata-provider-with-card-with-result-metadata
   "[[meta/metadata-provider]], but with a Card with results metadata as ID 1."
   (lib/composed-metadata-provider
    meta/metadata-provider
-   (mock-metadata-provider
+   (providers.mock/mock-metadata-provider
     {:cards [{:name            "My Card"
               :id              1
+              :database-id     (meta/id)
               ;; THIS IS A LEGACY STYLE QUERY!
               :dataset-query   {:database (meta/id)
                                 :type     :query
@@ -203,6 +159,13 @@
                     (lib/with-join-fields [(-> (meta/field-metadata :categories :name)
                                                (lib/with-join-alias "Cat"))])))))
 
+(def query-with-self-join
+  "A query against `ORDERS` joined to `ORDERS` by ID."
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+      (lib/join (lib/join-clause (meta/table-metadata :orders)
+                                 [(lib/= (lib/ref (meta/field-metadata :orders :id))
+                                         (lib/ref (meta/field-metadata :orders :id)))]))))
+
 (def query-with-expression
   "A query with an expression."
   (-> venues-query
@@ -227,6 +190,21 @@
                                                     :semantic-type :type/FK}]}
                    :native             "SELECT whatever"}]})
 
+(defn mock-card
+  "Given a `query`, returns a mock card with that query. Includes `:result-metadata` from calling
+  [[metabase.lib.metadata.calculation/returned-columns]]."
+  ([query] (mock-card query 1 "Mock card"))
+  ([query id title]
+   {:lib/type        :metadata/card
+    :id              id
+    :name            title
+    :database-id     (:id (lib.metadata/database query))
+    :dataset-query   (lib.convert/->legacy-MBQL query)
+    :result-metadata (->> query
+                          lib.metadata.calculation/returned-columns
+                          (sort-by :id)
+                          (mapv #(dissoc % :id :table-id)))}))
+
 (def mock-cards
   "Map of mock MBQL query Card against the test tables. There are three versions of the Card for each table:
 
@@ -243,6 +221,7 @@
                               (merge
                                {:lib/type      :metadata/card
                                 :id            (inc idx)
+                                :database-id   (meta/id)
                                 :name          (str "Mock " (name table) " card")
                                 :dataset-query (if native?
                                                  {:database (meta/id)
@@ -259,11 +238,17 @@
                                        (mapv #(dissoc % :id :table-id)))}))])))
         (meta/tables)))
 
+(defn metadata-provider-with-mock-card [card]
+  (lib/composed-metadata-provider
+    meta/metadata-provider
+    (mock-metadata-provider
+      {:cards [card]})))
+
 (def metadata-provider-with-mock-cards
   "A metadata provider with all of the [[mock-cards]]. Composed with the normal [[meta/metadata-provider]]."
   (lib/composed-metadata-provider
     meta/metadata-provider
-    (mock-metadata-provider
+    (providers.mock/mock-metadata-provider
       {:cards (vals mock-cards)})))
 
 (mu/defn field-literal-ref :- ::lib.schema.ref/field.literal
@@ -281,22 +266,12 @@
                                         :found  col-names}))))]
     (lib/ref metadata)))
 
-(mu/defn query-with-mock-card-as-source-card :- [:and
-                                                 ::lib.schema/query
-                                                 [:map
-                                                  [:stages [:tuple
-                                                            [:map
-                                                             [:source-card integer?]]]]]]
-  "Create a query with one of the [[mock-cards]] as its `:source-card`."
-  [table-name :- (into [:enum] (sort (keys mock-cards)))]
-  (lib/query metadata-provider-with-mock-cards (mock-cards table-name)))
-
 (mu/defn query-with-stage-metadata-from-card :- ::lib.schema/query
   "Convenience for creating a query that has `:lib/metadata` stage metadata attached to it from a Card. Note that this
   does not create a query with a `:source-card`.
 
-  This is mostly around for historic reasons; consider using either [[metabase.lib.core/query]]
-  or [[query-with-mock-card-as-source-card]] instead, which are closer to real-life usage."
+  This is mostly around for historic reasons; consider using [[metabase.lib.core/query]] instead, which is closer to
+  real-life usage."
   [metadata-providerable :- lib.metadata/MetadataProviderable
    {mbql-query :dataset-query, metadata :result-metadata} :- [:map
                                                               [:dataset-query :map]

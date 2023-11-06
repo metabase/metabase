@@ -7,11 +7,14 @@ import {
   describeEE,
   navigationSidebar,
   getDashboardCard,
-  createTextCard,
+  getTextCardDetails,
   closeNavigationSidebar,
   updateDashboardCards,
 } from "e2e/support/helpers";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 describeEE("scenarios > embedding > full app", () => {
   beforeEach(() => {
@@ -211,7 +214,7 @@ describeEE("scenarios > embedding > full app", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("New").click();
         popover().findByText("Question").click();
-        popover().findByText("Sample Database").click();
+        popover().findByText("Raw Data").click();
         popover().findByText("Orders").click();
       });
 
@@ -274,7 +277,7 @@ describeEE("scenarios > embedding > full app", () => {
 
   describe("dashboards", () => {
     it("should show the dashboard header by default", () => {
-      visitDashboardUrl({ url: "/dashboard/1" });
+      visitDashboardUrl({ url: `/dashboard/${ORDERS_DASHBOARD_ID}` });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard").should("be.visible");
@@ -283,7 +286,10 @@ describeEE("scenarios > embedding > full app", () => {
     });
 
     it("should hide the dashboard header by a param", () => {
-      visitDashboardUrl({ url: "/dashboard/1", qs: { header: false } });
+      visitDashboardUrl({
+        url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
+        qs: { header: false },
+      });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard").should("not.exist");
@@ -291,7 +297,7 @@ describeEE("scenarios > embedding > full app", () => {
 
     it("should hide the dashboard's additional info by a param", () => {
       visitDashboardUrl({
-        url: "/dashboard/1",
+        url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
         qs: { additional_info: false },
       });
 
@@ -308,11 +314,11 @@ describeEE("scenarios > embedding > full app", () => {
 
     it("should preserve embedding options with click behavior (metabase#24756)", () => {
       addLinkClickBehavior({
-        dashboardId: 1,
+        dashboardId: ORDERS_DASHBOARD_ID,
         linkTemplate: "/question/" + ORDERS_QUESTION_ID,
       });
       visitDashboardUrl({
-        url: "/dashboard/1",
+        url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
       });
 
       cy.findAllByRole("cell").first().click();
@@ -341,7 +347,7 @@ describeEE("scenarios > embedding > full app", () => {
       };
       cy.createDashboard(dashboardDetails).then(
         ({ body: { id: dashboardId } }) => {
-          const card = createTextCard({
+          const card = getTextCardDetails({
             col: 0,
             row: 0,
             size_x: 6,
@@ -439,7 +445,7 @@ const visitXrayDashboardUrl = urlOptions => {
 const addLinkClickBehavior = ({ dashboardId, linkTemplate }) => {
   cy.request("GET", `/api/dashboard/${dashboardId}`).then(({ body }) => {
     cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-      cards: body.ordered_cards.map(card => ({
+      cards: body.dashcards.map(card => ({
         ...card,
         visualization_settings: {
           click_behavior: {

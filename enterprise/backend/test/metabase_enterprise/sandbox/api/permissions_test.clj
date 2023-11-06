@@ -13,9 +13,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -73,24 +71,24 @@
                        (get-in (mt/user-http-request :crowberto :get 200 "permissions/graph")
                                (venues-perms-graph-keypath &group)))))
               (testing "GTAP should exist in application DB"
-                (is (schema= [(s/one {:id                   su/IntGreaterThanZero
-                                      :group_id             (s/eq (u/the-id &group))
-                                      :table_id             (s/eq (mt/id :venues))
-                                      :card_id              (s/eq nil)
-                                      :attribute_remappings (s/eq nil)
-                                      s/Keyword             s/Any}
-                                     "GTAP")]
-                             (t2/select GroupTableAccessPolicy :group_id (u/the-id &group))))))
+                (is (malli= [:tuple
+                             [:map
+                              [:id                   ms/PositiveInt]
+                              [:group_id             [:= (u/the-id &group)]]
+                              [:table_id             [:= (mt/id :venues)]]
+                              [:card_id              nil?]
+                              [:attribute_remappings nil?]]]
+                      (t2/select GroupTableAccessPolicy :group_id (u/the-id &group))))))
             (let [graph    (mt/user-http-request :crowberto :get 200 "permissions/graph")
                   graph'   (assoc-in graph (db-graph-keypath &group) (updated-db-perms))
                   response (mt/user-http-request :crowberto :put 200 "permissions/graph" graph')]
-              (mt/with-temp* [Database               [db-2]
-                              Table                  [db-2-table {:db_id (u/the-id db-2)}]
-                              GroupTableAccessPolicy [_ {:group_id (u/the-id &group)
-                                                         :table_id (u/the-id db-2-table)}]
-                              PermissionsGroup       [other-group]
-                              GroupTableAccessPolicy [_ {:group_id (u/the-id other-group)
-                                                         :table_id (mt/id :venues)}]]
+              (mt/with-temp [Database               db-2 {}
+                             Table                  db-2-table {:db_id (u/the-id db-2)}
+                             GroupTableAccessPolicy _ {:group_id (u/the-id &group)
+                                                       :table_id (u/the-id db-2-table)}
+                             PermissionsGroup       other-group {}
+                             GroupTableAccessPolicy _ {:group_id (u/the-id other-group)
+                                                       :table_id (mt/id :venues)}]
                 (testing "perms graph should be updated"
                   (testing "in API request response"
                     (is (= (expected-perms)
@@ -105,25 +103,27 @@
                                     :group_id (u/the-id &group)
                                     :table_id (mt/id :venues)))))
                 (testing "GTAP for same group, other database should not be affected"
-                  (is (schema= [(s/one {:id                   su/IntGreaterThanZero
-                                        :group_id             (s/eq (u/the-id &group))
-                                        :table_id             (s/eq (u/the-id db-2-table))
-                                        :card_id              (s/eq nil)
-                                        :permission_id        (s/eq nil)
-                                        :attribute_remappings (s/eq nil)}
-                                       "GTAP")]
-                               (t2/select GroupTableAccessPolicy
-                                          :group_id (u/the-id &group)
-                                          :table_id (u/the-id db-2-table)))))
+                  (is (malli= [:tuple
+                               [:map
+                                [:id                   ms/PositiveInt]
+                                [:group_id             [:= (u/the-id &group)]]
+                                [:table_id             [:= (u/the-id db-2-table)]]
+                                [:card_id              nil?]
+                                [:permission_id        nil?]
+                                [:attribute_remappings nil?]]]
+                       (t2/select GroupTableAccessPolicy
+                                  :group_id (u/the-id &group)
+                                  :table_id (u/the-id db-2-table)))))
                 (testing "GTAP for same table, other group should not be affected"
-                  (is (schema= [(s/one {:id                   su/IntGreaterThanZero
-                                        :group_id             (s/eq (u/the-id other-group))
-                                        :table_id             (s/eq (mt/id :venues))
-                                        :card_id              (s/eq nil)
-                                        :permission_id        (s/eq nil)
-                                        :attribute_remappings (s/eq nil)}
-                                       "GTAP")]
-                               (t2/select GroupTableAccessPolicy :group_id (u/the-id other-group)))))))))))))
+                  (is (malli= [:tuple
+                               [:map
+                                [:id                   ms/PositiveInt]
+                                [:group_id             [:= (u/the-id other-group)]]
+                                [:table_id             [:= (mt/id :venues)]]
+                                [:card_id              nil?]
+                                [:permission_id        nil?]
+                                [:attribute_remappings nil?]]]
+                       (t2/select GroupTableAccessPolicy :group_id (u/the-id other-group)))))))))))))
 
 (deftest grant-sandbox-perms-dont-delete-gtaps-test
   (testing "PUT /api/permissions/graph"
@@ -156,10 +156,9 @@
   (mt/with-model-cleanup [PersistedInfo]
     (testing "Queries from cache if not sandboxed"
       (mt/with-current-user (mt/user->id :rasta)
-        (mt/with-temp*
-          [Card [card {:dataset_query (mt/mbql-query venues)
-                       :dataset true
-                       :database_id (mt/id)}]]
+        (mt/with-temp [Card card {:dataset_query (mt/mbql-query venues)
+                                  :dataset true
+                                  :database_id (mt/id)}]
           (fake-persist-card! card)
           (is (str/includes?
                (:query (qp/compile
@@ -173,10 +172,9 @@
         {:gtaps {:venues {:query (mt/mbql-query venues)
                           :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
          :attributes {"cat" 50}}
-        (mt/with-temp*
-          [Card [card {:dataset_query (mt/mbql-query venues)
-                       :dataset true
-                       :database_id (mt/id)}]]
+        (mt/with-temp [Card card {:dataset_query (mt/mbql-query venues)
+                                  :dataset true
+                                  :database_id (mt/id)}]
           (fake-persist-card! card)
           (is (not (str/includes?
                     (:query (qp/compile

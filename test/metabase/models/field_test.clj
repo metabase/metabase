@@ -41,9 +41,9 @@
 
 (deftest identity-hash-test
   (testing "Field hashes are composed of the name and the table's identity-hash"
-    (mt/with-temp* [Database [db    {:name "field-db" :engine :h2}]
-                    Table    [table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
-                    Field    [field {:name "sku" :table_id (:id table)}]]
+    (mt/with-temp [Database db    {:name "field-db" :engine :h2}
+                   Table    table {:schema "PUBLIC" :name "widget" :db_id (:id db)}
+                   Field    field {:name "sku" :table_id (:id table)}]
       (let [table-hash (serdes/identity-hash table)]
         (is (= "dfd77225"
                (serdes/raw-hash ["sku" table-hash])

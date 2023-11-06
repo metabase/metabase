@@ -24,7 +24,7 @@ POT_NAME="locales/metabase.pot"
 POT_BACKEND_NAME="locales/metabase-backend.pot"
 # NOTE: hardcoded in .babelrc
 POT_FRONTEND_NAME="locales/metabase-frontend.pot"
-# NOTE: hardcoded in src/metabase/automagic_dashboards/rules.clj
+# NOTE: hardcoded in src/metabase/automagic_dashboards/dashboard_templates.clj
 POT_AUTODASH_NAME="locales/metabase-automatic-dashboards.pot"
 
 mkdir -p "locales"

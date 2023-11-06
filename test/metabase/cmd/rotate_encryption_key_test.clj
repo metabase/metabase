@@ -35,7 +35,7 @@
                                 "select value from setting where setting.key=?;") keyy]))))
 
 (deftest cmd-rotate-encryption-key-errors-when-failed-test
-  (with-redefs [rotate-encryption-key! #(throw "err")
+  (with-redefs [rotate-encryption-key! #(throw (Exception. "err"))
                 cmd/system-exit! identity]
     (is (= 1 (cmd/rotate-encryption-key
               "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A=")))))
@@ -75,7 +75,7 @@
 
                       ;; while we're at it, disable the setting cache entirely; we are effectively creating a new app DB
                       ;; so the cache itself is invalid and can only mask the real issues
-                      setting/*disable-cache*         true?
+                      setting/*disable-cache*         true
                       mdb.connection/*application-db* (mdb.connection/application-db driver/*driver* data-source)]
               (when-not (= driver/*driver* :h2)
                 (tx/create-db! driver/*driver* {:database-name db-name}))

@@ -9,9 +9,7 @@
    [metabase.driver :as driver]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -61,10 +59,10 @@
 ;;; ------------------------------------------------- Normalization --------------------------------------------------
 
 ;; TODO - this has been moved to `metabase.mbql.util`; use that implementation instead.
-(s/defn ^:deprecated normalize-token :- s/Keyword
+(mu/defn ^:deprecated normalize-token :- :keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
-  [token :- su/KeywordOrString]
+  [token :- [:or :keyword :string]]
   (-> (name token)
       u/lower-case-en
       (str/replace #"_" "-")
@@ -73,12 +71,11 @@
 
 ;;; ---------------------------------------------------- Hashing -----------------------------------------------------
 
-(defn- select-keys-for-hashing
+(mu/defn ^:private select-keys-for-hashing
   "Return `query` with only the keys relevant to hashing kept.
   (This is done so irrelevant info or options that don't affect query results doesn't result in the same query
   producing different hashes.)"
-  [query]
-  {:pre [(map? query)]}
+  [query :- :map]
   (let [{:keys [constraints parameters], :as query} (select-keys query [:database :type :query :native :parameters
                                                                         :constraints])]
     (cond-> query
@@ -86,9 +83,9 @@
       (empty? parameters)  (dissoc :parameters))))
 
 #_{:clj-kondo/ignore [:non-arg-vec-return-type-hint]}
-(s/defn ^bytes query-hash :- (Class/forName "[B")
+(mu/defn ^"[B" query-hash :- bytes?
   "Return a 256-bit SHA3 hash of `query` as a key for the cache. (This is returned as a byte array.)"
-  [query]
+  [query :- :map]
   (buddy-hash/sha3-256 (json/generate-string (select-keys-for-hashing query))))
 
 

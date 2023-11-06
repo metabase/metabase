@@ -9,11 +9,10 @@ import type {
 } from "metabase-types/api";
 
 import Button from "metabase/core/components/Button";
-import Form from "metabase/core/components/Form";
-import FormProvider from "metabase/core/components/FormProvider";
+import { Form, FormProvider } from "metabase/forms";
 import FormInput from "metabase/core/components/FormInput";
 import FormSelect from "metabase/core/components/FormSelect";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import {
   FieldLabel,
   FieldLabelContainer,
@@ -59,10 +58,10 @@ export function ActionSidebarFn({
 
   const dashcard = useMemo(
     () =>
-      dashboard.ordered_cards.find(
+      dashboard.dashcards.find(
         dc => dc?.id === dashcardId && isActionDashCard(dc),
       ) as ActionDashboardCard | undefined,
-    [dashboard.ordered_cards, dashcardId],
+    [dashboard.dashcards, dashcardId],
   );
 
   if (!dashcard) {

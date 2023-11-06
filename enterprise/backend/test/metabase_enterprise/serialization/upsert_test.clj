@@ -80,6 +80,9 @@
                   :visualization_settings (if (= 1 instance-num) {:column_settings {}}
                                                                  {:click_behavior {}}))
 
+    (isa? model Metric)
+    (assoc entity :table_id (mt/id :checkins))
+
     :else
     entity))
 
@@ -89,10 +92,10 @@
           [e1 e2] (if (contains? (set id-cond) :name)
                     [{:name "a"} {:name "b"}]
                     [{} {}])]
-      (mt/with-temp* [Dashboard [dashboard {:name "Dummy Dashboard"}]
-                      ;; create an additional entity so we're sure whe get the right one
-                      model     [_ (dummy-entity dashboard model e1 1)]
-                      model     [{id :id} (dummy-entity dashboard model e2 2)]]
+      (mt/with-temp [Dashboard dashboard {:name "Dummy Dashboard"}
+                     ;; create an additional entity so we're sure whe get the right one
+                     model     _ (dummy-entity dashboard model e1 1)
+                     model     {id :id} (dummy-entity dashboard model e2 2)]
         (let [e (t2/select-one model (first (t2/primary-keys model)) id)]
           ;; make sure that all columns in identity-condition actually exist in the model
           (is (= (set id-cond) (-> e

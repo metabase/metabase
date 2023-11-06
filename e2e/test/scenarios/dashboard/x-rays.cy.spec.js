@@ -1,24 +1,22 @@
 import {
   restore,
-  getDimensionByName,
   visitQuestionAdhoc,
-  summarize,
-  visualize,
-  startNewQuestion,
   main,
   addOrUpdateDashboardCard,
   visitDashboardAndCreateTab,
   popover,
   getDashboardCards,
+  saveDashboard,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
 
-describe("scenarios > x-rays", () => {
+describe("scenarios > x-rays", { tags: "@slow" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -103,41 +101,46 @@ describe("scenarios > x-rays", () => {
       cy.createNativeQuestion({
         name: "15655",
         native: { query: "select * from people" },
+      }).then(({ body: { id } }) => {
+        cy.createQuestion(
+          {
+            name: "Count of 15655 by SOURCE",
+            display: "bar",
+            query: {
+              "source-table": `card__${id}`,
+              aggregation: [["count"]],
+              breakout: [["field", "SOURCE", { "base-type": "type/Text" }]],
+            },
+          },
+          { visitQuestion: true },
+        );
+
+        cy.get(".bar").first().click({ force: true });
+
+        popover().within(() => {
+          cy.findByText("Automatic insights…").click();
+          cy.findByText(action).click();
+        });
+
+        // At this point, we ensure that the dashboard is created and displayed
+        // There are corresponding unit tests so if the timing/flake burden becomes too great, the rest of this test can be removed
+        cy.intercept("POST", "/api/dataset").as("postDataset");
+
+        cy.wait(Array(XRAY_DATASETS).fill("@postDataset"), {
+          timeout: 15 * 1000,
+        });
+
+        cy.wait("@xray").then(xhr => {
+          expect(xhr.response.body.cause).not.to.exist;
+          expect(xhr.response.statusCode).not.to.eq(500);
+        });
+
+        main().within(() => {
+          cy.findByText("A look at the number of 15655").should("exist");
+        });
+
+        cy.get(".DashCard");
       });
-
-      startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved Questions").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("15655").click();
-      visualize();
-      summarize();
-      getDimensionByName({ name: "SOURCE" }).click();
-
-      cy.intercept("POST", "/api/dataset").as("postDataset");
-
-      cy.button("Done").click();
-      cy.get(".bar").first().click({ force: true });
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Automatic insights…").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(action).click();
-
-      for (let c = 0; c < XRAY_DATASETS; ++c) {
-        cy.wait("@postDataset");
-      }
-
-      cy.wait("@xray").then(xhr => {
-        expect(xhr.response.body.cause).not.to.exist;
-        expect(xhr.response.statusCode).not.to.eq(500);
-      });
-
-      main().within(() => {
-        cy.findByText("A look at the number of 15655").should("exist");
-      });
-
-      cy.get(".DashCard");
     });
 
     it(`"${action.toUpperCase()}" should not show NULL in titles of generated dashboard cards (metabase#15737)`, () => {
@@ -261,29 +264,31 @@ describe("scenarios > x-rays", () => {
   it("should be able to open x-ray on a dashcard from a dashboard with multiple tabs", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    return cy.createDashboard(name).then(({ body: { id: dashboard_id } }) => {
-      addOrUpdateDashboardCard({
-        card_id: 3,
-        dashboard_id,
-        card: {
-          row: 0,
-          col: 0,
-          size_x: 24,
-          size_y: 10,
-          visualization_settings: {},
-        },
+    return cy
+      .createDashboard({ name: "my dashboard" })
+      .then(({ body: { id: dashboard_id } }) => {
+        addOrUpdateDashboardCard({
+          card_id: ORDERS_BY_YEAR_QUESTION_ID,
+          dashboard_id,
+          card: {
+            row: 0,
+            col: 0,
+            size_x: 24,
+            size_y: 10,
+            visualization_settings: {},
+          },
+        });
+        visitDashboardAndCreateTab({ dashboardId: dashboard_id, save: false });
+        cy.findByRole("tab", { name: "Tab 1" }).click();
+        saveDashboard();
+
+        cy.get("circle").eq(0).click({ force: true });
+        popover().findByText("Automatic insights…").click();
+        popover().findByText("X-ray").click();
+        cy.wait("@dataset", { timeout: 60000 });
+
+        // Ensure charts actually got rendered
+        cy.get("text.x-axis-label").contains("Created At");
       });
-
-      visitDashboardAndCreateTab({ dashboardId: dashboard_id });
-      cy.findByRole("tab", { name: "Tab 1" }).click();
-
-      cy.get("circle").eq(0).click({ force: true });
-      popover().findByText("Automatic insights…").click();
-      popover().findByText("X-ray").click();
-      cy.wait("@dataset", { timeout: 30000 });
-
-      // Ensure charts actually got rendered
-      cy.get("text.x-axis-label").contains("Created At");
-    });
   });
 });

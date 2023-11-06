@@ -7,9 +7,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
-   [metabase-enterprise.serialization.v2.seed-entity-ids :as v2.seed-entity-ids]
+   [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.db.data-migrations]
    [metabase.models]
    [metabase.models.revision-test]
    [metabase.models.serialization :as serdes]))
@@ -17,7 +16,6 @@
 (set! *warn-on-reflection* true)
 
 (comment metabase.models/keep-me
-         metabase.db.data-migrations/keep-me
          metabase.models.revision-test/keep-me)
 
 (def ^:private entities-external-name
@@ -34,8 +32,7 @@
   - not exported in serialization; or
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
-  #{:model/DataMigrations
-    :model/HTTPAction
+  #{:model/HTTPAction
     :model/ImplicitAction
     :model/QueryAction
     :model/Activity
@@ -44,7 +41,6 @@
     :model/CardBookmark
     :model/CollectionBookmark
     :model/DashboardBookmark
-    :metabase.models.collection.root/RootCollection
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
@@ -66,9 +62,9 @@
     :model/QueryCache
     :model/QueryExecution
     :model/Revision
-    :model/FakedCard
     :model/Secret
     :model/Session
+    :model/TablePrivileges
     :model/TaskHistory
     :model/TimelineEvent
     :model/User
@@ -77,7 +73,9 @@
     :model/ConnectionImpersonation})
 
 (deftest ^:parallel comprehensive-entity-id-test
-  (doseq [model (->> (v2.seed-entity-ids/toucan-models)
+  (doseq [model (->> (v2.entity-ids/toucan-models)
+                     (remove (fn [model]
+                               (not= (namespace model) "model")))
                      (remove entities-not-exported)
                      (remove entities-external-name))]
     (testing (format (str "Model %s should either: have the ::mi/entity-id property, or be explicitly listed as having "
@@ -86,7 +84,7 @@
       (is (serdes.backfill/has-entity-id? model)))))
 
 (deftest ^:parallel comprehensive-identity-hash-test
-  (doseq [model (->> (v2.seed-entity-ids/toucan-models)
+  (doseq [model (->> (v2.entity-ids/toucan-models)
                      (remove entities-not-exported))]
     (testing (format "Model %s should implement identity-hash-fields" model)
       (is (some? (try

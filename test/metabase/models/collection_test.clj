@@ -41,31 +41,27 @@
     (is (= "MetaBase@metabase.com's Personal Collection"
            (collection/format-personal-collection-name nil nil "MetaBase@metabase.com" :site)))))
 
+(deftest format-personal-collection-name-length-test
+  (testing "test that an unrealistically long collection name with unicode letters is still less than the max length for a slug (metabase#33917)"
+    (mt/with-temporary-setting-values [site-locale "ru"]
+      (is (< (count (#'collection/slugify (collection/format-personal-collection-name (repeat 20 "\u0411") ; Cyrillic "b" character
+                                                                                      (repeat 20 "\u0411")
+                                                                                      "MetaBase@metabase.com"
+                                                                                      :site)))
+             (var-get #'collection/collection-slug-max-length))))))
+
 (deftest create-collection-test
   (testing "test that we can create a new Collection with valid inputs"
-    (t2.with-temp/with-temp [Collection collection {:name "My Favorite Cards", :color "#ABCDEF"}]
+    (t2.with-temp/with-temp [Collection collection {:name "My Favorite Cards"}]
       (is (partial= (merge
                      (mt/object-defaults Collection)
                      {:name              "My Favorite Cards"
                       :slug              "my_favorite_cards"
                       :description       nil
-                      :color             "#ABCDEF"
                       :archived          false
                       :location          "/"
                       :personal_owner_id nil})
                     collection)))))
-
-(deftest color-validation-test
-  (testing "Collection colors should be validated when inserted into the DB"
-    (doseq [[input msg] {nil        "Missing color"
-                         "#ABC"     "Too short"
-                         "#BCDEFG"  "Invalid chars"
-                         "#ABCDEFF" "Too long"
-                         "ABCDEF"   "Missing hash prefix"}]
-      (testing msg
-        (is (thrown?
-             Exception
-             (t2/insert! Collection {:name "My Favorite Cards", :color input})))))))
 
 (deftest with-temp-defaults-test
   (testing "double-check that `with-temp-defaults` are working correctly for Collection"
@@ -358,7 +354,7 @@
 (defmacro ^:private with-collection-in-location [[collection-binding location] & body]
   `(let [name# (mt/random-name)]
      (try
-       (let [~collection-binding (first (t2/insert-returning-instances! Collection :name name#, :color "#ABCDEF", :location ~location))]
+       (let [~collection-binding (first (t2/insert-returning-instances! Collection :name name#, :location ~location))]
          ~@body)
        (finally
          (t2/delete! Collection :name name#)))))
@@ -1250,6 +1246,31 @@
       (is (malli= [:map [:personal_collection_id ms/PositiveInt]]
                   (t2/hydrate temp-user :personal_collection_id))))))
 
+(deftest hydrate-is-personal-test
+  (binding [collection/*allow-deleting-personal-collections* true]
+    (mt/with-temp
+      [:model/User       {user-id :id}               {}
+       :model/Collection {personal-coll :id}         {:personal_owner_id user-id}
+       :model/Collection {nested-personal-coll :id}  {:location          (format "/%d/" personal-coll)
+                                                      :personal_owner_id nil}
+       :model/Collection {top-level-coll :id}        {:location "/"}
+       :model/Collection {nested-top-level-coll :id} {:location (format "/%d/" top-level-coll)}]
+      (let [check-is-personal (fn [id-or-ids]
+                                (if (int? id-or-ids)
+                                  (-> (t2/select-one :model/Collection id-or-ids)
+                                      (t2/hydrate :is_personal)
+                                      :is_personal)
+                                  (as-> (t2/select :model/Collection :id [:in id-or-ids] {:order-by [:id]}) collections
+                                    (t2/hydrate collections :is_personal)
+                                    (map :is_personal collections))))]
+
+        (testing "simple hydration and batched hydration should return correctly"
+          (is (= [true true false false]
+                 (map check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll])
+                 (check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll]))))
+        (testing "root collection shouldn't be hydrated"
+          (is (= nil (t2/hydrate nil :is_personal)))
+          (is (= [nil true] (map :is_personal (t2/hydrate [nil (t2/select-one :model/Collection personal-coll)] :is_personal)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    Moving Collections "Across the Boundary"                                    |
@@ -1430,7 +1451,6 @@
              #"Collection must be in the same namespace as its parent"
              (t2/insert! Collection
                          {:location  (format "/%d/" (:id parent-collection))
-                          :color     "#F38630"
                           :name      "Child Collection"
                           :namespace child-namespace}))))
 
@@ -1456,8 +1476,7 @@
            clojure.lang.ExceptionInfo
            #"Personal Collections must be in the default namespace"
            (t2/insert! Collection
-                       {:color             "#F38630"
-                        :name              "Personal Collection"
+                       {:name              "Personal Collection"
                         :namespace         "x"
                         :personal_owner_id user-id}))))))
 

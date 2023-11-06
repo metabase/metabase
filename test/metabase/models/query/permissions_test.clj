@@ -125,9 +125,9 @@
            :database (mt/id)})))
 
   (testing "if current user is bound, we should ignore that for purposes of calculating query permissions"
-    (mt/with-temp* [Database [db]
-                    Table    [table {:db_id (u/the-id db), :schema nil}]
-                    Field    [_     {:table_id (u/the-id table)}]]
+    (mt/with-temp [Database db    {}
+                   Table    table {:db_id (u/the-id db) :schema nil}
+                   Field    _     {:table_id (u/the-id table)}]
       (perms/revoke-data-perms! (perms-group/all-users) db)
       (binding [*current-user-permissions-set* (atom nil)
                 *current-user-id*              (mt/user->id :rasta)]
@@ -172,11 +172,11 @@
               (query-with-source-card card))))))
 
   (testing "if source Card *is* in a Collection, we require read perms for that Collection"
-    (mt/with-temp* [Collection [collection {}]
-                    Card [card {:collection_id (u/the-id collection)
-                                :dataset_query {:database (mt/id)
-                                                :type     :query
-                                                :query    {:source-table (mt/id :venues)}}}]]
+    (mt/with-temp [Collection collection {}
+                   Card card {:collection_id (u/the-id collection)
+                              :dataset_query {:database (mt/id)
+                                              :type     :query
+                                              :query    {:source-table (mt/id :venues)}}}]
       (is (= #{(perms/collection-read-path collection)}
              (query-perms/perms-set
               (query-with-source-card card)))))))

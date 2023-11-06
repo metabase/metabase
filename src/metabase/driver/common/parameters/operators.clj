@@ -8,7 +8,6 @@
                {:source-field 5}]]
      :value [3 5]}"
   (:require
-   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.params :as params]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -18,7 +17,7 @@
 
 (s/defn ^:private operator-arity :- (s/maybe (s/enum :unary :binary :variadic))
   [param-type]
-  (get-in lib.schema.parameter/types [param-type :operator]))
+  (get-in mbql.s/parameter-types [param-type :operator]))
 
 (defn operator?
   "Returns whether param-type is an \"operator\" type."
@@ -62,7 +61,7 @@
   [{param-type :type [a b :as param-value] :value [_ field :as _target] :target options :options :as _param}]
   (verify-type-and-arity field param-type param-value)
   (let [field' (params/wrap-field-id-if-needed field)]
-    (condp = (operator-arity param-type)
+    (case (operator-arity param-type)
       :binary
       (cond-> [(keyword (name param-type)) field' a b]
         (boolean options) (conj options))

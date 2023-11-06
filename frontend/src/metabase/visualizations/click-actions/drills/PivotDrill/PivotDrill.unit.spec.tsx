@@ -5,10 +5,11 @@ import {
   PEOPLE_ID,
   PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { createMockMetadata } from "__support__/metadata";
 import type { DatasetColumn } from "metabase-types/api";
 import type { ClickActionProps } from "metabase/visualizations/types";
+
 import { PivotDrill } from "./PivotDrill";
 
 describe("PivotDrill", () => {
@@ -98,7 +99,7 @@ function setup() {
     series: [],
     onClick: jest.fn(),
     onChangeCardAndRun: jest.fn(),
-    onChange: jest.fn(),
+    onUpdateVisualizationSettings: jest.fn(),
     onResize: jest.fn(),
     onClose: jest.fn(),
   };

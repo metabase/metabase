@@ -15,7 +15,9 @@
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.email-test :as et]
    [metabase.http-client :as client]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
@@ -27,7 +29,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.initialize :as initialize]
    [metabase.test.persistence :as test.persistence]
-   [metabase.test.redefs]
+   [metabase.test.redefs :as test.redefs]
    [metabase.test.util :as tu]
    [metabase.test.util.async :as tu.async]
    [metabase.test.util.i18n :as i18n.tu]
@@ -37,7 +39,6 @@
    [metabase.test.util.timezone :as test.tz]
    [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
-   [toucan.util.test :as tt]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
@@ -60,10 +61,12 @@
   et/keep-me
   i18n.tu/keep-me
   initialize/keep-me
+  lib.metadata.jvm/keep-me
   mb.hawk.init/keep-me
   mb.hawk.parallel/keep-me
-  metabase.test.redefs/keep-me
+  test.redefs/keep-me
   mw.session/keep-me
+  qp.store/keep-me
   qp.test-util/keep-me
   qp/keep-me
   sql-jdbc.tu/keep-me
@@ -73,7 +76,6 @@
   test.persistence/keep-me
   test.tz/keep-me
   test.users/keep-me
-  tt/keep-me
   tu.async/keep-me
   tu.log/keep-me
   tu.misc/keep-me
@@ -83,7 +85,7 @@
   tx/keep-me)
 
 ;; Add more stuff here as needed
-#_{:clj-kondo/ignore [:discouraged-var]}
+#_{:clj-kondo/ignore [:discouraged-var :deprecated-var]}
 (p/import-vars
  [actions.test-util
   with-actions
@@ -114,8 +116,7 @@
 
  [datasets
   test-driver
-  test-drivers
-  when-testing-driver]
+  test-drivers]
 
  [driver
   with-driver]
@@ -136,7 +137,9 @@
   authenticate
   build-url
   client
-  client-full-response]
+  real-client
+  client-full-response
+  client-real-response]
 
  [i18n.tu
   with-mock-i18n-bundles
@@ -145,6 +148,9 @@
  [initialize
   initialize-if-needed!]
 
+ [lib.metadata.jvm
+  application-database-metadata-provider]
+
  [mw.session
   with-current-user]
 
@@ -152,6 +158,9 @@
   compile
   preprocess
   process-query]
+
+ [qp.store
+  with-metadata-provider]
 
  [qp.test-util
   card-with-source-metadata-for-query
@@ -167,10 +176,8 @@
   normal-drivers-without-feature
   rows
   rows+column-names
-  store-contents
-  with-bigquery-fks!
   with-database-timezone-id
-  with-everything-store
+  with-mock-fks-for-drivers-without-fk-constraints
   with-report-timezone-id
   with-results-timezone-id]
 
@@ -193,15 +200,18 @@
   user->id
   user-descriptor
   user-http-request
+  user-real-request
   with-group
   with-group-for-user
   with-test-user]
 
- [tt
-  with-temp*]
-
  [t2.with-temp
+  with-temp
   with-temp-defaults]
+
+ [test.redefs
+  with-temp!
+  with-ensure-with-temp-no-transaction!]
 
  [tu
   boolean-ids-and-timestamps
@@ -234,7 +244,8 @@
   with-temp-vals-in-db
   with-temporary-setting-values
   with-temporary-raw-setting-values
-  with-user-in-groups]
+  with-user-in-groups
+  with-verified-cards]
 
  [tu.async
   wait-for-result
@@ -282,10 +293,4 @@
   set-test-drivers!
   with-test-drivers])
 
-;;; these are deprecated at runtime so Kondo doesn't complain, also because we can't go around deprecating stuff from
-;;; other libaries any other way. They're marked deprecated to encourage you to use the `t2.with-temp` versions.
-#_{:clj-kondo/ignore [:discouraged-var]}
-(doseq [varr [#'tt/with-temp
-              #'tt/with-temp*
-              #'with-temp*]]
-  (alter-meta! varr assoc :deprecated true))
+(alter-meta! #'with-temp update :doc #(str % "\n\nNote: this version of [[with-temp]] will execute body in a transaction, for cases where that's not desired, use [[mt/with-temp!]]\n"))

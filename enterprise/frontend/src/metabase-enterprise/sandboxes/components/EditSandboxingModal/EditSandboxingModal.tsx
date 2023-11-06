@@ -10,7 +10,7 @@ import ActionButton from "metabase/components/ActionButton";
 import Radio from "metabase/core/components/Radio";
 import type { IconName } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
-import EntityName from "metabase/entities/containers/EntityName";
+import { EntityName } from "metabase/entities/containers/EntityName";
 
 import QuestionLoader from "metabase/containers/QuestionLoader";
 import type { GroupTableAccessPolicy, UserAttribute } from "metabase-types/api";

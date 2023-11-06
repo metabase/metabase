@@ -1,7 +1,7 @@
 (ns metabase.models.task-history-test
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.models :refer [TaskHistory]]
    [metabase.models.task-history :as task-history]
    [metabase.test :as mt]
@@ -38,13 +38,13 @@
           t3-start (add-second t2-start)
           t4-start (add-second t3-start)
           t5-start (add-second t4-start)]
-      (mt/with-temp* [TaskHistory [t1 (make-10-millis-task t1-start)]
-                      TaskHistory [t2 (make-10-millis-task t2-start)]
-                      TaskHistory [t3 (make-10-millis-task t3-start)]
-                      TaskHistory [t4 (assoc (make-10-millis-task t4-start)
-                                             :task task-4)]
-                      TaskHistory [t5 (assoc (make-10-millis-task t5-start)
-                                             :task task-5)]]
+      (mt/with-temp [TaskHistory t1 (make-10-millis-task t1-start)
+                     TaskHistory t2 (make-10-millis-task t2-start)
+                     TaskHistory t3 (make-10-millis-task t3-start)
+                     TaskHistory t4 (assoc (make-10-millis-task t4-start)
+                                           :task task-4)
+                     TaskHistory t5 (assoc (make-10-millis-task t5-start)
+                                           :task task-5)]
         ;; When the sync process runs, it creates several TaskHistory rows. We just want to work with the
         ;; temp ones created, so delete any stale ones from previous tests
         (t2/delete! TaskHistory :id [:not-in (map u/the-id [t1 t2 t3 t4 t5])])
@@ -59,10 +59,10 @@
           task-2   (mt/random-name)
           t1-start (t/zoned-date-time)
           t2-start (add-second t1-start)]
-      (mt/with-temp* [TaskHistory [t1 (assoc (make-10-millis-task t1-start)
-                                             :task task-1)]
-                      TaskHistory [t2 (assoc (make-10-millis-task t2-start)
-                                             :task task-2)]]
+      (mt/with-temp [TaskHistory t1 (assoc (make-10-millis-task t1-start)
+                                           :task task-1)
+                     TaskHistory t2 (assoc (make-10-millis-task t2-start)
+                                           :task task-2)]
         ;; Cleanup any stale TalkHistory entries that are not the two being tested
         (t2/delete! TaskHistory :id [:not-in (map u/the-id [t1 t2])])
         ;; We're keeping 100 rows, but there are only 2 present, so there should be no affect on running this

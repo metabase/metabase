@@ -1,174 +1,164 @@
 (ns metabase.events.activity-feed
   (:require
-   [clojure.core.async :as a]
+   [clojure.set :as set]
    [metabase.events :as events]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.activity :as activity :refer [Activity]]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.activity :as activity]
    [metabase.models.table :as table]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(def ^:private activity-feed-topics
-  "The set of event topics which are subscribed to for use in the Metabase activity feed."
-  #{:alert-create
-    :alert-delete
-    :card-create
-    :card-update
-    :card-delete
-    :dashboard-create
-    :dashboard-delete
-    :dashboard-add-cards
-    :dashboard-remove-cards
-    :install
-    :metric-create
-    :metric-update
-    :metric-delete
-    :pulse-create
-    :pulse-delete
-    :segment-create
-    :segment-update
-    :segment-delete
-    :user-login}) ; this is only used these days the first time someone logs in to record 'user-joined' events
+(derive ::event :metabase/event)
 
-(defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for the activity feed."}
-  activity-feed-channel
-  (a/chan))
+(derive ::card-event ::event)
+(derive :event/card-create ::card-event)
+(derive :event/card-update ::card-event)
+(derive :event/card-delete ::card-event)
 
-;;; ------------------------------------------------ EVENT PROCESSING ------------------------------------------------
-
-(defmulti ^:private process-activity!
-  {:arglists '([model-name topic object])}
-  (fn [model-name _ _]
-    (keyword model-name)))
-
-(defmethod process-activity! :default
-  [model-name _ _]
-  (log/warn (trs "Don''t know how to process event with model {0}" model-name)))
-
-(defmethod process-activity! :card
-  [_ topic {query :dataset_query, dataset? :dataset :as object}]
-  (let [details-fn  #(cond-> (select-keys % [:name :description])
-                       ;; right now datasets are all models. In the future this will change so lets keep a breadcumb
-                       ;; around
-                       dataset? (assoc :original-model "card"))
-        query       (when (seq query)
-                      (try (qp/preprocess query)
-                           (catch Throwable e
-                             (log/error e (tru "Error preprocessing query:")))))
-        database-id (some-> query :database u/the-id)
-        table-id    (mbql.u/query->source-table-id query)]
+(methodical/defmethod events/publish-event! ::card-event
+  [topic {:keys [user-id] card :object :as _event}]
+  (let [{query :dataset_query
+         dataset? :dataset}   card
+        query                 (when (seq query)
+                                (try (qp/preprocess query)
+                                     (catch Throwable e
+                                       (log/error e (tru "Error preprocessing query:")))))
+        database-id           (some-> query :database u/the-id)
+        table-id              (mbql.u/query->source-table-id query)]
     (activity/record-activity!
-      :topic       topic
-      :object      object
-      :model       (when dataset? "dataset")
-      :details-fn  details-fn
-      :database-id database-id
-      :table-id    table-id)))
-
-(defmethod process-activity! :dashboard
-  [_ topic object]
-  (let [create-delete-details
-        #(select-keys % [:description :name])
-
-        add-remove-card-details
-        (fn [{:keys [dashcards] :as obj}]
-          ;; we expect that the object has just a dashboard :id at the top level
-          ;; plus a `:dashcards` attribute which is a vector of the cards added/removed
-          (-> (t2/select-one [Dashboard :description :name], :id (events/object->model-id topic obj))
-              (assoc :dashcards (for [{:keys [id card_id]} dashcards]
-                                  (-> (t2/select-one [Card :name :description], :id card_id)
-                                      (assoc :id id)
-                                      (assoc :card_id card_id))))))]
-    (activity/record-activity!
-      :topic      topic
-      :object     object
-      :details-fn (case topic
-                    :dashboard-create       create-delete-details
-                    :dashboard-delete       create-delete-details
-                    :dashboard-add-cards    add-remove-card-details
-                    :dashboard-remove-cards add-remove-card-details))))
-
-(defmethod process-activity! :metric
-  [_ topic object]
-  (let [details-fn  #(select-keys % [:name :description :revision_message])
-        table-id    (:table_id object)
-        database-id (table/table-id->database-id table-id)]
-    (activity/record-activity!
-      :topic       topic
-      :object      object
-      :details-fn  details-fn
-      :database-id database-id
-      :table-id    table-id)))
-
-(defmethod process-activity! :pulse
-  [_ topic object]
-  (let [details-fn #(select-keys % [:name])]
-    (activity/record-activity!
-      :topic       topic
-      :object      object
-      :details-fn  details-fn)))
-
-(defmethod process-activity! :alert
-  [_ topic {:keys [card] :as alert}]
-  (let [details-fn #(select-keys (:card %) [:name])]
-    (activity/record-activity!
-      ;; Alerts are centered around a card/question. Users always interact with the alert via the question
-      :model       "card"
+     {:topic       topic
+      :user-id     user-id
+      :model       (if dataset? "dataset" "card")
       :model-id    (:id card)
-      :topic       topic
-      :object      alert
-      :details-fn  details-fn)))
+      :object      card
+      :details     (cond-> (select-keys card [:name :description])
+                     ;; right now datasets are all models. In the future this will change so lets keep a breadcumb
+                     ;; around
+                     dataset? (assoc :original-model "card"))
+      :database-id database-id
+      :table-id    table-id})))
 
-(defmethod process-activity! :segment
-  [_ topic object]
-  (let [details-fn  #(select-keys % [:name :description :revision_message])
-        table-id    (:table_id object)
+(derive ::dashboard-event ::event)
+(derive :event/dashboard-create ::dashboard-event)
+(derive :event/dashboard-delete ::dashboard-event)
+(derive :event/dashboard-add-cards ::dashboard-event)
+(derive :event/dashboard-remove-cards ::dashboard-event)
+
+(methodical/defmethod events/publish-event! ::dashboard-event
+  [topic {:keys [dashcards user-id] dashboard :object :as _event}]
+  (let [details   (case topic
+                    ;; dashboard events
+                    (:event/dashboard-create
+                     :event/dashboard-delete)
+                    (select-keys dashboard [:description :name])
+                    ;; dashboard card events
+                    (:event/dashboard-add-cards
+                     :event/dashboard-remove-cards)
+                    (let [card-ids             (map :card_id dashcards)
+                          card-id->dashcard-id (into {} (map (juxt :card_id :id) dashcards))
+                          dashboard            (select-keys dashboard [:name :description])
+                          ;; TODO: do we still even use this information? if not let just save dashcards as is
+                          dashcards            (if (seq card-ids)
+                                                 (->> (t2/select [:model/Card :id :name :description] :id [:in card-ids])
+                                                      (map #(set/rename-keys % {:id :card_id}))
+                                                      (map #(assoc % :id (get card-id->dashcard-id (:card_id %)))))
+                                                 [])]
+                      (assoc dashboard :dashcards dashcards)))]
+    (activity/record-activity!
+     {:topic    topic
+      :model    "dashboard"
+      :model-id (:id dashboard)
+      :user-id  user-id
+      :object   dashboard
+      :details details})))
+
+(derive ::metric-event ::event)
+(derive :event/metric-create ::metric-event)
+(derive :event/metric-update ::metric-event)
+(derive :event/metric-delete ::metric-event)
+
+(methodical/defmethod events/publish-event! ::metric-event
+  [topic {:keys [user-id] metric :object :as event}]
+  (let [table-id    (:table_id metric)
         database-id (table/table-id->database-id table-id)]
     (activity/record-activity!
-      :topic       topic
-      :object      object
-      :details-fn  details-fn
+     {:topic       topic
+      :user-id     user-id
+      :model       "metric"
+      :model-id    (:id metric)
+      :object      metric
+      :details     (assoc (select-keys metric [:name :description])
+                          :revision_message  (:revision-message event))
       :database-id database-id
-      :table-id    table-id)))
+      :table-id    table-id})))
 
-(defmethod process-activity! :user
-  [_ topic object]
-  ;; we only care about login activity when its the users first session (a.k.a. new user!)
-  (when (and (= :user-login topic)
-             (:first_login object))
+(derive ::pulse-event ::event)
+(derive :event/pulse-create ::pulse-event)
+
+(methodical/defmethod events/publish-event! ::pulse-event
+  [topic {:keys [user-id] pulse :object :as _event}]
+  (activity/record-activity!
+   {:topic    topic
+    :model    "pulse"
+    :model-id (:id pulse)
+    :user-id  user-id
+    :object   pulse
+    :details  (select-keys pulse [:name])}))
+
+(derive ::alert-event ::event)
+(derive :event/alert-create ::alert-event)
+
+(methodical/defmethod events/publish-event! ::alert-event
+  [topic {:keys [user-id] alert :object :as _event}]
+  (let [{:keys [card]} alert]
     (activity/record-activity!
-      :topic    :user-joined
-      :user-id  (:user_id object)
-      :model-id (:user_id object))))
+     ;; Alerts are centered around a card/question. Users always interact with the alert via the question
+     {:topic      topic
+      :user-id    user-id
+      :model      "alert"
+      :model-id   (:id card)
+      :object     alert
+      :details    (select-keys card [:name])})))
 
-(defmethod process-activity! :install
-  [& _]
-  (when-not (t2/exists? Activity :topic "install")
-    (t2/insert! Activity, :topic "install", :model "install")))
+(derive ::segment-event ::event)
+(derive :event/segment-create ::segment-event)
+(derive :event/segment-update ::segment-event)
+(derive :event/segment-delete ::segment-event)
 
-(mu/defn process-activity-event! :- [:or [:= :success] (ms/InstanceOfClass Throwable)]
-  "Handle processing for a single event notification received on the activity-feed-channel. Returns `:success` if
-  processing completed successfully, or an Exception if not."
-  [activity-event]
-  ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
-  (try
-    (when-let [{topic :topic, object :item} activity-event]
-      (process-activity! (keyword (events/topic->model topic)) topic object)
-      :success)
-    (catch Throwable e
-      (log/warn e (trs "Failed to process activity event {0}" (pr-str (:topic activity-event))))
-      e)))
+(methodical/defmethod events/publish-event! ::segment-event
+  [topic {:keys [user-id revision-message] segment :object :as _event}]
+  (let [table-id    (:table_id segment)
+        database-id (table/table-id->database-id table-id)]
+    (activity/record-activity!
+     {:topic       topic
+      :model       "segment"
+      :model-id    (:id segment)
+      :user-id     user-id
+      :object      segment
+      :details     (assoc (select-keys segment [:name :description])
+                          :revision_message revision-message)
+      :database-id database-id
+      :table-id    table-id})))
 
+(derive ::user-joined-event ::event)
+(derive :event/user-joined ::user-joined-event)
 
-;;; --------------------------------------------------- LIFECYCLE ----------------------------------------------------
+(methodical/defmethod events/publish-event! ::user-joined-event
+  [topic {:keys [user-id] :as _event}]
+  (activity/record-activity!
+   {:topic    topic
+    :model    "user"
+    :user-id  user-id
+    :model-id user-id}))
 
-(defmethod events/init! ::ActivityFeed
-  [_]
-  (events/start-event-listener! activity-feed-topics activity-feed-channel process-activity-event!))
+(derive ::install-event ::event)
+(derive :event/install ::install-event)
+
+(methodical/defmethod events/publish-event! ::install-event
+  [_topic _event]
+  (when-not (t2/exists? :model/Activity :topic "install")
+    (t2/insert! :model/Activity :topic "install" :model "install")))

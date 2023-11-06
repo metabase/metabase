@@ -26,7 +26,7 @@ import {
 import type { Card, Data, GaugeLabelData, Position } from "./types";
 import Gauge from "./Gauge";
 
-interface GaugeContainerProps {
+export interface GaugeContainerProps {
   card: Card;
   data: Data;
   getColor: ColorGetter;

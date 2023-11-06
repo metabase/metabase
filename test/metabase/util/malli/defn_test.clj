@@ -142,3 +142,19 @@
        [:=> [:cat :int] out]
        [:=> [:cat :int :int] out]
        [:=> [:cat :any :any [:* :int]] out]])))
+
+(mu/defn ^:private add-ints :- :int
+  ^Integer [x :- :int y :- :int]
+  (+ x y))
+
+(deftest ^:parallel preserve-arglists-metadata-test
+  (is (= 'Integer
+         (-> '{:arities [:single {:args    ^{:tag Integer} [x :- :int y :- :int]
+                                  :prepost nil
+                                  :body    [(+ x y)]}]}
+             (#'mu.defn/deparameterized-arglists)
+             first
+             meta
+             :tag)))
+  (is (= 'Integer
+         (-> #'add-ints meta :arglists first meta :tag))))

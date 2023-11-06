@@ -1,12 +1,15 @@
 import userEvent from "@testing-library/user-event";
+import registerVisualizations from "metabase/visualizations/register";
 import { renderWithProviders, fireEvent, screen } from "__support__/ui";
 import {
   createMockCard,
-  createMockDashboardOrderedCard,
+  createMockDashboardCard,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
+
+registerVisualizations();
 
 const DEFAULT_PROPS = {
   series: [
@@ -141,7 +144,7 @@ describe("ChartSettings", () => {
     });
 
     setup({
-      dashcard: createMockDashboardOrderedCard({
+      dashcard: createMockDashboardCard({
         card: createMockCard({ visualization_settings: originalVizSettings }),
       }),
       settings: modifiedSettings,

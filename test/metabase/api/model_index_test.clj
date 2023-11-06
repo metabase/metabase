@@ -1,10 +1,11 @@
 (ns metabase.api.model-index-test
-  (:require [clojure.test :refer :all]
-            [metabase.analytics.snowplow-test :as snowplow-test]
-            [metabase.models.card :refer [Card]]
-            [metabase.test :as mt]
-            [toucan2.tools.with-temp :as t2.with-temp]
-            [toucan2.util :as u]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.models.card :refer [Card]]
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as t2.with-temp]
+   [toucan2.util :as u]))
 
 (deftest full-lifecycle-test
   (mt/dataset sample-dataset

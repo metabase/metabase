@@ -7,11 +7,11 @@ Cypress.Commands.add(
     ).then(({ body: { id: card_id } }) =>
       cy
         .request(`/api/dashboard/${dashboardId}`)
-        .then(({ body: { ordered_cards } }) =>
+        .then(({ body: { dashcards } }) =>
           cy
             .request("PUT", `/api/dashboard/${dashboardId}/cards`, {
               cards: [
-                ...ordered_cards,
+                ...dashcards,
                 {
                   id: -1,
                   card_id,

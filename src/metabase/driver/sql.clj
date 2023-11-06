@@ -8,11 +8,11 @@
    [metabase.driver.sql.parameters.substitution
     :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [potemkin :as p]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [potemkin :as p]))
 
 (comment sql.params.substitution/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
 
@@ -48,8 +48,12 @@
   [driver query]
   (sql.qp/mbql->native driver query))
 
-(s/defmethod driver/substitute-native-parameters :sql
-  [_ {:keys [query] :as inner-query} :- {:query su/NonBlankString, s/Keyword s/Any}]
+(defmethod driver/prettify-native-form :sql
+  [driver native-form]
+  (sql.u/format-sql-and-fix-params driver native-form))
+
+(mu/defmethod driver/substitute-native-parameters :sql
+  [_driver {:keys [query] :as inner-query} :- [:and [:map-of :keyword :any] [:map {:query ms/NonBlankString}]]]
   (let [[query params] (-> query
                            params.parse/parse
                            (sql.params.substitute/substitute (params.values/query->params-map inner-query)))]
@@ -73,7 +77,7 @@
 
 (defmulti set-role-statement
   "SQL for setting the active role for a connection, such as USE ROLE or equivalent, for the given driver."
-  {:arglists '([driver role])}
+  {:added "0.47.0" :arglists '([driver role])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -84,7 +88,7 @@
 (defmulti default-database-role
   "The name of the default role for a given database, used for queries that do not have custom user
   impersonation rules configured for them. This must be implemented for each driver that supports user impersonation."
-  {:arglists '(^String [driver database])}
+  {:added "0.47.0" :arglists '(^String [driver database])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 

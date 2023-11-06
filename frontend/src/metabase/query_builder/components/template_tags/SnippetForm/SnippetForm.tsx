@@ -5,13 +5,12 @@ import * as Yup from "yup";
 import { connect } from "react-redux";
 
 import Button from "metabase/core/components/Button";
-import Form from "metabase/core/components/Form";
-import FormProvider from "metabase/core/components/FormProvider";
+import { Form, FormProvider } from "metabase/forms";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 
-import * as Errors from "metabase/core/utils/errors";
+import * as Errors from "metabase/lib/errors";
 
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";

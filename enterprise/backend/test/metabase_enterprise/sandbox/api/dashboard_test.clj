@@ -22,24 +22,24 @@
                                    :query      (mt.tu/restricted-column-query (mt/id))}}
                      :attributes {:cat 50}}
       (perms/grant-permissions! &group (perms/table-read-path (mt/id :categories)))
-      (mt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
-                      Card          [{card-id :id}      {:name "Dashboard Test Card"}]
-                      DashboardCard [{_ :id}            {:dashboard_id       dashboard-id
-                                                         :card_id            card-id
-                                                         :parameter_mappings [{:card_id      card-id
-                                                                               :parameter_id "foo"
-                                                                               :target       [:dimension
-                                                                                              [:field (mt/id :venues :name) nil]]}
-                                                                              ;; should be returned normally since user has non-sandbox perms
-                                                                              {:card_id      card-id
-                                                                               :parameter_id "bar"
-                                                                               :target       [:dimension
-                                                                                              [:field (mt/id :categories :name) nil]]}
-                                                                              ;; shouldn't be returned since user has no perms
-                                                                              {:card_id      card-id
-                                                                               :parameter_id "bax"
-                                                                               :target       [:dimension
-                                                                                              [:field (mt/id :users :name) nil]]}]}]]
+      (mt/with-temp [Dashboard     {dashboard-id :id} {:name "Test Dashboard"}
+                     Card          {card-id :id}      {:name "Dashboard Test Card"}
+                     DashboardCard {_ :id}            {:dashboard_id       dashboard-id
+                                                       :card_id            card-id
+                                                       :parameter_mappings [{:card_id      card-id
+                                                                             :parameter_id "foo"
+                                                                             :target       [:dimension
+                                                                                            [:field (mt/id :venues :name) nil]]}
+                                                                            ;; should be returned normally since user has non-sandbox perms
+                                                                            {:card_id      card-id
+                                                                             :parameter_id "bar"
+                                                                             :target       [:dimension
+                                                                                            [:field (mt/id :categories :name) nil]]}
+                                                                            ;; shouldn't be returned since user has no perms
+                                                                            {:card_id      card-id
+                                                                             :parameter_id "bax"
+                                                                             :target       [:dimension
+                                                                                            [:field (mt/id :users :name) nil]]}]}]
         (is (= {(mt/id :venues :name) {:values   ["Garaje"
                                                   "Gordo Taqueria"
                                                   "La Tortilla"]
@@ -111,18 +111,16 @@
 (deftest parameters-with-source-is-card-test
   (testing "dashboard with a parameter that has source is a card, it should respects sandboxing"
     (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
-      (mt/with-temp*
-        [Card      [{card-id         :id}
-                    (merge (mt/card-with-source-metadata-for-query (mt/mbql-query categories))
-                           {:database_id     (mt/id)
-                            :table_id        (mt/id :categories)})]
-         Dashboard [{dashboard-id :id}
-                    {:parameters [{:id                   "abc"
-                                   :type                 "category"
-                                   :name                 "CATEGORY"
-                                   :values_source_type   "card"
-                                   :values_source_config {:card_id     card-id
-                                                          :value_field (mt/$ids $categories.name)}}]}]]
+      (mt/with-temp
+        [Card      {card-id         :id} (merge (mt/card-with-source-metadata-for-query (mt/mbql-query categories))
+                                                {:database_id     (mt/id)
+                                                 :table_id        (mt/id :categories)})
+         Dashboard {dashboard-id :id}    {:parameters [{:id                   "abc"
+                                                        :type                 "category"
+                                                        :name                 "CATEGORY"
+                                                        :values_source_type   "card"
+                                                        :values_source_config {:card_id     card-id
+                                                                               :value_field (mt/$ids $categories.name)}}]}]
 
         (testing "when getting values"
           (let [get-values (fn [user]

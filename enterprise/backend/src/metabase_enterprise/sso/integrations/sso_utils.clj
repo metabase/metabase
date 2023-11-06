@@ -9,25 +9,25 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (java.net URI URLDecoder)))
+   (java.net URI)))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private UserAttributes
-  {:first_name       (s/maybe su/NonBlankString)
-   :last_name        (s/maybe su/NonBlankString)
-   :email            su/Email
+  [:map {:closed true}
+   [:first_name       [:maybe ms/NonBlankString]]
+   [:last_name        [:maybe ms/NonBlankString]]
+   [:email            ms/Email]
    ;; TODO - we should avoid hardcoding this to make it easier to add new integrations. Maybe look at something like
    ;; the keys of `(methods sso/sso-get)`
-   :sso_source       (s/enum :saml :jwt)
-   :login_attributes (s/maybe {s/Any s/Any})})
+   [:sso_source       [:enum :saml :jwt]]
+   [:login_attributes [:maybe :map]]])
 
-(s/defn create-new-sso-user!
+(mu/defn create-new-sso-user!
   "This function is basically the same thing as the `create-new-google-auth-user` from `metabase.models.user`. We need
   to refactor the `core_user` table structure and the function used to populate it so that the enterprise product can
   reuse it"
@@ -56,10 +56,9 @@
   "Check if open redirect is being exploited in SSO. If so, or if the redirect-url is invalid, throw a 400."
   [redirect-url]
   (try
-    (let [decoded-url (some-> ^String redirect-url (URLDecoder/decode "UTF-8"))
-          host        (some-> decoded-url (URI.) (.getHost))
+    (let [host        (some-> redirect-url (URI.) (.getHost))
           our-host    (some-> (public-settings/site-url) (URI.) (.getHost))]
-      (api/check-400 (or (nil? decoded-url) (nil? host) (= host our-host))))
+      (api/check-400 (or (nil? redirect-url) (nil? host) (= host our-host))))
     (catch Exception e
       (log/error e "Invalid redirect URL")
       (throw (ex-info (tru "Invalid redirect URL")

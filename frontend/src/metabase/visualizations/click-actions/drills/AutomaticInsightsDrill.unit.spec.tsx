@@ -8,7 +8,7 @@ import {
   PEOPLE,
   PEOPLE_ID,
 } from "metabase-types/api/mocks/presets";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import type { ClickActionProps } from "metabase/visualizations/types";
 import { AutomaticInsightsDrill } from "./AutomaticInsightsDrill";
 
@@ -111,7 +111,7 @@ function setup() {
     series: [],
     onClick: jest.fn(),
     onChangeCardAndRun: jest.fn(),
-    onChange: jest.fn(),
+    onUpdateVisualizationSettings: jest.fn(),
     onResize: jest.fn(),
     onClose: jest.fn(),
   };

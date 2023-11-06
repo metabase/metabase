@@ -65,11 +65,13 @@ Note that [Block](#block-access) access is unavailable for individual tables/sch
 
 **Impersonation access** allows you to associate user attributes with database-defined roles and their privileges. Metabase queries made by people with attributes that you define will respect the grants given to the database roles. 
 
-You can use impersonation to give people access to the native/SQL editor, while at the same time restricting the their access to data based on a specific database role. And not just table-level access, but row-level access---or however you define access for that role in your database. Effectively what this means is that you can use impersonation to set up data sandbox-like access to your data, while letting people use the SQL editor to query that data. The difference is that, instead of setting up a data sandbox in Metabase, you need to set up that row-level security via the privileges granted to a role in your database.
+You can use impersonation to give people access to the native/SQL editor, while at the same time restricting their access to data based on a specific database role. And not just table-level access, but row-level access---or however you define access for that role in your database. Effectively what this means is that you can use impersonation to set up data sandbox-like access to your data, while letting people use the SQL editor to query that data. The difference is that, instead of setting up a data sandbox in Metabase, you need to set up that row-level security via the privileges granted to a role in your database.
 
-When you connect Metabase to a database, you use a database user account that has one or more database roles. When you give a group in Metabase unrestricted access to a database, that group will have the same privileges as the user account that you used to connect Metabase to that database.
+When you connect Metabase to a database, Metabase uses the database user account you provided that has one or more database roles. When you give a group in Metabase unrestricted access to a database, that group will have the same privileges as the user account that you used to connect Metabase to that database.
 
 If instead you want to give a group SQL access to some, but not all, of the schemas or tables in that database, you can create an additional role in your database that only includes a subset of those tables---or even specific row-level access---and then use Metabase's impersonation feature to associate a user attribute with that role. Essentially what Metabase will do is take the user attribute and pass that attribute as a string into a `SET ROLE` or `USE ROLE` command for the database _before_ Metabase executes the query.
+
+Connection impersonation does not apply to users in the Metabase admins group, as their more permissive privileges take precedence.
 
 ### Setting up connection impersonation
 
@@ -83,7 +85,7 @@ For exactly how to create a new role in your database and grant that role privil
 **In your Metabase:**
 
 - Create a [new group](../people-and-groups/managing.md#groups), or select an existing group.
-- Assign a [user attribute](../people-and-groups/managing.md#adding-a-user-attribute) to that group. You'll use this user attribute to associate that group with a role that you created in your database. For example, if you created a role named "Sales" in your database with access to a subset of tables, you would add a user attribute "Sales" to the group. The user attribute should match the name of the role your database. Only some databases enforce case sensitivity, so you might want to make sure the attribute name and role match exactly just in case. 
+- Assign a [user attribute](../people-and-groups/managing.md#adding-a-user-attribute) to people in that group. You'll use this user attribute to associate people in that group with a role that you created in your database. For example, if you created a role named "Sales" in your database with access to a subset of tables, you would add a user attribute "Sales" to the group. The user attribute should match the name of the role in your database. Only some databases enforce case sensitivity, so you might want to make sure the attribute name and role match exactly just in case. 
 - Next, you'll need to apply the impersonation access to that group. Go to **Admin settings** > **Permissions** > **Data**.
 - Select the database you want to set permissions on.
 - Find the group that you want to associate with the database role you created. Under **Data access** for that group, select **Impersonation**.

@@ -24,6 +24,7 @@ describeEE("audit > auditing > questions", () => {
         "Orders, Count, Grouped by Created At (year)",
         "Orders, Count",
         "Orders",
+        "Orders Model",
       ];
 
       const QUERY_RUNS_ASC_ORDER = [...QUERY_RUNS_DESC_ORDER].reverse();

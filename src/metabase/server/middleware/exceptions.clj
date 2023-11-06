@@ -40,6 +40,7 @@
       (try
         (handler request respond raise)
         (catch Throwable e
+          (log/error e (trs "Exception in API call"))
           (raise e))))))
 
 (defmulti api-exception-response

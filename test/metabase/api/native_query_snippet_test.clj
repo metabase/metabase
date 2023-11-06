@@ -9,8 +9,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli.schema :as ms]
    [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -36,10 +35,10 @@
 (deftest list-snippets-api-test
   (grant-native-perms)
   (testing "GET /api/native-query-snippet"
-    (mt/with-temp* [NativeQuerySnippet [snippet-1 {:content "1"
-                                                   :name    "snippet_1"}]
-                    NativeQuerySnippet [snippet-2 {:content "2"
-                                                   :name    "snippet_2"}]]
+    (mt/with-temp [NativeQuerySnippet snippet-1 {:content "1"
+                                                 :name    "snippet_1"}
+                   NativeQuerySnippet snippet-2 {:content "2"
+                                                 :name    "snippet_2"}]
       (testing "list returns all snippets. Should work for all users"
         (doseq [test-user [:crowberto :rasta]]
           (testing (format "test user = %s" test-user)
@@ -65,8 +64,8 @@
   (grant-native-perms)
   (testing "POST /api/native-query-snippet"
     (testing "new snippet field validation"
-      (is (= {:errors {:content "value must be a string."}}
-             (mt/user-http-request :rasta :post 400 (snippet-url) {})))
+      (is (=? {:errors {:content "string"}}
+              (mt/user-http-request :rasta :post 400 (snippet-url) {})))
 
       (is (name-schema-error? (mt/user-http-request :rasta
                                                     :post 400 (snippet-url)
@@ -87,16 +86,17 @@
         (try
           (let [snippet-input    {:name "test-snippet", :description "Just null", :content "NULL"}
                 snippet-from-api (mt/user-http-request user :post 200 (snippet-url) snippet-input)]
-            (is (schema= {:id          su/IntGreaterThanZero
-                          :name        (s/eq "test-snippet")
-                          :description (s/eq "Just null")
-                          :content     (s/eq "NULL")
-                          :creator_id  (s/eq (mt/user->id user))
-                          :archived    (s/eq false)
-                          :created_at  java.time.OffsetDateTime
-                          :updated_at  java.time.OffsetDateTime
-                          s/Keyword    s/Any}
-                         snippet-from-api)))
+            (is (malli=
+                 [:map
+                  [:id          ms/PositiveInt]
+                  [:name        [:= "test-snippet"]]
+                  [:description [:= "Just null"]]
+                  [:content     [:= "NULL"]]
+                  [:creator_id  [:= (mt/user->id user)]]
+                  [:archived    [:= false]]
+                  [:created_at  (ms/InstanceOfClass java.time.OffsetDateTime)]
+                  [:updated_at  (ms/InstanceOfClass java.time.OffsetDateTime)]]
+                 snippet-from-api)))
           (finally
             (t2/delete! NativeQuerySnippet :name "test-snippet"))))))
 
@@ -167,8 +167,8 @@
               (is (= updated-desc (:description updated-snippet)))))))
 
       (testing "Attempting to change Snippet's name to one that's already in use should throw an error"
-        (mt/with-temp* [NativeQuerySnippet [_         {:name "test-snippet-1", :content "1"}]
-                        NativeQuerySnippet [snippet-2 {:name "test-snippet-2", :content "2"}]]
+        (mt/with-temp [NativeQuerySnippet _         {:name "test-snippet-1" :content "1"}
+                       NativeQuerySnippet snippet-2 {:name "test-snippet-2" :content "2"}]
           (is (= "A snippet with that name already exists. Please pick a different name."
                  (mt/user-http-request :crowberto :put 400 (snippet-url (:id snippet-2)) {:name "test-snippet-1"})))
           (is (= 1
@@ -189,8 +189,8 @@
   (grant-native-perms)
   (testing "PUT /api/native-query-snippet/:id"
     (testing "\nChange collection_id"
-      (t2.with-temp/with-temp [Collection collection-1 {:name "a Collection", :namespace "snippets"}
-                               Collection collection-2 {:name "another Collection", :namespace "snippets"}]
+      (t2.with-temp/with-temp [Collection collection-1 {:name "a Collection" :namespace "snippets"}
+                               Collection collection-2 {:name "another Collection" :namespace "snippets"}]
         (let [no-collection {:name "no Collection"}]
           (doseq [[source dest] [[no-collection collection-1]
                                  [collection-1 collection-2]

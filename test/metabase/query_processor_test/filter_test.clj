@@ -41,9 +41,9 @@
                    {:aggregation [[:count]]
                     :filter      [:= $liked false]}))))))))
 
-(defn- ->bool [x]                       ; SQLite returns 0/1 for false/true;
-  (condp = x                            ; Redshift returns nil/true.
-    0   false                           ; convert to false/true and restore sanity.
+(defn- ->bool [x] ; SQLite returns 0/1 for false/true;
+  (condp = x      ; Redshift returns nil/true.
+    0   false     ; convert to false/true and restore sanity.
     0M  false
     1   true
     1M  true
@@ -155,7 +155,7 @@
         (doseq [offset-unit   [:year :day]
                 interval-unit [:year :day]
                 compare-op    [:between := :< :<= :> :>=]
-                add-op        [:+ #_:-] ; TODO support subtraction like sql.qp/add-interval-honeysql-form (#23423)
+                add-op        [:+ :-]
                 compare-order (cond-> [:field-first]
                                 (not= compare-op :between) (conj :value-first))]
           (let [add-fn (fn [field interval]

@@ -2,6 +2,7 @@ import { assoc, dissoc, assocIn, updateIn, chain, merge } from "icepick";
 import reduceReducers from "reduce-reducers";
 import _ from "underscore";
 
+import produce from "immer";
 import { handleActions, combineReducers } from "metabase/lib/redux";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
@@ -114,10 +115,7 @@ const dashboards = handleActions(
       ...state,
       [dashcard.dashboard_id]: {
         ...state[dashcard.dashboard_id],
-        ordered_cards: [
-          ...state[dashcard.dashboard_id].ordered_cards,
-          dashcard.id,
-        ],
+        dashcards: [...state[dashcard.dashboard_id].dashcards, dashcard.id],
       },
     }),
     [CREATE_PUBLIC_LINK]: {
@@ -145,12 +143,15 @@ const dashboards = handleActions(
         ),
     },
     [Dashboards.actionTypes.UPDATE]: {
-      next: (state, { payload }) =>
-        assocIn(
-          state,
-          [payload.dashboard.id, "collection_id"],
-          payload.dashboard.collection_id,
-        ),
+      next: (state, { payload }) => {
+        return produce(state, draftState => {
+          const draftDashboard = draftState[payload.dashboard.id];
+          if (draftDashboard) {
+            draftDashboard.collection_id = payload.dashboard.collection_id;
+            draftDashboard.collection = payload.dashboard.collection;
+          }
+        });
+      },
     },
   },
   INITIAL_DASHBOARD_STATE.dashboards,
@@ -274,6 +275,7 @@ const isNavigatingBackToDashboard = handleActions(
   INITIAL_DASHBOARD_STATE.isNavigatingBackToDashboard,
 );
 
+// Many of these slices are also updated by `tabsReducer` in `frontend/src/metabase/dashboard/actions/tabs.ts`
 const dashcardData = handleActions(
   {
     // clear existing dashboard data when loading a dashboard
@@ -338,7 +340,11 @@ const parameterValues = handleActions(
 
 const draftParameterValues = handleActions(
   {
-    [INITIALIZE]: { next: () => ({}) },
+    [INITIALIZE]: {
+      next: (state, { payload: { clearCache = true } = {} }) => {
+        return clearCache ? {} : state;
+      },
+    },
     [FETCH_DASHBOARD]: {
       next: (
         state,
@@ -358,7 +364,6 @@ const draftParameterValues = handleActions(
     [REMOVE_PARAMETER]: {
       next: (state, { payload: { id } }) => dissoc(state, id),
     },
-    [RESET]: { next: () => ({}) },
   },
   {},
 );

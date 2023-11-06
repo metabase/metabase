@@ -137,10 +137,13 @@
          aggregations       (not-empty (lib.aggregation/aggregations-metadata query stage-number))
          columns            (if (or breakouts aggregations)
                               (concat breakouts aggregations)
-                              (let [stage (lib.util/query-stage query stage-number)]
-                                (lib.metadata.calculation/visible-columns query stage-number stage)))
+                              (let [stage   (lib.util/query-stage query stage-number)
+                                    options {:include-implicitly-joinable-for-source-card? false}]
+                                (lib.metadata.calculation/visible-columns query stage-number stage options)))
          columns            (filter orderable-column? columns)
-         existing-order-bys (order-bys query stage-number)]
+         existing-order-bys (->> (order-bys query stage-number)
+                                 (map (fn [[_tag _opts expr]]
+                                        expr)))]
      (cond
        (empty? columns)
        nil
@@ -149,21 +152,17 @@
        (vec columns)
 
        :else
-       (let [refs          (mapv lib.ref/ref columns)
-             ref->position (into {}
-                                 (map-indexed (fn [pos [_tag _opts expr]]
-                                                (when-let [closest-ref (lib.equality/find-closest-matching-ref
-                                                                        query
-                                                                        (lib.ref/ref expr)
-                                                                        refs)]
-                                                  [closest-ref pos])))
-                                 existing-order-bys)]
-         (mapv (fn [col a-ref]
-                 (let [pos (ref->position a-ref)]
-                   (cond-> col
-                     pos (assoc :order-by-position pos))))
-               columns
-               refs))))))
+       (let [matching (into {}
+                            (comp (map lib.ref/ref)
+                                  (keep-indexed (fn [index an-order-by]
+                                                  (when-let [col (lib.equality/find-matching-column
+                                                                   query stage-number an-order-by columns)]
+                                                    [col index]))))
+                            existing-order-bys)]
+         (mapv #(let [pos (matching %)]
+                  (cond-> %
+                    pos (assoc :order-by-position pos)))
+               columns))))))
 
 (def ^:private opposite-direction
   {:asc :desc

@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.test :as mt]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util.date-2 :as u.date]

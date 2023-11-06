@@ -13,7 +13,10 @@ import {
   main,
 } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
-import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ADMIN_PERSONAL_COLLECTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { admin } = USERS;
 
@@ -50,15 +53,15 @@ describe("scenarios > home > homepage", () => {
 
     it("should display x-rays for a user database", () => {
       cy.signInAsAdmin();
-      cy.addH2SampleDatabase({ name: "H2" });
+      cy.addSQLiteDatabase();
 
       cy.visit("/");
       cy.wait("@getXrayCandidates");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Here are some explorations of");
-      cy.findAllByRole("link").contains("H2");
+      cy.findAllByRole("link").contains("sqlite");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders").click();
+      cy.findByText("Number With Nulls").click();
 
       cy.wait("@getXrayDashboard");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -67,7 +70,7 @@ describe("scenarios > home > homepage", () => {
 
     it("should allow switching between multiple schemas for x-rays", () => {
       cy.signInAsAdmin();
-      cy.addH2SampleDatabase({ name: "H2" });
+      cy.addSQLiteDatabase({ name: "sqlite" });
       cy.intercept("/api/automagic-*/database/**", getXrayCandidates());
 
       cy.visit("/");
@@ -75,7 +78,7 @@ describe("scenarios > home > homepage", () => {
       cy.findByText(/Here are some explorations of the/);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("public");
-      cy.findAllByRole("link").contains("H2");
+      cy.findAllByRole("link").contains("sqlite");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -100,7 +103,7 @@ describe("scenarios > home > homepage", () => {
     it("should display recent items", () => {
       cy.signInAsAdmin();
 
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard");
 
@@ -118,7 +121,7 @@ describe("scenarios > home > homepage", () => {
 
     it("should display popular items for a new user", () => {
       cy.signInAsAdmin();
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard");
       cy.signOut();
@@ -138,7 +141,7 @@ describe("scenarios > home > homepage", () => {
     it("should not show pinned questions in recent items when viewed in a collection", () => {
       cy.signInAsAdmin();
 
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard");
 
@@ -197,11 +200,17 @@ describe("scenarios > home > custom homepage", () => {
       popover().findByText("Orders in a dashboard").click();
 
       cy.findByRole("navigation").findByText("Exit admin").click();
-      cy.location("pathname").should("equal", "/dashboard/1");
+      cy.location("pathname").should(
+        "equal",
+        `/dashboard/${ORDERS_DASHBOARD_ID}`,
+      );
 
       // Do a page refresh and test dashboard header
       cy.visit("/");
-      cy.location("pathname").should("equal", "/dashboard/1");
+      cy.location("pathname").should(
+        "equal",
+        `/dashboard/${ORDERS_DASHBOARD_ID}`,
+      );
 
       cy.findByLabelText("Edit dashboard").click();
       cy.findByTestId("edit-bar").findByText(
@@ -212,13 +221,11 @@ describe("scenarios > home > custom homepage", () => {
     it("should give you the option to set a custom home page using home page CTA", () => {
       cy.request("POST", "/api/collection", {
         name: "Personal nested Collection",
-        color: "#509ee3",
         description: `nested 1 level`,
         parent_id: ADMIN_PERSONAL_COLLECTION_ID,
       }).then(({ body }) => {
         cy.request("POST", "/api/collection", {
           name: "Personal nested nested Collection",
-          color: "#509ee3",
           description: `nested 2 levels`,
           parent_id: body.id,
         }).then(({ body }) => {
@@ -256,7 +263,10 @@ describe("scenarios > home > custom homepage", () => {
       });
 
       modal().findByRole("button", { name: "Save" }).click();
-      cy.location("pathname").should("equal", "/dashboard/1");
+      cy.location("pathname").should(
+        "equal",
+        `/dashboard/${ORDERS_DASHBOARD_ID}`,
+      );
 
       cy.findByRole("status").within(() => {
         cy.findByText("This dashboard has been set as your homepage.").should(
@@ -274,7 +284,9 @@ describe("scenarios > home > custom homepage", () => {
       restore();
       cy.signInAsAdmin();
       cy.request("PUT", "/api/setting/custom-homepage", { value: true });
-      cy.request("PUT", "/api/setting/custom-homepage-dashboard", { value: 1 });
+      cy.request("PUT", "/api/setting/custom-homepage-dashboard", {
+        value: ORDERS_DASHBOARD_ID,
+      });
     });
 
     it("should redirect you if you do not have permissions for set dashboard", () => {
@@ -330,7 +342,7 @@ describe("scenarios > home > custom homepage", () => {
 
     it("should show the default homepage if the dashboard was archived (#31599)", () => {
       // Archive dashboard
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
       dashboardHeader().within(() => {
         cy.findByLabelText("dashboard-menu-button").click();
       });

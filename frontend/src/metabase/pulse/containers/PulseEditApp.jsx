@@ -8,7 +8,7 @@ import title from "metabase/hoc/Title";
 
 import Collections from "metabase/entities/collections";
 import Pulses from "metabase/entities/pulses";
-import User from "metabase/entities/users";
+import { UserApi } from "metabase/services";
 
 import { getUser } from "metabase/selectors/user";
 import {
@@ -53,13 +53,24 @@ const mapDispatchToProps = {
 };
 
 class PulseEditApp extends Component {
+  state = {
+    users: undefined,
+  };
+
+  componentDidMount() {
+    this.fetchUsers();
+  }
+
+  fetchUsers = async () => {
+    this.setState({ users: (await UserApi.list()).data });
+  };
+
   render() {
-    return <PulseEdit {...this.props} />;
+    return <PulseEdit {...this.props} users={this.state.users} />;
   }
 }
 
 export default _.compose(
-  User.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
   title(({ pulse }) => pulse && pulse.name),
 )(PulseEditApp);

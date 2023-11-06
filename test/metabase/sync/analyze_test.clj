@@ -62,7 +62,7 @@
 
 (deftest mark-fields-as-analyzed-test
   (testing "Make sure that only the correct Fields get marked as recently analyzed"
-    (with-redefs [i/latest-fingerprint-version Short/MAX_VALUE]
+    (with-redefs [i/*latest-fingerprint-version* Short/MAX_VALUE]
       (t2.with-temp/with-temp [Table table {}
                                Field _ {:table_id            (u/the-id table)
                                         :name                "Current fingerprint, not analyzed"
@@ -192,8 +192,8 @@
 (deftest dont-analyze-hidden-tables-test
   (testing "expect all the kinds of hidden tables to stay un-analyzed through transitions and repeated syncing"
     (letfn [(tests [sync!*]
-              (mt/with-temp* [Table [table (assoc (fake-table) :visibility_type "hidden")]
-                              Field [field (fake-field table)]]
+              (mt/with-temp [Table table (assoc (fake-table) :visibility_type "hidden")
+                             Field field (fake-field table)]
                 (letfn [(set-visibility! [visibility]
                           (set-table-visibility-type-via-api! table visibility)
                           (testing "after updating visibility type"
@@ -224,8 +224,8 @@
 
 (deftest analyze-db!-return-value-test
   (testing "Returns values"
-    (mt/with-temp* [Table [table (fake-table)]
-                    Field [_     (fake-field table)]]
+    (mt/with-temp [Table table (fake-table)
+                   Field _     (fake-field table)]
       (let [results (analyze-table! table)]
         (testing "has the steps performed"
           (is (= ["fingerprint-fields" "classify-fields" "classify-tables"]
@@ -236,8 +236,8 @@
 (deftest analyze-unhidden-tables-test
   (testing "un-hiding a table should cause it to be analyzed"
     (with-redefs [sync.concurrent/submit-task (fn [task] (task))]
-      (mt/with-temp* [Table [table (fake-table)]
-                      Field [field (fake-field table)]]
+      (mt/with-temp [Table table (fake-table)
+                     Field field (fake-field table)]
         (set-table-visibility-type-via-api! table "hidden")
         (set-table-visibility-type-via-api! table nil)
         (is (= true
@@ -246,8 +246,8 @@
 (deftest dont-analyze-rehidden-table-test
   (testing "re-hiding a table should not cause it to be analyzed"
     ;; create an initially hidden table
-    (mt/with-temp* [Table [table (fake-table :visibility_type "hidden")]
-                    Field [_     (fake-field table)]]
+    (mt/with-temp [Table table (fake-table :visibility_type "hidden")
+                   Field _     (fake-field table)]
       ;; switch the table to visible (triggering a sync) and get the last sync time
       (let [last-sync-time (do (set-table-visibility-type-via-api! table nil)
                                (latest-sync-time table))]

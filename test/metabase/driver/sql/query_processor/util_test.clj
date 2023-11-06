@@ -10,5 +10,5 @@
     (let [nfc-identifier (hx/identifier :field "boop" "beep" "boop -> deep")
           new-identifier (sql.qp.u/nfc-field->parent-identifier
                           nfc-identifier
-                          {:nfc_path ["something" "boppity"]})]
+                          {:nfc-path ["something" "boppity"]})]
       (is (= (hx/identifier :field "boop" "beep" "something") new-identifier)))))

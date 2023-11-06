@@ -13,7 +13,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations-test :as custom-migrations-test]
    [metabase.db.query :as mdb.query]
@@ -1050,7 +1050,7 @@
                                                  (map #(merge % {:dashboard_id dashboard-id
                                                                  :visualization_settings {}
                                                                  :parameter_mappings     {}}) cases))]
-      (testing "forward migration migrate correclty"
+      (testing "forward migration migrate correctly"
         (migrate! :up)
         (let [migrated-to-24 (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y])
                                                 :model/DashboardCard :id [:in dashcard-ids]
@@ -1115,3 +1115,93 @@
         ;; Only the sandbox with a corresponding `Permissions` row is present
         (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}", :permission_id perm-id}]
                (mdb.query/query {:select [:*] :from [:sandboxes]})))))))
+
+(deftest add-revision-most-recent-test
+  (testing "Migrations v48.00-008-v48.00-009: add `revision.most_recent`"
+    (impl/test-migrations ["v48.00-007" "v48.00-009"] [migrate!]
+      (let [user-id          (:id (create-raw-user! (tu.random/random-email)))
+            old              (t/minus (t/local-date-time) (t/hours 1))
+            rev-dash-1-old (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                            {:model       "dashboard"
+                                                             :model_id    1
+                                                             :user_id     user-id
+                                                             :object      "{}"
+                                                             :is_creation true
+                                                             :timestamp   old}))
+            rev-dash-1-new (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                            {:model       "dashboard"
+                                                             :model_id    1
+                                                             :user_id     user-id
+                                                             :object      "{}"
+                                                             :timestamp   :%now}))
+            rev-dash-2-old (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                            {:model       "dashboard"
+                                                             :model_id    2
+                                                             :user_id     user-id
+                                                             :object      "{}"
+                                                             :is_creation true
+                                                             :timestamp   old}))
+            rev-dash-2-new (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                            {:model       "dashboard"
+                                                             :model_id    2
+                                                             :user_id     user-id
+                                                             :object      "{}"
+                                                             :timestamp   :%now}))
+            rev-card-1-old (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                            {:model       "card"
+                                                             :model_id    1
+                                                             :user_id     user-id
+                                                             :object      "{}"
+                                                             :is_creation true
+                                                             :timestamp   old}))
+            rev-card-1-new (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                            {:model       "card"
+                                                             :model_id    1
+                                                             :user_id     user-id
+                                                             :object      "{}"
+                                                             :timestamp   :%now}))]
+        (migrate!)
+        (is (= #{false} (t2/select-fn-set :most_recent (t2/table-name :model/Revision)
+                                          :id [:in [rev-dash-1-old rev-dash-2-old rev-card-1-old]])))
+        (is (= #{true} (t2/select-fn-set :most_recent (t2/table-name :model/Revision)
+                                         :id [:in [rev-dash-1-new rev-dash-2-new rev-card-1-new]])))))))
+(deftest fks-are-indexed-test
+  (mt/test-driver :postgres
+    (testing "all FKs should be indexed"
+     (is (= [] (t2/query
+                "SELECT
+                     conrelid::regclass AS table_name,
+                     a.attname AS column_name
+                 FROM
+                     pg_constraint AS c
+                     JOIN pg_attribute AS a ON a.attnum = ANY(c.conkey) AND a.attrelid = c.conrelid
+                 WHERE
+                     c.contype = 'f'
+                     AND NOT EXISTS (
+                         SELECT 1
+                         FROM pg_index AS i
+                         WHERE i.indrelid = c.conrelid
+                           AND a.attnum = ANY(i.indkey)
+                     )
+                 ORDER BY
+                     table_name,
+                     column_name;"))))))
+
+(deftest remove-collection-color-test
+  (testing "Migration v48.00-019"
+    (impl/test-migrations ["v48.00-019"] [migrate!]
+      (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
+            collection-id (first (t2/insert-returning-pks! (t2/table-name Collection) {:name "Amazing collection"
+                                                                                       :slug "amazing_collection"
+                                                                                       :color "#509EE3"}))]
+
+        (testing "Collection should exist and have the color set by the user prior to migration"
+          (is (= "#509EE3" (:color (t2/select-one :model/Collection :id collection-id)))))
+
+        (migrate!)
+        (testing "should drop the existing color column"
+          (is (not (contains? (t2/select-one :model/Collection :id collection-id) :color))))
+
+        (db.setup/migrate! db-type data-source :down 47)
+        (testing "Rollback to the previous version should restore the column column, and set the default color value"
+          (is (= "#31698A" (:color (t2/select-one :model/Collection :id collection-id)))))))))

@@ -18,7 +18,10 @@ import {
 
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -101,9 +104,9 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       cy.get("label").contains("Data").click();
 
       modal().within(() => {
-        cy.findByText("Discard your unsaved changes?");
+        cy.findByText("Discard your changes?");
         cy.findByText(
-          "If you leave this page now, your changes won't be saved.",
+          "Your changes haven't been saved, so you'll lose them if you navigate away.",
         );
 
         cy.button("Cancel").click();
@@ -114,9 +117,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       // Switching to data permissions page again
       cy.get("label").contains("Data").click();
 
-      modal().within(() => {
-        cy.button("Discard changes").click();
-      });
+      modal().button("Discard changes").click();
 
       cy.url().should("include", "/admin/permissions/data/group");
     });
@@ -303,9 +304,9 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       cy.get("label").contains("Collection").click();
 
       modal().within(() => {
-        cy.findByText("Discard your unsaved changes?");
+        cy.findByText("Discard your changes?");
         cy.findByText(
-          "If you leave this page now, your changes won't be saved.",
+          "Your changes haven't been saved, so you'll lose them if you navigate away.",
         );
 
         cy.button("Cancel").click();
@@ -316,9 +317,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       // Switching to collection permissions page again
       cy.get("label").contains("Collection").click();
 
-      modal().within(() => {
-        cy.button("Discard changes").click();
-      });
+      modal().button("Discard changes").click();
 
       cy.url().should("include", "/admin/permissions/collections");
     });
@@ -731,7 +730,7 @@ describeEE("scenarios > admin > permissions", () => {
     });
 
     cy.signIn("nodata");
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sorry, you don't have permission to see this card.");

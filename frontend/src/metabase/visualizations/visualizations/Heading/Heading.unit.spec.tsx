@@ -4,10 +4,10 @@ import { color } from "metabase/lib/colors";
 
 import {
   createMockDashboard,
-  createMockDashboardOrderedCard,
+  createMockDashboardCard,
 } from "metabase-types/api/mocks";
 import type {
-  DashboardOrderedCard,
+  DashboardCard,
   Dashboard,
   ParameterId,
   Parameter,
@@ -24,7 +24,7 @@ interface Settings {
 }
 
 interface Options {
-  dashcard?: DashboardOrderedCard;
+  dashcard?: DashboardCard;
   isEditing?: boolean;
   isEditingParameter?: boolean;
   onUpdateVisualizationSettings?: ({ text }: { text: string }) => void;
@@ -34,7 +34,7 @@ interface Options {
 }
 
 const defaultProps = {
-  dashcard: createMockDashboardOrderedCard(),
+  dashcard: createMockDashboardCard(),
   dashboard: createMockDashboard(),
   isEditing: false,
   isEditingParameter: false,
@@ -73,7 +73,7 @@ describe("Text", () => {
 
       const options = {
         settings: getSettingsWithText(text),
-        dashcard: createMockDashboardOrderedCard({ parameter_mappings }),
+        dashcard: createMockDashboardCard({ parameter_mappings }),
         dashboard: createMockDashboard({ parameters }),
         parameterValues: parameterValues,
       };
@@ -125,7 +125,7 @@ describe("Text", () => {
 
         const options = {
           settings: getSettingsWithText(text),
-          dashcard: createMockDashboardOrderedCard({ parameter_mappings }),
+          dashcard: createMockDashboardCard({ parameter_mappings }),
           dashboard: createMockDashboard({ parameters }),
           parameterValues: parameterValues,
           isEditing: true,
@@ -191,7 +191,7 @@ describe("Text", () => {
 
         const options = {
           settings: getSettingsWithText(text),
-          dashcard: createMockDashboardOrderedCard({ parameter_mappings }),
+          dashcard: createMockDashboardCard({ parameter_mappings }),
           dashboard: createMockDashboard({ parameters }),
           parameterValues: parameterValues,
           isEditing: true,

@@ -21,13 +21,17 @@ const summarizedQuery = {
   ...rawDataQuery,
   aggregation: [["count"]],
   breakout: [
-    ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+    [
+      "field",
+      PRODUCTS.CATEGORY,
+      { "source-field": ORDERS.PRODUCT_ID, "base-type": "type/Integer" },
+    ],
   ],
 };
 
 const filteredQuery = {
   ...rawDataQuery,
-  filter: ["=", ["field", ORDERS.USER_ID, null], 1],
+  filter: ["=", ["field", ORDERS.USER_ID, { "base-type": "type/Integer" }], 1],
 };
 
 const filteredAndSummarizedQuery = {

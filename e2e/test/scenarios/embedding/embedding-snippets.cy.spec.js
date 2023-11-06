@@ -5,7 +5,10 @@ import {
   visitQuestion,
   setTokenFeatures,
 } from "e2e/support/helpers";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 import { JS_CODE, IFRAME_CODE } from "./shared/embedding-snippets";
 
@@ -20,7 +23,7 @@ features.forEach(feature => {
     });
 
     it("dashboard should have the correct embed snippet", () => {
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
       cy.icon("share").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Embed in your application").click();
@@ -37,7 +40,10 @@ features.forEach(feature => {
       cy.get(".ace_content")
         .first()
         .invoke("text")
-        .should("match", JS_CODE({ type: "dashboard" }));
+        .should(
+          "match",
+          JS_CODE({ type: "dashboard", id: ORDERS_DASHBOARD_ID }),
+        );
 
       // set transparent background metabase#23477
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -45,7 +51,14 @@ features.forEach(feature => {
       cy.get(".ace_content")
         .first()
         .invoke("text")
-        .should("match", JS_CODE({ type: "dashboard", theme: "transparent" }));
+        .should(
+          "match",
+          JS_CODE({
+            type: "dashboard",
+            id: ORDERS_DASHBOARD_ID,
+            theme: "transparent",
+          }),
+        );
 
       // No download button for dashboards even for pro/enterprise users metabase#23477
       cy.findByLabelText(
@@ -93,7 +106,7 @@ features.forEach(feature => {
       cy.get(".ace_content")
         .first()
         .invoke("text")
-        .should("match", JS_CODE({ type: "question" }));
+        .should("match", JS_CODE({ type: "question", id: ORDERS_QUESTION_ID }));
 
       // set transparent background metabase#23477
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -101,7 +114,14 @@ features.forEach(feature => {
       cy.get(".ace_content")
         .first()
         .invoke("text")
-        .should("match", JS_CODE({ type: "question", theme: "transparent" }));
+        .should(
+          "match",
+          JS_CODE({
+            type: "question",
+            id: ORDERS_QUESTION_ID,
+            theme: "transparent",
+          }),
+        );
 
       // hide download button for pro/enterprise users metabase#23477
       if (feature === "all") {
@@ -116,6 +136,7 @@ features.forEach(feature => {
             "match",
             JS_CODE({
               type: "question",
+              id: ORDERS_QUESTION_ID,
               theme: "transparent",
               hideDownloadButton: true,
             }),

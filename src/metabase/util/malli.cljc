@@ -1,5 +1,5 @@
 (ns metabase.util.malli
-  (:refer-clojure :exclude [defn defmethod])
+  (:refer-clojure :exclude [fn defn defmethod])
   (:require
    [clojure.core :as core]
    [malli.core :as mc]
@@ -15,7 +15,9 @@
   #?(:cljs (:require-macros [metabase.util.malli])))
 
 #?(:clj
-   (p/import-vars [mu.defn defn]))
+   (p/import-vars
+    [mu.fn fn]
+    [mu.defn defn]))
 
 (core/defn humanize-include-value
   "Pass into mu/humanize to include the value received in the error message."
@@ -71,15 +73,41 @@
        `(do ~@body))))
 
 #?(:clj
-   (defmacro defmethod
-     "Like [[schema.core/defmethod]], but for Malli."
+   (defmacro -defmethod-clj
+     "Impl for [[defmethod]] for regular Clojure."
      [multifn dispatch-value & fn-tail]
      (let [dispatch-value-symb (gensym "dispatch-value-")
            error-context-symb  (gensym "error-context-")]
        `(let [~dispatch-value-symb ~dispatch-value
-              ~error-context-symb  {:fn-name        '~multifn
+              ~error-context-symb  {:fn-name        '~(or (some-> (resolve multifn) symbol)
+                                                          (symbol multifn))
                                     :dispatch-value ~dispatch-value-symb}
               f#                   ~(mu.fn/instrumented-fn-form error-context-symb (mu.fn/parse-fn-tail fn-tail))]
           (.addMethod ~(vary-meta multifn assoc :tag 'clojure.lang.MultiFn)
                       ~dispatch-value-symb
                       f#)))))
+#?(:clj
+   (defmacro -defmethod-cljs
+     "Impl for [[defmethod]] for ClojureScript."
+     [multifn dispatch-value & fn-tail]
+     `(core/defmethod ~multifn ~dispatch-value
+        ~@(mu.fn/deparameterized-fn-tail (mu.fn/parse-fn-tail fn-tail)))))
+
+#?(:clj
+   (defmacro defmethod
+     "Like [[schema.core/defmethod]], but for Malli."
+     [multifn dispatch-value & fn-tail]
+     (macros/case
+       :clj  `(-defmethod-clj ~multifn ~dispatch-value ~@fn-tail)
+       :cljs `(-defmethod-cljs ~multifn ~dispatch-value ~@fn-tail))))
+
+#?(:clj
+   (defn validate-throw
+     "Returns the value if it matches the schema, else throw an exception."
+     [schema-or-validator value]
+     (if-not ((if (fn? schema-or-validator)
+                schema-or-validator
+                (mc/validator schema-or-validator))
+              value)
+       (throw (ex-info "Value does not match schema" {:value value :schema schema-or-validator}))
+       value)))

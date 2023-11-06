@@ -1,7 +1,9 @@
 import type { Ref } from "react";
 import { forwardRef, useCallback } from "react";
 import { t } from "ttag";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import type { Moment } from "moment-timezone";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import Tooltip from "metabase/core/components/Tooltip";
 import {
@@ -25,6 +27,9 @@ export interface TimeInputProps {
   onClear?: (value: Moment) => void;
 }
 
+/**
+ * @deprecated: use TimeInput from "metabase/ui"
+ */
 const TimeInput = forwardRef(function TimeInput(
   {
     value,

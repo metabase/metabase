@@ -5,7 +5,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel describe-temporal-interval-test
   (doseq [unit [:day nil]]
@@ -162,3 +165,32 @@
       (is (empty? (->> (lib/returned-columns query)
                        (m/find-first (comp #{"myadd"} :name))
                        (lib/available-temporal-buckets query)))))))
+
+(deftest ^:parallel option-raw-temporal-bucket-test
+  (let [option (m/find-first #(= (:unit %) :month)
+                             (lib.temporal-bucket/available-temporal-buckets lib.tu/venues-query (meta/field-metadata :checkins :date)))]
+    (is (=? {:lib/type :option/temporal-bucketing}
+            option))
+    (is (= :month
+           (lib.temporal-bucket/raw-temporal-bucket option)))))
+
+(deftest ^:parallel short-name-display-info-test
+  (let [query lib.tu/venues-query]
+    (is (= #{"minute"
+             "hour"
+             "day"
+             "week"
+             "month"
+             "quarter"
+             "year"
+             "minute-of-hour"
+             "hour-of-day"
+             "day-of-week"
+             "day-of-month"
+             "day-of-year"
+             "week-of-year"
+             "month-of-year"
+             "quarter-of-year"}
+           (into #{}
+                 (map #(:short-name (lib/display-info query -1 %)))
+                 (lib.temporal-bucket/available-temporal-buckets query (meta/field-metadata :products :created-at)))))))

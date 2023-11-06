@@ -22,7 +22,7 @@ import type {
   QueryBuilderUIControls,
 } from "metabase-types/store";
 import { isSavedCard } from "metabase-types/guards";
-import { isNotNull } from "metabase/core/utils/types";
+import { isNotNull } from "metabase/lib/types";
 import { cardIsEquivalent } from "metabase-lib/queries/utils/card";
 import { normalize } from "metabase-lib/queries/utils/normalize";
 import Question from "metabase-lib/Question";
@@ -114,9 +114,7 @@ async function fetchAndPrepareSavedQuestionCards(
 
   // for showing the "started from" lineage correctly when adding filters/breakouts and when going back and forth
   // in browser history, the original_card_id has to be set for the current card (simply the id of card itself for now)
-  card.original_card_id = card.id;
-
-  return { card, originalCard };
+  return { card: { ...card, original_card_id: card.id }, originalCard };
 }
 
 async function fetchAndPrepareAdHocQuestionCards(

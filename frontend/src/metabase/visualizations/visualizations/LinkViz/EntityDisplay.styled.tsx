@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 
 export const EntityDisplayContainer = styled.div`
   width: 100%;

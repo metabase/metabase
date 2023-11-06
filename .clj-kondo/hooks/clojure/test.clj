@@ -8,6 +8,12 @@
   '#{clojure.core/alter-var-root
      clojure.core/with-redefs
      clojure.core/with-redefs-fn
+     metabase-enterprise.sandbox.test-util/with-gtaps
+     metabase-enterprise.sandbox.test-util/with-gtaps-for-user
+     metabase-enterprise.sandbox.test-util/with-user-attributes
+     metabase-enterprise.test/with-gtaps
+     metabase-enterprise.test/with-gtaps-for-user
+     metabase-enterprise.test/with-user-attributes
      metabase.actions.test-util/with-actions
      metabase.actions.test-util/with-actions-disabled
      metabase.actions.test-util/with-actions-enabled
@@ -16,8 +22,6 @@
      metabase.actions.test-util/with-actions-test-data-tables
      metabase.email-test/with-expected-messages
      metabase.email-test/with-fake-inbox
-     metabase.query-processor-test/with-bigquery-fks!
-     metabase.server.middleware.session/with-current-user
      metabase.test.data.users/with-group
      metabase.test.data.users/with-group-for-user
      metabase.test.persistence/with-persistence-enabled
@@ -44,10 +48,9 @@
      metabase.test/with-actions-test-data-and-actions-enabled
      metabase.test/with-actions-test-data-tables
      metabase.test/with-all-users-permission
-     metabase.test/with-bigquery-fks!
      metabase.test/with-column-remappings
-     metabase.test/with-current-user
      metabase.test/with-discarded-collections-perms-changes
+     metabase.test/with-ensure-with-temp-no-transaction!
      metabase.test/with-env-keys-renamed-by
      metabase.test/with-expected-messages
      metabase.test/with-fake-inbox
@@ -61,14 +64,12 @@
      metabase.test/with-persistence-enabled
      metabase.test/with-single-admin-user
      metabase.test/with-system-timezone-id
-     metabase.test/with-temp*
+     metabase.test/with-temp!
      metabase.test/with-temp-env-var-value
      metabase.test/with-temp-vals-in-db
      metabase.test/with-temporary-raw-setting-values
      metabase.test/with-temporary-setting-values
-     metabase.test/with-user-in-groups
-     toucan.util.test/with-temp*
-     toucan2.tools.with-temp/with-temp})
+     metabase.test/with-user-in-groups})
 
 ;;; TODO -- we should disallow `metabase.test/user-http-request` with any method other than `:get`
 
@@ -90,6 +91,24 @@
      clojure.core/volatile!
      clojure.core/vreset!
      clojure.core/vswap!
+     clojure.core.async/<!
+     clojure.core.async/<!!
+     clojure.core.async/>!
+     clojure.core.async/>!!
+     clojure.core.async/alt!
+     clojure.core.async/alt!!
+     clojure.core.async/alts!
+     clojure.core.async/alts!!
+     clojure.core.async/close!
+     clojure.core.async/ioc-alts!
+     clojure.core.async/offer!
+     clojure.core.async/onto-chan!
+     clojure.core.async/onto-chan!!
+     clojure.core.async/poll!
+     clojure.core.async/put!
+     clojure.core.async/take!
+     clojure.core.async/to-chan!
+     clojure.core.async/to-chan!!
      metabase.query-processor/process-query-and-save-execution!
      metabase.query-processor/process-query-and-save-with-max-results-constraints!
      metabase.query-processor.store/store-database!})
@@ -158,12 +177,28 @@
       (doseq [form body]
         (warn-about-disallowed-parallel-forms form)))))
 
+(def ^:private number-of-lines-for-a-test-to-be-considered-horrifically-long
+  200)
+
+(defn- deftest-check-not-horrifically-long
+  [node]
+  (let [{:keys [row end-row]} (meta node)]
+    (when (and row end-row)
+      (let [num-lines (- end-row row)]
+        (when (>= num-lines number-of-lines-for-a-test-to-be-considered-horrifically-long)
+          (hooks/reg-finding! (assoc (meta node)
+                                     :message (str (format "This test is horrifically long, it's %d lines! 😱 " num-lines)
+                                                   "Do you really want to try to debug it if it fails? 💀 "
+                                                   "Split it up into smaller tests! 🥰")
+                                     :type :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests)))))))
+
 (defn deftest [{:keys [node cljc lang]}]
   ;; run [[deftest-check-parallel]] only once... if this is a `.cljc` file only run it for the `:clj` analysis, no point
   ;; in running it twice.
   (when (or (not cljc)
             (= lang :clj))
     (deftest-check-parallel node))
+  (deftest-check-not-horrifically-long node)
   {:node node})
 
 ;;; this is a hacky way to determine whether these namespaces are required in the `ns` form or not... basically `:ns`

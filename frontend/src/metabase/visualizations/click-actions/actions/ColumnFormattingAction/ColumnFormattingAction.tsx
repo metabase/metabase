@@ -5,17 +5,20 @@ import { updateSettings } from "metabase/visualizations/lib/settings";
 import type { VisualizationSettings } from "metabase-types/api";
 import type {
   ClickActionPopoverProps,
-  Drill,
+  LegacyDrill,
 } from "metabase/visualizations/types";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 import { PopoverRoot } from "./ColumnFormattingAction.styled";
 
-export const ColumnFormattingAction: Drill = ({ question, clicked }) => {
+export const POPOVER_TEST_ID = "column-formatting-settings";
+
+export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
   if (
     !clicked ||
     clicked.value !== undefined ||
     !clicked.column ||
+    clicked?.extraData?.isRawTable ||
     !question.query().isEditable()
   ) {
     return [];
@@ -23,9 +26,14 @@ export const ColumnFormattingAction: Drill = ({ question, clicked }) => {
 
   const { column } = clicked;
 
-  const FormatPopover = ({ series, onChange }: ClickActionPopoverProps) => {
+  const FormatPopover = ({
+    series,
+    onUpdateVisualizationSettings,
+  }: ClickActionPopoverProps) => {
     const handleChangeSettings = (settings: VisualizationSettings) => {
-      onChange(updateSettings(series[0].card.visualization_settings, settings));
+      onUpdateVisualizationSettings(
+        updateSettings(series[0].card.visualization_settings, settings),
+      );
     };
 
     const widgets = getSettingsWidgetsForSeries(
@@ -52,6 +60,7 @@ export const ColumnFormattingAction: Drill = ({ question, clicked }) => {
           {...extraProps}
           key={columnSettingsWidget.id}
           hidden={false}
+          dataTestId={POPOVER_TEST_ID}
         />
       </PopoverRoot>
     );
@@ -62,7 +71,7 @@ export const ColumnFormattingAction: Drill = ({ question, clicked }) => {
       name: "formatting",
       title: t`Column formatting`,
       section: "sort",
-      buttonType: "formatting",
+      buttonType: "sort",
       icon: "gear",
       tooltip: t`Column formatting`,
       popoverProps: {

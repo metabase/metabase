@@ -5,8 +5,9 @@ import fetchMock from "fetch-mock";
 import {
   screen,
   renderWithProviders,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import type { Dashboard } from "metabase-types/api";
@@ -48,8 +49,15 @@ const TEST_CARD = createMockCard();
 
 const TEST_TABLE = createMockTable();
 
-async function setup({ dashboard }: { dashboard?: Partial<Dashboard> } = {}) {
+const TestHome = () => <div />;
+
+interface Options {
+  dashboard?: Partial<Dashboard>;
+}
+
+async function setup({ dashboard }: Options = {}) {
   const mockDashboard = createMockDashboard(dashboard);
+  const dashboardId = mockDashboard.id;
 
   const channelData = { channels: {} };
   fetchMock.get("path:/api/pulse/form_input", channelData);
@@ -80,10 +88,13 @@ async function setup({ dashboard }: { dashboard?: Partial<Dashboard> } = {}) {
     );
   };
 
-  renderWithProviders(
-    <Route path="/dashboard/:slug" component={DashboardAppContainer} />,
+  const { history } = renderWithProviders(
+    <>
+      <Route path="/" component={TestHome} />
+      <Route path="/dashboard/:slug" component={DashboardAppContainer} />
+    </>,
     {
-      initialRoute: `/dashboard/${mockDashboard.id}`,
+      initialRoute: `/dashboard/${dashboardId}`,
       withRouter: true,
       storeInitialState: {
         dashboard: createMockDashboardState(),
@@ -94,11 +105,13 @@ async function setup({ dashboard }: { dashboard?: Partial<Dashboard> } = {}) {
     },
   );
 
-  await waitForElementToBeRemoved(() =>
-    screen.queryAllByTestId("loading-spinner"),
-  );
+  await waitForLoaderToBeRemoved();
 
-  return { mockEventListener };
+  return {
+    dashboardId,
+    history: checkNotNull(history),
+    mockEventListener,
+  };
 }
 
 describe("DashboardApp", function () {
@@ -134,6 +147,66 @@ describe("DashboardApp", function () {
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
       expect(mockEvent.preventDefault).not.toHaveBeenCalled();
       expect(mockEvent.returnValue).toBe(undefined);
+    });
+
+    it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
+      const { dashboardId, history } = await setup();
+
+      history.push("/");
+      history.push(`/dashboard/${dashboardId}`);
+
+      await waitForLoaderToBeRemoved();
+
+      userEvent.click(screen.getByLabelText("Edit dashboard"));
+
+      history.goBack();
+
+      expect(
+        screen.queryByTestId("leave-confirmation"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
+      const { dashboardId, history } = await setup();
+
+      history.push("/");
+      history.push(`/dashboard/${dashboardId}`);
+
+      await waitForLoaderToBeRemoved();
+
+      userEvent.click(screen.getByLabelText("Edit dashboard"));
+      userEvent.click(screen.getByTestId("dashboard-name-heading"));
+      userEvent.type(screen.getByTestId("dashboard-name-heading"), "a");
+      userEvent.tab(); // need to click away from the input to trigger the isDirty flag
+
+      history.goBack();
+
+      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+    });
+
+    it("does not show custom warning modal when leaving with no changes via Cancel button", async () => {
+      await setup();
+
+      userEvent.click(screen.getByLabelText("Edit dashboard"));
+
+      userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(
+        screen.queryByTestId("leave-confirmation"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows custom warning modal when leaving with unsaved changes via Cancel button", async () => {
+      await setup();
+
+      userEvent.click(screen.getByLabelText("Edit dashboard"));
+      userEvent.click(screen.getByTestId("dashboard-name-heading"));
+      userEvent.type(screen.getByTestId("dashboard-name-heading"), "a");
+      userEvent.tab(); // need to click away from the input to trigger the isDirty flag
+
+      userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
     });
   });
 

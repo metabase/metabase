@@ -122,8 +122,8 @@
            (mt/user-http-request :rasta :get 200 (format "table/%d" (mt/id :venues)))))
 
     (testing " should return a 403 for a user that doesn't have read permissions for the table"
-      (mt/with-temp* [Database [{database-id :id}]
-                      Table    [{table-id :id}    {:db_id database-id}]]
+      (mt/with-temp [Database {database-id :id} {}
+                     Table    {table-id :id}    {:db_id database-id}]
         (perms/revoke-data-perms! (perms-group/all-users) database-id)
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (str "table/" table-id))))))))
@@ -273,12 +273,12 @@
     (testing (str "Check that FK fields belonging to Tables we don't have permissions for don't come back as hydrated "
                   "`:target`(#3867)")
       ;; create a temp DB with two tables; table-2 has an FK to table-1
-      (mt/with-temp* [Database [db]
-                      Table    [table-1     {:db_id (u/the-id db)}]
-                      Table    [table-2     {:db_id (u/the-id db)}]
-                      Field    [table-1-id  {:table_id (u/the-id table-1), :name "id", :base_type :type/Integer, :semantic_type :type/PK}]
-                      Field    [_table-2-id {:table_id (u/the-id table-2), :name "id", :base_type :type/Integer, :semantic_type :type/PK}]
-                      Field    [_table-2-fk {:table_id (u/the-id table-2), :name "fk", :base_type :type/Integer, :semantic_type :type/FK, :fk_target_field_id (u/the-id table-1-id)}]]
+      (mt/with-temp [Database db          {}
+                     Table    table-1     {:db_id (u/the-id db)}
+                     Table    table-2     {:db_id (u/the-id db)}
+                     Field    table-1-id  {:table_id (u/the-id table-1), :name "id", :base_type :type/Integer, :semantic_type :type/PK}
+                     Field    _table-2-id {:table_id (u/the-id table-2), :name "id", :base_type :type/Integer, :semantic_type :type/PK}
+                     Field    _table-2-fk {:table_id (u/the-id table-2), :name "fk", :base_type :type/Integer, :semantic_type :type/FK, :fk_target_field_id (u/the-id table-1-id)}]
         ;; grant permissions only to table-2
         (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db))
         (perms/grant-permissions! (perms-group/all-users) (u/the-id db) (:schema table-2) (u/the-id table-2))
@@ -378,8 +378,8 @@
 
   (testing "Bulk updating visibility"
     (let [unhidden-ids (atom #{})]
-      (mt/with-temp* [Table [{id-1 :id} {}]
-                      Table [{id-2 :id} {:visibility_type "hidden"}]]
+      (mt/with-temp [Table {id-1 :id} {}
+                     Table {id-2 :id} {:visibility_type "hidden"}]
         (with-redefs [api.table/sync-unhidden-tables (fn [unhidden] (reset! unhidden-ids (set (map :id unhidden))))]
           (letfn [(set-many-vis! [ids state]
                     (reset! unhidden-ids #{})
@@ -819,9 +819,9 @@
 
 (deftest discard-values-test
   (testing "POST /api/table/:id/discard_values"
-    (mt/with-temp* [Table       [table        {}]
-                    Field       [field        {:table_id (u/the-id table)}]
-                    FieldValues [field-values {:field_id (u/the-id field), :values ["A" "B" "C"]}]]
+    (mt/with-temp [Table       table        {}
+                   Field       field        {:table_id (u/the-id table)}
+                   FieldValues field-values {:field_id (u/the-id field) :values ["A" "B" "C"]}]
       (let [url (format "table/%d/discard_values" (u/the-id table))]
         (testing "Non-admin toucans should not be allowed to discard values"
           (is (= "You don't have permissions to do that."

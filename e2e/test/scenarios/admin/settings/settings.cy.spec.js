@@ -7,6 +7,7 @@ import {
   isOSS,
   isEE,
   setTokenFeatures,
+  main,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -151,15 +152,18 @@ describe("scenarios > admin > settings", () => {
 
     cy.visit("/admin/settings/localization");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("January 7, 2018").click({ force: true });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("2018/1/7").click({ force: true });
-    cy.wait("@saveFormatting");
-    cy.findAllByTestId("select-button-content").should("contain", "2018/1/7");
+    cy.findByTestId("custom-formatting-setting")
+      .findByText("January 31, 2018")
+      .click({ force: true });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("17:24 (24-hour clock)").click();
+    popover().findByText("2018/1/31").click({ force: true });
+    cy.wait("@saveFormatting");
+
+    cy.findAllByTestId("select-button-content").should("contain", "2018/1/31");
+
+    cy.findByTestId("custom-formatting-setting")
+      .findByText("17:24 (24-hour clock)")
+      .click();
     cy.wait("@saveFormatting");
     cy.findByDisplayValue("HH:mm").should("be.checked");
 
@@ -173,8 +177,10 @@ describe("scenarios > admin > settings", () => {
     // Go back to the settings and reset the time formatting
     cy.visit("/admin/settings/localization");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("5:24 PM (12-hour clock)").click();
+    cy.findByTestId("custom-formatting-setting")
+      .findByText("5:24 PM (12-hour clock)")
+      .click();
+
     cy.wait("@saveFormatting");
     cy.findByDisplayValue("h:mm A").should("be.checked");
 
@@ -336,5 +342,19 @@ describeEE("scenarios > admin > settings (EE)", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Metabase Admin");
     cy.findByLabelText("store icon").should("not.exist");
+  });
+
+  it("should not break the root path when given invalid `landing-page` value (metabase#18004) ", () => {
+    cy.visit("/admin/settings/whitelabel");
+
+    main().within(() => {
+      cy.get("#setting-landing-page").type("https://www.metabase.com/").blur();
+    });
+
+    cy.visit("/");
+
+    main().within(() => {
+      cy.findByText(`We're a little lost...`);
+    });
   });
 });

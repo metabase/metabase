@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-   [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.models.permissions-group-membership
@@ -86,24 +85,26 @@
                                (t2/update! User {:email "rasta@metabase.com"} {:first_name "Rasta" :last_name "Toucan" :sso_source nil}))))))
 
 (defmacro with-saml-default-setup [& body]
-  `(with-sso-saml-token
-     (call-with-login-attributes-cleared!
-      (fn []
-        (call-with-default-saml-config
-         (fn []
-           ~@body))))))
+  ;; most saml tests make actual http calls, so ensuring any nested with-temp doesn't create transaction
+  `(mt/with-ensure-with-temp-no-transaction!
+    (with-sso-saml-token
+      (call-with-login-attributes-cleared!
+       (fn []
+         (call-with-default-saml-config
+          (fn []
+            ~@body)))))))
 
 (defn client
   "Same as `client/client` but doesn't include the `/api` in the URL prefix"
   [& args]
-  (binding [client/*url-prefix* (str "http://localhost:" (config/config-str :mb-jetty-port))]
-    (apply client/client args)))
+  (binding [client/*url-prefix* ""]
+    (apply client/real-client args)))
 
 (defn client-full-response
   "Same as `client/client-full-response` but doesn't include the `/api` in the URL prefix"
   [& args]
-  (binding [client/*url-prefix* (str "http://localhost:" (config/config-str :mb-jetty-port))]
-    (apply client/client-full-response args)))
+  (binding [client/*url-prefix* ""]
+    (apply client/client-real-response args)))
 
 (defn successful-login?
   "Return true if the response indicates a successful user login"
@@ -535,8 +536,8 @@
       (with-saml-default-setup
         (do-with-some-validators-disabled
           (fn []
-            (mt/with-temp* [PermissionsGroup [group-1 {:name (str ::group-1)}]
-                            PermissionsGroup [group-2 {:name (str ::group-2)}]]
+            (mt/with-temp [PermissionsGroup group-1 {:name (str ::group-1)}
+                           PermissionsGroup group-2 {:name (str ::group-2)}]
               (mt/with-temporary-setting-values [saml-group-sync      true
                                                  saml-group-mappings  {"group_1" [(u/the-id group-1)]
                                                                        "group_2" [(u/the-id group-2)]}
@@ -558,8 +559,8 @@
       (with-saml-default-setup
         (do-with-some-validators-disabled
           (fn []
-            (mt/with-temp* [PermissionsGroup [group-1 {:name (str ::group-1)}]
-                            PermissionsGroup [group-2 {:name (str ::group-2)}]]
+            (mt/with-temp [PermissionsGroup group-1 {:name (str ::group-1)}
+                           PermissionsGroup group-2 {:name (str ::group-2)}]
               (mt/with-temporary-setting-values [saml-group-sync      true
                                                  saml-group-mappings  {"group_1" [(u/the-id group-1)]
                                                                        "group_2" [(u/the-id group-2)]}

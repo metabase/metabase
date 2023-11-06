@@ -9,7 +9,7 @@ import { defer } from "metabase/lib/promise";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 
-import Utils from "metabase/lib/utils";
+import { equals } from "metabase/lib/utils";
 
 import { addParamValues, addFields } from "metabase/redux/metadata";
 
@@ -52,7 +52,7 @@ import { loadMetadataForDashboard } from "./metadata";
 // normalizr schemas
 const dashcard = new schema.Entity("dashcard");
 const dashboard = new schema.Entity("dashboard", {
-  ordered_cards: [dashcard],
+  dashcards: [dashcard],
 });
 
 export const FETCH_DASHBOARD = "metabase/dashboard/FETCH_DASHBOARD";
@@ -155,7 +155,7 @@ export const fetchDashboard = createThunkAction(
         entities = {
           dashboard: { [dashId]: loadedDashboard },
           dashcard: Object.fromEntries(
-            loadedDashboard.ordered_cards.map(id => [
+            loadedDashboard.dashcards.map(id => [
               id,
               getDashCardById(getState(), id),
             ]),
@@ -167,7 +167,7 @@ export const fetchDashboard = createThunkAction(
         result = {
           ...result,
           id: dashId,
-          ordered_cards: result.ordered_cards.map(dc => ({
+          dashcards: result.dashcards.map(dc => ({
             ...dc,
             dashboard_id: dashId,
           })),
@@ -177,7 +177,7 @@ export const fetchDashboard = createThunkAction(
         result = {
           ...result,
           id: dashId,
-          ordered_cards: result.ordered_cards.map(dc => ({
+          dashcards: result.dashcards.map(dc => ({
             ...dc,
             dashboard_id: dashId,
           })),
@@ -188,7 +188,7 @@ export const fetchDashboard = createThunkAction(
         result = {
           ...result,
           id: dashId,
-          ordered_cards: result.ordered_cards.map(dc => ({
+          dashcards: result.dashcards.map(dc => ({
             ...dc,
             dashboard_id: dashId,
           })),
@@ -208,8 +208,8 @@ export const fetchDashboard = createThunkAction(
 
         const cards =
           selectedTabId === undefined
-            ? result.ordered_cards
-            : result.ordered_cards.filter(
+            ? result.dashcards
+            : result.dashcards.filter(
                 c => c.dashboard_tab_id === selectedTabId,
               );
 
@@ -219,7 +219,7 @@ export const fetchDashboard = createThunkAction(
       const isUsingCachedResults = entities != null;
       if (!isUsingCachedResults) {
         // copy over any virtual cards from the dashcard to the underlying card/question
-        result.ordered_cards.forEach(card => {
+        result.dashcards.forEach(card => {
           if (card.visualization_settings.virtual_card) {
             card.card = Object.assign(
               card.card || {},
@@ -241,9 +241,7 @@ export const fetchDashboard = createThunkAction(
 
       const parameterValuesById = preserveParameters
         ? getParameterValues(getState())
-        : getParameterValuesByIdFromQueryParams(parameters, queryParams, {
-            forcefullyUnsetDefaultedParametersWithEmptyStringValue: true,
-          });
+        : getParameterValuesByIdFromQueryParams(parameters, queryParams);
 
       entities = entities ?? normalize(result, dashboard).entities;
 
@@ -270,7 +268,7 @@ export const fetchCardData = createThunkAction(
         },
       });
 
-      // If the dataset_query was filtered then we don't have permisison to view this card, so
+      // If the dataset_query was filtered then we don't have permission to view this card, so
       // shortcircuit and return a fake 403
       if (!card.dataset_query) {
         return {
@@ -299,7 +297,7 @@ export const fetchCardData = createThunkAction(
         const lastResult = getIn(dashcardData, [dashcard.id, card.id]);
         if (
           lastResult &&
-          Utils.equals(
+          equals(
             getDatasetQueryParams(lastResult.json_query),
             getDatasetQueryParams(datasetQuery),
           )
@@ -496,7 +494,7 @@ export const fetchDashboardCardData =
 export const fetchDashboardCardMetadata = createThunkAction(
   FETCH_DASHBOARD_CARD_METADATA,
   () => async (dispatch, getState) => {
-    const allDashCards = getDashboardComplete(getState()).ordered_cards;
+    const allDashCards = getDashboardComplete(getState()).dashcards;
     const selectedTabId = getSelectedTabId(getState());
 
     const cards = allDashCards.filter(

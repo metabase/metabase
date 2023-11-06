@@ -14,6 +14,9 @@ export interface FormCheckBoxProps
   optional?: boolean;
 }
 
+/**
+ * @deprecated: use FormCheckbox from "metabase/forms"
+ */
 const FormCheckBox = forwardRef(function FormCheckBox(
   {
     name,

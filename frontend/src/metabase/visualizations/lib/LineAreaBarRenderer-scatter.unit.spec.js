@@ -1,4 +1,5 @@
 import "__support__/ui-mocks"; // included explicitly whereas with e2e tests it comes with __support__/e2e
+import registerVisualizations from "metabase/visualizations/register";
 
 import {
   NumberColumn,
@@ -8,6 +9,8 @@ import {
   createFixture,
   cleanupFixture,
 } from "__support__/visualizations";
+
+registerVisualizations();
 
 const DEFAULT_SETTINGS = {
   "graph.x_axis.scale": "linear",

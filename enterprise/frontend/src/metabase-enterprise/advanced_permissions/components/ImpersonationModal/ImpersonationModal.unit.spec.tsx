@@ -1,9 +1,13 @@
 import { combineReducers } from "@reduxjs/toolkit";
-import { waitForElementToBeRemoved } from "@testing-library/react";
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import { ImpersonationModal } from "metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModal";
 import { shared } from "metabase-enterprise/shared/reducer";
 import { advancedPermissionsSlice } from "metabase-enterprise/advanced_permissions/reducer";
@@ -26,10 +30,12 @@ const defaultUserAttributes = ["foo", "bar"];
 const setup = async ({
   userAttributes = defaultUserAttributes,
   hasImpersonation = true,
+  databaseDetails = {},
 } = {}) => {
   const database = createMockDatabase({
     id: databaseId,
     tables: [createMockTable()],
+    ...databaseDetails,
   });
   setupDatabaseEndpoints(database);
   fetchMock.get(
@@ -73,7 +79,7 @@ const setup = async ({
     },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+  await waitForLoaderToBeRemoved();
 
   return store;
 };
@@ -168,6 +174,29 @@ describe("impersonation modal", () => {
 
     await screen.findByText(selectedAttribute);
     expect(await screen.findByRole("button", { name: /save/i })).toBeEnabled();
+  });
+
+  it("should show a link to the database settings if the engine requires a role and there is no role", async () => {
+    await setup({
+      hasImpersonation: false,
+      userAttributes: [],
+      databaseDetails: {
+        engine: "snowflake",
+        features: ["connection-impersonation-requires-role"],
+      },
+    });
+
+    expect(
+      await screen.findByText(
+        "Connection impersonation requires specifying a user role on the database connection.",
+      ),
+    ).toBeInTheDocument();
+
+    expect(
+      await screen.findByRole("link", { name: /edit connection/i }),
+    ).toHaveAttribute("href", "/admin/databases/1");
+
+    expect(await screen.findByRole("button", { name: /close/i })).toBeEnabled();
   });
 
   it("should show the link to people settings if there is no impersonation and no attributes", async () => {

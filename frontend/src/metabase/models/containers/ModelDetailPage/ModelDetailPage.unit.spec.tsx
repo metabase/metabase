@@ -10,7 +10,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import {
@@ -20,7 +20,7 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { ActionsApi } from "metabase/services";
 
 import Actions from "metabase/entities/actions";
@@ -260,7 +260,7 @@ async function setup({
     { withRouter: true, initialRoute },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryAllByText(/Loading/i));
+  await waitForLoaderToBeRemoved();
 
   return { model, history, baseUrl, metadata, usedByQuestions, modelUpdateSpy };
 }
@@ -307,7 +307,7 @@ describe("ModelDetailPage", () => {
     });
 
     describe("management", () => {
-      it("allows to rename modal", async () => {
+      it("allows to rename model", async () => {
         const { model, modelUpdateSpy } = await setup({ model: getModel() });
 
         const input = screen.getByDisplayValue(model.displayName() as string);

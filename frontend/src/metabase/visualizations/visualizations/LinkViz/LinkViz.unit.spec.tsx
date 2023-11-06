@@ -5,17 +5,18 @@ import {
   screen,
   fireEvent,
   getIcon,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import {
   setupSearchEndpoints,
   setupRecentViewsEndpoints,
+  setupUsersEndpoints,
+  setupCollectionByIdEndpoint,
 } from "__support__/server-mocks";
 import * as domUtils from "metabase/lib/dom";
+import registerVisualizations from "metabase/visualizations/register";
 
-import type {
-  DashboardOrderedCard,
-  LinkCardSettings,
-} from "metabase-types/api";
+import type { DashboardCard, LinkCardSettings } from "metabase-types/api";
 import {
   createMockDashboardCardWithVirtualCard,
   createMockCollectionItem,
@@ -23,12 +24,15 @@ import {
   createMockRecentItem,
   createMockTable,
   createMockDashboard,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import type { LinkVizProps } from "./LinkViz";
 import { LinkViz } from "./LinkViz";
 
-type LinkCardVizSettings = DashboardOrderedCard["visualization_settings"] & {
+registerVisualizations();
+
+type LinkCardVizSettings = DashboardCard["visualization_settings"] & {
   link: LinkCardSettings;
 };
 
@@ -110,12 +114,13 @@ const searchingDashcard = createMockDashboardCardWithVirtualCard({
   },
 });
 
+const searchCardCollection = createMockCollection();
 const searchCardItem = createMockCollectionItem({
   id: 1,
   model: "card",
   name: "Question Uno",
   display: "pie",
-  collection: createMockCollection(),
+  collection: searchCardCollection,
 });
 
 const setup = (options?: Partial<LinkVizProps>) => {
@@ -240,6 +245,10 @@ describe("LinkViz", () => {
 
     it("clicking a search item should update the entity", async () => {
       setupSearchEndpoints([searchCardItem]);
+      setupUsersEndpoints([createMockUser()]);
+      setupCollectionByIdEndpoint({
+        collections: [searchCardCollection],
+      });
 
       const { changeSpy } = setup({
         isEditing: true,
@@ -255,7 +264,8 @@ describe("LinkViz", () => {
       // "Loading..." appears and is then replaced by "Question Uno". On CI,
       // `findByText` was sometimes running while "Loading..." was still
       // visible, so the extra expectation ensures good timing
-      expect(await screen.findByText("Loading...")).toBeInTheDocument();
+      await waitForLoaderToBeRemoved();
+
       userEvent.click(await screen.findByText("Question Uno"));
 
       expect(changeSpy).toHaveBeenCalledWith({

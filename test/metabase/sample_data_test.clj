@@ -168,13 +168,13 @@
             (is (not (contains? (get-tables) "NEW_TABLE")))
             (jdbc/execute! conn-spec "CREATE TABLE NEW_TABLE (id INTEGER);")
             (is (contains? (get-tables) "NEW_TABLE"))
-          (testing "add column"
-            (is (not (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN")))
-            (jdbc/execute! conn-spec "ALTER TABLE NEW_TABLE ADD COLUMN NEW_COLUMN VARCHAR(255);")
-            (is (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN"))
-          (testing "remove column"
-            (jdbc/execute! conn-spec "ALTER TABLE NEW_TABLE DROP COLUMN NEW_COLUMN;")
-            (is (not (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN")))
-          (testing "drop table"
-              (jdbc/execute! conn-spec "DROP TABLE NEW_TABLE;")
-              (is (not (contains? (get-tables) "NEW_TABLE"))))))))))))
+           (testing "add column"
+             (is (not (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN")))
+             (jdbc/execute! conn-spec "ALTER TABLE NEW_TABLE ADD COLUMN NEW_COLUMN VARCHAR(255);")
+             (is (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN"))
+            (testing "remove column"
+              (jdbc/execute! conn-spec "ALTER TABLE NEW_TABLE DROP COLUMN NEW_COLUMN;")
+              (is (not (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN")))
+             (testing "drop table"
+                 (jdbc/execute! conn-spec "DROP TABLE NEW_TABLE;")
+                 (is (not (contains? (get-tables) "NEW_TABLE"))))))))))))

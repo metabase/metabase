@@ -26,27 +26,24 @@
                             :average-length 130.516}}}
     :base_type           :type/Text}))
 
-(deftest short-fields-test
+(deftest ^:parallel short-fields-test
   (testing "Leave short text fields intact"
-    (is (= nil
-           (:preview_display
-            (classifiers.no-preview-display/infer-no-preview-display
-             long-text-field
-             (-> long-text-field
-                 :fingerprint
-                 (assoc-in [:type :type/Text :average-length] 2))))))))
+    (is (nil? (:preview_display
+               (classifiers.no-preview-display/infer-no-preview-display
+                long-text-field
+                (-> long-text-field
+                    :fingerprint
+                    (assoc-in [:type :type/Text :average-length] 2))))))))
 
-(deftest generic-long-text-fields-test
+(deftest ^:parallel generic-long-text-fields-test
   (testing "Don't preview generic long text fields"
-    (is (= false
-           (:preview_display
-            (classifiers.no-preview-display/infer-no-preview-display
-             long-text-field (:fingerprint long-text-field)))))))
+    (is (false? (:preview_display
+                 (classifiers.no-preview-display/infer-no-preview-display
+                  long-text-field (:fingerprint long-text-field)))))))
 
-(deftest semantic-type-test
+(deftest ^:parallel semantic-type-test
   (testing "If the field has a semantic type, show it regardless of it's length"
-    (is (= nil
-           (:preview_display
-            (classifiers.no-preview-display/infer-no-preview-display
-             (assoc long-text-field :semantic_type :type/Name)
-             (:fingerprint long-text-field)))))))
+    (is (nil? (:preview_display
+               (classifiers.no-preview-display/infer-no-preview-display
+                (assoc long-text-field :semantic_type :type/Name)
+                (:fingerprint long-text-field)))))))

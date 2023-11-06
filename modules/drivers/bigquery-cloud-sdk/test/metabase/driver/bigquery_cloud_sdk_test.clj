@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.db.metadata-queries :as metadata-queries]
-   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
@@ -440,14 +439,14 @@
     (testing "Details should be normalized coming out of the DB, to switch hardcoded dataset-id to an inclusion filter"
       ;; chicken and egg problem; we need the temp DB ID in order to create temp tables, but the creation of this
       ;; temp DB will cause driver/normalize-db-details to fire
-      (mt/with-temp* [Database [db {:name    "Legacy BigQuery DB"
-                                    :engine  :bigquery-cloud-sdk,
-                                    :details {:dataset-id "my-dataset"
-                                              :service-account-json "{}"}}]
-                      Table    [table1 {:name "Table 1"
-                                        :db_id (u/the-id db)}]
-                      Table    [table2 {:name "Table 2"
-                                        :db_id (u/the-id db)}]]
+      (mt/with-temp [Database db {:name    "Legacy BigQuery DB"
+                                  :engine  :bigquery-cloud-sdk,
+                                  :details {:dataset-id "my-dataset"
+                                            :service-account-json "{}"}}
+                     Table    table1 {:name "Table 1"
+                                      :db_id (u/the-id db)}
+                     Table    table2 {:name "Table 2"
+                                      :db_id (u/the-id db)}]
         (let [db-id      (u/the-id db)
               call-count (atom 0)
               orig-fn    @#'bigquery/convert-dataset-id-to-filters!]
@@ -515,7 +514,7 @@
   (mt/test-driver :bigquery-cloud-sdk
      (testing "native queries are compiled and formatted without whitespace errors (#30676)"
        (is (= (str (format "SELECT\n  count(*) AS `count`\nFROM\n  `%s.venues`" test-db-name))
-              (-> (mt/mbql-query venues {:aggregation [:count]})
-                  qp/compile-and-splice-parameters
-                  :query
-                  (mdb.query/format-sql :bigquery-cloud-sdk)))))))
+              (->> (mt/mbql-query venues {:aggregation [:count]})
+                   qp/compile-and-splice-parameters
+                   :query
+                   (driver/prettify-native-form :bigquery-cloud-sdk)))))))

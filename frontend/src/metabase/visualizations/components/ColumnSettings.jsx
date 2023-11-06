@@ -66,30 +66,17 @@ export function hasColumnSettingsWidgets({ value, ...props }) {
   return getWidgets({ storedSettings, ...props }).length > 0;
 }
 
-const ColumnSettings = ({
-  value,
-  variant = "default",
-  forcefullyShowHiddenSettings = false,
-  ...props
-}) => {
+const ColumnSettings = ({ value, variant = "default", ...props }) => {
   const storedSettings = value || {};
   const widgets = getWidgets({ storedSettings, ...props });
-  const extraWidgetProps = {};
-
-  if (forcefullyShowHiddenSettings) {
-    // Is used for /settings/localization page to list all the date-time settings
-    // Consider using independent form UI there
-    extraWidgetProps.hidden = false;
-  }
 
   return (
-    <div style={{ maxWidth: 300 }}>
+    <div style={{ maxWidth: 300 }} data-testid="column-settings">
       {widgets.length > 0 ? (
         widgets.map(widget => (
           <ChartSettingsWidget
             key={widget.id}
             {...widget}
-            {...extraWidgetProps}
             unset={storedSettings[widget.id] === undefined}
             noPadding
             variant={variant}

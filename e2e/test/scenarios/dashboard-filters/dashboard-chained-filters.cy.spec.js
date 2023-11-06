@@ -8,6 +8,8 @@ import {
   resetTestTable,
   resyncDatabase,
 } from "e2e/support/helpers";
+
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
@@ -22,7 +24,7 @@ describe("scenarios > dashboard > chained filter", () => {
   for (const has_field_values of ["search", "list"]) {
     it(`limit ${has_field_values} options based on linked filter`, () => {
       cy.request("PUT", `/api/field/${PEOPLE.CITY}`, { has_field_values }),
-        visitDashboard(1);
+        visitDashboard(ORDERS_DASHBOARD_ID);
       // start editing
       cy.icon("pencil").click();
 

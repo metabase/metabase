@@ -14,11 +14,11 @@
     (testing (format "source card is a %s" (if dataset? "model" "question"))
       (binding [custom-values/*max-rows* 3]
         (testing "with simple mbql"
-          (mt/with-temp* [Card [{card-id :id}
-                                (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues))
+          (mt/with-temp
+            [Card {card-id :id} (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues))
                                        {:database_id     (mt/id)
                                         :dataset         dataset?
-                                        :table_id        (mt/id :venues)})]]
+                                        :table_id        (mt/id :venues)})]
             (testing "get values"
               (is (= {:has_more_values true,
                       :values          [["20th Century Cafe"] ["25°"] ["33 Taps"]]}
@@ -35,14 +35,14 @@
                       "bakery"))))))
 
         (testing "has aggregation column"
-          (mt/with-temp* [Card [{card-id :id}
-                                (merge (mt/card-with-source-metadata-for-query
-                                         (mt/mbql-query venues
-                                                        {:aggregation [[:sum $venues.price]]
-                                                         :breakout    [[:field %categories.name {:source-field %venues.category_id}]]}))
+          (mt/with-temp
+            [Card {card-id :id} (merge (mt/card-with-source-metadata-for-query
+                                        (mt/mbql-query venues
+                                                       {:aggregation [[:sum $venues.price]]
+                                                        :breakout    [[:field %categories.name {:source-field %venues.category_id}]]}))
                                        {:database_id     (mt/id)
                                         :dataset         dataset?
-                                        :table_id        (mt/id :venues)})]]
+                                        :table_id        (mt/id :venues)})]
 
             (testing "get values from breakout columns"
               (is (= {:has_more_values true,
@@ -76,13 +76,13 @@
 
         (testing "should disable remapping when getting fk columns"
           (mt/with-column-remappings [venues.category_id categories.name]
-            (mt/with-temp* [Card [{card-id :id}
-                                  (merge (mt/card-with-source-metadata-for-query
-                                           (mt/mbql-query venues
-                                                          {:joins [{:source-table $$categories
-                                                                    :alias        "Categories"
-                                                                    :condition    [:= $venues.category_id &Categories.categories.id]}]}))
-                                         {:dataset dataset?})]]
+            (mt/with-temp
+              [Card {card-id :id} (merge (mt/card-with-source-metadata-for-query
+                                          (mt/mbql-query venues
+                                                         {:joins [{:source-table $$categories
+                                                                   :alias        "Categories"
+                                                                   :condition    [:= $venues.category_id &Categories.categories.id]}]}))
+                                         {:dataset dataset?})]
 
               (testing "get values returns the value, not remapped values"
                 (is (= {:has_more_values true,
@@ -104,12 +104,12 @@
   (doseq [dataset? [true false]]
     (testing (format "source card is a %s with native question" (if dataset? "model" "question"))
       (binding [custom-values/*max-rows* 3]
-        (mt/with-temp* [Card [{card-id :id}
-                              (merge (mt/card-with-source-metadata-for-query
-                                       (mt/native-query {:query "select * from venues where lower(name) like '%red%'"}))
+        (mt/with-temp
+          [Card {card-id :id} (merge (mt/card-with-source-metadata-for-query
+                                      (mt/native-query {:query "select * from venues where lower(name) like '%red%'"}))
                                      {:database_id     (mt/id)
                                       :dataset         dataset?
-                                      :table_id        (mt/id :venues)})]]
+                                      :table_id        (mt/id :venues)})]
           (testing "get values from breakout columns"
             (is (= {:has_more_values false,
                     :values          [["Fred 62"] ["Red Medicine"]]}
@@ -130,9 +130,8 @@
   (mt/dataset sample-dataset
     (testing "the values list should not contains duplicated and empty values"
       (testing "with native query"
-        (mt/with-temp* [Card [{card-id :id}
-                              (mt/card-with-source-metadata-for-query
-                                (mt/native-query {:query "select * from people"}))]]
+        (mt/with-temp [Card {card-id :id} (mt/card-with-source-metadata-for-query
+                                           (mt/native-query {:query "select * from people"}))]
           (testing "get values from breakout columns"
             (is (= {:has_more_values false,
                     :values          [["Affiliate"] ["Facebook"] ["Google"] ["Organic"] ["Twitter"]]}
@@ -150,9 +149,8 @@
                     "oo"))))))
 
       (testing "with mbql query"
-        (mt/with-temp* [Card [{card-id :id}
-                              (mt/card-with-source-metadata-for-query
-                                (mt/mbql-query people))]]
+        (mt/with-temp [Card {card-id :id} (mt/card-with-source-metadata-for-query
+                                           (mt/mbql-query people))]
           (testing "get values from breakout columns"
             (is (= {:has_more_values false,
                     :values          [["Affiliate"] ["Facebook"] ["Google"] ["Organic"] ["Twitter"]]}
@@ -173,9 +171,9 @@
   (testing "error if doesn't have permissions"
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-temp*
-          [Collection [coll]
-           Card       [card {:collection_id (:id coll)}]]
+        (mt/with-temp
+          [Collection coll {}
+           Card       card {:collection_id (:id coll)}]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"You don't have permissions to do that."
@@ -196,7 +194,7 @@
       (testing "souce card is archived"
         (t2.with-temp/with-temp [Card card {:archived true}]
           (let [mock-default-result {:has_more_values false
-                             :values [["archived"]]}]
+                                     :values [["archived"]]}]
             (is (= mock-default-result
                    (custom-values/parameter->values
                     {:name                 "Card as source"
@@ -212,7 +210,7 @@
       (testing "value-field not found in card's result_metadata"
         (t2.with-temp/with-temp [Card card {}]
           (let [mock-default-result {:has_more_values false
-                             :values [["field-not-found"]]}]
+                                     :values [["field-not-found"]]}]
             (is (= mock-default-result
                    (custom-values/parameter->values
                     {:name                 "Card as source"

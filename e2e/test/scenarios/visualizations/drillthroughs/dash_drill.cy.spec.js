@@ -6,14 +6,15 @@ import {
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 // This question is part of our pre-defined data set used for testing
 const Q2 = {
   name: "Orders, Count",
-  id: 2,
-  expectedPath: "2-orders-count",
+  id: ORDERS_COUNT_QUESTION_ID,
+  expectedPath: `${ORDERS_COUNT_QUESTION_ID}-orders-count`,
 };
 
 describe("scenarios > visualizations > drillthroughs > dash_drill", () => {

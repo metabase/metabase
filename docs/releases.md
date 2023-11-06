@@ -15,6 +15,15 @@ See docs on [upgrading Metabase](./installation-and-operation/upgrading-metabase
 
 ## Metabase Enterprise Edition releases
 
+- [v1.47.6](https://github.com/metabase/metabase/releases/tag/v1.47.6)
+- [v1.47.5](https://github.com/metabase/metabase/releases/tag/v1.47.5)
+- [v1.47.4](https://github.com/metabase/metabase/releases/tag/v1.47.4)
+- [v1.47.3](https://github.com/metabase/metabase/releases/tag/v1.47.3)
+- [v1.47.2](https://github.com/metabase/metabase/releases/tag/v1.47.2)
+- [v1.47.1](https://github.com/metabase/metabase/releases/tag/v1.47.1)
+- [v1.47.0](https://github.com/metabase/metabase/releases/tag/v1.47.0)
+- [v1.46.8](https://github.com/metabase/metabase/releases/tag/v1.46.8)
+- [v1.46.7](https://github.com/metabase/metabase/releases/tag/v1.46.7)
 - [v1.46.6.4](https://github.com/metabase/metabase/releases/tag/v1.46.6.4)
 - [v1.46.6.3](https://github.com/metabase/metabase/releases/tag/v1.46.6.3)
 - [v1.46.6.2](https://github.com/metabase/metabase/releases/tag/v1.46.6.2)
@@ -119,6 +128,15 @@ See docs on [upgrading Metabase](./installation-and-operation/upgrading-metabase
 
 ## Metabase Open Source Edition releases
 
+- [v0.47.6](https://github.com/metabase/metabase/releases/tag/v0.47.6)
+- [v0.47.5](https://github.com/metabase/metabase/releases/tag/v0.47.5)
+- [v0.47.4](https://github.com/metabase/metabase/releases/tag/v0.47.4)
+- [v0.47.3](https://github.com/metabase/metabase/releases/tag/v0.47.3)
+- [v0.47.2](https://github.com/metabase/metabase/releases/tag/v0.47.2)
+- [v0.47.1](https://github.com/metabase/metabase/releases/tag/v0.47.1)
+- [v0.47.0](https://github.com/metabase/metabase/releases/tag/v0.47.0)
+- [v0.46.8](https://github.com/metabase/metabase/releases/tag/v0.46.8)
+- [v0.46.7](https://github.com/metabase/metabase/releases/tag/v0.46.7)
 - [v0.46.6.4](https://github.com/metabase/metabase/releases/tag/v0.46.6.4)
 - [v0.46.6.3](https://github.com/metabase/metabase/releases/tag/v0.46.6.3)
 - [v0.46.6.2](https://github.com/metabase/metabase/releases/tag/v0.46.6.2)

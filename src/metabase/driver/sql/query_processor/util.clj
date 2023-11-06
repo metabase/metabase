@@ -14,10 +14,9 @@
   Ultimately, this is just a way to get the parent identifier
 
   (metabase.util.honeysql-extensions/identifier :field \"blah\")"
-  [field-identifier field]
+  [field-identifier {:keys [nfc-path], :as _field}]
   {:pre [(hx/identifier? field-identifier)]}
-  (let [nfc-path          (:nfc_path field)
-        parent-components (-> (case hx/*honey-sql-version*
+  (let [parent-components (-> (case hx/*honey-sql-version*
                                 1 (:components field-identifier)
                                 2 (last field-identifier))
                               (vec)

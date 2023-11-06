@@ -277,7 +277,7 @@ describeEE("impersonated permission", () => {
       // Page leave confirmation should be on top
       modal()
         .as("leaveConfirmation")
-        .findByText("Discard your unsaved changes?")
+        .findByText("Discard your changes?")
         .should("be.visible");
 
       // Cancel

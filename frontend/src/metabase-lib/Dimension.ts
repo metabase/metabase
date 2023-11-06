@@ -262,8 +262,10 @@ export default class Dimension {
 
     const otherDimension: Dimension | null | undefined =
       other instanceof Dimension ? other : this.parseMBQL(other);
-    const baseDimensionA = this.baseDimension();
-    const baseDimensionB = otherDimension && otherDimension.baseDimension();
+    const baseDimensionA = this.getMLv1CompatibleDimension().baseDimension();
+    const baseDimensionB =
+      otherDimension &&
+      otherDimension.getMLv1CompatibleDimension().baseDimension();
     return (
       !!baseDimensionA &&
       !!baseDimensionB &&
@@ -367,7 +369,7 @@ export default class Dimension {
    * The display name of this dimension, e.x. the field's display_name
    * @abstract
    */
-  displayName(): string {
+  displayName(..._args: unknown[]): string {
     return "";
   }
 

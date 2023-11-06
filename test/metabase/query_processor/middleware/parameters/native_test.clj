@@ -5,9 +5,7 @@
    [metabase.query-processor.middleware.parameters.native :as qp.native]
    [metabase.test :as mt]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli.schema :as ms]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest include-card-parameters-test
@@ -28,8 +26,8 @@
                                          :type         :card
                                          :card-id      (u/the-id card)}}}]
           (mt/with-driver :h2
-            (mt/with-everything-store
-              (is (schema= {:native   su/NonBlankString
-                            :params   (s/eq ["G%"])
-                            s/Keyword s/Any}
-                           (qp.native/expand-inner query))))))))))
+            (mt/with-metadata-provider (mt/id)
+              (is (malli= [:map
+                           [:native ms/NonBlankString]
+                           [:params [:= ["G%"]]]]
+                          (qp.native/expand-inner query))))))))))

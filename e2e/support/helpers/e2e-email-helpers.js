@@ -111,3 +111,12 @@ export function sendEmailAndAssert(callback) {
     callback(body[0]);
   });
 }
+
+export function sendEmailAndVisitIt() {
+  clickSend();
+  const emailUrl = `http://localhost:${WEB_PORT}/email`;
+  return cy.request("GET", emailUrl).then(({ body }) => {
+    const latest = body.slice(-1)[0];
+    cy.visit(`${emailUrl}/${latest.id}/html`);
+  });
+}

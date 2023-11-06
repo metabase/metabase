@@ -16,7 +16,7 @@ import DateRelativeWidget from "metabase/components/DateRelativeWidget";
 import DateMonthYearWidget from "metabase/components/DateMonthYearWidget";
 import DateQuarterYearWidget from "metabase/components/DateQuarterYearWidget";
 import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
-import TextWidget from "metabase/components/TextWidget";
+import { TextWidget } from "metabase/components/TextWidget";
 import WidgetStatusIcon from "metabase/parameters/components/WidgetStatusIcon";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
 import NumberInputWidget from "metabase/parameters/components/widgets/NumberInputWidget";
@@ -25,12 +25,12 @@ import {
   getNumberParameterArity,
   getStringParameterArity,
 } from "metabase-lib/parameters/utils/operators";
-import { getFields } from "metabase-lib/parameters/utils/parameter-fields";
 import { getQueryType } from "metabase-lib/parameters/utils/parameter-source";
 import {
   isDateParameter,
   isNumberParameter,
 } from "metabase-lib/parameters/utils/parameter-type";
+import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
 
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 import S from "./ParameterValueWidget.css";
@@ -315,9 +315,8 @@ function isTextWidget(parameter) {
 
 function isFieldWidget(parameter) {
   const canQuery = getQueryType(parameter) !== "none";
-  const hasFields = getFields(parameter).length > 0;
 
   return parameter.hasVariableTemplateTagTarget
     ? canQuery
-    : canQuery || hasFields;
+    : canQuery || hasFields(parameter);
 }

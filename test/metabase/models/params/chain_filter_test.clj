@@ -11,18 +11,35 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
+
+(defn shorthand->constraint [field-id v]
+  (if-not (vector? v)
+    {:field-id field-id
+     :op       :=
+     :value    v}
+    (let [op      (when (keyword? (first v)) (first v))
+          options (when (map? (last v)) (last v))
+          v       (cond-> v
+                    op      (rest)
+                    options (butlast))]
+      {:field-id field-id
+       :op       (or op :=)
+       :value    (vec v)
+       :options  options})))
+
+
 (defmacro ^:private chain-filter [field field->value & options]
   `(chain-filter/chain-filter
     (mt/$ids nil ~(symbol (str \% (name field))))
-    (mt/$ids nil ~(into {} (for [[k v] field->value]
-                             [(symbol (str \% k)) v])))
+    (mt/$ids nil ~(vec (for [[k v] field->value]
+                         (shorthand->constraint (symbol (str \% k)) v))))
     ~@options))
 
 (defmacro ^:private chain-filter-search [field field->value query & options]
   `(chain-filter/chain-filter-search
      (mt/$ids nil ~(symbol (str \% (name field))))
-     (mt/$ids nil ~(into {} (for [[k v] field->value]
-                              [(symbol (str \% k)) v])))
+     (mt/$ids nil ~(vec (for [[k v] field->value]
+                          (shorthand->constraint (symbol (str \% k)) v))))
      ~query
      ~@options))
 
@@ -484,11 +501,17 @@
                    (chain-filter categories.name {venues.price 4})))
             (is (= 1 (t2/count FieldValues :field_id field-id :type :linked-filter)))))
 
-        (testing "should do in-memory search with the cached FieldValues when search without constraints"
-          (mt/with-temp-vals-in-db FieldValues (t2/select-one-pk FieldValues :field_id field-id :type "full") {:values ["Good" "Bad"]}
-            (is (= {:values          [["Good"]]
+        (testing "should search with the cached FieldValues when search without constraints"
+          (mt/with-temp
+            [:model/Field       field (-> (t2/select-one :model/Field (mt/id :categories :name))
+                                          (dissoc :id)
+                                          (assoc :name "NAME2"))
+             :model/FieldValues  _    {:field_id (:id field)
+                                       :type     :full
+                                       :values   ["Goooood" "Bad"]}]
+            (is (= {:values          [["Goooood"]]
                     :has_more_values false}
-                   (chain-filter-search categories.name nil "ood")))))
+                   (chain-filter-search categories.name2 nil "oooood")))))
 
         (testing "search with constraints"
           ;; make sure we have a clean start
@@ -517,11 +540,26 @@
                       :has_more_values false}
                      (chain-filter-search categories.name {venues.price 4} "o"))))))))))
 
+(deftest use-cached-field-values-for-remapped-field-test
+  (testing "fetching a remapped field should returns remapped values (#21528)"
+    (mt/with-discard-model-updates [:model/Field]
+      (t2/update! :model/Field (mt/id :venues :category_id) {:has_field_values "list"})
+      (mt/with-column-remappings [venues.category_id categories.name]
+        (is (= {:values          [[2 "American"] [3 "Artisan"] [4 "Asian"]]
+                :has_more_values false}
+               (take-n-values 3 (chain-filter/chain-filter (mt/id :venues :category_id) nil))))
+
+        (is (= {:values          [[4 "Asian"]]
+                :has_more_values false}
+               (chain-filter/chain-filter-search (mt/id :venues :category_id) nil "sian")))))))
+
 (deftest time-interval-test
   (testing "chain-filter should accept time interval strings like `past32weeks` for temporal Fields"
     (mt/$ids
       (is (= [:time-interval $checkins.date -32 :week {:include-current false}]
-             (#'chain-filter/filter-clause $$checkins %checkins.date "past32weeks"))))))
+             (#'chain-filter/filter-clause $$checkins {:field-id %checkins.date
+                                                       :op       :=
+                                                       :value    "past32weeks"}))))))
 
 (mt/defdataset nil-values-dataset
   [["tbl"
@@ -544,11 +582,11 @@
                       ;; sorting can differ a bit based on whether we use FieldValues or not... not sure why this is
                       ;; the case, but that's not important for this test anyway. Just sort everything
                       (is (= expected-values
-                             (update (chain-filter/chain-filter (mt/id :tbl field) {}) :values sort))))
+                             (update (chain-filter/chain-filter (mt/id :tbl field) []) :values sort))))
                     (testing "chain-filter-search"
                       (is (= {:values          [["value"]]
                               :has_more_values false}
-                             (chain-filter/chain-filter-search (mt/id :tbl field) {} "val"))))))]
+                             (chain-filter/chain-filter-search (mt/id :tbl field) [] "val"))))))]
           (testing "no FieldValues"
             (thunk))
           (testing "with FieldValues for myfield"

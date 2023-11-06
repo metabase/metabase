@@ -18,9 +18,11 @@ import {
   sendEmailAndAssert,
   setTokenFeatures,
 } from "e2e/support/helpers";
-
+import {
+  NORMAL_USER_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const {
@@ -87,7 +89,7 @@ describeEE("formatting > sandboxes", () => {
       setTokenFeatures("all");
 
       // Add user attribute to existing ("normal" / id:2) user
-      cy.request("PUT", "/api/user/2", {
+      cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, {
         login_attributes: { [USER_ATTRIBUTE]: ATTRIBUTE_VALUE },
       });
 
@@ -829,13 +831,9 @@ describeEE("formatting > sandboxes", () => {
           // Remove the "Subtotal" column from within sidebar
           cy.findByText("Subtotal").parent().find(".Icon-eye_outline").click();
         });
-      cy.button("Done").click();
-      // Rerun the query
-      cy.icon("play").last().click();
 
-      cy.wait("@dataset").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
-      });
+      cy.button("Done").click();
+
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Subtotal").should("not.exist");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -920,7 +918,7 @@ describeEE("formatting > sandboxes", () => {
       });
 
       cy.signInAsSandboxedUser();
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
       cy.findByLabelText("subscriptions").click();
 
       // should forward to email since that is the only one setup
@@ -1042,7 +1040,7 @@ describeEE("formatting > sandboxes", () => {
         });
 
         cy.signInAsSandboxedUser();
-        visitDashboard(1);
+        visitDashboard(ORDERS_DASHBOARD_ID);
         cy.findByLabelText("subscriptions").click();
 
         sidebar()

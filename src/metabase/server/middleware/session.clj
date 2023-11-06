@@ -2,7 +2,7 @@
   "Ring middleware related to session (binding current user and permissions)."
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.api.common
     :as api
     :refer [*current-user*
@@ -26,8 +26,8 @@
    [metabase.util.log :as log]
    [ring.util.response :as response]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.util UUID)))
 
@@ -68,6 +68,42 @@
                                                        metabase-embedded-session-cookie
                                                        metabase-session-timeout-cookie]))
 
+(def ^:private possible-session-cookie-samesite-values
+  #{:lax :none :strict nil})
+
+(defn- normalized-session-cookie-samesite [value]
+  (some-> value name u/lower-case-en keyword))
+
+(defn- valid-session-cookie-samesite?
+  [normalized-value]
+  (contains? possible-session-cookie-samesite-values normalized-value))
+
+(defsetting session-cookie-samesite
+  (deferred-tru "Value for the session cookie's `SameSite` directive.")
+  :type :keyword
+  :visibility :settings-manager
+  :default :lax
+  :getter (fn session-cookie-samesite-getter []
+            (let [value (normalized-session-cookie-samesite
+                         (setting/get-raw-value :session-cookie-samesite))]
+              (if (valid-session-cookie-samesite? value)
+                value
+                (throw (ex-info "Invalid value for session cookie samesite"
+                                {:possible-values possible-session-cookie-samesite-values
+                                 :session-cookie-samesite value})))))
+  :setter (fn session-cookie-samesite-setter
+            [new-value]
+            (let [normalized-value (normalized-session-cookie-samesite new-value)]
+              (if (valid-session-cookie-samesite? normalized-value)
+                (setting/set-value-of-type!
+                 :keyword
+                 :session-cookie-samesite
+                 normalized-value)
+                (throw (ex-info (tru "Invalid value for session cookie samesite")
+                                {:possible-values possible-session-cookie-samesite-values
+                                 :session-cookie-samesite normalized-value
+                                 :http-status 400}))))))
+
 (defmulti default-session-cookie-attributes
   "The appropriate cookie attributes to persist a newly created Session to `response`."
   {:arglists '([session-type request])}
@@ -81,7 +117,7 @@
 (defmethod default-session-cookie-attributes :normal
   [_ request]
   (merge
-   {:same-site config/mb-session-cookie-samesite
+   {:same-site (session-cookie-samesite)
     ;; TODO - we should set `site-path` as well. Don't want to enable this yet so we don't end
     ;; up breaking things
     :path      "/" #_(site-path)}
@@ -156,7 +192,7 @@
                         ;; max-session age-is in minutes; Max-Age= directive should be in seconds
                         (when (use-permanent-cookies? request)
                           {:max-age (* 60 (config/config-int :max-session-age))}))]
-    (when (and (= config/mb-session-cookie-samesite :none) (request.u/https? request))
+    (when (and (= (session-cookie-samesite) :none) (not (request.u/https? request)))
       (log/warn
        (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions.")
             " "
@@ -227,7 +263,7 @@
   (memoize
    (fn [db-type max-age-minutes session-type enable-advanced-permissions?]
      (first
-      (db/honeysql->sql
+      (t2.pipeline/compile*
        (cond-> {:select    [[:session.user_id :metabase-user-id]
                             [:user.is_superuser :is-superuser?]
                             [:user.locale :user-locale]]
@@ -296,13 +332,19 @@
   (when user-id
     (t2/select-one current-user-fields, :id user-id)))
 
-(defn- user-local-settings [user-id]
-  (when user-id
-    (or (:settings (t2/select-one [User :settings] :id user-id))
-        {})))
+(def ^:private ^:dynamic *user-local-values-user-id*
+  "User ID that we've previous bound [[*user-local-values*]] for. This exists so we can avoid rebinding it in recursive
+  calls to [[with-current-user]] if it is already bound, as this can mess things up since things
+  like [[metabase.models.setting/set-user-local-value!]] will only update the values for the top-level binding."
+  ;; placeholder value so we will end up rebinding [[*user-local-values*]] it if you call
+  ;;
+  ;;    (with-current-user nil
+  ;;      ...)
+  ;;
+  ::none)
 
 (defn do-with-current-user
-  "Impl for `with-current-user`."
+  "Impl for [[with-current-user]]."
   [{:keys [metabase-user-id is-superuser? permissions-set user-locale settings is-group-manager?]} thunk]
   (binding [*current-user-id*              metabase-user-id
             i18n/*user-locale*             user-locale
@@ -310,8 +352,13 @@
             *is-superuser?*                (boolean is-superuser?)
             *current-user*                 (delay (find-user metabase-user-id))
             *current-user-permissions-set* (delay (or permissions-set (some-> metabase-user-id user/permissions-set)))
-            *user-local-values*            (delay (atom (or settings
-                                                            (user-local-settings metabase-user-id))))]
+            ;; as mentioned above, do not rebind this to something new, because changes to its value will not be
+            ;; propagated to frames further up the stack
+            *user-local-values*            (if (= *user-local-values-user-id* metabase-user-id)
+                                             *user-local-values*
+                                             (delay (atom (or settings
+                                                              (user/user-local-settings metabase-user-id)))))
+            *user-local-values-user-id*    metabase-user-id]
     (thunk)))
 
 (defmacro ^:private with-current-user-for-request

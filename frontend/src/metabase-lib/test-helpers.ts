@@ -53,6 +53,12 @@ export const columnFinder =
   (tableName: string, columnName: string): ML.ColumnMetadata => {
     const column = columns.find(column => {
       const displayInfo = ML.displayInfo(query, 0, column);
+
+      // for non-table columns - aggregations, custom columns
+      if (!displayInfo.table) {
+        return displayInfo?.name === columnName;
+      }
+
       return (
         displayInfo?.table?.name === tableName &&
         displayInfo?.name === columnName

@@ -3,10 +3,10 @@
   (:require
    [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.load :as load]
+   [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.load :as v2.load]
-   [metabase-enterprise.serialization.v2.seed-entity-ids :as v2.seed-entity-ids]
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.db :as mdb]
    [metabase.models.card :refer [Card]]
@@ -27,31 +27,29 @@
    [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private Mode
-  (su/with-api-error-message (s/enum :skip :update)
+  (mu/with-api-error-message [:enum :skip :update]
     (deferred-trs "invalid --mode value")))
 
 (def ^:private OnError
-  (su/with-api-error-message (s/enum :continue :abort)
+  (mu/with-api-error-message [:enum :continue :abort]
     (deferred-trs "invalid --on-error value")))
 
 (def ^:private Context
-  (su/with-api-error-message
-    {(s/optional-key :on-error) OnError
-     (s/optional-key :mode)     Mode}
+  (mu/with-api-error-message
+    [:map {:closed true}
+     [:on-error {:optional true} OnError]
+     [:mode     {:optional true} Mode]]
     (deferred-trs "invalid context seed value")))
 
 (defn- check-premium-token! []
   (premium-features/assert-has-feature :serialization (trs "Serialization")))
 
-(s/defn v1-load
+(mu/defn v1-load
   "Load serialized metabase instance as created by [[dump]] command from directory `path`."
   [path context :- Context]
   (plugins/load-plugins!)
@@ -221,4 +219,16 @@
 
   Returns truthy if all entity IDs were added successfully, or falsey if any errors were encountered."
   []
-  (v2.seed-entity-ids/seed-entity-ids!))
+  (v2.entity-ids/seed-entity-ids!))
+
+(defn drop-entity-ids
+  "Drop entity IDs for all instances of serializable models.
+
+  This is needed for some cases of migrating from v1 to v2 serdes. v1 doesn't dump `entity_id`, so they may have been
+  randomly generated independently in both instances. Then when v2 serdes is used to export and import, the randomly
+  generated IDs don't match and the entities get duplicated. Dropping `entity_id` from both instances first will force
+  them to be regenerated based on the hashes, so they should match up if the receiving instance is a copy of the sender.
+
+  Returns truthy if all entity IDs have been dropped, or falsey if any errors were encountered."
+  []
+  (v2.entity-ids/drop-entity-ids!))

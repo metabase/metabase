@@ -10,7 +10,6 @@ import {
   openOrdersTable,
   enterCustomColumnDetails,
   visualize,
-  getNotebookStep,
   checkExpressionEditorHelperPopoverPosition,
 } from "e2e/support/helpers";
 
@@ -152,32 +151,6 @@ describe("scenarios > question > summarize sidebar", () => {
     cy.findByText("49.54");
   });
 
-  it("breakout binning popover should have normal height even when it's rendered lower on the screen (metabase#15445)", () => {
-    visitQuestion(ORDERS_QUESTION_ID);
-    cy.icon("notebook").click();
-
-    summarize({ mode: "notebook" });
-    popover().findByText("Count of rows").click();
-
-    getNotebookStep("summarize")
-      .findByText("Pick a column to group by")
-      .click();
-    popover()
-      .findByRole("option", { name: "Created At" })
-      .realHover()
-      .findByLabelText("Temporal bucket")
-      .findByText("by month")
-      .click();
-
-    cy.findByRole("tooltip").within(() => {
-      cy.findByText("Minute").should("be.visible");
-      cy.findByText("Week").should("be.visible");
-
-      // Ensure the option is there, but not visible (have to scroll the list to see it)
-      cy.findByText("Quarter of year").should("exist").should("not.be.visible");
-    });
-  });
-
   it("should allow using `Custom Expression` in orders metrics (metabase#12899)", () => {
     openOrdersTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
@@ -234,23 +207,20 @@ describe("scenarios > question > summarize sidebar", () => {
   });
 
   it("summarizing by distinct datetime should allow granular selection (metabase#13098)", () => {
-    // Go straight to orders table in custom questions
     openOrdersTable({ mode: "notebook" });
 
     summarize({ mode: "notebook" });
     popover().within(() => {
       cy.findByText("Number of distinct values of ...").click();
-      cy.log(
-        "**Test fails at this point as there isn't an extra field next to 'Created At'**",
-      );
-      // instead of relying on DOM structure that might change
-      // (i.e. find "Created At" -> parent -> parent -> parent -> find "by month")
-      // access it directly from the known common parent
-      cy.get(".List-item").contains("by month").click({ force: true });
+      cy.findByLabelText("Temporal bucket").click();
     });
-    // this should be among the granular selection choices
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Hour of day").click();
+
+    popover()
+      .last()
+      .within(() => {
+        cy.button("More…").click();
+        cy.findByText("Hour of day").click();
+      });
   });
 
   it.skip("should handle (removing) multiple metrics when one is sorted (metabase#12625)", () => {

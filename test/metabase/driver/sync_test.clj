@@ -5,7 +5,7 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
-(t/deftest schema-filter-test
+(t/deftest ^:parallel schema-filter-test
   (doseq [[test-kind expect-match? schema-name inclusion-filters exclusion-filters]
           [["nil filters" true "foo" nil nil]
            ["blank filters" true "foo" "" ""]

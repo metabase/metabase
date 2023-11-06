@@ -1,9 +1,13 @@
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import { createMockMetadata } from "__support__/metadata";
 import { setupFieldValuesEndpoints } from "__support__/server-mocks";
 
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 
 import {
   createSampleDatabase,
@@ -72,9 +76,7 @@ async function setup(options: Partial<DefaultPickerProps> = {}) {
   );
 
   await screen.findByTestId("default-picker-container");
-  await waitFor(() =>
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument(),
-  );
+  await waitForLoaderToBeRemoved();
 
   return { setValueSpy, setValuesSpy, onCommitSpy };
 }

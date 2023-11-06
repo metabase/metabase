@@ -4,12 +4,10 @@ import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
+  setupUsersEndpoints,
+  setupCollectionByIdEndpoint,
 } from "__support__/server-mocks";
-import {
-  renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
-} from "__support__/ui";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 
 import Input from "metabase/core/components/Input";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
@@ -20,6 +18,7 @@ import {
   createMockCollectionItem,
   createMockDatabase,
   createMockTable,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
@@ -215,8 +214,13 @@ export async function setup({
     setupDatabasesEndpoints([], { hasSavedQuestions: false });
   }
 
+  const collectionList = [SAMPLE_COLLECTION, EMPTY_COLLECTION];
   setupCollectionsEndpoints({
-    collections: [SAMPLE_COLLECTION, EMPTY_COLLECTION],
+    collections: collectionList,
+  });
+
+  setupCollectionByIdEndpoint({
+    collections: collectionList,
   });
 
   setupCollectionVirtualSchemaEndpoints(createMockCollection(ROOT_COLLECTION), [
@@ -244,6 +248,8 @@ export async function setup({
     setupSearchEndpoints([SAMPLE_QUESTION_SEARCH_ITEM]);
   }
 
+  setupUsersEndpoints([createMockUser()]);
+
   const settings = createMockSettingsState({
     "enable-nested-queries": hasNestedQueriesEnabled,
   });
@@ -262,7 +268,7 @@ export async function setup({
     },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
+  await waitForLoaderToBeRemoved();
 
   return { onChange };
 }

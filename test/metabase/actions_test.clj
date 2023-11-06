@@ -10,9 +10,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli.schema :as ms]
    [schema.core :as s]
    [toucan2.core :as t2])
   (:import
@@ -119,9 +117,11 @@
     :request-body (assoc (mt/mbql-query categories) :create-row {(format-field-name :name) "created_row"})
     :expect-fn    (fn [result]
                     ;; check that we return the entire row
-                    (is (schema= {:created-row {(format-field-name :id)   su/IntGreaterThanZero
-                                                (format-field-name :name) su/NonBlankString}}
-                                 result)))}
+                    (is (malli= [:map {:closed true}
+                                 [:created-row [:map {:closed true}
+                                                [(format-field-name :id)   ms/PositiveInt]
+                                                [(format-field-name :name) ms/NonBlankString]]]]
+                         result)))}
    {:action       :row/update
     :request-body (assoc (mt/mbql-query categories {:filter [:= $id 1]})
                          :update_row {(format-field-name :name) "updated_row"})
@@ -154,10 +154,10 @@
 
 (deftest actions-feature-test
   (testing "Only allow actions for drivers that support the `:actions` driver feature. (#22557)"
-    (mt/with-temp* [Database [{db-id :id} {:name     "Birds"
-                                           :engine   ::feature-flag-test-driver
-                                           :settings {:database-enable-actions true}}]
-                    Table    [{table-id :id} {:db_id db-id}]]
+    (mt/with-temp [Database {db-id :id}    {:name     "Birds"
+                                            :engine   ::feature-flag-test-driver
+                                            :settings {:database-enable-actions true}}
+                   Table    {table-id :id} {:db_id db-id}]
       (is (thrown-with-msg? Exception (re-pattern
                                        (format "%s Database %d \"Birds\" does not support actions."
                                                (u/qualified-name ::feature-flag-test-driver)
@@ -253,12 +253,13 @@
               (is (= 75
                      (categories-row-count))))))))))
 
-(defmacro is-ex-data [expected actual-call]
+(defmacro is-ex-data [expected-schema actual-call]
   `(try
     ~actual-call
     (is (= true false))
     (catch clojure.lang.ExceptionInfo e#
-      (is (~'schema= ~expected (ex-data e#))))))
+      (is (~'schema= ~expected-schema
+           (assoc (ex-data e#) ::message (ex-message e#)))))))
 
 (deftest bulk-create-happy-path-test
   (testing "bulk/create"
@@ -304,7 +305,8 @@
                                         ;; MySQL 5.7 checks the type of the parameter first.
                                         :mysql    #"Field 'name' doesn't have a default value|Incorrect integer value: 'STRING' for column 'id'")}
                               "second error")]
-              :status-code (s/eq 400)}
+              :status-code (s/eq 400)
+              s/Keyword s/Any}
              (actions/perform-action! :bulk/create
                                       {:database (mt/id)
                                        :table-id (mt/id :categories)
@@ -351,7 +353,8 @@
                 {:index (s/eq 3)
                  :error #"Sorry, the row you're trying to delete doesn't exist"}
                 "second error")]
-              :status-code (s/eq 400)}
+              :status-code (s/eq 400)
+              s/Keyword s/Any}
              (actions/perform-action! :bulk/delete
                                       {:database (mt/id)
                                        :table-id (mt/id :categories)
@@ -434,8 +437,7 @@
                                    (actions/perform-action! :bulk/update
                                                             {:database (mt/id)
                                                              :table-id (mt/id :categories)
-                                                             :arg
-                                                             rows}))]
+                                                             :arg rows}))]
           (testing "Initial values"
             (is (= [[1 "African"]
                     [2 "American"]

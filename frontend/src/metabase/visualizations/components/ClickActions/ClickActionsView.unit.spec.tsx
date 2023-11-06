@@ -1,10 +1,10 @@
 import { render, screen } from "__support__/ui";
 import { DefaultMode } from "metabase/visualizations/click-actions/modes/DefaultMode";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import type {
   RegularClickAction,
-  QueryMode,
-} from "metabase/visualizations/types";
+  QueryClickActionsMode,
+} from "metabase/visualizations/types/click-actions";
 import {
   createSampleDatabase,
   REVIEWS_ID,
@@ -79,7 +79,7 @@ describe("ClickActionsView", () => {
 function setup(
   fieldName: string,
   value: string | number,
-  queryMode: QueryMode = DefaultMode as QueryMode,
+  queryMode: QueryClickActionsMode = DefaultMode as QueryClickActionsMode,
 ) {
   const metadata = createMockMetadata({
     databases: [createSampleDatabase()],

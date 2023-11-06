@@ -5,6 +5,7 @@ import { push } from "react-router-redux";
 import { connect } from "react-redux";
 import type { LocationDescriptor } from "history";
 
+import MetabaseSettings from "metabase/lib/settings";
 import Modal from "metabase/components/Modal";
 
 type IRoute = {
@@ -12,7 +13,23 @@ type IRoute = {
 };
 
 export const getParentPath = (route: IRoute, location: Location) => {
-  const fullPathSegments = location.pathname.split("/");
+  // If instance has a custom url we need to exclude its subpath
+  const siteUrlSegments = (MetabaseSettings.get("site-url") ?? "").split("/");
+  const subPath = siteUrlSegments.slice(3).join("/");
+
+  let pathName: string;
+  if (subPath) {
+    const subPathSplit = location.pathname.split(subPath);
+
+    pathName =
+      subPathSplit.length === 1
+        ? subPathSplit[0]
+        : subPathSplit.slice(1).join(subPath);
+  } else {
+    pathName = location.pathname;
+  }
+
+  const fullPathSegments = pathName.split("/");
   const routeSegments = route.path.split("/");
 
   fullPathSegments.splice(-routeSegments.length);

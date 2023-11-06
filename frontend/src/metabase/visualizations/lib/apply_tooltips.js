@@ -1,6 +1,7 @@
 /// code to "apply" chart tooltips. (How does one apply a tooltip?)
 
 import d3 from "d3";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import { getIn } from "icepick";
 import _ from "underscore";
@@ -48,7 +49,7 @@ function isDashboardAddedSeries(series, seriesIndex, dashboard) {
   const { card: addedSeriesCard } = series[seriesIndex];
 
   // find the dashcard associated with the first series
-  const dashCard = dashboard.ordered_cards.find(
+  const dashCard = dashboard.dashcards.find(
     dashCard => dashCard.card_id === firstCardInSeries.id,
   );
 
@@ -350,18 +351,25 @@ export const getStackedTooltipModel = (
   const tooltipRows = seriesWithGroupedData
     .map(series => {
       const { card, groupedData, data } = series;
-      const datum = groupedData?.find(
+      const dataForXValue = groupedData?.filter(
         datum => datum[DIMENSION_INDEX] === xValue,
       );
 
-      if (!datum) {
+      if (dataForXValue.length === 0) {
         return null;
       }
 
-      const value = datum[METRIC_INDEX];
+      const value = dataForXValue.reduce((totalValue, datum) => {
+        const datumValue = datum[METRIC_INDEX];
+        if (totalValue == null && datumValue == null) {
+          return null;
+        }
+        return totalValue + datum[METRIC_INDEX];
+      }, null);
+
       const valueColumn = data.cols[METRIC_INDEX];
 
-      let name = null;
+      let name;
       if (hasBreakout) {
         name = settings.series(series)?.["title"] ?? card.name;
       } else {

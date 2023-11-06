@@ -6,6 +6,7 @@
   Some primitives below are duplicated from [[metabase.util.malli.schema]] since that's not `.cljc`. Other stuff is
   copied from [[metabase.mbql.schema]] so this can exist completely independently; hopefully at some point in the
   future we can deprecate that namespace and eventually do away with it entirely."
+  (:refer-clojure :exclude [ref])
   (:require
    [metabase.lib.schema.aggregation :as aggregation]
    [metabase.lib.schema.common :as common]
@@ -50,13 +51,22 @@
    ;; `:native` key), but their definition lives under this key.
    [:template-tags {:optional true} [:ref ::template-tag/template-tag-map]]])
 
-(mr/def ::breakouts
-  [:sequential {:min 1} [:ref ::ref/ref]])
+(mr/def ::breakout
+  [:ref ::ref/ref])
 
-;;; TODO -- `:fields` is supposed to be distinct (ignoring UUID), e.g. you can't have `[:field {} 1]` in there
-;;; twice. (#32489)
+(mr/def ::breakouts
+  [:and
+   [:sequential {:min 1} ::breakout]
+   [:fn
+    {:error/message "Breakouts must be distinct"}
+    #'lib.schema.util/distinct-refs?]])
+
 (mr/def ::fields
-  [:sequential {:min 1} [:ref ::ref/ref]])
+  [:and
+   [:sequential {:min 1} [:ref ::ref/ref]]
+   [:fn
+    {:error/message ":fields must be distinct"}
+    #'lib.schema.util/distinct-refs?]])
 
 ;; this is just for enabling round-tripping filters with named segment references
 (mr/def ::filterable
@@ -92,11 +102,15 @@
 
 (defn- expression-ref-error-for-stage [stage]
   (when-let [err-loc (first (expression-ref-errors-for-stage stage))]
-    (str "Invalid :expression reference: no expression named " (pr-str (get-in err-loc [1 2])))))
+    (if-let [expression-name (get-in err-loc [1 2])]
+      (str "Invalid :expression reference: no expression named " (pr-str expression-name))
+      (str "Invalid :expression reference: " (get err-loc 1)))))
 
 (defn- aggregation-ref-error-for-stage [stage]
   (when-let [err-loc (first (aggregation-ref-errors-for-stage stage))]
-    (str "Invalid :aggregation reference: no aggregation with uuid " (get-in err-loc [1 2]))))
+    (if-let [ag-uuid (get-in err-loc [1 2])]
+      (str "Invalid :aggregation reference: no aggregation with uuid " ag-uuid)
+      (str "Invalid :aggregation reference: " (get err-loc 1)))))
 
 (def ^:private ^{:arglists '([stage])} ref-error-for-stage
   "Validate references in the context of a single `stage`, independent of any previous stages. If there is an error with
@@ -123,7 +137,9 @@
     [:filters      {:optional true} ::filters]
     [:order-by     {:optional true} [:ref ::order-by/order-bys]]
     [:source-table {:optional true} [:ref ::id/table]]
-    [:source-card  {:optional true} [:ref ::id/card]]]
+    [:source-card  {:optional true} [:ref ::id/card]]
+    ;; TODO -- `:page` ???
+    ]
    [:fn
     {:error/message ":source-query is not allowed in pMBQL queries."}
     #(not (contains? % :source-query))]

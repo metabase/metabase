@@ -89,8 +89,9 @@
                  :can_write           true
                  :name                "Our analytics"
                  :authority_level     nil
+                 :is_personal         false
                  :id                  "root"}
-                (assoc (into {} collection) :can_write true)]
+                (assoc (into {:is_personal false} collection) :can_write true)]
                (filter #(#{(:id collection) "root"} (:id %))
                        (mt/user-http-request :crowberto :get 200 "collection"))))))))
 
@@ -264,7 +265,6 @@
                            :archived          false
                            :entity_id         (:entity_id personal-collection)
                            :slug              "rasta_toucan_s_personal_collection"
-                           :color             "#31698A"
                            :name              "Rasta Toucan's Personal Collection"
                            :personal_owner_id (mt/user->id :rasta)
                            :id                (:id (collection/user->personal-collection (mt/user->id :rasta)))
@@ -341,7 +341,6 @@
                        :archived          false
                        :entity_id         (:entity_id collection)
                        :slug              "collection_personnelle_de_taco_bell"
-                       :color             "#ABCDEF"
                        :name              "Collection personnelle de Taco Bell"
                        :personal_owner_id (:id user)
                        :id                (:id collection)
@@ -625,17 +624,18 @@
           (with-some-children-of-collection collection
             (is (partial= ()
                           (mt/boolean-ids-and-timestamps
-                           (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=no_models"))))))
+                           (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items") :models "no_models")))))
             (is (partial= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
                           (mt/boolean-ids-and-timestamps
-                           (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard"))))))
+                           (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items") :models "dashboard")))))
             (is (partial= [(-> {:name               "Birthday Card", :description nil,     :model     "card",
                                 :collection_preview false,           :display     "table", :entity_id true}
                                default-item
                                (assoc :fully_parametrized true))
                            (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
                           (mt/boolean-ids-and-timestamps
-                           (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard&models=card"))))))))))))
+                           (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items")
+                                                        :models "dashboard" :models "card")))))))))))
 
 (deftest collection-items-archived-parameter-test
   (testing "GET /api/collection/:id/items"
@@ -650,21 +650,22 @@
 
 (deftest collection-items-revision-history-and-ordering-test
   (testing "GET /api/collection/:id/items"
-    (t2.with-temp/with-temp [Collection {collection-id :id}      {:name "Collection with Items"}
-                             User       {user1-id :id}           {:first_name "Test" :last_name "AAAA" :email "aaaa@example.com"}
-                             User       {user2-id :id}           {:first_name "Test" :last_name "ZZZZ" :email "zzzz@example.com"}
-                             Card       {card1-id :id :as card1} {:name "Card with history 1" :collection_id collection-id}
-                             Card       {card2-id :id :as card2} {:name "Card with history 2" :collection_id collection-id}
-                             Card       _                        {:name "ZZ" :collection_id collection-id}
-                             Card       _                        {:name "AA" :collection_id collection-id}
-                             Revision   revision1                {:model    "Card"
-                                                                  :model_id card1-id
-                                                                  :user_id  user2-id
-                                                                  :object   (revision/serialize-instance card1 card1-id card1)}
-                             Revision   _revision2               {:model    "Card"
-                                                                  :model_id card2-id
-                                                                  :user_id  user1-id
-                                                                  :object   (revision/serialize-instance card2 card2-id card2)}]
+    (mt/with-temp!
+      [Collection {collection-id :id}      {:name "Collection with Items"}
+       User       {user1-id :id}           {:first_name "Test" :last_name "AAAA" :email "aaaa@example.com"}
+       User       {user2-id :id}           {:first_name "Test" :last_name "ZZZZ" :email "zzzz@example.com"}
+       Card       {card1-id :id :as card1} {:name "Card with history 1" :collection_id collection-id}
+       Card       {card2-id :id :as card2} {:name "Card with history 2" :collection_id collection-id}
+       Card       _                        {:name "ZZ" :collection_id collection-id}
+       Card       _                        {:name "AA" :collection_id collection-id}
+       Revision   revision1                {:model    "Card"
+                                            :model_id card1-id
+                                            :user_id  user2-id
+                                            :object   (revision/serialize-instance card1 card1-id card1)}
+       Revision   _revision2               {:model    "Card"
+                                            :model_id card2-id
+                                            :user_id  user1-id
+                                            :object   (revision/serialize-instance card2 card2-id card2)}]
       ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
       (is (= 1
              (t2/query-one {:update :revision
@@ -773,7 +774,7 @@
                                   :user_id   passuser-id}
                          :where  [:in :id (map :id [card-revision2 dash-revision2])]}))
         (is (= ["pass" "pass"]
-               (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?models=dashboard&models=card"))
+               (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items") :models ["dashboard" "card"])
                     :data
                     (map (comp :last_name :last-edit-info)))))))))
 
@@ -786,7 +787,8 @@
                                                                :authority_level "official"}
                                Card       _                   {:name "card" :collection_id collection-id}
                                Dashboard  _                   {:name "dash" :collection_id collection-id}]
-        (let [items (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?models=dashboard&models=card&models=collection"))
+        (let [items (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items")
+                                               :models ["dashboard" "card" "collection"])
                          :data)]
           (is (= #{{:name "card"}
                    {:name "dash"}
@@ -804,21 +806,15 @@
                                Card       _                   {:name "card" :collection_id collection-id}
                                Card       _                   {:name "dataset" :dataset true :collection_id collection-id}
                                Dashboard  _                   {:name "dash" :collection_id collection-id}]
-        (let [items (->> "/items?models=dashboard&models=card&models=collection"
-                         (str "collection/" collection-id)
-                         (mt/user-http-request :rasta :get 200)
-                         :data)]
+        (let [items (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" collection-id)
+                                                 :models ["dashboard" "card" "collection"]))]
           (is (= #{"card" "dash" "subcollection"}
                  (into #{} (map :name) items))))
-        (let [items (->> "/items?models=dashboard&models=card&models=collection&models=dataset"
-                         (str "collection/" collection-id)
-                         (mt/user-http-request :rasta :get 200)
-                         :data)]
+        (let [items  (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" collection-id)
+                                                  :models ["dashboard" "card" "collection" "dataset"]))]
           (is (= #{"card" "dash" "subcollection" "dataset"}
                  (into #{} (map :name) items))))
-        (let [items (->> (str "collection/" collection-id "/items")
-                         (mt/user-http-request :rasta :get 200)
-                         :data)]
+        (let [items (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items")))]
           (is (= #{"card" "dash" "subcollection" "dataset"}
                  (into #{} (map :name) items))))))))
 
@@ -902,7 +898,6 @@
   (merge
    (mt/object-defaults Collection)
    {:slug                "lucky_pigeon_s_personal_collection"
-    :color               "#31698A"
     :can_write           true
     :name                "Lucky Pigeon's Personal Collection"
     :personal_owner_id   (mt/user->id :lucky)
@@ -910,10 +905,12 @@
                            :name                                     "Our analytics"
                            :id                                       "root"
                            :authority_level                          nil
-                           :can_write                                true}]
+                           :can_write                                true
+                           :is_personal                              false}]
     :effective_location  "/"
     :parent_id           nil
-    :location            "/"}
+    :location            "/"
+    :is_personal         true}
    (select-keys (collection/user->personal-collection (mt/user->id :lucky))
                 [:id :entity_id :created_at])))
 
@@ -1100,7 +1097,8 @@
                  :authority_level                          nil,
                  :name                                     "Our analytics",
                  :id                                       false,
-                 :can_write                                true}
+                 :can_write                                true
+                 :is_personal                              false}
                 {:name              "Rasta Toucan's Personal Collection",
                  :id                true,
                  :personal_owner_id root-owner-id,
@@ -1120,7 +1118,8 @@
               :effective_location  nil
               :effective_ancestors []
               :authority_level     nil
-              :parent_id           nil}
+              :parent_id           nil
+              :is_personal         false}
              (with-some-children-of-collection nil
                (mt/user-http-request :crowberto :get 200 "collection/root")))))))
 
@@ -1436,12 +1435,11 @@
                        (mt/object-defaults Collection)
                        {:name              "Stamp Collection"
                         :slug              "stamp_collection"
-                        :color             "#123456"
                         :archived          false
                         :location          "/"
                         :personal_owner_id nil})
                       (-> (mt/user-http-request :crowberto :post 200 "collection"
-                                                {:name "Stamp Collection", :color "#123456"})
+                                                {:name "Stamp Collection"})
                           (dissoc :id :entity_id))))))))
 
 (deftest non-admin-create-collection-in-root-perms-test
@@ -1450,7 +1448,7 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 "collection"
-                                     {:name "Stamp Collection", :color "#123456"})))))
+                                     {:name "Stamp Collection"})))))
     (testing "\nCan a non-admin user with Root Collection perms add a new collection to the Root Collection? (#8949)"
       (mt/with-model-cleanup [Collection]
         (mt/with-non-admin-groups-no-root-collection-perms
@@ -1460,11 +1458,10 @@
             (is (partial= (merge
                            (mt/object-defaults Collection)
                            {:name     "Stamp Collection"
-                            :color    "#123456"
                             :location "/"
                             :slug     "stamp_collection"})
                           (dissoc (mt/user-http-request :rasta :post 200 "collection"
-                                                        {:name "Stamp Collection", :color "#123456"})
+                                                        {:name "Stamp Collection"})
                                   :id :entity_id)))))))))
 
 (deftest create-child-collection-test
@@ -1479,11 +1476,9 @@
                           :name        "Trading Card Collection"
                           :slug        "trading_card_collection"
                           :description "Collection of basketball cards including limited-edition holographic Draymond Green"
-                          :color       "#ABCDEF"
                           :location    "/A/C/D/"})
                         (-> (mt/user-http-request :crowberto :post 200 "collection"
                                                   {:name        "Trading Card Collection"
-                                                   :color       "#ABCDEF"
                                                    :description "Collection of basketball cards including limited-edition holographic Draymond Green"
                                                    :parent_id   (u/the-id d)})
                             (update :location collection-test/location-path-ids->names)
@@ -1500,7 +1495,6 @@
                         s/Keyword  s/Any}
                        (mt/user-http-request :crowberto :post 200 "collection"
                                              {:name       collection-name
-                                              :color      "#f38630"
                                               :descrption "My SQL Snippets"
                                               :namespace  "snippets"})))
           (finally
@@ -1520,7 +1514,6 @@
                         :name            "My Beautiful Collection"
                         :slug            "my_beautiful_collection"
                         :entity_id       (:entity_id collection)
-                        :color           "#ABCDEF"
                         :location        "/"
                         :effective_ancestors [{:metabase.models.collection.root/is-root? true
                                                :name                                     "Our analytics"
@@ -1531,13 +1524,13 @@
 
                         :parent_id       nil})
                       (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
-                                            {:name "My Beautiful Collection" :color "#ABCDEF"})))))
+                                            {:name "My Beautiful Collection"})))))
     (testing "check that users without write perms aren't allowed to update a Collection"
       (mt/with-non-admin-groups-no-root-collection-perms
         (t2.with-temp/with-temp [Collection collection]
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection))
-                                       {:name "My Beautiful Collection", :color "#ABCDEF"}))))))))
+                                       {:name "My Beautiful Collection"}))))))))
 
 (deftest archive-collection-test
   (testing "PUT /api/collection/:id"
@@ -1559,7 +1552,7 @@
         (mt/with-fake-inbox
           (mt/with-expected-messages 2
             (mt/user-http-request :crowberto :put 200 (str "collection/" collection-id)
-                                  {:name "My Beautiful Collection", :color "#ABCDEF", :archived true}))
+                                  {:name "My Beautiful Collection", :archived true}))
           (testing "emails"
             (is (= (merge (mt/email-to :crowberto {:subject "One of your alerts has stopped working",
                                                    :body    {"the question was archived by Crowberto Corv" true}})
@@ -1599,7 +1592,6 @@
                         :entity_id true
                         :name      "E"
                         :slug      "e"
-                        :color     "#ABCDEF"
                         :location  "/A/B/"
                         :parent_id (u/the-id b)})
                       (-> (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id e))

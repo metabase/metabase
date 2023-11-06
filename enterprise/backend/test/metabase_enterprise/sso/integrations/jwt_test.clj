@@ -7,6 +7,7 @@
    [crypto.random :as crypto-random]
    [metabase-enterprise.sso.integrations.jwt :as mt.jwt]
    [metabase-enterprise.sso.integrations.saml-test :as saml-test]
+   [metabase.config :as config]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
    [metabase.models.user :refer [User]]
@@ -15,8 +16,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
@@ -47,7 +47,7 @@
       (mt/with-temporary-setting-values [jwt-enabled               true
                                          jwt-identity-provider-uri default-idp-uri
                                          jwt-shared-secret         default-jwt-secret
-                                         site-url                  "http://localhost"]
+                                         site-url                  (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
         (premium-features-test/with-premium-features current-features
           (f))))))
 
@@ -57,14 +57,15 @@
       ~@body)))
 
 (defmacro ^:private with-jwt-default-setup [& body]
-  `(disable-other-sso-types
-    (fn []
-      (with-sso-jwt-token
-        (saml-test/call-with-login-attributes-cleared!
-         (fn []
-           (call-with-default-jwt-config
-            (fn []
-              ~@body))))))))
+  `(mt/with-ensure-with-temp-no-transaction!
+     (disable-other-sso-types
+      (fn []
+        (with-sso-jwt-token
+          (saml-test/call-with-login-attributes-cleared!
+           (fn []
+             (call-with-default-jwt-config
+              (fn []
+                ~@body)))))))))
 
 (deftest sso-prereqs-test
   (with-sso-jwt-token
@@ -271,7 +272,7 @@
 (deftest login-sync-group-memberships-test
   (testing "login should sync group memberships if enabled"
     (with-jwt-default-setup
-      (t2.with-temp/with-temp [PermissionsGroup my-group {:name (str ::my-group)}]
+      (mt/with-temp [PermissionsGroup my-group {:name (str ::my-group)}]
         (mt/with-temporary-setting-values [jwt-group-sync       true
                                            jwt-group-mappings   {"my_group" [(u/the-id my-group)]}
                                            jwt-attribute-groups "GrOuPs"]

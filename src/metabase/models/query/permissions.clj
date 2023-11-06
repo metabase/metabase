@@ -4,11 +4,14 @@
   as a Card. Saved Cards are subject to the permissions of the Collection to which they belong."
   (:require
    [metabase.api.common :as api]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.table :refer [Table]]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -70,6 +73,16 @@
    [:= ::native]
    ms/PositiveInt])
 
+(mu/defn ^:private table-ids->id->schema :- [:maybe [:map-of ::lib.schema.id/table [:maybe :string]]]
+  [table-ids :- [:maybe [:sequential ::lib.schema.id/table]]]
+  (when (seq table-ids)
+    (if (qp.store/initialized?)
+      (into {}
+            (map (fn [table-id]
+                   ((juxt :id :schema) (lib.metadata/table (qp.store/metadata-provider) table-id))))
+            table-ids)
+      (t2/select-pk->fn :schema Table :id [:in table-ids]))))
+
 (mu/defn tables->permissions-path-set :- [:set perms/PathSchema]
   "Given a sequence of `tables-or-ids` referenced by a query, return a set of required permissions. A truthy value for
   `segmented-perms?` will return segmented permissions for the table rather that full table permissions.
@@ -82,8 +95,7 @@
            table-perms-fn
            native-perms-fn]} :- PermsOptions]
   (let [table-ids           (filter integer? tables-or-ids)
-        table-id->schema    (when (seq table-ids)
-                              (t2/select-pk->fn :schema Table :id [:in table-ids]))
+        table-id->schema    (table-ids->id->schema table-ids)
         table-or-id->schema #(if (integer? %)
                                (table-id->schema %)
                                (:schema %))
@@ -101,13 +113,21 @@
                              (table-or-id->schema table-or-id)
                              (u/the-id table-or-id)))))))
 
+(mu/defn ^:private card-instance :- [:and
+                                     (ms/InstanceOf :model/Card)
+                                     [:map [:collection_id [:maybe ms/PositiveInt]]]]
+  [card-id :- ::lib.schema.id/card]
+  (or (if (qp.store/initialized?)
+        (when-let [{:keys [collection-id]} (lib.metadata/card (qp.store/metadata-provider) card-id)]
+          (t2/instance :model/Card {:collection_id collection-id}))
+        (t2/select-one [:model/Card :collection_id] :id card-id))
+      (throw (Exception. (tru "Card {0} does not exist." card-id)))))
+
 (mu/defn ^:private source-card-read-perms :- [:set perms/PathSchema]
   "Calculate the permissions needed to run an ad-hoc query that uses a Card with `source-card-id` as its source
   query."
-  [source-card-id :- ms/PositiveInt]
-  (mi/perms-objects-set (or (t2/select-one ['Card :collection_id] :id source-card-id)
-                           (throw (Exception. (tru "Card {0} does not exist." source-card-id))))
-                       :read))
+  [source-card-id :- ::lib.schema.id/card]
+  (mi/perms-objects-set (card-instance source-card-id) :read))
 
 (defn- preprocess-query [query]
   ;; ignore the current user for the purposes of calculating the permissions required to run the query. Don't want the

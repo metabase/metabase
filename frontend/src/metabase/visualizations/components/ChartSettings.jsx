@@ -102,7 +102,10 @@ class ChartSettings extends Component {
   }
 
   handleShowSection = section => {
-    this.setState({ currentSection: section, currentWidget: null });
+    this.setState({
+      currentSection: section,
+      currentWidget: null,
+    });
   };
 
   // allows a widget to temporarily replace itself with a different widget
@@ -125,8 +128,11 @@ class ChartSettings extends Component {
     this.props.onChange({ ...originalCardSettings, ...clickBehaviorSettings });
   };
 
-  handleChangeSettings = changedSettings => {
-    this.props.onChange(updateSettings(this._getSettings(), changedSettings));
+  handleChangeSettings = (changedSettings, question) => {
+    this.props.onChange(
+      updateSettings(this._getSettings(), changedSettings),
+      question,
+    );
   };
 
   handleChangeSeriesColor = (seriesKey, color) => {

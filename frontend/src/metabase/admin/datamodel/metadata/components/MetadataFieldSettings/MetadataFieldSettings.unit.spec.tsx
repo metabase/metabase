@@ -36,7 +36,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import { TYPE } from "metabase-lib/types/constants";
@@ -139,16 +139,12 @@ const setup = async ({
     },
   );
 
-  await waitUntilLoaded();
+  await waitForLoaderToBeRemoved();
 };
 
 const fieldLink = (field: Field) => {
   const section = within(screen.getByLabelText(field.name));
   return section.getByLabelText("Field settings");
-};
-
-const waitUntilLoaded = async () => {
-  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/));
 };
 
 describe("MetadataFieldSettings", () => {
@@ -158,15 +154,15 @@ describe("MetadataFieldSettings", () => {
       expect(screen.queryByText(ORDERS_TABLE.schema)).not.toBeInTheDocument();
 
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      await waitUntilLoaded();
+      await waitForLoaderToBeRemoved();
       userEvent.click(fieldLink(ORDERS_ID_FIELD));
-      await waitUntilLoaded();
+      await waitForLoaderToBeRemoved();
       expect(screen.getByText("General")).toBeInTheDocument();
 
       userEvent.click(screen.getByText(SAMPLE_DB.name));
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
       userEvent.click(fieldLink(ORDERS_ID_FIELD));
-      await waitUntilLoaded();
+      await waitForLoaderToBeRemoved();
       expect(screen.getByText("General")).toBeInTheDocument();
     });
 
@@ -178,22 +174,22 @@ describe("MetadataFieldSettings", () => {
       });
 
       userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name));
-      await waitUntilLoaded();
+      await waitForLoaderToBeRemoved();
       userEvent.click(fieldLink(PEOPLE_ID_FIELD));
-      await waitUntilLoaded();
+      await waitForLoaderToBeRemoved();
       expect(screen.getByText("General")).toBeInTheDocument();
 
       userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
       userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name));
       userEvent.click(fieldLink(PEOPLE_ID_FIELD));
-      await waitUntilLoaded();
+      await waitForLoaderToBeRemoved();
       expect(screen.getByText("General")).toBeInTheDocument();
 
       userEvent.click(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name));
       userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
       userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name));
       userEvent.click(fieldLink(PEOPLE_ID_FIELD));
-      await waitUntilLoaded();
+      await waitForLoaderToBeRemoved();
       expect(screen.getByText("General")).toBeInTheDocument();
     });
   });

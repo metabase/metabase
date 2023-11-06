@@ -3,6 +3,8 @@ import { t } from "ttag";
 
 import type { Series } from "metabase-types/api";
 
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { isEmpty } from "metabase/lib/validate";
 import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
 import {
   ChartSettingMessage,
@@ -53,7 +55,7 @@ export const ChartSettingOrderedSimple = ({
   };
 
   const getItemTitle = (item: SortableItem) => {
-    return item.name || "Unknown";
+    return isEmpty(item.name) ? NULL_DISPLAY_VALUE : item.name;
   };
 
   const handleOnEdit = (item: SortableItem, ref: HTMLElement | undefined) => {

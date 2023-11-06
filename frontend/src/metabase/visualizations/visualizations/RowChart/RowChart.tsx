@@ -101,6 +101,7 @@ const RowChartVisualization = ({
   rawSeries: rawMultipleSeries,
   series: multipleSeries,
   fontFamily,
+  width,
 }: VisualizationProps) => {
   const formatColumnValue = useMemo(() => {
     return getColumnValueFormatter();
@@ -253,6 +254,10 @@ const RowChartVisualization = ({
       });
   }, [fontFamily]);
 
+  const hasBreakout =
+    settings["graph.dimensions"] && settings["graph.dimensions"]?.length > 1;
+  const hasLegend = series.length > 1 || hasBreakout;
+
   return (
     <RowVisualizationRoot className={className} isQueryBuilder={isQueryBuilder}>
       {hasTitle && (
@@ -262,10 +267,11 @@ const RowChartVisualization = ({
           icon={headerIcon}
           actionButtons={actionButtons}
           onSelectTitle={canSelectTitle ? openQuestion : undefined}
+          width={width}
         />
       )}
       <RowChartLegendLayout
-        hasLegend={series.length > 1}
+        hasLegend={hasLegend}
         labels={labels}
         colors={colors}
         actionButtons={!hasTitle ? actionButtons : undefined}

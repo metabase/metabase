@@ -3,7 +3,7 @@ import { render, screen, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { createQuery, columnFinder } from "metabase-lib/test-helpers";
 import type { QueryColumnPickerProps } from "./QueryColumnPicker";
-import QueryColumnPicker from "./QueryColumnPicker";
+import { QueryColumnPicker } from "./QueryColumnPicker";
 
 type SetupOpts = Partial<
   Pick<

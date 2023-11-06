@@ -20,6 +20,7 @@ import {
 } from "./core";
 import { cancelFetchCardData, fetchCardData } from "./data-fetching";
 import { loadMetadataForDashboard } from "./metadata";
+import { getExistingDashCards } from "./utils";
 
 export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
 export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
@@ -27,22 +28,6 @@ export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
 let tempId = -1;
 function generateTemporaryDashcardId() {
   return tempId--;
-}
-
-function getExistingDashCards(state, dashId, tabId) {
-  const { dashboards, dashcards } = state.dashboard;
-  const dashboard = dashboards[dashId];
-  return dashboard.ordered_cards
-    .map(id => dashcards[id])
-    .filter(dc => {
-      if (dc.isRemoved) {
-        return false;
-      }
-      if (tabId != null) {
-        return dc.dashboard_tab_id === tabId;
-      }
-      return true;
-    });
 }
 
 export const addCardToDashboard =
@@ -63,7 +48,7 @@ export const addCardToDashboard =
       card: card,
       series: [],
       ...getPositionForNewDashCard(
-        getExistingDashCards(getState(), dashId, tabId),
+        getExistingDashCards(getState().dashboard, dashId, tabId),
         createdCardSize.width,
         createdCardSize.height,
       ),
@@ -115,7 +100,7 @@ export const addDashCardToDashboard = function ({
       dashboard_tab_id: tabId ?? null,
       series: [],
       ...getPositionForNewDashCard(
-        getExistingDashCards(getState(), dashId, tabId),
+        getExistingDashCards(getState().dashboard, dashId, tabId),
         createdCardSize.width,
         createdCardSize.height,
       ),

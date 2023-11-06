@@ -8,18 +8,17 @@
    [clojure.core.async :as a]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [java-time :as t]
-   [metabase.db.query :as mdb.query]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute.diagnostic
     :as sql-jdbc.execute.diagnostic]
    [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.expression.temporal
     :as lib.schema.expression.temporal]
    [metabase.lib.schema.literal.jvm :as lib.schema.literal.jvm]
-   [metabase.models.database :refer [Database]]
    [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.context :as qp.context]
@@ -33,8 +32,7 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [potemkin :as p]
-   [toucan2.core :as t2])
+   [potemkin :as p])
   (:import
    (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -119,7 +117,7 @@
   "Set the `PreparedStatement` parameter at index `i` to `object`. Dispatches on driver and class of `object`. By
   default, this calls `.setObject`, but drivers can override this method to convert the object to a different class or
   set it with a different intended JDBC type as needed."
-  {:arglists '([driver prepared-statement i object])}
+  {:added "0.34.0" :arglists '([driver prepared-statement i object])}
   (fn [driver _ _ object]
     [(driver/dispatch-on-initialized-driver driver) (class object)])
   :hierarchy #'driver/hierarchy)
@@ -132,7 +130,8 @@
   "Create a PreparedStatement with `sql` query, and set any `params`. You shouldn't need to override the default
   implementation for this method; if you do, take care to set options to maximize result set read performance (e.g.
   `ResultSet/TYPE_FORWARD_ONLY`); refer to the default implementation."
-  {:added "0.35.0", :arglists '(^java.sql.PreparedStatement [driver ^java.sql.Connection connection ^String sql params])}
+  {:added "0.35.0",
+   :arglists '(^java.sql.PreparedStatement [driver ^java.sql.Connection connection ^String sql params])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -288,7 +287,8 @@
                        `do-with-connection-with-options))
         ;; for compatibility, make sure we pass it an actual Database instance.
         (let [database (if (integer? db-or-id-or-spec)
-                         (t2/select-one Database db-or-id-or-spec)
+                         (qp.store/with-metadata-provider db-or-id-or-spec
+                           (lib.metadata/database (qp.store/metadata-provider)))
                          db-or-id-or-spec)]
           (reify DataSource
             (getConnection [_this]
@@ -345,7 +345,8 @@
     (log/tracef "Setting default connection options with options %s" (pr-str options))
     (set-best-transaction-level! driver conn)
     (set-time-zone-if-supported! driver conn session-timezone)
-    (set-role-if-supported! driver conn (cond (integer? db-or-id-or-spec) (t2/select-one Database db-or-id-or-spec)
+    (set-role-if-supported! driver conn (cond (integer? db-or-id-or-spec) (qp.store/with-metadata-provider db-or-id-or-spec
+                                                                            (lib.metadata/database (qp.store/metadata-provider)))
                                               (u/id db-or-id-or-spec)     db-or-id-or-spec))
     (let [read-only? (not write?)]
       (try
@@ -356,15 +357,18 @@
         (.setReadOnly conn read-only?)
         (catch Throwable e
           (log/debugf e "Error setting connection readOnly to %s" (pr-str read-only?)))))
-    ;; if this is (supposedly) a read-only connection, enable auto-commit so this IS NOT ran inside of a transaction.
+    ;; If this is (supposedly) a read-only connection, we would prefer enable auto-commit
+    ;; so this IS NOT ran inside of a transaction, but without transaction the read-only
+    ;; flag has no effect for most of the drivers.
+    ;; TODO Enable auto-commit after having communicated this change in behvaior to our users.
     ;;
     ;; TODO -- for `write?` connections, we should probably disable autoCommit and then manually call `.commit` at after
     ;; `f`... we need to check and make sure that won't mess anything up, since some existing code is already doing it
     ;; manually.
     (when-not write?
       (try
-        (log/trace (pr-str '(.setAutoCommit conn true)))
-        (.setAutoCommit conn true)
+        (log/trace (pr-str '(.setAutoCommit conn false)))
+        (.setAutoCommit conn false)
         (catch Throwable e
           (log/debug e "Error enabling connection autoCommit"))))
     (try
@@ -528,7 +532,7 @@
             (throw (ex-info (tru "Error preparing statement: {0}" (ex-message e))
                             {:driver driver
                              :type   qp.error-type/driver
-                             :sql    (str/split-lines (mdb.query/format-sql sql driver))
+                             :sql    (str/split-lines (driver/prettify-native-form driver sql))
                              :params params}
                             e))))
     (wire-up-canceled-chan-to-cancel-Statement! canceled-chan)))
@@ -671,8 +675,8 @@
   ([driver sql params max-rows context respond]
    (do-with-connection-with-options
     driver
-    (qp.store/database)
-    {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (qp.store/database))}
+    (lib.metadata/database (qp.store/metadata-provider))
+    {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (lib.metadata/database (qp.store/metadata-provider)))}
     (fn [^Connection conn]
       (with-open [stmt          (statement-or-prepared-statement driver conn sql params (qp.context/canceled-chan context))
                   ^ResultSet rs (try
@@ -680,7 +684,7 @@
                                   (catch Throwable e
                                     (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
                                                     {:driver driver
-                                                     :sql    (str/split-lines (mdb.query/format-sql sql driver))
+                                                     :sql    (str/split-lines (driver/prettify-native-form driver sql))
                                                      :params params
                                                      :type   qp.error-type/invalid-query}
                                                     e))))]
@@ -699,7 +703,9 @@
   (try
     (do-with-connection-with-options
      driver
-     {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (qp.store/database))}
+     (lib.metadata/database (qp.store/metadata-provider))
+     {:write? true
+      :session-timezone (qp.timezone/report-timezone-id-if-supported driver (lib.metadata/database (qp.store/metadata-provider)))}
      (fn [^Connection conn]
        (with-open [stmt (statement-or-prepared-statement driver conn sql params nil)]
          {:rows-affected (if (instance? PreparedStatement stmt)

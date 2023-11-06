@@ -3,7 +3,7 @@ default: &default
   - "bin/**"
 
 ci: &ci
-  - ".github/**/!(*.md)"
+  - ".github/**/!(*.md|team.json)"
 
 shared_sources: &shared_sources
   - "shared/src/**"
@@ -11,6 +11,11 @@ shared_sources: &shared_sources
 
 shared_specs: &shared_specs
   - "shared/test/**"
+
+frontend_ci: &frontend_ci
+  - ".github/actions/prepare-frontend/**"
+  - ".github/actions/prepare-backend/**"
+  - ".github/workflows/frontend.yml"
 
 frontend_sources: &frontend_sources
   - *shared_sources
@@ -29,13 +34,20 @@ frontend_specs: &frontend_specs
   - "frontend/test/**"
   - "frontend/**/tests/**"
   - "frontend/**/*.unit.*"
-  - "jest.unit.conf.json"
+  - "jest.config.json"
   - "jest.tz.unit.conf.json"
 
 frontend_all: &frontend_all
-  - *ci
+  - *frontend_ci
   - *frontend_sources
   - *frontend_specs
+
+backend_ci: &backend_ci
+  - ".github/actions/prepare-frontend/**"
+  - ".github/actions/prepare-backend/**"
+  - ".github/actions/test-driver/**"
+  - ".github/workflows/backend.yml"
+  - ".github/workflows/drivers.yml"
 
 backend_presto_kerberos:
   - "**/presto_jdbc/**"
@@ -61,10 +73,9 @@ backend_specs: &backend_specs
 
 backend_all: &backend_all
   - *default
-  - *ci
+  - *backend_ci
   - *backend_sources
   - *backend_specs
-  - *frontend_sources # keep it here until we detect static viz changes
 
 sources: &sources
   - *shared_sources
@@ -80,8 +91,8 @@ e2e_specs: &e2e_specs
 e2e_all:
   - *default
   - *ci
-  - *e2e_specs
   - *sources
+  - *e2e_specs
 
 snowplow:
   - *ci

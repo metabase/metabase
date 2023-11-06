@@ -3,8 +3,8 @@ import { t } from "ttag";
 import ObjectDetail from "metabase/visualizations/components/ObjectDetail";
 
 import {
+  buildTableColumnSettings,
   columnSettings,
-  tableColumnSettings,
 } from "metabase/visualizations/lib/settings/column";
 
 import { formatColumn } from "metabase/lib/formatting";
@@ -25,7 +25,7 @@ const ObjectDetailProperties = {
   disableClickBehavior: true,
   settings: {
     ...columnSettings({ hidden: true }),
-    ...tableColumnSettings,
+    ...buildTableColumnSettings({ getIsColumnVisible: () => true }),
   },
   columnSettings: column => {
     const settings = {

@@ -9,7 +9,9 @@
 
 ;;; TODO -- this should generate type hints from the schemas and from the return type as well.
 (defn- deparameterized-arglist [{:keys [args]}]
-  (:arglist (malli.destructure/parse args)))
+  (-> (malli.destructure/parse args)
+      :arglist
+      (with-meta (meta args))))
 
 (defn- deparameterized-arglists [{:keys [arities], :as _parsed}]
   (let [[arities-type arities-value] arities]

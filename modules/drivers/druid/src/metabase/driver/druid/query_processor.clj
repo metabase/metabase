@@ -4,6 +4,8 @@
    [clojure.string :as str]
    [metabase.driver.common :as driver.common]
    [metabase.driver.druid.js :as druid.js]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -11,7 +13,6 @@
    [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs tru]]
@@ -93,7 +94,7 @@
 (defmethod ->rvalue :field
   [[_ id-or-name]]
   (if (integer? id-or-name)
-    (:name (qp.store/field id-or-name))
+    (:name (lib.metadata/field (qp.store/metadata-provider) id-or-name))
     id-or-name))
 
 (defmethod ->rvalue :absolute-datetime
@@ -116,7 +117,6 @@
   [[_ value]]
   (->rvalue value))
 
-
 (defmulti ^:private dimension-or-metric?
   "Is this field clause a `:dimension` or `:metric`?"
   {:arglists '([field-clause])}
@@ -124,9 +124,9 @@
 
 (defmethod dimension-or-metric? :field
   [[_ id-or-name options]]
-  (let [{base-type :base_type, database-type :database_type} (if (integer? id-or-name)
-                                                               (qp.store/field id-or-name)
-                                                               {:base_type (:base-type options)})]
+  (let [{:keys [base-type database-type]} (if (integer? id-or-name)
+                                            (lib.metadata/field (qp.store/metadata-provider) id-or-name)
+                                            options)]
     (cond
       (str/includes? database-type "[metric]") :metric
       (isa? base-type :type/DruidHyperUnique)  :metric
@@ -153,8 +153,8 @@
 ;;; ---------------------------------------------- handle-source-table -----------------------------------------------
 
 (defn- handle-source-table
-  [_ {source-table-id :source-table} druid-query]
-  (let [{source-table-name :name} (qp.store/table source-table-id)]
+  [_query-type {source-table-id :source-table} druid-query]
+  (let [{source-table-name :name} (lib.metadata/table (qp.store/metadata-provider) source-table-id)]
     (assoc-in druid-query [:query :dataSource] source-table-name)))
 
 
@@ -587,7 +587,9 @@
 
 (defn- hyper-unique?
   [[_ field-id]]
-  (-> field-id qp.store/field :base_type (isa? :type/DruidHyperUnique)))
+  {:pre [(pos-int? field-id)]}
+  (isa? (:base-type (lib.metadata/field (qp.store/metadata-provider) field-id))
+        :type/DruidHyperUnique))
 
 (defn- ag:distinct
   [field output-name]
@@ -960,7 +962,7 @@
   [field-clause]
   (mbql.u/match-one field-clause
     [:field (id :guard integer?) _]
-    (:name (qp.store/field id))
+    (:name (lib.metadata/field (qp.store/metadata-provider) id))
 
     [:field (field-name :guard string?) _]
     field-name))
@@ -1034,18 +1036,22 @@
                                                              :direction (case direction
                                                                           :desc :descending
                                                                           :asc  :ascending)}))))
-(defn- datetime-field?
+(defn- temporal-field?
   "Similar to `types/temporal-field?` but works on field ids wrapped in a datetime or on fields that happen to be a
   datetime"
   [field]
   (when field
-    (or (mbql.u/match-one field [:field _ (_ :guard :temporal-unit)])
-        (types/temporal-field? (qp.store/field (second field))))))
+    (mbql.u/match-one field
+      [:field _id-or-name (_opts :guard :temporal-unit)]
+      true
+
+      [:field (id :guard pos-int?) _opts]
+      (lib.types.isa/temporal? (lib.metadata/field (qp.store/metadata-provider) id)))))
 
 ;; Handle order by timstamp field
 (defmethod handle-order-by ::grouped-timeseries
   [_ {[[direction field]] :order-by} druid-query]
-  (let [can-sort? (if (datetime-field? field)
+  (let [can-sort? (if (temporal-field? field)
                     true
                     (log/warn (trs "grouped timeseries queries can only be sorted by the ''timestamp'' column.")))]
     (cond-> druid-query
@@ -1054,10 +1060,10 @@
 (defmethod handle-order-by ::scan
   [_ {[[direction field]] :order-by, fields :fields} druid-query]
   (let [can-sort? (cond
-                    (not (some datetime-field? fields))
+                    (not (some temporal-field? fields))
                     (log/warn (trs "scan queries can only be sorted if they include the ''timestamp'' column."))
 
-                    (not (datetime-field? field))
+                    (not (temporal-field? field))
                     (log/warn (trs "scan queries can only be sorted by the ''timestamp'' column."))
 
                     :else
@@ -1096,7 +1102,7 @@
       (update-in druid-query [:query :columns] #(or (seq %) [:___dummy])))
 
      ([druid-query field]
-      (if (and (datetime-field? field)
+      (if (and (temporal-field? field)
                (= (keyword (field-clause->name field)) :timestamp))
         (-> druid-query
             (update :projections conj :timestamp)

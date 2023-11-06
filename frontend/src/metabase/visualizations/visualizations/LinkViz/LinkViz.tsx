@@ -3,12 +3,13 @@ import { usePrevious } from "react-use";
 import _ from "underscore";
 
 import Input from "metabase/core/components/Input";
-import SearchResults from "metabase/nav/components/SearchResults";
+import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import type {
-  DashboardOrderedCard,
+  DashboardCard,
   LinkCardSettings,
+  SearchModelType,
   UnrestrictedLinkEntity,
 } from "metabase-types/api";
 
@@ -35,7 +36,7 @@ import {
 import { isUrlString } from "./utils";
 import type { WrappedUnrestrictedLinkEntity } from "./types";
 
-const MODELS_TO_SEARCH = [
+const MODELS_TO_SEARCH: SearchModelType[] = [
   "card",
   "dataset",
   "dashboard",
@@ -45,12 +46,12 @@ const MODELS_TO_SEARCH = [
 ];
 
 export interface LinkVizProps {
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   isEditing: boolean;
   onUpdateVisualizationSettings: (
-    newSettings: Partial<DashboardOrderedCard["visualization_settings"]>,
+    newSettings: Partial<DashboardCard["visualization_settings"]>,
   ) => void;
-  settings: DashboardOrderedCard["visualization_settings"] & {
+  settings: DashboardCard["visualization_settings"] & {
     link: LinkCardSettings;
   };
   isEditingParameter?: boolean;

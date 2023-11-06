@@ -21,6 +21,7 @@ import {
 import { getOrderedSeries } from "metabase/visualizations/lib/series";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import { isEmpty } from "metabase/lib/validate";
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 
 import {
@@ -96,6 +97,7 @@ export default class LineAreaBarChart extends Component {
     showTitle: PropTypes.bool,
     isDashboard: PropTypes.bool,
     headerIcon: PropTypes.object,
+    width: PropTypes.number,
   };
 
   static defaultProps = {};
@@ -261,6 +263,7 @@ export default class LineAreaBarChart extends Component {
       onRemoveSeries,
       settings,
       canRemoveSeries,
+      width,
     } = this.props;
 
     // Note (EmmadUsmani): Stacked charts should be reversed so series are stacked
@@ -295,6 +298,7 @@ export default class LineAreaBarChart extends Component {
             icon={headerIcon}
             actionButtons={actionButtons}
             onSelectTitle={canSelectTitle ? this.handleSelectTitle : undefined}
+            width={width}
           />
         )}
         <LegendLayout
@@ -387,7 +391,10 @@ function transformSingleSeries(s, series, seriesIndex) {
           // show series title if it's multiseries
           series.length > 1 && card.name,
           // always show grouping value
-          formatValue(breakoutValue, { column: cols[seriesColumnIndex] }),
+          formatValue(
+            isEmpty(breakoutValue) ? NULL_DISPLAY_VALUE : breakoutValue,
+            { column: cols[seriesColumnIndex] },
+          ),
         ]
           .filter(n => n)
           .join(": "),

@@ -160,8 +160,8 @@
            (sso-settings/jwt-identity-provider-uri! default-idp-uri)))
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-          #"Setting jwt-shared-secret is not enabled because feature :sso-jwt is not available"
-          (sso-settings/jwt-shared-secret! "01234")))
+           #"Setting jwt-shared-secret is not enabled because feature :sso-jwt is not available"
+           (sso-settings/jwt-shared-secret! "01234")))
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Setting jwt-attribute-email is not enabled because feature :sso-jwt is not available"

@@ -23,7 +23,7 @@ export const createMockUser = (opts?: Partial<User>): User => ({
   ...opts,
 });
 
-export const createMockerUserListResult = (
+export const createMockUserListResult = (
   opts?: Partial<UserListResult>,
 ): UserListResult => ({
   id: 1,

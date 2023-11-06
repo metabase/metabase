@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql-test :as mysql-test]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -28,15 +29,51 @@
     #(identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table %))
     (descendants driver/hierarchy :sql-jdbc))))
 
-(deftest describe-table-test
+(deftest ^:parallel describe-table-test
   (is (= {:name "VENUES",
           :fields
-          #{{:name "ID", :database-type "BIGINT", :base-type :type/BigInteger, :database-position 0, :pk? true :database-required false :database-is-auto-increment true :json-unfolding false}
-            {:name "NAME", :database-type "CHARACTER VARYING", :base-type :type/Text, :database-position 1 :database-required false :database-is-auto-increment false :json-unfolding false}
-            {:name "CATEGORY_ID", :database-type "INTEGER", :base-type :type/Integer, :database-position 2 :database-required false :database-is-auto-increment false :json-unfolding false}
-            {:name "LATITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 3 :database-required false :database-is-auto-increment false :json-unfolding false}
-            {:name "LONGITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 4 :database-required false :database-is-auto-increment false :json-unfolding false}
-            {:name "PRICE", :database-type "INTEGER", :base-type :type/Integer, :database-position 5 :database-required false :database-is-auto-increment false :json-unfolding false}}}
+          #{{:name                       "ID"
+             :database-type              "BIGINT"
+             :base-type                  :type/BigInteger
+             :database-position          0
+             :pk?                        true
+             :database-required          false
+             :database-is-auto-increment true :json-unfolding false}
+            {:name                       "NAME"
+             :database-type              "CHARACTER VARYING"
+             :base-type                  :type/Text
+             :database-position          1
+             :database-required          false
+             :database-is-auto-increment false
+             :json-unfolding             false}
+            {:name                       "CATEGORY_ID"
+             :database-type              "INTEGER"
+             :base-type                  :type/Integer
+             :database-position          2
+             :database-required          false
+             :database-is-auto-increment false
+             :json-unfolding             false}
+            {:name                       "LATITUDE"
+             :database-type              "DOUBLE PRECISION"
+             :base-type                  :type/Float
+             :database-position          3
+             :database-required          false
+             :database-is-auto-increment false
+             :json-unfolding             false}
+            {:name                       "LONGITUDE"
+             :database-type              "DOUBLE PRECISION"
+             :base-type                  :type/Float
+             :database-position          4
+             :database-required          false
+             :database-is-auto-increment false
+             :json-unfolding             false}
+            {:name                       "PRICE"
+             :database-type              "INTEGER"
+             :base-type                  :type/Integer
+             :database-position          5
+             :database-required          false
+             :database-is-auto-increment false
+             :json-unfolding             false}}}
          (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "VENUES"}))))
 
 (deftest describe-auto-increment-on-non-pk-field-test
@@ -77,7 +114,7 @@
               :name "employee_counter"}
              (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "employee_counter"}))))))
 
-(deftest describe-table-fks-test
+(deftest ^:parallel describe-table-fks-test
   (is (= #{{:fk-column-name   "CATEGORY_ID"
             :dest-table       {:name "CATEGORIES", :schema "PUBLIC"}
             :dest-column-name "ID"}}
@@ -118,13 +155,15 @@
                   (filter :semantic-type)
                   (map (juxt (comp u/lower-case-en :name) :semantic-type))))))))
 
-(deftest type-by-parsing-string
+(deftest ^:parallel type-by-parsing-string
   (testing "type-by-parsing-string"
-    (is (= java.lang.String (#'sql-jdbc.describe-table/type-by-parsing-string "bleh")))
-    (is (= java.time.LocalDateTime (#'sql-jdbc.describe-table/type-by-parsing-string "2017-01-13T17:09:42.411")))
-    (is (= java.lang.Long (#'sql-jdbc.describe-table/type-by-parsing-string 11111)))))
+    (are [v expected] (= expected
+                         (#'sql-jdbc.describe-table/type-by-parsing-string v))
+      "bleh"                    java.lang.String
+      "2017-01-13T17:09:42.411" java.time.LocalDateTime
+      11111                     java.lang.Long)))
 
-(deftest row->types-test
+(deftest ^:parallel row->types-test
   (testing "array rows ignored properly in JSON row->types (#21752)"
     (let [arr-row   {:bob [:bob :cob :dob 123 "blob"]}
           obj-row   {:zlob {"blob" 1323}}]
@@ -136,14 +175,14 @@
       (is (= {[:zlob "blob"] clojure.lang.BigInt} (#'sql-jdbc.describe-table/row->types int-row)))
       (is (= {[:zlob "blob"] java.math.BigDecimal} (#'sql-jdbc.describe-table/row->types float-row))))))
 
-(deftest dont-parse-long-json-xform-test
+(deftest ^:parallel dont-parse-long-json-xform-test
   (testing "obnoxiously long json should not even get parsed (#22636)"
     ;; Generating an actually obnoxiously long json took too long,
     ;; and actually copy-pasting an obnoxiously long string in there looks absolutely terrible,
     ;; so this rebinding is what you get
     (let [obnoxiously-long-json "{\"bob\": \"dobbs\"}"
           json-map              {:somekey obnoxiously-long-json}]
-      (with-redefs [sql-jdbc.describe-table/*nested-field-column-max-row-length* 3]
+      (binding [sql-jdbc.describe-table/*nested-field-column-max-row-length* 3]
         (is (= {}
                (transduce
                  #'sql-jdbc.describe-table/describe-json-xform
@@ -153,7 +192,7 @@
                #'sql-jdbc.describe-table/describe-json-xform
                #'sql-jdbc.describe-table/describe-json-rf [json-map]))))))
 
-(deftest get-table-pks-test
+(deftest ^:parallel get-table-pks-test
   ;; FIXME: this should works for all sql drivers
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
     (sql-jdbc.execute/do-with-connection-with-options
@@ -166,10 +205,10 @@
 
 ;;; ------------------------------------------- Tests for netsed field columns --------------------------------------------
 
-(deftest json-details-only-test
+(deftest ^:parallel json-details-only-test
   (testing "fields with base-type=type/JSON should have visibility-type=details-only, unlike other fields."
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
-      (when-not (mysql-test/is-mariadb? driver/*driver* (u/id (mt/db)))
+      (when-not (mysql/mariadb? (mt/db))
         (mt/dataset json
           (let [table (t2/select-one Table :id (mt/id :json))]
             (sql-jdbc.execute/do-with-connection-with-options
@@ -184,7 +223,7 @@
                         (:visibility-type json-field)))
                  (is (nil? (:visibility-type text-field))))))))))))
 
-(deftest describe-nested-field-columns-test
+(deftest ^:parallel describe-nested-field-columns-test
   (testing "flattened-row"
     (let [row       {:bob {:dobbs 123 :cobbs "boop"}}
           flattened {[:mob :bob :dobbs] 123
@@ -208,10 +247,10 @@
                  (#'sql-jdbc.describe-table/row->types)
                  (#'sql-jdbc.describe-table/field-types->fields)))))))
 
-(deftest nested-field-column-test
+(deftest ^:parallel nested-field-column-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
     (mt/dataset json
-      (when-not (mysql-test/is-mariadb? driver/*driver*(u/id (mt/db)))
+      (when-not (mysql/mariadb? (mt/db))
         (testing "Nested field column listing"
           (is (= [:type/JSON :type/SerializedJSON]
                  (->> (sql-jdbc.sync/describe-table driver/*driver* (mt/db) {:name "json"})
@@ -295,7 +334,7 @@
 (deftest describe-big-nested-field-columns-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
     (mt/dataset big-json
-      (when-not (mysql-test/is-mariadb? driver/*driver* (u/id (mt/db)))
+      (when-not (mysql/mariadb? (mt/db))
         (testing "limit if huge. limit it and yell warning (#23635)"
           (is (= sql-jdbc.describe-table/max-nested-field-columns
                  (count
@@ -311,10 +350,10 @@
                             {:name "big_json_table" :id (mt/id "big_json_table")})) [0 2])
                 "More nested field columns detected than maximum.")))))))
 
-(deftest big-nested-field-column-test
+(deftest ^:parallel big-nested-field-column-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
     (mt/dataset json
-      (when-not (mysql-test/is-mariadb? driver/*driver* (u/id (mt/db)))
+      (when-not (mysql/mariadb? (mt/db))
         (testing "Nested field column listing, but big"
           (is (= sql-jdbc.describe-table/max-nested-field-columns
                  (count (sql-jdbc.sync/describe-nested-field-columns
@@ -332,7 +371,7 @@
 
 (deftest json-unwrapping-bigint-and-boolean
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
-    (when-not (mysql-test/is-mariadb? driver/*driver* (mt/id))
+    (when-not (mysql/mariadb? (mt/db))
       (mt/dataset json-unwrap-bigint-and-boolean
         (sync/sync-database! (mt/db))
         (testing "Fields marked as :type/SerializedJSON are fingerprinted that way"
@@ -399,7 +438,7 @@
                                                                    (original-get-table-pks driver conn db-name-or-nil table)))
                     metadata-queries/nested-field-sample-limit 4]
         (mt/dataset json-int-turn-string
-          (when-not (mysql-test/is-mariadb? driver/*driver* (mt/id))
+          (when-not (mysql/mariadb? (mt/db))
             (sync/sync-database! (mt/db))
             (testing "if table has an pk, we fetch both first and last rows thus detect the change in type"
               (is (= #{{:name              "json_col → int_turn_string"

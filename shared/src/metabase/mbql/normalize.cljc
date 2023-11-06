@@ -35,7 +35,8 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.mbql.util.match :as mbql.match]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (defn- mbql-clause?
   "True if `x` is an MBQL clause (a sequence with a token as its first arg). (This is different from the implementation
@@ -326,12 +327,17 @@
 
 (declare canonicalize-mbql-clauses)
 
+(defn normalize-field-ref
+  "Normalize the field ref. Ensure it's well-formed mbql, not just json."
+  [clause]
+  (-> clause normalize-tokens canonicalize-mbql-clauses))
+
 (defn normalize-source-metadata
   "Normalize source/results metadata for a single column."
   [metadata]
   {:pre [(map? metadata)]}
   (-> (reduce #(m/update-existing %1 %2 keyword) metadata [:base_type :effective_type :semantic_type :visibility_type :source :unit])
-      (m/update-existing :field_ref (comp canonicalize-mbql-clauses normalize-tokens))
+      (m/update-existing :field_ref normalize-field-ref)
       (m/update-existing :fingerprint walk/keywordize-keys)))
 
 (defn- normalize-native-query
@@ -413,7 +419,6 @@
         (throw (ex-info (i18n/tru "Error normalizing form: {0}" (ex-message e))
                         {:form x, :path path, :special-fn special-fn}
                         e))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  CANONICALIZE                                                  |
@@ -894,14 +899,14 @@
                           {:query query}
                           e)))))))
 
-(defn normalize-fragment
+(mu/defn normalize-fragment
   "Normalize just a specific fragment of a query, such as just the inner MBQL part or just a filter clause. `path` is
   where this fragment would normally live in a full query.
 
     (normalize-fragment [:query :filter] [\"=\" 100 200])
     ;;-> [:= [:field-id 100] 200]"
-  {:style/indent 1}
-  [path x]
+  [path :- [:maybe [:sequential :keyword]]
+   x]
   (if-not (seq path)
     (normalize x)
     (get (normalize-fragment (butlast path) {(last path) x}) (last path))))

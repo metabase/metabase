@@ -1,4 +1,8 @@
-import { updateParametersWidgetStickiness } from "./stickyParameters";
+import * as domUtils from "metabase/lib/dom";
+import {
+  MAXIMUM_PARAMETERS_FOR_STICKINESS,
+  updateParametersWidgetStickiness,
+} from "./stickyParameters";
 
 const offsetTop = 100;
 
@@ -7,76 +11,51 @@ function mockMainElementScroll(scrollTop) {
   document.getElementsByTagName = () => [fakeMainElement];
 }
 
+function simulateSmallScreen() {
+  jest.spyOn(domUtils, "isSmallScreen").mockReturnValue(true);
+}
+
 describe("updateParametersWidgetStickiness", () => {
-  it("makes filters sticky with enough scrolling down", () => {
-    const setState = jest.fn();
-
-    mockMainElementScroll(offsetTop + 1);
-
-    const dashboard = {
-      parametersWidgetRef: { current: { offsetTop } },
-      state: {},
-      setState,
-    };
-
-    updateParametersWidgetStickiness(dashboard);
-
-    expect(setState).toHaveBeenCalledWith({
-      isParametersWidgetSticky: true,
+  describe("on small screen", () => {
+    beforeEach(() => {
+      simulateSmallScreen();
+      mockMainElementScroll(offsetTop + 1);
     });
-  });
 
-  it("makes filters unsticky with enough scrolling up", () => {
-    const setState = jest.fn();
+    it("keeps filters not sticky if filters number is > MAXIMUM_PARAMETERS_FOR_STICKINESS", () => {
+      const setState = jest.fn();
 
-    mockMainElementScroll(offsetTop - 1);
+      const dashboard = {
+        parametersWidgetRef: { current: { offsetTop } },
+        state: {
+          isParametersWidgetSticky: false,
+          parametersListLength: MAXIMUM_PARAMETERS_FOR_STICKINESS + 1,
+        },
+        setState,
+      };
 
-    const dashboard = {
-      parametersWidgetRef: { current: { offsetTop } },
-      state: {},
-      setState,
-    };
+      updateParametersWidgetStickiness(dashboard);
 
-    updateParametersWidgetStickiness(dashboard);
-
-    expect(setState).toHaveBeenCalledWith({
-      isParametersWidgetSticky: false,
+      expect(setState).not.toHaveBeenCalled();
     });
-  });
 
-  it("keeps filters sticky with enough scrolling down and already sticky", () => {
-    const setState = jest.fn();
+    it("makes filters sticky if filters number is <= MAXIMUM_PARAMETERS_FOR_STICKINESS", () => {
+      const setState = jest.fn();
 
-    mockMainElementScroll(offsetTop + 1);
+      const dashboard = {
+        parametersWidgetRef: { current: { offsetTop } },
+        state: {
+          isParametersWidgetSticky: false,
+          parametersListLength: MAXIMUM_PARAMETERS_FOR_STICKINESS,
+        },
+        setState,
+      };
 
-    const dashboard = {
-      parametersWidgetRef: { current: { offsetTop } },
-      state: {
+      updateParametersWidgetStickiness(dashboard);
+
+      expect(setState).toHaveBeenCalledWith({
         isParametersWidgetSticky: true,
-      },
-      setState,
-    };
-
-    updateParametersWidgetStickiness(dashboard);
-
-    expect(setState).not.toHaveBeenCalled();
-  });
-
-  it("keeps filters not sticky with enough scrolling up and already not sticky", () => {
-    const setState = jest.fn();
-
-    mockMainElementScroll(offsetTop - 1);
-
-    const dashboard = {
-      parametersWidgetRef: { current: { offsetTop } },
-      state: {
-        isParametersWidgetSticky: false,
-      },
-      setState,
-    };
-
-    updateParametersWidgetStickiness(dashboard);
-
-    expect(setState).not.toHaveBeenCalled();
+      });
+    });
   });
 });

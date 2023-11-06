@@ -15,7 +15,6 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
@@ -353,11 +352,6 @@
                        table-name))))
         field-name))
 
-(defn json-field?
-  "Return true if field is a JSON field, false if not."
-  [field]
-  (some? (:nfc_path field)))
-
 (defn qualified-name
   "Return a combined qualified name for `field`, e.g. `table_name.parent_field_name.field_name`."
   [field]
@@ -409,7 +403,7 @@
         dimensions (->> d
                         (group-by :field_id))]
     (eduction (map #(assoc % :dimensions (get dimensions (:id %))))
-              (db/select-reducible Field))))
+              (t2/reducible-select Field))))
 
 (defmethod serdes/dependencies "Field" [field]
   ;; Fields depend on their parent Table, plus any foreign Fields referenced by their Dimensions.

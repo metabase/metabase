@@ -199,8 +199,8 @@
   (let [dashboard-id      (u/the-id dashboard)]
     (mw.session/with-current-user pulse-creator-id
       (if (dashboard/has-tabs? dashboard)
-        (let [ordered-tabs-with-cards (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :ordered-tab-cards)]
-         (doall (flatten (for [{:keys [cards] :as tab} ordered-tabs-with-cards]
+        (let [tabs-with-cards (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)]
+         (doall (flatten (for [{:keys [cards] :as tab} tabs-with-cards]
                            (concat [(tab->part tab)] (dashcards->part cards pulse dashboard))))))
         (dashcards->part (t2/select DashboardCard :dashboard_id dashboard-id) pulse dashboard)))))
 
@@ -411,9 +411,9 @@
   (fn [pulse _ {:keys [channel_type]}]
     [(alert-or-pulse pulse) (keyword channel_type)]))
 
-(defn- construct-pulse-email [subject recipient message]
+(defn- construct-pulse-email [subject recipients message]
   {:subject      subject
-   :recipients   [recipient]
+   :recipients   recipients
    :message-type :attachments
    :message      message})
 
@@ -427,11 +427,13 @@
                                                          (nil? (:id recipient)))) recipients)
         timezone            (->> parts (some :card) defaulted-timezone)
         dashboard           (update (t2/select-one Dashboard :id dashboard-id) :description markdown/process-markdown :html)
-        email-to-users      (for [user (map :email user-recipients)]
-                              (construct-pulse-email (subject pulse) user (messages/render-pulse-email timezone pulse dashboard parts nil)))
+        email-to-users      (when (> (count user-recipients) 0)
+                              (construct-pulse-email (subject pulse) (mapv :email user-recipients) (messages/render-pulse-email timezone pulse dashboard parts nil)))
         email-to-nonusers   (for [non-user (map :email non-user-recipients)]
-                              (construct-pulse-email (subject pulse) non-user (messages/render-pulse-email timezone pulse dashboard parts non-user)))]
-    (concat email-to-users email-to-nonusers)))
+                              (construct-pulse-email (subject pulse) [non-user] (messages/render-pulse-email timezone pulse dashboard parts non-user)))]
+    (if email-to-users
+      (conj email-to-nonusers email-to-users)
+      email-to-nonusers)))
 
 (defmethod notification [:pulse :slack]
   [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse}
@@ -459,11 +461,13 @@
                                                          (nil? (:id recipient)))) (:recipients channel))
         first-part          (some :card parts)
         timezone            (defaulted-timezone first-part)
-        email-to-users      (for [user (map :email user-recipients)]
-                              (construct-pulse-email email-subject user (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part))))
+        email-to-users      (when (> (count user-recipients) 0)
+                              (construct-pulse-email email-subject (mapv :email user-recipients) (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part) nil)))
         email-to-nonusers   (for [non-user (map :email non-user-recipients)]
-                              (construct-pulse-email email-subject non-user (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part))))]
-       (concat email-to-users email-to-nonusers)))
+                              (construct-pulse-email email-subject [non-user] (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part) non-user)))]
+       (if email-to-users
+         (conj email-to-nonusers email-to-users)
+         email-to-nonusers)))
 
 (defmethod notification [:alert :slack]
   [pulse parts {{channel-id :channel} :details}]
@@ -531,7 +535,8 @@
       (email/send-message-or-throw! {:subject      subject
                                      :recipients   recipients
                                      :message-type message-type
-                                     :message      message})
+                                     :message      message
+                                     :bcc?         (email/bcc-enabled?)})
       (catch ExceptionInfo e
         (when (not= :smtp-host-not-set (:cause (ex-data e)))
           (throw e))))))

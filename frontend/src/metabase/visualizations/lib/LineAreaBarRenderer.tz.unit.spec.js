@@ -1,9 +1,9 @@
 import "__support__/ui-mocks"; // included explicitly whereas with integrated tests it comes with __support__/integrated_tests
 
 import _ from "underscore";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import testAcrossTimezones from "__support__/timezones";
-
 import {
   NumberColumn,
   DateTimeColumn,
@@ -11,6 +11,9 @@ import {
   renderLineAreaBar,
   getFormattedTooltips,
 } from "__support__/visualizations";
+import registerVisualizations from "metabase/visualizations/register";
+
+registerVisualizations();
 
 // make WIDTH big enough that ticks aren't skipped
 const WIDTH = 4000;

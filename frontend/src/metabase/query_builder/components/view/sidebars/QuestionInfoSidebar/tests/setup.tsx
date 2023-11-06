@@ -1,5 +1,5 @@
 import { Route } from "react-router";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Card, Settings } from "metabase-types/api";
 import {
@@ -12,11 +12,7 @@ import { createMockState } from "metabase-types/store/mocks";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import {
-  renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
-} from "__support__/ui";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import {
   setupCardEndpoints,
   setupRevisionsEndpoints,
@@ -65,5 +61,5 @@ export const setup = async ({
     storeInitialState: state,
   });
 
-  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
+  await waitForLoaderToBeRemoved();
 };

@@ -25,7 +25,8 @@
 
 (deftest update-test
   (testing "Updating"
-    (t2.with-temp/with-temp [Metric {:keys [id]} {:creator_id (mt/user->id :rasta)}]
+    (t2.with-temp/with-temp [Metric {:keys [id]} {:creator_id (mt/user->id :rasta)
+                                                  :table_id   (mt/id :checkins)}]
       (testing "you should not be able to change the creator_id of a Metric"
         (is (thrown-with-msg?
              Exception
@@ -47,11 +48,11 @@
 
 (deftest serialize-metric-test
   (testing "serialize-metric"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{table-id :id} {:db_id database-id}]
-                    Metric   [metric         {:table_id   table-id
-                                              :definition {:aggregation [[:count]]
-                                                           :filter      [:and [:> [:field 4 nil] "2014-10-19"]]}}]]
+    (mt/with-temp [Database {database-id :id} {}
+                   Table    {table-id :id} {:db_id database-id}
+                   Metric   metric         {:table_id   table-id
+                                            :definition {:aggregation [[:count]]
+                                                         :filter      [:and [:> [:field 4 nil] "2014-10-19"]]}}]
       (is (= (merge metric-defaults
                     {:id          true
                      :table_id    true
@@ -68,10 +69,10 @@
 
 (deftest diff-metrics-test
   (testing "diff-metrics"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{table-id :id} {:db_id database-id}]
-                    Metric   [metric         {:table_id   table-id
-                                              :definition {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}]]
+    (mt/with-temp [Database {database-id :id} {}
+                   Table    {table-id :id} {:db_id database-id}
+                   Metric   metric         {:table_id   table-id
+                                            :definition {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}]
       (is (= {:definition  {:before {:filter [:> [:field 4 nil] "2014-10-19"]}
                             :after  {:filter [:between [:field 4 nil] "2014-07-01" "2014-10-19"]}}
               :description {:before "Lookin' for a blueberry"
@@ -118,9 +119,9 @@
 (deftest identity-hash-test
   (testing "Metric hashes are composed of the metric name and table identity-hash"
     (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
-      (mt/with-temp* [Database [db    {:name "field-db" :engine :h2}]
-                      Table    [table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
-                      Metric   [metric {:name "measurement" :table_id (:id table) :created_at now}]]
+      (mt/with-temp [Database db    {:name "field-db" :engine :h2}
+                     Table    table {:schema "PUBLIC" :name "widget" :db_id (:id db)}
+                     Metric   metric {:name "measurement" :table_id (:id table) :created_at now}]
         (is (= "a2318866"
                (serdes/raw-hash ["measurement" (serdes/identity-hash table) now])
                (serdes/identity-hash metric)))))))
@@ -144,7 +145,7 @@
                                                                  :filter      [:and
                                                                                [:= $price 4]
                                                                                [:segment segment-id]]}))}]
-    (is (= "Venues, Sum of Category → Name, Filtered by Price equals 4 and Checkins with ID = 1"
+    (is (= "Venues, Sum of Category → Name, Filtered by Price is equal to 4 and Checkins with ID = 1"
            (:definition_description (t2/hydrate metric :definition_description))))))
 
 (deftest definition-description-missing-source-table-test
@@ -154,7 +155,7 @@
                                             :definition (mt/$ids venues
                                                           {:aggregation [[:sum $category_id->categories.name]]
                                                            :filter      [:= $price 4]})}]
-      (is (= "Venues, Sum of Category → Name, Filtered by Price equals 4"
+      (is (= "Venues, Sum of Category → Name, Filtered by Price is equal to 4"
              (:definition_description (t2/hydrate metric :definition_description)))))))
 
 (deftest definition-description-invalid-query-test

@@ -23,7 +23,7 @@ import type {
 } from "metabase/visualizations/types";
 import { isQuestionChangeClickAction } from "metabase/visualizations/types";
 import { renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import Question from "metabase-lib/Question";
 import { QuickFilterDrill } from "./QuickFilterDrill";
 
@@ -463,7 +463,7 @@ describe("QuickFilterDrill", () => {
           series: [],
           onClick: jest.fn(),
           onChangeCardAndRun: jest.fn(),
-          onChange: jest.fn(),
+          onUpdateVisualizationSettings: jest.fn(),
           onResize: jest.fn(),
           onClose: jest.fn(),
         };

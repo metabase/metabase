@@ -214,27 +214,29 @@
   {:arglists '([chart-type render-type timezone-id card dashcard data])}
   (fn [chart-type _ _ _ _ _] chart-type))
 
-(defn- filter-rows [data table-columns rows]
-  (let [column-order      (qp.streaming/export-column-order (:cols data) table-columns)
-        keep-filtered-idx (fn [col] (map #(nth col %) column-order))
-        filtered-rows     (map #(update % :row keep-filtered-idx) rows)]
-    filtered-rows))
+(defn- order-data [data viz-settings]
+  (if (some? (::mb.viz/table-columns viz-settings))
+    (let [[ordered-cols output-order] (qp.streaming/order-cols (:cols data) viz-settings)
+          keep-filtered-idx           (fn [row] (if output-order
+                                                  (let [row-v (into [] row)]
+                                                    (for [i output-order] (row-v i)))
+                                                  row))
+          ordered-rows                (map keep-filtered-idx (:rows data))]
+      [ordered-cols ordered-rows])
+    [(:cols data) (:rows data)]))
 
 (s/defmethod render :table :- common/RenderedPulseCard
   [_ render-type timezone-id :- (s/maybe s/Str) card _dashcard {:keys [rows viz-settings] :as data}]
-  (let [table-columns          (::mb.viz/table-columns viz-settings)
-        filter-columns?        (some? table-columns)
-        filtered-columns-names (if filter-columns?
-                                 (mapv ::mb.viz/table-column-name (filter ::mb.viz/table-column-enabled table-columns))
-                                 (mapv :name (:cols data)))
-        filtered-rows          (cond->> (prep-for-html-rendering timezone-id card data)
-                                 filter-columns? (filter-rows data table-columns))
-        table-body             [:div
-                                (table/render-table
-                                 (color/make-color-selector data viz-settings)
-                                 filtered-columns-names
-                                 filtered-rows)
-                                (render-truncation-warning rows-limit (count rows))]]
+  (let [[ordered-cols ordered-rows] (order-data data viz-settings)
+        data                        (-> data
+                                        (assoc :rows ordered-rows)
+                                        (assoc :cols ordered-cols))
+        table-body                  [:div
+                                     (table/render-table
+                                      (color/make-color-selector data viz-settings)
+                                      (mapv :name ordered-cols)
+                                      (prep-for-html-rendering timezone-id card data))
+                                     (render-truncation-warning rows-limit (count rows))]]
     {:attachments
      nil
 
@@ -913,8 +915,9 @@
               previous        (format-cell timezone-id previous-value metric-col viz-settings)
               adj             (if (pos? last-change) (tru "Up") (tru "Down"))
               delta-statement (if (= last-value previous-value)
-                                "No change."
-                                (str adj " " (percentage last-change) "."))]
+                                "No change"
+                                (str adj " " (percentage last-change)))
+              comparison-statement (str " vs. previous " (format-unit unit) ": " previous)]
           {:attachments nil
            :content     [:div
                          [:div {:style (style/style (style/scalar-style))}
@@ -924,10 +927,10 @@
                                                    :font-weight   700
                                                    :padding-right :16px})}
                           delta-statement
-                          " Was " previous " last " (format-unit unit)]]
+                          comparison-statement]]
            :render/text (str value "\n"
                              delta-statement
-                             " Was " previous " last " (format-unit unit))})
+                             comparison-statement)})
         ;; In other words, defaults to plain scalar if we don't have actual changes
         {:attachments nil
          :content     [:div

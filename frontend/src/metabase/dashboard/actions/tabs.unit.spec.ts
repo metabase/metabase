@@ -9,11 +9,9 @@ describe("tabsReducer", () => {
   it("should reorder the tabs when MOVE_TAB is dispatched", () => {
     const newDashState = tabsReducer(
       TEST_DASHBOARD_STATE,
-      moveTab({ sourceTabId: 1, destTabId: 3 }),
+      moveTab({ sourceTabId: 1, destinationTabId: 3 }),
     );
-    expect(newDashState.dashboards[1].ordered_tabs?.map(t => t.id)).toEqual([
-      2, 3, 1,
-    ]);
+    expect(newDashState.dashboards[1].tabs?.map(t => t.id)).toEqual([2, 3, 1]);
   });
 });
 

@@ -2,6 +2,7 @@
   (:require
    [clojure.walk :as walk]
    [metabase.api.common :as api]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.interface :as qp.i]
@@ -50,7 +51,7 @@
   (try
     (let [cols (binding [api/*current-user-id* nil]
                  ((requiring-resolve 'metabase.query-processor/query->expected-cols)
-                  {:database (:id (qp.store/database))
+                  {:database (:id (lib.metadata/database (qp.store/metadata-provider)))
                    :type     :query
                    ;; don't add remapped columns to the source metadata for the source query, otherwise we're going
                    ;; to end up adding it again when the middleware runs at the top level

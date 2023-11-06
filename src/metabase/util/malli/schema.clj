@@ -1,7 +1,12 @@
 (ns metabase.util.malli.schema
+  "TODO: Consider refacor this namespace by defining custom schema with [[mr/def]] instead.
+
+  For example the PositiveInt can be defined as (mr/def ::positive-int pos-int?)
+  "
   (:require
    [cheshire.core :as json]
    [malli.core :as mc]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.dispatch :as models.dispatch]
@@ -37,7 +42,7 @@
    (partial instance? klass)])
 
 (defn maps-with-unique-key
-  "Given a schema of a sequence of maps, returns as chema that do an additional unique check on key `k`."
+  "Given a schema of a sequence of maps, returns a schema that does an additional unique check on key `k`."
   [maps-schema k]
   (mu/with-api-error-message
     [:and
@@ -54,9 +59,7 @@
 ;;; TODO -- this does not actually ensure that the string cannot be BLANK at all!
 (def NonBlankString
   "Schema for a string that cannot be blank."
-  (mu/with-api-error-message
-    [:string {:min 1}]
-    (deferred-tru "value must be a non-blank string.")))
+  (mu/with-api-error-message ::lib.schema.common/non-blank-string (deferred-tru "value must be a non-blank string.")))
 
 (def IntGreaterThanOrEqualToZero
   "Schema representing an integer than must also be greater than or equal to zero."
@@ -86,7 +89,7 @@
 (def PositiveNum
   "Schema representing a numeric value greater than zero. This allows floating point numbers and integers."
   (mu/with-api-error-message
-    pos?
+    [:and number? pos?]
     (deferred-tru "value must be a number greater than zero.")))
 
 (def KeywordOrString
@@ -195,7 +198,7 @@
   (mu/with-api-error-message
     [:and
      :string
-     [:fn u.password/is-valid?]]
+     [:fn (every-pred string? #'u.password/is-valid?)]]
     (deferred-tru "password is too common.")))
 
 (def IntString
@@ -229,7 +232,7 @@
   "Schema for a string that is a valid representation of a boolean (either `true` or `false`).
    Defendpoint uses this to coerce the value for this schema to a boolean."
   (mu/with-api-error-message
-    [:enum "true" "false"]
+    [:enum "true" "false" "TRUE" "FALSE"]
     (deferred-tru "value must be a valid boolean string (''true'' or ''false'').")))
 
 (def TemporalString
@@ -342,9 +345,9 @@
 (def EmbeddingParams
   "Schema for a valid map of embedding params."
   (mu/with-api-error-message
-    [:map-of
-     :keyword
-     [:enum "disabled" "enabled" "locked"]]
+    [:maybe [:map-of
+             :keyword
+             [:enum "disabled" "enabled" "locked"]]]
     (deferred-tru "value must be a valid embedding params map.")))
 
 (def ValidLocale

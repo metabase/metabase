@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.mysql :as mysql]
    [metabase.models :refer [Action Card Dashboard DashboardCard]]
    [metabase.models.action :as action]
    [metabase.query-processor :as qp]
@@ -72,7 +73,7 @@
       (mt/dataset json
         ;; maria does not support nested json. It just sees a text column named json_bit
         (when-not (and (= driver/*driver* :mysql)
-                       (-> (mt/db) :dbms_version :flavor (= "MariaDB")))
+                       (mysql/mariadb? (mt/db)))
           (mt/with-actions-enabled
             (mt/with-actions [{model-id :id} {:dataset true
                                               :dataset_query
@@ -129,17 +130,17 @@
     (mt/with-actions-enabled
       (testing "Dashcards are deleted after actions are archived"
         (mt/with-actions [{:keys [action-id]} {}]
-          (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                          DashboardCard [{dashcard-id :id} {:action_id action-id
-                                                            :dashboard_id dashboard-id}]]
+          (mt/with-temp [Dashboard {dashboard-id :id} {}
+                         DashboardCard {dashcard-id :id} {:action_id action-id
+                                                          :dashboard_id dashboard-id}]
             (is (= 1 (t2/count DashboardCard :id dashcard-id)))
             (action/update! {:id action-id, :archived true} {:id action-id})
             (is (zero? (t2/count DashboardCard :id dashcard-id))))))
       (testing "Dashcards are deleted after actions are deleted entirely"
         (mt/with-actions [{:keys [action-id]} {}]
-          (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                          DashboardCard [{dashcard-id :id} {:action_id action-id
-                                                            :dashboard_id dashboard-id}]]
+          (mt/with-temp [Dashboard {dashboard-id :id} {}
+                         DashboardCard {dashcard-id :id} {:action_id action-id
+                                                          :dashboard_id dashboard-id}]
             (is (= 1 (t2/count DashboardCard :id dashcard-id)))
             (t2/delete! Action :id action-id)
             (is (zero? (t2/count DashboardCard :id dashcard-id)))))))))

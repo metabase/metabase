@@ -6,6 +6,7 @@ import {
   sendEmailAndAssert,
   sidebar,
 } from "e2e/support/helpers";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("issue 18009", { tags: "@external" }, () => {
   beforeEach(() => {
@@ -18,7 +19,7 @@ describe("issue 18009", { tags: "@external" }, () => {
   });
 
   it("nodata user should be able to create and receive an email subscription without errors (metabase#18009)", () => {
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
 
     cy.findByLabelText("subscriptions").click();
 

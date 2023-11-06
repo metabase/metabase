@@ -10,7 +10,7 @@ interface Props {
   "data-testid"?: string;
 }
 
-const LoadingSpinner = ({
+const BaseLoadingSpinner = ({
   className,
   size = 32,
   borderWidth = 4,
@@ -28,7 +28,12 @@ const LoadingSpinner = ({
   </SpinnerRoot>
 );
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(LoadingSpinner, {
+/**
+ * @deprecated: use Loader from "metabase/ui"
+ */
+const LoadingSpinner = Object.assign(BaseLoadingSpinner, {
   Root: SpinnerRoot,
 });
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default LoadingSpinner;

@@ -11,10 +11,11 @@
     :refer [GroupTableAccessPolicy]]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
    [metabase.db.connection :as mdb.connection]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.card :refer [Card]]
-   [metabase.models.field :refer [Field]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
@@ -30,9 +31,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -52,7 +51,7 @@
 (defn- query->all-table-ids [query]
   (let [ids (all-table-ids query)]
     (when (seq ids)
-      (qp.store/fetch-and-store-tables! ids)
+      (qp.store/bulk-metadata :metadata/table ids)
       (set ids))))
 
 (defn assert-one-gtap-per-table
@@ -96,9 +95,7 @@
   references. Otherwise returns `nil`."
   [[_ target-field-clause]]
   (when-let [field-id (mbql.u/match-one target-field-clause [:field (field-id :guard integer?) _] field-id)]
-    ;; TODO -- we should be using the QP store for this. But when trying to change this I ran into "QP Store is not
-    ;; initialized" errors. We should figure out why that's the case and then fix this
-    (t2/select-one-fn :base_type Field :id field-id)))
+    (:base-type (lib.metadata.protocols/field (qp.store/metadata-provider) field-id))))
 
 (defn- attr-value->param-value
   "Take an `attr-value` with a desired `target-type` and coerce to that type if need be. If not type is given or it's
@@ -108,10 +105,10 @@
     (cond
       ;; If the attr-value is a string and the target type is integer, parse it as a long
       (and attr-string? (isa? target-type :type/Integer))
-      (Long/parseLong attr-value)
+      (parse-long attr-value)
       ;; If the attr-value is a string and the target type is float, parse it as a double
       (and attr-string? (isa? target-type :type/Float))
-      (Double/parseDouble attr-value)
+      (parse-double attr-value)
       ;; No need to parse it if the type isn't numeric or if it's already a number
       :else
       attr-value)))
@@ -133,7 +130,7 @@
 (mu/defn ^:private preprocess-source-query :- mbql.s/SourceQuery
   [source-query :- mbql.s/SourceQuery]
   (try
-    (let [query        {:database (:id (qp.store/database))
+    (let [query        {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                         :type     :query
                         :query    source-query}
           preprocessed (binding [*current-user-id* nil]
@@ -145,8 +142,8 @@
                       {:source-query source-query}
                       e)))))
 
-(s/defn ^:private card-gtap->source
-  [{card-id :card_id, :as gtap}]
+(defn- card-gtap->source
+  [{card-id :card_id :as gtap}]
   (update-in (fetch-source-query/card-id->source-query-and-metadata card-id)
              [:source-query :parameters]
              concat
@@ -155,11 +152,11 @@
 (defn- table-gtap->source [{table-id :table_id, :as gtap}]
   {:source-query {:source-table table-id, :parameters (gtap->parameters gtap)}})
 
-(s/defn ^:private mbql-query-metadata :- (su/non-empty [su/Map])
+(mu/defn ^:private mbql-query-metadata :- [:+ :map]
   [inner-query]
   (binding [*current-user-id* nil]
     ((requiring-resolve 'metabase.query-processor/query->expected-cols)
-     {:database (u/the-id (qp.store/database))
+     {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
       :type     :query
       :query    inner-query})))
 
@@ -172,9 +169,9 @@
      (mbql-query-metadata {:source-table table-id}))
    :ttl/threshold (u/minutes->ms 1)))
 
-(s/defn ^:private reconcile-metadata :- (su/non-empty [su/Map])
+(mu/defn ^:private reconcile-metadata :- [:+ :map]
   "Combine the metadata in `source-query-metadata` with the `table-metadata` from the Table being sandboxed."
-  [source-query-metadata :- (su/non-empty [su/Map]) table-metadata]
+  [source-query-metadata :- [:+ :map] table-metadata]
   (let [col-name->table-metadata (m/index-by :name table-metadata)]
     (vec
      (for [col   source-query-metadata
@@ -184,11 +181,11 @@
          (gtap/check-column-types-match col table-col)
          table-col)))))
 
-(s/defn ^:private native-query-metadata :- (su/non-empty [su/Map])
-  [source-query :- {:source-query s/Any, s/Keyword s/Any}]
+(mu/defn ^:private native-query-metadata :- [:+ :map]
+  [source-query :- [:map [:source-query :any]]]
   (let [result (binding [*current-user-id* nil]
                  ((requiring-resolve 'metabase.query-processor/process-query)
-                  {:database (u/the-id (qp.store/database))
+                  {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                    :type     :query
                    :query    {:source-query source-query
                               :limit        0}}))]
@@ -197,30 +194,31 @@
                         {:source-query source-query
                          :result       result})))))
 
-(s/defn ^:private source-query-form-ensure-metadata :- {:source-query    s/Any
-                                                        :source-metadata (su/non-empty [su/Map])
-                                                        s/Keyword        s/Any}
+(mu/defn ^:private source-query-form-ensure-metadata :- [:and [:map-of :keyword :any]
+                                                         [:map
+                                                          [:source-query :any]
+                                                          [:source-metadata [:+ :map]]]]
   "Add `:source-metadata` to a `source-query` if needed. If the source metadata had to be resolved (because Card with
   `card-id`) didn't already have it, save it so we don't have to resolve it again next time around."
-  [{:keys [source-metadata], :as source-query} :- {:source-query s/Any, s/Keyword s/Any}
-   table-id                                    :- su/IntGreaterThanZero
-   card-id                                     :- (s/maybe su/IntGreaterThanZero)]
+  [{:keys [source-metadata], :as source-query} :- [:and [:map-of :keyword :any] [:map [:source-query :any]]]
+   table-id                                    :- ms/PositiveInt
+   card-id                                     :- [:maybe ms/PositiveInt]]
   (let [table-metadata   (original-table-metadata table-id)
         ;; make sure source query has `:source-metadata`; add it if needed
         [metadata save?] (cond
-                           ;; if it already has `:source-metadata`, we're good to go.
-                           (seq source-metadata)
-                           [source-metadata false]
+                          ;; if it already has `:source-metadata`, we're good to go.
+                          (seq source-metadata)
+                          [source-metadata false]
 
-                           ;; if it doesn't have source metadata, but it's an MBQL query, we can preprocess the query to
-                           ;; get the expected metadata.
-                           (not (get-in source-query [:source-query :native]))
-                           [(mbql-query-metadata source-query) true]
+                          ;; if it doesn't have source metadata, but it's an MBQL query, we can preprocess the query to
+                          ;; get the expected metadata.
+                          (not (get-in source-query [:source-query :native]))
+                          [(mbql-query-metadata source-query) true]
 
-                           ;; otherwise if it's a native query we'll have to run the query really quickly to get the
-                           ;; expected metadata.
-                           :else
-                           [(native-query-metadata source-query) true])
+                          ;; otherwise if it's a native query we'll have to run the query really quickly to get the
+                          ;; expected metadata.
+                          :else
+                          [(native-query-metadata source-query) true])
         metadata (reconcile-metadata metadata table-metadata)]
     (assert (seq metadata))
     ;; save the result metadata so we don't have to do it again next time if applicable
@@ -229,7 +227,7 @@
       (t2/update! Card card-id {:result_metadata metadata}))
     ;; make sure the fetched Fields are present the QP store
     (when-let [field-ids (not-empty (filter some? (map :id metadata)))]
-      (qp.store/fetch-and-store-fields! field-ids))
+      (qp.store/bulk-metadata :metadata/column field-ids))
     (assoc source-query :source-metadata metadata)))
 
 
@@ -252,8 +250,8 @@
   (->>
    (for [target-field-clause (vals attribute-remappings)]
      (mbql.u/match-one target-field-clause
-                       [:field (field-id :guard integer?) _]
-                       (t2/select-one-fn :table_id Field :id field-id)))
+       [:field (field-id :guard integer?) _]
+       (:table-id (lib.metadata.protocols/field (qp.store/metadata-provider) field-id))))
    (cons table-id)
    (remove nil?)
    set))
@@ -271,7 +269,8 @@
   [{card-id :card_id :as sandbox}]
   (if card-id
     (qp.store/cached card-id
-      (query-perms/perms-set (t2/select-one-fn :dataset_query Card :id card-id), :throw-exceptions? true))
+      (query-perms/perms-set (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
+                             :throw-exceptions? true))
     (set (map perms/table-query-path (sandbox->table-ids sandbox)))))
 
 (defn- sandboxes->perms-set [sandboxes]
