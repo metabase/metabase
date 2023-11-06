@@ -4,6 +4,7 @@ import type {
   MantineTheme,
   MantineThemeOverride,
 } from "@mantine/core";
+import { color } from "metabase/lib/colors";
 import { CheckboxIcon } from "./CheckboxIcon";
 
 const SIZES = {
@@ -79,5 +80,40 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
         color: theme.colors.text[0],
       },
     }),
+    variants: {
+      stacked: (theme, { labelPosition }) => ({
+        inner: {
+          position: "relative",
+          zIndex: 0,
+        },
+        label: {
+          paddingLeft: labelPosition === "right" ? "0.75rem" : "0.5rem",
+        },
+        input: {
+          "&:after": {
+            content: "''",
+            border: `1px solid ${theme.colors.gray[4]}`,
+            position: "absolute",
+            top: "-4px",
+            left: "4px",
+            height: "100%",
+            width: "100%",
+            borderRadius: "4px",
+            zIndex: -1,
+            backgroundColor: "white",
+            boxSizing: "border-box",
+          },
+          "&:checked:after": {
+            border: `2px solid ${color("brand")}`,
+          },
+        },
+        body: {
+          alignItems: "center",
+        },
+        labelWrapper: {
+          paddingBottom: "2px",
+        },
+      }),
+    },
   },
 });
