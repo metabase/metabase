@@ -260,7 +260,7 @@ You can localize the user interface via a parameter. For example, to set the loc
 locale=es
 ```
 
-Check out the [locales Metabase supports[((https://github.com/metabase/metabase/tree/master/locales)
+Check out the [locales Metabase supports](https://github.com/metabase/metabase/tree/master/locales).
 
 ### logo
 
