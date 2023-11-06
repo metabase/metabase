@@ -175,15 +175,12 @@
                             :model_id dashboard-id))))))
 
 (deftest dashboard-reposition-cards-test
-  (testing :event/dashboard-reposition-cards
+  (testing ":event/dashboard-reposition-cards with repositioning dashcards"
     (t2.with-temp/with-temp [Dashboard     {dashboard-id :id, :as dashboard} {}
                              Card          {card-id :id}                     (card-properties)
                              DashboardCard dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]
       (t2/update! DashboardCard (:id dashcard) {:size_x 3})
-      (events/publish-event! :event/dashboard-reposition-cards
-                             {:object    dashboard
-                              :user-id   (mt/user->id :crowberto)
-                              :dashcards [(assoc dashcard :size_x 4)]})
+      (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :crowberto)})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
               :user_id      (mt/user->id :crowberto)
@@ -206,16 +203,13 @@
                             :model_id dashboard-id))))))
 
 (deftest dashboard-add-tabs-test
-  (testing :event/dashboard-add-tabs
+  (testing ":event/dashboard-update with added tabs"
     (t2.with-temp/with-temp
       [:model/Dashboard     {dashboard-id :id, :as dashboard} {:name "A dashboard"}
        :model/DashboardTab  {dashtab-id :id}                  {:name         "First tab"
                                                                :position     0
                                                                :dashboard_id dashboard-id}]
-      (events/publish-event! :event/dashboard-add-tabs
-                             {:object    dashboard
-                              :user-id   (mt/user->id :rasta)
-                              :tab-ids   [dashtab-id]})
+      (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
               :user_id      (mt/user->id :rasta)
@@ -231,17 +225,14 @@
                             :model_id dashboard-id))))))
 
 (deftest dashboard-update-tabs-test
-  (testing :event/dashboard-update-tabs
+  (testing ":event/dashboard-update with updating tabs"
     (t2.with-temp/with-temp
       [:model/Dashboard     {dashboard-id :id, :as dashboard} {:name "A dashboard"}
        :model/DashboardTab  {dashtab-id :id}                  {:name         "First tab"
                                                                :position     0
                                                                :dashboard_id dashboard-id}]
       (t2/update! :model/DashboardTab dashtab-id {:name "New name"})
-      (events/publish-event! :event/dashboard-update-tabs
-                             {:object    dashboard
-                              :user-id   (mt/user->id :rasta)
-                              :tab-ids   [dashtab-id]})
+      (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
               :user_id      (mt/user->id :rasta)
@@ -257,17 +248,14 @@
                             :model_id dashboard-id))))))
 
 (deftest dashboard-delete-tabs-test
-  (testing :event/dashboard-remove-tabs
+  (testing ":event/dashboard-update with deleting tabs"
     (t2.with-temp/with-temp
       [:model/Dashboard     {dashboard-id :id, :as dashboard} {:name "A dashboard"}
        :model/DashboardTab  {dashtab-id :id}                  {:name         "First tab"
                                                                :position     0
                                                                :dashboard_id dashboard-id}]
       (t2/delete! :model/DashboardTab dashtab-id)
-      (events/publish-event! :event/dashboard-remove-tabs
-                             {:object    dashboard
-                              :user-id   (mt/user->id :rasta)
-                              :tab-ids   [dashtab-id]})
+      (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
               :user_id      (mt/user->id :rasta)
