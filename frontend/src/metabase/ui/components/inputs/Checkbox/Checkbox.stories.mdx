@@ -1,5 +1,5 @@
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
-import { Checkbox, Stack } from "metabase/ui";
+import { Checkbox, Stack, StackedCheckbox } from "metabase/ui";
 
 export const args = {
   label: "Label",
@@ -21,6 +21,9 @@ export const argTypes = {
   labelPosition: {
     options: ["left", "right"],
     control: { type: "inline-radio" },
+  },
+  size: {
+    control: { type: "text" },
   },
 };
 
@@ -53,6 +56,8 @@ Checkbox buttons allow users to select a single option from a list of mutually e
 ## Examples
 
 export const DefaultTemplate = args => <Checkbox {...args} />;
+
+export const StackedTemplate = args => <StackedCheckbox {...args} />;
 
 export const CheckboxGroupTemplate = args => (
   <Checkbox.Group
@@ -147,6 +152,12 @@ DescriptionLeft.args = {
 
 <Canvas>
   <Story name="Description, left position">{DescriptionLeft}</Story>
+</Canvas>
+
+export const Stacked = StackedTemplate.bind({});
+
+<Canvas>
+  <Story name="Stacked">{Stacked}</Story>
 </Canvas>
 
 ## Related components
