@@ -491,7 +491,7 @@
                          :event/subscription-send
                          :event/alert-send)]
         (events/publish-event! event-type {:id      (:id pulse)
-                                           :user-id (u/the-id (:creator pulse))
+                                           :user-id (:creator_id pulse)
                                            :details {:recipients (map :recipients (:channels pulse))
                                                      :filters    (:parameters pulse)}}))
       (when (:alert_first_only pulse)

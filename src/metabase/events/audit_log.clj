@@ -118,10 +118,10 @@
      :recipients (map :recipients channels)}))
 
 (methodical/defmethod events/publish-event! ::pulse-event
-  [topic {:keys [id user details] :as object}]
-  ;; Check if objecct contains the keys that we want populated, if not then may be a unsubscribe/send event
-  (let [user-id     (if (some? user)
-                      user
+  [topic {:keys [id user-id details] :as object}]
+  ;; Check if object contains the keys that we want populated, if not then may be a unsubscribe/send event
+  (let [user-id     (if (some? user-id)
+                      user-id
                       api/*current-user-id*)
         details-map (if (some? details)
                       details

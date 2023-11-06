@@ -89,7 +89,8 @@
   (testing "When we send a pulse, we also log the event:"
     (mt/with-model-cleanup [:model/AuditLog]
       (t2.with-temp/with-temp [Card                  pulse-card {}
-                               Pulse                 pulse {:name "Test Pulse"}
+                               Pulse                 pulse {:creator_id (mt/user->id :crowberto)
+                                                            :name "Test Pulse"}
                                PulseCard             _ {:pulse_id (:id pulse)
                                                         :card_id (:id pulse-card)}
                                PulseChannel          pc {:channel_type :email
@@ -104,7 +105,7 @@
              (mt/with-test-user :lucky
                (metabase.pulse/send-pulse! pulse)))
            (is (= {:topic    :subscription-send
-                   :user_id  (mt/user->id :lucky)
+                   :user_id  (mt/user->id :crowberto)
                    :model    "Pulse"
                    :model_id (:id pulse)
                    :details  {:recipients [[(dissoc (mt/fetch-user :rasta) :last_login :is_qbnewb :is_superuser :date_joined)]]
@@ -115,7 +116,8 @@
   (testing "When we send a pulse, we also log the event:"
     (mt/with-model-cleanup [:model/AuditLog]
       (t2.with-temp/with-temp [Card                  pulse-card {:dataset_query (mt/mbql-query venues)}
-                               Pulse                 pulse {:name "Test Pulse"
+                               Pulse                 pulse {:creator_id (mt/user->id :crowberto)
+                                                            :name "Test Pulse"
                                                             :alert_condition "rows"}
                                PulseCard             _ {:pulse_id (:id pulse)
                                                         :card_id (:id pulse-card)}
@@ -131,7 +133,7 @@
               (mt/with-test-user :lucky
                 (metabase.pulse/send-pulse! pulse)))
             (is (= {:topic    :alert-send
-                    :user_id  (mt/user->id :lucky)
+                    :user_id  (mt/user->id :crowberto)
                     :model    "Pulse"
                     :model_id (:id pulse)
                     :details  {:recipients [[(dissoc (mt/fetch-user :rasta) :last_login :is_qbnewb :is_superuser :date_joined)]]
