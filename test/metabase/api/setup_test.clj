@@ -96,7 +96,7 @@
                       :user_id  nil
                       :model    "User"
                       :details  {}}
-                     (audit-log-test/event :user-joined user-id))))))))))
+                     (audit-log-test/latest-event :user-joined user-id))))))))))
 
 (deftest invite-user-test
   (testing "POST /api/setup"
@@ -124,7 +124,7 @@
                      email
                      (re-pattern (str invitor-first-name " could use your help setting up Metabase.*"))))
                 (testing "The audit-log :user-invited event is recorded"
-                  (let [logged-event (audit-log-test/event :user-invited (u/the-id invited-user))]
+                  (let [logged-event (audit-log-test/latest-event :user-invited (u/the-id invited-user))]
                     (is (= {:topic    :user-invited
                             :user_id  nil
                             :model    "User"

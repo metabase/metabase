@@ -12,7 +12,7 @@
     (mt/with-test-user :rasta
       (testing "Test that `record-event!` succesfully records basic card events"
         (t2.with-temp/with-temp [:model/Card {card-id :id :as card} {:name "Test card"}]
-          (audit-log/record-event! :event/card-create card)
+          (audit-log/record-event! :event/card-create {:object card})
           ;; Not an exhaustive match since we're mainly testing that the event is recorded
           (is (partial=
                {:topic    :card-create
@@ -24,7 +24,11 @@
 
       (testing "Test that `record-event!` succesfully records basic card events with the user, model, and model ID specified"
         (t2.with-temp/with-temp [:model/Card {card-id :id :as card} {:name "Test card"}]
-          (audit-log/record-event! :event/card-create card (mt/user->id :rasta) :model/Card card-id)
+          (audit-log/record-event! :event/card-create
+                                     {:object card
+                                      :user-id (mt/user->id :rasta)
+                                      :model :model/Card
+                                      :model-id card-id})
           (is (partial=
                {:topic    :card-create
                 :user_id  (mt/user->id :rasta)
@@ -34,7 +38,7 @@
                (t2/select-one :model/AuditLog :model_id card-id)))))
 
       (testing "Test that `record-event!` records an event with arbitrary data and no model specified"
-        (audit-log/record-event! :event/test-event {:foo "bar"})
+        (audit-log/record-event! :event/test-event {:details {:foo "bar"}})
         (is (partial=
              {:topic :test-event
               :user_id (mt/user->id :rasta)

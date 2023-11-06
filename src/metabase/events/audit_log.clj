@@ -31,14 +31,14 @@
 
 (methodical/defmethod events/publish-event! ::card-event
   [topic event]
-  (audit-log/record-event-2! topic event))
+  (audit-log/record-event! topic event))
 
 (derive ::card-read-event :metabase/event)
 (derive :event/card-read ::card-read-event)
 
 (methodical/defmethod events/publish-event! ::card-read-event
   [topic event]
-  (audit-log/record-event-2! topic event))
+  (audit-log/record-event! topic event))
 
 (derive ::card-query-event ::event)
 (derive :event/card-query ::card-query-event)
@@ -46,10 +46,10 @@
 (methodical/defmethod events/publish-event! ::card-query-event
   [topic {:keys [user-id card-id] :as object}]
   (let [details (select-keys object [:cached :ignore_cache :context])]
-    (audit-log/record-event-2! topic {:details    details
-                                      :user-id    user-id
-                                      :model      :model/Card
-                                      :model-id   card-id})))
+    (audit-log/record-event! topic {:details    details
+                                    :user-id    user-id
+                                    :model      :model/Card
+                                    :model-id   card-id})))
 
 (derive ::dashboard-event ::event)
 (derive :event/dashboard-create ::dashboard-event)
@@ -57,7 +57,7 @@
 
 (methodical/defmethod events/publish-event! ::dashboard-event
   [topic event]
-  (audit-log/record-event-2! topic event))
+  (audit-log/record-event! topic event))
 
 (derive ::dashboard-card-event ::event)
 (derive :event/dashboard-add-cards ::dashboard-card-event)
@@ -72,7 +72,7 @@
                                            (-> (t2/select-one [:model/Card :name :description], :id card_id)
                                                (assoc :id id)
                                                (assoc :card_id card_id)))))]
-    (audit-log/record-event-2! topic
+    (audit-log/record-event! topic
                                {:details  details
                                 :user-id  user-id
                                 :model    :model/Dashboard
@@ -83,7 +83,7 @@
 
 (methodical/defmethod events/publish-event! ::dashboard-read-event
   [topic event]
-  (audit-log/record-event-2! topic event))
+  (audit-log/record-event! topic event))
 
 (derive ::table-event ::event)
 (derive :event/table-read ::table-event)
@@ -91,7 +91,7 @@
 
 (methodical/defmethod events/publish-event! ::table-event
   [topic event]
-  (audit-log/record-event-2! topic event))
+  (audit-log/record-event! topic event))
 
 (derive ::metric-event ::event)
 (derive :event/metric-create ::metric-event)
@@ -100,9 +100,9 @@
 
 (methodical/defmethod events/publish-event! ::metric-event
   [topic {:keys [object user-id revision-message] :as _event}]
-  (audit-log/record-event-2! topic {:object  object
-                                    :user-id user-id
-                                    :details (when revision-message {:revision-message revision-message})}))
+  (audit-log/record-event! topic {:object  object
+                                  :user-id user-id
+                                  :details (when revision-message {:revision-message revision-message})}))
 
 (derive ::pulse-event ::event)
 (derive :event/pulse-create ::pulse-event)
@@ -127,14 +127,17 @@
 (methodical/defmethod events/publish-event! ::pulse-event
   [topic {:keys [object user-id] :as _event}]
   ;; Check if topic is a pulse or not (can be an unsubscribe event, which only contains email)
+  (def object object)
+  (def user-id user-id)
   (let [details-map (if (some? (:id object))
                       (create-details-map object (:name object) false (:dashboard_id object))
                       object)]
-    (audit-log/record-event-2! topic
-                               {:details  details-map
-                                :user-id  user-id
-                                :model    :model/Pulse
-                                :model-id (:id object)})))
+    (def details-map details-map)
+    (audit-log/record-event! topic
+                             {:details  details-map
+                              :user-id  user-id
+                              :model    :model/Pulse
+                              :model-id (:id object)})))
 
 (derive ::alert-event ::event)
 (derive :event/alert-create ::alert-event)
@@ -146,11 +149,11 @@
   (let [card      (:card object)
         card-name (:name card)]
     ;; Alerts are centered around a card/question. Users always interact with the alert via the question
-    (audit-log/record-event-2! topic
-                               {:details  (create-details-map object card-name true (:id card))
-                                :user-id  user-id
-                                :model    :model/Card
-                                :model-id (:id object)})))
+    (audit-log/record-event! topic
+                             {:details  (create-details-map object card-name true (:id card))
+                              :user-id  user-id
+                              :model    :model/Card
+                              :model-id (:id object)})))
 
 (derive ::segment-event ::event)
 (derive :event/segment-create ::segment-event)
@@ -159,9 +162,9 @@
 
 (methodical/defmethod events/publish-event! ::segment-event
   [topic {:keys [object user-id revision-message] :as _event}]
-  (audit-log/record-event-2! topic {:object  object
-                                    :user-id user-id
-                                    :details (when revision-message {:revision-message revision-message})}))
+  (audit-log/record-event! topic {:object  object
+                                  :user-id user-id
+                                  :details (when revision-message {:revision-message revision-message})}))
 
 (derive ::user-event ::event)
 (derive :event/user-joined ::user-event)
@@ -174,7 +177,7 @@
 
 (methodical/defmethod events/publish-event! ::user-event
   [topic event]
-  (audit-log/record-event-2! topic event))
+  (audit-log/record-event! topic event))
 
 (derive ::install-event ::event)
 (derive :event/install ::install-event)
@@ -182,7 +185,7 @@
 (methodical/defmethod events/publish-event! ::install-event
   [topic _event]
   (when-not (t2/exists? :model/AuditLog :topic "install")
-    (audit-log/record-event-2! topic {})))
+    (audit-log/record-event! topic {})))
 
 (derive ::database-event ::event)
 (derive :event/database-create ::database-event)
@@ -193,14 +196,14 @@
 
 (methodical/defmethod events/publish-event! ::database-event
   [topic event]
-  (audit-log/record-event-2! topic event))
+  (audit-log/record-event! topic event))
 
 (derive ::database-update-event ::event)
 (derive :event/database-update ::database-update-event)
 
 (methodical/defmethod events/publish-event! ::database-update-event
   [topic event]
-  (audit-log/record-event-2!
+  (audit-log/record-event!
    topic
    {:details  (maybe-prepare-update-event-data event)
     :model    :model/Database

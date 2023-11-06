@@ -276,7 +276,7 @@
                   :model_id rasta-id
                   :model    "User"
                   :details  {:token (t2/select-one-fn :reset_token :model/User :id rasta-id)}}
-                 (audit-log-test/event :password-reset-initiated rasta-id))))))))
+                 (audit-log-test/latest-event :password-reset-initiated rasta-id))))))))
 
 (deftest forgot-password-throttling-test
   (reset-throttlers!)
@@ -348,7 +348,7 @@
                       :model    "User"
                       :model_id id
                       :details  {:token reset-token}}
-                     (audit-log-test/event :password-reset-successful id))))))))))
+                     (audit-log-test/latest-event :password-reset-successful id))))))))))
 
 (deftest reset-password-validation-test
   (reset-throttlers!)
@@ -623,7 +623,7 @@
                 :model    "Pulse"
                 :model_id nil
                 :details  {:email "test@metabase.com"}}
-               (audit-log-test/event :subscription-unsubscribe)))))))
+               (audit-log-test/latest-event :subscription-unsubscribe)))))))
 
 (deftest unsubscribe-undo-test
   (reset-throttlers!)
@@ -667,4 +667,4 @@
                 :model    "Pulse"
                 :model_id nil
                 :details  {:email "test@metabase.com"}}
-               (audit-log-test/event :subscription-unsubscribe-undo)))))))
+               (audit-log-test/latest-event :subscription-unsubscribe-undo)))))))

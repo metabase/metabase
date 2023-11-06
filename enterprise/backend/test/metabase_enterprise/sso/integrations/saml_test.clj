@@ -472,7 +472,7 @@
                         :model_id (:id new-user)
                         :topic    :user-invited
                         :user_id  nil}
-                       (audit-log-test/event :user-invited (:id new-user))))))
+                       (audit-log-test/latest-event :user-invited (:id new-user))))))
             (testing "attributes"
               (is (= (some-saml-attributes "newuser")
                      (saml-login-attributes "newuser@metabase.com"))))
