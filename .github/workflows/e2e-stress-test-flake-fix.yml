@@ -66,6 +66,8 @@ jobs:
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
 
+      # For all options and fine-grained control, take a look at the documentation
+      # https://github.com/cypress-io/cypress/tree/develop/npm/grep
       - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
         run: |
           yarn run test-cypress-run \
