@@ -927,7 +927,7 @@
 
 (deftest alert-unsubscribe-event-test
   (testing "Alert has two recipients, and non-admin unsubscribes"
-    (mt/with-model-cleanup [:model/Activity :model/AuditLog :model/User]
+    (mt/with-model-cleanup [:model/User]
       (mt/with-temp [Card                  card  (basic-alert-query)
                      Pulse                 alert (basic-alert)
                      PulseCard             _     (pulse-card alert card)

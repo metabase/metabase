@@ -529,7 +529,7 @@
   ;; Dashcard events
   (when (seq deleted-dashcards)
     (events/publish-event! :event/dashboard-remove-cards
-                           {:id dashboard-id :dashcards deleted-dashcards :user-id api/*current-user-id*})
+                           {:object dashboard :dashcards deleted-dashcards :user-id api/*current-user-id*})
     (when (seq created-dashcards)
       (events/publish-event! :event/dashboard-add-cards
                              {:object dashboard :dashcards created-dashcards :user-id api/*current-user-id*}))
