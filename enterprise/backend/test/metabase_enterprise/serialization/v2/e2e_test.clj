@@ -670,7 +670,7 @@
                  (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
                      "successful"))
                (let [new-dashboard (-> (t2/select-one Dashboard :entity_id dashboard-eid)
-                                       (t2/hydrate :ordered_tabs :dashcards))
+                                       (t2/hydrate :tabs :dashcards))
                      new-tab-id-1  (t2/select-one-pk :model/DashboardTab :entity_id tab-eid-1)
                      new-tab-id-2  (t2/select-one-pk :model/DashboardTab :entity_id tab-eid-2)
                      new-card-id-1 (t2/select-one-pk Card :entity_id card-eid-1)
@@ -684,7 +684,7 @@
                            :dashboard_id (:id new-dashboard)
                            :name         "Tab 2"
                            :position     1}]
-                         (:ordered_tabs new-dashboard)))
+                         (:tabs new-dashboard)))
                  (is (=? [{:card_id          new-card-id-1
                            :dashboard_id     (:id new-dashboard)
                            :dashboard_tab_id new-tab-id-1}

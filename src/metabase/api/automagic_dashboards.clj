@@ -43,13 +43,13 @@
 (def ^:private DashboardTemplate
   (mu/with-api-error-message
     [:fn (fn [dashboard-template]
-              (some (fn [toplevel]
-                      (some (comp dashboard-templates/get-dashboard-template
-                                  (fn [prefix]
-                                   [toplevel prefix dashboard-template])
-                                  :dashboard-template-name)
-                           (dashboard-templates/get-dashboard-templates [toplevel])))
-                   ["table" "metric" "field"]))]
+           (some (fn [toplevel]
+                   (some (comp dashboard-templates/get-dashboard-template
+                               (fn [prefix]
+                                 [toplevel prefix dashboard-template])
+                               :dashboard-template-name)
+                         (dashboard-templates/get-dashboard-templates [toplevel])))
+                 ["table" "metric" "field"]))]
     (deferred-tru "invalid value for dashboard template name")))
 
 (def ^:private ^{:arglists '([s])} decode-base64-json
@@ -222,11 +222,11 @@
              (reduce (fn [dashboard {:keys [tab dash-cards]}]
                        (-> dashboard
                            (update :dashcards into dash-cards)
-                           (update :ordered_tabs conj tab)))
+                           (update :tabs conj tab)))
                      (merge
                       seed-dashboard
                       {:dashcards []
-                       :ordered_tabs  []})))
+                       :tabs      []})))
         (update seed-dashboard
                 :dashcards (fn [cards] (add-source-model-link model cards)))))
     {:name      (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)

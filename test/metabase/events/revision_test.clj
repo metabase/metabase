@@ -57,7 +57,7 @@
 (deftest card-create-test
   (testing :event/card-create
     (t2.with-temp/with-temp [Card {card-id :id, :as card} (card-properties)]
-      (events/publish-event! :event/card-create card)
+      (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)})
       (is (= {:model        "Card"
               :model_id     card-id
               :user_id      (mt/user->id :crowberto)
@@ -71,7 +71,7 @@
 (deftest card-update-test
   (testing :event/card-update
     (t2.with-temp/with-temp [Card {card-id :id, :as card} (card-properties)]
-      (events/publish-event! :event/card-update card)
+      (events/publish-event! :event/card-update {:object card :user-id (mt/user->id :crowberto)})
       (is (= {:model        "Card"
               :model_id     card-id
               :user_id      (mt/user->id :crowberto)
@@ -85,7 +85,7 @@
 (deftest card-update-shoud-not-contains-public-info-test
   (testing :event/card-update
     (t2.with-temp/with-temp [Card {card-id :id, :as card} (card-properties)]
-      (events/publish-event! :event/card-update card)
+      (events/publish-event! :event/card-update {:object card :user-id (mt/user->id :rasta)})
       ;; we don't want the public_uuid and made_public_by_id to be recorded in a revision
       ;; otherwise revert a card to earlier revision might toggle the public sharing settings
       (is (empty? (set/intersection #{:public_uuid :made_public_by_id}
@@ -97,7 +97,7 @@
 (deftest dashboard-create-test
   (testing :event/dashboard-create
     (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
-      (events/publish-event! :event/dashboard-create dashboard)
+      (events/publish-event! :event/dashboard-create {:object dashboard :user-id (mt/user->id :rasta)})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
               :user_id      (mt/user->id :rasta)
@@ -111,7 +111,7 @@
 (deftest dashboard-update-test
   (testing :event/dashboard-update
     (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
-      (events/publish-event! :event/dashboard-update dashboard)
+      (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
               :user_id      (mt/user->id :rasta)
@@ -126,7 +126,7 @@
 (deftest dashboard-update-shoud-not-contains-public-info-test
   (testing :event/dashboard-update
     (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
-      (events/publish-event! :event/dashboard-update dashboard)
+      (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
 
       ;; we don't want the public_uuid and made_public_by_id to be recorded in a revision
       ;; otherwise revert a card to earlier revision might toggle the public sharing settings
@@ -140,8 +140,8 @@
     (t2.with-temp/with-temp [Dashboard     {dashboard-id :id, :as dashboard} {}
                              Card          {card-id :id}                     (card-properties)
                              DashboardCard dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]
-      (events/publish-event! :event/dashboard-add-cards {:id        dashboard-id
-                                                         :actor_id  (mt/user->id :rasta)
+      (events/publish-event! :event/dashboard-add-cards {:object    dashboard
+                                                         :user-id   (mt/user->id :rasta)
                                                          :dashcards [dashcard]})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
@@ -161,8 +161,8 @@
                              DashboardCard dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]
       (t2/delete! (t2/table-name DashboardCard), :id (:id dashcard))
       (events/publish-event! :event/dashboard-remove-cards
-                             {:id        dashboard-id
-                              :actor_id  (mt/user->id :rasta)
+                             {:object    dashboard
+                              :user-id   (mt/user->id :rasta)
                               :dashcards [dashcard]})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
@@ -181,8 +181,8 @@
                              DashboardCard dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]
       (t2/update! DashboardCard (:id dashcard) {:size_x 3})
       (events/publish-event! :event/dashboard-reposition-cards
-                             {:id        dashboard-id
-                              :actor_id  (mt/user->id :crowberto)
+                             {:object    dashboard
+                              :user-id   (mt/user->id :crowberto)
                               :dashcards [(assoc dashcard :size_x 4)]})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
@@ -213,9 +213,9 @@
                                                                :position     0
                                                                :dashboard_id dashboard-id}]
       (events/publish-event! :event/dashboard-add-tabs
-                             {:id        dashboard-id
-                              :actor_id  (mt/user->id :rasta)
-                              :tab_ids   [dashtab-id]})
+                             {:object    dashboard
+                              :user-id   (mt/user->id :rasta)
+                              :tab-ids   [dashtab-id]})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
               :user_id      (mt/user->id :rasta)
@@ -239,9 +239,9 @@
                                                                :dashboard_id dashboard-id}]
       (t2/update! :model/DashboardTab dashtab-id {:name "New name"})
       (events/publish-event! :event/dashboard-update-tabs
-                             {:id        dashboard-id
-                              :actor_id  (mt/user->id :rasta)
-                              :tab_ids   [dashtab-id]})
+                             {:object    dashboard
+                              :user-id   (mt/user->id :rasta)
+                              :tab-ids   [dashtab-id]})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
               :user_id      (mt/user->id :rasta)
@@ -265,9 +265,9 @@
                                                                :dashboard_id dashboard-id}]
       (t2/delete! :model/DashboardTab dashtab-id)
       (events/publish-event! :event/dashboard-remove-tabs
-                             {:id        dashboard-id
-                              :actor_id  (mt/user->id :rasta)
-                              :tab_ids   [dashtab-id]})
+                             {:object    dashboard
+                              :user-id   (mt/user->id :rasta)
+                              :tab-ids   [dashtab-id]})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
               :user_id      (mt/user->id :rasta)
@@ -283,7 +283,7 @@
     (t2.with-temp/with-temp [Database {database-id :id} {}
                              Table    {:keys [id]}      {:db_id database-id}
                              Metric   metric            {:table_id id, :definition {:a "b"}}]
-      (events/publish-event! :event/metric-create metric)
+      (events/publish-event! :event/metric-create {:object metric :user-id (mt/user->id :rasta)})
       (let [revision (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
                                     :model "Metric"
                                     :model_id (:id metric))]
@@ -310,9 +310,9 @@
                              Table    {:keys [id]}      {:db_id database-id}
                              Metric   metric            {:table_id id, :definition {:a "b"}}]
       (events/publish-event! :event/metric-update
-                             (assoc metric
-                                    :actor_id         (mt/user->id :crowberto)
-                                    :revision_message "updated"))
+                             {:object           metric
+                              :user-id          (mt/user->id :crowberto)
+                              :revision-message "updated"})
       (let [revision (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
                                     :model "Metric"
                                     :model_id (:id metric))]
@@ -338,7 +338,7 @@
     (t2.with-temp/with-temp [Database {database-id :id} {}
                              Table    {:keys [id]}      {:db_id database-id}
                              Metric   metric            {:table_id id, :definition {:a "b"}, :archived true}]
-      (events/publish-event! :event/metric-delete metric)
+      (events/publish-event! :event/metric-delete {:object metric :user-id (mt/user->id :rasta)})
       (let [revision (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
                                     :model "Metric"
                                     :model_id (:id metric))]
@@ -366,7 +366,7 @@
                              Table    {:keys [id]}      {:db_id database-id}
                              Segment  segment           {:table_id   id
                                                          :definition {:a "b"}}]
-      (events/publish-event! :event/segment-create segment)
+      (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :rasta)})
       (let [revision (-> (t2/select-one Revision :model "Segment", :model_id (:id segment))
                          (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
         (is (= {:model        "Segment"
@@ -392,9 +392,9 @@
                              Segment  segment           {:table_id   id
                                                          :definition {:a "b"}}]
       (events/publish-event! :event/segment-update
-                             (assoc segment
-                                    :actor_id         (mt/user->id :crowberto)
-                                    :revision_message "updated"))
+                             {:object           segment
+                              :user-id         (mt/user->id :crowberto)
+                              :revision-message "updated"})
       (is (= {:model        "Segment"
               :user_id      (mt/user->id :crowberto)
               :object       {:name                    "Toucans in the rainforest"
@@ -421,7 +421,7 @@
                              Segment  segment           {:table_id   id
                                                          :definition {:a "b"}
                                                          :archived   true}]
-      (events/publish-event! :event/segment-delete segment)
+      (events/publish-event! :event/segment-delete {:object segment :user-id (mt/user->id :rasta)})
       (is (= {:model        "Segment"
               :user_id      (mt/user->id :rasta)
               :object       {:name                    "Toucans in the rainforest"

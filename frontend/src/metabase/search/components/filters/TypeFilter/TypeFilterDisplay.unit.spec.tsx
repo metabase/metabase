@@ -11,6 +11,7 @@ const MODEL_TYPE_DISPLAY_NAMES: Record<EnabledSearchModelType, string> = {
   database: "Database",
   dataset: "Model",
   table: "Table",
+  "indexed-entity": "Indexed record",
 };
 
 const setup = (value: TypeFilterProps) => {

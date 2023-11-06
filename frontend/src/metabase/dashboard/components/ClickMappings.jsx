@@ -14,7 +14,10 @@ import { GTAPApi } from "metabase/services";
 
 import { loadMetadataForQuery } from "metabase/redux/metadata";
 import { getParameters } from "metabase/dashboard/selectors";
-import { getTargetsWithSourceFilters } from "metabase-lib/parameters/utils/click-behavior";
+import {
+  getTargetsForDashboard,
+  getTargetsForQuestion,
+} from "metabase-lib/parameters/utils/click-behavior";
 import Question from "metabase-lib/Question";
 import { TargetTrigger } from "./ClickMappings.styled";
 
@@ -114,9 +117,7 @@ class ClickMappingsInner extends Component {
 }
 
 const ClickMappings = _.compose(
-  loadQuestionMetadata((state, props) =>
-    props.isDash || props.isAction ? null : props.object,
-  ),
+  loadQuestionMetadata((state, props) => (props.isDash ? null : props.object)),
   withUserAttributes,
   connect((state, props) => {
     const { object, isDash, dashcard, clickBehavior } = props;
@@ -136,12 +137,9 @@ const ClickMappings = _.compose(
     }
 
     const [setTargets, unsetTargets] = _.partition(
-      getTargetsWithSourceFilters({
-        isAction: props.isAction,
-        isDash,
-        dashcard,
-        object,
-      }),
+      isDash
+        ? getTargetsForDashboard(object, dashcard)
+        : getTargetsForQuestion(object),
       ({ id }) =>
         getIn(clickBehavior, ["parameterMapping", id, "source"]) != null,
     );

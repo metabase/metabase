@@ -200,8 +200,8 @@
                                  :details (:details (mt/db))}}
           (testing ":database-create events should have been fired"
             (is (=? {:topic :event/database-create
-                     :item  {:id   pos-int?
-                             :name db-name}}
+                     :item  {:object {:id   pos-int?
+                                      :name db-name}}}
                     @create-database-trigger-sync-test-event)))
           (testing "Database should be synced"
             (let [db (t2/select-one Database :name db-name)]
