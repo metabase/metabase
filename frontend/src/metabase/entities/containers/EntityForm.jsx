@@ -34,7 +34,7 @@ const EForm = ({
       ? entityObject.getPlainObject()
       : entityObject;
 
-  if (isInstanceAnalyticsCollection(entityObject.collection)) {
+  if (isInstanceAnalyticsCollection(entityObject?.collection)) {
     const customCollection = getInstanceAnalyticsCustomCollection(collections);
     if (customCollection) {
       initialValues.collection_id = customCollection.id;
