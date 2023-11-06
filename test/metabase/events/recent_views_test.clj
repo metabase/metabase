@@ -25,7 +25,7 @@
 (deftest table-read-test
   (mt/with-temp [Table table {}]
     (mt/with-test-user :rasta
-     (events/publish-event! :event/table-read table)
+     (events/publish-event! :event/table-read {:object table :user-id (mt/user->id :rasta)})
      (is (partial=
           {:user_id  (mt/user->id :rasta)
            :model    "table"
@@ -35,7 +35,7 @@
 (deftest dashboard-read-test
   (mt/with-temp [Dashboard dashboard {:creator_id (mt/user->id :rasta)}]
     (mt/with-test-user :rasta
-     (events/publish-event! :event/dashboard-read dashboard)
+     (events/publish-event! :event/dashboard-read {:object dashboard :user-id (mt/user->id :rasta)})
      (is (partial
            {:user_id  (mt/user->id :rasta)
             :model    "dashboard"
