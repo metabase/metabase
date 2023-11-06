@@ -1,17 +1,17 @@
-import { FocusTrap, OptionalPortal, Transition, rem } from "@mantine/core";
 import type { PopoverDropdownProps } from "@mantine/core";
-import { useComponentDefaultProps } from "@mantine/styles";
+import { FocusTrap, OptionalPortal, rem, Transition } from "@mantine/core";
 import { useFocusReturn } from "@mantine/hooks";
 import { closeOnEscape } from "@mantine/utils";
 import { usePopoverContext } from "../PopoverContext";
 import { Dropdown } from "./PopoverDropdown.styled";
 
-const defaultProps: Partial<PopoverDropdownProps> = {};
-
-export function PopoverDropdown(props: PopoverDropdownProps) {
-  const { style, className, children, onKeyDownCapture, ...others } =
-    useComponentDefaultProps("PopoverDropdown", defaultProps, props);
-
+export function PopoverDropdown({
+  style,
+  className,
+  children,
+  onKeyDownCapture,
+  ...others
+}: PopoverDropdownProps) {
   const ctx = usePopoverContext();
 
   const returnFocus = useFocusReturn({
