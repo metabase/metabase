@@ -952,7 +952,7 @@
         (let [db (t2/select-one Database :id id)]
           (events/publish-event! :event/database-update {:object db
                                                          :user-id api/*current-user-id*
-                                                         :audit-log/previous existing-database})
+                                                         :previous-object existing-database})
           ;; return the DB with the expanded schedules back in place
           (add-expanded-schedules db))))))
 

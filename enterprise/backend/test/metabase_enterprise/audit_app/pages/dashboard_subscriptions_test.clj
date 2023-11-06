@@ -35,7 +35,7 @@
                                                                     :collection_id collection-id}
                           PulseChannel          {channel-id :id}   {:pulse_id       pulse-id
                                                                     :channel_type   "email"
-                                                                    :details        {:emails ["amazing@fake.com"]}
+                                                                    :details        {:emails ["amazing@metabase.com"]}
                                                                     :schedule_type  "monthly"
                                                                     :schedule_frame "first"
                                                                     :schedule_day   "mon"
