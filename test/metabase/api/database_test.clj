@@ -51,6 +51,10 @@
   [_ _]
   true)
 
+(defmethod driver/dbms-version ::test-driver
+  [_ _]
+  "1.0")
+
 (defn- db-details
   "Return default column values for a database (either the test database, via `(mt/db)`, or optionally passed in)."
   ([]

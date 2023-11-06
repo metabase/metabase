@@ -747,7 +747,7 @@
               (assoc :valid false))
       details)))
 
-(defn- db->dbms-version
+(defn- db->db-version
   [db]
  (some-> (driver.u/database->driver db)
          (driver/dbms-version db)
@@ -796,7 +796,7 @@
         (snowplow/track-event! ::snowplow/database-connection-successful
                                api/*current-user-id*
                                {:database engine :database-id (u/the-id <>)
-                                :source :admin :dbms_version (db->dbms-version <>)}))
+                                :source :admin :dbms_version (db->db-version <>)}))
       ;; failed to connect, return error
       (do
         (snowplow/track-event! ::snowplow/database-connection-failed
