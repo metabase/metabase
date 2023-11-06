@@ -233,7 +233,7 @@
 
 (defn- coerce-local-date-time [input]
   (cond-> input
-    (re-find #"(?:Z|-\d\d:\d\d)$" input) (t/offset-date-time)
+    (re-find #"(?:Z|[+-]\d\d(?::?\d\d)?)$" input) (t/offset-date-time)
     :always (localize)))
 
 (defn format-unit
