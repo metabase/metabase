@@ -97,19 +97,19 @@
                                                          :enabled      true}
                                PulseChannelRecipient _ {:pulse_channel_id (:id pc)
                                                         :user_id          (mt/user->id :rasta)}]
-        (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
-          (mt/with-fake-inbox
-            (with-redefs [messages/render-pulse-email  (fn [_ _ _ [{:keys [result]}] _]
-                                                         [{:result result}])]
-              (mt/with-test-user nil
-                (metabase.pulse/send-pulse! pulse)))
-            (is (= {:topic    :subscription-send
-                    :user_id  nil
-                    :model    "Pulse"
-                    :model_id nil
-                    :details  {:recipients [[(dissoc (mt/fetch-user :rasta) :last_login :is_qbnewb :is_superuser :date_joined)]]
-                               :filters    []}}
-                   (audit-log-test/event :subscription-send)))))))))
+       (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
+         (mt/with-fake-inbox
+           (with-redefs [messages/render-pulse-email  (fn [_ _ _ [{:keys [result]}] _]
+                                                        [{:result result}])]
+             (mt/with-test-user :lucky
+               (metabase.pulse/send-pulse! pulse)))
+           (is (= {:topic    :subscription-send
+                   :user_id  (mt/user->id :lucky)
+                   :model    "Pulse"
+                   :model_id (:id pulse)
+                   :details  {:recipients [[(dissoc (mt/fetch-user :rasta) :last_login :is_qbnewb :is_superuser :date_joined)]]
+                              :filters    []}}
+                  (audit-log-test/event :subscription-send (:id pulse))))))))))
 
 (deftest alert-send-event-test
   (testing "When we send a pulse, we also log the event:"
@@ -128,15 +128,15 @@
           (mt/with-fake-inbox
             (with-redefs [messages/render-pulse-email  (fn [_ _ _ [{:keys [result]}] _]
                                                          [{:result result}])]
-              (mt/with-test-user nil
+              (mt/with-test-user :lucky
                 (metabase.pulse/send-pulse! pulse)))
             (is (= {:topic    :alert-send
-                    :user_id  nil
+                    :user_id  (mt/user->id :lucky)
                     :model    "Pulse"
-                    :model_id nil
+                    :model_id (:id pulse)
                     :details  {:recipients [[(dissoc (mt/fetch-user :rasta) :last_login :is_qbnewb :is_superuser :date_joined)]]
                                :filters    []}}
-                   (audit-log-test/event :alert-send)))))))))
+                   (audit-log-test/event :alert-send (:id pulse))))))))))
 
 (deftest e2e-sandboxed-pulse-test
   (testing "Sending Pulses w/ sandboxing, end-to-end"

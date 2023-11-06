@@ -6,7 +6,8 @@
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.lib.schema.id :as id]))
 
 (derive ::event :metabase/event)
 
@@ -119,13 +120,13 @@
 
 (methodical/defmethod events/publish-event! ::pulse-event
   [topic {:keys [id user details] :as object}]
-  ;; Check if topic is a pulse or not (can be an unsubscribe event, which only contains email)
+  ;; Check if objecct contains the keys that we want populated, if not then may be a unsubscribe/send event
   (let [user-id     (if (some? user)
                       user
                       api/*current-user-id*)
-        details-map (if (some? id)
-                      (create-details-map object (:name object) false (:dashboard_id object))
-                      details)]
+        details-map (if (some? details)
+                      details
+                      (create-details-map object (:name object) false (:dashboard_id object)))]
     (audit-log/record-event! topic details-map user-id :model/Pulse id)))
 
 (derive ::alert-event ::event)

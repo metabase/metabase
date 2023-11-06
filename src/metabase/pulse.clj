@@ -490,7 +490,8 @@
       (let [event-type (if (= :pulse (alert-or-pulse pulse))
                          :event/subscription-send
                          :event/alert-send)]
-        (events/publish-event! event-type {:user-id (u/the-id (:creator pulse))
+        (events/publish-event! event-type {:id      (:id pulse)
+                                           :user-id (u/the-id (:creator pulse))
                                            :details {:recipients (map :recipients (:channels pulse))
                                                      :filters    (:parameters pulse)}}))
       (when (:alert_first_only pulse)
