@@ -35,7 +35,6 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.public-settings :as public-settings]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.util :as u]
@@ -288,16 +287,19 @@
     (resolve-all outer-query)))
 
 (defn resolve-card-id-source-tables
-  "Middleware that assocs the `:source-query` for this query if it was specified using the shorthand `:source-table`
-  `card__n` format."
-  [qp]
-  (fn [query rff context]
-    (let [{:keys [query card-id]} (resolve-card-id-source-tables* query)]
-      (if card-id
-        (let [dataset? (:dataset (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))]
-          (binding [qp.perms/*card-id* (or card-id qp.perms/*card-id*)]
-            (qp query
-                (fn [metadata]
-                  (rff (cond-> metadata dataset? (assoc :dataset dataset?))))
-                context)))
-        (qp query rff context)))))
+  "Pre-processing middleware that assocs the `:source-query` for this query if it was specified using the shorthand
+  `:source-table` `card__n` format."
+  [query]
+  (let [{:keys [query card-id]} (resolve-card-id-source-tables* query)]
+    (if card-id
+      (assoc query ::source-card-id card-id)
+      (dissoc query ::source-card-id))))
+
+(defn add-dataset-info
+  "Post-processing middleware that adds `:dataset` `true` or `false` to queries with a source card."
+  [{::keys [source-card-id], :as _preprocessed-query} rff]
+  (if-not source-card-id
+    rff
+    (let [dataset? (:dataset (lib.metadata.protocols/card (qp.store/metadata-provider) source-card-id))]
+      (fn rff' [metadata]
+        (rff (cond-> metadata dataset? (assoc :dataset dataset?)))))))

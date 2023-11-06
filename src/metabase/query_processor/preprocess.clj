@@ -17,6 +17,7 @@
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]
    [metabase.query-processor.middleware.expand-macros :as expand-macros]
+   [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.middleware.normalize-query :as normalize]
@@ -50,6 +51,7 @@
    #'qp.perms/remove-permissions-key
    #'qp.constraints/add-default-userland-constraints
    #'validate/validate-query
+   #'fetch-source-query/resolve-card-id-source-tables
    #'expand-macros/expand-macros
    #'qp.resolve-referenced/resolve-referenced-card-resources
    #'parameters/substitute-parameters

@@ -15,7 +15,6 @@
    [metabase.query-processor.execute :as qp.execute]
    [metabase.query-processor.middleware.catch-exceptions :as catch-exceptions]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
-   [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.normalize-query :as normalize]
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.postprocess :as qp.postprocess]
@@ -23,8 +22,7 @@
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.async.util :as async.u]))
+   [metabase.util.malli :as mu]))
 
 ;;; This is a namespace that adds middleware to test MLv2 stuff every time we run a query. It lives in a `./test`
 ;;; namespace, so it's only around when running with `:dev` or the like.
@@ -49,8 +47,7 @@
   ;; down any post-processing these around middlewares might do happens in reversed order.
   ;;
   ;; ↓↓↓ POST-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
-  [#'fetch-source-query/resolve-card-id-source-tables
-   ;; `normalize` has to be done at the very beginning or `resolve-card-id-source-tables` and the like might not work.
+  [;; `normalize` has to be done at the very beginning or `resolve-card-id-source-tables` and the like might not work.
    ;; It doesn't really need to be 'around' middleware tho.
    (resolve 'metabase.query-processor-test.test-mlv2/around-middleware)
    #'qp.middleware.enterprise/handle-audit-app-internal-queries-middleware
