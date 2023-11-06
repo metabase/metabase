@@ -13,8 +13,8 @@ import type {
   Styles,
 } from "@mantine/styles";
 import { createSafeContext } from "@mantine/utils";
-import type { FloatingPosition, ArrowPosition } from "../Floating";
-import { POPOVER_ERRORS } from "./constants";
+import type { FloatingPosition, ArrowPosition } from "../../Floating";
+import { POPOVER_ERRORS } from "../constants";
 
 interface PopoverContext {
   x: number;

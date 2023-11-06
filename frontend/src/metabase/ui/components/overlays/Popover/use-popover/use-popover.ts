@@ -11,7 +11,7 @@ import {
 import type { Middleware, Placement } from "@floating-ui/react";
 import type { PopoverProps } from "@mantine/core";
 import { useDidUpdate, useUncontrolled } from "@mantine/hooks";
-import { useFloatingAutoUpdate } from "../Floating";
+import { useFloatingAutoUpdate } from "../../Floating";
 
 interface UsePopoverOptions {
   offset: number;

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { autoUpdate } from "@floating-ui/react";
 import { useDidUpdate } from "@mantine/hooks";
-import type { FloatingPosition } from "./types";
+import type { FloatingPosition } from "../types";
 
 interface Payload {
   opened: boolean;
