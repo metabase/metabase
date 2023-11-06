@@ -15083,6 +15083,31 @@ databaseChangeLog:
             constraintName: fk_conn_impersonation_group_id
             onDelete: CASCADE
 
+  - changeSet:
+      id: v47.00-058
+      author: qnkhuat
+      comment: 'Drop parameter_card.entity_id'
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: parameter_card
+            columnName: entity_id
+      changes:
+        - dropColumn:
+            tableName: parameter_card
+            columnName: entity_id
+      rollback:
+        - addColumn:
+            tableName: parameter_card
+            columns:
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
