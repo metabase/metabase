@@ -1,33 +1,31 @@
-import { useContext, useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 import { Popover } from "@mantine/core";
-import type { PopoverProps, PopoverDropdownProps } from "@mantine/core";
-import { PopoverContext } from "../PopoverContext";
+import type { PopoverDropdownProps } from "@mantine/core";
 
 export function PopoverDropdown({ children, ...props }: PopoverDropdownProps) {
-  const { targetRef, offset } = useContext(PopoverContext);
-  const [maxHeight, setMaxHeight] = useState<number | undefined>();
+  const observer = useMemo(() => createObserver(), []);
+  const [target, setTarget] = useState<HTMLElement | null>(null);
 
   useLayoutEffect(() => {
-    if (targetRef?.current) {
-      setMaxHeight(getMaxHeight(targetRef.current, offset));
+    if (target) {
+      observer.observe(target);
+      return () => observer.unobserve(target);
     }
-  }, [targetRef, offset]);
+  }, [target, observer]);
 
   return (
-    <Popover.Dropdown {...props} style={{ ...props.style, maxHeight }}>
-      {children}
+    <Popover.Dropdown {...props}>
+      <div ref={setTarget}>{children}</div>
     </Popover.Dropdown>
   );
 }
 
-function getMaxHeight(target: HTMLElement, offset: PopoverProps["offset"]) {
-  const offsetValue =
-    typeof offset === "number" ? offset : offset?.mainAxis ?? 0;
-
-  const targetRect = target.getBoundingClientRect();
-  const documentRect = document.documentElement.getBoundingClientRect();
-  return Math.max(
-    targetRect.top - documentRect.top - offsetValue,
-    documentRect.bottom - targetRect.bottom - offsetValue,
-  );
+function createObserver() {
+  return new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.intersectionRatio < 1 && entry.target.parentElement) {
+        entry.target.parentElement.style.maxHeight = `${entry.intersectionRect.height}px`;
+      }
+    });
+  });
 }
