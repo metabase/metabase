@@ -54,7 +54,8 @@
       (is (= "metabase.com"
              (advanced-config.models.pulse-channel/subscription-allowed-domains! "metabase.com")))))
   (testing "Should be unable to set the subscription-allowed-domains setting without the email-allow-list feature"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Setting subscription-allowed-domains is not enabled because feature :email-allow-list is not available"
-         (advanced-config.models.pulse-channel/subscription-allowed-domains! "metabase.com")))))
+    (premium-features-test/with-premium-features #{}
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Setting subscription-allowed-domains is not enabled because feature :email-allow-list is not available"
+           (advanced-config.models.pulse-channel/subscription-allowed-domains! "metabase.com"))))))
