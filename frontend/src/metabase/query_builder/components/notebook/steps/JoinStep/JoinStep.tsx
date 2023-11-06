@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { Box, Flex, Text } from "metabase/ui";
@@ -53,19 +53,7 @@ export function JoinStep({
   } = useJoin(query, stageIndex, join);
 
   const [isAddingNewCondition, setIsAddingNewCondition] = useState(false);
-
-  // Is only needed for `joinLHSDisplayName`
-  // to properly display the LHS table name until the first condition is complete
-  const [selectedLHSColumn, setSelectedLHSColumn] = useState<
-    Lib.ColumnMetadata | undefined
-  >();
-
-  const lhsDisplayName = Lib.joinLHSDisplayName(
-    query,
-    stageIndex,
-    join || table,
-    selectedLHSColumn,
-  );
+  const [lhsDisplayName, setLhsDisplayName] = useState("");
 
   const isStartedFromModel = Boolean(sourceQuestion?.isDataset?.());
 
@@ -158,7 +146,7 @@ export function JoinStep({
               handleAddCondition(nextCondition);
             }
           }}
-          onChangeLHSColumn={setSelectedLHSColumn}
+          onLhsDisplayNameChange={setLhsDisplayName}
           onRemove={() => {
             if (isComplete) {
               handleRemoveCondition(condition);
@@ -262,7 +250,7 @@ interface JoinConditionProps {
   readOnly?: boolean;
   canRemove: boolean;
   onChange: (condition: Lib.JoinCondition) => void;
-  onChangeLHSColumn: (column: Lib.ColumnMetadata) => void;
+  onLhsDisplayNameChange: (lhsDisplayName: string) => void;
   onRemove: () => void;
 }
 
@@ -275,7 +263,7 @@ function JoinCondition({
   readOnly,
   canRemove,
   onChange,
-  onChangeLHSColumn,
+  onLhsDisplayNameChange,
   onRemove,
 }: JoinConditionProps) {
   const {
@@ -295,6 +283,13 @@ function JoinCondition({
   const lhsColumnGroup = Lib.groupColumns(lhsColumns);
   const rhsColumnGroup = Lib.groupColumns(rhsColumns);
 
+  const lhsDisplayName = Lib.joinLHSDisplayName(
+    query,
+    stageIndex,
+    join || table,
+    lhsColumn,
+  );
+
   const isNewCondition = !condition;
   const isComplete = Boolean(lhsColumn && rhsColumn && operator);
 
@@ -312,7 +307,6 @@ function JoinCondition({
     } else if (!rhsColumn) {
       rhsColumnPicker.current?.open?.();
     }
-    onChangeLHSColumn(lhsColumn);
   };
 
   const handleRHSColumnChange = (rhsColumn: Lib.ColumnMetadata) => {
@@ -321,6 +315,10 @@ function JoinCondition({
       onChange(nextCondition);
     }
   };
+
+  useEffect(() => {
+    onLhsDisplayNameChange(lhsDisplayName);
+  }, [lhsDisplayName, onLhsDisplayNameChange]);
 
   return (
     <ConditionContainer isComplete={isComplete}>
