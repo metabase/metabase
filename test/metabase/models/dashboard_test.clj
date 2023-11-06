@@ -104,7 +104,7 @@
        :cards [{:id 1} {:id 2}]}
       {:name  "Next"
        :cards [{:id 1} {:id 3}]}
-      "renamed it from \"Apple\" to \"Next\" and modified the cards."
+      "renamed this Dashboard from \"Apple\" to \"Next\" and modified the cards."
 
       {:name               "Diff Test"
        :auto_apply_filters true}
@@ -435,11 +435,11 @@
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
   [dash-id is-creation?]
   (revision/push-revision!
-   :object       (t2/select-one Dashboard :id dash-id)
-   :entity       Dashboard
-   :id           dash-id
-   :user-id      (mt/user->id :crowberto)
-   :is-creation? is-creation?))
+   {:object       (t2/select-one Dashboard :id dash-id)
+    :entity       Dashboard
+    :id           dash-id
+    :user-id      (mt/user->id :crowberto)
+    :is-creation? is-creation?}))
 
 (defn- revert-to-previous-revision
   "Revert to a previous revision for a model.
@@ -452,7 +452,7 @@
   (let [ids (t2/select-pks-vec Revision :model (name model) :model_id model-id {:order-by [[:id :desc]]
                                                                                 :limit    n})]
    (assert (= n (count ids)), "There are less revisions than required to revert")
-   (revision/revert! :entity model :id model-id :user-id (mt/user->id :crowberto) :revision-id (last ids))))
+   (revision/revert! {:entity model :id model-id :user-id (mt/user->id :crowberto) :revision-id (last ids)})))
 
 (deftest revert-dashboard-with-tabs-basic-test
   (testing "revert adding tabs"
@@ -633,6 +633,61 @@
 
      (testing "there are no \"Tab 3\""
        (is (false? (t2/exists? :model/DashboardTab :dashboard_id dashboard-id :name "Tab 3")))))))
+
+(deftest revert-dashboard-skip-archived-or-deleted-card-test
+  (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id}          {:name "A dashboard"}
+                           :model/Card      {will-be-archived-card :id} {}
+                           :model/Card      {will-be-deleted-card :id}  {}
+                           :model/Card      {unchanged-card       :id}  {}]
+    ;; 0. create a dashboard
+    (create-dashboard-revision! dashboard-id true)
+    ;; 1. add 3 cards and 1 text card
+    (t2/insert! :model/DashboardCard
+                [{:dashboard_id     dashboard-id
+                  :dashboard_tab_id nil
+                  :card_id          will-be-archived-card
+                  :row              0
+                  :col              0
+                  :size_x           4
+                  :size_y           4}
+                 {:dashboard_id     dashboard-id
+                  :dashboard_tab_id nil
+                  :card_id          will-be-deleted-card
+                  :row              4
+                  :col              4
+                  :size_x           4
+                  :size_y           4}
+                 {:dashboard_id     dashboard-id
+                  :dashboard_tab_id nil
+                  :card_id          unchanged-card
+                  :row              0
+                  :col              0
+                  :size_x           4
+                  :size_y           4}
+                 {:dashboard_id           dashboard-id
+                  :dashboard_tab_id       nil
+                  :row                    4
+                  :col                    4
+                  :size_x                 4
+                  :size_y                 4
+                  :visualization_settings {:text "Metabase"}}])
+    (create-dashboard-revision! dashboard-id false)
+
+    ;; 2. delete all the dashcards
+    (t2/delete! :model/DashboardCard :dashboard_id dashboard-id)
+    (create-dashboard-revision! dashboard-id false)
+
+    (t2/delete! :model/Card will-be-deleted-card)
+    (t2/update! :model/Card :id will-be-archived-card {:archived true})
+
+    (testing "revert should not include archived or deleted card ids (#34884)"
+      (revert-to-previous-revision Dashboard dashboard-id 2)
+      (is (=? #{{:card_id                unchanged-card
+                 :visualization_settings {}}
+                {:card_id                nil
+                 :visualization_settings {:text "Metabase"}}}
+              (t2/select-fn-set #(select-keys % [:card_id :visualization_settings])
+                                :model/DashboardCard :dashboard_id dashboard-id))))))
 
 (deftest public-sharing-test
   (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."

@@ -22,8 +22,8 @@ export type DateParameterType =
   | "date/range"
   | "date/relative"
   | "date/month-year"
-  | "date/quarter-year";
-("date/all-options");
+  | "date/quarter-year"
+  | "date/all-options";
 
 export type ParameterType =
   | StringParameterType

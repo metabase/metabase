@@ -566,6 +566,8 @@
 
         (testing "PUT response"
           (is (= (merge dashboard-defaults {:name           "My Cool Dashboard"
+                                            :dashcards      []
+                                            :tabs           []
                                             :description    "Some awesome description"
                                             :creator_id     (mt/user->id :rasta)
                                             :cache_ttl      1234
@@ -626,6 +628,8 @@
                                             :creator_id              (mt/user->id :rasta)
                                             :collection              true
                                             :collection_id           true
+                                            :dashcards               []
+                                            :tabs                    []
                                             :caveats                 ""
                                             :points_of_interest      ""
                                             :cache_ttl               1337
@@ -2054,6 +2058,7 @@
                                                                                     :tabs  []})))
           (is (= 1
                  (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id)))))))
+
     (testing "prune"
       (mt/with-temp [Dashboard     {dashboard-id :id} {}
                      Card          {card-id :id}      {}

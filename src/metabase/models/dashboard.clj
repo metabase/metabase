@@ -216,11 +216,19 @@
 
 (defmethod revision/serialize-instance :model/Dashboard
   [_model _id dashboard]
-  (-> (apply dissoc dashboard excluded-columns-for-dashboard-revision)
-      (assoc :cards (vec (for [dashboard-card (dashcards dashboard)]
-                           (-> (apply dissoc dashboard-card excluded-columns-for-dashcard-revision)
-                               (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))
-      (assoc :tabs (map #(apply dissoc % excluded-columns-for-dashboard-tab-revision) (tabs dashboard)))))
+  (let [dashcards (or (:dashcards dashboard)
+                      (dashcards dashboard))
+        dashcards (when (seq dashcards)
+                    (if (contains? (first dashcards) :series)
+                      dashcards
+                      (t2/hydrate dashcards :series)))
+        tabs  (or (:tabs dashboard)
+                  (tabs dashboard))]
+    (-> (apply dissoc dashboard excluded-columns-for-dashboard-revision)
+        (assoc :cards (vec (for [dashboard-card dashcards]
+                             (-> (apply dissoc dashboard-card excluded-columns-for-dashcard-revision)
+                                 (assoc :series (mapv :id (:series dashboard-card)))))))
+        (assoc :tabs (map #(apply dissoc % excluded-columns-for-dashboard-tab-revision) tabs)))))
 
 (defn- revert-dashcards
   [dashboard-id serialized-cards]
@@ -237,16 +245,27 @@
       (doseq [update-card to-update]
         (dashboard-card/update-dashboard-card! update-card (id->current-card (:id update-card)))))))
 
+(defn- remove-invalid-dashcards
+  "Given a list of dashcards, remove any dashcard that references cards that are either archived or not exist."
+  [dashcards]
+  (let [card-ids          (set (keep :card_id dashcards))
+        active-card-ids   (when-let [card-ids (seq card-ids)]
+                            (t2/select-pks-set :model/Card :id [:in card-ids] :archived false))
+        inactive-card-ids (set/difference card-ids active-card-ids)]
+   (remove #(contains? inactive-card-ids (:card_id %)) dashcards)))
+
 (defmethod revision/revert-to-revision! :model/Dashboard
   [_model dashboard-id _user-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
   (t2/update! :model/Dashboard dashboard-id (dissoc serialized-dashboard :cards :tabs))
   ;; Now update the tabs and cards as needed
-  (let [serialized-cards          (:cards serialized-dashboard)
+  (let [serialized-dashcards      (:cards serialized-dashboard)
         current-tabs              (t2/select-fn-vec #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
                                                     :model/DashboardTab :dashboard_id dashboard-id)
         {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! dashboard-id current-tabs (:tabs serialized-dashboard))
-        serialized-cards          (cond->> serialized-cards
+        serialized-dashcards      (cond->> serialized-dashcards
+                                    true
+                                    remove-invalid-dashcards
                                     ;; in case reverting result in new tabs being created,
                                     ;; we need to remap the tab-id
                                     (seq old->new-tab-id)
@@ -254,7 +273,7 @@
                                            (if-let [new-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
                                              (assoc card :dashboard_tab_id new-tab-id)
                                              card))))]
-    (revert-dashcards dashboard-id serialized-cards))
+    (revert-dashcards dashboard-id serialized-dashcards))
   serialized-dashboard)
 
 (defmethod revision/diff-strings :model/Dashboard
@@ -428,7 +447,7 @@
                                                                 :dataset_query
                                                                 result-metadata-for-query)))
                             (dissoc :id))))]
-      (events/publish-event! :event/card-create card)
+      (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
       (t2/hydrate card :creator :dashboard_count :can_write :collection))))
 
 (defn- ensure-unique-collection-name
