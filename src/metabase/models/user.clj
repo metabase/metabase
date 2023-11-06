@@ -343,9 +343,11 @@
   [new-user :- NewUser invitor :- Invitor setup? :- :boolean]
   ;; create the new user
   (u/prog1 (insert-new-user! new-user)
-    (events/publish-event! :event/user-invited (assoc <>
-                                                      :invite_method "email"
-                                                      :sso_source (:sso_source new-user)))
+    (events/publish-event! :event/user-invited
+                           {:object
+                            (assoc <>
+                                   :invite_method "email"
+                                   :sso_source (:sso_source new-user))})
     (send-welcome-email! <> invitor setup?)))
 
 (mu/defn create-new-google-auth-user!

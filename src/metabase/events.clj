@@ -142,7 +142,7 @@
   (if (contains? (set (keys object)) :id)
     (:id object)
     (let [model (topic->model topic)]
-      (get object (keyword (format "%s_id" model))))))
+      (get object (keyword (format "%s-id" model))))))
 
 (defn object->metadata
   "Determine metadata, if there is any, for given `object`.
