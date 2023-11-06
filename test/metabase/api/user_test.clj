@@ -475,44 +475,45 @@
           (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current")))))))))
 
 (deftest get-user-test
-  (testing "GET /api/user/:id"
-    (testing "should return a smaller set of fields"
-      (let [resp (mt/user-http-request :rasta :get 200 (str "user/" (mt/user->id :rasta)))]
-        (is (= [{:id (:id (perms-group/all-users))}]
-               (:user_group_memberships resp)))
-        (is (= (-> (merge
-                    @user-defaults
-                    {:email       "rasta@metabase.com"
-                     :first_name  "Rasta"
-                     :last_name   "Toucan"
-                     :common_name "Rasta Toucan"})
-                   (dissoc :is_qbnewb :last_login))
-               (-> resp
-                   mt/boolean-ids-and-timestamps
-                   (dissoc :is_qbnewb :last_login :user_group_memberships))))))
+  (premium-features-test/with-premium-features #{}
+    (testing "GET /api/user/:id"
+      (testing "should return a smaller set of fields"
+        (let [resp (mt/user-http-request :rasta :get 200 (str "user/" (mt/user->id :rasta)))]
+          (is (= [{:id (:id (perms-group/all-users))}]
+                 (:user_group_memberships resp)))
+          (is (= (-> (merge
+                      @user-defaults
+                      {:email       "rasta@metabase.com"
+                       :first_name  "Rasta"
+                       :last_name   "Toucan"
+                       :common_name "Rasta Toucan"})
+                     (dissoc :is_qbnewb :last_login))
+                 (-> resp
+                     mt/boolean-ids-and-timestamps
+                     (dissoc :is_qbnewb :last_login :user_group_memberships))))))
 
-    (testing "Check that a non-superuser CANNOT fetch someone else's user details"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 (str "user/" (mt/user->id :trashbird))))))
+      (testing "Check that a non-superuser CANNOT fetch someone else's user details"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 (str "user/" (mt/user->id :trashbird))))))
 
-    (testing "A superuser should be allowed to fetch another users data"
-      (let [resp (mt/user-http-request :crowberto :get 200 (str "user/" (mt/user->id :rasta)))]
-        (is (= [{:id (:id (perms-group/all-users)) :is_group_manager false}]
-               (:user_group_memberships resp)))
-        (is (= (-> (merge
-                    @user-defaults
-                    {:email       "rasta@metabase.com"
-                     :first_name  "Rasta"
-                     :last_name   "Toucan"
-                     :common_name "Rasta Toucan"})
-                   (dissoc :is_qbnewb :last_login))
-               (-> resp
-                   mt/boolean-ids-and-timestamps
-                   (dissoc :is_qbnewb :last_login :user_group_memberships))))))
+      (testing "A superuser should be allowed to fetch another users data"
+        (let [resp (mt/user-http-request :crowberto :get 200 (str "user/" (mt/user->id :rasta)))]
+          (is (= [{:id (:id (perms-group/all-users))}]
+                 (:user_group_memberships resp)))
+          (is (= (-> (merge
+                      @user-defaults
+                      {:email       "rasta@metabase.com"
+                       :first_name  "Rasta"
+                       :last_name   "Toucan"
+                       :common_name "Rasta Toucan"})
+                     (dissoc :is_qbnewb :last_login))
+                 (-> resp
+                     mt/boolean-ids-and-timestamps
+                     (dissoc :is_qbnewb :last_login :user_group_memberships))))))
 
-    (testing "We should get a 404 when trying to access a disabled account"
-      (is (= "Not found."
-             (mt/user-http-request :crowberto :get 404 (str "user/" (mt/user->id :trashbird))))))))
+      (testing "We should get a 404 when trying to access a disabled account"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 (str "user/" (mt/user->id :trashbird)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -522,28 +523,29 @@
 (deftest create-user-test
   (testing "POST /api/user"
     (testing "Test that we can create a new User"
-      (let [user-name (mt/random-name)
-            email     (mt/random-email)]
-        (mt/with-model-cleanup [User]
-          (mt/with-fake-inbox
-            (let [resp (mt/user-http-request :crowberto :post 200 "user"
-                                             {:first_name       user-name
-                                              :last_name        user-name
-                                              :email            email
-                                              :login_attributes {:test "value"}})]
-              (is (= (merge @user-defaults
-                            (merge
-                             @user-defaults
-                             {:email                  email
-                              :first_name             user-name
-                              :last_name              user-name
-                              :common_name            (str user-name " " user-name)
-                              :login_attributes       {:test "value"}}))
-                     (-> resp
-                         mt/boolean-ids-and-timestamps
-                         (dissoc :user_group_memberships))))
-              (is (= [{:id (:id (perms-group/all-users)), :is_group_manager false}]
-                     (:user_group_memberships resp))))))))
+      (premium-features-test/with-premium-features #{}
+        (let [user-name (mt/random-name)
+              email     (mt/random-email)]
+          (mt/with-model-cleanup [User]
+            (mt/with-fake-inbox
+              (let [resp (mt/user-http-request :crowberto :post 200 "user"
+                                               {:first_name       user-name
+                                                :last_name        user-name
+                                                :email            email
+                                                :login_attributes {:test "value"}})]
+                (is (= (merge @user-defaults
+                              (merge
+                               @user-defaults
+                               {:email                  email
+                                :first_name             user-name
+                                :last_name              user-name
+                                :common_name            (str user-name " " user-name)
+                                :login_attributes       {:test "value"}}))
+                       (-> resp
+                           mt/boolean-ids-and-timestamps
+                           (dissoc :user_group_memberships))))
+                (is (= [{:id (:id (perms-group/all-users))}]
+                       (:user_group_memberships resp)))))))))
 
     (testing "Check that non-superusers are denied access"
       (is (= "You don't have permissions to do that."

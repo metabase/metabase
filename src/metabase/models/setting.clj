@@ -830,12 +830,12 @@
   (let [maybe-obfuscate #(if sensitive? (obfuscate-value %) %)]
    (audit-log/record-event!
     :setting-update
-     {:details (merge {:key name}
-                      (when (not= audit :no-value)
-                        {:previous-value (maybe-obfuscate previous-value)
-                         :new-value      (maybe-obfuscate new-value)}))
-      :user-id api/*current-user-id*
-      :model  :model/Setting})))
+    {:details (merge {:key name}
+                     (when (not= audit :no-value)
+                       {:previous-value (maybe-obfuscate previous-value)
+                        :new-value      (maybe-obfuscate new-value)}))
+     :user-id api/*current-user-id*
+     :model  :model/Setting})))
 
 (defn- should-audit?
   "Returns true if the setting change should be written to the `audit_log`."

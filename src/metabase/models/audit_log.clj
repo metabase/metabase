@@ -4,14 +4,14 @@
   used for in-app functionality, such as the recently-viewed items displayed on the homepage."
   (:require
    [clojure.data :as data]
+   [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.models.activity :as activity]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [methodical.core :as m]
-   [toucan2.core :as t2]
-   [clojure.set :as set]))
+   [toucan2.core :as t2]))
 
 (doto :model/AuditLog
   (derive :metabase/model))
