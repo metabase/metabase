@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { autoUpdate } from "@floating-ui/react";
-import type { Placement } from "@floating-ui/react";
 import { useDidUpdate } from "@mantine/hooks";
+import type { FloatingPosition } from "./types";
 
 interface Payload {
   opened: boolean;
@@ -13,7 +13,7 @@ interface Payload {
     };
   };
   positionDependencies: any[];
-  position: Placement;
+  position: FloatingPosition;
 }
 
 export function useFloatingAutoUpdate({
@@ -34,7 +34,6 @@ export function useFloatingAutoUpdate({
     }
 
     return undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     floating.refs.reference.current,
     floating.refs.floating.current,
