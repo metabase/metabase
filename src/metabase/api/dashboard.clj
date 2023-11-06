@@ -391,7 +391,7 @@
                  "`archived` value via PUT /api/dashboard/:id."))
   (let [dashboard (api/write-check :model/Dashboard id)]
     (t2/delete! :model/Dashboard :id id)
-    (events/publish-event! :event/dashboard-delete {:object dashboard}))
+    (events/publish-event! :event/dashboard-delete {:object dashboard :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
 (defn- param-target->field-id [target query]
@@ -528,20 +528,20 @@
            created-tab-ids updated-tab-ids deleted-tab-ids total-num-tabs]}]
   ;; Dashcard events
   (when (seq deleted-dashcards)
-    (events/publish-event! :event/dashboard-remove-cards)
-    {:id dashboard-id :dashcards deleted-dashcards}
+    (events/publish-event! :event/dashboard-remove-cards
+                           {:id dashboard-id :dashcards deleted-dashcards :user-id api/*current-user-id*})
     (when (seq created-dashcards)
       (events/publish-event! :event/dashboard-add-cards
-                             {:object dashboard :dashcards created-dashcards}))
+                             {:object dashboard :dashcards created-dashcards :user-id api/*current-user-id*}))
     (for [{:keys [card_id]} created-dashcards
           :when             (pos-int? card_id)]
       (snowplow/track-event! ::snowplow/question-added-to-dashboard
                              api/*current-user-id*
-                             {:dashboard-id dashboard-id :question-id card_id})))
+                             {:dashboard-id dashboard-id :question-id card_id :user-id api/*current-user-id*})))
   ;; TODO this is potentially misleading, we don't know for sure here that the dashcards are repositioned
   (when (seq updated-dashcards)
     (events/publish-event! :event/dashboard-reposition-cards
-                           {:object dashboard :dashcards updated-dashcards}))
+                           {:object dashboard :dashcards updated-dashcards :user-id api/*current-user-id*}))
 
   ;; Tabs events
   (when (seq deleted-tab-ids)
@@ -550,8 +550,8 @@
                            {:dashboard-id   dashboard-id
                             :num-tabs       (count deleted-tab-ids)
                             :total-num-tabs total-num-tabs})
-    (events/publish-event! :event/dashboard-remove-tabs))
-  {:object dashboard :tab-ids deleted-tab-ids}
+    (events/publish-event! :event/dashboard-remove-tabs
+                           {:object dashboard :tab-ids deleted-tab-ids :user-id api/*current-user-id*}))
   (when (seq created-tab-ids)
     (snowplow/track-event! ::snowplow/dashboard-tab-created
                            api/*current-user-id*
@@ -559,10 +559,10 @@
                             :num-tabs       (count created-tab-ids)
                             :total-num-tabs total-num-tabs})
     (events/publish-event! :event/dashboard-add-tabs
-                           {:object dashboard :user-id api/*current-user-id* :tab-ids created-tab-ids}))
+                           {:object dashboard :tab-ids created-tab-ids :user-id api/*current-user-id*}))
   (when (seq updated-tab-ids)
     (events/publish-event! :event/dashboard-update-tabs
-                           {:object dashboard :user-id api/*current-user-id* :tab-ids updated-tab-ids})))
+                           {:object dashboard :tab-ids updated-tab-ids :user-id api/*current-user-id*})))
 
 (defn- update-dashboard
   "Updates a Dashboard. Designed to be reused by PUT /api/dashboard/:id and PUT /api/dashboard/:id/cards"
