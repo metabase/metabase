@@ -60,21 +60,27 @@
   (str "(?:Z|(?:[+-]" time-part "))"))
 
 (def zone-offset-part-regex
+  "Regex for a zone-offset string."
   (re-pattern offset-part))
 
 (def ^:const local-date-regex
+  "Regex for a local-date string."
   (re-pattern (str \^ date-part \$)))
 
 (def ^:const local-time-regex
+  "Regex for a local-time string."
   (re-pattern (str \^ time-part \$)))
 
 (def ^:const offset-time-regex
+  "Regex for an offset-time string."
   (re-pattern (str \^ time-part offset-part \$)))
 
 (def ^:const local-datetime-regex
+  "Regex for a local-datetime string."
   (re-pattern (str \^ date-time-part \$)))
 
 (def ^:const offset-datetime-regex
+  "Regex for an offset-datetime string."
   (re-pattern (str \^ date-time-part offset-part \$)))
 
 (def ^:const year-month-regex
@@ -86,14 +92,17 @@
   (re-pattern (str \^ year-part \$)))
 
 (defn matches-time?
+  "Matches a local time string."
   [input]
   (re-matches local-time-regex input))
 
 (defn matches-date?
+  "Matches a local date string."
   [input]
   (re-matches local-date-regex input))
 
 (defn matches-date-time?
+  "Matches a local AND offset date time string."
   [input]
   (re-matches (re-pattern (str date-time-part (optional offset-part))) input))
 
