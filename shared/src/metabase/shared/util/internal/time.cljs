@@ -165,20 +165,10 @@
   [^moment/Moment before ^moment/Moment after]
   (.diff after before "day"))
 
-(defn- matches-time? [input]
-  (re-matches #"^\d\d:\d\d(?::\d\d(?:\.\d+)?)?$" input))
-
-(defn- matches-date? [input]
-  (re-matches #"^\d\d\d\d-\d\d-\d\d$" input))
-
-(defn- matches-date-time? [input]
-  (re-matches #"^\d\d\d\d-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d+)?)?(?:Z|-\d\d:\d\d)?$" input))
-
 (defn- coerce-local-date-time [input]
-  (let [offset (re-find #"(?:Z|-\d\d:\d\d)$" input)]
-   (cond-> input
-    offset (subs 0 (- (count input) (count offset)))
-    :always (moment/utc moment/ISO_8601))))
+  (-> input
+      common/drop-trailing-time-zone
+      (moment/utc moment/ISO_8601)))
 
 (defn format-unit
   "Formats a temporal-value (iso date/time string, int for hour/minute) given the temporal-bucketing unit.
@@ -186,9 +176,9 @@
    Time input formatting is only defined with time units."
   [input unit]
   (if (string? input)
-    (let [time? (matches-time? input)
-          date? (matches-date? input)
-          date-time? (matches-date-time? input)
+    (let [time? (common/matches-time? input)
+          date? (common/matches-date? input)
+          date-time? (common/matches-date-time? input)
           t (cond
               ;; Anchor to an arbitrary date since time inputs are only defined for
               ;; :hour-of-day and :minute-of-hour.
@@ -227,12 +217,12 @@
       (= temporal-value-1 temporal-value-2)
       (format-unit temporal-value-1 nil)
 
-      (and (matches-time? temporal-value-1)
-           (matches-time? temporal-value-2))
+      (and (common/matches-time? temporal-value-1)
+           (common/matches-time? temporal-value-2))
       (default-format)
 
-      (and (matches-date-time? temporal-value-1)
-           (matches-date-time? temporal-value-2))
+      (and (common/matches-date-time? temporal-value-1)
+           (common/matches-date-time? temporal-value-2))
       (let [lhs (coerce-local-date-time temporal-value-1)
             rhs (coerce-local-date-time temporal-value-2)
             year-matches? (= (.format lhs "YYYY") (.format rhs "YYYY"))
@@ -253,8 +243,8 @@
           (str (.format lhs lhs-fmt) "–" (.format rhs rhs-fmt))
           (default-format)))
 
-      (and (matches-date? temporal-value-1)
-           (matches-date? temporal-value-2))
+      (and (common/matches-date? temporal-value-1)
+           (common/matches-date? temporal-value-2))
       (let [lhs (moment/utc temporal-value-1 moment/ISO_8601)
             rhs (moment/utc temporal-value-2 moment/ISO_8601)
             year-matches? (= (.format lhs "YYYY") (.format rhs "YYYY"))

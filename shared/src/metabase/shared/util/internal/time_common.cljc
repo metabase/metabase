@@ -26,8 +26,79 @@
   Returns a platform-specific datetime."
   by-unit)
 
+(def ^:private year-part
+  "\\d{4}")
+
+(def ^:private month-part
+  "\\d{2}")
+
+(def ^:private day-part
+  "\\d{2}")
+
+(def ^:private date-part
+  (str year-part \- month-part \- day-part))
+
+(def ^:private hour-part
+  "\\d{2}")
+
+(def ^:private minutes-part
+  "\\d{2}")
+
+(defn- optional [& parts]
+  (str "(?:" (apply str parts) ")?"))
+
+(def ^:private seconds-milliseconds-part
+  (str ":\\d{2}" (optional "\\.\\d{1,6}")))
+
+(def ^:private time-part
+  (str hour-part \: minutes-part (optional seconds-milliseconds-part)))
+
+(def ^:private date-time-part
+  (str date-part \T time-part))
+
+(def ^:private offset-part
+  (str "(?:Z|(?:[+-]" time-part "))"))
+
+(def zone-offset-part-regex
+  (re-pattern offset-part))
+
+(def ^:const local-date-regex
+  (re-pattern (str \^ date-part \$)))
+
+(def ^:const local-time-regex
+  (re-pattern (str \^ time-part \$)))
+
+(def ^:const offset-time-regex
+  (re-pattern (str \^ time-part offset-part \$)))
+
+(def ^:const local-datetime-regex
+  (re-pattern (str \^ date-time-part \$)))
+
+(def ^:const offset-datetime-regex
+  (re-pattern (str \^ date-time-part offset-part \$)))
+
+(def ^:const year-month-regex
+  "Regex for a year-month literal string."
+  (re-pattern (str \^ year-part \- month-part \$)))
+
+(def ^:const year-regex
+  "Regex for a year literal string."
+  (re-pattern (str \^ year-part \$)))
+
+(defn matches-time?
+  [input]
+  (re-matches local-time-regex input))
+
+(defn matches-date?
+  [input]
+  (re-matches local-date-regex input))
+
+(defn matches-date-time?
+  [input]
+  (re-matches (re-pattern (str date-time-part (optional offset-part))) input))
+
 (defn drop-trailing-time-zone
   "Strips off a trailing +0500, -0430, or Z from a time string."
   [time-str]
-  (or (second (re-matches #"(.*?)(?:Z|[+-][\d:]+)$" time-str))
+  (or (second (re-matches (re-pattern (str "(.*?)" (optional offset-part) \$)) time-str))
       time-str))
