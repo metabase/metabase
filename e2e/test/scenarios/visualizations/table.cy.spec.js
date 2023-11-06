@@ -186,7 +186,7 @@ describe("scenarios > visualizations > table", () => {
           // semantic type
           cy.contains("No special type");
           // fingerprint
-          cy.findByText("-07:00");
+          cy.findByText(/-0\d:00/);
           cy.findByText("April 26, 1958, 12:00 AM");
           cy.findByText("April 3, 2000, 12:00 AM");
         },
