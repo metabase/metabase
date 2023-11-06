@@ -266,7 +266,7 @@
   (with-redefs [api.session/forgot-password-impl
                 (let [orig @#'api.session/forgot-password-impl]
                   (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
-    (mt/with-model-cleanup [:model/Activity :model/AuditLog :model/User]
+    (mt/with-model-cleanup [:model/User]
       (testing "Test that forgot password event is logged."
         (mt/user-http-request :rasta :post 204 "session/forgot_password"
                               {:email (:username (mt/user->credentials :rasta))})

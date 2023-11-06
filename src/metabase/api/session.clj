@@ -233,7 +233,7 @@
           (log/info password-reset-url)
           (messages/send-password-reset-email! email nil password-reset-url is-active?)))
       (events/publish-event! :event/password-reset-initiated
-                             (assoc user :token (t2/select-one-fn :reset_token :model/User :id user-id))))))
+                             {:object (assoc user :token (t2/select-one-fn :reset_token :model/User :id user-id))}))))
 
 (api/defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
@@ -285,7 +285,7 @@
           ;; if this is the first time the user has logged in it means that they're just accepted their Metabase invite.
           ;; Otherwise, send audit log event that a user reset their password.
           (if (:last_login user)
-            (events/publish-event! :event/password-reset-successful (assoc user :token reset-token))
+            (events/publish-event! :event/password-reset-successful {:object (assoc user :token reset-token)})
             ;; Send all the active admins an email :D
             (messages/send-user-joined-admin-notification-email! (t2/select-one User :id user-id)))
           ;; after a successful password update go ahead and offer the client a new session that they can use

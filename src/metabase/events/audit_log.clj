@@ -10,18 +10,6 @@
 
 (derive ::event :metabase/event)
 
-(defn maybe-prepare-update-event-data
-  "When `:audit-db/previous` is present in the event-data, we return a map with previous and new versions of the
-  objects, _keeping only fields that changed_.
-
-  If `:audit-db/previous` is missing, this is a noop."
-  [object previous-object]
-  (if previous-object
-    (let [[previous-only new-only _both] (data/diff previous-object object)
-          updated-keys (distinct (concat (keys previous-only) (keys new-only)))]
-      {:previous (select-keys previous-object updated-keys)
-       :new (select-keys object updated-keys)})
-    object))
 
 (derive ::card-event ::event)
 (derive :event/card-create ::card-event)
@@ -164,13 +152,19 @@
 
 (derive ::user-event ::event)
 (derive :event/user-invited ::user-event)
-(derive :event/user-update ::user-event)
 (derive :event/user-deactivated ::user-event)
 (derive :event/user-reactivated ::user-event)
 (derive :event/password-reset-initiated ::user-event)
 (derive :event/password-reset-successful ::user-event)
 
 (methodical/defmethod events/publish-event! ::user-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
+(derive ::user-update-event ::event)
+(derive :event/user-update ::user-update-event)
+
+(methodical/defmethod events/publish-event! ::user-update-event
   [topic event]
   (audit-log/record-event! topic event))
 
@@ -210,6 +204,7 @@
   [topic {:keys [object previous-object] :as _event}]
   (audit-log/record-event!
    topic
-   {:details  (maybe-prepare-update-event-data object previous-object)
-    :model    :model/Database
-    :model-id (:id object)}))
+   {:object          object
+    :previous-object previous-object
+    :model           :model/Database
+    :model-id        (:id object)}))
