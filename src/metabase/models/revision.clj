@@ -76,8 +76,7 @@
   [revision]
   (assoc revision
          :timestamp :%now
-         :metabase_version config/mb-version-string
-         :most_recent true))
+         :metabase_version config/mb-version-string))
 
 (t2/define-before-update :model/Revision
   [_revision]
@@ -108,12 +107,15 @@
   [revision]
   (u/prog1 revision
     (let [{:keys [id model model_id]} revision]
-      ;; Note 1: Update the last `most_recent revision` to false (not including the current revision)
-      ;; Note 2: We don't allow updating revision but this is a special case, so we by pass the check by
-      ;; updating directly with the table name
-      (t2/update! (t2/table-name :model/Revision)
-                  {:model model :model_id model_id :most_recent true :id [:not= id]}
-                  {:most_recent false})
+      ;; Update the last revision to have most_recent=false, and we update the current revision to most_recent=true.
+      ;; We don't allow updating revision but this is a special case, so we by pass the check by updating directly
+      ;; with the table name. This needs to be atomic otherwise we can end up with multiple revisions with
+      ;; `most_recent ` set to true.
+      (t2/with-transaction [_conn]
+        (t2/update! (t2/table-name :model/Revision)
+                    {:model model :model_id model_id :most_recent true}
+                    {:most_recent false})
+        (t2/update! (t2/table-name :model/Revision) id {:most_recent true}))
       (delete-old-revisions! model model_id))))
 
 ;;; # Functions
