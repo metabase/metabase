@@ -72,8 +72,6 @@
               [:model           {:optional true} [:maybe [:or :keyword :string]]]
               [:model-id        {:optional true} [:maybe pos-int?]]
               [:details         {:optional true} [:maybe :map]]]]
-  (def topic topic)
-  (def params params)
   (let [unqualified-topic (keyword (name topic))
         object            (:object params)
         previous-object   (:previous-object params)
@@ -86,7 +84,7 @@
                            (:details params)
                            (if (not-empty previous-object)
                              (prepare-update-event-data object-details previous-details)
-                             {:object object-details}))]
+                             object-details))]
     (t2/insert! :model/AuditLog
                 :topic    unqualified-topic
                 :details  details
