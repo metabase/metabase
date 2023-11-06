@@ -1,8 +1,10 @@
 import { useCallback, useMemo } from "react";
+import { t } from "ttag";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
 } from "metabase-types/api";
+import { Text } from "metabase/ui";
 import { TableColumnSelector } from "./TableColumnSelector";
 import {
   disableColumnInSettings,
@@ -40,14 +42,6 @@ export const DatasetColumnSelector = ({
     return getDatasetColumnSettingItems(datasetColumns, columnSettings);
   }, [datasetColumns, columnSettings]);
 
-  const enabledColumnItems = useMemo(() => {
-    return columnItems.filter(({ enabled }) => enabled);
-  }, [columnItems]);
-
-  const disabledColumnItems = useMemo(() => {
-    return columnItems.filter(({ enabled }) => !enabled);
-  }, [columnItems]);
-
   const handleEnableColumn = useCallback(
     (columnItem: ColumnSettingItem) => {
       onChange(enableColumnInSettings(columnSettings, columnItem));
@@ -64,20 +58,28 @@ export const DatasetColumnSelector = ({
 
   const handleDragColumn = useCallback(
     (props: DragColumnProps) => {
-      onChange(moveColumnInSettings(columnSettings, enabledColumnItems, props));
+      onChange(moveColumnInSettings(columnSettings, columnItems, props));
     },
-    [columnSettings, enabledColumnItems, onChange],
+    [columnSettings, columnItems, onChange],
   );
 
   return (
-    <TableColumnSelector
-      enabledColumnItems={enabledColumnItems}
-      disabledColumnItems={disabledColumnItems}
-      getColumnName={getColumnName}
-      onEnableColumn={handleEnableColumn}
-      onDisableColumn={handleDisableColumn}
-      onDragColumn={handleDragColumn}
-      onShowWidget={onShowWidget}
-    />
+    <>
+      <Text
+        component="label"
+        display="block"
+        fw={700}
+        mb="0.5rem"
+        fs="0.875em"
+      >{t`Columns`}</Text>
+      <TableColumnSelector
+        columnItems={columnItems}
+        getColumnName={({ datasetColumn }) => getColumnName(datasetColumn)}
+        onEnableColumn={handleEnableColumn}
+        onDisableColumn={handleDisableColumn}
+        onDragColumn={handleDragColumn}
+        onShowWidget={onShowWidget}
+      />
+    </>
   );
 };
