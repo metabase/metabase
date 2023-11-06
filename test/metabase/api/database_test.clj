@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.database :as api.database]
    [metabase.api.table :as api.table]
    [metabase.driver :as driver]
@@ -21,6 +22,8 @@
    [metabase.sync.field-values :as field-values]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
+   [metabase.test.data.impl :as data.impl]
+   [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
@@ -223,20 +226,20 @@
 (defn- create-db-via-api! [& [m]]
   (let [db-name (mt/random-name)]
     (try
-      (let [{db-id :id, :as response} (with-redefs [driver/available?   (constantly true)
-                                                    driver/can-connect? (constantly true)]
-                                        (mt/user-http-request :crowberto :post 200 "database"
-                                                              (merge
-                                                               {:name    db-name
-                                                                :engine  (u/qualified-name ::test-driver)
-                                                                :details {:db "my_db"}}
-                                                               m)))]
-        (is (schema= {:id       s/Int
-                      s/Keyword s/Any}
-                     response))
-        (when (integer? db-id)
-          (t2/select-one Database :id db-id)))
-      (finally (t2/delete! Database :name db-name)))))
+     (let [{db-id :id, :as response} (with-redefs [driver/available?   (constantly true)
+                                                   driver/can-connect? (constantly true)]
+                                       (mt/user-http-request :crowberto :post 200 "database"
+                                                             (merge
+                                                              {:name    db-name
+                                                               :engine  (u/qualified-name ::test-driver)
+                                                               :details {:db "my_db"}}
+                                                              m)))]
+       (is (malli= [:and
+                    [:map-of :keyword :any]
+                    [:map [:id pos-int?]]]
+                   response))
+       (t2/select-one Database :id db-id))
+     (finally (t2/delete! Database :name db-name)))))
 
 (deftest create-db-test
   (testing "POST /api/database"
@@ -329,6 +332,22 @@
       (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
         (is (partial= {:cache_ttl 13}
                       (create-db-via-api! {:cache_ttl 13})))))))
+
+(deftest create-db-succesful-track-snowplow-test
+  (mt/test-drivers (disj (mt/normal-drivers) :h2)
+    (mt/with-model-cleanup [:model/Database]
+      (snowplow-test/with-fake-snowplow-collector
+        (let [dataset-def (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'avian-singles))]
+          (mt/user-http-request :crowberto :post 200 "database"
+                                {:name    (mt/random-name)
+                                 :engine  driver/*driver*
+                                 :details (tx/dbdef->connection-details driver/*driver* nil dataset-def)}))
+        (is (=? {"database"     (name driver/*driver*)
+                 "database_id"  #hawk/malli :int
+                 "source"       "admin"
+                 "dbms_version" #hawk/malli [:fn some?]
+                 "event"        "database_connection_successful"}
+                (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))))
 
 (deftest disallow-creating-h2-database-test
   (testing "POST /api/database/:id"

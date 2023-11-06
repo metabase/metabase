@@ -747,6 +747,12 @@
               (assoc :valid false))
       details)))
 
+(defn- db->dbms-version
+  [db]
+ (some-> (driver.u/database->driver db)
+         (driver/dbms-version db)
+         :version))
+
 (api/defendpoint POST "/"
   "Add a new `Database`."
   [:as {{:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl]} :body}]
@@ -789,12 +795,13 @@
         (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})
         (snowplow/track-event! ::snowplow/database-connection-successful
                                api/*current-user-id*
-                               {:database engine, :database-id (u/the-id <>), :source :admin}))
+                               {:database engine :database-id (u/the-id <>)
+                                :source :admin :dbms_version (db->dbms-version <>)}))
       ;; failed to connect, return error
       (do
         (snowplow/track-event! ::snowplow/database-connection-failed
                                api/*current-user-id*
-                               {:database engine, :source :setup})
+                               {:database engine :source :setup})
         {:status 400
          :body   (dissoc details-or-error :valid)}))))
 
