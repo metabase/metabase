@@ -653,6 +653,7 @@
   {:exec-args {:only ["test/metadata/driver"
                       "test/metabase/query_processor"
                       "test/metabase/query_processor_test"
+                      metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
                       metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}
 
   ;; test all MBQL related stuff: MLv2, the legacy shared `metabase.mbql` code, and the QP
@@ -664,6 +665,7 @@
                       "test/metadata/driver"
                       "test/metabase/query_processor"
                       "test/metabase/query_processor_test"
+                      metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
                       metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}}}
 
 
