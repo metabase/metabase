@@ -5,13 +5,13 @@ import { PopoverDropdown } from "./PopoverDropdown";
 import { PopoverTarget } from "./PopoverTarget";
 import { PopoverContext } from "./PopoverContext";
 
-export function Popover(props: PopoverProps) {
+export function Popover({ offset, ...props }: PopoverProps) {
   const targetRef = useRef<HTMLElement>(null);
-  const contextValue = useMemo(() => ({ targetRef }), []);
+  const contextValue = useMemo(() => ({ targetRef, offset }), [offset]);
 
   return (
     <PopoverContext.Provider value={contextValue}>
-      <MantinePopover {...props} />
+      <MantinePopover {...props} offset={offset} />
     </PopoverContext.Provider>
   );
 }
