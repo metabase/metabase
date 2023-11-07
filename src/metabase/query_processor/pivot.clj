@@ -4,6 +4,7 @@
    [clojure.core.async :as a]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.query-processor :as qp]
@@ -224,16 +225,18 @@
   [query        :- [:map
                     [:database ::lib.schema.id/database]]
    viz-settings :- [:maybe :map]]
-  (let [index-in-breakouts (delay
-                             (qp.store/with-metadata-provider (if (qp.store/initialized?)
-                                                                (qp.store/metadata-provider)
-                                                                (:database query))
-                               (let [mlv2-query (lib/query (or (:lib/metadata query) (qp.store/metadata-provider))
-                                                           query)
-                                     breakouts  (into []
-                                                      (map-indexed (fn [i col]
-                                                                     (assoc col ::i i)))
-                                                      (lib/breakouts-metadata mlv2-query))]
+  (let [column-split         (:pivot_table.column_split viz-settings)
+        column-split-rows    (seq (:rows column-split))
+        column-split-columns (seq (:columns column-split))
+        index-in-breakouts   (when (or column-split-rows
+                                       column-split-columns)
+                               (let [metadata-provider (or (:lib/metadata query)
+                                                           (lib.metadata.jvm/application-database-metadata-provider (:database query)))
+                                     mlv2-query        (lib/query metadata-provider query)
+                                     breakouts         (into []
+                                                             (map-indexed (fn [i col]
+                                                                            (assoc col ::i i)))
+                                                             (lib/breakouts-metadata mlv2-query))]
                                  (fn [legacy-ref]
                                    (try
                                      (::i (lib.equality/find-column-for-legacy-ref
@@ -243,12 +246,12 @@
                                            breakouts))
                                      (catch Throwable e
                                        (log/errorf e "Error finding matching column for ref %s" (pr-str legacy-ref))
-                                       nil))))))
-        column-split       (:pivot_table.column_split viz-settings)
-        pivot-rows         (when-let [column-split-rows (seq (:rows column-split))]
-                             (into [] (keep @index-in-breakouts) column-split-rows))
-        pivot-cols         (when-let [column-split-columns (seq (:columns column-split))]
-                             (into [] (keep @index-in-breakouts) column-split-columns))]
+                                       nil)))))
+
+        pivot-rows (when column-split-rows
+                     (into [] (keep index-in-breakouts) column-split-rows))
+        pivot-cols (when column-split-columns
+                     (into [] (keep index-in-breakouts) column-split-columns))]
     {:pivot-rows pivot-rows
      :pivot-cols pivot-cols}))
 

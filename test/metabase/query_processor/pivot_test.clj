@@ -222,9 +222,7 @@
                    (#'qp.pivot/breakout-combinations 2 (:pivot-rows pivot-options) (:pivot-cols pivot-options))))
             (is (=? {:status    :completed
                      :row_count 156}
-                    (qp.pivot/run-pivot-query query
-                                              {:visualization-settings viz-settings}
-                                              (context.default/default-context))))))))))
+                    (qp.pivot/run-pivot-query query {:visualization-settings viz-settings})))))))))
 
 (deftest ^:parallel dont-return-too-many-rows-test
   (testing "Make sure pivot queries don't return too many rows (#14329)"
