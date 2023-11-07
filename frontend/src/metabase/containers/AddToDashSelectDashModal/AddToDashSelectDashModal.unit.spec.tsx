@@ -440,6 +440,7 @@ describe("AddToDashSelectDashModal", () => {
                 }),
               );
             });
+
             it("should render all collections", async () => {
               // Create a new dashboard modal
               expect(
