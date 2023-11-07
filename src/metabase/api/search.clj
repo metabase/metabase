@@ -468,7 +468,7 @@
                                [:offset                              {:optional true} [:maybe ms/Int]]
                                [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
                                [:search-native-query                 {:optional true} [:maybe boolean?]]
-                               [:verified                            {:optional true} [:maybe true?]]]]
+                               [:verified                            {:optional true} [:maybe true?]]]] :- SearchContext
   (when (some? verified)
     (premium-features/assert-has-any-features
      [:content-verification :official-collections]
@@ -517,14 +517,26 @@
                                     :models              search.config/all-models})))
 
 (api/defendpoint GET "/"
-  "Search within a bunch of models for the substring `q`.
-  For the list of models, check [[metabase.search.config/all-models]].
+  "Search for items in Metabase.
+  For the list of supported models, check [[metabase.search.config/all-models]].
 
-  To search in archived portions of models, pass in `archived=true`.
-  To search for tables, cards, and models of a certain DB, pass in a DB id value
-  to `table_db_id`.
-  To specify a list of models, pass in an array to `models`.
-  "
+  Filters:
+  - `archived`: set to true to search archived items only, default is false
+  - `table_db_id`: search for tables, cards, and models of a certain DB
+  - `models`: only search for items of specific models. If not provided, search for all models
+  - `filters_items_in_personal_collection`: only search for items in personal collections
+  - `created_at`: search for items created at a specific timestamp
+  - `created_by`: search for items created by a specific user
+  - `last_edited_at`: search for items last edited at a specific timestamp
+  - `last_edited_by`: search for items last edited by a specific user
+  - `search_native_query`: set to true to search the content of native queries
+  - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
+
+  Note that not all item types support all filters, and the results will include only models that support the provided filters. For example:
+  - The `created-by` filter supports dashboards, models, actions, and cards.
+  - The `verified` filter supports models and cards.
+
+  A search query that has both filters applied will only return models and cards."
   [q archived context created_at created_by table_db_id models last_edited_at last_edited_by
    filter_items_in_personal_collection search_native_query verified]
   {q                                   [:maybe ms/NonBlankString]

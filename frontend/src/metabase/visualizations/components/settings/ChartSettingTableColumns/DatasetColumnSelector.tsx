@@ -1,10 +1,8 @@
 import { useCallback, useMemo } from "react";
-import { t } from "ttag";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
 } from "metabase-types/api";
-import { Text } from "metabase/ui";
 import { TableColumnSelector } from "./TableColumnSelector";
 import {
   disableColumnInSettings,
@@ -64,22 +62,13 @@ export const DatasetColumnSelector = ({
   );
 
   return (
-    <>
-      <Text
-        component="label"
-        display="block"
-        fw={700}
-        mb="0.5rem"
-        fs="0.875em"
-      >{t`Columns`}</Text>
-      <TableColumnSelector
-        columnItems={columnItems}
-        getColumnName={({ datasetColumn }) => getColumnName(datasetColumn)}
-        onEnableColumn={handleEnableColumn}
-        onDisableColumn={handleDisableColumn}
-        onDragColumn={handleDragColumn}
-        onShowWidget={onShowWidget}
-      />
-    </>
+    <TableColumnSelector
+      columnItems={columnItems}
+      getColumnName={({ datasetColumn }) => getColumnName(datasetColumn)}
+      onEnableColumn={handleEnableColumn}
+      onDisableColumn={handleDisableColumn}
+      onDragColumn={handleDragColumn}
+      onShowWidget={onShowWidget}
+    />
   );
 };
