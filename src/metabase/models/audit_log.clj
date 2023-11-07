@@ -34,7 +34,7 @@
   {})
 
 (defn model-name
-  "Given an instance of a model or a keyword model identifier, returns the name to store in the database as a string."
+  "Given an instance of a model or a keyword model identifier, returns the name to store in the database as a string, or `nil` if it cannot be computed."
   [model]
   (some-> (or (t2/model model) model) name))
 
