@@ -8,6 +8,8 @@ import { color } from "metabase/lib/colors";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import { isDate } from "metabase-lib/types/utils/isa";
 
+const FALLBACK_DATE_UNIT = "day";
+
 // compute the percent change between two values (a → b)
 export function computeChange(a, b) {
   if (a === 0) {
@@ -56,16 +58,18 @@ function computePreviousPeriodComparison({
   const value = rows[i]?.[metricIndex];
   const change = value != null ? computeChange(value, nextValue) : null;
 
-  const title =
-    date == null || dateUnit == null
-      ? t`previous ${dateUnit ?? t`period`}`
-      : moment
-          .utc(date)
-          .startOf(dateUnit)
-          .add(1, dateUnit)
-          .isSame(moment.utc(nextDate).startOf(dateUnit))
-      ? t`previous ${Lib.describeTemporalUnit(dateUnit).toLowerCase()}`
-      : formatDateTimeRangeWithUnit([date], dateUnit, { compact: true }); // FIXME: elide part of the prevDate in common with lastDate
+  const dateUnitDisplay = Lib.describeTemporalUnit(dateUnit).toLowerCase();
+  const datesAreContinuous =
+    date &&
+    moment
+      .utc(date)
+      .startOf(dateUnit)
+      .add(1, dateUnit)
+      .isSame(moment.utc(nextDate).startOf(dateUnit));
+
+  const title = datesAreContinuous
+    ? t`previous ${dateUnitDisplay}`
+    : formatDateTimeRangeWithUnit([date], dateUnit, { compact: true }); // FIXME: elide part of the prevDate in common with lastDate
 
   const { type, changeArrow, changeStr, valueStr } =
     value == null
@@ -124,9 +128,7 @@ export function computeTrend(series, insights, settings) {
   const metricInsight = insights?.find(
     insight => insight.col === metricColumn.name,
   );
-  if (metricInsight == null) {
-    return null;
-  }
+  const dateUnit = metricInsight?.unit ?? FALLBACK_DATE_UNIT;
 
   // get last value and date
   const i = rows.length - 1;
@@ -138,11 +140,10 @@ export function computeTrend(series, insights, settings) {
 
   // format last value and date
   const formatOptions = settings.column?.(metricColumn);
-  const dateUnit = metricInsight.unit;
   const valueStr = formatValue(value, formatOptions);
-  const dateStr =
-    dateUnit &&
-    formatDateTimeRangeWithUnit([date], dateUnit, { compact: true });
+  const dateStr = formatDateTimeRangeWithUnit([date], dateUnit, {
+    compact: true,
+  });
 
   const clicked = {
     value,

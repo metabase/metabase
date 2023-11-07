@@ -74,10 +74,6 @@ describe("SmartScalar > compute", () => {
       NumberColumn({ name: "Count" }),
       NumberColumn({ name: "Sum" }),
     ];
-    const insights = [
-      { unit: "month", col: "Count" },
-      { unit: "month", col: "Sum" },
-    ];
     const series = ({ rows }) => [{ data: { rows, cols } }];
     const settings = { "scalar.field": "Count" };
 
@@ -88,6 +84,7 @@ describe("SmartScalar > compute", () => {
           ["2019-10-01", 100],
           ["2019-11-01", 300],
         ],
+        dateUnit: "month",
         expected: "300; Nov 2019; ↑ 200% vs. previous month: 100",
       },
       {
@@ -96,6 +93,7 @@ describe("SmartScalar > compute", () => {
           ["2019-10-01", 300],
           ["2019-11-01", 100],
         ],
+        dateUnit: "month",
         expected: "100; Nov 2019; ↓ 66.67% vs. previous month: 300",
       },
       {
@@ -104,6 +102,7 @@ describe("SmartScalar > compute", () => {
           ["2019-10-01", 100],
           ["2019-11-01", 100],
         ],
+        dateUnit: "month",
         expected: "100; Nov 2019; No change vs. previous month",
       },
       {
@@ -112,6 +111,7 @@ describe("SmartScalar > compute", () => {
           ["2019-10-01", 0],
           ["2019-11-01", 300],
         ],
+        dateUnit: "month",
         expected: "300; Nov 2019; ↑ ∞% vs. previous month: 0",
       },
       {
@@ -121,6 +121,7 @@ describe("SmartScalar > compute", () => {
           ["2019-09-01", 300],
           ["2019-11-01", 100],
         ],
+        dateUnit: "month",
         expected: "100; Nov 2019; ↓ 66.67% vs. Sep 2019: 300",
       },
       {
@@ -130,9 +131,24 @@ describe("SmartScalar > compute", () => {
           ["2019-10-01", null],
           ["2019-11-01", 100],
         ],
+        dateUnit: "month",
         expected: "100; Nov 2019; ↓ 66.67% vs. Sep 2019: 300",
       },
-    ])("$description", ({ rows, expected }) => {
+      {
+        description:
+          "should correctly fallback to day unit if backend doesn’t return valid unit",
+        rows: [
+          ["2019-09-01", 100],
+          ["2019-11-01", 300],
+        ],
+        dateUnit: null,
+        expected: "300; Nov 1, 2019; ↑ 200% vs. Sep 1, 2019: 100",
+      },
+    ])("$description", ({ rows, expected, dateUnit }) => {
+      const insights = [
+        { unit: dateUnit, col: "Count" },
+        { unit: dateUnit, col: "Sum" },
+      ];
       const trend = computeTrend(series({ rows }), insights, settings);
       expect(printTrend(trend)).toBe(expected);
     });
