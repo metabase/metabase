@@ -41,7 +41,9 @@
    [clojure.data :as data]
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase.api.common.validation :as validation]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
@@ -130,10 +132,11 @@
     (let [resolved (apply audit.i/resolve-internal-query qualified-fn-str args)]
       (reduce-results rff context resolved))))
 
-(defn handle-internal-queries
-  "Middleware that handles `internal` type queries."
+(defenterprise handle-audit-app-internal-queries
+  "Middleware that handles `:internal` (Audit App) type queries."
+  :feature :audit-app
   [qp]
-  (fn [{query-type :type, :as query} xform context]
+  (fn [{query-type :type, :as query} rff context]
     (if (= :internal (keyword query-type))
-      (process-internal-query query xform context)
-      (qp query xform context))))
+      (process-internal-query query rff context)
+      (qp query rff context))))

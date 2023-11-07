@@ -11,7 +11,7 @@ import {
   setupCollectionsEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
-  setupUsersEndpoints,
+  setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import {
   createMockCollectionItem,
@@ -65,7 +65,7 @@ const setup = ({
 
   setupSearchEndpoints(searchResultItems);
   setupRecentViewsEndpoints(recentViewsItems);
-  setupUsersEndpoints([createMockUser()]);
+  setupUserRecipientsEndpoint({ users: [createMockUser()] });
   setupCollectionsEndpoints({ collections: [] });
 
   const { history } = renderWithProviders(
