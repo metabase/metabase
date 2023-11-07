@@ -12,7 +12,6 @@ export const QuestionSchema = new schema.Entity("questions");
 export const ModelIndexSchema = new schema.Entity("modelIndexes");
 export const IndexedEntitySchema = new schema.Entity("indexedEntities");
 export const BookmarkSchema = new schema.Entity("bookmarks");
-export const DashcardSchema = new schema.Entity("dashcards");
 export const DashboardSchema = new schema.Entity("dashboards");
 export const PulseSchema = new schema.Entity("pulses");
 export const CollectionSchema = new schema.Entity("collections");
@@ -70,10 +69,6 @@ export const SnippetSchema = new schema.Entity("snippets");
 export const SnippetCollectionSchema = new schema.Entity("snippetCollections");
 export const TimelineSchema = new schema.Entity("timelines");
 export const TimelineEventSchema = new schema.Entity("timelineEvents");
-
-DashboardSchema.define({
-  dashcards: [DashcardSchema],
-});
 
 DatabaseSchema.define({
   tables: [TableSchema],
