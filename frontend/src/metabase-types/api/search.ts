@@ -49,7 +49,7 @@ export interface SearchResults {
 }
 
 export interface SearchResult {
-  id: number | undefined;
+  id: number;
   name: string;
   model: SearchModelType;
   description: string | null;

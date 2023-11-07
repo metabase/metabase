@@ -10,9 +10,13 @@ import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import PaginationControls from "metabase/components/PaginationControls";
 import { usePagination } from "metabase/hooks/use-pagination";
 
-import type { CollectionId, SearchListQuery } from "metabase-types/api";
+import type {
+  CollectionId,
+  SearchListQuery,
+  SearchResult,
+} from "metabase-types/api";
 import type { BaseSelectListItemProps } from "metabase/components/SelectList/BaseSelectListItem";
-import type Questions from "metabase/entities/questions";
+import type { WrappedEntity } from "metabase-types/entities";
 import {
   EmptyStateContainer,
   QuestionListItem,
@@ -28,7 +32,7 @@ interface QuestionListProps {
 }
 
 interface SearchListLoaderProps {
-  list: typeof Questions[];
+  list: WrappedEntity<SearchResult>[];
   metadata: {
     total: number;
   };
@@ -113,7 +117,7 @@ export function QuestionList({
                   }}
                   onSelect={onSelect}
                   rightIcon={PLUGIN_MODERATION.getStatusIcon(
-                    item.moderated_status,
+                    item.moderated_status ?? undefined,
                   )}
                 />
               ))}
