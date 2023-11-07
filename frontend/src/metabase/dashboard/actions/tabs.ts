@@ -373,42 +373,38 @@ export const tabsReducer = createReducer<DashboardState>(
       },
     );
 
-    builder.addCase(
-      Dashboards.actionTypes.UPDATE,
-      (state, { payload: dashboard }) => {
-        const { dashcards: newDashcards, tabs: newTabs } = dashboard;
+    builder.addCase(Dashboards.actionTypes.UPDATE, (state, { payload }) => {
+      const { dashcards: newDashcards, tabs: newTabs } = payload.dashboard;
 
-        const { prevDash, prevTabs } = getPrevDashAndTabs({
-          state,
-          filterRemovedTabs: true,
-        });
-        if (!prevDash) {
-          throw Error(
-            `Dashboards.action.update was dispatched but prevDash (${prevDash}) is null`,
-          );
+      const { prevDash, prevTabs } = getPrevDashAndTabs({
+        state,
+        filterRemovedTabs: true,
+      });
+      if (!prevDash) {
+        throw Error(
+          `Dashboards.action.update was dispatched but prevDash (${prevDash}) is null`,
+        );
+      }
+
+      // 1. Replace temporary with real dashcard ids
+      const prevDashcardIds = prevDash.dashcards.filter(
+        id => !state.dashcards[id].isRemoved,
+      );
+
+      prevDashcardIds.forEach((prevId, index) => {
+        const prevDashcardData = state.dashcardData[prevId];
+
+        if (prevDashcardData) {
+          state.dashcardData[newDashcards[index].id] = prevDashcardData;
         }
+      });
 
-        // 1. Replace temporary with real dashcard ids
-        const prevDashcardIds = prevDash.dashcards.filter(
-          id => !state.dashcards[id].isRemoved,
-        );
-
-        prevDashcardIds.forEach((prevId, index) => {
-          const prevDashcardData = state.dashcardData[prevId];
-
-          if (prevDashcardData) {
-            state.dashcardData[newDashcards[index].id] = prevDashcardData;
-          }
-        });
-
-        // 2. Re-select the currently selected tab with its real id
-        const selectedTabIndex = prevTabs.findIndex(
-          tab => tab.id === state.selectedTabId,
-        );
-        state.selectedTabId =
-          (newTabs && newTabs[selectedTabIndex]?.id) ?? null;
-      },
-    );
+      // 2. Re-select the currently selected tab with its real id
+      const selectedTabIndex = prevTabs.findIndex(
+        tab => tab.id === state.selectedTabId,
+      );
+      state.selectedTabId = (newTabs && newTabs[selectedTabIndex]?.id) ?? null;
+    });
 
     builder.addCase<
       string,
