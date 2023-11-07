@@ -229,17 +229,19 @@
                                            "with perms for the Table in question" (perms/table-query-path (mt/id :venues))}]
                     (t2.with-temp/with-temp [Permissions _ {:group_id group-2-id :object perms}]
                       (testing (format "Should be able to run the query %s" message)
-                        (doseq [[message f] {"ad-hoc queries"  run-ad-hoc-query
-                                             "Saved Questions" run-saved-question}]
+                        (doseq [[message thunk] {"ad-hoc queries"  run-ad-hoc-query
+                                                 "Saved Questions" run-saved-question}]
                           (testing message
-                            (is (f)))))))
+                            (is (=? {:status :completed}
+                                    (thunk))))))))
                   (testing "\nSandboxed permissions"
-                    (premium-features-test/with-premium-features #{:advanced-permissions :sandboxing}
+                    (premium-features-test/with-premium-features #{:advanced-permissions :sandboxes}
                       (mt/with-temp [Permissions            _ {:group_id group-2-id
                                                                :object   (perms/table-sandboxed-query-path (mt/id :venues))}
                                      GroupTableAccessPolicy _ {:table_id (mt/id :venues) :group_id group-id}]
                         (testing "Should be able to run the query"
-                          (doseq [[message f] {"ad-hoc queries"  run-ad-hoc-query
-                                               "Saved Questions" run-saved-question}]
+                          (doseq [[message thunk] {"ad-hoc queries"  run-ad-hoc-query
+                                                   "Saved Questions" run-saved-question}]
                             (testing message
-                              (is (f)))))))))))))))))
+                              (is (=? {:status :completed}
+                                      (thunk))))))))))))))))))

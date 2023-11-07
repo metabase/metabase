@@ -1,4 +1,4 @@
-(ns metabase-enterprise.audit-app.api.user-test
+(ns ^:mb/once metabase-enterprise.audit-app.api.user-test
   (:require
    [clojure.test :refer :all]
    [metabase.models :refer [Card Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient User]]

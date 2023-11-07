@@ -1,46 +1,54 @@
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import {
   setupMostRecentlyViewedDashboard,
   setupCollectionsEndpoints,
-  setupSearchEndpoints,
   setupCollectionByIdEndpoint,
   setupDashboardCollectionItemsEndpoint,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockCard,
   createMockCollection,
   createMockDashboard,
+  createMockSearchResult,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { Card, Collection, Dashboard } from "metabase-types/api";
+import type {
+  Card,
+  Collection,
+  Dashboard,
+  SearchResult,
+} from "metabase-types/api";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import { checkNotNull, isNotNull } from "metabase/lib/types";
+import { getNextId } from "__support__/utils";
 import { ConnectedAddToDashSelectDashModal } from "./AddToDashSelectDashModal";
 
 const CURRENT_USER = createMockUser({
-  id: 1,
-  personal_collection_id: 100,
+  id: getNextId(),
+  personal_collection_id: getNextId(),
   is_superuser: true,
 });
 
 const DASHBOARD = createMockDashboard({
-  id: 3,
+  id: getNextId(),
   name: "Test dashboard",
   collection_id: 2,
   model: "dashboard",
 });
 
 const DASHBOARD_AT_ROOT = createMockDashboard({
-  id: 4,
+  id: getNextId(),
   name: "Dashboard at root",
   collection_id: null,
   model: "dashboard",
 });
 
 const COLLECTION = createMockCollection({
-  id: 1,
+  id: getNextId(),
   name: "Collection",
   can_write: true,
   is_personal: false,
@@ -48,7 +56,7 @@ const COLLECTION = createMockCollection({
 });
 
 const SUBCOLLECTION = createMockCollection({
-  id: 2,
+  id: getNextId(),
   name: "Nested collection",
   can_write: true,
   is_personal: false,
@@ -65,7 +73,7 @@ const PERSONAL_COLLECTION = createMockCollection({
 });
 
 const PERSONAL_SUBCOLLECTION = createMockCollection({
-  id: CURRENT_USER.personal_collection_id + 1,
+  id: getNextId(),
   name: "Nested personal collection",
   can_write: true,
   is_personal: true,
@@ -85,12 +93,37 @@ const COLLECTIONS = [
   PERSONAL_SUBCOLLECTION,
 ];
 
-const CARD = createMockCard({ id: 1, name: "Model Uno", dataset: true });
+const CARD_IN_ROOT_COLLECTION = createMockCard({
+  id: getNextId(),
+  name: "Model Uno",
+  dataset: true,
+});
+
+const CARD_IN_PUBLIC_COLLECTION = createMockCard({
+  id: getNextId(),
+  name: "Model Uno",
+  dataset: true,
+  collection: COLLECTION,
+});
 
 const CARD_IN_PERSONAL_COLLECTION = createMockCard({
-  id: 2,
+  id: getNextId(),
   name: "Card in a personal collection",
   dataset: true,
+  collection: PERSONAL_COLLECTION,
+});
+
+const DASHBOARD_RESULT_IN_PUBLIC_COLLECTION = createMockSearchResult({
+  id: getNextId(),
+  name: "dashboard in public collection",
+  model: "dashboard",
+  collection: COLLECTION,
+});
+
+const DASHBOARD_RESULT_IN_PERSONAL_COLLECTION = createMockSearchResult({
+  id: getNextId(),
+  name: "dashboard in personal collection",
+  model: "dashboard",
   collection: PERSONAL_COLLECTION,
 });
 
@@ -101,25 +134,27 @@ interface SetupOpts {
   dashboard?: Dashboard;
   mostRecentlyViewedDashboard?: Dashboard;
   waitForContent?: boolean;
+  searchResults?: SearchResult[];
 }
 
 const setup = async ({
-  card = CARD,
+  card = CARD_IN_ROOT_COLLECTION,
   collections = COLLECTIONS,
   dashboard = DASHBOARD,
   mostRecentlyViewedDashboard = undefined,
   error,
   waitForContent = true,
+  searchResults = [],
 }: SetupOpts = {}) => {
   const dashboards = Array.from(
     new Set([dashboard, mostRecentlyViewedDashboard].filter(isNotNull)),
   );
 
-  setupSearchEndpoints([]);
   setupCollectionsEndpoints({ collections, rootCollection: ROOT_COLLECTION });
   setupDashboardCollectionItemsEndpoint(dashboards);
   setupCollectionByIdEndpoint({ collections, error });
   setupMostRecentlyViewedDashboard(mostRecentlyViewedDashboard);
+  setupSearchEndpoints(searchResults);
 
   renderWithProviders(
     <Route
@@ -218,7 +253,7 @@ describe("AddToDashSelectDashModal", () => {
 
       describe("when last visited dashboard belongs to public subcollections", () => {
         const dashboardInPublicSubcollection = createMockDashboard({
-          id: 5,
+          id: getNextId(),
           name: "Dashboard in public subcollection",
           collection: SUBCOLLECTION,
           collection_id: SUBCOLLECTION.id as number,
@@ -257,7 +292,7 @@ describe("AddToDashSelectDashModal", () => {
 
       describe("when last visited dashboard belongs to personal subcollections", () => {
         const dashboardInPersonalSubcollection = createMockDashboard({
-          id: 5,
+          id: getNextId(),
           name: "Dashboard in personal subcollection",
           collection: PERSONAL_SUBCOLLECTION,
           collection_id: PERSONAL_SUBCOLLECTION.id as number,
@@ -403,7 +438,7 @@ describe("AddToDashSelectDashModal", () => {
           it("should render dashboards when opening the root collection (public collection)", async () => {
             // no `collection` and `collection_id` means it's in the root collection
             const dashboardInRootCollection = createMockDashboard({
-              id: 5,
+              id: getNextId(),
               name: "Dashboard in root collection",
               model: "dashboard",
             });
@@ -421,7 +456,7 @@ describe("AddToDashSelectDashModal", () => {
 
           it("should render dashboards when opening public subcollections", async () => {
             const dashboardInPublicSubcollection = createMockDashboard({
-              id: 5,
+              id: getNextId(),
               name: "Dashboard in public subcollection",
               collection_id: COLLECTION.id as number,
               model: "dashboard",
@@ -446,7 +481,7 @@ describe("AddToDashSelectDashModal", () => {
 
           it("should render dashboards when opening personal collections", async () => {
             const dashboardInPersonalCollection = createMockDashboard({
-              id: 5,
+              id: getNextId(),
               name: "Dashboard in personal collection",
               collection_id: PERSONAL_COLLECTION.id as number,
               model: "dashboard",
@@ -471,7 +506,7 @@ describe("AddToDashSelectDashModal", () => {
 
           it("should render dashboards when opening personal subcollections", async () => {
             const dashboardInPersonalSubcollection = createMockDashboard({
-              id: 5,
+              id: getNextId(),
               name: "Dashboard in personal subcollection",
               collection_id: PERSONAL_SUBCOLLECTION.id as number,
               model: "dashboard",
@@ -567,7 +602,7 @@ describe("AddToDashSelectDashModal", () => {
         describe("whether we should render dashboards in a collection", () => {
           it("should not render dashboards when opening the root collection (public collection)", async () => {
             const dashboardInPublicCollection = createMockDashboard({
-              id: 5,
+              id: getNextId(),
               name: "Dashboard in public collection",
               // `null` means it's in the root collection
               collection_id: null,
@@ -592,7 +627,7 @@ describe("AddToDashSelectDashModal", () => {
 
           it("should render dashboards when opening personal collections", async () => {
             const dashboardInPersonalCollection = createMockDashboard({
-              id: 5,
+              id: getNextId(),
               name: "Dashboard in personal collection",
               collection_id: PERSONAL_COLLECTION.id as number,
               model: "dashboard",
@@ -618,7 +653,7 @@ describe("AddToDashSelectDashModal", () => {
 
           it("should render dashboards when opening personal subcollections", async () => {
             const dashboardInPersonalSubcollection = createMockDashboard({
-              id: 5,
+              id: getNextId(),
               name: "Dashboard in personal subcollection",
               collection_id: PERSONAL_SUBCOLLECTION.id as number,
               model: "dashboard",
@@ -646,6 +681,99 @@ describe("AddToDashSelectDashModal", () => {
                 name: dashboardInPersonalSubcollection.name,
               }),
             ).toBeInTheDocument();
+          });
+        });
+      });
+    });
+
+    describe("search dashboards", () => {
+      describe("questions in the root collection (public collection)", () => {
+        it("should search dashboards only in public collections", async () => {
+          await setup({
+            card: CARD_IN_ROOT_COLLECTION,
+            searchResults: [DASHBOARD_RESULT_IN_PUBLIC_COLLECTION],
+          });
+
+          userEvent.click(screen.getByRole("button", { name: "Search" }));
+          const typedText = "dashboard";
+          userEvent.type(
+            screen.getByPlaceholderText("Search"),
+            `${typedText}{enter}`,
+          );
+
+          expect(
+            await screen.findByText(DASHBOARD_RESULT_IN_PUBLIC_COLLECTION.name),
+          ).toBeInTheDocument();
+
+          const call = fetchMock.lastCall("path:/api/search");
+          const urlObject = new URL(checkNotNull(call?.request?.url));
+          expect(urlObject.pathname).toEqual("/api/search");
+          expect(Object.fromEntries(urlObject.searchParams.entries())).toEqual({
+            models: "dashboard",
+            q: typedText,
+          });
+        });
+      });
+
+      describe("questions in public collections", () => {
+        it("should search dashboards only in public collections", async () => {
+          await setup({
+            card: CARD_IN_PUBLIC_COLLECTION,
+            searchResults: [DASHBOARD_RESULT_IN_PUBLIC_COLLECTION],
+          });
+
+          userEvent.click(screen.getByRole("button", { name: "Search" }));
+          const typedText = "dashboard";
+          userEvent.type(
+            screen.getByPlaceholderText("Search"),
+            `${typedText}{enter}`,
+          );
+
+          expect(
+            await screen.findByText(DASHBOARD_RESULT_IN_PUBLIC_COLLECTION.name),
+          ).toBeInTheDocument();
+
+          const call = fetchMock.lastCall("path:/api/search");
+          const urlObject = new URL(checkNotNull(call?.request?.url));
+          expect(urlObject.pathname).toEqual("/api/search");
+          expect(Object.fromEntries(urlObject.searchParams.entries())).toEqual({
+            models: "dashboard",
+            q: typedText,
+          });
+        });
+      });
+
+      describe("questions in personal collections", () => {
+        it("should search all dashboards", async () => {
+          await setup({
+            card: CARD_IN_PERSONAL_COLLECTION,
+            searchResults: [
+              DASHBOARD_RESULT_IN_PUBLIC_COLLECTION,
+              DASHBOARD_RESULT_IN_PERSONAL_COLLECTION,
+            ],
+          });
+
+          userEvent.click(screen.getByRole("button", { name: "Search" }));
+          const typedText = "dashboard";
+          userEvent.type(
+            screen.getByPlaceholderText("Search"),
+            `${typedText}{enter}`,
+          );
+
+          expect(
+            await screen.findByText(DASHBOARD_RESULT_IN_PUBLIC_COLLECTION.name),
+          ).toBeInTheDocument();
+          expect(
+            screen.getByText(DASHBOARD_RESULT_IN_PERSONAL_COLLECTION.name),
+          ).toBeInTheDocument();
+
+          const call = fetchMock.lastCall("path:/api/search");
+          const urlObject = new URL(checkNotNull(call?.request?.url));
+          expect(urlObject.pathname).toEqual("/api/search");
+          expect(Object.fromEntries(urlObject.searchParams.entries())).toEqual({
+            models: "dashboard",
+            q: typedText,
+            filter_items_in_personal_collection: "only",
           });
         });
       });
