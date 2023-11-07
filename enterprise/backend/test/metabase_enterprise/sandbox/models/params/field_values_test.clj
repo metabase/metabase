@@ -15,6 +15,7 @@
             PermissionsGroupMembership
             User]]
    [metabase.models.field-values :as field-values]
+   [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.field-values :as params.field-values]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
@@ -22,8 +23,13 @@
 
 (set! *warn-on-reflection* true)
 
+
 (deftest get-or-create-advanced-field-values!-test
-  (doseq [fv-type [:sandbox :linked-filter]]
+  (doseq [[fv-type opts] [[:sandbox nil]
+                          [:linked-filter {:constraints nil
+                                           :cache-fn
+                                           (fn [field]
+                                             (#'chain-filter/unremapped-chain-filter {:field-id (:id field)} nil {}))}]]]
     (testing "create a new field values and fix up the human readable values"
       (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:and
                                                                                        [:> $id 3]
@@ -36,7 +42,7 @@
         (let [categories-id (mt/id :categories :id)
               f             (t2/select-one Field :id (mt/id :categories :id))
               card-id       (-> f :table_id (#'ee-params.field-values/table-id->gtap) :card :id)
-              fv            (params.field-values/get-or-create-advanced-field-values! fv-type f)]
+              fv            (params.field-values/get-or-create-advanced-field-values! fv-type f opts)]
           (is (= [(range 4 6)]
                  (t2/select-fn-vec :values FieldValues
                                    :field_id categories-id :type fv-type
@@ -48,18 +54,20 @@
           (testing "call second time shouldn't create a new FieldValues"
             (params.field-values/get-or-create-advanced-field-values!
              fv-type
-             (t2/select-one Field :id (mt/id :categories :id)))
+             (t2/select-one Field :id (mt/id :categories :id))
+             opts)
             (is (= 1 (t2/count FieldValues :field_id categories-id :type fv-type))))
 
           (testing "after changing the question, should create new FieldValues"
             (let [new-query (mt/mbql-query categories
-                                           {:filter [:and [:> $id 1] [:< $id 4]]})]
+                              {:filter [:and [:> $id 1] [:< $id 4]]})]
               (Thread/sleep 1)
               (t2/update! Card card-id {:dataset_query new-query
                                         :updated_at    (t/local-date-time)}))
             (params.field-values/get-or-create-advanced-field-values!
              fv-type
-             (t2/select-one Field :id (mt/id :categories :id)))
+             (t2/select-one Field :id (mt/id :categories :id))
+             opts)
             (is (= [(range 4 6)
                     (range 2 4)]
                    (t2/select-fn-vec :values FieldValues
@@ -74,7 +82,8 @@
           (is (= ["Asian"]
                  (:values (params.field-values/get-or-create-advanced-field-values!
                            fv-type
-                           (t2/select-one Field :id (mt/id :categories :name)))))))))))
+                           (t2/select-one Field :id (mt/id :categories :name))
+                           opts)))))))))
 
 (deftest advanced-field-values-hash-test
   (mt/with-premium-features #{:sandboxes}

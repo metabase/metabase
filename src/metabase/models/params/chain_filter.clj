@@ -548,10 +548,12 @@
   ;; TODO: why don't we remap the human readable values here?
   (let [{:keys [values has_more_values]}
         (if (empty? constraints)
-          (params.field-values/get-or-create-field-values-for-current-user! (t2/select-one Field :id (:field-id field)))
-          (params.field-values/get-or-create-linked-filter-field-values! (t2/select-one Field :id (:field-id field)) constraints
-                                                                         (fn []
-                                                                           (unremapped-chain-filter field constraints {}))))]
+          (params.field-values/get-or-create-field-values-for-current-user!
+           (t2/select-one Field :id (:field-id field)))
+          (params.field-values/get-or-create-linked-filter-field-values!
+           (t2/select-one Field :id (:field-id field))
+           {:constraints constraints
+            :cache-fn (fn [_field] (unremapped-chain-filter field constraints {}))}))]
     {:values          (cond->> values
                         limit (take limit))
      :has_more_values (or (when limit
