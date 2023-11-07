@@ -45,6 +45,19 @@ function generateDashboards(user) {
   cy.createDashboard({ name: `${user} dashboard` });
 }
 
+describeEE("auditing > Auditv1 deprecation", () => {
+  it("should show an audit deprecation notice", () => {
+    restore();
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
+
+    cy.visit("/admin/audit");
+
+    cy.findByTextEnsureVisible(/metabase analytics collection/i);
+    cy.findByTextEnsureVisible(/will be removed in a future release/i);
+  });
+});
+
 describeEE("audit > auditing", () => {
   const ADMIN_QUESTION = "admin question";
   const ADMIN_DASHBOARD = "admin dashboard";
