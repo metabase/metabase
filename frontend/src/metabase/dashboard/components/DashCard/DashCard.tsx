@@ -42,7 +42,7 @@ import type {
   NavigateToNewCardFromDashboardOpts,
   DashCardOnChangeCardAndRunHandler,
 } from "./types";
-import { DashCardActionsPanel } from "./DashCardActionButtons";
+import { DashCardActionsPanel } from "./DashCardActionsPanel";
 import DashCardVisualization from "./DashCardVisualization";
 import { DashCardRoot } from "./DashCard.styled";
 
