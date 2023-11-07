@@ -5,10 +5,12 @@ import { Icon } from "metabase/core/components/Icon";
 
 import { alpha, color } from "metabase/lib/colors";
 
-export const Root = styled.div`
+export const Root = styled.div<{ height: number }>`
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow: auto;
+  height: ${props => props.height}px;
 `;
 
 export const ContentContainer = styled.div`

@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
@@ -38,6 +39,7 @@ function TableSimple({
   series,
   settings,
   isPivoted,
+  height,
   className,
   onVisualizationClick,
   visualizationIsClickable,
@@ -46,6 +48,15 @@ function TableSimple({
 }) {
   const [sortColumn, setSortColumn] = useState(null);
   const [sortDirection, setSortDirection] = useState("asc");
+
+  const parentRef = useRef(null);
+
+  const virtualizer = useVirtualizer({
+    count: data.rows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 36,
+    overscan: 20,
+  });
 
   const setSort = useCallback(
     colIndex => {
@@ -111,31 +122,43 @@ function TableSimple({
   );
 
   const renderRow = useCallback(
-    rowIndex => (
-      <tr key={rowIndex} data-testid="table-row">
-        {data.rows[rowIndex].map((value, columnIndex) => (
-          <TableCell
-            key={`${rowIndex}-${columnIndex}`}
-            value={value}
-            data={data}
-            series={series}
-            settings={settings}
-            rowIndex={rowIndex}
-            columnIndex={columnIndex}
-            isPivoted={isPivoted}
-            getCellBackgroundColor={getCellBackgroundColor}
-            getExtraDataForClick={getExtraDataForClick}
-            checkIsVisualizationClickable={checkIsVisualizationClickable}
-            onVisualizationClick={onVisualizationClick}
-          />
-        ))}
-      </tr>
-    ),
+    (virtualRow, index) => {
+      const rowIndex = rowIndexes[virtualRow.index];
+      const translateY = virtualRow.start - index * virtualRow.size;
+      return (
+        <tr
+          key={rowIndex}
+          data-testid="table-row"
+          style={{
+            height: `${virtualRow.size}px`,
+            transform: `translateY(${translateY}px)`,
+          }}
+        >
+          {data.rows[rowIndex].map((value, columnIndex) => (
+            <TableCell
+              key={`${rowIndex}-${columnIndex}`}
+              value={value}
+              data={data}
+              series={series}
+              settings={settings}
+              rowIndex={rowIndex}
+              columnIndex={columnIndex}
+              isPivoted={isPivoted}
+              getCellBackgroundColor={getCellBackgroundColor}
+              getExtraDataForClick={getExtraDataForClick}
+              checkIsVisualizationClickable={checkIsVisualizationClickable}
+              onVisualizationClick={onVisualizationClick}
+            />
+          ))}
+        </tr>
+      );
+    },
     [
       data,
       series,
       settings,
       isPivoted,
+      rowIndexes,
       checkIsVisualizationClickable,
       getCellBackgroundColor,
       getExtraDataForClick,
@@ -144,14 +167,17 @@ function TableSimple({
   );
 
   return (
-    <Root className={className}>
+    <Root className={className} height={height} ref={parentRef}>
       <ContentContainer>
-        <TableContainer className="scroll-show scroll-show--hover">
+        <TableContainer
+          className="scroll-show scroll-show--hover"
+          style={{ height: `${virtualizer.getTotalSize()}px` }}
+        >
           <Table className="fullscreen-normal-text fullscreen-night-text">
             <thead>
               <tr>{cols.map(renderColumnHeader)}</tr>
             </thead>
-            <tbody>{rowIndexes.map(renderRow)}</tbody>
+            <tbody>{virtualizer.getVirtualItems().map(renderRow)}</tbody>
           </Table>
         </TableContainer>
       </ContentContainer>
