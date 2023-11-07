@@ -5,30 +5,27 @@ import * as Lib from "metabase-lib";
 import { findBreakoutClause, findColumn } from "./utils";
 import { TemporalBucketSelect } from "./TemporalBucketSelect";
 
-interface TimeseriesPanelProps {
+const STAGE_INDEX = -1;
+
+interface TimeseriesFooterProps {
   query: Lib.Query;
-  stageIndex: number;
-  onChange: (query: Lib.Query) => void;
+  updateQuery: (query: Lib.Query) => void;
 }
 
-export function TimeseriesPanel({
+export function TimeseriesFooter({
   query,
-  stageIndex,
-  onChange,
-}: TimeseriesPanelProps) {
-  const column = useMemo(
-    () => findColumn(query, stageIndex),
-    [query, stageIndex],
-  );
+  updateQuery,
+}: TimeseriesFooterProps) {
+  const column = useMemo(() => findColumn(query, STAGE_INDEX), [query]);
 
   const breakout = useMemo(
-    () => column && findBreakoutClause(query, stageIndex, column),
-    [query, stageIndex, column],
+    () => column && findBreakoutClause(query, STAGE_INDEX, column),
+    [query, column],
   );
 
   const handleBreakoutChange = (newColumn: Lib.ColumnMetadata) => {
     if (breakout) {
-      onChange(Lib.replaceClause(query, stageIndex, breakout, newColumn));
+      updateQuery(Lib.replaceClause(query, STAGE_INDEX, breakout, newColumn));
     }
   };
 
@@ -41,7 +38,7 @@ export function TimeseriesPanel({
       <Text>{t`View by`}</Text>
       <TemporalBucketSelect
         query={query}
-        stageIndex={stageIndex}
+        stageIndex={STAGE_INDEX}
         column={column}
         onChange={handleBreakoutChange}
       />

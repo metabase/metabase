@@ -1,1 +1,1 @@
-export * from "./components/TimeseriesPanel";
+export * from "./components/TimeseriesFooter";

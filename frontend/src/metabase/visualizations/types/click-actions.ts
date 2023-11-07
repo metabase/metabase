@@ -1,16 +1,9 @@
-import type React from "react";
+import type { ComponentType } from "react";
 import type { Dispatch, GetState } from "metabase-types/store";
-import type {
-  Series,
-  VisualizationSettings,
-  Card,
-  DatasetQuery,
-} from "metabase-types/api";
-import type { UpdateQuestionOpts } from "metabase/query_builder/actions";
+import type { Card, Series, VisualizationSettings } from "metabase-types/api";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import type { ClickActionProps } from "metabase-lib/queries/drills/types";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 export type {
   ClickActionProps,
@@ -149,23 +142,14 @@ export type Drill<
   },
 ) => ClickAction[];
 
-export interface ModeFooterComponentProps {
-  lastRunCard: Card;
-  question: Question;
-  query: StructuredQuery;
-  className?: string;
-
-  updateQuestion: (newQuestion: Question, options?: UpdateQuestionOpts) => void;
-  setDatasetQuery: (
-    datasetQuery: DatasetQuery,
-    options?: UpdateQuestionOpts,
-  ) => void;
+export interface ModeFooterProps {
+  query: Lib.Query;
+  updateQuery: (newQuery: Lib.Query) => void;
 }
 
 export interface QueryClickActionsMode {
   name: string;
-
   clickActions: LegacyDrill[];
   fallback?: LegacyDrill;
-  ModeFooter?: (props: ModeFooterComponentProps) => JSX.Element | null;
+  ModeFooter?: ComponentType<ModeFooterProps>;
 }

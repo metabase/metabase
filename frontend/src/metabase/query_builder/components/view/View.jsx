@@ -328,8 +328,15 @@ class View extends Component {
   };
 
   renderMain = ({ leftSidebar, rightSidebar }) => {
-    const { query, mode, parameters, isLiveResizable, setParameterValue } =
-      this.props;
+    const {
+      question,
+      query,
+      mode,
+      parameters,
+      isLiveResizable,
+      setParameterValue,
+      updateQuestion,
+    } = this.props;
 
     const queryMode = mode && mode.queryMode();
     const ModeFooter = queryMode && queryMode.ModeFooter;
@@ -383,7 +390,10 @@ class View extends Component {
         )}
 
         {ModeFooter && (
-          <ModeFooter {...this.props} className="flex-no-shrink" />
+          <ModeFooter
+            query={question._getMLv2Query()}
+            updateQuery={query => updateQuestion(question._setMLv2Query(query))}
+          />
         )}
 
         <ViewFooter {...this.props} className="flex-no-shrink" />
