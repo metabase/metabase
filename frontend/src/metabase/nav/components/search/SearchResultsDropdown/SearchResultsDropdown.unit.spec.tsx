@@ -13,7 +13,7 @@ import {
 import {
   setupCollectionByIdEndpoint,
   setupSearchEndpoints,
-  setupUsersEndpoints,
+  setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import type { SearchResult } from "metabase-types/api";
 import { checkNotNull } from "metabase/lib/types";
@@ -55,7 +55,7 @@ const setup = async ({
   const goToSearchApp = jest.fn();
 
   setupSearchEndpoints(searchResults);
-  setupUsersEndpoints([createMockUser()]);
+  setupUserRecipientsEndpoint({ users: [createMockUser()] });
   setupCollectionByIdEndpoint({
     collections: [TEST_COLLECTION],
   });

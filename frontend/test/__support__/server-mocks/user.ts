@@ -17,3 +17,11 @@ export function setupCurrentUserEndpoint(user: User) {
 export function setupUserAttributesEndpoint(attributes: UserAttribute[]) {
   fetchMock.get(`path:/api/mt/user/attributes`, attributes);
 }
+
+export function setupUserRecipientsEndpoint({
+  users,
+}: {
+  users: UserListResult[];
+}) {
+  fetchMock.get("path:/api/user/recipients", { data: users });
+}
