@@ -29,7 +29,7 @@ function CrossfilterOptions({
       <ClickMappings
         object={dashboard}
         dashcard={dashcard}
-        isDash
+        isDashboard
         clickBehavior={clickBehavior}
         updateSettings={updateSettings}
         excludeParametersSources

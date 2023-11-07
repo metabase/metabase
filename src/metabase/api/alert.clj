@@ -10,6 +10,7 @@
    [metabase.config :as config]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
+   [metabase.events :as events]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as pulse]
@@ -152,9 +153,10 @@
                     (-> new-alert-request-body
                         only-alert-keys
                         (pulse/create-alert! api/*current-user-id* alert-card channels)))]
-    (notify-new-alert-created! new-alert)
+   (events/publish-event! :event/alert-create {:object new-alert :user-id api/*current-user-id*})
+   (notify-new-alert-created! new-alert)
     ;; return our new Alert
-    new-alert))
+   new-alert))
 
 (defn- notify-on-archive-if-needed!
   "When an alert is archived, we notify all recipients that they are no longer receiving that alert."

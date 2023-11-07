@@ -11,6 +11,10 @@ on:
         description: 'Number of times to run the test (e.g. 20)'
         type: string
         required: true
+      grep:
+        description: 'Grep and filter tests to run in isolation'
+        type: string
+        required: false
 
 jobs:
   stress-test-flake-fix:
@@ -62,11 +66,13 @@ jobs:
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
 
+      # For all options and fine-grained control, take a look at the documentation
+      # https://github.com/cypress-io/cypress/tree/develop/npm/grep
       - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
         run: |
           yarn run test-cypress-run \
           --spec '${{ github.event.inputs.spec }}' \
-          --env burn=${{ github.event.inputs.burn_in }} \
+          --env burn=${{ github.event.inputs.burn_in }},grep='${{ github.event.inputs.grep }}' \
           --config-file e2e/support/cypress-stress-test.config.js \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 

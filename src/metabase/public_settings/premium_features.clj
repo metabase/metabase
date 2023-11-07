@@ -523,14 +523,14 @@
 
 (s/def ::defenterprise-args
   (s/cat :docstr  (s/? string?)
-            :ee-ns   (s/? symbol?)
-            :options (s/? ::defenterprise-options)
-            :fn-tail (s/* any?)))
+         :ee-ns   (s/? symbol?)
+         :options (s/? ::defenterprise-options)
+         :fn-tail (s/* any?)))
 
 (s/def ::defenterprise-schema-args
   (s/cat :return-schema      (s/? (s/cat :- #{:-}
                                              :schema any?))
-            :defenterprise-args (s/? ::defenterprise-args)))
+         :defenterprise-args (s/? ::defenterprise-args)))
 
 (defmacro defenterprise
   "Defines a function that has separate implementations between the Metabase Community Edition (aka OSS) and

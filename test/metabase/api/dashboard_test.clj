@@ -566,6 +566,8 @@
 
         (testing "PUT response"
           (is (= (merge dashboard-defaults {:name           "My Cool Dashboard"
+                                            :dashcards      []
+                                            :tabs           []
                                             :description    "Some awesome description"
                                             :creator_id     (mt/user->id :rasta)
                                             :cache_ttl      1234
@@ -626,6 +628,8 @@
                                             :creator_id              (mt/user->id :rasta)
                                             :collection              true
                                             :collection_id           true
+                                            :dashcards               []
+                                            :tabs                    []
                                             :caveats                 ""
                                             :points_of_interest      ""
                                             :cache_ttl               1337
@@ -1578,8 +1582,10 @@
                  updated-card-2
                  new-card]
                 cards))
-       ;; dashcard 3 is deleted
-       (is (nil? (t2/select-one DashboardCard :id dashcard-id-3)))))))
+        ;; dashcard 3 is deleted
+        (is (nil? (t2/select-one DashboardCard :id dashcard-id-3)))
+        (testing "only one revision is created"
+          (is (= 1 (t2/count :model/Revision :model_id dashboard-id))))))))
 
 (deftest e2e-update-tabs-only-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete tabs in a single req"
@@ -2054,6 +2060,7 @@
                                                                                     :tabs  []})))
           (is (= 1
                  (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id)))))))
+
     (testing "prune"
       (mt/with-temp [Dashboard     {dashboard-id :id} {}
                      Card          {card-id :id}      {}
