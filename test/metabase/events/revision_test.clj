@@ -159,9 +159,7 @@
                              Card          {card-id :id}                     (card-properties)
                              DashboardCard dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]
       (t2/delete! (t2/table-name DashboardCard), :id (:id dashcard))
-      (events/publish-event! :event/dashboard-remove-cards
-                             {:object  dashboard
-                              :user-id (mt/user->id :rasta)})
+      (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
               :user_id      (mt/user->id :rasta)
@@ -173,7 +171,7 @@
                             :model_id dashboard-id))))))
 
 (deftest dashboard-reposition-cards-test
-  (testing ":event/dashboard-reposition-cards with repositioning dashcards"
+  (testing ":event/dashboard-update with repositioning dashcards"
     (t2.with-temp/with-temp [Dashboard     {dashboard-id :id, :as dashboard} {}
                              Card          {card-id :id}                     (card-properties)
                              DashboardCard dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]
