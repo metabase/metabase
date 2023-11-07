@@ -1,3 +1,4 @@
+import _ from "underscore";
 import { tag_names } from "cljs/metabase.shared.parameters.parameters";
 import { isActionDashCard } from "metabase/actions/utils";
 import { isVirtualDashCard } from "metabase/dashboard/utils";
@@ -124,4 +125,35 @@ export function getParameterMappingOptions(
   }
 
   return options;
+}
+
+export function getParameterMappings(dashcard, parameter_id, card_id, target) {
+  const isVirtual = isVirtualDashCard(dashcard);
+  const isAction = isActionDashCard(dashcard);
+
+  let parameter_mappings = dashcard.parameter_mappings || [];
+
+  // allow mapping the same parameter to multiple action targets
+  if (!isAction) {
+    parameter_mappings = parameter_mappings.filter(
+      m => m.card_id !== card_id || m.parameter_id !== parameter_id,
+    );
+  }
+
+  if (target) {
+    if (isVirtual) {
+      // If this is a virtual (text) card, remove any existing mappings for the target, since text card variables
+      // can only be mapped to a single parameter.
+      parameter_mappings = parameter_mappings.filter(
+        m => !_.isEqual(m.target, target),
+      );
+    }
+    parameter_mappings = parameter_mappings.concat({
+      parameter_id,
+      card_id,
+      target,
+    });
+  }
+
+  return parameter_mappings;
 }

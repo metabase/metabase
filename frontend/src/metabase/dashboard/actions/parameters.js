@@ -12,12 +12,17 @@ import {
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
-import { isActionDashCard } from "metabase/actions/utils";
 import { updateDashboard } from "metabase/dashboard/actions/save";
+import {
+  getParameterMappingOptions,
+  getParameterMappings,
+} from "metabase/parameters/utils/mapping-options";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   isParameterValueEmpty,
   PULSE_PARAM_EMPTY,
 } from "metabase-lib/parameters/utils/parameter-values";
+import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
 import {
   getDashboard,
   getDraftParameterValues,
@@ -28,11 +33,16 @@ import {
   getAutoApplyFiltersToastId,
 } from "../selectors";
 
-import { isVirtualDashCard } from "../utils";
+import { getAllDashboardCardsWithUnmappedParameters } from "../utils";
 import { trackAutoApplyFiltersDisabled } from "../analytics";
 
-import { setDashboardAttributes, setDashCardAttributes } from "./core";
+import {
+  setDashboardAttributes,
+  setDashCardAttributes,
+  setMultipleDashCardAttributes,
+} from "./core";
 import { setSidebar, closeSidebar } from "./ui";
+import {getExistingDashCards} from "metabase/dashboard/actions/utils";
 
 function updateParameter(dispatch, getState, id, parameterUpdater) {
   const dashboard = getDashboard(getState());
@@ -110,43 +120,99 @@ export const removeParameter = createThunkAction(
 );
 
 export const SET_PARAMETER_MAPPING = "metabase/dashboard/SET_PARAMETER_MAPPING";
+
+function getMatchingParameterOption(metadata, dc, target, dashcard) {
+    console.log(dc, dc.card)
+  return getParameterMappingOptions(metadata, null, dc.card, dc).find(param =>
+    compareMappingOptionTargets(target, param.target, dashcard, dc, metadata),
+  );
+}
+
+function getAutoApplyDashcardAttributes(
+  unmappedDashcards,
+  metadata,
+  target,
+  dashcard,
+  parameter_id,
+) {
+  const otherDashcardAttributes = [];
+
+  for (const dc of unmappedDashcards) {
+    const selectedMappingOption = getMatchingParameterOption(
+      metadata,
+      dc,
+      target,
+      dashcard,
+    );
+
+    if (selectedMappingOption) {
+      otherDashcardAttributes.push({
+        id: dc.id,
+        attributes: {
+          parameter_mappings: getParameterMappings(
+            dc,
+            parameter_id,
+            dc.card_id,
+            selectedMappingOption.target,
+          ),
+        },
+      });
+    }
+  }
+  return otherDashcardAttributes;
+}
+
 export const setParameterMapping = createThunkAction(
   SET_PARAMETER_MAPPING,
-  (parameter_id, dashcard_id, card_id, target) => (dispatch, getState) => {
-    const dashcard = getState().dashboard.dashcards[dashcard_id];
-    const isVirtual = isVirtualDashCard(dashcard);
-    const isAction = isActionDashCard(dashcard);
-
-    let parameter_mappings = dashcard.parameter_mappings || [];
-
-    // allow mapping the same parameter to multiple action targets
-    if (!isAction) {
-      parameter_mappings = parameter_mappings.filter(
-        m => m.card_id !== card_id || m.parameter_id !== parameter_id,
-      );
-    }
-
-    if (target) {
-      if (isVirtual) {
-        // If this is a virtual (text) card, remove any existing mappings for the target, since text card variables
-        // can only be mapped to a single parameter.
-        parameter_mappings = parameter_mappings.filter(
-          m => !_.isEqual(m.target, target),
+  (parameter_id, dashcard_id, card_id, target) => {
+    return (dispatch, getState) => {
+      if (target === null) {
+        dispatch(
+          setDashCardAttributes({
+            id: dashcard_id,
+            attributes: {
+              parameter_mappings: null,
+            },
+          }),
         );
       }
-      parameter_mappings = parameter_mappings.concat({
+
+      const dashcard = getState().dashboard.dashcards[dashcard_id];
+
+      const metadata = getMetadata(getState());
+
+      const parameter_mappings = getParameterMappings(
+        dashcard,
         parameter_id,
         card_id,
         target,
-      });
-    }
+      );
 
-    dispatch(
-      setDashCardAttributes({
+      const dashcardAttribute = {
         id: dashcard_id,
         attributes: { parameter_mappings },
-      }),
-    );
+      };
+
+      const dashcards = getExistingDashCards(getState().dashboard, getState().dashboard.dashboardId);
+
+      const unmappedDashcards = getAllDashboardCardsWithUnmappedParameters(
+        dashcards, parameter_id
+      );
+
+      const otherDashcardAttributes = getAutoApplyDashcardAttributes(
+        unmappedDashcards,
+        metadata,
+        target,
+        dashcard,
+        parameter_id,
+      );
+
+      dispatch(
+        setMultipleDashCardAttributes({
+          dashcards: [dashcardAttribute, ...otherDashcardAttributes],
+        }),
+      );
+    };
   },
 );
 

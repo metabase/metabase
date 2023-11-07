@@ -19,6 +19,7 @@ import type {
   Parameter,
   StructuredDatasetQuery,
   ActionDashboardCard,
+  ParameterId,
 } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
 import Question from "metabase-lib/Question";
@@ -126,6 +127,28 @@ export function getAllDashboardCards(dashboard: Dashboard) {
     }
   }
   return results;
+}
+
+export function getAllDashboardCardsWithUnmappedParameters(
+  dashcards: DashboardCard[],
+  parameter_id: ParameterId,
+) {
+  return dashcards.filter((dashcard) => {
+    return !dashcard.parameter_mappings?.find(
+      mapping => mapping.parameter_id === parameter_id,
+    );
+  });
+}
+
+export function getAllDashboardCardsWithMappedParameter(
+  dashboard: Dashboard,
+  parameterId: ParameterId,
+) {
+  return getAllDashboardCards(dashboard).filter(({ dashcard }) => {
+    return dashcard.parameter_mappings?.find(
+      mapping => mapping.parameter_id === parameterId,
+    );
+  });
 }
 
 export function getCurrentTabDashboardCards(

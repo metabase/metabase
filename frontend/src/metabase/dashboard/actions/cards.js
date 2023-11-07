@@ -11,11 +11,18 @@ import {
 import { createCard } from "metabase/lib/card";
 
 import { getVisualizationRaw } from "metabase/visualizations";
+import {
+  getParameterMappingOptions,
+  getParameterMappings,
+} from "metabase/parameters/utils/mapping-options";
+import { getMetadata } from "metabase/selectors/metadata";
+import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
 import { trackCardCreated } from "../analytics";
 import { getDashCardById } from "../selectors";
 import {
   ADD_CARD_TO_DASH,
   REMOVE_CARD_FROM_DASH,
+  setDashCardAttributes,
   UNDO_REMOVE_CARD_FROM_DASH,
 } from "./core";
 import { cancelFetchCardData, fetchCardData } from "./data-fetching";
@@ -26,6 +33,7 @@ export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
 export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
 
 let tempId = -1;
+
 function generateTemporaryDashcardId() {
   return tempId--;
 }
@@ -40,8 +48,9 @@ export const addCardToDashboard =
     const visualization = getVisualizationRaw([{ card }]);
     const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
 
+    const dashcardId = generateTemporaryDashcardId();
     const dashcard = {
-      id: generateTemporaryDashcardId(),
+      id: dashcardId,
       dashboard_id: dashId,
       dashboard_tab_id: tabId ?? null,
       card_id: card.id,
@@ -59,6 +68,13 @@ export const addCardToDashboard =
     dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
 
     dispatch(loadMetadataForDashboard([dashcard]));
+
+    dispatch(
+      autoApplyParametersToNewCard({
+        dashboard_id: dashId,
+        dashcard_id: dashcardId,
+      }),
+    );
   };
 
 export const removeCardFromDashboard = createThunkAction(
@@ -210,6 +226,62 @@ export const addActionToDashboard =
         dashId: dashId,
         dashcardOverrides: dashcardOverrides,
         tabId,
+      }),
+    );
+  };
+
+export const autoApplyParametersToNewCard =
+  ({ dashboard_id, dashcard_id }) =>
+  async (dispatch, getState) => {
+    console.log("is this being called?");
+    const metadata = getMetadata(getState());
+    const dashcards = getExistingDashCards(getState().dashboard, dashboard_id);
+
+    const loadedDashcard = getDashCardById(getState(), dashcard_id);
+    const dashcardMappingOptions = getParameterMappingOptions(
+      metadata,
+      null,
+      loadedDashcard.card,
+      loadedDashcard,
+    );
+
+    const parametersToAutoApply = [];
+    const processedParameterIds = new Set();
+
+    for (const dashcard of dashcards) {
+      const existingParameterMappings = dashcard.parameter_mappings || [];
+      for (const paramMapping of existingParameterMappings) {
+        dashcardMappingOptions.find(opt => {
+          if (
+            !processedParameterIds.has(paramMapping.parameter_id) &&
+            compareMappingOptionTargets(
+              paramMapping.target,
+              opt.target,
+              dashcard,
+              loadedDashcard,
+              metadata,
+            )
+          ) {
+            parametersToAutoApply.push(
+              ...getParameterMappings(
+                loadedDashcard,
+                paramMapping.parameter_id,
+                loadedDashcard.card_id,
+                paramMapping.target,
+              ),
+            );
+            processedParameterIds.add(paramMapping.parameter_id);
+          }
+        });
+      }
+    }
+
+    await dispatch(
+      setDashCardAttributes({
+        id: dashcard_id,
+        attributes: {
+          parameter_mappings: parametersToAutoApply,
+        },
       }),
     );
   };

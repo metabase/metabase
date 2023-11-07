@@ -12,7 +12,7 @@ import type {
 export function getExistingDashCards(
   dashboardState: Draft<DashboardState>,
   dashId: DashboardId,
-  tabId: DashboardTabId,
+  tabId: DashboardTabId | null = null,
 ) {
   const { dashboards, dashcards } = dashboardState;
   const dashboard = dashboards[dashId];
