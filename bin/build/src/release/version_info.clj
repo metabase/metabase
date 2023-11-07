@@ -7,6 +7,8 @@
    [release.common :as c]
    [release.common.github :as github]))
 
+(set! *warn-on-reflection* true)
+
 (defn- version-info-filename []
   (case (c/edition)
     :oss "version-info.json"
@@ -27,7 +29,7 @@
   "Fetch the current version of the version info file via HTTP."
   []
   (u/step "Fetch existing version info file"
-    (let [{:keys [status body], :as response} (http/get (str "http://" (version-info-url)))]
+    (let [{:keys [status body]} (http/get (str "http://" (version-info-url)))]
       (when (>= status 400)
         (throw (ex-info (format "Error fetching version info: status code %d" status)
                         (try
@@ -81,7 +83,9 @@
   (validate-version-info)
   (u/announce (format "%s updated." (version-info-filename))))
 
-(defn update-version-info! []
+(defn update-version-info!
+  "Start a build step that updates the version info."
+  []
   (u/step (format "Update %s" (version-info-filename))
     (cond
       (c/pre-release-version?)
