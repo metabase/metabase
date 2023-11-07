@@ -265,9 +265,11 @@
        (when (and query (number? ref-id))
          (when-let [no-id-columns (not-empty (remove :id columns))]
            (when-let [resolved (resolve-field-id query stage-number ref-id)]
-             (find-matching-column (assoc a-ref 2 (or (:lib/desired-column-alias resolved)
-                                                      (:name resolved)))
-                                   no-id-columns opts)))))))
+             (find-matching-column (-> (assoc a-ref 2 (or (:lib/desired-column-alias resolved)
+                                                          (:name resolved)))
+                                       (lib.options/update-options (partial merge {:base-type :type/*})))
+                                   no-id-columns
+                                   opts)))))))
 
 (defn- ref-id-or-name [[_ref-kind _opts id-or-name]]
   id-or-name)
@@ -321,7 +323,7 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    legacy-ref   :- some?
+    legacy-ref   :- :some #_mbql.s/Reference
     metadatas    :- [:maybe [:sequential ::lib.schema.metadata/column]]]
    (find-matching-column query stage-number (lib.convert/legacy-ref->pMBQL query stage-number legacy-ref) metadatas)))
 
