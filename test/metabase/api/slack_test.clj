@@ -19,7 +19,7 @@
           (mt/with-temporary-setting-values [slack-app-token nil
                                              slack-token     "fake-token"]
             (mt/user-http-request :crowberto :put 200 "slack/settings" {:slack-app-token "fake-token"})
-            (is (= "fake-toke...oken" (slack/slack-app-token)))
+            (is (= "fake-tok..." (slack/slack-app-token)))
             (is (= nil (slack/slack-token)))))))))
 
 (deftest update-slack-settings-test-2

@@ -714,7 +714,7 @@
   implementation of [[notify-database-deleted!]] calls [[notify-database-updated]]; if you want the same behavior in
   both situations, you only need to implement this method; if you want different behaviors you should implement both
   separately."
-  {:arglists '([driver database])}
+  {:added "0.32.0" :arglists '([driver database]) }
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

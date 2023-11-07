@@ -142,8 +142,8 @@
                        recent-views))))))
           (mt/with-test-user :rasta
             (mt/with-temporary-setting-values [user-recent-views []]
-              (events/publish-event! :event/card-query (assoc dataset :actor_id (mt/user->id :rasta)))
-              (events/publish-event! :event/card-query (assoc card1 :actor_id (mt/user->id :crowberto)))
+              (events/publish-event! :event/card-query {:card-id (:id dataset) :user-id (mt/user->id :rasta)})
+              (events/publish-event! :event/card-query {:card-id (:id card1) :user-id (mt/user->id :crowberto)})
               (testing "Only the user's own views are returned."
                 (let [recent-views (mt/user-http-request :rasta :get 200 "activity/recent_views")]
                   (is (partial=

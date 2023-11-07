@@ -85,7 +85,7 @@
   :default :lax
   :getter (fn session-cookie-samesite-getter []
             (let [value (normalized-session-cookie-samesite
-                         (setting/get-raw-value :session-cookie-samesite keyword? identity))]
+                         (setting/get-raw-value :session-cookie-samesite some? identity))]
               (if (valid-session-cookie-samesite? value)
                 value
                 (throw (ex-info "Invalid value for session cookie samesite"
