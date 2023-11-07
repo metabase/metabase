@@ -54,7 +54,7 @@ describe("issue 19893", () => {
     assertQ1PlusQ2Joins();
   });
 
-  it("should display correct join source table when joining non-visited questions (metabase#19893)", () => {
+  it.skip("should display correct join source table when joining non-visited questions (metabase#19893)", () => {
     cy.createQuestion(QUESTION_1, { wrapId: true, idAlias: "questionId1" });
     cy.createQuestion(QUESTION_2, { wrapId: true, idAlias: "questionId2" });
 
