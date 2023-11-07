@@ -544,17 +544,13 @@
                            api/*current-user-id*
                            {:dashboard-id   dashboard-id
                             :num-tabs       (count deleted-tab-ids)
-                            :total-num-tabs total-num-tabs})
-    (events/publish-event! :event/dashboard-remove-tabs
-                           {:object dashboard :tab-ids deleted-tab-ids :user-id api/*current-user-id*}))
+                            :total-num-tabs total-num-tabs}))
   (when (seq created-tab-ids)
     (snowplow/track-event! ::snowplow/dashboard-tab-created
                            api/*current-user-id*
                            {:dashboard-id   dashboard-id
                             :num-tabs       (count created-tab-ids)
-                            :total-num-tabs total-num-tabs})
-    (events/publish-event! :event/dashboard-add-tabs
-                           {:object dashboard :tab-ids created-tab-ids :user-id api/*current-user-id*})))
+                            :total-num-tabs total-num-tabs})))
 
 (defn- update-dashboard
   "Updates a Dashboard. Designed to be reused by PUT /api/dashboard/:id and PUT /api/dashboard/:id/cards"
