@@ -17,7 +17,7 @@ import {
 
 import type {
   Dashboard,
-  DashboardOrderedCard,
+  DashboardCard,
   DashCardId,
   Dataset,
   Series,
@@ -47,7 +47,7 @@ import { shouldShowParameterMapper } from "./utils";
 
 interface DashCardVisualizationProps {
   dashboard: Dashboard;
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   series: Series;
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
   parameterValuesBySlug: Record<string, ParameterValueOrArray>;
@@ -63,7 +63,6 @@ interface DashCardVisualizationProps {
 
   expectedDuration: number;
   isSlow: CardSlownessStatus;
-  isAction: boolean;
 
   isPreviewing: boolean;
   isEmbed: boolean;
@@ -110,7 +109,6 @@ function DashCardVisualization({
   totalNumGridCols,
   expectedDuration,
   error,
-  isAction,
   headerIcon,
   isSlow,
   isPreviewing,
@@ -252,7 +250,6 @@ function DashCardVisualization({
       errorIcon={error?.icon}
       showTitle
       isDashboard
-      isAction={isAction}
       isSlow={isSlow}
       isFullscreen={isFullscreen}
       isNightMode={isNightMode}

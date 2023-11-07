@@ -1,7 +1,7 @@
 (ns metabase.events.view-log-test
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.events :as events]
    [metabase.events.view-log :as view-log]
    [metabase.models :refer [Card Dashboard Table User ViewLog]]
@@ -15,7 +15,7 @@
   (mt/with-temp [User user {}
                  Card card {:creator_id (:id user)}]
 
-    (events/publish-event! :event/card-create card)
+    (events/publish-event! :event/card-create {:object card :user-id (:id user)})
     (is (= {:user_id  (:id user)
             :model    "card"
             :model_id (:id card)}
@@ -25,7 +25,7 @@
   (mt/with-temp [User user {}
                  Card card {:creator_id (:id user)}]
 
-    (events/publish-event! :event/card-read card)
+    (events/publish-event! :event/card-read {:object card :user-id (:id user)})
     (is (= {:user_id  (:id user)
             :model    "card"
             :model_id (:id card)}
@@ -34,19 +34,21 @@
 (deftest card-query-test
   (mt/with-temp [User user {}
                  Card card {:creator_id (:id user)}]
-
-    (events/publish-event! :event/card-query (assoc card :cached false :ignore_cache true))
+    (events/publish-event! :event/card-query {:cached       false
+                                              :ignore_cache true
+                                              :card-id      (:id card)
+                                              :user-id      (:id user)
+                                              :context      "dashboard"})
     (is (= {:user_id  (:id user)
             :model    "card"
             :model_id (:id card)
-            :metadata {:cached false :ignore_cache true :context nil}}
+            :metadata {:cached false :ignore_cache true :context "dashboard"}}
            (t2/select-one [ViewLog :user_id :model :model_id :metadata], :user_id (:id user))))))
 
 (deftest table-read-test
   (mt/with-temp [User  user  {}
                  Table table {}]
-
-    (events/publish-event! :event/table-read (assoc table :actor_id (:id user)))
+    (events/publish-event! :event/table-read {:object table :user-id (:id user)})
     (is (= {:user_id  (:id user)
             :model    "table"
             :model_id (:id table)}
@@ -55,7 +57,7 @@
 (deftest dashboard-read-test
   (mt/with-temp [User      user {}
                  Dashboard dashboard {:creator_id (:id user)}]
-    (events/publish-event! :event/dashboard-read dashboard)
+    (events/publish-event! :event/dashboard-read {:object dashboard :user-id (:id user)})
     (is (= {:user_id  (:id user)
             :model    "dashboard"
             :model_id (:id dashboard)}
@@ -87,21 +89,20 @@
         (mt/with-test-user :crowberto
           ;; ensure no views from any other tests/temp items exist
           (view-log/user-recent-views! [])
-          (doseq [{:keys [topic item]} [{:topic :event/card-query,     :item dataset} ; oldest view
-                                        {:topic :event/card-query,     :item dataset}
-                                        {:topic :event/card-query,     :item card1}
-                                        {:topic :event/card-query,     :item card1}
-                                        {:topic :event/card-query,     :item card1}
-                                        {:topic :event/dashboard-read, :item dash}
-                                        {:topic :event/card-query,     :item card1}
-                                        {:topic :event/dashboard-read, :item dash}
-                                        {:topic :event/table-read,     :item table1}
-                                        {:topic :event/card-query,     :item archived}
-                                        {:topic :event/table-read,     :item hidden-table}]]
+          (doseq [{:keys [topic event]} [{:topic :event/card-query     :event {:card-id (:id dataset)}} ; oldest view
+                                         {:topic :event/card-query     :event {:card-id (:id dataset)}}
+                                         {:topic :event/card-query     :event {:card-id (:id card1)}}
+                                         {:topic :event/card-query     :event {:card-id (:id card1)}}
+                                         {:topic :event/card-query     :event {:card-id (:id card1)}}
+                                         {:topic :event/dashboard-read :event {:object dash}}
+                                         {:topic :event/card-query     :event {:card-id (:id card1)}}
+                                         {:topic :event/dashboard-read :event {:object dash}}
+                                         {:topic :event/table-read     :event {:object table1}}
+                                         {:topic :event/card-query     :event {:card-id (:id archived)}}
+                                         {:topic :event/table-read     :event {:object hidden-table}}]]
             (events/publish-event! topic
-                                   ;; view log entries look for the `:actor_id` in the item being viewed to set that
-                                   ;; view's :user_id
-                                   (assoc item :actor_id (mt/user->id :crowberto))))
+                                   (assoc event :user-id (mt/user->id :crowberto))))
+
           (is (= [{:model "table" :model_id (u/the-id hidden-table)}
                   {:model "card" :model_id (u/the-id archived)}
                   {:model "table" :model_id (u/the-id table1)}
@@ -127,7 +128,7 @@
         (mt/with-test-user :crowberto
           (is (nil? (view-log/most-recently-viewed-dashboard! nil)))
           (is (nil? (view-log/most-recently-viewed-dashboard)))
-          (events/publish-event! :event/dashboard-read (assoc dash :actor_id (mt/user->id :crowberto)))
+          (events/publish-event! :event/dashboard-read {:object dash :user-id (mt/user->id :crowberto)})
           (is (= (u/the-id dash)
                  (view-log/most-recently-viewed-dashboard)))
           (testing "When the user's most recent dashboard view is older than 24 hours, return `nil`."

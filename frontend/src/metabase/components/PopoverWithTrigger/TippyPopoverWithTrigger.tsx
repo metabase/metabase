@@ -12,29 +12,37 @@ export type TippyPopoverWithTriggerRef = {
 export type TippyPopoverWithTriggerProps = {
   isInitiallyVisible?: boolean;
   popoverRef?: RefObject<TippyPopoverWithTriggerRef>;
+  onClose?: () => void;
 } & Omit<ControlledPopoverWithTriggerProps, "visible" | "onClose" | "onOpen">;
 
+/**
+ * @deprecated prefer Popover from "metabase/ui" instead
+ */
 function UncontrolledPopoverWithTrigger({
   isInitiallyVisible,
   popoverRef,
+  onClose,
   ...props
 }: TippyPopoverWithTriggerProps) {
   const [visible, setVisible] = useState(isInitiallyVisible || false);
 
-  const onOpen = useCallback(() => setVisible(true), []);
-  const onClose = useCallback(() => setVisible(false), []);
+  const handleOpen = useCallback(() => setVisible(true), []);
+  const handleClose = useCallback(() => {
+    setVisible(false);
+    onClose?.();
+  }, [onClose]);
 
   useImperativeHandle(popoverRef, () => ({
-    open: onOpen,
-    close: onClose,
+    open: handleOpen,
+    close: handleClose,
   }));
 
   return (
     <ControlledPopoverWithTrigger
       {...props}
       visible={visible}
-      onOpen={onOpen}
-      onClose={onClose}
+      onOpen={handleOpen}
+      onClose={handleClose}
     />
   );
 }

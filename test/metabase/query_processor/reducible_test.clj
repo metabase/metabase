@@ -36,7 +36,8 @@
                                           {:database (mt/id)
                                            :type     :query
                                            :query    {:source-table (mt/id :venues), :limit 3}}
-                                          {:rff print-rows-rff}))))]
+                                          print-rows-rff
+                                          nil))))]
       (is (= 3
              @qp-result))
       (is (= ["ROW 1 -> [1 \"Red Medicine\" 4 10.0646 -165.374 3]"
@@ -44,30 +45,32 @@
               "ROW 3 -> [3 \"The Apple Pan\" 11 34.0406 -118.428 2]"]
              output)))))
 
-(defn print-rows-to-writer-context [filename]
+(defn print-rows-to-writer-rff-and-context [filename]
   (letfn [(reducef* [rff context metadata reducible-rows]
             (with-open [w (io/writer filename)]
               (binding [*out* w]
                 (context.default/default-reducef rff context metadata reducible-rows))))]
-    {:reducef reducef*
-     :rff     print-rows-rff}))
+    {:rff     print-rows-rff
+     :context {:reducef reducef*}}))
 
 (deftest ^:parallel write-rows-to-file-test
   (mt/with-temp-file [filename "out.txt"]
     (try
-      (is (= 3
-             (qp/process-query
-              {:database (mt/id)
-               :type     :query
-               :query    {:source-table (mt/id :venues), :limit 3}}
-              (print-rows-to-writer-context filename))))
-      (is (= ["ROW 1 -> [1 \"Red Medicine\" 4 10.0646 -165.374 3]"
-              "ROW 2 -> [2 \"Stout Burgers & Beers\" 11 34.0996 -118.329 2]"
-              "ROW 3 -> [3 \"The Apple Pan\" 11 34.0406 -118.428 2]"]
-             (str/split-lines (slurp filename))))
-      (finally
-        (u/ignore-exceptions
-         (.delete (io/file filename)))))))
+     (let [{:keys [rff context]} (print-rows-to-writer-rff-and-context filename)]
+       (is (= 3
+              (qp/process-query
+               {:database (mt/id)
+                :type     :query
+                :query    {:source-table (mt/id :venues), :limit 3}}
+               rff
+               context))))
+     (is (= ["ROW 1 -> [1 \"Red Medicine\" 4 10.0646 -165.374 3]"
+             "ROW 2 -> [2 \"Stout Burgers & Beers\" 11 34.0996 -118.329 2]"
+             "ROW 3 -> [3 \"The Apple Pan\" 11 34.0406 -118.428 2]"]
+            (str/split-lines (slurp filename))))
+     (finally
+      (u/ignore-exceptions
+       (.delete (io/file filename)))))))
 
 (defn- maps-rff [metadata]
   (let [ks (mapv (comp keyword :name) (:cols metadata))]
@@ -84,11 +87,12 @@
     (is (= [{:ID 1, :CATEGORY_ID 4,  :LATITUDE 10.0646, :LONGITUDE -165.374, :NAME "Red Medicine",          :PRICE 3}
             {:ID 2, :CATEGORY_ID 11, :LATITUDE 34.0996, :LONGITUDE -118.329, :NAME "Stout Burgers & Beers", :PRICE 2}]
            (mt/rows
-             (qp/process-query
-              {:database (mt/id)
-               :type     :query
-               :query    {:source-table (mt/id :venues), :limit 2, :order-by [[:asc (mt/id :venues :id)]]}}
-              {:rff maps-rff}))))))
+            (qp/process-query
+             {:database (mt/id)
+              :type     :query
+              :query    {:source-table (mt/id :venues), :limit 2, :order-by [[:asc (mt/id :venues :id)]]}}
+             maps-rff
+             nil))))))
 
 (deftest ^:parallel cancelation-test
   (testing "Example of canceling a query early before results are returned."
@@ -153,10 +157,10 @@
                    :rows [{:n 1} {:n 2} {:n 3} {:n 4} {:n 5}]}}
            ((qp.reducible/sync-qp (qp.reducible/async-qp qp.reducible/identity-qp))
             {}
+            maps-rff
             {:executef (fn [_ _ _ respond]
                          (respond {:cols [{:name "n"}]}
-                                  [[1] [2] [3] [4] [5]]))
-             :rff      maps-rff})))))
+                                  [[1] [2] [3] [4] [5]]))})))))
 
 (deftest ^:parallel row-type-agnostic-test
   (let [api-qp-middleware-options (delay (-> (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query users {:limit 1}))

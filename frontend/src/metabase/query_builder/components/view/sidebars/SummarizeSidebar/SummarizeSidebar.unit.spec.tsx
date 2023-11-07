@@ -2,7 +2,7 @@ import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
 import { render, screen, waitFor, within } from "__support__/ui";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import type { Card, UnsavedCard } from "metabase-types/api";
 import {
   ORDERS,

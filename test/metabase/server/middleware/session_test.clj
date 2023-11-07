@@ -4,9 +4,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [environ.core :as env]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
-   [metabase.config :as config]
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -39,19 +38,19 @@
   (testing "`SameSite` value is read from config (env)"
     (is (= :lax ; Default value
            (with-redefs [env/env (dissoc env/env :mb-session-cookie-samesite)]
-             (#'config/mb-session-cookie-samesite*))))
+             (mw.session/session-cookie-samesite))))
 
     (is (= :strict
            (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "StRiCt")]
-             (#'config/mb-session-cookie-samesite*))))
+             (mw.session/session-cookie-samesite))))
 
     (is (= :none
            (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "NONE")]
-             (#'config/mb-session-cookie-samesite*))))
+             (mw.session/session-cookie-samesite))))
 
-    (is (thrown-with-msg? ExceptionInfo #"Invalid value for MB_SESSION_COOKIE_SAMESITE"
+    (is (thrown-with-msg? ExceptionInfo #"Invalid value for session cookie samesite"
           (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "invalid value")]
-            (#'config/mb-session-cookie-samesite*))))))
+            (mw.session/session-cookie-samesite))))))
 
 (deftest set-session-cookie-test
   (mt/with-temporary-setting-values [session-timeout nil]
@@ -82,22 +81,22 @@
                      (get-in [:cookies "metabase.SESSION"])))))))))
 
 (deftest samesite-none-log-warning-test
-  (with-redefs [config/mb-session-cookie-samesite :none]
+  (mt/with-temporary-setting-values [session-cookie-samesite :none]
     (let [session {:id   (random-uuid)
                    :type :normal}
           request-time (t/zoned-date-time "2022-07-06T02:00Z[UTC]")]
-         (testing "should log a warning if SameSite is configured to \"None\" and the site is served over an insecure connection."
-           (is (contains? (into #{}
-                                (map (fn [[_log-level _error message]] message))
-                                (mt/with-log-messages-for-level :warn
-                                  (mw.session/set-session-cookies {:headers {"x-forwarded-proto" "http"}} {} session request-time)))
-                          "Session cookies SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions. https://www.chromestatus.com/feature/5633521622188032")))
-         (testing "should not log a warning over a secure connection."
-           (is (not (contains? (into #{}
-                                     (map (fn [[_log-level _error message]] message))
-                                     (mt/with-log-messages-for-level :warn
-                                       (mw.session/set-session-cookies {:headers {"x-forwarded-proto" "https"}} {} session request-time)))
-                               "Session cookies SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions. https://www.chromestatus.com/feature/5633521622188032")))))))
+      (testing "should log a warning if SameSite is configured to \"None\" and the site is served over an insecure connection."
+        (is (contains? (into #{}
+                             (map (fn [[_log-level _error message]] message))
+                             (mt/with-log-messages-for-level :warn
+                               (mw.session/set-session-cookies {:headers {"x-forwarded-proto" "http"}} {} session request-time)))
+                       "Session cookies SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions. https://www.chromestatus.com/feature/5633521622188032")))
+      (testing "should not log a warning over a secure connection."
+        (is (not (contains? (into #{}
+                                  (map (fn [[_log-level _error message]] message))
+                                  (mt/with-log-messages-for-level :warn
+                                    (mw.session/set-session-cookies {:headers {"x-forwarded-proto" "https"}} {} session request-time)))
+                            "Session cookies SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions. https://www.chromestatus.com/feature/5633521622188032")))))))
 
 ;; if request is an HTTPS request then we should set `:secure true`. There are several different headers we check for
 ;; this. Make sure they all work.

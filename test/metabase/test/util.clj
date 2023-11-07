@@ -11,25 +11,19 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [colorize.core :as colorize]
    [environ.core :as env]
-   [java-time :as t]
+   [java-time.api :as t]
    [mb.hawk.parallel]
    [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]
    [metabase.models
-    :refer [Collection
-            Dimension
-            Field
-            FieldValues
-            Permissions
-            PermissionsGroup
-            PermissionsGroupMembership
-            Table
-            User]]
+    :refer [Card Collection Dimension Field FieldValues Permissions
+            PermissionsGroup PermissionsGroupMembership Table User]]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
+   [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.timeline :as timeline]
+   [metabase.models.timeline-event :as timeline-event]
    [metabase.plugins.classloader :as classloader]
    [metabase.task :as task]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
@@ -115,6 +109,9 @@
    :model/Collection
    (fn [_] (default-created-at-timestamped {:name (tu.random/random-name)}))
 
+   :model/Action
+   (fn [_] {:creator_id (rasta-id)})
+
    :model/Dashboard
    (fn [_] (default-timestamped
              {:creator_id (rasta-id)
@@ -167,8 +164,7 @@
              {:creator_id  (rasta-id)
               :definition  {}
               :description "Lookin' for a blueberry"
-              :name        "Toucans in the rainforest"
-              :table_id    (data/id :checkins)}))
+              :name        "Toucans in the rainforest"}))
 
    :model/NativeQuerySnippet
    (fn [_] (default-timestamped
@@ -179,10 +175,10 @@
    :model/PersistedInfo
    (fn [_] {:question_slug (tu.random/random-name)
             :query_hash    (tu.random/random-hash)
-            :definition    {:table-name (tu.random/random-name)
+            :definition    {:table-name        (tu.random/random-name)
                             :field-definitions (repeatedly
-                                                4
-                                                #(do {:field-name (tu.random/random-name) :base-type "type/Text"}))}
+                                                 4
+                                                 #(do {:field-name (tu.random/random-name) :base-type "type/Text"}))}
             :table_name    (tu.random/random-name)
             :active        true
             :state         "persisted"
@@ -247,14 +243,14 @@
      (default-timestamped
        {:name       "Timeline of bird squawks"
         :default    false
-        :icon       timeline/DefaultIcon
+        :icon       timeline-event/default-icon
         :creator_id (rasta-id)}))
 
    :model/TimelineEvent
    (fn [_]
      (default-timestamped
        {:name         "default timeline event"
-        :icon         timeline/DefaultIcon
+        :icon         timeline-event/default-icon
         :timestamp    (t/zoned-date-time)
         :timezone     "US/Pacific"
         :time_matters true
@@ -442,6 +438,8 @@
        ~@body)))
 
 
+
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   SCHEDULER                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -570,6 +568,69 @@
   Only works for models that have a numeric primary key e.g. `:id`."
   [models & body]
   `(do-with-model-cleanup ~models (fn [] ~@body)))
+
+(deftest with-model-cleanup-test
+  (testing "Make sure the with-model-cleanup macro actually works as expected"
+    (t2.with-temp/with-temp [Card other-card]
+      (let [card-count-before (t2/count Card)
+            card-name         (tu.random/random-name)]
+        (with-model-cleanup [Card]
+          (t2/insert! Card (-> other-card (dissoc :id :entity_id) (assoc :name card-name)))
+          (testing "Card count should have increased by one"
+            (is (= (inc card-count-before)
+                   (t2/count Card))))
+          (testing "Card should exist"
+            (is (t2/exists? Card :name card-name))))
+        (testing "Card should be deleted at end of with-model-cleanup form"
+          (is (= card-count-before
+                 (t2/count Card)))
+          (is (not (t2/exists? Card :name card-name)))
+          (testing "Shouldn't delete other Cards"
+            (is (pos? (t2/count Card)))))))))
+
+(defn do-with-verified-cards
+  "Impl for [[with-verified-cards]]."
+  [card-or-ids thunk]
+  (with-model-cleanup [:model/ModerationReview]
+    (doseq [card-or-id card-or-ids]
+      (doseq [status ["verified" nil "verified"]]
+        ;; create multiple moderation review for a card, but the end result is it's still verified
+        (moderation-review/create-review!
+         {:moderated_item_id   (u/the-id card-or-id)
+          :moderated_item_type "card"
+          :moderator_id        ((requiring-resolve 'metabase.test.data.users/user->id) :rasta)
+          :status              status})))
+    (thunk)))
+
+(defmacro with-verified-cards
+  "Execute the body with all `card-or-ids` verified."
+  [card-or-ids & body]
+  `(do-with-verified-cards ~card-or-ids (fn [] ~@body)))
+
+(deftest with-verified-cards-test
+  (t2.with-temp/with-temp
+    [:model/Card {card-id :id} {}]
+    (with-verified-cards [card-id]
+      (is (=? #{{:moderated_item_id   card-id
+                 :moderated_item_type :card
+                 :most_recent         true
+                 :status              "verified"}
+                {:moderated_item_id   card-id
+                 :moderated_item_type :card
+                 :most_recent         false
+                 :status              nil}
+                {:moderated_item_id   card-id
+                 :moderated_item_type :card
+                 :most_recent         false
+                 :status              "verified"}}
+              (t2/select-fn-set #(select-keys % [:moderated_item_id :moderated_item_type :most_recent :status])
+                                :model/ModerationReview
+                                :moderated_item_id card-id
+                                :moderated_item_type "card"))))
+    (testing "everything is cleaned up after the macro"
+      (is (= 0 (t2/count :model/ModerationReview
+                         :moderated_item_id card-id
+                         :moderated_item_type "card"))))))
 
 ;; TODO - not 100% sure I understand
 (defn call-with-paused-query

@@ -73,29 +73,57 @@ export const isNavigationAllowed = ({
    * If there is no "question" there is no reason to prevent navigation.
    * If there is no "destination" then it's beforeunload event, which is
    * handled by useBeforeUnload hook - no reason to duplicate its work.
-   *
-   * If it's a new question, we're going to deal with it later as part of the epic:
-   * https://github.com/metabase/metabase/issues/33749
    */
-  if (!question || !destination || isNewQuestion) {
+  if (!question || !destination) {
     return true;
   }
 
   const { hash, pathname } = destination;
 
-  if (question.isDataset()) {
-    const isGoingToQueryTab =
-      pathname.startsWith("/model/") && pathname.endsWith("/query");
-    const isGoingToMetadataTab =
-      pathname.startsWith("/model/") && pathname.endsWith("/metadata");
+  const runModelPathnames = question.isStructured()
+    ? ["/model", "/model/notebook"]
+    : ["/model"];
+  const isRunningModel =
+    runModelPathnames.includes(pathname) && hash.length > 0;
+  const validSlugs = [question.id(), question.slug()]
+    .filter(Boolean)
+    .map(String);
 
-    return isGoingToQueryTab || isGoingToMetadataTab;
+  if (question.isDataset()) {
+    if (isNewQuestion) {
+      const allowedPathnames = ["/model/query", "/model/metadata"];
+      return isRunningModel || allowedPathnames.includes(pathname);
+    }
+
+    const allowedPathnames = validSlugs.flatMap(slug => [
+      `/model/${slug}`,
+      `/model/${slug}/query`,
+      `/model/${slug}/metadata`,
+    ]);
+
+    return isRunningModel || allowedPathnames.includes(pathname);
   }
 
   if (question.isNative()) {
     const isRunningQuestion = pathname === "/question" && hash.length > 0;
-
     return isRunningQuestion;
+  }
+
+  /**
+   * New structured questions will be handled in
+   * https://github.com/metabase/metabase/issues/34686
+   */
+  if (!isNewQuestion && question.isStructured()) {
+    const isRunningQuestion =
+      ["/question", "/question/notebook"].includes(pathname) && hash.length > 0;
+    const allowedPathnames = validSlugs.flatMap(slug => [
+      `/question/${slug}`,
+      `/question/${slug}/notebook`,
+    ]);
+
+    return (
+      isRunningModel || isRunningQuestion || allowedPathnames.includes(pathname)
+    );
   }
 
   return true;

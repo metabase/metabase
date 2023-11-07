@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 
 import {
@@ -208,7 +209,7 @@ describe("getStackedTooltipModel", () => {
     series: () => null,
   };
   const dashboard = {
-    ordered_cards: [],
+    dashcards: [],
   };
   const cols = [StringColumn(), NumberColumn()];
   const getMockSeries = ({ card, rows, hasBreakout }) => {

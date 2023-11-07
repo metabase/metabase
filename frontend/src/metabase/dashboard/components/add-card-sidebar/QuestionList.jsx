@@ -19,7 +19,7 @@ import {
 
 QuestionList.propTypes = {
   searchText: PropTypes.string,
-  collectionId: PropTypes.string,
+  collectionId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   onSelect: PropTypes.func.isRequired,
   hasCollections: PropTypes.bool,
 };

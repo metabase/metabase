@@ -45,6 +45,8 @@ jobs:
       run: ./bin/build.sh
     - name: Prepare uberjar artifact
       uses: ./.github/actions/prepare-uberjar-artifact
+      with:
+        name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
 
   check_jar_health:
     runs-on: ubuntu-22.04
@@ -66,7 +68,7 @@ jobs:
     - uses: actions/download-artifact@v3
       name: Retrieve uberjar artifact
       with:
-        name: metabase-${{ matrix.edition }}-uberjar
+        name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
     - name: Launch uberjar
       run: java -jar ./target/uberjar/metabase.jar &
     - name: Wait for Metabase to start
@@ -98,7 +100,7 @@ jobs:
     - name: Download uploaded artifacts to insert into container
       uses: actions/download-artifact@v3
       with:
-        name: metabase-${{ matrix.edition }}-uberjar
+        name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
         path: bin/docker/
     - name: Move the ${{ matrix.edition }} uberjar to the context dir
       run: mv bin/docker/target/uberjar/metabase.jar bin/docker/.
@@ -216,7 +218,7 @@ jobs:
       - name: Download uploaded artifacts to insert into container
         uses: actions/download-artifact@v3
         with:
-          name: metabase-${{ matrix.edition }}-uberjar
+          name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
           path: bin/docker/
       - name: Move the ${{ matrix.edition }} uberjar to the context dir
         run: mv bin/docker/target/uberjar/metabase.jar bin/docker/.

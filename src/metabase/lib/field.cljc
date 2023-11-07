@@ -313,8 +313,10 @@
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :metadata/column
   [metadata unit]
   (if unit
-    (assoc metadata ::temporal-unit unit)
-    (dissoc metadata ::temporal-unit)))
+    (assoc metadata
+           ::temporal-unit unit
+           ::original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata))
+    (dissoc metadata ::temporal-unit ::original-effective-type)))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :field
   [query stage-number field-ref]
@@ -418,6 +420,8 @@
                                    {:join-alias join-alias})
                                  (when-let [temporal-unit (::temporal-unit metadata)]
                                    {:temporal-unit temporal-unit})
+                                 (when-let [original-effective-type (::original-effective-type metadata)]
+                                   {::original-effective-type original-effective-type})
                                  (when-let [binning (::binning metadata)]
                                    {:binning binning})
                                  (when-let [source-field-id (:fk-field-id metadata)]
@@ -518,6 +522,14 @@
   "Find the field id for something or nil."
   [field-metadata :- lib.metadata/ColumnMetadata]
   (:id field-metadata))
+
+(mu/defn legacy-card-or-table-id :- [:maybe [:or :string ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+  "Find the legacy card id or table id for a given ColumnMetadata or nil.
+   Returns a either `\"card__<id>\"` or integer table id."
+  [{card-id :lib/card-id table-id :table-id} :- lib.metadata/ColumnMetadata]
+  (cond
+    card-id (str "card__" card-id)
+    table-id table-id))
 
 (defn- populate-fields-for-stage
   "Given a query and stage, sets the `:fields` list to be the fields which would be selected by default.

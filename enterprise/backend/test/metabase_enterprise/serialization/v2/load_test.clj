@@ -1,7 +1,7 @@
 (ns ^:mb/once metabase-enterprise.serialization.v2.load-test
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as serdes.extract]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
@@ -506,7 +506,7 @@
                                                      :target       (s/eq [:dimension [:field ["my-db" nil "orders" "subtotal"]
                                                                                       {:source-field ["my-db" nil "orders" "invoice"]}]])}]
                                s/Keyword s/Any}]
-                       (:ordered_cards dash))))
+                       (:dashcards dash))))
 
               (testing "exported :visualization_settings are properly converted"
                 (let [expected {:table.pivot_column "SOURCE"
@@ -529,7 +529,7 @@
                   (is (= expected
                          (:visualization_settings card)))
                   (is (= expected
-                         (-> dash :ordered_cards first :visualization_settings))))))))
+                         (-> dash :dashcards first :visualization_settings))))))))
 
 
         (testing "deserializing adjusts the IDs properly"
@@ -702,8 +702,16 @@
           (ts/with-source-db
             (reset! user1s    (ts/create! User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             (reset! user2s    (ts/create! User :first_name "Neil"  :last_name "Peart"   :email "neil@rush.yyz"))
-            (reset! metric1s  (ts/create! Metric :name "Large Users"       :creator_id (:id @user1s) :definition {:aggregation [[:count]]}))
-            (reset! metric2s  (ts/create! Metric :name "Support Headaches" :creator_id (:id @user2s) :definition {:aggregation [[:count]]}))
+            (reset! metric1s  (ts/create! Metric
+                                          :name "Large Users"
+                                          :table_id   (mt/id :venues)
+                                          :creator_id (:id @user1s)
+                                          :definition {:aggregation [[:count]]}))
+            (reset! metric2s  (ts/create! Metric
+                                          :name "Support Headaches"
+                                          :table_id   (mt/id :venues)
+                                          :creator_id (:id @user2s)
+                                          :definition {:aggregation [[:count]]}))
             (reset! serialized (into [] (serdes.extract/extract {})))))
 
         (testing "exported form is properly converted"
@@ -718,9 +726,9 @@
             ;; Create another random user to change the user IDs.
             (ts/create! User   :first_name "Gideon" :last_name "Nav" :email "griddle@ninth.tomb")
             ;; Likewise, create some other metrics.
-            (ts/create! Metric :name "Other metric A")
-            (ts/create! Metric :name "Other metric B")
-            (ts/create! Metric :name "Other metric C")
+            (ts/create! Metric :name "Other metric A" :table_id (mt/id :venues))
+            (ts/create! Metric :name "Other metric B" :table_id (mt/id :venues))
+            (ts/create! Metric :name "Other metric C" :table_id (mt/id :venues))
             (reset! user1d  (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
 
             ;; Load the serialized content.

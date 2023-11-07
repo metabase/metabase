@@ -1,4 +1,4 @@
-(ns metabase-enterprise.audit-app.pages.dashboard-subscriptions-test
+(ns ^:mb/once metabase-enterprise.audit-app.pages.dashboard-subscriptions-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

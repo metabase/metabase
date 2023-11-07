@@ -1,118 +1,113 @@
+import isPropValid from "@emotion/is-prop-valid";
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
+import type { AnchorHTMLAttributes, HTMLAttributes, RefObject } from "react";
+import { PLUGIN_MODERATION } from "metabase/plugins";
+import type { AnchorProps, BoxProps, ButtonProps } from "metabase/ui";
+import { Box, Divider, Stack, Anchor, Button } from "metabase/ui";
 
-import { color, lighten } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
-import Link from "metabase/core/components/Link";
-import Text from "metabase/components/type/Text";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
+const { ModerationStatusIcon } = PLUGIN_MODERATION;
 
-interface ResultStylesProps {
-  compact: boolean;
-  active: boolean;
-  isSelected: boolean;
-}
+const isBoxPropValid = (propName: PropertyKey) => {
+  return (
+    propName !== "isActive" &&
+    propName !== "isSelected" &&
+    isPropValid(propName)
+  );
+};
 
-export const TitleWrapper = styled.div`
-  display: flex;
-  grid-gap: 0.25rem;
+export const ResultTitle = styled(Anchor)<
+  AnchorProps & AnchorHTMLAttributes<HTMLAnchorElement>
+>`
+  line-height: unset;
+  font-weight: 700;
+  font-size: ${({ theme }) => theme.fontSizes.md};
+
+  color: ${({ theme }) => theme.colors.text[2]};
+
+  &:hover,
+  &:focus-visible,
+  &:focus {
+    text-decoration: none;
+    color: ${({ theme }) => theme.colors.brand[1]};
+    outline: 0;
+  }
+`;
+
+export const SearchResultContainer = styled(Box, {
+  shouldForwardProp: isBoxPropValid,
+})<
+  BoxProps &
+    HTMLAttributes<HTMLButtonElement> & {
+      isActive?: boolean;
+      isSelected?: boolean;
+      component?: string;
+      ref?: RefObject<HTMLButtonElement> | null;
+    }
+>`
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  justify-content: center;
   align-items: center;
+  gap: 0.5rem 0.75rem;
+
+  padding: ${({ theme }) => theme.spacing.sm};
+
+  ${({ theme, isActive, isSelected }) =>
+    isActive &&
+    css`
+      border-radius: ${theme.radius.md};
+      color: ${isSelected && theme.colors.brand[1]};
+      background-color: ${isSelected && theme.colors.brand[0]};
+
+      ${ResultTitle} {
+        color: ${isSelected && theme.colors.brand[1]};
+      }
+
+      &:hover {
+        background-color: ${theme.colors.brand[0]};
+        cursor: pointer;
+
+        ${ResultTitle} {
+          color: ${theme.colors.brand[1]};
+        }
+      }
+
+      &:focus-within {
+        background-color: ${theme.colors.brand[0]};
+      }
+    `}
 `;
 
-export const Title = styled("h3")<{ active: boolean }>`
-  margin-bottom: 4px;
-  color: ${props => color(props.active ? "text-dark" : "text-medium")};
+export const ResultNameSection = styled(Stack)`
+  overflow: hidden;
 `;
 
-export const ResultButton = styled.button<ResultStylesProps>`
-  ${props => resultStyles(props)}
-  padding-right: 0.5rem;
-  text-align: left;
-  cursor: pointer;
-  width: 100%;
-
-  &:hover {
-    ${Title} {
-      color: ${color("brand")};
-    }
-  }
+export const ModerationIcon = styled(ModerationStatusIcon)`
+  overflow: unset;
 `;
 
-export const ResultLink = styled(Link)<ResultStylesProps>`
-  ${props => resultStyles(props)}
+export const LoadingSection = styled(Box)<BoxProps>`
+  grid-row: 1 / span 1;
+  grid-column: 3;
 `;
 
-const resultStyles = ({ compact, active, isSelected }: ResultStylesProps) => `
-  display: block;
-  background-color: ${isSelected ? lighten("brand", 0.63) : "transparent"};
-  min-height: ${compact ? "36px" : "54px"};
-  padding-top: ${space(1)};
-  padding-bottom: ${space(1)};
-  padding-left: 14px;
-  padding-right: ${compact ? "20px" : space(3)};
-  cursor: ${active ? "pointer" : "default"};
-
-  &:hover {
-    background-color: ${active ? lighten("brand", 0.63) : ""};
-
-    h3 {
-      color: ${active || isSelected ? color("brand") : ""};
-    }
-  }
-
-  ${Link.Root} {
-    text-underline-position: under;
-    text-decoration: underline ${color("text-light")};
-    text-decoration-style: dashed;
-
-    &:hover {
-      color: ${active ? color("brand") : ""};
-      text-decoration-color: ${active ? color("brand") : ""};
-    }
-  }
-
-  ${Text} {
-    margin-top: 0;
-    margin-bottom: 0;
-    font-size: 13px;
-    line-height: 19px;
-  }
-
-  h3 {
-    font-size: ${compact ? "14px" : "16px"};
-    line-height: 1.2em;
-    overflow-wrap: anywhere;
-    margin-bottom: 0;
-    color: ${active && isSelected ? color("brand") : ""};
-  }
-
-  .Icon-info {
-    color: ${color("text-light")};
-  }
+export const XRaySection = styled(Box)<BoxProps>`
+  grid-row: 1 / span 1;
+  grid-column: 4;
 `;
 
-export const ResultInner = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+export const XRayButton = styled(Button)<
+  ButtonProps & HTMLAttributes<HTMLButtonElement>
+>`
+  width: 2rem;
+  height: 2rem;
 `;
 
-export const ResultLinkContent = styled.div`
-  display: flex;
-  align-items: start;
-  overflow-wrap: anywhere;
+export const DescriptionSection = styled(Box)`
+  grid-column-start: 2;
 `;
 
-export const Description = styled(Text)`
-  padding-left: ${space(1)};
-  margin-top: ${space(1)} !important;
-  border-left: 2px solid ${lighten("brand", 0.45)};
-`;
-
-export const ResultSpinner = styled(LoadingSpinner)`
-  display: flex;
-  flex-grow: 1;
-  align-self: center;
-  justify-content: flex-end;
-  margin-left: ${space(1)};
-  color: ${color("brand")};
+export const DescriptionDivider = styled(Divider)`
+  border-radius: ${({ theme }) => theme.radius.xs};
 `;

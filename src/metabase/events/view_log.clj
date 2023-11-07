@@ -1,6 +1,6 @@
 (ns metabase.events.view-log
   (:require
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.events :as events]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.view-log :refer [ViewLog]]
@@ -16,7 +16,6 @@
 
 (derive :event/card-create ::event)
 (derive :event/card-read ::event)
-(derive :event/card-query ::event)
 (derive :event/dashboard-read ::event)
 (derive :event/table-read ::event)
 
@@ -80,21 +79,35 @@
 
 (methodical/defmethod events/publish-event! ::event
   "Handle processing for a single event notification received on the view-log-channel"
-  [topic object]
+  [topic {:keys [object user-id] :as event}]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
-    (when object
-      (let [model                          (events/topic->model topic)
-            model-id                       (events/object->model-id topic object)
-            user-id                        (events/object->user-id object)
-            ;; `:context` comes
-            ;; from [[metabase.query-processor.middleware.process-userland-query/add-and-save-execution-info-xform!]],
-            ;; and it should only be present for `:event/card-query`
-            {:keys [context] :as metadata} (events/object->metadata object)]
-        (when (and (#{:event/card-query :event/dashboard-read :event/table-read} topic)
-                   ;; we don't want to count pinned card views
-                   ((complement #{:collection :dashboard}) context))
-          (update-users-recent-views! user-id model model-id))
-        (record-view! model model-id user-id metadata)))
-    (catch Throwable e
-      (log/warnf e "Failed to process activity event. %s" topic))))
+   (when event
+     (let [model    (events/topic->model topic)
+           model-id (:id object)
+           metadata (events/object->metadata object)]
+       (when (#{:event/dashboard-read :event/table-read} topic)
+         (update-users-recent-views! user-id model model-id))
+       (record-view! model model-id user-id metadata)))
+   (catch Throwable e
+     (log/warnf e "Failed to process activity event. %s" topic))))
+
+(derive ::card-query :metabase/event)
+(derive :event/card-query ::card-query)
+
+(methodical/defmethod events/publish-event! ::card-query
+  "Handle processing for a single event notification received on the view-log-channel"
+  [topic {:keys [card-id user-id] :as event}]
+  ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
+  (try
+   (when event
+     (let [model                          (events/topic->model topic)
+           ;; `:context` comes
+           ;; from [[metabase.query-processor.middleware.process-userland-query/add-and-save-execution-info-xform!]],
+           {:keys [context] :as metadata} (events/object->metadata event)]
+       ;; we don't want to count pinned card views
+       (when ((complement #{:collection :dashboard}) context)
+         (update-users-recent-views! user-id model card-id))
+       (record-view! model card-id user-id metadata)))
+   (catch Throwable e
+     (log/warnf e "Failed to process activity event. %s" topic))))

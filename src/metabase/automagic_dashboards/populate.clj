@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.filters :as filters]
+   [metabase.automagic-dashboards.util :as magic.util]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.public-settings :as public-settings]
@@ -104,8 +105,8 @@
                                          qp.util/normalize-token
                                          (= :count)))
                          (->> breakout
-                              filters/collect-field-references
-                              (map filters/field-reference->id))
+                              magic.util/collect-field-references
+                              (map magic.util/field-reference->id))
                          aggregation)]
         {:graph.colors (map-to-colors color-keys)}))))
 
@@ -144,7 +145,7 @@
                   :id            (or id (gensym))}
                  (merge (visualization-settings card))
                  card/populate-query-fields)]
-    (update dashboard :ordered_cards conj
+    (update dashboard :dashcards conj
             (merge (card-defaults)
              {:col                    y
               :row                    x
@@ -157,7 +158,7 @@
 (defn add-text-card
   "Add a text card to dashboard `dashboard` at position [`x`, `y`]."
   [dashboard {:keys [text width height visualization-settings]} [x y]]
-  (update dashboard :ordered_cards conj
+  (update dashboard :dashcards conj
           (merge (card-defaults)
                  {:creator_id             api/*current-user-id*
                   :visualization_settings (merge
@@ -254,16 +255,16 @@
             cards)))
 
 (defn- shown-cards
-  "Pick up to `max-cards` with the highest `:score`.
+  "Pick up to `max-cards` with the highest `:card-score`.
    Keep groups together if possible by pulling all the cards within together and
-   using the same (highest) score for all.
-   Among cards with the same score those beloning to the largest group are
+   using the same (highest) card-score for all.
+   Among cards with the same card-score those beloning to the largest group are
    favourized, but it is still possible that not all cards in a group make it
    (consider a group of 4 cards which starts as 7/9; in that case only 2 cards
    from the group will be picked)."
   [max-cards cards]
   (->> cards
-       (sort-by :score >)
+       (sort-by :card-score >)
        (take max-cards)
        (group-by (some-fn :group hash))
        (map (fn [[_ group]]
@@ -273,6 +274,22 @@
        (mapcat :cards)))
 
 (def ^:private ^:const ^Long max-filters 4)
+
+(defn ordered-group-by-seq
+  "A seq from a group-by in a particular order. If you don't need the map itself, just to get the key value pairs in a
+  particular order. Clojure's `sorted-map-by` doesn't handle distinct keys with the same score. So this just iterates
+  over the groupby in a reasonable order."
+  [f key-order coll]
+  (letfn [(access [ks grouped]
+            (if (seq ks)
+              (let [k (first ks)]
+                (lazy-seq
+                 (if-let [x (find grouped k)]
+                   (cons x (access (next ks) (dissoc grouped k)))
+                   (access (next ks) grouped))))
+              (seq grouped)))]
+    (let [g (group-by f coll)]
+      (access key-order g))))
 
 (defn create-dashboard
   "Create dashboard and populate it with cards."
@@ -289,9 +306,12 @@
                         :parameters     []}
          cards         (shown-cards n cards)
          [dashboard _] (->> cards
-                            (partition-by :group)
-                            (reduce (fn [[dashboard grid] cards]
-                                      (let [group (some-> cards first :group groups)]
+                            (ordered-group-by-seq :group
+                                                  (when groups
+                                                    (sort-by (comp (fnil - 0) :score groups)
+                                                             (keys groups))))
+                            (reduce (fn [[dashboard grid] [group-name cards]]
+                                      (let [group (get groups group-name)]
                                         (add-group dashboard grid group cards)))
                                     [dashboard
                                      ;; Height doesn't need to be precise, just some
@@ -301,7 +321,7 @@
                      (count cards)
                      title
                      (str/join "; " (map :title cards))))
-     (cond-> dashboard
+     (cond-> (update dashboard :dashcards (partial sort-by (juxt :row :col)))
        (not-empty filters) (filters/add-filters filters max-filters)))))
 
 (defn- downsize-titles
@@ -317,14 +337,14 @@
 (defn- merge-filters
   [ds]
   (when (->> ds
-             (mapcat :ordered_cards)
+             (mapcat :dashcards)
              (keep (comp :table_id :card))
              distinct
              count
              (= 1))
    [(->> ds (mapcat :parameters) distinct)
     (->> ds
-         (mapcat :ordered_cards)
+         (mapcat :dashcards)
          (mapcat :parameter_mappings)
          (map #(dissoc % :card_id))
          distinct)]))
@@ -335,13 +355,13 @@
   ([target dashboard {:keys [skip-titles?]}]
    (let [[parameters parameter-mappings] (merge-filters [target dashboard])
          offset                         (->> target
-                                             :ordered_cards
+                                             :dashcards
                                              (map #(+ (:row %) (:size_y %)))
                                              (apply max -1) ; -1 so it neturalizes +1 for spacing
                                                             ; if the target dashboard is empty.
                                              inc)
          cards                        (->> dashboard
-                                           :ordered_cards
+                                           :dashcards
                                            (map #(-> %
                                                      (update :row + offset (if skip-titles?
                                                                              0
@@ -362,4 +382,4 @@
                            :visualization-settings {:dashcard.background false
                                                     :text.align_vertical :bottom}}
                           [offset 0]))
-         (update :ordered_cards concat cards)))))
+         (update :dashcards concat cards)))))

@@ -28,20 +28,31 @@
              (not (lib.types.isa/primary-key? column))
              (not (lib.types.isa/structured?  column))
              (not (lib.types.isa/comment?     column))
-             (not (lib.types.isa/description? column)))
+             (not (lib.types.isa/description? column))
+             (not (lib.breakout/breakout-column? query stage-number column)))
     {:lib/type  :metabase.lib.drill-thru/drill-thru
      :type      :drill-thru/distribution
      :column    column}))
+
+(defn- add-temporal-bucketing-or-binning
+  [column]
+  (cond
+    (lib.types.isa/temporal? column)
+    (lib.temporal-bucket/with-temporal-bucket column :month)
+
+    (and (lib.types.isa/numeric? column)
+         (not (lib.types.isa/foreign-key? column)))
+    (lib.binning/with-binning column (lib.binning/default-auto-bin))
+
+    :else
+    column))
 
 (mu/defmethod lib.drill-thru.common/drill-thru-method :drill-thru/distribution :- ::lib.schema/query
   [query                            :- ::lib.schema/query
    stage-number                     :- :int
    {:keys [column] :as _drill-thru} :- ::lib.schema.drill-thru/drill-thru.distribution]
   (when (lib.drill-thru.common/mbql-stage? query stage-number)
-    (let [breakout (cond
-                     (lib.types.isa/temporal? column) (lib.temporal-bucket/with-temporal-bucket column :month)
-                     (lib.types.isa/numeric? column)  (lib.binning/with-binning column (lib.binning/default-auto-bin))
-                     :else                            column)]
+    (let [breakout (add-temporal-bucketing-or-binning column)]
       (-> query
           ;; Remove most of the target stage.
           (lib.util/update-query-stage stage-number dissoc :aggregation :breakout :limit :order-by)

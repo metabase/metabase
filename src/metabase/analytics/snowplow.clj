@@ -2,7 +2,7 @@
   "Functions for sending Snowplow analytics events"
   (:require
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
@@ -138,11 +138,11 @@
   {::account      "1-0-1"
    ::invite       "1-0-1"
    ::csvupload    "1-0-0"
-   ::dashboard    "1-1-0"
+   ::dashboard    "1-1-2"
    ::database     "1-0-0"
    ::instance     "1-1-2"
    ::metabot      "1-0-1"
-   ::search       "1-0-0"
+   ::search       "1-0-1"
    ::model        "1-0-0"
    ::timeline     "1-0-0"
    ::task         "1-0-0"
@@ -209,6 +209,7 @@
    ::new-event-created              ::timeline
    ::new-task-history               ::task
    ::new-search-query               ::search
+   ::search-results-filtered        ::search
    ::action-created                 ::action
    ::action-updated                 ::action
    ::action-deleted                 ::action
@@ -231,4 +232,4 @@
             ^SelfDescribing event (.build builder)]
         (track-event-impl! (tracker) event))
       (catch Throwable e
-        (log/debug e (trs "Error sending Snowplow analytics event {0}" event-kw))))))
+        (log/error e (trs "Error sending Snowplow analytics event {0}" event-kw))))))

@@ -9,11 +9,12 @@
    [clojure.tools.macro :as tools.macro]
    [clojurewerkz.quartzite.scheduler :as qs]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.card :as api.card]
    [metabase.api.pivots :as api.pivots]
+   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -38,10 +39,8 @@
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.revision :as revision :refer [Revision]]
-   [metabase.models.user :refer [User]]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
+   [metabase.models.revision :as revision]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
@@ -397,6 +396,41 @@
                (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
                                                            :f :using_model :model_id model-id))))))))
 
+(deftest get-cards-with-last-edit-info-test
+  (mt/with-temp [:model/Card {card-1-id :id} {:name "Card 1"}
+                 :model/Card {card-2-id :id} {:name "Card 2"}]
+    (with-cards-in-readable-collection [card-1-id card-2-id]
+      (doseq [user-id [(mt/user->id :rasta) (mt/user->id :crowberto)]]
+        (revision/push-revision!
+         {:entity       :model/Card
+          :id           card-1-id
+          :user-id      user-id
+          :is-creation? true
+          :object       {:id card-1-id}}))
+
+      (doseq [user-id [(mt/user->id :crowberto) (mt/user->id :rasta)]]
+        (revision/push-revision!
+         {:entity       :model/Card
+          :id           card-2-id
+          :user-id      user-id
+          :is-creation? true
+          :object       {:id card-2-id}}))
+      (let [results (m/index-by :id (mt/user-http-request :rasta :get 200 "card"))]
+        (is (=? {:name           "Card 1"
+                 :last-edit-info {:id         (mt/user->id :rasta)
+                                  :email      "rasta@metabase.com"
+                                  :first_name "Rasta"
+                                  :last_name  "Toucan"
+                                  :timestamp  some?}}
+                (get results card-1-id)))
+        (is (=? {:name           "Card 2"
+                 :last-edit-info {:id         (mt/user->id :crowberto)
+                                  :email      "crowberto@metabase.com"
+                                  :first_name "Crowberto"
+                                  :last_name  "Corv"
+                                  :timestamp  some?}}
+                (get results card-2-id)))))))
+
 (deftest get-series-for-card-permission-test
   (t2.with-temp/with-temp
     [:model/Card {card-id :id} {:name          "Card"
@@ -641,7 +675,7 @@
                       card-defaults
                       {:name                   (:name card)
                        :collection_id          true
-                       :collection             true
+                       :collection             (assoc collection :is_personal false)
                        :creator_id             (mt/user->id :rasta)
                        :parameters             [{:id "abc123", :name "test", :type "date"}]
                        :parameter_mappings     [{:parameter_id "abc123", :card_id 10,
@@ -663,14 +697,14 @@
                                                  :is_superuser false
                                                  :last_name    "Toucan"
                                                  :first_name   "Rasta"
-                                                 :email        "rasta@metabase.com"})})
+                                                 :email        "rasta@metabase.com"})
+                       :metabase_version       config/mb-version-string})
                      (-> (mt/user-http-request :rasta :post 200 "card" card)
                          (dissoc :created_at :updated_at :id)
                          (update :table_id integer?)
                          (update :database_id integer?)
                          (update :collection_id integer?)
                          (update :dataset_query map?)
-                         (update :collection map?)
                          (update :entity_id string?)
                          (update :result_metadata (partial every? map?))
                          (update :creator dissoc :is_qbnewb)
@@ -774,7 +808,7 @@
   (testing "POST /api/card/:id"
     (testing "saving cache ttl by post actually saves it"
       (mt/with-model-cleanup [:model/Card]
-        (let [card        (card-with-name-and-query)]
+        (let [card (card-with-name-and-query)]
           (is (= 1234
                  (:cache_ttl (mt/user-http-request :rasta
                                                    :post
@@ -1055,15 +1089,16 @@
                    :database_id            (mt/id) ; these should be inferred from the dataset_query
                    :table_id               (mt/id :venues)
                    :collection_id          (u/the-id collection)
-                   :collection             (into {} collection)
-                   :result_metadata        (mt/obj->json->obj (:result_metadata card))})
+                   :collection             (into {:is_personal false} collection)
+                   :result_metadata        (mt/obj->json->obj (:result_metadata card))
+                   :metabase_version       config/mb-version-string})
                  (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card))))))
         (testing "Card should include last edit info if available"
-          (mt/with-temp [User     {user-id :id} {:first_name "Test" :last_name "User" :email "user@test.com"}
-                         Revision _ {:model    "Card"
-                                     :model_id (:id card)
-                                     :user_id  user-id
-                                     :object   (revision/serialize-instance card (:id card) card)}]
+          (mt/with-temp [:model/User     {user-id :id} {:first_name "Test" :last_name "User" :email "user@test.com"}
+                         :model/Revision _             {:model    "Card"
+                                                        :model_id (:id card)
+                                                        :user_id  user-id
+                                                        :object   (revision/serialize-instance card (:id card) card)}]
             (is (= {:id true :email "user@test.com" :first_name "Test" :last_name "User" :timestamp true}
                    (-> (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))
                        mt/boolean-ids-and-timestamps

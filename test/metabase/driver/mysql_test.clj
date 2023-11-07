@@ -4,11 +4,10 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.actions.error :as actions.error]
    [metabase.config :as config]
    [metabase.db.metadata-queries :as metadata-queries]
-   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql.actions :as mysql.actions]
@@ -120,7 +119,7 @@
             (is (= expected
                    (some-> (sql/format-expr honey-sql)
                            vec
-                           (update 0 #(str/split-lines (mdb.query/format-sql % :mysql))))))))))))
+                           (update 0 #(str/split-lines (driver/prettify-native-form :mysql %))))))))))))
 
 ;; Test how TINYINT(1) columns are interpreted. By default, they should be interpreted as integers, but with the
 ;; correct additional options, we should be able to change that -- see
@@ -498,7 +497,7 @@
                       "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), UNSIGNED)"
                       "ORDER BY"
                       "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), UNSIGNED) ASC"]
-                     (str/split-lines (mdb.query/format-sql (:query compile-res) :mysql))))
+                     (str/split-lines (driver/prettify-native-form :mysql (:query compile-res)))))
               (is (= '("$.\"1234\"" "$.\"1234\"" "$.\"1234\"") (:params compile-res))))))))))
 
 (deftest complicated-json-identifier-test

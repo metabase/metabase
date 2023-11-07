@@ -60,7 +60,8 @@
       stage-number
       lib.util/remove-clause
       [:order-by]
-      (get-in (lib.util/query-stage query stage-number) [:order-by order-by-idx]))
+      (get-in (lib.util/query-stage query stage-number) [:order-by order-by-idx])
+      stage-number)
     query))
 
 (defn- remove-replace-location
@@ -116,7 +117,7 @@
                    (stage-paths query stage-number))]
     (reduce
      (fn [query [location target-clause]]
-       (remove-replace-location query stage-number unmodified-query-for-stage location target-clause lib.util/remove-clause))
+       (remove-replace-location query stage-number unmodified-query-for-stage location target-clause #(lib.util/remove-clause %1 %2 %3 stage-number)))
      query
      to-remove)))
 
@@ -150,7 +151,7 @@
                                (lib.common/->op-arg replacement))
           remove-replace-fn (if replace?
                               #(lib.util/replace-clause %1 %2 %3 replacement-clause)
-                              lib.util/remove-clause)
+                              #(lib.util/remove-clause %1 %2 %3 stage-number))
           changing-breakout? (= [:breakout] location)
           sync-breakout-ordering? (and replace?
                                        changing-breakout?
@@ -343,10 +344,10 @@
                                                   (not-empty (filterv #(not (dependent-join? % join-alias))
                                                                       joins))))
      (catch #?(:clj Exception :cljs :default) e
-       (let [{:keys [error stage join]} (ex-data e)]
+       (let [{:keys [error join] error-stage-number :stage-number} (ex-data e)]
          (if (= error ::lib.util/cannot-remove-final-join-condition)
            (-> query
-               (remove-join (u/index-of #{stage} (:stages query)) join)
+               (remove-join error-stage-number join)
                (remove-join stage-number join-spec))
            (throw e)))))))
 

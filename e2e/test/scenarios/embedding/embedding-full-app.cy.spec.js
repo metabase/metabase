@@ -7,7 +7,7 @@ import {
   describeEE,
   navigationSidebar,
   getDashboardCard,
-  createTextCard,
+  getTextCardDetails,
   closeNavigationSidebar,
   updateDashboardCards,
 } from "e2e/support/helpers";
@@ -347,7 +347,7 @@ describeEE("scenarios > embedding > full app", () => {
       };
       cy.createDashboard(dashboardDetails).then(
         ({ body: { id: dashboardId } }) => {
-          const card = createTextCard({
+          const card = getTextCardDetails({
             col: 0,
             row: 0,
             size_x: 6,
@@ -445,7 +445,7 @@ const visitXrayDashboardUrl = urlOptions => {
 const addLinkClickBehavior = ({ dashboardId, linkTemplate }) => {
   cy.request("GET", `/api/dashboard/${dashboardId}`).then(({ body }) => {
     cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-      cards: body.ordered_cards.map(card => ({
+      cards: body.dashcards.map(card => ({
         ...card,
         visualization_settings: {
           click_behavior: {
