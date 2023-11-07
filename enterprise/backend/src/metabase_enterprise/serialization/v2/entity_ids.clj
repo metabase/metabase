@@ -1,4 +1,4 @@
-(ns metabase-enterprise.serialization.v2.seed-entity-ids
+(ns metabase-enterprise.serialization.v2.entity-ids
   (:require
    [clojure.string :as str]
    [metabase.db :as mdb]
@@ -115,4 +115,29 @@
                                (completing (partial merge-with +))
                                {:update-count 0, :error-count 0}
                                (entity-id-models))]
+    (zero? error-count)))
+
+(defn- drop-entity-ids-for-model! [model]
+  (log/infof "Dropping Entity IDs for model %s" (name model))
+  (try
+    (let [update-count (t2/update! model {:entity_id nil})]
+      (when (pos? update-count)
+        (log/infof "Updated %d %s instance(s) successfully." update-count (name model)))
+      {:update-count update-count})
+    (catch Throwable e
+      (log/errorf e "Error dropping entity ID: %s" (ex-message e))
+      {:error-count 1})))
+
+(defn drop-entity-ids!
+  "Delete entity IDs for any models that have them. See #34871.
+
+  Returns truthy if all entity IDs were removed successfully, and falsey if there were any errors."
+  []
+  (log/info "Dropping Entity IDs")
+  (mdb/setup-db!)
+  (let [{:keys [error-count]} (transduce
+                                (map drop-entity-ids-for-model!)
+                                (completing (partial merge-with +))
+                                {:update-count 0, :error-count 0}
+                                (entity-id-models))]
     (zero? error-count)))
