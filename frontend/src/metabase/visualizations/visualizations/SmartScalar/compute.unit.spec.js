@@ -116,6 +116,22 @@ describe("SmartScalar > compute", () => {
       },
       {
         description:
+          "should correctly display missing data if previous value is null",
+        rows: [
+          ["2019-09-01", null],
+          ["2019-11-01", 300],
+        ],
+        dateUnit: "month",
+        expected: "300; Nov 2019; N/A vs. previous month: (empty)",
+      },
+      {
+        description: "should correctly display missing data for single row",
+        rows: [["2019-11-01", 300]],
+        dateUnit: "month",
+        expected: "300; Nov 2019; N/A vs. previous month: (empty)",
+      },
+      {
+        description:
           "should correctly display percent decrease over missing row",
         rows: [
           ["2019-09-01", 300],

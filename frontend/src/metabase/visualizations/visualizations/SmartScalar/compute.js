@@ -67,9 +67,10 @@ function computePreviousPeriodComparison({
       .add(1, dateUnit)
       .isSame(moment.utc(nextDate).startOf(dateUnit));
 
-  const title = datesAreContinuous
-    ? t`previous ${dateUnitDisplay}`
-    : formatDateTimeRangeWithUnit([date], dateUnit, { compact: true }); // FIXME: elide part of the prevDate in common with lastDate
+  const title =
+    date == null || datesAreContinuous
+      ? t`previous ${dateUnitDisplay}`
+      : formatDateTimeRangeWithUnit([date], dateUnit, { compact: true }); // FIXME: elide part of the prevDate in common with lastDate
 
   const { type, changeArrow, changeStr, valueStr } =
     value == null
