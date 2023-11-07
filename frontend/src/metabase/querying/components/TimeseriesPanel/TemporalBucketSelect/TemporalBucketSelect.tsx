@@ -7,7 +7,7 @@ interface TemporalBucketSelectProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  onChange: (column: Lib.ColumnMetadata) => void;
+  onChange: (newColumn: Lib.ColumnMetadata) => void;
 }
 
 export function TemporalBucketSelect({
