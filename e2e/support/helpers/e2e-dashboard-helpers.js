@@ -172,11 +172,8 @@ export function goToTab(tabName) {
 }
 
 export function moveDashCardToTab({ dashcardIndex = 0, tabName }) {
-  getDashboardCard(dashcardIndex)
-    .realHover()
-    .icon("move_card")
-    .realHover();
-  menu().findByText(tabName).click({ force: true });
+  getDashboardCard(dashcardIndex).realHover().icon("move_card").realHover();
+  menu().findByText(tabName).click();
 }
 
 export function visitDashboardAndCreateTab({ dashboardId, save = true }) {
