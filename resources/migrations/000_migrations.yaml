@@ -15981,7 +15981,11 @@ databaseChangeLog:
                   user_id,
                   model,
                   model_id,
-                  '{}'
+                  JSON_OBJECT(
+                    'database_id': database_id,
+                    'table_id': table_id
+                    ABSENT ON NULL
+                  )
               FROM activity;
       rollback: # not necessary
 

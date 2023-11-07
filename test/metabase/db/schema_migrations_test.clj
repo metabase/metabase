@@ -1236,20 +1236,65 @@
 
 (deftest activity-data-migration-test
   (testing "Migration v48.00-034"
-    (impl/test-migrations ["v48.00-034"] [migrate!]
-      (create-raw-user! "noah@metabase.com")
-      (let [activity-1 (t2/insert-returning-pks! (t2/table-name :model/Activity)
-                                                 {:topic       "card-create"
-                                                  :user_id     1
-                                                  :timestamp   :%now
-                                                  :model       "Card"
-                                                  :model_id    2
-                                                  :database_id 1
-                                                  :table_id    6
-                                                  :details     "{}"})]
-         (testing "`database_id` and `table_id` are merged with `details`")
-         (migrate!)
-         (is (= {:arbitrary-key "arbitrary-value"
-                 :database_id   1
-                 :table_id      6}
+    (mt/test-drivers [:postgres :mysql]
+     (impl/test-migrations ["v48.00-034"] [migrate!]
+       (create-raw-user! "noah@metabase.com")
+       (let [_activity-1 (t2/insert-returning-pks! (t2/table-name :model/Activity)
+                                                   {:topic       "card-create"
+                                                    :user_id     1
+                                                    :timestamp   :%now
+                                                    :model       "Card"
+                                                    :model_id    2
+                                                    :database_id 1
+                                                    :table_id    6
+                                                    :details     "{arbitrary_key: \"arbitrary_value\"}"})]
+         (testing "activity rows are copied into audit_log"
+           (is (= 0 (t2/count :model/AuditLog)))
+           (is (= 1 (t2/count :model/Activity)))
+           (migrate!)
+           (is (= 1 (t2/count :model/AuditLog)))
+           (is (= 1 (t2/count :model/Activity))))
+
+         (testing "`database_id` and `table_id` are merged into `details`"
+           (is (partial=
+                {:id 1
+                 :topic :card-create
+                 :end_timestamp nil
+                 :user_id 1
+                 :model "Card"
+                 :model_id 2
+                 :details {:database_id 1
+                           :table_id 6}}
                 (t2/select-one :model/AuditLog)))))))
+
+    (mt/test-drivers [:h2]
+     (impl/test-migrations ["v48.00-034"] [migrate!]
+       (create-raw-user! "noah@metabase.com")
+       (let [_activity-1 (t2/insert-returning-pks! (t2/table-name :model/Activity)
+                                                   {:topic       "card-create"
+                                                    :user_id     1
+                                                    :timestamp   :%now
+                                                    :model       "Card"
+                                                    :model_id    2
+                                                    :database_id 1
+                                                    :table_id    6
+                                                    :details     "{arbitrary_key: \"arbitrary_value\"}"})]
+         (testing "activity rows are copied into audit_log"
+           (is (= 0 (t2/count :model/AuditLog)))
+           (is (= 1 (t2/count :model/Activity)))
+           (migrate!)
+           (is (= 1 (t2/count :model/AuditLog)))
+           (is (= 1 (t2/count :model/Activity))))
+
+         (testing "`database_id` and `table_id` are inserted into `details`, but not merged with the previous value
+                   (H2 limitation)"
+           (is (partial=
+                {:id 1
+                 :topic :card-create
+                 :end_timestamp nil
+                 :user_id 1
+                 :model "Card"
+                 :model_id 2
+                 :details {:database_id 1
+                           :table_id 6}}
+                (t2/select-one :model/AuditLog)))))))))
