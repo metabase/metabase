@@ -25,6 +25,7 @@
    [metabase.models.database :refer [Database]]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.format-rows :as format-rows]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -1144,7 +1145,7 @@
                 "(\"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(DATEADD('day', CAST(1 AS long), CAST(NOW() AS datetime)) AS date)"
                 ")")
            (:query
-            (qp/compile
+            (qp.compile/compile
              (mt/mbql-query checkins
                {:aggregation [[:count]]
                 :filter      [:= $date [:relative-datetime :current]]})))))))
@@ -1163,7 +1164,7 @@
                   "LIMIT 1048575")
              (sql.qp-test-util/pretty-sql
               (:query
-               (qp/compile
+               (qp.compile/compile
                 (mt/mbql-query checkins
                   {:filter   [:time-interval $date -4 :month]
                    :breakout [!day.date]})))))))))

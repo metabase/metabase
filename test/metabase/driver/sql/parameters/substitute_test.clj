@@ -10,6 +10,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.parameters.native :as qp.native]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -668,7 +669,7 @@
   "Get the identifier used for `table` for the current driver by looking at what the driver uses when converting MBQL
    to SQL. Different drivers qualify to different degrees (i.e. `table` vs `schema.table` vs `database.schema.table`)."
   [table-name]
-  `(let [sql# (:query (qp/compile (mt/mbql-query ~table-name)))]
+  `(let [sql# (:query (qp.compile/compile (mt/mbql-query ~table-name)))]
      (second (re-find #"(?m)FROM\s+([^\s()]+)" sql#))))
 
 ;; as with the MBQL parameters tests Redshift fail for unknown reasons; disable their tests for now

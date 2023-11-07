@@ -16,6 +16,7 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Database]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -1013,11 +1014,11 @@
                              (str "SELECT APPROX_QUANTILES(`%s.orders`.`quantity`, 10)[OFFSET(5)] AS `CE`"
                                   " FROM `%s.orders` LIMIT 10")
                              sample-dataset-name sample-dataset-name)}
-               (qp/compile (mt/mbql-query orders
-                             {:aggregation [[:aggregation-options
-                                             [:percentile $orders.quantity 0.5]
-                                             {:name "CE", :display-name "CE"}]]
-                              :limit       10}))))))))
+               (qp.compile/compile (mt/mbql-query orders
+                                     {:aggregation [[:aggregation-options
+                                                     [:percentile $orders.quantity 0.5]
+                                                     {:name "CE", :display-name "CE"}]]
+                                      :limit       10}))))))))
 
 (deftest ^:parallel no-qualify-breakout-field-name-with-subquery-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -1059,7 +1060,7 @@
                                                               :display-name name-with-spaces}]]
                                               :breakout [$text]}
                                :limit 1})
-                            qp/compile
+                            qp.compile/compile
                             :query)]
           (is (not (str/includes? sql-query name-with-spaces))
               (format "Query `%s' should not contain `%s'" sql-query name-with-spaces)))))))

@@ -15,6 +15,7 @@
    [metabase.driver.sqlserver :as sqlserver]
    [metabase.models :refer [Database]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -136,7 +137,7 @@
                            "ORDER BY \"dbo\".\"venues\".\"id\" ASC"
                            " ) \"source\" ")
               :params nil}
-             (qp/compile
+             (qp.compile/compile
               (mt/mbql-query venues
                 {:source-query {:source-table $$venues
                                 :fields       [$name]
@@ -305,7 +306,7 @@
           (testing (format "\nUnit = %s\n" unit)
             (testing "Should generate the correct SQL query"
               (is (= expected-sql
-                     (pretty-sql (:query (qp/compile (query-with-bucketing unit)))))))
+                     (pretty-sql (:query (qp.compile/compile (query-with-bucketing unit)))))))
             (testing "Should still return correct results"
               (is (= expected-rows
                      (take 5 (mt/rows

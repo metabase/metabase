@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -98,7 +98,7 @@
                             query))
 
   ([_driver query]
-   (qp/compile query)))
+   (qp.compile/compile query)))
 
 (def ^{:arglists '([query] [driver query])} query->sql
   "Compile an MBQL query to 'pretty' SQL (i.e., remove quote marks and `public.` qualifiers)."

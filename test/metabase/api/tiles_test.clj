@@ -5,9 +5,8 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.api.tiles :as api.tiles]
-   [metabase.query-processor :as qp]
-   [metabase.test :as mt]
-   [schema.core :as s]))
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.test :as mt]))
 
 (defn- png? [s]
   (= [\P \N \G]
@@ -27,7 +26,7 @@
                                          (mt/id :venues :longitude))
                  :query (json/generate-string venues-query)))))
     (testing "Works on native queries"
-      (let [native-query {:query (:query (qp/compile venues-query))
+      (let [native-query {:query (:query (qp.compile/compile venues-query))
                           :template-tags {}}]
         (is (png? (mt/user-http-request
                    :rasta :get 200 (format "tiles/1/1/1/%s/%s"

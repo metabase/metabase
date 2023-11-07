@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]))
 
 (defn- mbql-query []
@@ -11,7 +12,7 @@
      :order-by [[:asc $id]]}))
 
 (defn- native-query []
-  (qp/compile (mbql-query)))
+  (qp.compile/compile (mbql-query)))
 
 (deftest ^:parallel max-results-test
   (mt/test-drivers (mt/normal-drivers)

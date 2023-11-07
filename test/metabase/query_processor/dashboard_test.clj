@@ -18,11 +18,12 @@
   ;; stuff doesn't belong in the Dashboard QP namespace
   (binding [api/*current-user-permissions-set* (atom #{"/"})]
     (apply qp.dashboard/process-query-for-dashcard
-     :dashboard-id dashboard-id
-     :card-id      card-id
-     :dashcard-id  dashcard-id
-     :run          qp/process-query
-     options)))
+           :dashboard-id dashboard-id
+           :card-id      card-id
+           :dashcard-id  dashcard-id
+           :run          (fn run [query info]
+                           (qp/process-query (assoc query :info info)))
+           options)))
 
 (deftest resolve-parameters-validation-test
   (api.dashboard-test/with-chain-filter-fixtures [{{dashboard-id :id} :dashboard
@@ -117,7 +118,7 @@
                               #"Not found"
                               (run-query-for-dashcard dashboard-id card-id-2 dashcard-id-3))))))
 
-(deftest default-value-precedence-test-field-filters
+(deftest ^:parallel default-value-precedence-test-field-filters
   (testing "If both Dashboard and Card have default values for a Field filter parameter, Card defaults should take precedence\n"
     (mt/dataset sample-dataset
       (mt/with-temp

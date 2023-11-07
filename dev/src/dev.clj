@@ -275,7 +275,7 @@
   ;; make sure we use the application database when compiling the query and not something goofy like a connection for a
   ;; Data warehouse DB, if we're using this in combination with a Database as connectable
   (let [{:keys [query params]} (binding [t2.connection/*current-connectable* nil]
-                                 (qp/compile built-query))]
+                                 (qp.compile/compile built-query))]
     (into [query] params)))
 
 (defn app-db-as-data-warehouse

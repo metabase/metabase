@@ -5,6 +5,7 @@
    [metabase.driver :as driver]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.parameters.mbql :as qp.mbql]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
@@ -223,7 +224,7 @@
                              "FROM \"PUBLIC\".\"VENUES\" "
                              "WHERE (\"PUBLIC\".\"VENUES\".\"PRICE\" = 3) OR (\"PUBLIC\".\"VENUES\".\"PRICE\" = 4)")
                 :params nil}
-               (qp/compile
+               (qp.compile/compile
                 (mt/query venues
                   {:query      {:aggregation [[:count]]}
                    :parameters [{:name   "price"
@@ -247,7 +248,7 @@
                              "FROM \"PUBLIC\".\"VENUES\" "
                              "WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" BETWEEN 3 AND 4")
                 :params nil}
-               (qp/compile
+               (qp.compile/compile
                 (mt/query venues
                   {:query      {:aggregation [[:count]]}
                    :parameters [{:name   "price"
@@ -267,7 +268,7 @@
                    #t "2014-07-01T00:00Z[UTC]"
                    #t "2015-06-01T00:00Z[UTC]"
                    #t "2015-07-01T00:00Z[UTC]"]}
-         (qp/compile
+         (qp.compile/compile
            (mt/query checkins
              {:query      {:aggregation [[:count]]}
               :parameters [{:name   "date"

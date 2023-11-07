@@ -21,6 +21,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.query.permissions :as query-perms]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
@@ -54,7 +55,7 @@
   (isa? driver/hierarchy driver/*driver* :sql))
 
 (defn- compile-to-native [mbql-query]
-  (cond-> (qp/compile mbql-query)
+  (cond-> (qp.compile/compile mbql-query)
     (sql-driver?) :query))
 
 (deftest ^:parallel basic-sql-source-query-test
@@ -296,7 +297,7 @@
 (deftest ^:parallel card-id-native-source-queries-test
   (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :nested-queries)
                                      (descendants driver/hierarchy :sql))
-    (let [native-sub-query (-> (mt/mbql-query venues {:source-table $$venues}) qp/compile :query)
+    (let [native-sub-query (-> (mt/mbql-query venues {:source-table $$venues}) qp.compile/compile :query)
           run-native-query
           (fn [sql]
             (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
@@ -359,7 +360,7 @@
            :from   [[venues-source-honeysql :source]]
            :where  [:= [:raw "\"source\".\"BIRD.ID\""] [:inline 1]]
            :limit  [:inline 10]})
-         (qp/compile
+         (qp.compile/compile
           {:database (mt/id)
            :type     :query
            :query    {:source-query {:source-table (mt/id :venues)}
@@ -382,7 +383,7 @@
                       [:>= [:raw "\"source\".\"BIRD.ID\""] (t/zoned-date-time "2017-01-01T00:00Z[UTC]")]
                       [:< [:raw "\"source\".\"BIRD.ID\""]  (t/zoned-date-time "2017-01-08T00:00Z[UTC]")]]
              :limit  [:inline 10]})
-           (qp/compile
+           (qp.compile/compile
             (mt/mbql-query venues
               {:source-query {:source-table $$venues}
                :filter       [:= !week.*BIRD.ID/DateTime "2017-01-01"]
@@ -408,7 +409,7 @@
                     "      \"PUBLIC\".\"VENUES\".\"PRICE\" ASC"
                     "  ) AS \"source\""]
             :params nil}
-           (-> (qp/compile
+           (-> (qp.compile/compile
                 (mt/mbql-query venues
                   {:source-query {:source-table $$venues
                                   :aggregation  [[:stddev $id]]
@@ -449,7 +450,7 @@
              :where  [:or [:not= :source.text "Coo"]
                       [:= :source.text nil]]
              :limit  [:inline 10]})
-           (qp/compile
+           (qp.compile/compile
             (mt/mbql-query nil
               {:source-query {:source-table $$venues}
                :limit        10
@@ -467,7 +468,7 @@
              :from   [[venues-source-honeysql :source]]
              :where  [:> :source.sender_id [:inline 3]]
              :limit  [:inline 10]})
-           (qp/compile
+           (qp.compile/compile
             (mt/mbql-query nil
               {:source-query {:source-table $$venues}
                :limit        10
@@ -487,7 +488,7 @@
                                                                                :default      "Widget"}}}}])
       (is (= {:query  "SELECT \"source\".* FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = ? LIMIT 10) AS \"source\" LIMIT 1048575"
               :params ["Widget"]}
-             (qp/compile
+             (qp.compile/compile
               {:database (meta/id)
                :type     :query
                :query    {:source-table "card__1"}}))))))
@@ -1295,7 +1296,7 @@
           (testing "original query"
             (when (= driver/*driver* :h2)
               (is (= q1-native
-                     (qp/compile q1))))
+                     (qp.compile/compile q1))))
             (is (= [[543]]
                    (mt/formatted-rows [int] (qp/process-query q1)))))
           (testing "nested query"
@@ -1307,7 +1308,7 @@
                                                                "FROM (%s) AS \"source\" "
                                                                "LIMIT 1048575")
                                                           s)))
-                       (qp/compile q2))))
+                       (qp.compile/compile q2))))
               (is (= [[543]]
                      (mt/formatted-rows [int] (qp/process-query q2)))))))))))
 

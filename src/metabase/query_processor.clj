@@ -5,7 +5,6 @@
 
   Various REST API endpoints, such as `POST /api/dataset`, return the results of queries; they usually
   use [[userland-query]] or [[userland-query-with-default-constraints]] (see below)."
-  (:refer-clojure :exclude [compile])
   (:require
    [metabase.config :as config]
    [metabase.mbql.schema :as mbql.s]
@@ -60,7 +59,7 @@
 
 (defn- process-query** [query rff context]
   (let [preprocessed (qp.preprocess/preprocess query)
-        compiled     (qp.compile/compile-preprocessed preprocessed)
+        compiled     (assoc preprocessed :native (qp.compile/compile-preprocessed preprocessed))
         rff          (qp.postprocess/post-processing-rff preprocessed rff)]
     (qp.execute/execute compiled rff context)))
 
@@ -149,10 +148,3 @@
    (-> query
        (userland-query info)
        (assoc-in [:middleware :add-default-userland-constraints?] true))))
-
-;;;; DEPRECATED
-
-(defn ^:deprecated compile
-  "DEPRECATED: use [[qp.compile/compile]] instead."
-  [query]
-  (:native (qp.compile/compile query)))

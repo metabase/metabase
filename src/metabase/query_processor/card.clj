@@ -17,6 +17,7 @@
     :as premium-features
     :refer [defenterprise]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -181,11 +182,29 @@
           ;; now make sure the type agrees as well
           (check-allowed-parameter-value-type parameter-name matching-widget-type (:type request-parameter)))))))
 
+(mu/defn ^:private process-query-for-card-default-qp
+  "Default value of the `:qp` option for [[process-query-for-card]]."
+  [query   :- :map
+   rff     :- ::qp.context/rff
+   context :- ::qp.context/context]
+  (qp/process-query (qp/userland-query query) rff context))
+
+(defn- process-query-for-card-default-run-fn
+  "Create the default `:run` function for [[process-query-for-card]]."
+  [qp export-format]
+  (^:once fn* [query info]
+   (qp.streaming/streaming-response [{:keys [rff context]} export-format (u/slugify (:card-name info))]
+     (qp (update query :info merge info) rff context))))
+
 (defn process-query-for-card
   "Run the query for Card with `parameters` and `constraints`. By default, returns results in a
   `metabase.async.streaming_response.StreamingResponse` (see [[metabase.async.streaming-response]]) that should be
   returned as the result of an API endpoint fn, but you can return something different by passing a different `:run`
-  option. Will throw an Exception if preconditions (such as read perms) are not met *before* returning the
+  option. `:run` has a signature
+
+    (run query info) => result
+
+  Will throw an Exception if preconditions (such as read perms) are not met *before* returning the
   `StreamingResponse`.
 
   `context` is a keyword describing the situation in which this query is being ran, e.g. `:question` (from a Saved
@@ -195,15 +214,12 @@
    & {:keys [parameters constraints context dashboard-id middleware qp run ignore-cache]
       :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
-             qp          (^:once fn* [query rff context]
-                          (qp/process-query (qp/userland-query query) rff context))}}]
+             qp          process-query-for-card-default-qp}}]
   {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
+  ;; param `run` can be used to control how the query is ran, e.g. if you need to customize the `context` passed to the
+  ;; QP
   (let [run   (or run
-                  ;; param `run` can be used to control how the query is ran, e.g. if you need to
-                  ;; customize the `context` passed to the QP
-                  (^:once fn* [query info]
-                   (qp.streaming/streaming-response [{:keys [rff context]} export-format (u/slugify (:card-name info))]
-                     (qp (update query :info merge info) rff context))))
+                  (process-query-for-card-default-run-fn qp export-format))
         card  (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :cache_ttl :collection_id
                                               :dataset :result_metadata :visualization_settings]
                                              :id card-id))

@@ -161,7 +161,7 @@
                                   :database_id (mt/id)}]
           (fake-persist-card! card)
           (is (str/includes?
-               (:query (qp/compile
+               (:query (qp.compile/compile
 
                         {:database (mt/id)
                          :query {:source-table (str "card__" (u/the-id card))}
@@ -177,7 +177,7 @@
                                   :database_id (mt/id)}]
           (fake-persist-card! card)
           (is (not (str/includes?
-                    (:query (qp/compile
+                    (:query (qp.compile/compile
                              {:database (mt/id)
                               :query {:source-table (str "card__" (u/the-id card))}
                               :type :query}))

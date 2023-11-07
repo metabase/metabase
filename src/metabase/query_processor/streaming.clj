@@ -141,6 +141,8 @@
       (.close os))
     (qp.context/resultf final-metadata context)))
 
+;;; TODO FIXME NOCOMMIT not sure about the QP context here being a sync context... make sure queries ACTUALLY get
+;;; canceled as expected when we kill a sync context before we are done writing
 (defn streaming-context-and-rff
   "Context to pass to the QP to streaming results as `export-format` to an output stream. Can be used independently of
   the normal `streaming-response` macro, which is geared toward Ring responses.

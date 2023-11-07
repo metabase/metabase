@@ -12,6 +12,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.models :refer [Card Database Field Table]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
@@ -265,7 +266,7 @@
                                   (t/zone-id system-timezone-id))
         (is (= expected-ga-query
                (do-with-some-fields
-                (comp qp/compile query-with-some-fields))))))))
+                (comp qp.compile/compile query-with-some-fields))))))))
 
 ;; ok, now do the same query again, but run the entire QP pipeline, swapping out a few things so nothing is actually
 ;; run externally.
@@ -348,7 +349,7 @@
                                     :breakout     [[:field (:id date-field) {:temporal-unit :day}]]}
                          :type     :query
                          :database (:id db)}
-                        qp/compile
+                        qp.compile/compile
                         :query
                         (select-keys [:start-date :end-date :dimensions :metrics :sort])))
                  "Last 4 months should includy July, August, September, and October (July 1st - October 31st)"))))))))

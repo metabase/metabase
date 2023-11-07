@@ -11,11 +11,11 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
+   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.streaming-test :as streaming-test]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [metabase.query-processor.context :as qp.context])
+   [metabase.util :as u])
   (:import
    (clojure.lang ExceptionInfo)))
 

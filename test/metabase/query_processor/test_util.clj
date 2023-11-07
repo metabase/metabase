@@ -17,6 +17,7 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.add-implicit-joins
     :as qp.add-implicit-joins]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -206,7 +207,7 @@
        (qp/process-query
          {:database db-id
           :type     :native
-          :native   (qp/compile
+          :native   (qp.compile/compile
                       {:database db-id
                        :type     :query
                        :query    {:source-table table-id
@@ -544,7 +545,7 @@
 
 (deftest ^:parallel metadata-provider-with-cards-with-metadata-for-queries-native-query-test
   (let [provider (metadata-provider-with-cards-with-metadata-for-queries
-                  [(data/native-query (qp/compile (data/mbql-query venues)))])]
+                  [(data/native-query (qp.compile/compile (data/mbql-query venues)))])]
     (is (partial= {:id              1
                    :name            "Card 1"
                    :dataset-query   {:type :native}

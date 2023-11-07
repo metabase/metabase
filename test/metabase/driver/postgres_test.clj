@@ -28,6 +28,7 @@
    [metabase.models.secret :as secret]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.store :as qp.store]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -431,7 +432,7 @@
                                :metabase.query-processor.util.add-alias-info/source-alias  "dontwannaseethis"
                                :metabase.query-processor.util.add-alias-info/desired-alias "dontwannaseethis"
                                :metabase.query-processor.util.add-alias-info/position      1}]
-              compile-res    (qp/compile
+              compile-res    (qp.compile/compile
                               {:database 1
                                :type     :query
                                :query    {:source-table 1
@@ -462,7 +463,7 @@
     (testing "json breakouts and order bys have alias coercion"
       (qp.store/with-metadata-provider json-alias-mock-metadata-provider
         (let [field-ordinary [:field 1 nil]
-              only-order     (qp/compile
+              only-order     (qp.compile/compile
                               {:database 1
                                :type     :query
                                :query    {:source-table 1
@@ -1105,7 +1106,7 @@
                       "FROM attempts "
                       "GROUP BY attempts.date "
                       "ORDER BY attempts.date ASC")
-                 (some-> (qp/compile query) :query pretty-sql))))))))
+                 (some-> (qp.compile/compile query) :query pretty-sql))))))))
 
 (deftest do-not-cast-to-timestamp-if-column-if-timestamp-tz-or-date-test
   (testing "Don't cast a DATE or TIMESTAMPTZ to TIMESTAMP, it's not necessary (#19816)"

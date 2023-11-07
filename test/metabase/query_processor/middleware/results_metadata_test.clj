@@ -11,6 +11,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
@@ -239,7 +240,7 @@
 (deftest ^:parallel valid-results-metadata-test-2
   (mt/test-drivers (mt/normal-drivers)
     (testing "Native queries should come back with valid results metadata (#12265)"
-      (let [metadata (-> (mt/mbql-query venues) qp/compile mt/native-query results-metadata)]
+      (let [metadata (-> (mt/mbql-query venues) qp.compile/compile mt/native-query results-metadata)]
         (is (seq metadata))
         (is (not (me/humanize (mc/validate qr/ResultsMetadata metadata))))))))
 

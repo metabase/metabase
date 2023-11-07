@@ -170,7 +170,7 @@
 (deftest filter-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries)
     (testing "We should be able to apply filters to queries that use native queries with parameters as their source (#9802)"
-      (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (mt/native-query (qp/compile (mt/mbql-query checkins)))}]
+      (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (mt/native-query (qp.compile/compile (mt/mbql-query checkins)))}]
         (let [query (assoc (mt/mbql-query nil
                              {:source-table (format "card__%d" card-id)})
                            :parameters [{:type   :date/all-options

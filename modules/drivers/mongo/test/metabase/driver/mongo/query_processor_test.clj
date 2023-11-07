@@ -60,7 +60,7 @@
                                 {"$project" {"_id" false, "count" true}}]
                   :collection  "attempts"
                   :mbql?       true}
-                 (qp/compile
+                 (qp.compile/compile
                   (mt/mbql-query attempts
                     {:aggregation [[:count]]
                      :filter      [:time-interval $datetime :last :month]})))))))))
@@ -101,7 +101,7 @@
                                   {"$project" {"_id" false, "count" true}}]
                     :collection  "attempts"
                     :mbql?       true}
-                   (qp/compile
+                   (qp.compile/compile
                     (mt/mbql-query attempts
                       {:aggregation [[:count]]
                        :filter      [:time-interval $datetime :last :month]}))))
@@ -109,7 +109,7 @@
             (testing "should still work even with bucketing bucketing"
               (let [tz (qp.timezone/results-timezone-id :mongo mt/db)
                     query (mt/with-metadata-provider (mt/id)
-                            (qp/compile
+                            (qp.compile/compile
                              (mt/mbql-query attempts
                                {:aggregation [[:count]]
                                 :breakout    [[:field %datetime {:temporal-unit :month}]
@@ -221,7 +221,7 @@
                                 {"$project" {"_id" false, "count" true}}],
                   :collection  "tips",
                   :mbql?       true}
-                 (qp/compile
+                 (qp.compile/compile
                   (mt/mbql-query tips
                     {:aggregation [[:count]]
                      :filter      [:= $tips.source.username "tupac"]}))))
@@ -234,7 +234,7 @@
                                 {"$project" {"_id" false, "source.username" "$_id.source.username", "count" true}}]
                   :collection  "tips"
                   :mbql?       true}
-                 (qp/compile
+                 (qp.compile/compile
                   (mt/mbql-query tips
                     {:aggregation [[:count]]
                      :breakout    [$tips.source.username]}))))
@@ -272,7 +272,7 @@
                {"$limit" 5}],
               :collection  "venues"
               :mbql?       true}
-             (qp/compile
+             (qp.compile/compile
               (mt/mbql-query venues
                 {:aggregation [[:distinct $name]
                                [:distinct $price]]
@@ -287,7 +287,7 @@
       (is (= {"bob" "$latitude", "cobb" "$name"}
              (extract-projections
               ["bob" "cobb"]
-              (qp/compile
+              (qp.compile/compile
                (mt/mbql-query venues
                  {:fields      [[:expression "bob"] [:expression "cobb"]]
                   :expressions {:bob   [:field $latitude nil]
@@ -301,7 +301,7 @@
               "bob" {"$abs" "$latitude"}}
              (extract-projections
               ["bob" "cobb"]
-              (qp/compile
+              (qp.compile/compile
                (mt/mbql-query venues
                  {:fields      [[:expression "bob"] [:expression "cobb"]]
                   :expressions {:bob   [:abs $latitude]
@@ -314,7 +314,7 @@
       (is (= {"bob" {"$add" ["$price" 300]}}
              (extract-projections
               ["bob"]
-              (qp/compile
+              (qp.compile/compile
                (mt/mbql-query venues
                  {:fields      [[:expression "bob"]]
                   :expressions {:bob   [:+ $price 300]}
@@ -326,7 +326,7 @@
       (is (= {"bob" {"$abs" {"$subtract" ["$price" 300]}}}
              (extract-projections
               ["bob"]
-              (qp/compile
+              (qp.compile/compile
                (mt/mbql-query venues
                  {:fields      [[:expression "bob"]]
                   :expressions {:bob   [:abs [:- $price 300]]}
@@ -339,7 +339,7 @@
               "cobb" {"$ceil" {"$abs" "$latitude"}}}
              (extract-projections
               ["bob" "cobb"]
-              (qp/compile
+              (qp.compile/compile
                (mt/mbql-query venues
                  {:fields      [[:expression "bob"] [:expression "cobb"]]
                   :expressions {:bob  [:abs $latitude]
@@ -352,7 +352,7 @@
       (is (= {"bob" {"$ifNull" ["$latitude" "$price"]}}
              (extract-projections
               ["bob"]
-              (qp/compile
+              (qp.compile/compile
                (mt/mbql-query venues
                  {:expressions {:bob [:coalesce [:field $latitude nil] [:field $price nil]]}
                   :limit       5}))))))))
@@ -366,7 +366,7 @@
               :query [{"$group" {"_id" {"asdf" "$price"}, "count" {"$sum" 1}}}
                       {"$sort" {"_id" 1}}
                       {"$project" {"_id" false, "asdf" "$_id.asdf", "count" true}}]}
-             (qp/compile
+             (qp.compile/compile
               (mt/mbql-query venues
                 {:expressions {:asdf ["field" $price nil]},
                  :aggregation [["count"]],
@@ -401,7 +401,7 @@
                   {"$project" {"_id" false, "date" "$_id.date"}}
                   {"$limit" 1048575}]
                  (:query
-                  (qp/compile
+                  (qp.compile/compile
                    (mt/mbql-query checkins
                      {:filter   [:time-interval $date -4 :month]
                       :breakout [!day.date]}))))))))))

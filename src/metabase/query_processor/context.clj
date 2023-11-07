@@ -21,7 +21,7 @@
 
 (mr/def ::context
   [:map
-   [:timeout       ::timeout-ms]
+   [:timeout       ::timeout-ms]      ; TODO -- should this only be part of an async context? Not really used for sync contexts.
    [:raisef        [:ref ::raisef]]
    [:runf          [:ref ::runf]]
    [:executef      [:ref ::executef]]
@@ -93,19 +93,48 @@
    [:cat ::result ::context]
    :some])
 
-;; Normal flow is something like:
+;; Normal SYNC flow is something like:
+;;
+;;    [middleware] → runf → executef → reducef → reducedf -\
+;;        ↓                                                 ↦ resultf
+;;    [Exception]  → raisef -------------------------------/    ↑
+;;        ↑                                                     |
+;;     timeoutf                                                 |
+;;                                                              | ::cancel
+;;                                 canceled-chan ---------------/
+;;                                      ↑
+;;                       [message sent to canceled chan]
+;;
+;; 1. ::query normally runs thru middleware and then a series of context functions as described above; result is sent thru
+;;    [[resultf]]; this is the overall result of the QP
+;;
+;; 2. If an `Exception` is thrown, it is sent thru [[raisef]] and then to [[resultf]]
+;;
+;; 3. If the query is canceled (by sending [[canceled-chan]] a message), [[resultf]] is immediately called with the
+;;    value `::cancel`
+;;
+;; ASYNC contexts are largely similar with a few extra things going on:
+;;
+;; Normal ASYNC flow is something like:
 ;;
 ;;    [middleware] → runf → executef → reducef → reducedf -\
 ;;        ↓                                                 ↦ resultf → out-chan
-;;    [Exception]  → raisef -------------------------------/               ↑
-;;        ↑                                                                |
-;;     timeoutf                                                            |
-;;        ↑                                                                |
-;;    [time out]              [out-chan closed early]                      |
-;;                                      ↓                         [closes] |
-;;                                 canceled-chan --------------------------/
+;;    [Exception]  → raisef -------------------------------/     ↑
+;;        ↑                                                      |
+;;     timeoutf                                                  |
+;;        ↑                                                      |
+;;    [time out]              [out-chan closed early]            |
+;;                                      ↓                        | ::cancel
+;;                                 canceled-chan ----------------/
 ;;                                      ↑
 ;;                       [message sent to canceled chan]
+;;
+;; 1. Query returns a core.async promise channel, [[out-chan]], after query is preprocessed and compiled; query is
+;;    executed on a separate thread. You can poll [[out-chan]] for the query results.
+;;
+;; 2. If [[out-chan]] is closed before receiving a result, it will trigger query cancellation.
+;;
+;; 3. Query cancellation will cancel the query execution happening on the separate thread.
 ;;
 ;; 1. ::query normally runs thru middleware and then a series of context functions as described above; result is sent thru
 ;;    [[resultf]] and finally to [[out-chan]]
@@ -292,7 +321,7 @@
     (a/go
       (when (a/<! chan)
         (a/close! chan)
-        (resultf ::timed-out context)))
+        (resultf ::cancel context)))
     chan))
 
 (mu/defn sync-context :- ::context
