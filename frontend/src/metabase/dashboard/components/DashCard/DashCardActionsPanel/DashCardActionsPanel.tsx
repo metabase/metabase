@@ -16,14 +16,12 @@ import type {
 import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard } from "metabase/dashboard/utils";
 
-import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
-import DashCardActionButton from "./DashCardActionButton";
-
-import AddSeriesButton from "./AddSeriesButton";
-import ChartSettingsButton from "./ChartSettingsButton";
-
-import ActionSettingsButton from "./ActionSettingsButton";
-import LinkCardEditButton from "./LinkCardEditButton";
+import { ChartSettingsButton } from "./ChartSettingsButton";
+import { DashCardTabMenu } from "./DashCardTabMenu";
+import { DashCardActionButton } from "./DashCardActionButton";
+import { AddSeriesButton } from "./AddSeriesButton";
+import { ActionSettingsButton } from "./ActionSettingsButton";
+import { LinkCardEditButton } from "./LinkCardEditButton";
 import {
   DashCardActionButtonsContainer,
   DashCardActionsPanelContainer,

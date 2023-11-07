@@ -3,7 +3,7 @@ import { t } from "ttag";
 import type { DashboardCard, VisualizationSettings } from "metabase-types/api";
 import { isRestrictedLinkEntity } from "metabase-types/guards/dashboard";
 
-import DashCardActionButton from "./DashCardActionButton";
+import { DashCardActionButton } from "../DashCardActionButton";
 
 interface Props {
   dashcard: DashboardCard;
@@ -12,8 +12,7 @@ interface Props {
   ) => void;
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function LinkCardEditButton({
+export function LinkCardEditButton({
   dashcard,
   onUpdateVisualizationSettings,
 }: Props) {

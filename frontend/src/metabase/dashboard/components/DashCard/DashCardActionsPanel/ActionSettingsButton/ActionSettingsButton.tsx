@@ -6,7 +6,7 @@ import type { ActionDashboardCard, Dashboard } from "metabase-types/api";
 
 import { setEditingDashcardId } from "metabase/dashboard/actions";
 
-import DashCardActionButton from "./DashCardActionButton";
+import { DashCardActionButton } from "../DashCardActionButton";
 
 const mapDispatchToProps = {
   setEditingDashcardId,
