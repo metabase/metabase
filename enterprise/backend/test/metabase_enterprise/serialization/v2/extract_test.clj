@@ -125,85 +125,125 @@
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest dashboard-and-cards-test
   (mt/with-empty-h2-app-db
-    (ts/with-temp-dpc [Collection {coll-id    :id
-                                   coll-eid   :entity_id}    {:name "Some Collection"}
-                       User       {mark-id :id}              {:first_name "Mark"
-                                                              :last_name  "Knopfler"
-                                                              :email      "mark@direstrai.ts"}
-                       User       {dave-id :id}              {:first_name "David"
-                                                              :last_name  "Knopfler"
-                                                              :email      "david@direstrai.ts"}
-                       Collection {mark-coll-eid :entity_id} {:name "MK Personal"
-                                                              :personal_owner_id mark-id}
-                       Collection {dave-coll-id  :id
-                                   dave-coll-eid :entity_id} {:name "DK Personal"
-                                   :personal_owner_id dave-id}
+    (ts/with-temp-dpc [Collection
+                       {coll-id    :id
+                        coll-eid   :entity_id}
+                       {:name "Some Collection"}
 
-                       Database   {db-id      :id}           {:name "My Database"}
-                       Table      {no-schema-id :id}         {:name "Schemaless Table" :db_id db-id}
-                       Field      {field-id     :id}         {:name "Some Field" :table_id no-schema-id}
-                       Table      {schema-id    :id}         {:name        "Schema'd Table"
-                                                              :db_id       db-id
-                                                              :schema      "PUBLIC"}
-                       Field      {field2-id    :id}         {:name "Other Field" :table_id schema-id}
-                       Card       {c1-id  :id
-                                   c1-eid :entity_id}        {:name          "Some Question"
-                                   :database_id   db-id
-                                   :table_id      no-schema-id
-                                   :collection_id coll-id
-                                   :creator_id    mark-id
-                                   :dataset_query {:query {:source-table no-schema-id
-                                                           :filter [:>= [:field field-id nil] 18]
-                                                           :aggregation [[:count]]}
-                                                   :database db-id}}
-                       Card       {model-id  :id}            {:name          "Some Model"
-                                                              :database_id   db-id
-                                                              :table_id      no-schema-id
-                                                              :collection_id coll-id
-                                                              :creator_id    mark-id
-                                                              :dataset       true
-                                                              :dataset_query {:query {:source-table no-schema-id
-                                                                                      :filter [:>= [:field field-id nil] 18]
-                                                                                      :aggregation [[:count]]}
-                                                                              :database db-id}}
-                       Card       {c2-id  :id
-                                   c2-eid :entity_id}        {:name          "Second Question"
-                                   :database_id   db-id
-                                   :table_id      schema-id
-                                   :collection_id coll-id
-                                   :creator_id    mark-id
-                                   :parameter_mappings
-                                   [{:parameter_id "deadbeef"
-                                     :card_id      c1-id
-                                     :target [:dimension [:field field-id
-                                                          {:source-field field2-id}]]}]}
-                       Card       {c3-id  :id
-                                   c3-eid :entity_id}        {:name          "Third Question"
-                                   :database_id   db-id
-                                   :table_id      schema-id
-                                   :collection_id coll-id
-                                   :creator_id    mark-id
-                                   :visualization_settings
-                                   {:table.pivot_column "SOURCE"
-                                    :table.cell_column "sum"
-                                    :table.columns
-                                    [{:name "SOME_FIELD"
-                                      :fieldRef [:field field-id nil]
-                                      :enabled true}
-                                     {:name "OTHER_FIELD"
-                                      :fieldRef [:field field2-id nil]
-                                      :enabled true}
-                                     {:name "sum"
-                                      :fieldRef [:field "sum" {:base-type :type/Float}]
-                                      :enabled true}
-                                     {:name "count"
-                                      :fieldRef [:field "count" {:base-type :type/BigInteger}]
-                                      :enabled true}
-                                     {:name "Average order total"
-                                      :fieldRef [:field "Average order total" {:base-type :type/Float}]
-                                      :enabled true}]
-                                    :column_settings
-                                    {(str "[\"ref\",[\"field\"," field2-id ",null]]") {:column_title "Locus"}}}}
+                       User
+                       {mark-id :id}
+                       {:first_name "Mark"
+                        :last_name  "Knopfler"
+                        :email      "mark@direstrai.ts"}
+
+                       User
+                       {dave-id :id}
+                       {:first_name "David"
+                        :last_name  "Knopfler"
+                        :email      "david@direstrai.ts"}
+
+                       Collection
+                       {mark-coll-eid :entity_id}
+                       {:name "MK Personal"
+                        :personal_owner_id mark-id}
+
+                       Collection
+                       {dave-coll-id  :id
+                        dave-coll-eid :entity_id}
+                       {:name "DK Personal"
+                        :personal_owner_id dave-id}
+
+                       Database
+                       {db-id      :id}
+                       {:name "My Database"}
+
+                       Table
+                       {no-schema-id :id}
+                       {:name "Schemaless Table" :db_id db-id}
+
+                       Field
+                       {field-id     :id}
+                       {:name "Some Field" :table_id no-schema-id}
+
+                       Table
+                       {schema-id    :id}
+                       {:name        "Schema'd Table"
+                        :db_id       db-id
+                        :schema      "PUBLIC"}
+
+                       Field
+                       {field2-id    :id}
+                       {:name "Other Field" :table_id schema-id}
+
+                       Card
+                       {c1-id  :id
+                        c1-eid :entity_id}
+                       {:name          "Some Question"
+                        :database_id   db-id
+                        :table_id      no-schema-id
+                        :collection_id coll-id
+                        :creator_id    mark-id
+                        :dataset_query {:query {:source-table no-schema-id
+                                                :filter [:>= [:field field-id nil] 18]
+                                                :aggregation [[:count]]}
+                                        :database db-id}}
+
+                       Card
+                       {model-id  :id}
+                       {:name          "Some Model"
+                        :database_id   db-id
+                        :table_id      no-schema-id
+                        :collection_id coll-id
+                        :creator_id    mark-id
+                        :dataset       true
+                        :dataset_query {:query {:source-table no-schema-id
+                                                :filter [:>= [:field field-id nil] 18]
+                                                :aggregation [[:count]]}
+                                        :database db-id}}
+
+                       Card
+                       {c2-id  :id
+                        c2-eid :entity_id}
+                       {:name          "Second Question"
+                        :database_id   db-id
+                        :table_id      schema-id
+                        :collection_id coll-id
+                        :creator_id    mark-id
+                        :parameter_mappings
+                        [{:parameter_id "deadbeef"
+                          :card_id      c1-id
+                          :target [:dimension [:field field-id
+                                               {:source-field field2-id}]]}]}
+
+                       Card
+                       {c3-id  :id
+                        c3-eid :entity_id}
+                       {:name          "Third Question"
+                        :database_id   db-id
+                        :table_id      schema-id
+                        :collection_id coll-id
+                        :creator_id    mark-id
+                        :visualization_settings
+                        {:table.pivot_column "SOURCE"
+                         :table.cell_column "sum"
+                         :table.columns
+                         [{:name "SOME_FIELD"
+                           :fieldRef [:field field-id nil]
+                           :enabled true}
+                          {:name "OTHER_FIELD"
+                           :fieldRef [:field field2-id nil]
+                           :enabled true}
+                          {:name "sum"
+                           :fieldRef [:field "sum" {:base-type :type/Float}]
+                           :enabled true}
+                          {:name "count"
+                           :fieldRef [:field "count" {:base-type :type/BigInteger}]
+                           :enabled true}
+                          {:name "Average order total"
+                           :fieldRef [:field "Average order total" {:base-type :type/Float}]
+                           :enabled true}]
+                         :column_settings
+                         {(str "[\"ref\",[\"field\"," field2-id ",null]]") {:column_title "Locus"}}}}
 
                        Card       {c4-id  :id
                                    c4-eid :entity_id}        {:name          "Referenced Question"
@@ -215,73 +255,93 @@
                                    {:query {:source-table no-schema-id
                                             :filter [:>= [:field field-id nil] 18]}
                                     :database db-id}}
-                       Card       {c5-id  :id
-                                   c5-eid :entity_id}        {:name          "Dependent Question"
-                                   :database_id   db-id
-                                   :table_id      schema-id
-                                   :collection_id coll-id
-                                   :creator_id    mark-id
-                                   :dataset_query
-                                   {:query {:source-table (str "card__" c4-id)
-                                            :aggregation [[:count]]}
-                                    :database db-id}}
+                       Card
+                       {c5-id  :id
+                        c5-eid :entity_id}
+                       {:name          "Dependent Question"
+                        :database_id   db-id
+                        :table_id      schema-id
+                        :collection_id coll-id
+                        :creator_id    mark-id
+                        :dataset_query
+                        {:query {:source-table (str "card__" c4-id)
+                                 :aggregation [[:count]]}
+                         :database db-id}}
 
-                       Action     {action-id    :id
-                                   action-eid   :entity_id}  {:name "Some action"
-                                   :type :query
-                                   :model_id model-id}
+                       Action
+                       {action-id    :id
+                        action-eid   :entity_id}
+                       {:name "Some action"
+                        :type :query
+                        :model_id model-id}
 
-                       Dashboard  {dash-id  :id
-                                   dash-eid :entity_id}      {:name          "Shared Dashboard"
-                                   :collection_id coll-id
-                                   :creator_id    mark-id
-                                   :parameters    []}
-                       Dashboard  {other-dash-id :id
-                                   other-dash    :entity_id} {:name          "Dave's Dash"
-                                   :collection_id dave-coll-id
-                                   :creator_id    mark-id
-                                   :parameters    []}
-                       Dashboard  {param-dash-id :id
-                                   param-dash    :entity_id} {:name          "Dave's Dash with parameters"
-                                   :collection_id dave-coll-id
-                                   :creator_id    mark-id
-                                   :parameters    [{:id                   "abc"
-                                                    :type                 "category"
-                                                    :name                 "CATEGORY"
-                                                    :values_source_type   "card"
-                                                    ;; card_id is in a different collection with dashboard's collection
-                                                    :values_source_config {:card_id     c1-id
-                                                                           :value_field [:field field-id nil]}}]}
+                       Dashboard
+                       {dash-id  :id
+                        dash-eid :entity_id}
+                       {:name          "Shared Dashboard"
+                        :collection_id coll-id
+                        :creator_id    mark-id
+                        :parameters    []}
 
-                       DashboardCard _                       {:card_id      c1-id
-                                                              :dashboard_id dash-id
-                                                              :parameter_mappings
-                                                              [{:parameter_id "12345678"
-                                                                :card_id      c1-id
-                                                                :target [:dimension [:field field-id
-                                                                                     {:source-field field2-id}]]}]}
-                       DashboardCard _                       {:card_id      c2-id
-                                                              :dashboard_id other-dash-id
-                                                              :visualization_settings
-                                                              {:table.pivot_column "SOURCE"
-                                                               :table.cell_column "sum"
-                                                               :table.columns
-                                                               [{:name "SOME_FIELD"
-                                                                 :fieldRef [:field field-id nil]
-                                                                 :enabled true}
-                                                                {:name "sum"
-                                                                 :fieldRef [:field "sum" {:base-type :type/Float}]
-                                                                 :enabled true}
-                                                                {:name "count"
-                                                                 :fieldRef [:field "count" {:base-type :type/BigInteger}]
-                                                                 :enabled true}
-                                                                {:name "Average order total"
-                                                                 :fieldRef [:field "Average order total" {:base-type :type/Float}]
-                                                                 :enabled true}]
-                                                               :column_settings
-                                                               {(str "[\"ref\",[\"field\"," field2-id ",null]]") {:column_title "Locus"}}}}
-                       DashboardCard _                       {:action_id action-id
-                                                              :dashboard_id other-dash-id}]
+                       Dashboard
+                       {other-dash-id :id
+                        other-dash    :entity_id}
+                       {:name          "Dave's Dash"
+                        :collection_id dave-coll-id
+                        :creator_id    mark-id
+                        :parameters    []}
+
+                       Dashboard
+                       {param-dash-id :id
+                        param-dash    :entity_id}
+                       {:name          "Dave's Dash with parameters"
+                        :collection_id dave-coll-id
+                        :creator_id    mark-id
+                        :parameters    [{:id                   "abc"
+                                         :type                 "category"
+                                         :name                 "CATEGORY"
+                                         :values_source_type   "card"
+                                         ;; card_id is in a different collection with dashboard's collection
+                                         :values_source_config {:card_id     c1-id
+                                                                :value_field [:field field-id nil]}}]}
+
+                       DashboardCard
+                       _
+                       {:card_id      c1-id
+                        :dashboard_id dash-id
+                        :parameter_mappings
+                        [{:parameter_id "12345678"
+                          :card_id      c1-id
+                          :target [:dimension [:field field-id
+                                               {:source-field field2-id}]]}]}
+
+                       DashboardCard
+                       _
+                       {:card_id      c2-id
+                        :dashboard_id other-dash-id
+                        :visualization_settings
+                        {:table.pivot_column "SOURCE"
+                         :table.cell_column "sum"
+                         :table.columns
+                         [{:name "SOME_FIELD"
+                           :fieldRef [:field field-id nil]
+                           :enabled true}
+                          {:name "sum"
+                           :fieldRef [:field "sum" {:base-type :type/Float}]
+                           :enabled true}
+                          {:name "count"
+                           :fieldRef [:field "count" {:base-type :type/BigInteger}]
+                           :enabled true}
+                          {:name "Average order total"
+                           :fieldRef [:field "Average order total" {:base-type :type/Float}]
+                           :enabled true}]
+                         :column_settings
+                         {(str "[\"ref\",[\"field\"," field2-id ",null]]") {:column_title "Locus"}}}}
+
+                       DashboardCard
+                       _
+                       {:action_id action-id
+                        :dashboard_id other-dash-id}]
       (testing "table and database are extracted as [db schema table] triples"
         (let [ser (serdes/extract-one "Card" {} (t2/select-one Card :id c1-id))]
           (is (=? {:serdes/meta                 [{:model "Card" :id c1-eid :label "some_question"}]
@@ -517,7 +577,7 @@
 
 (deftest dimensions-test
   (mt/with-empty-h2-app-db
-    (ts/with-temp-dpc [ ;; Simple case: a singular field, no human-readable field.
+    (ts/with-temp-dpc [;; Simple case: a singular field, no human-readable field.
                        Database   {db-id        :id}        {:name "My Database"}
                        Table      {no-schema-id :id}        {:name "Schemaless Table" :db_id db-id}
                        Field      {email-id     :id}        {:name "email" :table_id no-schema-id}
@@ -554,7 +614,7 @@
                        [:dimensions  [:sequential
                                       [:map
                                        [:created_at (ms/InstanceOfClass LocalDateTime)]
-                                       [:human_readable_field_id {:optional true} [:maybe [:sequential :string]]]]]]]
+                                       [:human_readable_field_id {:optional true} [:maybe [:sequential [:maybe :string]]]]]]]]
                       ser))
           (is (not (contains? ser :id)))
 
@@ -578,7 +638,7 @@
                        [:fk_target_field_id [:= ["My Database" "PUBLIC" "Customers" "id"]]]
                        [:dimensions         [:sequential
                                              [:map
-                                              [:human_readable_field_id [:maybe [:sequential :string]]]
+                                              [:human_readable_field_id [:maybe [:sequential [:maybe :string]]]]
                                               [:created_at              (ms/InstanceOfClass LocalDateTime)]]]]]
                       ser))
           (is (not (contains? ser :id)))
@@ -643,21 +703,32 @@
 
 (deftest native-query-snippets-test
   (mt/with-empty-h2-app-db
-    (ts/with-temp-dpc [User               {ann-id       :id}        {:first_name "Ann"
-                                                                     :last_name  "Wilson"
-                                                                     :email      "ann@heart.band"}
-                       Collection         {coll-id     :id
-                                           coll-eid    :entity_id}  {:name              "Shared Collection"
-                                           :personal_owner_id nil
-                                           :namespace         :snippets}
-                       NativeQuerySnippet {s1-id       :id
-                                           s1-eid      :entity_id}  {:name          "Snippet 1"
-                                           :collection_id coll-id
-                                           :creator_id    ann-id}
-                       NativeQuerySnippet {s2-id       :id
-                                           s2-eid      :entity_id}  {:name          "Snippet 2"
-                                           :collection_id nil
-                                           :creator_id    ann-id}]
+    (ts/with-temp-dpc [User
+                       {ann-id       :id}
+                       {:first_name "Ann"
+                        :last_name  "Wilson"
+                        :email      "ann@heart.band"}
+
+                       Collection
+                       {coll-id     :id
+                        coll-eid    :entity_id}
+                       {:name              "Shared Collection"
+                        :personal_owner_id nil
+                        :namespace         :snippets}
+
+                       NativeQuerySnippet
+                       {s1-id       :id
+                        s1-eid      :entity_id}
+                       {:name          "Snippet 1"
+                        :collection_id coll-id
+                        :creator_id    ann-id}
+
+                       NativeQuerySnippet
+                       {s2-id       :id
+                        s2-eid      :entity_id}
+                       {:name          "Snippet 2"
+                        :collection_id nil
+                        :creator_id    ann-id}]
       (testing "native query snippets"
         (testing "can belong to :snippets collections"
           (let [ser (serdes/extract-one "NativeQuerySnippet" {} (t2/select-one NativeQuerySnippet :id s1-id))]
@@ -803,17 +874,20 @@
                        Database {db-id :id :as db} {:name "My Database"}]
       (mt/with-db db
         (mt/with-actions [{card-id-1  :id
-                           card-eid-1 :entity_id} {:name          "Source question"
+                           card-eid-1 :entity_id}
+                          {:name          "Source question"
                            :database_id   db-id
                            :dataset       true
                            :query_type    :native
                            :dataset_query (mt/native-query {:native "select 1"})
                            :creator_id    ann-id}
-                          {:keys [action-id]} {:name          "My Action"
-                                               :type          :implicit
-                                               :kind          "row/update"
-                                               :creator_id    ann-id
-                                               :model_id      card-id-1}]
+
+                          {:keys [action-id]}
+                          {:name          "My Action"
+                           :type          :implicit
+                           :kind          "row/update"
+                           :creator_id    ann-id
+                           :model_id      card-id-1}]
           (let [action (action/select-action :id action-id)]
             (testing "implicit action"
               (let [ser (serdes/extract-one "Action" {} action)]
@@ -838,17 +912,20 @@
                        Database {db-id :id :as db} {:name "My Database"}]
       (mt/with-db db
         (mt/with-actions [{card-id-1  :id
-                           card-eid-1 :entity_id} {:name          "Source question"
+                           card-eid-1 :entity_id}
+                          {:name          "Source question"
                            :database_id   db-id
                            :dataset       true
                            :query_type    :native
                            :dataset_query (mt/native-query {:native "select 1"})
                            :creator_id    ann-id}
-                          {:keys [action-id]} {:name          "My Action"
-                                               :type          :http
-                                               :template      {}
-                                               :creator_id    ann-id
-                                               :model_id      card-id-1}]
+
+                          {:keys [action-id]}
+                          {:name          "My Action"
+                           :type          :http
+                           :template      {}
+                           :creator_id    ann-id
+                           :model_id      card-id-1}]
           (let [action (action/select-action :id action-id)]
             (testing "action"
               (let [ser (serdes/extract-one "Action" {} action)]
@@ -867,24 +944,27 @@
 
 (deftest query-action-test
   (mt/with-empty-h2-app-db
-    (ts/with-temp-dpc [User       {ann-id       :id} {:first_name "Ann"
-                                                      :last_name  "Wilson"
-                                                      :email      "ann@heart.band"}
-                       Database   {db-id :id :as db} {:name "My Database"}]
+    (ts/with-temp-dpc [User     {ann-id       :id} {:first_name "Ann"
+                                                    :last_name  "Wilson"
+                                                    :email      "ann@heart.band"}
+                       Database {db-id :id :as db} {:name "My Database"}]
       (mt/with-db db
         (mt/with-actions [{card-id-1  :id
-                           card-eid-1 :entity_id} {:name          "Source question"
+                           card-eid-1 :entity_id}
+                          {:name          "Source question"
                            :database_id   db-id
                            :dataset       true
                            :query_type    :native
                            :dataset_query (mt/native-query {:native "select 1"})
                            :creator_id    ann-id}
-                          {:keys [action-id]} {:name          "My Action"
-                                               :type          :query
-                                               :dataset_query {:type "native", :native {:native "select 1"}, :database db-id}
-                                               :database_id   db-id
-                                               :creator_id    ann-id
-                                               :model_id      card-id-1}]
+
+                          {:keys [action-id]}
+                          {:name          "My Action"
+                           :type          :query
+                           :dataset_query {:type "native", :native {:native "select 1"}, :database db-id}
+                           :database_id   db-id
+                           :creator_id    ann-id
+                           :model_id      card-id-1}]
           (let [action (action/select-action :id action-id)]
             (testing "action"
               (let [ser (serdes/extract-one "Action" {} action)]
@@ -906,16 +986,16 @@
 
 (deftest field-values-test
   (mt/with-empty-h2-app-db
-    (ts/with-temp-dpc [Database   {db-id        :id}        {:name "My Database"}
-                       Table      {no-schema-id :id}        {:name "Schemaless Table" :db_id db-id}
-                       Field      {field-id     :id}        {:name "Some Field"
-                                                             :table_id no-schema-id
-                                                             :fingerprint {:global {:distinct-count 75 :nil% 0.0}
-                                                                           :type   {:type/Text {:percent-json   0.0
-                                                                                                :percent-url    0.0
-                                                                                                :percent-email  0.0
-                                                                                                :percent-state  0.0
-                                                                                                :average-length 8.333333333333334}}}}
+    (ts/with-temp-dpc [Database {db-id        :id} {:name "My Database"}
+                       Table    {no-schema-id :id} {:name "Schemaless Table" :db_id db-id}
+                       Field    {field-id     :id} {:name "Some Field"
+                                                    :table_id no-schema-id
+                                                    :fingerprint {:global {:distinct-count 75 :nil% 0.0}
+                                                                  :type   {:type/Text {:percent-json   0.0
+                                                                                       :percent-url    0.0
+                                                                                       :percent-email  0.0
+                                                                                       :percent-state  0.0
+                                                                                       :average-length 8.333333333333334}}}}
 
                        FieldValues
                        {fv-id       :id
@@ -1075,6 +1155,7 @@
                        {:first_name "Ann"
                         :last_name  "Wilson"
                         :email      "ann@heart.band"}
+
                        Dashboard
                        {dash-id       :id
                         dash-eid      :entity_id}
@@ -1182,54 +1263,63 @@
                    (set (serdes/dependencies ser))))))))))
 
 (deftest cards-test
- (mt/with-empty-h2-app-db
-   (ts/with-temp-dpc
-     [User       {mark-id :id}              {:first_name "Mark"
-                                             :last_name  "Knopfler"
-                                             :email      "mark@direstrai.ts"}
-      Database   {db-id    :id}             {:name "My Database"}
-      Table      {table-id :id}             {:name "Schemaless Table" :db_id db-id}
-      Field      {field-id :id}             {:name "A Field" :table_id table-id}
-      Collection {coll-id-1  :id}           {:name "1st collection"}
-      Collection {coll-id-2  :id
-                  coll-eid-2 :entity_id}    {:name "2nd collection"}
+  (mt/with-empty-h2-app-db
+    (ts/with-temp-dpc
+      [User       {mark-id :id}    {:first_name "Mark"
+                                    :last_name  "Knopfler"
+                                    :email      "mark@direstrai.ts"}
+       Database   {db-id    :id}   {:name "My Database"}
+       Table      {table-id :id}   {:name "Schemaless Table" :db_id db-id}
+       Field      {field-id :id}   {:name "A Field" :table_id table-id}
+       Collection {coll-id-1  :id} {:name "1st collection"}
 
-      Card       {card-id-1  :id
-                  card-eid-1 :entity_id}    {:name          "Source question"
-                                             :database_id   db-id
-                                             :table_id      table-id
-                                             :collection_id coll-id-1
-                                             :creator_id    mark-id}
-      Card       {card-id-2  :id}           {:name          "Card 2"
-                                             :database_id   db-id
-                                             :table_id      table-id
-                                             :collection_id coll-id-2
-                                             :creator_id    mark-id
-                                             :parameters    [{:id                   "abc"
-                                                              :type                 "category"
-                                                              :name                 "CATEGORY"
-                                                              :values_source_type   "card"
-                                                              ;; card_id is in a different collection with dashboard's collection
-                                                              :values_source_config {:card_id     card-id-1
-                                                                                     :value_field [:field field-id nil]}}]}]
-     (testing "Cards with parameter's source is another question"
-       (let [ser (serdes/extract-one "Card" {} (t2/select-one Card :id card-id-2))]
-         (is (= [{:id                   "abc",
-                  :type                 :category,
-                  :name                 "CATEGORY",
-                  :values_source_type   "card",
-                  :values_source_config {:card_id card-eid-1,
-                                         :value_field [:field ["My Database" nil "Schemaless Table" "A Field"] nil]}}]
-                (:parameters ser)))
-         (is (= #{[{:model "Database"   :id "My Database"}]
-                  [{:model "Collection" :id coll-eid-2}]
-                  [{:model "Database"   :id "My Database"}
-                   {:model "Table"      :id "Schemaless Table"}]
-                  [{:model "Card"       :id card-eid-1}]
-                  [{:model "Database"   :id "My Database"}
-                   {:model "Table"      :id "Schemaless Table"}
-                   {:model "Field"      :id "A Field"}]}
-                (set (serdes/dependencies ser)))))))))
+       Collection
+       {coll-id-2  :id
+        coll-eid-2 :entity_id}
+       {:name "2nd collection"}
+
+
+       Card
+       {card-id-1  :id
+        card-eid-1 :entity_id}
+       {:name          "Source question"
+        :database_id   db-id
+        :table_id      table-id
+        :collection_id coll-id-1
+        :creator_id    mark-id}
+
+       Card
+       {card-id-2  :id}
+       {:name          "Card 2"
+        :database_id   db-id
+        :table_id      table-id
+        :collection_id coll-id-2
+        :creator_id    mark-id
+        :parameters    [{:id                   "abc"
+                         :type                 "category"
+                         :name                 "CATEGORY"
+                         :values_source_type   "card"
+                         ;; card_id is in a different collection with dashboard's collection
+                         :values_source_config {:card_id     card-id-1
+                                                :value_field [:field field-id nil]}}]}]
+      (testing "Cards with parameter's source is another question"
+        (let [ser (serdes/extract-one "Card" {} (t2/select-one Card :id card-id-2))]
+          (is (= [{:id                   "abc",
+                   :type                 :category,
+                   :name                 "CATEGORY",
+                   :values_source_type   "card",
+                   :values_source_config {:card_id card-eid-1,
+                                          :value_field [:field ["My Database" nil "Schemaless Table" "A Field"] nil]}}]
+                 (:parameters ser)))
+          (is (= #{[{:model "Database"   :id "My Database"}]
+                   [{:model "Collection" :id coll-eid-2}]
+                   [{:model "Database"   :id "My Database"}
+                    {:model "Table"      :id "Schemaless Table"}]
+                   [{:model "Card"       :id card-eid-1}]
+                   [{:model "Database"   :id "My Database"}
+                    {:model "Table"      :id "Schemaless Table"}
+                    {:model "Field"      :id "A Field"}]}
+                 (set (serdes/dependencies ser)))))))))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest selective-serialization-basic-test

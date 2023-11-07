@@ -102,18 +102,18 @@
                     :mbql?       true}
                    (qp/compile
                     (mt/mbql-query attempts
-                                   {:aggregation [[:count]]
-                                    :filter      [:time-interval $datetime :last :month]}))))
+                      {:aggregation [[:count]]
+                       :filter      [:time-interval $datetime :last :month]}))))
 
             (testing "should still work even with bucketing bucketing"
               (let [tz    (qp.timezone/results-timezone-id :mongo mt/db)
                     query (mt/with-metadata-provider (mt/id)
                             (qp/compile
                              (mt/mbql-query attempts
-                                            {:aggregation [[:count]]
-                                             :breakout    [[:field %datetime {:temporal-unit :month}]
-                                                           [:field %datetime {:temporal-unit :day}]]
-                                             :filter      [:= [:field %datetime {:temporal-unit :month}] [:relative-datetime -1 :month]]})))]
+                               {:aggregation [[:count]]
+                                :breakout    [[:field %datetime {:temporal-unit :month}]
+                                              [:field %datetime {:temporal-unit :day}]]
+                                :filter      [:= [:field %datetime {:temporal-unit :month}] [:relative-datetime -1 :month]]})))]
                 (is (= {:projections ["datetime" "datetime_2" "count"]
                         :query       [{"$match"
                                        {"$and"

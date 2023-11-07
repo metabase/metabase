@@ -9,7 +9,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.table :refer [Table]]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -92,20 +91,20 @@
         (is (=? {:created_at java.time.temporal.Temporal
                  :updated_at java.time.temporal.Temporal}
                 field))))
-    (let [t        #t "2022-10-13T19:21:00Z"
-          t-schema (s/eq (case (mdb.connection/db-type)
-                           ;; not sure why this is TIMESTAMP WITH TIME ZONE for Postgres but not for H2/MySQL. :shrug:
-                           :postgres    (t/offset-date-time "2022-10-13T19:21:00Z")
-                           (:h2 :mysql) (t/local-date-time "2022-10-13T19:21:00")))]
+    (let [t                  #t "2022-10-13T19:21:00Z"
+          expected-timestamp (case (mdb.connection/db-type)
+                               ;; not sure why this is TIMESTAMP WITH TIME ZONE for Postgres but not for H2/MySQL. :shrug:
+                               :postgres    (t/offset-date-time "2022-10-13T19:21:00Z")
+                               (:h2 :mysql) (t/local-date-time "2022-10-13T19:21:00"))]
       (testing "Explicitly specify :created_at"
         (t2.with-temp/with-temp [Field field {:created_at t}]
-          (is (=? {:created_at t-schema
+          (is (=? {:created_at expected-timestamp
                    :updated_at java.time.temporal.Temporal}
                   field))))
       (testing "Explicitly specify :updated_at"
         (t2.with-temp/with-temp [Field field {:updated_at t}]
           (is (=? {:created_at java.time.temporal.Temporal
-                   :updated_at t-schema}
+                   :updated_at expected-timestamp}
                   field)))))))
 
 (deftest ^:parallel upgrade-to-v2-viz-settings-test

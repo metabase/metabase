@@ -917,15 +917,8 @@
                        Field    _ {:table_id table-id}
                        Field    _ {:table_id table-id}]
           (automagic-dashboards.test/with-dashboard-cleanup
-            (is (malli= [:sequential
-                         {:min 1, :max 1}
-                         [:map
-                          [:tables [:sequential
-                                    {:min 1, :max 1}
-                                    [:map
-                                     [:table [:map
-                                              [:id [:= table-id]]]]]]]]]
-                        (magic/candidate-tables (t2/select-one Database :id db-id))))))))))
+            (is (=? [{:tables [{:table {:id table-id}}]}]
+                    (magic/candidate-tables (t2/select-one Database :id db-id))))))))))
 
 (deftest call-count-test
   (mt/with-temp [Database {db-id :id} {}

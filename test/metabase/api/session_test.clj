@@ -37,7 +37,8 @@
     (reset! (:attempts throttler) nil)))
 
 (def ^:private SessionResponse
-  {:id ms/UUIDString})
+  [:map
+   [:id ms/UUIDString]])
 
 (def ^:private session-cookie @#'mw.session/metabase-session-cookie)
 
