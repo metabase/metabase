@@ -433,7 +433,7 @@ describe("AddToDashSelectDashModal", () => {
           });
 
           describe('when "Create a new dashboard" option is clicked', () => {
-            beforeEach(async () => {
+            beforeEach(() => {
               userEvent.click(
                 screen.getByRole("heading", {
                   name: "Create a new dashboard",
@@ -651,7 +651,7 @@ describe("AddToDashSelectDashModal", () => {
             });
           });
 
-          it('should not render "Create a new dashboard" option when opening the root collection (public collection)', async () => {
+          it('should not render "Create a new dashboard" option when opening the root collection (public collection)', () => {
             expect(
               screen.queryByRole("heading", {
                 name: "Create a new dashboard",
@@ -659,7 +659,7 @@ describe("AddToDashSelectDashModal", () => {
             ).not.toBeInTheDocument();
           });
 
-          it('should render "Create a new dashboard" option when opening personal subcollections', async () => {
+          it('should render "Create a new dashboard" option when opening personal subcollections', () => {
             userEvent.click(
               screen.getByRole("heading", {
                 name: PERSONAL_COLLECTION.name,
@@ -686,7 +686,7 @@ describe("AddToDashSelectDashModal", () => {
           });
 
           describe('when "Create a new dashboard" option is clicked when opening personal collections', () => {
-            beforeEach(async () => {
+            beforeEach(() => {
               // "Create a new dashboard" option only renders when opening personal collections
               userEvent.click(
                 screen.getByRole("heading", {
