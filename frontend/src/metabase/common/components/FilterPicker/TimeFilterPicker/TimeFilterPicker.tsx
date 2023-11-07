@@ -1,16 +1,15 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Button, Flex, Text, TimeInput } from "metabase/ui";
-
+import { Box, Flex, Text, TimeInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import { MAX_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
-import { BackButton } from "../BackButton";
+import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { Header } from "../Header";
 import { Footer } from "../Footer";
-import { FilterOperatorPicker } from "../FilterOperatorPicker";
 
 import { OPERATOR_OPTIONS } from "./constants";
 import {
@@ -76,47 +75,41 @@ export function TimeFilterPicker({
   };
 
   return (
-    <div data-testid="time-filter-picker">
-      <Header>
-        <BackButton onClick={onBack}>{columnName}</BackButton>
+    <Box maw={MAX_WIDTH} data-testid="time-filter-picker">
+      <Header columnName={columnName} onBack={onBack}>
         <FilterOperatorPicker
           value={operatorName}
           options={availableOperators}
           onChange={handleOperatorChange}
         />
       </Header>
-      {valueCount > 0 && (
-        <Flex p="md">
-          <ValuesInput
-            values={values}
-            valueCount={valueCount}
-            onChange={setValues}
-          />
-        </Flex>
-      )}
-      <Footer mt={valueCount === 0 ? -1 : undefined} /* to collapse borders */>
-        <Box />
-        <Button
-          variant="filled"
-          disabled={!isValid}
-          onClick={handleFilterChange}
-        >
-          {isNew ? t`Add filter` : t`Update filter`}
-        </Button>
-      </Footer>
-    </div>
+      <Box>
+        {valueCount > 0 && (
+          <Flex p="md">
+            <ValuesInput
+              values={values}
+              valueCount={valueCount}
+              onChange={setValues}
+            />
+          </Flex>
+        )}
+        <Footer
+          isNew={isNew}
+          canSubmit={isValid}
+          onSubmit={handleFilterChange}
+        />
+      </Box>
+    </Box>
   );
 }
 
-function ValuesInput({
-  values,
-  valueCount,
-  onChange,
-}: {
+interface ValuesInputProps {
   values: Date[];
   valueCount: number;
   onChange: (values: Date[]) => void;
-}) {
+}
+
+function ValuesInput({ values, valueCount, onChange }: ValuesInputProps) {
   if (valueCount === 1) {
     const [value = getDefaultValue()] = values;
     return (
