@@ -1,19 +1,31 @@
 {
   "teams": [
     {
-      "name": "Team 42",
-      "label": ".Team/42",
+      "name": "Query",
+      "label": ".Team/Query",
       "members": [
         "ranquild",
+        "uladzimirdev",
+        "kamilmielnik"
+      ]
+    },
+    {
+      "name": "Embedding",
+      "label": ".Team/Embedding",
+      "members": [
         "WiNloSt",
         "deniskaber",
         "oisincoveney",
-        "uladzimirdev",
+        "npretto"
+      ]
+    },
+    {
+      "name": "BEC",
+      "label": ".Team/BackendComponents",
+      "members": [
         "tsmacdonald",
         "qnkhuat",
         "calherries",
-        "kamilmielnik",
-        "npretto",
         "piranha"
       ]
     },
@@ -22,29 +34,35 @@
       "label": ".Team/QueryProcessor",
       "members": [
         "camsaul",
-        "kulyk",
         "snoe",
         "bshepherdson",
-        "john-metabase",
         "metamben",
         "lbrdnk"
       ]
     },
     {
-      "name": "Pixel Police",
-      "label": ".Team/PixelPolice",
+      "name": "Admin Webapp",
+      "label": ".Team/AdminWebapp",
       "members": [
         "noahmoss",
         "escherize",
-        "adam-james-v",
         "qwef",
-        "alxnddr",
         "iethree",
         "npfitz",
-        "EmmadUsmani",
-        "JesseSDevaney",
         "shaunlebron",
         "johnswanson"
+      ]
+    },
+    {
+      "name": "DashViz",
+      "label": ".Team/DashViz",
+      "members": [
+        "alxnddr",
+        "EmmadUsmani",
+        "JesseSDevaney",
+        "kulyk",
+        "markbastian",
+        "adam-james-v"
       ]
     }
   ]

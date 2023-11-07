@@ -187,12 +187,12 @@
   [query :- :map
    model :- [:enum "card" "dataset" "dashboard" "metric"]]
   (-> query
-       (replace-select :last_editor_id :r.user_id)
-       (replace-select :last_edited_at :r.timestamp)
-       (sql.helpers/left-join [:revision :r]
-                              [:and [:= :r.model_id (search.config/column-with-model-alias model :id)]
-                               [:= :r.most_recent true]
-                               [:= :r.model (search.config/search-model->revision-model model)]])))
+      (replace-select :last_editor_id :r.user_id)
+      (replace-select :last_edited_at :r.timestamp)
+      (sql.helpers/left-join [:revision :r]
+                             [:and [:= :r.model_id (search.config/column-with-model-alias model :id)]
+                              [:= :r.most_recent true]
+                              [:= :r.model (search.config/search-model->revision-model model)]])))
 
 (mu/defn ^:private with-moderated-status :- :map
   [query :- :map
@@ -374,19 +374,19 @@
   (let [models       (:models search-ctx)
         order-clause [((fnil order-clause "") (:search-string search-ctx))]]
     (cond
-     (= (count models) 0)
-     {:select [nil]}
+      (= (count models) 0)
+      {:select [nil]}
 
-     (= (count models) 1)
-     (search-query-for-model (first models) search-ctx)
+      (= (count models) 1)
+      (search-query-for-model (first models) search-ctx)
 
-     :else
-     {:select   [:*]
-      :from     [[{:union-all (vec (for [model models
-                                         :let  [query (search-query-for-model model search-ctx)]
-                                         :when (seq query)]
-                                     query))} :alias_is_required_by_sql_but_not_needed_here]]
-      :order-by order-clause})))
+      :else
+      {:select   [:*]
+       :from     [[{:union-all (vec (for [model models
+                                          :let  [query (search-query-for-model model search-ctx)]
+                                          :when (seq query)]
+                                      query))} :alias_is_required_by_sql_but_not_needed_here]]
+       :order-by order-clause})))
 
 (defn- hydrate-user-metadata
   "Hydrate common-name for last_edited_by and created_by from result."
@@ -525,13 +525,14 @@
   to `table_db_id`.
   To specify a list of models, pass in an array to `models`.
   "
-  [q archived created_at created_by table_db_id models last_edited_at last_edited_by
+  [q archived context created_at created_by table_db_id models last_edited_at last_edited_by
    filter_items_in_personal_collection search_native_query verified]
   {q                                   [:maybe ms/NonBlankString]
    archived                            [:maybe :boolean]
    table_db_id                         [:maybe ms/PositiveInt]
    models                              [:maybe [:or SearchableModel [:sequential SearchableModel]]]
    filter_items_in_personal_collection [:maybe [:enum "only" "exclude"]]
+   context                             [:maybe [:enum "search-bar" "search-app"]]
    created_at                          [:maybe ms/NonBlankString]
    created_by                          [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
    last_edited_at                      [:maybe ms/NonBlankString]
@@ -541,9 +542,9 @@
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
   (let [start-time (System/currentTimeMillis)
         models-set (cond
-                    (nil? models)    search.config/all-models
-                    (string? models) #{models}
-                    :else            (set models))
+                     (nil? models)    search.config/all-models
+                     (string? models) #{models}
+                     :else            (set models))
         results    (search (search-context
                             {:search-string       q
                              :archived            archived
@@ -558,12 +559,25 @@
                              :offset              mw.offset-paging/*offset*
                              :search-native-query search_native_query
                              :verified            verified}))
-        duration   (- (System/currentTimeMillis) start-time)]
-    ;; Only track global searches
-    (when (and (nil? models)
-               (nil? table_db_id)
-               (not archived))
-      (snowplow/track-event! ::snowplow/new-search-query api/*current-user-id* {:runtime-milliseconds duration}))
+        duration   (- (System/currentTimeMillis) start-time)
+        has-advanced-filters (some some?
+                                   [models created_by created_at last_edited_by
+                                    last_edited_at search_native_query verified])]
+    (when (contains? #{"search-app" "search-bar"} context)
+      (snowplow/track-event! ::snowplow/new-search-query api/*current-user-id*
+                             {:runtime-milliseconds duration
+                              :context              context})
+      (when has-advanced-filters
+        (snowplow/track-event! ::snowplow/search-results-filtered api/*current-user-id*
+                               {:runtime-milliseconds  duration
+                                :content-type          (u/one-or-many models)
+                                :creator               (some? created_by)
+                                :creation-date         (some? created_at)
+                                :last-editor           (some? last_edited_by)
+                                :last-edit-date        (some? last_edited_at)
+                                :verified-items        (some? verified)
+                                :search-native-queries (some? search_native_query)})))
+
     results))
 
 (api/define-routes)

@@ -80,7 +80,7 @@
     (.execute stmt)))
 
 (defmethod sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc
-  [driver conn table-schema table-name]
+  [driver ^Connection conn table-schema table-name]
   ;; Query completes = we have SELECT privileges
   ;; Query throws some sort of no permissions exception = no SELECT privileges
   (let [sql-args (simple-select-probe-query driver table-schema table-name)]
@@ -95,6 +95,7 @@
       true
       (catch Throwable e
         (log/trace e "Assuming no SELECT privileges: caught exception")
+        (.rollback conn)
         false))))
 
 (defn- db-tables
@@ -128,7 +129,7 @@
            (filter (fn [{table-schema :schema, table-name :name}]
                      (sql-jdbc.sync.interface/have-select-privilege? driver conn table-schema table-name))))
      (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn metadata
-                                                schema-inclusion-filters schema-exclusion-filters))))
+                                                        schema-inclusion-filters schema-exclusion-filters))))
 
 (defmethod sql-jdbc.sync.interface/active-tables :sql-jdbc
   [driver connection schema-inclusion-filters schema-exclusion-filters]

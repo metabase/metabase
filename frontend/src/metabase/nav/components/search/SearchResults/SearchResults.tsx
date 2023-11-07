@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
+import { SearchContextTypes } from "metabase/search/constants";
 import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
 import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
 import EmptyState from "metabase/components/EmptyState";
@@ -44,6 +45,7 @@ export type SearchResultsProps = {
   models?: SearchModelType[];
   footerComponent?: SearchResultsFooter;
   onFooterSelect?: () => void;
+  isSearchBar?: boolean;
 };
 
 export const SearchLoadingSpinner = () => (
@@ -63,6 +65,7 @@ export const SearchResults = ({
   models,
   footerComponent,
   onFooterSelect,
+  isSearchBar = false,
 }: SearchResultsProps) => {
   const dispatch = useDispatch();
 
@@ -78,12 +81,21 @@ export const SearchResults = ({
     [searchText],
   );
 
-  const query = {
+  const query: {
+    q?: string;
+    limit: number;
+    models?: SearchModelType[];
+    context?: string;
+  } & SearchFilters = {
     q: debouncedSearchText,
     limit: DEFAULT_SEARCH_LIMIT,
     ...searchFilters,
     models: models ?? searchFilters.type,
   };
+
+  if (isSearchBar) {
+    query.context = SearchContextTypes.SEARCH_BAR;
+  }
 
   const {
     data: list = [],

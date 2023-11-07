@@ -87,7 +87,7 @@ You can set field types for models, which helps Metabase understand how to work 
 
 ### X-rays
 
-When you [X-ray](../exploration-and-organization/x-rays.md) a table, Metabase considers both the data type and the field type to display different charts that summarize that data.
+When you [X-ray](../exploration-and-organization/x-rays.md) a table or model, Metabase considers both the data type and the field type to display different charts that summarize that data.
 
 ### Field Filters
 
