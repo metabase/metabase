@@ -6,6 +6,7 @@ import {
   setupCollectionsEndpoints,
   setupCollectionByIdEndpoint,
   setupDashboardCollectionItemsEndpoint,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
@@ -15,7 +16,12 @@ import {
   createMockSearchResult,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { Card, Collection, Dashboard } from "metabase-types/api";
+import type {
+  Card,
+  Collection,
+  Dashboard,
+  SearchResult,
+} from "metabase-types/api";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import { checkNotNull, isNotNull } from "metabase/lib/types";
 import { getNextId } from "__support__/utils";
@@ -128,6 +134,7 @@ interface SetupOpts {
   dashboard?: Dashboard;
   mostRecentlyViewedDashboard?: Dashboard;
   waitForContent?: boolean;
+  searchResults?: SearchResult[];
 }
 
 const setup = async ({
@@ -137,6 +144,7 @@ const setup = async ({
   mostRecentlyViewedDashboard = undefined,
   error,
   waitForContent = true,
+  searchResults = [],
 }: SetupOpts = {}) => {
   const dashboards = Array.from(
     new Set([dashboard, mostRecentlyViewedDashboard].filter(isNotNull)),
@@ -146,6 +154,7 @@ const setup = async ({
   setupDashboardCollectionItemsEndpoint(dashboards);
   setupCollectionByIdEndpoint({ collections, error });
   setupMostRecentlyViewedDashboard(mostRecentlyViewedDashboard);
+  setupSearchEndpoints(searchResults);
 
   renderWithProviders(
     <Route
@@ -682,40 +691,27 @@ describe("AddToDashSelectDashModal", () => {
         it("should search dashboards only in public collections", async () => {
           await setup({
             card: CARD_IN_ROOT_COLLECTION,
+            searchResults: [DASHBOARD_RESULT_IN_PUBLIC_COLLECTION],
           });
 
-          const typedText = "question";
-          fetchMock.get(
-            {
-              url: "path:/api/search",
-              query: {
-                models: "dashboard",
-                q: typedText,
-              },
-            },
-            {
-              data: [DASHBOARD_RESULT_IN_PUBLIC_COLLECTION],
-            },
-          );
-
           userEvent.click(screen.getByRole("button", { name: "Search" }));
+          const typedText = "dashboard";
           userEvent.type(
             screen.getByPlaceholderText("Search"),
-            "question{enter}",
+            `${typedText}{enter}`,
           );
 
           expect(
             await screen.findByText(DASHBOARD_RESULT_IN_PUBLIC_COLLECTION.name),
           ).toBeInTheDocument();
 
-          // There's no way to math a URL that a query param is not present
-          // with fetch-mock, so we have to assert it manually.
           const call = fetchMock.lastCall("path:/api/search");
           const urlObject = new URL(checkNotNull(call?.request?.url));
           expect(urlObject.pathname).toEqual("/api/search");
-          expect(
-            urlObject.searchParams.get("filter_items_in_personal_collection"),
-          ).toEqual(null);
+          expect(Object.fromEntries(urlObject.searchParams.entries())).toEqual({
+            models: "dashboard",
+            q: typedText,
+          });
         });
       });
 
@@ -723,40 +719,27 @@ describe("AddToDashSelectDashModal", () => {
         it("should search dashboards only in public collections", async () => {
           await setup({
             card: CARD_IN_PUBLIC_COLLECTION,
+            searchResults: [DASHBOARD_RESULT_IN_PUBLIC_COLLECTION],
           });
 
-          const typedText = "question";
-          fetchMock.get(
-            {
-              url: "path:/api/search",
-              query: {
-                models: "dashboard",
-                q: typedText,
-              },
-            },
-            {
-              data: [DASHBOARD_RESULT_IN_PUBLIC_COLLECTION],
-            },
-          );
-
           userEvent.click(screen.getByRole("button", { name: "Search" }));
+          const typedText = "dashboard";
           userEvent.type(
             screen.getByPlaceholderText("Search"),
-            "question{enter}",
+            `${typedText}{enter}`,
           );
 
           expect(
             await screen.findByText(DASHBOARD_RESULT_IN_PUBLIC_COLLECTION.name),
           ).toBeInTheDocument();
 
-          // There's no way to math a URL that a query param is not present
-          // with fetch-mock, so we have to assert it manually.
           const call = fetchMock.lastCall("path:/api/search");
           const urlObject = new URL(checkNotNull(call?.request?.url));
           expect(urlObject.pathname).toEqual("/api/search");
-          expect(
-            urlObject.searchParams.get("filter_items_in_personal_collection"),
-          ).toEqual(null);
+          expect(Object.fromEntries(urlObject.searchParams.entries())).toEqual({
+            models: "dashboard",
+            q: typedText,
+          });
         });
       });
 
@@ -764,30 +747,17 @@ describe("AddToDashSelectDashModal", () => {
         it("should search all dashboards", async () => {
           await setup({
             card: CARD_IN_PERSONAL_COLLECTION,
+            searchResults: [
+              DASHBOARD_RESULT_IN_PUBLIC_COLLECTION,
+              DASHBOARD_RESULT_IN_PERSONAL_COLLECTION,
+            ],
           });
 
-          const typedText = "question";
-          fetchMock.get(
-            {
-              url: "path:/api/search",
-              query: {
-                models: "dashboard",
-                q: typedText,
-                filter_items_in_personal_collection: "only",
-              },
-            },
-            {
-              data: [
-                DASHBOARD_RESULT_IN_PUBLIC_COLLECTION,
-                DASHBOARD_RESULT_IN_PERSONAL_COLLECTION,
-              ],
-            },
-          );
-
           userEvent.click(screen.getByRole("button", { name: "Search" }));
+          const typedText = "dashboard";
           userEvent.type(
             screen.getByPlaceholderText("Search"),
-            "question{enter}",
+            `${typedText}{enter}`,
           );
 
           expect(
@@ -796,6 +766,15 @@ describe("AddToDashSelectDashModal", () => {
           expect(
             screen.getByText(DASHBOARD_RESULT_IN_PERSONAL_COLLECTION.name),
           ).toBeInTheDocument();
+
+          const call = fetchMock.lastCall("path:/api/search");
+          const urlObject = new URL(checkNotNull(call?.request?.url));
+          expect(urlObject.pathname).toEqual("/api/search");
+          expect(Object.fromEntries(urlObject.searchParams.entries())).toEqual({
+            models: "dashboard",
+            q: typedText,
+            filter_items_in_personal_collection: "only",
+          });
         });
       });
     });
