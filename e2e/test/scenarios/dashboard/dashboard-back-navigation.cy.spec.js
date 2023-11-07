@@ -105,7 +105,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     "should display a back to the dashboard button in table x-ray dashboards",
     { tags: "@slow" },
     () => {
-      const cardTitle = "Sales per state";
+      const cardTitle = "Total transactions";
       cy.visit(`/auto/dashboard/table/${ORDERS_ID}?#show=${MAX_CARDS}`);
       cy.wait("@dataset", { timeout: MAX_XRAY_WAIT_TIMEOUT });
 
