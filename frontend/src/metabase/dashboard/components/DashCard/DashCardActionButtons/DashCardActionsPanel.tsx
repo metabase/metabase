@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { MouseEvent } from "react";
 import { useState } from "react";
 import { Icon } from "metabase/core/components/Icon";
 
@@ -45,7 +46,7 @@ interface Props {
   showClickBehaviorSidebar: () => void;
   onPreviewToggle: () => void;
   onLeftEdge: boolean;
-  onMouseDown: (event: React.MouseEvent) => void;
+  onMouseDown: (event: MouseEvent) => void;
 }
 
 export function DashCardActionsPanel({
