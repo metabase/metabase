@@ -99,15 +99,6 @@
         (u/step (format "Copy %s" path)
                 (b/copy-dir {:target-dir class-dir, :src-dirs [path]}))))))
 
-(defn create-uberjar! [basis]
-  (u/step "Create uberjar"
-    (with-duration-ms [duration-ms]
-      (depstar/uber {:class-dir class-dir
-                     :uber-file uberjar-filename
-                     :basis     basis
-                     :exclude   [".*metabase.*.clj[c|s]?$"]})
-      (u/announce "Created uberjar in %.1f seconds." (/ duration-ms 1000.0)))))
-
 (def manifest-entries
   {"Manifest-Version" "1.0"
    "Multi-Release"    "true"
@@ -115,25 +106,15 @@
    "Build-Jdk-Spec"   (System/getProperty "java.specification.version")
    "Main-Class"       "metabase.bootstrap"})
 
-(defn manifest ^Manifest []
-  (doto (Manifest.)
-    (build.zip/fill-manifest! manifest-entries)))
-
-(defn write-manifest! [^OutputStream os]
-  (.write (manifest) os)
-  (.flush os))
-
-;; the customizations we need to make are not currently supported by tools.build -- see
-;; https://ask.clojure.org/index.php/10827/ability-customize-manifest-created-clojure-tools-build-uber -- so we need
-;; to do it by hand for the time being.
-(defn update-manifest! []
-  (u/step "Update META-INF/MANIFEST.MF"
-    (with-open [fs (FileSystems/newFileSystem (URI. (str "jar:file:" (.getAbsolutePath (io/file "target/uberjar/metabase.jar"))))
-                                              Collections/EMPTY_MAP)]
-      (let [manifest-path (.getPath fs "META-INF" (into-array String ["MANIFEST.MF"]))]
-        (with-open [os (Files/newOutputStream manifest-path (into-array OpenOption [StandardOpenOption/WRITE
-                                                                                    StandardOpenOption/TRUNCATE_EXISTING]))]
-          (write-manifest! os))))))
+(defn create-uberjar! [basis]
+  (u/step "Create uberjar"
+    (with-duration-ms [duration-ms]
+      (depstar/uber {:class-dir class-dir
+                     :uber-file uberjar-filename
+                     :basis     basis
+                     :exclude   [".*metabase.*.clj[c|s]?$"]
+                     :manifest   manifest-entries})
+      (u/announce "Created uberjar in %.1f seconds." (/ duration-ms 1000.0)))))
 
 
 (defn uberjar
@@ -148,7 +129,6 @@
       (let [basis (create-basis edition)]
         (compile-sources! basis)
         (copy-resources! edition basis)
-        (create-uberjar! basis)
-        (update-manifest!))
+        (create-uberjar! basis))
       (u/announce "Built target/uberjar/metabase.jar in %.1f seconds."
                   (/ duration-ms 1000.0)))))
