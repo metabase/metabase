@@ -333,6 +333,11 @@
       (with-open [conn (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options))]
         (f conn)))))
 
+(def ^:dynamic *read-only-connection-auto-commit*
+  "The value of auto-commit for read-only (JDBC) connections.
+  The default is false, which means even read-only connections start with a transaction."
+  false)
+
 (mu/defn set-default-connection-options!
   "Part of the default implementation of [[do-with-connection-with-options]]: set options for a newly fetched
   Connection."
@@ -367,8 +372,8 @@
     ;; manually.
     (when-not write?
       (try
-        (log/trace (pr-str '(.setAutoCommit conn false)))
-        (.setAutoCommit conn false)
+        (log/trace (pr-str (list '.setAutoCommit 'conn *read-only-connection-auto-commit*)))
+        (.setAutoCommit conn *read-only-connection-auto-commit*)
         (catch Throwable e
           (log/debug e "Error enabling connection autoCommit"))))
     (try

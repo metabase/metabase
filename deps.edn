@@ -60,6 +60,7 @@
                                                            commons-logging/commons-logging]}
   compojure/compojure                       {:mvn/version "1.7.0"               ; HTTP Routing library built on Ring
                                              :exclusions  [ring/ring-codec]}
+  criterium/criterium                       {:mvn/version "0.4.6"}
   crypto-random/crypto-random               {:mvn/version "1.2.1"}              ; library for generating cryptographically secure random bytes and strings
   dk.ative/docjure                          {:mvn/version "1.19.0"              ; excel export
                                              :exclusions  [org.apache.poi/poi
@@ -263,6 +264,9 @@
                  ;; Different port from normal `:dev` so you can run tests on a different server.
                  ;; TODO -- figure out how to do a random port like in the old project.clj?
                  "-Dmb.jetty.port=3001"]}
+
+  :profiler
+  {:jvm-opts    ["-Djdk.attach.allowAttachSelf"]}
 
   ;; run the dev server with
   ;; clojure -M:run
