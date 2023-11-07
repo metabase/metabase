@@ -4,6 +4,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import * as Lib from "metabase-lib";
 import LegacyDimension from "metabase-lib/Dimension";
+import { MIN_WIDTH, MAX_WIDTH } from "../constants";
 
 interface ColumnValuesWidgetProps<T> {
   value: T[];
@@ -38,7 +39,9 @@ export function ColumnValuesWidget<T extends string | number>({
       fields={fields}
       className="input"
       value={value}
-      minWidth="300px"
+      containerWidth="100%"
+      minWidth={`${MIN_WIDTH}px`}
+      maxWidth={`${MAX_WIDTH}px`}
       onChange={onChange}
       disablePKRemappingForSearch
       autoFocus

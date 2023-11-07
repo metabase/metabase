@@ -1,13 +1,13 @@
 import { t } from "ttag";
 import { useState, useMemo } from "react";
-import { Box, Button, Checkbox, Flex } from "metabase/ui";
+import { Box, Checkbox, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import { MAX_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
-import { BackButton } from "../BackButton";
-import { Header } from "../Header";
 import { ColumnValuesWidget } from "../ColumnValuesWidget";
+import { Header } from "../Header";
 import { Footer } from "../Footer";
 
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
@@ -15,6 +15,8 @@ import { FlexWithScroll } from "../FilterPicker.styled";
 
 import { OPERATOR_OPTIONS } from "./constants";
 import { isFilterValid } from "./utils";
+
+const MAX_HEIGHT = 300;
 
 export function StringFilterPicker({
   query,
@@ -78,53 +80,44 @@ export function StringFilterPicker({
   const canHaveManyValues = !Number.isFinite(valueCount);
 
   return (
-    <div data-testid="string-filter-picker">
-      <Header>
-        <BackButton onClick={onBack}>{columnName}</BackButton>
+    <Box maw={MAX_WIDTH} data-testid="string-filter-picker">
+      <Header columnName={columnName} onBack={onBack}>
         <FilterOperatorPicker
           value={operatorName}
           options={availableOperators}
           onChange={handleOperatorChange}
         />
       </Header>
-      {valueCount > 0 && (
-        <FlexWithScroll p="md" mah={300}>
-          <ColumnValuesWidget
-            column={column}
-            value={values}
-            canHaveManyValues={canHaveManyValues}
-            onChange={setValues}
-          />
-        </FlexWithScroll>
-      )}
-      <Footer mt={valueCount === 0 ? -1 : undefined} /* to collapse borders */>
-        {hasCaseSensitiveOption ? (
-          <CaseSensitiveOption
-            value={options["case-sensitive"] ?? false}
-            onChange={newValue => setOptions({ "case-sensitive": newValue })}
-          />
-        ) : (
-          <Box />
+      <Box>
+        {valueCount > 0 && (
+          <FlexWithScroll p="md" mah={MAX_HEIGHT}>
+            <ColumnValuesWidget
+              column={column}
+              value={values}
+              canHaveManyValues={canHaveManyValues}
+              onChange={setValues}
+            />
+          </FlexWithScroll>
         )}
-        <Button
-          variant="filled"
-          disabled={!isValid}
-          onClick={handleFilterChange}
-        >
-          {isNew ? t`Add filter` : t`Update filter`}
-        </Button>
-      </Footer>
-    </div>
+        <Footer isNew={isNew} canSubmit={isValid} onSubmit={handleFilterChange}>
+          {hasCaseSensitiveOption && (
+            <CaseSensitiveOption
+              value={options["case-sensitive"] ?? false}
+              onChange={newValue => setOptions({ "case-sensitive": newValue })}
+            />
+          )}
+        </Footer>
+      </Box>
+    </Box>
   );
 }
 
-function CaseSensitiveOption({
-  value,
-  onChange,
-}: {
+interface CaseSensitiveOptionProps {
   value: boolean;
   onChange: (value: boolean) => void;
-}) {
+}
+
+function CaseSensitiveOption({ value, onChange }: CaseSensitiveOptionProps) {
   return (
     <Flex align="center" px="sm">
       <Checkbox

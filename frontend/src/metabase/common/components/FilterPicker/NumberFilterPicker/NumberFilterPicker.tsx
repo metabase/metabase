@@ -1,16 +1,17 @@
 import { t } from "ttag";
 import { useState, useMemo } from "react";
-import { Box, Button, Flex, NumberInput, Text } from "metabase/ui";
+import { Box, Flex, NumberInput, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import type { FilterPickerWidgetProps } from "../types";
+import { MAX_WIDTH } from "../constants";
 import { getAvailableOperatorOptions } from "../utils";
-import { BackButton } from "../BackButton";
-import { Header } from "../Header";
 import { ColumnValuesWidget } from "../ColumnValuesWidget";
+import { Header } from "../Header";
 import { Footer } from "../Footer";
-import { FlexWithScroll } from "../FilterPicker.styled";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { FlexWithScroll } from "../FilterPicker.styled";
+
 import { OPERATOR_OPTIONS } from "./constants";
 import { isFilterValid } from "./utils";
 
@@ -67,32 +68,28 @@ export function NumberFilterPicker({
   };
 
   return (
-    <div data-testid="number-filter-picker">
-      <Header>
-        <BackButton onClick={onBack}>{columnName}</BackButton>
+    <Box maw={MAX_WIDTH} data-testid="number-filter-picker">
+      <Header columnName={columnName} onBack={onBack}>
         <FilterOperatorPicker
           value={operatorName}
           options={availableOperators}
           onChange={handleOperatorChange}
         />
       </Header>
-      <NumberValueInput
-        values={values}
-        valueCount={valueCount}
-        column={column}
-        onChange={setValues}
-      />
-      <Footer mt={valueCount === 0 ? -1 : undefined} /* to collapse borders */>
-        <Box />
-        <Button
-          variant="filled"
-          disabled={!isValid}
-          onClick={handleFilterChange}
-        >
-          {isNew ? t`Add filter` : t`Update filter`}
-        </Button>
-      </Footer>
-    </div>
+      <Box>
+        <NumberValueInput
+          values={values}
+          valueCount={valueCount}
+          column={column}
+          onChange={setValues}
+        />
+        <Footer
+          isNew={isNew}
+          canSubmit={isValid}
+          onSubmit={handleFilterChange}
+        />
+      </Box>
+    </Box>
   );
 }
 

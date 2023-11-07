@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 import { Icon } from "metabase/core/components/Icon";
-import { Button, Divider, Group, Radio, Stack } from "metabase/ui";
+import { Box, Button, Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { BackButton } from "../BackButton";
+import { Header } from "../Header";
+import { Footer } from "../Footer";
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
 import { OPTIONS } from "./constants";
@@ -19,10 +20,7 @@ export function BooleanFilterPicker({
   onBack,
   onChange,
 }: FilterPickerWidgetProps) {
-  const columnInfo = useMemo(
-    () => Lib.displayInfo(query, stageIndex, column),
-    [query, stageIndex, column],
-  );
+  const columnName = Lib.displayInfo(query, stageIndex, column).longDisplayName;
 
   const options = useMemo(
     () => getAvailableOperatorOptions(query, stageIndex, column, OPTIONS),
@@ -50,39 +48,35 @@ export function BooleanFilterPicker({
   };
 
   return (
-    <div data-testid="boolean-filter-picker">
-      <BackButton onClick={onBack}>{columnInfo.longDisplayName}</BackButton>
-      <Divider />
-      <Radio.Group value={optionType} onChange={handleOptionChange}>
-        <Stack p="md" pb={isExpanded ? "md" : 0} spacing="sm">
-          {visibleOptions.map(option => (
-            <Radio
-              key={option.type}
-              value={option.type}
-              label={option.name}
-              pb={6}
-              size="xs"
-            />
-          ))}
-        </Stack>
-      </Radio.Group>
-      {!isExpanded && (
-        <Button
-          c="text.1"
-          variant="subtle"
-          aria-label={t`More options`}
-          rightIcon={<Icon name="chevrondown" />}
-          onClick={() => setIsExpanded(true)}
-        >
-          {t`More options`}
-        </Button>
-      )}
-      <Divider />
-      <Group p="sm" position="right">
-        <Button variant="filled" onClick={handleSubmit}>
-          {isNew ? t`Add filter` : t`Update filter`}
-        </Button>
-      </Group>
-    </div>
+    <Box data-testid="boolean-filter-picker">
+      <Header columnName={columnName} onBack={onBack} />
+      <Box>
+        <Radio.Group value={optionType} onChange={handleOptionChange}>
+          <Stack p="md" pb={isExpanded ? "md" : 0} spacing="sm">
+            {visibleOptions.map(option => (
+              <Radio
+                key={option.type}
+                value={option.type}
+                label={option.name}
+                pb={6}
+                size="xs"
+              />
+            ))}
+          </Stack>
+        </Radio.Group>
+        {!isExpanded && (
+          <Button
+            c="text.1"
+            variant="subtle"
+            aria-label={t`More options`}
+            rightIcon={<Icon name="chevrondown" />}
+            onClick={() => setIsExpanded(true)}
+          >
+            {t`More options`}
+          </Button>
+        )}
+        <Footer isNew={isNew} canSubmit onSubmit={handleSubmit} />
+      </Box>
+    </Box>
   );
 }
