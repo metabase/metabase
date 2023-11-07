@@ -1,5 +1,5 @@
 name: Release 2 - Pre-release testing
-run-name: Publish Release ${{ inputs.version }}
+run-name: Pre-release testing of ${{ inputs.version }}
 
 on:
   workflow_dispatch:
