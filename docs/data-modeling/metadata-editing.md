@@ -1,5 +1,5 @@
 ---
-title: "Metadata editing"
+title: "Table metadata admin settings"
 redirect_from:
   - /docs/latest/administration-guide/03-metadata-editing
 ---
@@ -85,7 +85,6 @@ To add a description, click into the box below the column name. Descriptions are
 
 **Do not include** columns won't show up in the query builder or data reference. You can set "do not include" on sensitive columns (such as PII) or irrelevant columns. But this visibility option is a simple omit/hide option; it's not a security feature. These columns are still accessible for people with native query privileges; they can write `SELECT hidden_column FROM table` or `SELECT * from table` in the [SQL editor](../questions/native-editor/writing-sql.md) and they'll be able to view these fields and their values. To prevent people from viewing certain columns, see [data sandboxing](../permissions/data-sandboxes.md).
 
-
 ### Column order
 
 Metabase defaults to the column order defined in your database schema. To reorder the column display order in question results and menus **manually**, click on the grab bar to the right of each column, and drag the column to a new position.
@@ -100,6 +99,12 @@ To sort the columns **automatically**, click on the **sort** icon at the top rig
 ### Field type
 
 To change the [field type](../data-modeling/field-types.md) of a column, click on the **Type** dropdown menu in a column's setting box. You can also use the **Type** dropdown to label a column as an [entity key](https://www.metabase.com/glossary/entity_key) (primary key) or [foreign key](https://www.metabase.com/glossary/foreign_key) in Metabase (with no consequence to your database).
+
+### Unfold JSON 
+
+Unfold JSON into component fields, where each JSON key becomes a column. You can turn this off if performance is slow.
+
+If this option is available for a field, you can also setup database-wide JSON unfolding. See the page for [your database](../databases/connecting.md#connecting-to-supported-databases). 
 
 ### Casting to a specific data type
 
@@ -142,6 +147,7 @@ To change a column's [filter widget](../dashboards/filters.md):
 5. Select a filter widget option.
 
 #### Filter widget options
+
 - **Search box**: Enter a search term and Metabase will display checkboxes for column values that match the search.
 - **A list of all values**: dropdown menu with checkboxes for all column values.
 - **Plain input box**: Enter a search term and Metabase will make autocomplete suggestions for the search (no checkboxes).

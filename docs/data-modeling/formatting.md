@@ -4,7 +4,7 @@ redirect_from:
   - /docs/latest/administration-guide/19-formatting-settings
 ---
 
-# Formatting defaults 
+# Formatting defaults
 
 There are Metabase users around the world, each with different preferences for how dates, times, numbers, and currencies should be formatted and displayed. Metabase allows you to customize these formatting options at three different levels:
 
