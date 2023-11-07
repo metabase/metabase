@@ -439,15 +439,14 @@ describe("AddToDashSelectDashModal", () => {
                   name: "Create a new dashboard",
                 }),
               );
+              // Open "Create a new dashboard" modal
+              userEvent.click(screen.getByTestId("select-button"));
             });
 
             it("should render all collections", async () => {
-              // Create a new dashboard modal
               expect(
                 screen.getByRole("heading", { name: "New dashboard" }),
               ).toBeInTheDocument();
-              userEvent.click(screen.getByTestId("select-button"));
-
               const popover = screen.getByRole("tooltip");
               expect(popover).toBeInTheDocument();
               expect(
@@ -468,11 +467,9 @@ describe("AddToDashSelectDashModal", () => {
             });
 
             it('should render "New collection" option', async () => {
-              // Create a new dashboard modal
               expect(
                 screen.getByRole("heading", { name: "New dashboard" }),
               ).toBeInTheDocument();
-              userEvent.click(screen.getByTestId("select-button"));
 
               const popover = screen.getByRole("tooltip");
               expect(popover).toBeInTheDocument();
@@ -484,9 +481,6 @@ describe("AddToDashSelectDashModal", () => {
 
             describe('when "New collection" option is clicked', () => {
               beforeEach(async () => {
-                // Create a new dashboard modal
-                userEvent.click(screen.getByTestId("select-button"));
-
                 const popover = screen.getByRole("tooltip");
 
                 userEvent.click(
@@ -495,7 +489,6 @@ describe("AddToDashSelectDashModal", () => {
               });
 
               it("should render all collections", async () => {
-                // Create a new collection modal
                 expect(
                   screen.getByRole("heading", { name: "New collection" }),
                 ).toBeInTheDocument();
@@ -701,7 +694,6 @@ describe("AddToDashSelectDashModal", () => {
             });
 
             it("should render only personal collections", async () => {
-              // Create a new dashboard modal
               expect(
                 screen.getByRole("heading", { name: "New dashboard" }),
               ).toBeInTheDocument();
@@ -727,7 +719,6 @@ describe("AddToDashSelectDashModal", () => {
             });
 
             it('should not render "New collection" option when opening the root collection (public collection)', async () => {
-              // Create a new dashboard modal
               expect(
                 screen.getByRole("heading", { name: "New dashboard" }),
               ).toBeInTheDocument();
@@ -747,7 +738,6 @@ describe("AddToDashSelectDashModal", () => {
 
             describe('when "New collection" option is clicked when opening personal collections', () => {
               beforeEach(async () => {
-                // Create a new dashboard modal
                 userEvent.click(screen.getByTestId("select-button"));
                 const popover = screen.getByRole("tooltip");
 
@@ -759,7 +749,6 @@ describe("AddToDashSelectDashModal", () => {
               });
 
               it("should render only personal collections", async () => {
-                // Create a new collection modal
                 expect(
                   screen.getByRole("heading", { name: "New collection" }),
                 ).toBeInTheDocument();
