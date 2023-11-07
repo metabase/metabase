@@ -82,12 +82,6 @@
         (a/close! canceled-chan)))
     nil))
 
-(def ^:dynamic ^:deprecated *run-on-separate-thread?*
-  "Whether to run the query on a separate thread. When running a query asynchronously (i.e., with [[async-qp]]), this is
-  normally `true`, meaning the `out-chan` is returned immediately. When running a query synchronously (i.e., with
-  `sync-qp`), this is normally `false`, becuase we are blocking while waiting for results."
-  true)
-
 (defn ^:deprecated async-qp
   "Wrap a QP function (middleware or a composition of middleware created with [[combine-middleware]]) with the signature:
 
@@ -117,10 +111,7 @@
                             (qp query rff context)
                             (catch Throwable e
                               (qp.context/raisef e context))))]
-       (log/tracef "Running on separate thread? %s" *run-on-separate-thread?*)
-       (if *run-on-separate-thread?*
-         (future (thunk))
-         (thunk))
+       (thunk)
        (qp.context/out-chan context)))))
 
 (defn- ^:deprecated wait-for-async-result [out-chan]
@@ -140,8 +131,7 @@
   [qp]
   {:pre [(fn? qp)]}
   (fn qp* [& args]
-    (binding [*run-on-separate-thread?* false]
-      (wait-for-async-result (apply qp args)))))
+    (wait-for-async-result (apply qp args))))
 
 (defn reducible-rows
   "Utility function for generating reducible rows when implementing [[metabase.driver/execute-reducible-query]].

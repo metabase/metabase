@@ -309,8 +309,9 @@
 
 (defn- async-resultf [result context]
   (a/close! (canceled-chan context))
-  (a/>!! (out-chan context) result)
-  (a/close! out-chan)
+  (let [out-chan (out-chan context)]
+    (a/>!! out-chan result)
+    (a/close! out-chan))
   (if (instance? Throwable result)
     (throw result)
     result))

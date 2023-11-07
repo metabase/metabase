@@ -258,7 +258,6 @@
 
  [tu.misc
   object-defaults
-  test-qp-middleware
   with-clock
   with-single-admin-user]
 

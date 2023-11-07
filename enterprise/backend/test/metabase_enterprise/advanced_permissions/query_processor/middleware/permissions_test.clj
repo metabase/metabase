@@ -14,7 +14,8 @@
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.streaming-test :as streaming-test]
    [metabase.test :as mt]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.query-processor.context :as qp.context])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -116,7 +117,10 @@
                  (-> (native-download-query) limit-download-result-rows mt/rows count))))))))
 
 (defn- check-download-permisions [query]
-  (:pre (mt/test-qp-middleware ee.qp.perms/check-download-permissions query)))
+  (let [qp (ee.qp.perms/check-download-permissions
+            (fn [query _rff _context]
+              query))]
+    (qp query qp.reducible/default-rff (qp.context/sync-context))))
 
 (def ^:private download-perms-error-msg #"You do not have permissions to download the results of this query\.")
 
@@ -131,8 +135,9 @@
 
         (testing "No exception is thrown for non-download queries"
               (let [query (dissoc (mbql-download-query 'venues) :info)]
-                (is (= query (check-download-permisions query))))))))
+                (is (= query (check-download-permisions query)))))))))
 
+(deftest check-download-permissions-test-2
   (testing "No exception is thrown if the user has any (full or limited) download permissions for the DB"
     (with-download-perms-for-db (mt/id) :full
       (mt/with-current-user (mt/user->id :rasta)
