@@ -106,21 +106,42 @@
 (mu/defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection
   so we can return its `:name`."
-  [honeysql-query               :- ms/Map
-   collection-id-column         :- keyword?
-   {:keys [current-user-perms]} :- SearchContext]
+  [honeysql-query                                :- ms/Map
+   collection-id-column                          :- keyword?
+   {:keys [current-user-perms
+           filter-items-in-personal-collection]} :- SearchContext]
   (let [visible-collections      (collection/permissions-set->visible-collection-ids current-user-perms)
         collection-filter-clause (collection/visible-collection-ids->honeysql-filter-clause
                                   collection-id-column
-                                  visible-collections)
-        honeysql-query           (-> honeysql-query
-                                     (sql.helpers/where collection-filter-clause)
-                                     (sql.helpers/where [:= :collection.namespace nil]))]
-    ;; add a JOIN against Collection *unless* the source table is already Collection
+                                  visible-collections)]
     (cond-> honeysql-query
+      true
+      (sql.helpers/where  collection-filter-clause [:= :collection.namespace nil])
+      ;; add a JOIN against Collection *unless* the source table is already Collection
       (not= collection-id-column :collection.id)
       (sql.helpers/left-join [:collection :collection]
-                             [:= collection-id-column :collection.id]))))
+                             [:= collection-id-column :collection.id])
+
+      (some? filter-items-in-personal-collection)
+      (sql.helpers/where
+       (case filter-items-in-personal-collection
+         "only"
+         (concat [:or]
+                 ;; sub personal collections
+                 (for [id (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])]
+                   [:like :collection.location (format "/%d/%%" id)])
+                 ;; top level personal collections
+                 [[:and
+                   [:= :collection.location "/"]
+                   [:not= :collection.personal_owner_id nil]]])
+
+         "exclude"
+         (conj [:or]
+               (into
+                [:and [:= :collection.personal_owner_id nil]]
+                (for [id (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])]
+                  [:not-like :collection.location (format "/%d/%%" id)]))
+               [:= collection-id-column nil]))))))
 
 (mu/defn ^:private add-table-db-id-clause
   "Add a WHERE clause to only return tables with the given DB id.
@@ -166,12 +187,12 @@
   [query :- :map
    model :- [:enum "card" "dataset" "dashboard" "metric"]]
   (-> query
-       (replace-select :last_editor_id :r.user_id)
-       (replace-select :last_edited_at :r.timestamp)
-       (sql.helpers/left-join [:revision :r]
-                              [:and [:= :r.model_id (search.config/column-with-model-alias model :id)]
-                               [:= :r.most_recent true]
-                               [:= :r.model (search.config/search-model->revision-model model)]])))
+      (replace-select :last_editor_id :r.user_id)
+      (replace-select :last_edited_at :r.timestamp)
+      (sql.helpers/left-join [:revision :r]
+                             [:and [:= :r.model_id (search.config/column-with-model-alias model :id)]
+                              [:= :r.most_recent true]
+                              [:= :r.model (search.config/search-model->revision-model model)]])))
 
 (mu/defn ^:private with-moderated-status :- :map
   [query :- :map
@@ -353,19 +374,19 @@
   (let [models       (:models search-ctx)
         order-clause [((fnil order-clause "") (:search-string search-ctx))]]
     (cond
-     (= (count models) 0)
-     {:select [nil]}
+      (= (count models) 0)
+      {:select [nil]}
 
-     (= (count models) 1)
-     (search-query-for-model (first models) search-ctx)
+      (= (count models) 1)
+      (search-query-for-model (first models) search-ctx)
 
-     :else
-     {:select   [:*]
-      :from     [[{:union-all (vec (for [model models
-                                         :let  [query (search-query-for-model model search-ctx)]
-                                         :when (seq query)]
-                                     query))} :alias_is_required_by_sql_but_not_needed_here]]
-      :order-by order-clause})))
+      :else
+      {:select   [:*]
+       :from     [[{:union-all (vec (for [model models
+                                          :let  [query (search-query-for-model model search-ctx)]
+                                          :when (seq query)]
+                                      query))} :alias_is_required_by_sql_but_not_needed_here]]
+       :order-by order-clause})))
 
 (defn- hydrate-user-metadata
   "Hydrate common-name for last_edited_by and created_by from result."
@@ -429,23 +450,25 @@
            last-edited-by
            limit
            models
+           filter-items-in-personal-collection
            offset
            search-string
            table-db-id
            search-native-query
            verified]}      :- [:map {:closed true}
-                               [:search-string                        [:maybe ms/NonBlankString]]
-                               [:models                               [:maybe [:set SearchableModel]]]
-                               [:archived            {:optional true} [:maybe :boolean]]
-                               [:created-at          {:optional true} [:maybe ms/NonBlankString]]
-                               [:created-by          {:optional true} [:maybe [:set ms/PositiveInt]]]
-                               [:last-edited-at      {:optional true} [:maybe ms/NonBlankString]]
-                               [:last-edited-by      {:optional true} [:maybe [:set ms/PositiveInt]]]
-                               [:limit               {:optional true} [:maybe ms/Int]]
-                               [:offset              {:optional true} [:maybe ms/Int]]
-                               [:table-db-id         {:optional true} [:maybe ms/PositiveInt]]
-                               [:search-native-query {:optional true} [:maybe boolean?]]
-                               [:verified            {:optional true} [:maybe true?]]]]
+                               [:search-string                                        [:maybe ms/NonBlankString]]
+                               [:models                                               [:maybe [:set SearchableModel]]]
+                               [:archived                            {:optional true} [:maybe :boolean]]
+                               [:created-at                          {:optional true} [:maybe ms/NonBlankString]]
+                               [:created-by                          {:optional true} [:maybe [:set ms/PositiveInt]]]
+                               [:filter-items-in-personal-collection {:optional true} [:maybe [:enum "only" "exclude"]]]
+                               [:last-edited-at                      {:optional true} [:maybe ms/NonBlankString]]
+                               [:last-edited-by                      {:optional true} [:maybe [:set ms/PositiveInt]]]
+                               [:limit                               {:optional true} [:maybe ms/Int]]
+                               [:offset                              {:optional true} [:maybe ms/Int]]
+                               [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
+                               [:search-native-query                 {:optional true} [:maybe boolean?]]
+                               [:verified                            {:optional true} [:maybe true?]]]] :- SearchContext
   (when (some? verified)
     (premium-features/assert-has-any-features
      [:content-verification :official-collections]
@@ -455,20 +478,24 @@
                         :current-user-perms @api/*current-user-permissions-set*
                         :archived?          (boolean archived)
                         :models             models}
-                 (some? created-at)          (assoc :created-at created-at)
-                 (seq created-by)            (assoc :created-by created-by)
-                 (some? last-edited-at)      (assoc :last-edited-at last-edited-at)
-                 (seq last-edited-by)        (assoc :last-edited-by last-edited-by)
-                 (some? table-db-id)         (assoc :table-db-id table-db-id)
-                 (some? limit)               (assoc :limit-int limit)
-                 (some? offset)              (assoc :offset-int offset)
-                 (some? search-native-query) (assoc :search-native-query search-native-query)
-                 (some? verified)            (assoc :verified verified))]
+                 (some? created-at)                          (assoc :created-at created-at)
+                 (seq created-by)                            (assoc :created-by created-by)
+                 (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
+                 (some? last-edited-at)                     (assoc :last-edited-at last-edited-at)
+                 (seq last-edited-by)                       (assoc :last-edited-by last-edited-by)
+                 (some? table-db-id)                        (assoc :table-db-id table-db-id)
+                 (some? limit)                              (assoc :limit-int limit)
+                 (some? offset)                             (assoc :offset-int offset)
+                 (some? search-native-query)                (assoc :search-native-query search-native-query)
+                 (some? verified)                           (assoc :verified verified))]
     (assoc ctx :models (search.filter/search-context->applicable-models ctx))))
 
+;; TODO maybe deprecate this and make it as a parameter in `GET /api/search/models`
+;; so we don't have to keep the arguments between 2 API in sync
 (api/defendpoint GET "/models"
   "Get the set of models that a search query will return"
-  [q archived table-db-id created_at created_by last_edited_at last_edited_by search_native_query verified]
+  [q archived table-db-id created_at created_by last_edited_at last_edited_by
+   filter_items_in_personal_collection search_native_query verified]
   {archived            [:maybe ms/BooleanValue]
    table-db-id         [:maybe ms/PositiveInt]
    created_at          [:maybe ms/NonBlankString]
@@ -482,6 +509,7 @@
                                     :table-db-id         table-db-id
                                     :created-at          created_at
                                     :created-by          (set (u/one-or-many created_by))
+                                    :filter-items-in-personal-collection filter_items_in_personal_collection
                                     :last-edited-at      last_edited_at
                                     :last-edited-by      (set (u/one-or-many last_edited_by))
                                     :search-native-query search_native_query
@@ -489,36 +517,52 @@
                                     :models              search.config/all-models})))
 
 (api/defendpoint GET "/"
-  "Search within a bunch of models for the substring `q`.
-  For the list of models, check [[metabase.search.config/all-models]].
+  "Search for items in Metabase.
+  For the list of supported models, check [[metabase.search.config/all-models]].
 
-  To search in archived portions of models, pass in `archived=true`.
-  To search for tables, cards, and models of a certain DB, pass in a DB id value
-  to `table_db_id`.
-  To specify a list of models, pass in an array to `models`.
-  "
-  [q archived created_at created_by table_db_id models last_edited_at last_edited_by search_native_query verified]
-  {q                   [:maybe ms/NonBlankString]
-   archived            [:maybe :boolean]
-   table_db_id         [:maybe ms/PositiveInt]
-   models              [:maybe [:or SearchableModel [:sequential SearchableModel]]]
-   created_at          [:maybe ms/NonBlankString]
-   created_by          [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
-   last_edited_at      [:maybe ms/NonBlankString]
-   last_edited_by      [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
-   search_native_query [:maybe true?]
-   verified            [:maybe true?]}
+  Filters:
+  - `archived`: set to true to search archived items only, default is false
+  - `table_db_id`: search for tables, cards, and models of a certain DB
+  - `models`: only search for items of specific models. If not provided, search for all models
+  - `filters_items_in_personal_collection`: only search for items in personal collections
+  - `created_at`: search for items created at a specific timestamp
+  - `created_by`: search for items created by a specific user
+  - `last_edited_at`: search for items last edited at a specific timestamp
+  - `last_edited_by`: search for items last edited by a specific user
+  - `search_native_query`: set to true to search the content of native queries
+  - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
+
+  Note that not all item types support all filters, and the results will include only models that support the provided filters. For example:
+  - The `created-by` filter supports dashboards, models, actions, and cards.
+  - The `verified` filter supports models and cards.
+
+  A search query that has both filters applied will only return models and cards."
+  [q archived context created_at created_by table_db_id models last_edited_at last_edited_by
+   filter_items_in_personal_collection search_native_query verified]
+  {q                                   [:maybe ms/NonBlankString]
+   archived                            [:maybe :boolean]
+   table_db_id                         [:maybe ms/PositiveInt]
+   models                              [:maybe [:or SearchableModel [:sequential SearchableModel]]]
+   filter_items_in_personal_collection [:maybe [:enum "only" "exclude"]]
+   context                             [:maybe [:enum "search-bar" "search-app"]]
+   created_at                          [:maybe ms/NonBlankString]
+   created_by                          [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
+   last_edited_at                      [:maybe ms/NonBlankString]
+   last_edited_by                      [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
+   search_native_query                 [:maybe true?]
+   verified                            [:maybe true?]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
   (let [start-time (System/currentTimeMillis)
         models-set (cond
-                    (nil? models)    search.config/all-models
-                    (string? models) #{models}
-                    :else            (set models))
+                     (nil? models)    search.config/all-models
+                     (string? models) #{models}
+                     :else            (set models))
         results    (search (search-context
                             {:search-string       q
                              :archived            archived
                              :created-at          created_at
                              :created-by          (set (u/one-or-many created_by))
+                             :filter-items-in-personal-collection filter_items_in_personal_collection
                              :last-edited-at      last_edited_at
                              :last-edited-by      (set (u/one-or-many last_edited_by))
                              :table-db-id         table_db_id
@@ -527,12 +571,25 @@
                              :offset              mw.offset-paging/*offset*
                              :search-native-query search_native_query
                              :verified            verified}))
-        duration   (- (System/currentTimeMillis) start-time)]
-    ;; Only track global searches
-    (when (and (nil? models)
-               (nil? table_db_id)
-               (not archived))
-      (snowplow/track-event! ::snowplow/new-search-query api/*current-user-id* {:runtime-milliseconds duration}))
+        duration   (- (System/currentTimeMillis) start-time)
+        has-advanced-filters (some some?
+                                   [models created_by created_at last_edited_by
+                                    last_edited_at search_native_query verified])]
+    (when (contains? #{"search-app" "search-bar"} context)
+      (snowplow/track-event! ::snowplow/new-search-query api/*current-user-id*
+                             {:runtime-milliseconds duration
+                              :context              context})
+      (when has-advanced-filters
+        (snowplow/track-event! ::snowplow/search-results-filtered api/*current-user-id*
+                               {:runtime-milliseconds  duration
+                                :content-type          (u/one-or-many models)
+                                :creator               (some? created_by)
+                                :creation-date         (some? created_at)
+                                :last-editor           (some? last_edited_by)
+                                :last-edit-date        (some? last_edited_at)
+                                :verified-items        (some? verified)
+                                :search-native-queries (some? search_native_query)})))
+
     results))
 
 (api/define-routes)

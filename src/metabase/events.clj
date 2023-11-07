@@ -10,6 +10,7 @@
   (:require
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
+   [metabase.events.schema :as events.schema]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -59,7 +60,7 @@
   "'Publish' an event by calling [[publish-event!]] with a [[Topic]] and an `event` map, whose contents vary
   based on their `topic`. These calls return the original `event` object passed in, to support chaining.
 
-    (events/publish-event! :event/database-create database)
+    (events/publish-event! :event/database-create {:object database :user-id api/*current-user-id*})
 
   'Subscribe' to an event by add a Methodical method implementation. Since this uses
   the [[methodical/do-method-combination]], all multiple method implementations can be called for a single invocation.
@@ -79,7 +80,10 @@
     (derive :event/database-create ::events)
     (methodical/defmethod events/publish-event! ::events
       [topic event]
-       ...)"
+       ...)
+
+  The schema for each event topic are defined in `metabase.events.schema`, makes sure to keep it up-to-date
+  if you're working on a new event topic or updating an existing one."
   {:arglists            '([topic event])
    :defmethod-arities   #{2}
    :dispatch-value-spec ::publish-event-dispatch-value}
@@ -107,40 +111,30 @@
   (if-not @events-initialized?
     ;; if the event namespaces aren't initialized yet, make sure they're all loaded up before trying to do dispatch.
     (do
-      (initialize-events!)
-      (publish-event! topic event))
+     (initialize-events!)
+     (publish-event! topic event))
     (do
-      (log/debugf "Publishing %s event:\n\n%s" (u/colorize :yellow (pr-str topic)) (u/pprint-to-str event))
-      (assert (and (qualified-keyword? topic)
-                   (isa? topic :metabase/event))
-              (format "Invalid event topic %s: events must derive from :metabase/event" (pr-str topic)))
-      (assert (map? event)
-              (format "Invalid event %s: event must be a map." (pr-str event)))
-      (try
-        (next-method topic event)
-        (catch Throwable e
-          (throw (ex-info (i18n/tru "Error publishing {0} event: {1}" topic (ex-message e))
-                          {:topic topic, :event event}
-                          e))))
-      event)))
+     (log/debugf "Publishing %s event:\n\n%s" (u/colorize :yellow (pr-str topic)) (u/pprint-to-str event))
+     (assert (and (qualified-keyword? topic)
+                  (isa? topic :metabase/event))
+             (format "Invalid event topic %s: events must derive from :metabase/event" (pr-str topic)))
+     (assert (map? event)
+             (format "Invalid event %s: event must be a map." (pr-str event)))
+     (try
+      (when-let [schema (events.schema/topic->schema topic)]
+        (mu/validate-throw schema event))
+      (next-method topic event)
+      (catch Throwable e
+        (throw (ex-info (i18n/tru "Error publishing {0} event: {1}" topic (ex-message e))
+                        {:topic topic, :event event}
+                        e))))
+     event)))
 
 (mu/defn topic->model :- [:maybe :string]
   "Determine a valid `model` identifier for the given `topic`."
   [topic :- Topic]
   ;; just take the first part of the topic name after splitting on dashes.
   (first (str/split (name topic) #"-")))
-
-(defn object->model-id
-  "Determine the appropriate `model_id` (if possible) for a given `object`."
-  [topic object]
-  (if (contains? (set (keys object)) :id)
-    (:id object)
-    (let [model (topic->model topic)]
-      (get object (keyword (format "%s_id" model))))))
-
-(def ^{:arglists '([object])} object->user-id
-  "Determine the appropriate `user_id` (if possible) for a given `object`."
-  (some-fn :actor_id :user_id :creator_id))
 
 (defn object->metadata
   "Determine metadata, if there is any, for given `object`.

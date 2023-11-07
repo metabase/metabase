@@ -25,6 +25,33 @@ describe("scenarios > question > custom column", () => {
     cy.signInAsNormalUser();
   });
 
+  it("can see x-ray options when a custom column is present (#16680)", () => {
+    cy.createQuestion(
+      {
+        name: "16680",
+        display: "line",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["expression", "TestColumn"],
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+          expressions: { TestColumn: ["+", 1, 1] },
+        },
+      },
+      { visitQuestion: true },
+    );
+    cy.get(".dot").eq(5).click({ force: true });
+    popover()
+      .findByText(/Automatic Insights/i)
+      .click();
+    popover().findByText(/X-ray/i);
+    popover()
+      .findByText(/Compare to the rest/i)
+      .click();
+  });
+
   it("can create a custom column (metabase#13241)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.icon("add_data").click();

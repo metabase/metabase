@@ -24,4 +24,5 @@ export type SearchQuery = {
   q?: string;
   collection?: Collection["id"];
   models?: PickerModel[];
+  filter_items_in_personal_collection?: "only" | "exclude";
 };

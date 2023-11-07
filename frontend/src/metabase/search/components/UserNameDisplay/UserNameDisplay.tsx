@@ -1,7 +1,8 @@
+import { useAsync } from "react-use";
 import { t } from "ttag";
-import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
+import { UserApi } from "metabase/services";
 import { Text } from "metabase/ui";
-import type { UserId } from "metabase-types/api";
+import type { UserId, UserListResult } from "metabase-types/api";
 
 export type UserNameDisplayProps = {
   userIdList: UserId[];
@@ -12,7 +13,10 @@ export const UserNameDisplay = ({
   userIdList,
   label,
 }: UserNameDisplayProps) => {
-  const { data: users = [], isLoading } = useUserListQuery();
+  const { loading: isLoading, value } = useAsync<
+    () => Promise<{ data: UserListResult[] }>
+  >(UserApi.list);
+  const users = value?.data ?? [];
 
   const selectedUserList = users.filter(user => userIdList.includes(user.id));
 
