@@ -2,7 +2,7 @@ import { waitFor } from "@testing-library/react";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
-  setupUsersEndpoints,
+  setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import {
   getIcon,
@@ -44,7 +44,7 @@ const setup = ({ result }: { result: WrappedResult }) => {
     collections: [TEST_REGULAR_COLLECTION, TEST_OFFICIAL_COLLECTION],
   });
 
-  setupUsersEndpoints([createMockUser()]);
+  setupUserRecipientsEndpoint({ users: [createMockUser()] });
 
   renderWithProviders(<SearchResult result={result} />);
 };

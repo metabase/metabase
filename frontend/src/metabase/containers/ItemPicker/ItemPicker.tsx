@@ -33,6 +33,7 @@ interface OwnProps<TId> {
   entity?: typeof Collections; // collections/snippets entity
   showSearch?: boolean;
   showScroll?: boolean;
+  showOnlyPersonalCollections?: boolean;
   className?: string;
   style?: React.CSSProperties;
   onChange: (value: PickerValue<TId>) => void;
@@ -47,7 +48,7 @@ interface StateProps {
   getCollectionIcon: (collection: Collection) => IconProps;
 }
 
-type Props<TId> = OwnProps<TId> & StateProps;
+export type ItemPickerProps<TId> = OwnProps<TId> & StateProps;
 
 function canWriteToCollectionOrChildren(collection: Collection) {
   return (
@@ -85,13 +86,14 @@ function ItemPicker<TId>({
   className,
   showSearch = true,
   showScroll = true,
+  showOnlyPersonalCollections = false,
   style,
   onChange,
   getCollectionIcon,
   initialOpenCollectionId = "root",
   onOpenCollectionChange,
   children,
-}: Props<TId>) {
+}: ItemPickerProps<TId>) {
   const [openCollectionId, setOpenCollectionId] = useState<CollectionId>(
     initialOpenCollectionId,
   );
@@ -100,6 +102,12 @@ function ItemPicker<TId>({
   const isPickingNotCollection = models.some(model => model !== "collection");
 
   const openCollection = collectionsById[openCollectionId];
+  const isOpenCollectionInPersonalCollection = openCollection?.is_personal;
+  const showItems = Boolean(
+    searchString ||
+      !showOnlyPersonalCollections ||
+      isOpenCollectionInPersonalCollection,
+  );
 
   const collections = useMemo(() => {
     let list = openCollection?.children || [];
@@ -115,13 +123,18 @@ function ItemPicker<TId>({
 
     const collectionItems = list
       .filter(canWriteToCollectionOrChildren)
+      .filter(
+        showOnlyPersonalCollections
+          ? collection => collection.is_personal
+          : _.identity,
+      )
       .map(collection => ({
         ...collection,
         model: "collection",
       }));
 
     return collectionItems as CollectionPickerItem<TId>[];
-  }, [openCollection, models]);
+  }, [openCollection, models, showOnlyPersonalCollections]);
 
   const crumbs = useMemo(
     () =>
@@ -137,6 +150,9 @@ function ItemPicker<TId>({
 
     if (searchString) {
       query.q = searchString;
+      if (showOnlyPersonalCollections) {
+        query.filter_items_in_personal_collection = "only";
+      }
     } else {
       query.collection = openCollectionId;
     }
@@ -146,7 +162,7 @@ function ItemPicker<TId>({
     }
 
     return query;
-  }, [models, searchString, openCollectionId]);
+  }, [searchString, models, showOnlyPersonalCollections, openCollectionId]);
 
   const checkIsItemSelected = useCallback(
     (item: PickerItem<TId>) => {
@@ -243,8 +259,10 @@ function ItemPicker<TId>({
         checkHasWritePermissionForItem={checkHasWritePermissionForItem}
         getCollectionIcon={getCollectionIcon}
         style={style}
-        // personal is a fake collection for admins that contains all other user's collections
-        allowFetch={openCollectionId !== "personal"}
+        allowFetch={
+          // "personal" is a fake collection for admins that contains all other user's collections
+          openCollectionId !== "personal" && showItems
+        }
       >
         {children}
       </ItemPickerView>

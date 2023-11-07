@@ -271,42 +271,42 @@
   :hierarchy lib.hierarchy/hierarchy)
 
 (mr/register! ::display-info
-  [:map
-   [:display-name :string]
-   [:long-display-name {:optional true} :string]
+              [:map
+               [:display-name :string]
+               [:long-display-name {:optional true} :string]
    ;; for things that have a Table, e.g. a Field
-   [:table {:optional true} [:maybe [:ref ::display-info]]]
+               [:table {:optional true} [:maybe [:ref ::display-info]]]
    ;; these are derived from the `:lib/source`/`:metabase.lib.schema.metadata/column-source`, but instead of using
    ;; that value directly we're returning a different property so the FE doesn't break if we change those keys in the
    ;; future, e.g. if we consolidate or split some of those keys. This is all the FE really needs to know.
    ;;
    ;; if this is a Column, does it come from a previous stage?
-   [:is-from-previous-stage {:optional true} [:maybe :boolean]]
+               [:is-from-previous-stage {:optional true} [:maybe :boolean]]
    ;; if this is a Column, does it come from a join in this stage?
-   [:is-from-join {:optional true} [:maybe :boolean]]
+               [:is-from-join {:optional true} [:maybe :boolean]]
    ;; if this is a Column, is it 'calculated', i.e. does it come from an expression in this stage?
-   [:is-calculated {:optional true} [:maybe :boolean]]
+               [:is-calculated {:optional true} [:maybe :boolean]]
    ;; if this is a Column, is it an implicitly joinable one? I.e. is it from a different table that we have not
    ;; already joined, but could implicitly join against?
-   [:is-implicitly-joinable {:optional true} [:maybe :boolean]]
+               [:is-implicitly-joinable {:optional true} [:maybe :boolean]]
    ;; For the `:table` field of a Column, is this the source table, or a joined table?
-   [:is-source-table {:optional true} [:maybe :boolean]]
+               [:is-source-table {:optional true} [:maybe :boolean]]
    ;; does this column occur in the breakout clause?
-   [:is-breakout-column {:optional true} [:maybe :boolean]]
+               [:is-breakout-column {:optional true} [:maybe :boolean]]
    ;; does this column occur in the order-by clause?
-   [:is-order-by-column {:optional true} [:maybe :boolean]]
+               [:is-order-by-column {:optional true} [:maybe :boolean]]
    ;; for joins
-   [:name {:optional true} :string]
+               [:name {:optional true} :string]
    ;; for aggregation operators
-   [:column-name {:optional true} :string]
-   [:description {:optional true} :string]
-   [:short-name {:optional true} :string]
-   [:requires-column {:optional true} :boolean]
-   [:selected {:optional true} :boolean]
+               [:column-name {:optional true} :string]
+               [:description {:optional true} :string]
+               [:short-name {:optional true} :string]
+               [:requires-column {:optional true} :boolean]
+               [:selected {:optional true} :boolean]
    ;; for binning and bucketing
-   [:default {:optional true} :boolean]
+               [:default {:optional true} :boolean]
    ;; for order by
-   [:direction {:optional true} [:enum :asc :desc]]])
+               [:direction {:optional true} [:enum :asc :desc]]])
 
 (mu/defn display-info :- ::display-info
   "Given some sort of Cljs object, return a map with the info you'd need to implement UI for it. This is mostly meant to
@@ -356,7 +356,9 @@
        {:is-from-previous-stage (= source :source/previous-stage)
         :is-from-join           (= source :source/joins)
         :is-calculated          (= source :source/expressions)
-        :is-implicitly-joinable (= source :source/implicitly-joinable)})
+        :is-implicitly-joinable (= source :source/implicitly-joinable)
+        :is-aggregation         (= source :source/aggregations)
+        :is-breakout            (= source :source/breakouts)})
      (when-some [selected (:selected? x-metadata)]
        {:selected selected})
      (select-keys x-metadata [:breakout-position :order-by-position :filter-positions]))))

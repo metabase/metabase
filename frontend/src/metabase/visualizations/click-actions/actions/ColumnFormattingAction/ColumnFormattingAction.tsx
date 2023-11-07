@@ -18,6 +18,7 @@ export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
     !clicked ||
     clicked.value !== undefined ||
     !clicked.column ||
+    clicked?.extraData?.isRawTable ||
     !question.query().isEditable()
   ) {
     return [];
@@ -70,7 +71,7 @@ export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
       name: "formatting",
       title: t`Column formatting`,
       section: "sort",
-      buttonType: "formatting",
+      buttonType: "sort",
       icon: "gear",
       tooltip: t`Column formatting`,
       popoverProps: {

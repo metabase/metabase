@@ -1,0 +1,98 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Search events",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "search",
+    "format": "jsonschema",
+    "version": "1-0-1"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "description": "Event name",
+      "type": "string",
+      "enum": [
+        "new_search_query",
+        "search_results_filtered"
+      ],
+      "maxLength": 1024
+    },
+    "runtime_milliseconds": {
+      "description": "Number of milliseconds it took to successfully run the search query",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "content_type": {
+      "description": "Filter for entity types (question, database, model, etc.)",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "description": "An entity type (card, question, dashboard, etc.)",
+        "type": "string",
+        "enum": [
+          "dashboard",
+          "card",
+          "dataset",
+          "collection",
+          "database",
+          "table",
+          "action"
+        ],
+        "maxLength": 1024
+      }
+    },
+    "creator": {
+      "description": "Filter for created by a user",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "last_editor": {
+      "description": "Filter for last edited by a user",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "creation_date": {
+      "description": "Filter for a time when a user creates an entity",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "last_edit_date": {
+      "description": "Filter for a time when a user last edited an entity",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "verified_items": {
+      "description": "Filter for entities that have been marked as verified",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "search_native_queries": {
+      "description": "Toggles whether search should include SQL and/or native queries",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "event"
+  ],
+  "additionalProperties": true
+}

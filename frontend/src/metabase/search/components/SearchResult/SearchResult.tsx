@@ -8,6 +8,7 @@ import { Group, Text, Loader } from "metabase/ui";
 import { isSyncCompleted } from "metabase/lib/syncing";
 
 import type { WrappedResult } from "metabase/search/types";
+import { Icon } from "metabase/core/components/Icon";
 import { InfoText } from "../InfoText";
 import { ItemIcon } from "./components";
 
@@ -19,6 +20,8 @@ import {
   ResultNameSection,
   ResultTitle,
   SearchResultContainer,
+  XRayButton,
+  XRaySection,
 } from "./SearchResult.styled";
 
 export function SearchResult({
@@ -36,6 +39,11 @@ export function SearchResult({
 }) {
   const { name, model, description, moderated_status }: WrappedResult = result;
 
+  const showXRayButton =
+    result.model === "indexed-entity" &&
+    result.id !== undefined &&
+    result.model_index_id !== null;
+
   const isActive = isItemActive(result);
   const isLoading = isItemLoading(result);
 
@@ -46,6 +54,15 @@ export function SearchResult({
       dispatch(push(nextLocation)),
     [dispatch],
   );
+
+  const onXRayClick = (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    onChangeLocation(
+      `/auto/dashboard/model_index/${result.model_index_id}/primary_key/${result.id}`,
+    );
+  };
 
   const handleClick = (e: MouseEvent) => {
     e.stopPropagation();
@@ -99,6 +116,11 @@ export function SearchResult({
         <LoadingSection px="xs">
           <Loader />
         </LoadingSection>
+      )}
+      {showXRayButton && (
+        <XRaySection>
+          <XRayButton leftIcon={<Icon name="bolt" />} onClick={onXRayClick} />
+        </XRaySection>
       )}
       {description && showDescription && (
         <DescriptionSection>

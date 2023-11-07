@@ -1349,7 +1349,7 @@ export const createOrdersIdDatasetColumn = (
     ...createOrdersIdField(),
     id: ORDERS.ID,
     source: "fields",
-    field_ref: ["field", ORDERS.ID, null],
+    field_ref: ["field", ORDERS.ID, { "base-type": "type/Integer" }],
     semantic_type: "type/PK",
     ...opts,
   });
@@ -1361,7 +1361,7 @@ export const createOrdersUserIdDatasetColumn = (
     ...createOrdersUserIdField(),
     id: ORDERS.USER_ID,
     source: "fields",
-    field_ref: ["field", ORDERS.USER_ID, null],
+    field_ref: ["field", ORDERS.USER_ID, { "base-type": "type/Integer" }],
     ...opts,
   });
 
@@ -1372,7 +1372,7 @@ export const createOrdersProductIdDatasetColumn = (
     ...createOrdersProductIdField(),
     id: ORDERS.PRODUCT_ID,
     source: "fields",
-    field_ref: ["field", ORDERS.PRODUCT_ID, null],
+    field_ref: ["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }],
     ...opts,
   });
 
@@ -1383,7 +1383,7 @@ export const createOrdersSubtotalDatasetColumn = (
     ...createOrdersSubtotalField(),
     id: ORDERS.SUBTOTAL,
     source: "fields",
-    field_ref: ["field", ORDERS.SUBTOTAL, null],
+    field_ref: ["field", ORDERS.SUBTOTAL, { "base-type": "type/Float" }],
     ...opts,
   });
 
@@ -1394,7 +1394,7 @@ export const createOrdersTaxDatasetColumn = (
     ...createOrdersTaxField(),
     id: ORDERS.TAX,
     source: "fields",
-    field_ref: ["field", ORDERS.TAX, null],
+    field_ref: ["field", ORDERS.TAX, { "base-type": "type/Float" }],
     ...opts,
   });
 
@@ -1405,7 +1405,7 @@ export const createOrdersTotalDatasetColumn = (
     ...createOrdersTotalField(),
     id: ORDERS.TOTAL,
     source: "fields",
-    field_ref: ["field", ORDERS.TOTAL, null],
+    field_ref: ["field", ORDERS.TOTAL, { "base-type": "type/Float" }],
     ...opts,
   });
 
@@ -1416,7 +1416,7 @@ export const createOrdersDiscountDatasetColumn = (
     ...createOrdersDiscountField(),
     id: ORDERS.DISCOUNT,
     source: "fields",
-    field_ref: ["field", ORDERS.DISCOUNT, null],
+    field_ref: ["field", ORDERS.DISCOUNT, { "base-type": "type/Float" }],
     ...opts,
   });
 
@@ -1432,6 +1432,7 @@ export const createOrdersCreatedAtDatasetColumn = (
       ORDERS.CREATED_AT,
       {
         "temporal-unit": "default",
+        "base-type": "type/DateTime",
       },
     ],
     ...opts,
@@ -1444,7 +1445,7 @@ export const createOrdersQuantityDatasetColumn = (
     ...createOrdersQuantityField(),
     id: ORDERS.QUANTITY,
     source: "fields",
-    field_ref: ["field", ORDERS.QUANTITY, null],
+    field_ref: ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }],
     ...opts,
   });
 

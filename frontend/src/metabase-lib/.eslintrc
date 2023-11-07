@@ -19,6 +19,7 @@
               "!metabase/lib/encoding",
               "!metabase/lib/formatting",
               "!metabase/lib/time",
+              "!metabase/lib/types",
               "!metabase/lib/urls",
               "!metabase/lib/utils"
             ]

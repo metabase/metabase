@@ -70,9 +70,6 @@ title: Driver interface changelog
   removed in 0.51.0 or later. You can easily implement `metabase.driver/db-default-timezone` directly, and use
   `metabase.driver.sql-jdbc.execute/do-with-connection-with-options` to get a `java.sql.Connection` for a Database.
 
-- `metabase.driver/prettify-native-form` was added to enable driver developers use native form formatting
-  specific to their driver. For details see the PR [#34991](https://github.com/metabase/metabase/pull/34991).
-
 ## Metabase 0.47.0
 
 - A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in
@@ -110,6 +107,9 @@ title: Driver interface changelog
 - The function `metabase.query-processor.timezone/report-timezone-id-if-supported` has been updated to take an additional
   `database` argument for the arity which previously had one argument. This function might be used in the implementation
   of a driver's multimethods.
+
+- `metabase.driver/prettify-native-form` was added to enable driver developers use native form formatting
+  specific to their driver. For details see the PR [#34991](https://github.com/metabase/metabase/pull/34991).
 
 ## Metabase 0.46.0
 

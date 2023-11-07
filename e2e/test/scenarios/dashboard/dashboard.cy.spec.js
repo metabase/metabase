@@ -28,6 +28,7 @@ import {
   openProductsTable,
   updateDashboardCards,
   getTextCardDetails,
+  openDashboardMenu,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -250,6 +251,63 @@ describe("scenarios > dashboard", () => {
             .and("contain", "Orders, Count")
             .and("contain", "18,760");
         }
+      });
+
+      it("should hide personal collections when adding questions to a dashboard in public collection", () => {
+        const collectionInRoot = {
+          name: "Collection in root collection",
+        };
+        cy.createCollection(collectionInRoot);
+        const myPersonalCollection = "My personal collection";
+        cy.createDashboard({
+          name: "dashboard in root collection",
+        }).then(({ body: { id: dashboardId } }) => {
+          visitDashboard(dashboardId);
+        });
+
+        cy.log("assert that personal collections are not visible");
+        editDashboard();
+        openQuestionsSidebar();
+        sidebar().within(() => {
+          cy.findByText("Our analytics").should("be.visible");
+          cy.findByText(myPersonalCollection).should("not.exist");
+          cy.findByText(collectionInRoot.name).should("be.visible");
+        });
+
+        cy.log("Move dashboard to a personal collection");
+        cy.findByTestId("edit-bar").button("Cancel").click();
+        openDashboardMenu();
+        popover().findByText("Move").click();
+        modal().within(() => {
+          cy.findByRole("heading", { name: myPersonalCollection }).click();
+          cy.button("Move").click();
+        });
+
+        editDashboard();
+        openQuestionsSidebar();
+        sidebar().within(() => {
+          cy.log("go to the root collection");
+          cy.findByText("Our analytics").click();
+          cy.findByText(myPersonalCollection).should("be.visible");
+          cy.findByText(collectionInRoot.name).should("be.visible");
+        });
+
+        cy.log("Move dashboard back to a root collection");
+        cy.findByTestId("edit-bar").button("Cancel").click();
+        openDashboardMenu();
+        popover().findByText("Move").click();
+        modal().within(() => {
+          cy.findByRole("heading", { name: "Our analytics" }).click();
+          cy.button("Move").click();
+        });
+
+        editDashboard();
+        openQuestionsSidebar();
+        sidebar().within(() => {
+          cy.findByText("Our analytics").should("be.visible");
+          cy.findByText(myPersonalCollection).should("not.exist");
+          cy.findByText(collectionInRoot.name).should("be.visible");
+        });
       });
 
       it("should save a dashboard after adding a saved question from an empty state (metabase#29450)", () => {
