@@ -3803,15 +3803,15 @@
                                                                      :id        "_USER_SOURCE_"
                                                                      :type      :string/=
                                                                      :sectionId "string"}
-                                                                    {:name "City is not"
-                                                                     :slug "city_name"
-                                                                     :id "_CITY_IS_NOT_"
-                                                                     :type :string/!=
+                                                                    {:name      "City is not"
+                                                                     :slug      "city_name"
+                                                                     :id        "_CITY_IS_NOT_"
+                                                                     :type      :string/!=
                                                                      :sectionId "string"}]}
                          Card {native-card-id :id} (mt/card-with-source-metadata-for-query query)
-                         Card {final-card-id :id :as fc} {:dataset_query {:query    {:source-table (str "card__" native-card-id)}
-                                                                          :type     :query
-                                                                          :database (mt/id)}}
+                         Card {final-card-id :id} {:dataset_query {:query    {:source-table (str "card__" native-card-id)}
+                                                                   :type     :query
+                                                                   :database (mt/id)}}
                          DashboardCard {_ :id} {:dashboard_id       dashboard-id
                                                 :card_id            final-card-id
                                                 :parameter_mappings [{:card_id      final-card-id
