@@ -37,7 +37,7 @@ const DeprecationSection = () => {
                 <Link
                   variant="brandBold"
                   key="link"
-                  to={`${window.MetabaseRoot}collection/${auditCollection.id}`}
+                  to={`/collection/${auditCollection.id}`}
                 >
                   {t`Metabase Analytics Collection`}
                 </Link>
@@ -50,7 +50,7 @@ const DeprecationSection = () => {
                 <Link
                   variant="brandBold"
                   key="link"
-                  to={`${window.MetabaseRoot}admin/permissions/collections/${auditCollection.id}`}
+                  to={`/admin/permissions/collections/${auditCollection.id}`}
                 >
                   {t`access`}
                 </Link>
