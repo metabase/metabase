@@ -13,7 +13,7 @@ import FormTextArea from "metabase/core/components/FormTextArea";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 
-import * as Errors from "metabase/core/utils/errors";
+import * as Errors from "metabase/lib/errors";
 
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
@@ -43,6 +43,7 @@ export interface CreateDashboardFormOwnProps {
   onCreate?: (dashboard: Dashboard) => void;
   onCancel?: () => void;
   initialValues?: CreateDashboardProperties | null;
+  showOnlyPersonalCollections?: boolean;
 }
 
 interface CreateDashboardFormStateProps {
@@ -78,6 +79,7 @@ function CreateDashboardForm({
   onCreate,
   onCancel,
   initialValues,
+  showOnlyPersonalCollections,
 }: Props) {
   const computedInitialValues = useMemo(
     () => ({
@@ -120,6 +122,7 @@ function CreateDashboardForm({
           <FormCollectionPicker
             name="collection_id"
             title={t`Which collection should this go in?`}
+            showOnlyPersonalCollections={showOnlyPersonalCollections}
           />
           <FormFooter>
             <FormErrorMessage inline />

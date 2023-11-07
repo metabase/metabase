@@ -12,7 +12,7 @@ import {
   setupUnauthorizedDatabasesEndpoints,
 } from "__support__/server-mocks";
 
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 
 import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
 import {

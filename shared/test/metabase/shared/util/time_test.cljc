@@ -231,6 +231,8 @@
     "Oct 3, 2023, 10:20 AM – 4:30 PM" "2023-10-03T10:20" "2023-10-03T16:30"
     "Oct 3, 2023, 10:20 AM – 10:30 AM" "2023-10-03T10:20" "2023-10-03T10:30"
     "Oct 3, 2022, 10:20 AM – Oct 3, 2023, 10:30 AM" "2022-10-03T10:20" "2023-10-03T10:30"
+    "Oct 3, 2022, 10:20 AM – Oct 3, 2023, 10:30 AM" "2022-10-03T10:20Z" "2023-10-03T10:30Z"
+    "Oct 3, 2022, 10:20 AM – Oct 3, 2023, 10:30 AM" "2022-10-03T10:20-07:00" "2023-10-03T10:30-07:00"
     "Jan 1, 2022 – Dec 31, 2023" "2022-01-01" "2023-12-31"
     "Aug 1 – Dec 31, 2022" "2022-08-01" "2022-12-31"
     ;; I guess?
@@ -239,6 +241,8 @@
 (deftest format-relative-date-range
   (with-redefs [internal/now (fn [] (from test-epoch))]
     (are [exp n unit include-current] (= exp (shared.ut/format-relative-date-range n unit nil nil {:include-current include-current}))
+      "Jan 1 – Dec 31, 2022" 0 :year true
+
       "Jan 1, 2022 – Dec 31, 2023" 1 :year true
       "Jan 1 – Dec 31, 2023" 1 :year false
       "Jan 1, 2022 – Dec 31, 2026" 4 :year true

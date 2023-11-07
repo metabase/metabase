@@ -46,6 +46,10 @@ If you'd like to share your data with the good people of the internet, you can c
 | Self-serve via [query builder](https://www.metabase.com/glossary/query_builder)                          | ✅                                  | ❌                              | ❌                                             |
 | View usage of embeds with [auditing tools](../usage-and-performance-tools/audit.md)                      | ✅                                  | ❌                              | ❌                                             |
 
+## Switching from static to interactive embedding
+
+[Interactive embedding](./interactive-embedding.md) requires authentication via single sign-on (SSO), so you'll need to set that up both in your Metabase and in your application's server. Check out our [Interactive embedding quick start](https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start). 
+
 ## Further reading
 
 - [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/embedding/embedding-overview).

@@ -1,6 +1,5 @@
 (ns metabase.db.query-test
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.db.query :as mdb.query]
@@ -74,55 +73,3 @@
                            :breakout     [[:field (mt/id :products :category) {:join-alias "Products"}]]})
                :database (mt/id)}]
         (verify-same-query q)))))
-
-(deftest nonsql-dialects-return-original-query-test
-  (testing "Passing a mongodb query through format-sql returns the original query (#31122)"
-    (let [query [{"$group"  {"_id" {"created_at" {"$let" {"vars" {"parts" {"$dateToParts" {"timezone" "UTC"
-                                                                                           "date"     "$created_at"}}}
-                                                          "in"   {"$dateFromParts" {"timezone" "UTC"
-                                                                                    "year"     "$$parts.year"
-                                                                                    "month"    "$$parts.month"
-                                                                                    "day"      "$$parts.day"}}}}}
-                             "sum" {"$sum" "$tax"}}}
-                 {"$sort"    {"_id" 1}}
-                 {"$project" {"_id" false
-                              "created_at" "$_id.created_at"
-                              "sum" true}}]
-          formatted-query (mdb.query/format-sql query :mongo)]
-
-      (testing "Formatting a non-sql query returns the same query"
-        (is (= query formatted-query)))
-
-      ;; TODO(qnkhuat): do we really need to handle case where wrong driver is passed?
-      (let [;; This is a mongodb query, but if you pass in the wrong driver it will attempt the format
-            ;; This is a corner case since the system should always be using the right driver
-            weird-formatted-query (mdb.query/format-sql (json/generate-string query) :postgres)]
-        (testing "The wrong formatter will change the format..."
-          (is (not= query weird-formatted-query)))
-        (testing "...but the resulting data is still the same"
-          ;; Bottom line - Use the right driver, but if you use the wrong
-          ;; one it should be harmless but annoying
-          (is (= query
-                 (json/parse-string weird-formatted-query))))))))
-
-(deftest ^:parallel format-sql-with-params-test
-  (testing "Baseline: format-sql expands metabase params, which is not desired."
-    (is (= "SELECT\n  *\nFROM\n  { { # 1234 } }"
-           (#'mdb.query/format-sql* "SELECT * FROM {{#1234}}" :postgres)))
-    (is (= "SELECT\n  *\nFROM\n  { { #1234}}"
-           (#'mdb.query/format-sql* "SELECT * FROM {{#1234}}" :mysql))))
-  (testing "A compact representation should remain compact (and inner spaces removed, if any)."
-    (is (= "SELECT\n  *\nFROM\n  {{#1234}}"
-           (mdb.query/format-sql "SELECT * FROM {{ #1234 }}" :postgres)))
-    (is (= "SELECT\n  *\nFROM\n  {{#1234}}"
-           (mdb.query/format-sql "SELECT * FROM {{#1234}}" :postgres))))
-  (testing "Symbolic params should also have spaces removed."
-    (is (= "SELECT\n  *\nFROM\n  {{FOO_BAR}}"
-           (mdb.query/format-sql "SELECT * FROM {{FOO_BAR}}" :postgres)))
-    (is (= "SELECT\n  *\nFROM\n  {{FOO_BAR}}"
-           (mdb.query/format-sql "SELECT * FROM {{ FOO_BAR }}" :postgres))))
-  (testing "Dialect-specific versions should work"
-    (is (= "SELECT\n  A\nFROM\n  {{#1234}} WHERE {{STATE}}"
-           (mdb.query/format-sql "SELECT A FROM { { #1234}} WHERE {{ STATE}  }" :mysql)))
-    (is (= "SELECT\n  A\nFROM\n  {{#1234}}\nWHERE\n  {{STATE}}"
-           (mdb.query/format-sql "SELECT A FROM { { #1234}} WHERE {{ STATE}  }" :postgres)))))

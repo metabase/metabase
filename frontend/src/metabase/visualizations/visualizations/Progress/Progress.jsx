@@ -167,7 +167,13 @@ export default class Progress extends Component {
     }
 
     const clicked = { value, column, settings };
-    const isClickable = visualizationIsClickable(clicked);
+    const isClickable = onVisualizationClick != null;
+
+    const handleClick = e => {
+      if (onVisualizationClick && visualizationIsClickable(clicked)) {
+        onVisualizationClick({ ...clicked, event: e.nativeEvent });
+      }
+    };
 
     return (
       <div className={cx(this.props.className, "flex layout-centered")}>
@@ -208,10 +214,7 @@ export default class Progress extends Component {
               overflow: "hidden",
             }}
             data-testid="progress-bar"
-            onClick={
-              isClickable &&
-              (e => onVisualizationClick({ ...clicked, event: e.nativeEvent }))
-            }
+            onClick={handleClick}
           >
             <div
               style={{

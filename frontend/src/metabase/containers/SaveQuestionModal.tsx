@@ -16,7 +16,7 @@ import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormRadio from "metabase/core/components/FormRadio";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import type { CollectionId } from "metabase-types/api";
-import * as Errors from "metabase/core/utils/errors";
+import * as Errors from "metabase/lib/errors";
 import { getIsSavedQuestionChanged } from "metabase/query_builder/selectors";
 import { useSelector } from "metabase/lib/redux";
 import type Question from "metabase-lib/Question";
@@ -47,7 +47,7 @@ const SAVE_QUESTION_SCHEMA = Yup.object({
 interface SaveQuestionModalProps {
   question: Question;
   originalQuestion: Question | null;
-  onCreate: (question: Question) => void;
+  onCreate: (question: Question) => Promise<void>;
   onSave: (question: Question) => Promise<void>;
   onClose: () => void;
   multiStep?: boolean;
@@ -78,7 +78,7 @@ export const SaveQuestionModal = ({
   initialCollectionId,
 }: SaveQuestionModalProps) => {
   const handleOverwrite = useCallback(
-    async (originalQuestion: Question, details: FormValues) => {
+    async (originalQuestion: Question) => {
       const collectionId = canonicalCollectionId(
         originalQuestion.collectionId(),
       );
@@ -120,7 +120,7 @@ export const SaveQuestionModal = ({
   const handleSubmit = useCallback(
     async (details: FormValues) => {
       if (isOverwriteMode(originalQuestion, details.saveType)) {
-        await handleOverwrite(originalQuestion, details);
+        await handleOverwrite(originalQuestion);
       } else {
         await handleCreate(details);
       }

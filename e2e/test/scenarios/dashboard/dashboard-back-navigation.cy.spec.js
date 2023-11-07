@@ -2,6 +2,8 @@ import {
   appBar,
   collectionTable,
   createAction,
+  getActionCardDetails,
+  getTextCardDetails,
   getDashboardCard,
   getDashboardCardMenu,
   getDashboardCards,
@@ -63,6 +65,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     cy.findByLabelText(backButtonLabel).should("be.visible");
     visualize();
     cy.findByLabelText(backButtonLabel).click();
+    modal().button("Discard changes").click();
     cy.findByTestId("dashboard-header")
       .findByText(dashboardName)
       .should("be.visible");
@@ -390,42 +393,6 @@ const createDashboardWithCards = () => {
     visualization_settings: {},
   };
 
-  const textDashcardDetails = {
-    col: 8,
-    row: 0,
-    size_x: 4,
-    size_y: 8,
-    visualization_settings: {
-      virtual_card: {
-        name: null,
-        display: "text",
-        visualization_settings: {},
-        dataset_query: {},
-        archived: false,
-      },
-      text: "Text card",
-    },
-  };
-
-  const actionDashcardDetails = {
-    row: 8,
-    col: 0,
-    size_x: 4,
-    size_y: 1,
-    series: [],
-    visualization_settings: {
-      actionDisplayType: "button",
-      virtual_card: {
-        name: null,
-        display: "action",
-        visualization_settings: {},
-        dataset_query: {},
-        archived: false,
-      },
-      "button.label": "Action card",
-    },
-  };
-
   cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
     cy.createQuestion(questionDetails).then(({ body: { id: question_id } }) => {
       cy.createQuestion(modelDetails).then(({ body: { id: model_id } }) => {
@@ -434,8 +401,8 @@ const createDashboardWithCards = () => {
             cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
               cards: [
                 { id: -1, card_id: question_id, ...questionDashcardDetails },
-                { id: -2, ...textDashcardDetails },
-                { id: -3, ...actionDashcardDetails, action_id },
+                getTextCardDetails({ id: -2, size_y: 1 }),
+                getActionCardDetails({ id: -3, action_id }),
               ],
             });
           },

@@ -11,7 +11,15 @@
 ;; Importing and re-exporting some functions defined in each implementation.
 (shared.ns/import-fns
  [common
-  to-range]
+  local-date-regex
+  local-datetime-regex
+  local-time-regex
+  offset-datetime-regex
+  offset-time-regex
+  to-range
+  year-month-regex
+  year-regex
+  zone-offset-part-regex]
  [internal
   valid?
   same-day?
@@ -74,4 +82,6 @@
   ([n unit offset-n offset-unit]
    (format-relative-date-range n unit offset-n offset-unit nil))
   ([n unit offset-n offset-unit options]
-   (internal/format-relative-date-range n unit offset-n offset-unit options)))
+   (internal/format-relative-date-range n unit offset-n offset-unit options))
+  ([t n unit offset-n offset-unit options]
+   (internal/format-relative-date-range (coerce-to-timestamp t) n unit offset-n offset-unit options)))

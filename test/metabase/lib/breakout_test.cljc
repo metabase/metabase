@@ -3,6 +3,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
+   [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
@@ -516,3 +517,44 @@
              :breakout-position 0}
             (m/find-first #(= (:id %) (meta/id :products :category))
                           (lib/breakoutable-columns (legacy-query-with-broken-breakout)))))))
+
+(deftest ^:parallel breakout-with-binning-test
+  (testing "breakout on a column with binning should preserve the binning"
+    (is (=? {:stages [{:aggregation [[:count {}]]
+                       :breakout    [[:field
+                                      {:binning {:strategy :bin-width, :bin-width 1}}
+                                   (meta/id :people :latitude)]]}]}
+            (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                (lib/aggregate (lib/count))
+                (lib/breakout (lib/with-binning (meta/field-metadata :people :latitude) {:strategy :bin-width, :bin-width 1})))))))
+
+(deftest ^:parallel existing-breakouts-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                  (lib/aggregate (lib/count))
+                  (lib/breakout (meta/field-metadata :people :latitude))
+                  (lib/breakout (lib/with-binning (meta/field-metadata :people :latitude) {:strategy :bin-width, :bin-width 1}))
+                  (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :people :latitude) :month))
+                  (lib/breakout (meta/field-metadata :people :longitude)))]
+    (is (=? [[:field {}
+              (meta/id :people :latitude)]
+             [:field {:binning {:strategy :bin-width, :bin-width 1}}
+              (meta/id :people :latitude)]
+             [:field {:temporal-unit :month}
+              (meta/id :people :latitude)]]
+            (lib.breakout/existing-breakouts query -1 (meta/field-metadata :people :latitude))))))
+
+(deftest ^:parallel remove-existing-breakouts-for-column-test
+  (let [query  (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                   (lib/aggregate (lib/count))
+                   (lib/breakout (meta/field-metadata :people :latitude))
+                   (lib/breakout (lib/with-binning (meta/field-metadata :people :latitude) {:strategy :bin-width, :bin-width 1}))
+                   (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :people :latitude) :month))
+                   (lib/breakout (meta/field-metadata :people :longitude)))
+        query' (lib.breakout/remove-existing-breakouts-for-column query (meta/field-metadata :people :latitude))]
+    (is (=? {:stages [{:aggregation [[:count {}]]
+                       :breakout    [[:field {} (meta/id :people :longitude)]]}]}
+            query'))
+    (testing "Don't explode if there are no existing breakouts"
+      (is (=? {:stages [{:aggregation [[:count {}]]
+                         :breakout    [[:field {} (meta/id :people :longitude)]]}]}
+              (lib.breakout/remove-existing-breakouts-for-column query' (meta/field-metadata :people :latitude)))))))
