@@ -13,6 +13,7 @@ import {
   buildDimensionTarget,
   buildTemplateTagVariableTarget,
   buildTextTagTarget,
+  compareMappingOptionTargets,
 } from "metabase-lib/parameters/utils/targets";
 
 function buildStructuredQuerySectionOptions(section) {
@@ -156,4 +157,60 @@ export function getParameterMappings(dashcard, parameter_id, card_id, target) {
   }
 
   return parameter_mappings;
+}
+
+export function getMatchingParameterOption(
+  dashcardToCheck,
+  targetDimension,
+  targetDashcard,
+  metadata,
+) {
+  return getParameterMappingOptions(
+    metadata,
+    null,
+    dashcardToCheck.card,
+    dashcardToCheck,
+  ).find(param =>
+    compareMappingOptionTargets(
+      targetDimension,
+      param.target,
+      targetDashcard,
+      dashcardToCheck,
+      metadata,
+    ),
+  );
+}
+
+export function getAutoApplyMappingsForDashcards(
+  sourceDashcard,
+  targetDashcards,
+  parameter_id,
+  target,
+  metadata,
+) {
+  const targetDashcardMappings = [];
+
+  for (const targetDashcard of targetDashcards) {
+    const selectedMappingOption = getMatchingParameterOption(
+      targetDashcard,
+      target,
+      sourceDashcard,
+      metadata,
+    );
+
+    if (selectedMappingOption) {
+      targetDashcardMappings.push({
+        id: targetDashcard.id,
+        attributes: {
+          parameter_mappings: getParameterMappings(
+            targetDashcard,
+            parameter_id,
+            targetDashcard.card_id,
+            selectedMappingOption.target,
+          ),
+        },
+      });
+    }
+  }
+  return targetDashcardMappings;
 }

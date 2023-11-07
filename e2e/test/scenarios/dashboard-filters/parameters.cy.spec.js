@@ -599,16 +599,16 @@ describe("scenarios > dashboard > parameters", () => {
     });
   });
 
-  describe.only("when auto-applying filters across cards with matching fields", () => {
+  describe("when auto-applying filters across cards with matching fields", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     });
 
     describe("when applying filter to all cards for a filter", () => {
-        console.log("Hello world")
-        console.log("Hello world")
-        console.log("Hello world")
-      it.only("should automatically apply filters to cards with matching fields", () => {
+      console.log("Hello world");
+      console.log("Hello world");
+      console.log("Hello world");
+      it("should automatically apply filters to cards with matching fields", () => {
         createDashboardWithCards([
           {
             card_id: ORDERS_BY_YEAR_QUESTION_ID,

@@ -14,7 +14,7 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import { updateDashboard } from "metabase/dashboard/actions/save";
 import {
-  getParameterMappingOptions,
+  getAutoApplyMappingsForDashcards,
   getParameterMappings,
 } from "metabase/parameters/utils/mapping-options";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -22,7 +22,6 @@ import {
   isParameterValueEmpty,
   PULSE_PARAM_EMPTY,
 } from "metabase-lib/parameters/utils/parameter-values";
-import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
 import {
   getDashboard,
   getDraftParameterValues,
@@ -31,6 +30,7 @@ import {
   getParameters,
   getDashboardId,
   getAutoApplyFiltersToastId,
+  getDashCardById,
 } from "../selectors";
 
 import { getAllDashboardCardsWithUnmappedParameters } from "../utils";
@@ -42,7 +42,6 @@ import {
   setMultipleDashCardAttributes,
 } from "./core";
 import { setSidebar, closeSidebar } from "./ui";
-import {getExistingDashCards} from "metabase/dashboard/actions/utils";
 
 function updateParameter(dispatch, getState, id, parameterUpdater) {
   const dashboard = getDashboard(getState());
@@ -121,95 +120,45 @@ export const removeParameter = createThunkAction(
 
 export const SET_PARAMETER_MAPPING = "metabase/dashboard/SET_PARAMETER_MAPPING";
 
-function getMatchingParameterOption(metadata, dc, target, dashcard) {
-    console.log(dc, dc.card)
-  return getParameterMappingOptions(metadata, null, dc.card, dc).find(param =>
-    compareMappingOptionTargets(target, param.target, dashcard, dc, metadata),
-  );
-}
-
-function getAutoApplyDashcardAttributes(
-  unmappedDashcards,
-  metadata,
-  target,
-  dashcard,
-  parameter_id,
-) {
-  const otherDashcardAttributes = [];
-
-  for (const dc of unmappedDashcards) {
-    const selectedMappingOption = getMatchingParameterOption(
-      metadata,
-      dc,
-      target,
-      dashcard,
-    );
-
-    if (selectedMappingOption) {
-      otherDashcardAttributes.push({
-        id: dc.id,
-        attributes: {
-          parameter_mappings: getParameterMappings(
-            dc,
-            parameter_id,
-            dc.card_id,
-            selectedMappingOption.target,
-          ),
-        },
-      });
-    }
-  }
-  return otherDashcardAttributes;
-}
-
 export const setParameterMapping = createThunkAction(
   SET_PARAMETER_MAPPING,
   (parameter_id, dashcard_id, card_id, target) => {
     return (dispatch, getState) => {
-      if (target === null) {
+      const dashcard = getDashCardById(getState(), dashcard_id);
+
+      if (target !== null) {
+        const metadata = getMetadata(getState());
+        const dashboard_state = getState().dashboard;
+        const dashcardsToAutoApply = getAllDashboardCardsWithUnmappedParameters(
+          dashboard_state,
+          dashboard_state.dashboardId,
+          parameter_id,
+        );
+
         dispatch(
-          setDashCardAttributes({
-            id: dashcard_id,
-            attributes: {
-              parameter_mappings: null,
-            },
+          setMultipleDashCardAttributes({
+            dashcards: getAutoApplyMappingsForDashcards(
+              dashcard,
+              dashcardsToAutoApply,
+              parameter_id,
+              target,
+              metadata,
+            ),
           }),
         );
       }
 
-      const dashcard = getState().dashboard.dashcards[dashcard_id];
-
-      const metadata = getMetadata(getState());
-
-      const parameter_mappings = getParameterMappings(
-        dashcard,
-        parameter_id,
-        card_id,
-        target,
-      );
-
-      const dashcardAttribute = {
-        id: dashcard_id,
-        attributes: { parameter_mappings },
-      };
-
-      const dashcards = getExistingDashCards(getState().dashboard, getState().dashboard.dashboardId);
-
-      const unmappedDashcards = getAllDashboardCardsWithUnmappedParameters(
-        dashcards, parameter_id
-      );
-
-      const otherDashcardAttributes = getAutoApplyDashcardAttributes(
-        unmappedDashcards,
-        metadata,
-        target,
-        dashcard,
-        parameter_id,
-      );
-
       dispatch(
-        setMultipleDashCardAttributes({
-          dashcards: [dashcardAttribute, ...otherDashcardAttributes],
+        setDashCardAttributes({
+          id: dashcard_id,
+          attributes: {
+            parameter_mappings: getParameterMappings(
+              dashcard,
+              parameter_id,
+              card_id,
+              target,
+            ),
+          },
         }),
       );
     };

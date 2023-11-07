@@ -231,48 +231,47 @@ export const addActionToDashboard =
   };
 
 export const autoApplyParametersToNewCard =
-  ({ dashboard_id, dashcard_id }) =>
+  ({ dashcard_id }) =>
   async (dispatch, getState) => {
-    console.log("is this being called?");
     const metadata = getMetadata(getState());
-    const dashcards = getExistingDashCards(getState().dashboard, dashboard_id);
+    const dashboardState = getState().dashboard;
+    const dashboardId = dashboardState.dashboardId;
+    const dashcards = getExistingDashCards(dashboardState, dashboardId);
 
-    const loadedDashcard = getDashCardById(getState(), dashcard_id);
+    const targetDashcard = getDashCardById(getState(), dashcard_id);
     const dashcardMappingOptions = getParameterMappingOptions(
       metadata,
       null,
-      loadedDashcard.card,
-      loadedDashcard,
+      targetDashcard.card,
+      targetDashcard,
     );
 
     const parametersToAutoApply = [];
     const processedParameterIds = new Set();
 
-    for (const dashcard of dashcards) {
-      const existingParameterMappings = dashcard.parameter_mappings || [];
-      for (const paramMapping of existingParameterMappings) {
-        dashcardMappingOptions.find(opt => {
-          if (
-            !processedParameterIds.has(paramMapping.parameter_id) &&
-            compareMappingOptionTargets(
-              paramMapping.target,
-              opt.target,
-              dashcard,
-              loadedDashcard,
-              metadata,
-            )
-          ) {
-            parametersToAutoApply.push(
-              ...getParameterMappings(
-                loadedDashcard,
-                paramMapping.parameter_id,
-                loadedDashcard.card_id,
-                paramMapping.target,
-              ),
-            );
-            processedParameterIds.add(paramMapping.parameter_id);
-          }
-        });
+    for (const opt of dashcardMappingOptions) {
+      for (const dashcard of dashcards) {
+        const param = dashcard.parameter_mappings.find(param =>
+          compareMappingOptionTargets(
+            param.target,
+            opt.target,
+            dashcard,
+            targetDashcard,
+            metadata,
+          ),
+        );
+
+        if (param && !processedParameterIds.has(param.parameter_id)) {
+          parametersToAutoApply.push(
+            ...getParameterMappings(
+              targetDashcard,
+              param.parameter_id,
+              targetDashcard.card_id,
+              param.target,
+            ),
+          );
+          processedParameterIds.add(param.parameter_id);
+        }
       }
     }
 
