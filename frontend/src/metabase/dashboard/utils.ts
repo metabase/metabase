@@ -1,5 +1,7 @@
+import type { Draft } from "@reduxjs/toolkit";
 import _ from "underscore";
 import { t } from "ttag";
+import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 import { isUUID, isJWT } from "metabase/lib/utils";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import {
@@ -20,8 +22,9 @@ import type {
   StructuredDatasetQuery,
   ActionDashboardCard,
   ParameterId,
+  DashboardId,
 } from "metabase-types/api";
-import type { SelectedTabId } from "metabase-types/store";
+import type { DashboardState, SelectedTabId } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import {
   isDateParameter,
@@ -130,10 +133,11 @@ export function getAllDashboardCards(dashboard: Dashboard) {
 }
 
 export function getAllDashboardCardsWithUnmappedParameters(
-  dashcards: DashboardCard[],
+  dashboard: Draft<DashboardState>,
+  dashboardId: DashboardId,
   parameter_id: ParameterId,
 ) {
-  return dashcards.filter((dashcard) => {
+  return getExistingDashCards(dashboard, dashboardId).filter(dashcard => {
     return !dashcard.parameter_mappings?.find(
       mapping => mapping.parameter_id === parameter_id,
     );
@@ -141,12 +145,13 @@ export function getAllDashboardCardsWithUnmappedParameters(
 }
 
 export function getAllDashboardCardsWithMappedParameter(
-  dashboard: Dashboard,
-  parameterId: ParameterId,
+  dashboard: Draft<DashboardState>,
+  dashboardId: DashboardId,
+  parameter_id: ParameterId,
 ) {
-  return getAllDashboardCards(dashboard).filter(({ dashcard }) => {
+  return getExistingDashCards(dashboard, dashboardId).filter(dashcard => {
     return dashcard.parameter_mappings?.find(
-      mapping => mapping.parameter_id === parameterId,
+      mapping => mapping.parameter_id === parameter_id,
     );
   });
 }
