@@ -52,11 +52,15 @@
   [topic {:keys [object dashcards user-id] :as _event}]
   ;; we expect that the object has just a dashboard :id at the top level
   ;; plus a `:dashcards` attribute which is a vector of the cards added/removed
-  (let [details (-> (select-keys object [:description :name :id])
+  (let [cards   (when (seq dashcards)
+                  (t2/select-fn->fn :id #(select-keys % [:name :description])
+                                    :model/Card
+                                    :id [:in (map :card_id dashcards)]))
+        details (-> (select-keys object [:description :name :id])
                     (assoc :dashcards (for [{:keys [id card_id]} dashcards]
-                                           (-> (t2/select-one [:model/Card :name :description], :id card_id)
-                                               (assoc :id id)
-                                               (assoc :card_id card_id)))))]
+                                        (-> (cards card_id)
+                                            (assoc :id id)
+                                            (assoc :card_id card_id)))))]
     (audit-log/record-event! topic
                                {:details  details
                                 :user-id  user-id
