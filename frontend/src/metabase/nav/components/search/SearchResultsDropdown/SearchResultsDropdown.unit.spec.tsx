@@ -16,7 +16,7 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import type { SearchResult } from "metabase-types/api";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { SearchResultsDropdown } from "./SearchResultsDropdown";
 
 // Mock MIN_RESULTS_FOR_FOOTER_TEXT so we don't have to generate a ton of elements for the footer test
@@ -42,7 +42,7 @@ const TEST_SEARCH_RESULTS = [
   }),
   createMockSearchResult({
     id: 3,
-    name: "Indexed Entity",
+    name: "Indexed record",
     model: "indexed-entity",
   }),
 ];
@@ -102,9 +102,9 @@ describe("SearchResultsDropdown", () => {
 
   it("should call onSearchItemSelect when a result is clicked and has type=indexed-entity", async () => {
     const { onSearchItemSelect } = await setup({
-      searchText: "Indexed Entity",
+      searchText: "Indexed record",
     });
-    const searchItem = screen.getByText("Indexed Entity");
+    const searchItem = screen.getByText("Indexed record");
     userEvent.click(searchItem);
     expect(onSearchItemSelect).toHaveBeenCalled();
   });

@@ -90,7 +90,7 @@ describe("scenarios > models query editor", () => {
         .and("not.contain", "109.22");
 
       cy.button("Cancel").click();
-      modal().button("Leave anyway").click();
+      modal().button("Discard changes").click();
       cy.wait("@cardQuery");
 
       cy.url()
@@ -189,7 +189,7 @@ describe("scenarios > models query editor", () => {
         .and("not.contain", "109.22");
 
       cy.button("Cancel").click();
-      modal().button("Leave anyway").click();
+      modal().button("Discard changes").click();
       cy.wait("@cardQuery");
 
       cy.get(".cellData").should("contain", "37.65").and("contain", "109.22");

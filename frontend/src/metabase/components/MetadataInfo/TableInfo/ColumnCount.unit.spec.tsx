@@ -1,4 +1,4 @@
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Table } from "metabase-types/api";
 import { createMockField, createMockTable } from "metabase-types/api/mocks";

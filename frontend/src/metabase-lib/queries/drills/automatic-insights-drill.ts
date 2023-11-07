@@ -1,5 +1,4 @@
 import * as ML_Urls from "metabase-lib/urls";
-import { isExpressionField } from "metabase-lib/queries/utils";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type { ClickActionProps } from "metabase-lib/queries/drills/types";
 
@@ -17,16 +16,8 @@ export function automaticInsightsDrill({
   // questions with a breakout
   const dimensions = (clicked && clicked.dimensions) || [];
 
-  // ExpressionDimensions don't work right now (see metabase#16680)
-  const includesExpressionDimensions = dimensions.some(dimension => {
-    return isExpressionField(dimension.column.field_ref);
-  });
-
   const isUnsupportedDrill =
-    !clicked ||
-    dimensions.length === 0 ||
-    !enableXrays ||
-    includesExpressionDimensions;
+    !clicked || dimensions.length === 0 || !enableXrays;
 
   return !isUnsupportedDrill;
 }

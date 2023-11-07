@@ -458,7 +458,7 @@
         (let [context {:column     count-col
                        :column-ref (lib/ref count-col)
                        :value      nil}]
-          (is (=? [{:type :drill-thru/column-filter
+          (is (=? [{:type   :drill-thru/column-filter
                     :column {:name "count"}
                     :initial-op {:display-name-variant :equal-to
                                  :short :=}}
@@ -474,7 +474,7 @@
         (let [context {:column     max-of-discount-col
                        :column-ref (lib/ref max-of-discount-col)
                        :value      nil}]
-          (is (=? [{:type :drill-thru/column-filter,
+          (is (=? [{:type   :drill-thru/column-filter,
                     :column {:display-name "Max of Discount"}
                     :initial-op {:display-name-variant :equal-to
                                  :short :=}}
@@ -515,12 +515,12 @@
                               {:name "≠"}]}
                  {:lib/type   :metabase.lib.drill-thru/drill-thru
                   :type       :drill-thru/underlying-records
-                  #_#_:row-count  (:value sum-dim)
-                  #_#_:dimensions [breakout-dim]
-                  #_#_:column-ref (:column-ref sum-dim)}
+                  :row-count  (:value sum-dim)
+                  :dimensions [breakout-dim]
+                  :column-ref (:column-ref sum-dim)}
                  {:lib/type   :metabase.lib.drill-thru/drill-thru
                   :type       :drill-thru/zoom-in.timeseries
-                  :dimension  {:column breakout}}]
+                  :dimension  breakout-dim}]
                 (lib/available-drill-thrus query -1 context)))
         (test-drill-applications query context)))))
 

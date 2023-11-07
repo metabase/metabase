@@ -332,15 +332,15 @@
                                  :last-change nil
                                  :col "value"
                                  :last-value 20.0}]}]
-        (is (= "40\nUp 133.33%. Was 30 last month"
+        (is (= "40\nUp 133.33% vs. previous month: 30"
                (:render/text (body/render :smartscalar nil pacific-tz nil nil results))))
-        (is (= "40\nNo change. Was 40 last month"
+        (is (= "40\nNo change vs. previous month: 40"
                (:render/text (body/render :smartscalar nil pacific-tz nil nil sameres))))
         (is (= "20\nNothing to compare to."
                (:render/text (body/render :smartscalar nil pacific-tz nil nil dumbres))))
         (is (schema= {:attachments (s/eq nil)
                       :content     (s/pred vector? "hiccup vector")
-                      :render/text (s/eq "40\nUp 133.33%. Was 30 last month")}
+                      :render/text (s/eq "40\nUp 133.33% vs. previous month: 30")}
                      (body/render :smartscalar nil pacific-tz nil nil results)))))))
 
 (defn- replace-style-maps [hiccup-map]

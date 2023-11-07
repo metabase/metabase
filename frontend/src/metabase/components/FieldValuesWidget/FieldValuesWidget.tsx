@@ -38,7 +38,7 @@ import type {
 } from "metabase-types/api";
 
 import { useDispatch } from "metabase/lib/redux";
-import { isNotNull } from "metabase/core/utils/types";
+import { isNotNull } from "metabase/lib/types";
 import type Field from "metabase-lib/metadata/Field";
 import type Question from "metabase-lib/Question";
 
@@ -212,7 +212,7 @@ export function FieldValuesWidgetInner({
 
       const results = await Promise.all(
         nonVirtualFields.map(field =>
-          dispatch(Fields.objectActions.fetchFieldValues({ id: field.id })),
+          dispatch(Fields.objectActions.fetchFieldValues(field)),
         ),
       );
 
@@ -222,7 +222,7 @@ export function FieldValuesWidgetInner({
         (field, index) =>
           results[index]?.payload?.values ??
           Fields.selectors.getFieldValues(results[index]?.payload, {
-            entityId: field.id,
+            entityId: field.getUniqueId(),
           }),
       );
 

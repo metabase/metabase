@@ -19,6 +19,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
@@ -67,17 +68,18 @@
   (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
         ->temporal-name lib.temporal-bucket/describe-temporal-pair
         numeric? #(clojure.core/and (lib.util/original-isa? % :type/Number)
-                                    (lib.util/clause? %)
-                                    (-> (lib.metadata.calculation/metadata query stage-number %)
-                                        lib.types.isa/id?
-                                        clojure.core/not))
+                    (lib.util/clause? %)
+                    (-> (lib.metadata.calculation/metadata query stage-number %)
+                        lib.types.isa/id?
+                        clojure.core/not))
         temporal? #(lib.util/original-isa? % :type/Temporal)
-        unit-is (fn [unit]
-                  (fn [a]
-                    (clojure.core/and
-                      (temporal? a)
-                      (lib.util/clause? a)
-                      (clojure.core/= unit (:temporal-unit (second a))))))
+        unit-is (fn [unit-or-units]
+                  (let [units (set (u/one-or-many unit-or-units))]
+                    (fn [a]
+                      (clojure.core/and
+                        (temporal? a)
+                        (lib.util/clause? a)
+                        (clojure.core/contains? units (:temporal-unit (second a)))))))
         ->unbucketed-display-name #(-> %
                                        (update 1 dissoc :temporal-unit)
                                        ->display-name)
@@ -89,6 +91,9 @@
     (mbql.u/match-one expr
       [:= _ (a :guard numeric?) b]
       (i18n/tru "{0} is equal to {1}" (->display-name a) (->display-name b))
+
+      [:= _ (a :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (b :guard string?)]
+      (i18n/tru "{0} is {1}" (->unbucketed-display-name a) (shared.ut/format-relative-date-range b 0 (:temporal-unit (second a)) nil nil {:include-current true}))
 
       [:= _ (a :guard temporal?) (b :guard (some-fn int? string?))]
       (i18n/tru "{0} is on {1}" (->display-name a) (->temporal-name a b))

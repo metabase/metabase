@@ -4,14 +4,18 @@ import type {
   UiParameter,
 } from "metabase-lib/parameters/types";
 
-export const hasFields = (
+export const isFieldFilterUiParameter = (
   parameter: UiParameter,
 ): parameter is FieldFilterUiParameter => {
-  return (parameter as FieldFilterUiParameter).fields != null;
+  return "fields" in parameter && Array.isArray(parameter.fields);
+};
+
+export const hasFields = (parameter: UiParameter) => {
+  return isFieldFilterUiParameter(parameter) && parameter.fields.length > 0;
 };
 
 export const getFields = (parameter: UiParameter): Field[] => {
-  if (hasFields(parameter)) {
+  if (isFieldFilterUiParameter(parameter) && hasFields(parameter)) {
     return parameter.fields;
   } else {
     return [];

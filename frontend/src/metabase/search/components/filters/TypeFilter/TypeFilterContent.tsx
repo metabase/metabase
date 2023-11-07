@@ -1,12 +1,12 @@
 /* eslint-disable react/prop-types */
 import { useState } from "react";
+import { enabledSearchTypes } from "metabase/search/constants";
 import type { SearchFilterDropdown } from "metabase/search/types";
 import { useSearchListQuery } from "metabase/common/hooks";
 import { Checkbox, Stack } from "metabase/ui";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import type { EnabledSearchModelType } from "metabase-types/api";
 import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchFilterPopoverWrapper";
-import { filterEnabledSearchTypes } from "metabase/search/utils";
 
 const EMPTY_SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
 export const TypeFilterContent: SearchFilterDropdown<"type">["ContentComponent"] =
@@ -20,7 +20,9 @@ export const TypeFilterContent: SearchFilterDropdown<"type">["ContentComponent"]
     >(value ?? []);
 
     const availableModels = (metadata && metadata.available_models) ?? [];
-    const typeFilters = filterEnabledSearchTypes(availableModels);
+    const typeFilters = enabledSearchTypes.filter(type =>
+      availableModels.includes(type),
+    );
 
     return (
       <SearchFilterPopoverWrapper
@@ -39,6 +41,9 @@ export const TypeFilterContent: SearchFilterDropdown<"type">["ContentComponent"]
           <Stack spacing="md" p="md" justify="center" align="flex-start">
             {typeFilters.map(model => (
               <Checkbox
+                wrapperProps={{
+                  "data-testid": "type-filter-checkbox",
+                }}
                 key={model}
                 value={model}
                 label={getTranslatedEntityName(model)}

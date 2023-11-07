@@ -4,6 +4,7 @@ import type {
   TableColumnOrderSetting,
 } from "metabase-types/api";
 import type * as Lib from "metabase-lib";
+import type { IconProps } from "metabase/core/components/Icon";
 
 export interface ColumnSetting extends TableColumnOrderSetting {
   fieldRef: FieldReference;
@@ -14,12 +15,16 @@ export interface ColumnSettingItem {
   metadataColumn?: Lib.ColumnMetadata;
   datasetColumn: DatasetColumn;
   columnSettingIndex: number;
+  icon?: IconProps["name"];
 }
 
 export interface ColumnMetadataItem {
   column: Lib.ColumnMetadata;
   name: string;
   displayName: string;
+  selected?: boolean;
+  isAggregation?: boolean;
+  isBreakout?: boolean;
 }
 
 export interface ColumnGroupItem {

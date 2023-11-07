@@ -3,6 +3,7 @@
    [clojure.test :refer [are deftest is testing]]
    [clojure.test.check.generators :as gen]
    [malli.generator :as mg]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -500,3 +501,24 @@
       #?@(:cljs
           [#js ["aggregation" 0]
            #js ["aggregation" 0 #js {}]]))))
+
+(deftest ^:parallel implicitly-joinable-columns-test
+  (testing "implicit join columns in eg. a breakout should be matched"
+    (let [base             (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                               (lib/aggregate (lib/count))
+                               (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year)))
+          vis              (lib/visible-columns base)
+          base-user-source (m/find-first #(= (:id %) (meta/id :people :source)) vis)
+          base-category    (m/find-first #(= (:id %) (meta/id :products :category)) vis)
+          query            (-> base
+                               (lib/breakout base-user-source)
+                               (lib/breakout base-category))
+          returned         (map #(assoc %1 :source-alias %2)
+                                (lib/returned-columns query)
+                                [nil "PEOPLE__via__USER_ID" "PRODUCTS__via__PRODUCT_ID" nil])]
+      (is (= :source/implicitly-joinable (:lib/source base-user-source)))
+      (is (= :source/implicitly-joinable (:lib/source base-category)))
+      (is (= 4 (count returned)))
+      (is (= (map :name returned)
+             (for [col returned]
+               (:name (lib.equality/find-matching-column query -1 (lib/ref col) returned))))))))
