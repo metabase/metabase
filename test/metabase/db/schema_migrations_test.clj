@@ -40,6 +40,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
+   [metabase.util.connection :as u.conn]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute])
   (:import
@@ -216,17 +217,6 @@
                                             :semantic_type :name]))
                       (t2/select Field :table_id table-id)))))))))
 
-(defn app-db-column-types
-  "Returns a map of all column names to their respective type names, for the given `table-name`, by using the JDBC
-  .getMetaData method of the given `conn` (which is presumed to be an app DB connection)."
-  [^Connection conn table-name]
-  (with-open [rset (.getColumns (.getMetaData conn) nil nil table-name nil)]
-    (into {} (take-while some?)
-             (repeatedly
-               (fn []
-                 (when (.next rset)
-                   [(.getString rset "COLUMN_NAME") (.getString rset "TYPE_NAME")]))))))
-
 (deftest convert-text-to-longtext-migration-test
   (testing "all columns that were TEXT type in MySQL were changed to"
     (impl/test-migrations ["v42.00-004" "v42.00-063"] [migrate!]
@@ -300,7 +290,7 @@
                   name-fn          (case driver/*driver*
                                      :h2 u/upper-case-en
                                      identity)
-                  tbl-cols         (app-db-column-types conn (name-fn tbl-nm))]
+                  tbl-cols         (u.conn/app-db-column-types conn (name-fn tbl-nm))]
               (doseq [col-nm (map last col-nms)]
                 (testing (format " %s in %s" exp-type driver/*driver*)
                   ;; just get the first/only scalar value from the results (which is a vec of maps)
@@ -315,7 +305,7 @@
 (deftest convert-query-cache-result-to-blob-test
   (testing "the query_cache.results column was changed to"
     (impl/test-migrations ["v42.00-064"] [migrate!]
-      (t2/with-connection [^java.sql.Connection conn]
+      (t2/with-connection [^Connection conn]
         (when (= :mysql driver/*driver*)
           ;; simulate the broken app DB state that existed prior to the fix from #16095
           (with-open [stmt (.prepareStatement conn "ALTER TABLE query_cache MODIFY results BLOB NULL;")]
@@ -330,7 +320,7 @@
                                  identity)
               tbl-nm           "query_cache"
               col-nm           "results"
-              tbl-cols         (app-db-column-types conn (name-fn tbl-nm))]
+              tbl-cols         (u.conn/app-db-column-types conn (name-fn tbl-nm))]
           (testing (format " %s in %s" exp-type driver/*driver*)
             ;; just get the first/only scalar value from the results (which is a vec of maps)
             (is (.equalsIgnoreCase exp-type (get tbl-cols (name-fn col-nm)))

@@ -13,7 +13,6 @@
   (:require
    [cheshire.core :as json]
    [clojure.core.match :refer [match]]
-   [clojure.string :as str]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
@@ -23,6 +22,7 @@
    [metabase.models.interface :as mi]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
+   [metabase.util.connection :as u.conn]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
@@ -507,42 +507,23 @@
   {:arglists '([ingested])}
   ingested-model)
 
-(comment
-  ;; pg
-  ;; (mapv #(into {} %) (t2/query "select column_name, data_type, character_maximum_length from INFORMATION_SCHEMA.COLUMNS where table_name = 'collection'"))
+(def fields-for-table
+  "Given a table name, returns a map of column_name -> column_type"
+  (memoize
+   (fn fields-for-table [table-name]
+     (t2/with-connection [conn]
+       (u.conn/app-db-column-types conn table-name)))))
 
-  ;; mysql
-  ;; "DESCRIBE name_of_table;"
-
-  ;; h2
-  ;; ????
-  )
-
-;; Memoize it:
-(defn fields-for-table [table]
-  ;; might need data_type ?
-  (mapv #(into {} %) (t2/query (str "select column_name, data_type, character_maximum_length from INFORMATION_SCHEMA.COLUMNS where table_name = '" (name table) "'"))))
-
-(defn ->model-name [ingested]
-  (->> ingested
-       ingested-model
-       (keyword "model")
-       t2/table-name
-       name))
+(defn ->table-name [ingested]
+  (->> ingested ingested-model (keyword "model") t2/table-name name))
 
 (defn model-field-cover
   "Returns exhaustive list of fields for an ingested-model. Fields that aren't in this list will produce errors if
   they get inserted."
   [ingested]
-  (let [field-cover
-        ;; works with pg only:
-        (fields-for-table (->model-name ingested))]
+  (let [field-cover (keys (fields-for-table (->table-name ingested)))]
     (set (map (comp keyword :column_name)
               field-cover))))
-
-(defonce mz (atom #{}))
-;; after a complete run:
-;; #{"Dashboard" "Card" "Field" "Table" "Database" "Collection"}
 
 (defn drop-excess-keys
   "Given an ingested entity, removes keys that will not 'fit' into the current schema, because the column no longer
@@ -550,8 +531,6 @@
   later version of Metabase, when a column gets removed. (At the time of writing I am seeing this happen with
   color on collections)."
   [ingested]
-  (def ingested ingested)
-  (swap! mz conj (ingested-model ingested))
   (select-keys ingested (model-field-cover ingested)))
 
 (defn load-xform-basics

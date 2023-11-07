@@ -410,6 +410,7 @@
     metabase.transforms.core                                        tf
     metabase.transforms.materialize                                 tf.materialize
     metabase.transforms.specs                                       tf.specs
+    metabase.util.connection                                        u.conn
     metabase.util.cron                                              u.cron
     metabase.util.date-2                                            u.date
     metabase.util.date-2.common                                     u.date.common
