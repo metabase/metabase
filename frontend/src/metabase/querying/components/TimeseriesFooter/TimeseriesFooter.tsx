@@ -1,47 +1,29 @@
-import { useMemo } from "react";
-import { t } from "ttag";
-import { Group, Text } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import { findBreakoutClause, findColumn } from "./utils";
-import { TemporalBucketSelect } from "./TemporalBucketSelect";
+import type * as Lib from "metabase-lib";
+import type Question from "metabase-lib/Question";
+import { TimeseriesControls } from "./TimeseriesControls";
 
 const STAGE_INDEX = -1;
 
 interface TimeseriesFooterProps {
-  query: Lib.Query;
-  updateQuery: (query: Lib.Query) => void;
+  question: Question;
+  updateQuestion: (newQuestion: Question) => void;
 }
 
 export function TimeseriesFooter({
-  query,
-  updateQuery,
+  question,
+  updateQuestion,
 }: TimeseriesFooterProps) {
-  const column = useMemo(() => findColumn(query, STAGE_INDEX), [query]);
+  const query = question._getMLv2Query();
 
-  const breakout = useMemo(
-    () => column && findBreakoutClause(query, STAGE_INDEX, column),
-    [query, column],
-  );
-
-  const handleBreakoutChange = (newColumn: Lib.ColumnMetadata) => {
-    if (breakout) {
-      updateQuery(Lib.replaceClause(query, STAGE_INDEX, breakout, newColumn));
-    }
+  const handleChange = (query: Lib.Query) => {
+    updateQuestion(question._setMLv2Query(query));
   };
 
-  if (!column) {
-    return null;
-  }
-
   return (
-    <Group>
-      <Text>{t`View by`}</Text>
-      <TemporalBucketSelect
-        query={query}
-        stageIndex={STAGE_INDEX}
-        column={column}
-        onChange={handleBreakoutChange}
-      />
-    </Group>
+    <TimeseriesControls
+      query={query}
+      stageIndex={STAGE_INDEX}
+      onChange={handleChange}
+    />
   );
 }
