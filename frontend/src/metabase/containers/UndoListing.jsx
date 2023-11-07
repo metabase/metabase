@@ -16,6 +16,7 @@ import {
   DefaultText,
   DismissIcon,
   ToastCard,
+  TruncatedText,
   UndoButton,
   UndoList,
 } from "./UndoListing.styled";
@@ -67,7 +68,7 @@ function UndoToast({ undo, onUndo, onDismiss }) {
           <CardContent>
             <CardContentSide>
               {undo.icon && <CardIcon name={undo.icon} color="white" />}
-              {renderMessage(undo)}
+              <TruncatedText>{renderMessage(undo)}</TruncatedText>
             </CardContentSide>
             <CardContentSide>
               {undo.actions?.length > 0 && (
@@ -85,7 +86,6 @@ function UndoToast({ undo, onUndo, onDismiss }) {
     </Motion>
   );
 }
-
 function UndoListingInner() {
   const dispatch = useDispatch();
   const undos = useSelector(state => state.undo);

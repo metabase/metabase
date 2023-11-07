@@ -35,6 +35,14 @@ export const CardContentSide = styled.div`
   align-items: center;
 `;
 
+export const TruncatedText = styled.div`
+  max-width: 75ch;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+`;
+
 export const CardIcon = styled(Icon)`
   margin-right: ${space(1)};
 `;

@@ -2,7 +2,6 @@ import _ from "underscore";
 
 import type { Draft } from "@reduxjs/toolkit";
 import { t } from "ttag";
-import { truncate } from "humanize-plus";
 import type { DashboardState, StoreDashcard } from "metabase-types/store";
 import type {
   Dashboard,
@@ -65,7 +64,7 @@ export const getDashCardMoveToTabUndoMessage = (dashCard: StoreDashcard) => {
     dashCard.visualization_settings?.virtual_card?.display;
 
   if (dashCard.card.name) {
-    return truncate(t`Card moved: ${dashCard.card.name}`, 75);
+    return t`Card moved: ${dashCard.card.name}`;
   }
 
   switch (virtualCardType) {
