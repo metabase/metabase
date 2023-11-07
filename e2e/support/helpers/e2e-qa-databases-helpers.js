@@ -273,3 +273,11 @@ export function resyncDatabase({ dbId = 2, tableName = "", tableAlias }) {
   cy.request("POST", `/api/database/${dbId}/rescan_values`);
   waitForSyncToFinish({ iteration: 0, dbId, tableName, tableAlias });
 }
+
+export function addWritableDatabase(dialect) {
+  if (dialect === "postgres") {
+    addPostgresDatabase("Writable Postgres12", true);
+  } else {
+    addMySQLDatabase("Writable MySQL8", true);
+  }
+}
