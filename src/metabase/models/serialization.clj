@@ -514,7 +514,9 @@
      (t2/with-connection [conn]
        (u.conn/app-db-column-types conn table-name)))))
 
-(defn ->table-name [ingested]
+(defn ->table-name
+  "Returns the table name that a particular ingested entity should finally be inserted into."
+  [ingested]
   (->> ingested ingested-model (keyword "model") t2/table-name name))
 
 (defn model-field-cover
