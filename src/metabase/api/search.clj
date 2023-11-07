@@ -535,7 +535,7 @@
   Note that not all item types support all filters, and the results will include only models that support the provided filters. For example:
   - The `created-by` filter supports dashboards, models, actions, and cards.
   - The `verified` filter supports models and cards.
-  
+
   A search query that has both filters applied will only return models and cards."
   [q archived context created_at created_by table_db_id models last_edited_at last_edited_by
    filter_items_in_personal_collection search_native_query verified]
