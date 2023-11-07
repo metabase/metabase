@@ -175,7 +175,7 @@ export function moveDashCardToTab({ dashcardIndex = 0, tabName }) {
   getDashboardCard(dashcardIndex)
     .realHover()
     .icon("move_card")
-    .click({ force: true });
+    .realHover();
   menu().findByText(tabName).click({ force: true });
 }
 
