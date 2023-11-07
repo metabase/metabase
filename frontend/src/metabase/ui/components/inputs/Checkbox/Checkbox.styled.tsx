@@ -79,9 +79,6 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
         ref: getStylesRef("icon"),
         color: theme.colors.text[0],
       },
-      body: {
-        alignItems: "center",
-      },
     }),
     variants: {
       stacked: (theme, { labelPosition }) => ({

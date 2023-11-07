@@ -6,6 +6,7 @@ export const args = {
   description: undefined,
   disabled: false,
   labelPosition: "right",
+  size: "md",
 };
 
 export const argTypes = {
@@ -23,7 +24,8 @@ export const argTypes = {
     control: { type: "inline-radio" },
   },
   size: {
-    control: { type: "text" },
+    options: ["xs", "md", "lg", "xl"],
+    control: { type: "inline-radio" },
   },
   variant: {
     options: ["default", "stacked"],
