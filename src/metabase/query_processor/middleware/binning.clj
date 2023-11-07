@@ -2,25 +2,21 @@
   "Middleware that handles `:binning` strategy in `:field` clauses. This adds extra info to the `:binning` options maps
   that contain the information Query Processors will need in order to perform binning."
   (:require
-   [clojure.math.numeric-tower :refer [ceil expt floor]]
+   [metabase.lib.binning.util :as lib.binning.util]
    [metabase.lib.card :as lib.card]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
-
-;;; ----------------------------------------------- Extracting Bounds ------------------------------------------------
 
 (def ^:private FieldID->Filters
   [:map-of [:ref ::lib.schema.id/field] [:sequential mbql.s/Filter]])
@@ -63,139 +59,11 @@
                 :fingerprint fingerprint})))
     {:min-value min-value, :max-value max-value}))
 
-
-;;; ------------------------------------------ Calculating resolved options ------------------------------------------
-
-(mu/defn ^:private calculate-bin-width :- number?
-  "Calculate bin width required to cover interval [`min-value`, `max-value`] with `num-bins`."
-  [min-value :- number?
-   max-value :- number?
-   num-bins  :- ::lib.schema.common/positive-int]
-  (u/round-to-decimals 5 (/ (- max-value min-value)
-                            num-bins)))
-
-(mu/defn ^:private calculate-num-bins :- ::lib.schema.common/positive-int
-  "Calculate number of bins of width `bin-width` required to cover interval [`min-value`, `max-value`]."
-  [min-value :- number?
-   max-value :- number?
-   bin-width :- [:and
-                 number?
-                 [:fn {:error/message "number >= 0"} (complement neg?)]]]
-  (max (long (Math/ceil (/ (- max-value min-value)
-                           bin-width)))
-       1))
-
-(def ^:private ResolvedStrategy
-  [:tuple
-   [:enum :bin-width :num-bins]
-   [:map
-    [:bin-width number?]
-    [:num-bins ::lib.schema.common/positive-int]]])
-
-(mu/defn ^:private resolve-default-strategy :- ResolvedStrategy
-  "Determine the approprate strategy & options to use when `:default` strategy was specified."
-  [metadata  :- lib.metadata/ColumnMetadata
-   min-value :- number?
-   max-value :- number?]
-  (if (isa? (:semantic-type metadata) :type/Coordinate)
-    (let [bin-width (public-settings/breakout-bin-width)]
-      [:bin-width
-       {:bin-width bin-width
-        :num-bins  (calculate-num-bins min-value max-value bin-width)}])
-    (let [num-bins (public-settings/breakout-bins-num)]
-      [:num-bins
-       {:num-bins  num-bins
-        :bin-width (calculate-bin-width min-value max-value num-bins)}])))
-
-
-;;; ------------------------------------- Humanized binning with nicer-breakout --------------------------------------
-
-(defn- ceil-to
-  [precision x]
-  (let [scale (/ precision)]
-    (/ (ceil (* x scale)) scale)))
-
-(defn- floor-to
-  [precision x]
-  (let [scale (/ precision)]
-    (/ (floor (* x scale)) scale)))
-
-(def ^:private ^:const pleasing-numbers [1 1.25 2 2.5 3 5 7.5 10])
-
-(mu/defn ^:private nicer-bin-width
-  [min-value :- number?, max-value :- number?, num-bins :- ::lib.schema.common/positive-int]
-  (let [min-bin-width (calculate-bin-width min-value max-value num-bins)
-        scale         (expt 10 (u/order-of-magnitude min-bin-width))]
-    (->> pleasing-numbers
-         (map (partial * scale))
-         (drop-while (partial > min-bin-width))
-         first)))
-
-(defn- nicer-bounds
-  [min-value max-value bin-width]
-  [(floor-to bin-width min-value) (ceil-to bin-width max-value)])
-
-(def ^:private ^:const max-steps 10)
-
-(defn- fixed-point
-  [f]
-  (fn [x]
-    (->> (iterate f x)
-         (partition 2 1)
-         (take max-steps)
-         (drop-while (partial apply not=))
-         ffirst)))
-
-(mu/defn ^:private nicer-breakout* :- :map
-  "Humanize binning: extend interval to start and end on a \"nice\" number and, when number of bins is fixed, have a
-  \"nice\" step (bin width)."
-  [strategy                                         :- ::lib.schema.binning/strategy
-   {:keys [min-value max-value bin-width num-bins]} :- :map]
-  (let [bin-width             (if (= strategy :num-bins)
-                                (nicer-bin-width min-value max-value num-bins)
-                                bin-width)
-        [min-value max-value] (nicer-bounds min-value max-value bin-width)]
-    {:min-value min-value
-     :max-value max-value
-     :num-bins  (if (= strategy :num-bins)
-                  num-bins
-                  (calculate-num-bins min-value max-value bin-width))
-     :bin-width bin-width}))
-
-(mu/defn ^:private nicer-breakout :- [:maybe :map]
-  [strategy :- ::lib.schema.binning/strategy
-   opts     :- :map]
-  (let [f (partial nicer-breakout* strategy)]
-    ((fixed-point f) opts)))
-
-
-;;; -------------------------------------------- Adding resolved options ---------------------------------------------
-
-(mu/defn ^:private resolve-options :- ResolvedStrategy
-  [strategy       :- ::lib.schema.binning/strategy
-   strategy-param
-   metadata       :- lib.metadata/ColumnMetadata
-   min-value      :- number?
-   max-value      :- number?]
-  (case strategy
-    :num-bins
-    [:num-bins
-     {:num-bins  strategy-param
-      :bin-width (calculate-bin-width min-value max-value strategy-param)}]
-
-    :bin-width
-    [:bin-width
-     {:bin-width strategy-param
-      :num-bins  (calculate-num-bins min-value max-value strategy-param)}]
-
-    :default
-    (resolve-default-strategy metadata min-value max-value)))
-
 (def ^:private PossiblyLegacyColumnMetadata
   [:map
    [:name :string]])
 
-(mu/defn ^:private matching-metadata-from-source-metadata :- lib.metadata/ColumnMetadata
+(mu/defn ^:private matching-metadata-from-source-metadata :- ::lib.schema.metadata/column
   [field-name      :- ::lib.schema.common/non-blank-string
    source-metadata :- [:maybe [:sequential PossiblyLegacyColumnMetadata]]]
   (do
@@ -214,13 +82,7 @@
                             (pr-str field-name))
                        {:field field-name, :resolved-metadata mlv2-metadatas}))))))
 
-(def ^:private ColumnMetadata
-  [:or
-   lib.metadata/ColumnMetadata
-   [:map
-    [:fingerprint :any]]])
-
-(mu/defn ^:private matching-metadata :- lib.metadata/ColumnMetadata
+(mu/defn ^:private matching-metadata :- ::lib.schema.metadata/column
   [field-id-or-name :- [:or ::lib.schema.id/field ::lib.schema.common/non-blank-string]
    source-metadata  :- [:maybe [:sequential PossiblyLegacyColumnMetadata]]]
   (if (integer? field-id-or-name)
@@ -240,13 +102,14 @@
         {:keys [min-value max-value], :as min-max} (extract-bounds (when (integer? id-or-name) id-or-name)
                                                                    (:fingerprint metadata)
                                                                    field-id->filters)
-        [new-strategy resolved-options]            (resolve-options (:strategy binning)
-                                                                    (get binning (:strategy binning))
-                                                                    metadata
-                                                                    min-value max-value)
+        [new-strategy resolved-options]            (lib.binning.util/resolve-options (qp.store/metadata-provider)
+                                                                                     (:strategy binning)
+                                                                                     (get binning (:strategy binning))
+                                                                                     metadata
+                                                                                     min-value max-value)
         resolved-options                           (merge min-max resolved-options)
         ;; Bail out and use unmodifed version if we can't converge on a nice version.
-        new-options (or (nicer-breakout new-strategy resolved-options)
+        new-options (or (lib.binning.util/nicer-breakout new-strategy resolved-options)
                         resolved-options)]
     [:field id-or-name (update opts :binning merge {:strategy new-strategy} new-options)]))
 

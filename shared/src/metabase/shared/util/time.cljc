@@ -11,7 +11,15 @@
 ;; Importing and re-exporting some functions defined in each implementation.
 (shared.ns/import-fns
  [common
-  to-range]
+  local-date-regex
+  local-datetime-regex
+  local-time-regex
+  offset-datetime-regex
+  offset-time-regex
+  to-range
+  year-month-regex
+  year-regex
+  zone-offset-part-regex]
  [internal
   valid?
   same-day?

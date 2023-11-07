@@ -12,3 +12,11 @@ export const ListCellItem = styled.div<ListCellItemProps>`
 export const FilterContainer = styled.div`
   padding: 0.5rem;
 `;
+
+export const Content = styled.div<{ isClickable: boolean }>`
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  padding: 0.5rem;
+  cursor: ${props => (props.isClickable ? "pointer" : "default")};
+`;
