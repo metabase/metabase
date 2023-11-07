@@ -496,12 +496,12 @@
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
   (let [{:keys [to-create to-update to-delete]} (u/classify-changes current-cards new-cards)]
+    (when (seq to-update)
+      (update-dashcards! dashboard to-update))
     {:deleted-dashcards (when (seq to-delete)
                           (delete-dashcards! (map :id to-delete)))
      :created-dashcards (when (seq to-create)
-                          (create-dashcards! dashboard to-create))
-     :updated-dashcards (when (seq to-update)
-                          (update-dashcards! dashboard to-update))}))
+                          (create-dashcards! dashboard to-create))}))
 
 (def ^:private UpdatedDashboardCard
   [:map
@@ -524,8 +524,8 @@
 
 (defn- track-dashcard-and-tab-events!
   [{dashboard-id :id :as dashboard}
-   {:keys [created-dashcards deleted-dashcards updated-dashcards
-           created-tab-ids updated-tab-ids deleted-tab-ids total-num-tabs]}]
+   {:keys [created-dashcards deleted-dashcards
+           created-tab-ids deleted-tab-ids total-num-tabs]}]
   ;; Dashcard events
   (when (seq deleted-dashcards)
     (events/publish-event! :event/dashboard-remove-cards
@@ -538,31 +538,19 @@
       (snowplow/track-event! ::snowplow/question-added-to-dashboard
                              api/*current-user-id*
                              {:dashboard-id dashboard-id :question-id card_id})))
-  ;; TODO this is potentially misleading, we don't know for sure here that the dashcards are repositioned
-  (when (seq updated-dashcards)
-    (events/publish-event! :event/dashboard-reposition-cards
-                           {:object dashboard :user-id api/*current-user-id* :dashcards updated-dashcards}))
-
   ;; Tabs events
   (when (seq deleted-tab-ids)
     (snowplow/track-event! ::snowplow/dashboard-tab-deleted
                            api/*current-user-id*
                            {:dashboard-id   dashboard-id
                             :num-tabs       (count deleted-tab-ids)
-                            :total-num-tabs total-num-tabs})
-    (events/publish-event! :event/dashboard-remove-tabs
-                           {:object dashboard :user-id api/*current-user-id* :tab-ids deleted-tab-ids}))
+                            :total-num-tabs total-num-tabs}))
   (when (seq created-tab-ids)
     (snowplow/track-event! ::snowplow/dashboard-tab-created
                            api/*current-user-id*
                            {:dashboard-id   dashboard-id
                             :num-tabs       (count created-tab-ids)
-                            :total-num-tabs total-num-tabs})
-    (events/publish-event! :event/dashboard-add-tabs
-                           {:object dashboard :user-id api/*current-user-id* :tab-ids created-tab-ids}))
-  (when (seq updated-tab-ids)
-    (events/publish-event! :event/dashboard-update-tabs
-                           {:object dashboard :user-id api/*current-user-id* :tab-ids updated-tab-ids})))
+                            :total-num-tabs total-num-tabs})))
 
 (defn- update-dashboard
   "Updates a Dashboard. Designed to be reused by PUT /api/dashboard/:id and PUT /api/dashboard/:id/cards"
@@ -570,8 +558,7 @@
   (let [current-dash               (api/write-check Dashboard id)
         changes-stats              (atom nil)
         ;; tabs are sent in production as well, but there are lots of tests that exclude it. so this only checks for dashcards
-        update-dashcards-and-tabs? (contains? dash-updates :dashcards)
-        update-dashboard-itself?   (not-empty (dissoc dash-updates :dashcards :tabs))]
+        update-dashcards-and-tabs? (contains? dash-updates :dashcards)]
     (collection/check-allowed-to-change-collection current-dash dash-updates)
     (check-allowed-to-change-embedding current-dash dash-updates)
     (api/check-500
@@ -615,13 +602,11 @@
                  dashcards-changes-stats    (do-update-dashcards! hydrated-current-dash current-dashcards new-dashcards)]
              (reset! changes-stats
                      (merge
-                      (select-keys tabs-changes-stats [:created-tab-ids :updated-tab-ids :deleted-tab-ids :total-num-tabs])
-                      (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards :updated-dashcards]))))))
+                      (select-keys tabs-changes-stats [:created-tab-ids :deleted-tab-ids :total-num-tabs])
+                      (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards]))))))
        true))
     (let [dashboard (t2/select-one :model/Dashboard id)]
-      (when update-dashboard-itself?
-        ;; execute these events for old PUT /api/dashboard/:id calls and new PUT /api/dashboard/:id calls, and not for old PUT/api/dashboard/:id/card calls
-        (events/publish-event! :event/dashboard-update {:object dashboard :user-id api/*current-user-id*}))
+      (events/publish-event! :event/dashboard-update {:object dashboard :user-id api/*current-user-id*})
       (when update-dashcards-and-tabs?
         ;; execute these events for old PUT /api/dashboard/:id/cards calls and new PUT /api/dashboard/:id calls, and not for old PUT /api/dashboard/:id calls
         (track-dashcard-and-tab-events! dashboard @changes-stats))
