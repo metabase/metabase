@@ -1,13 +1,18 @@
-import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import { Flex } from "metabase/ui";
+import type { ReactNode } from "react";
+import { BackButton } from "./BackButton";
+import { FilterHeaderRoot } from "./FilterPicker.styled";
 
-export const Header = styled(Flex)`
-  border-bottom: 1px solid ${color("border")};
-`;
+interface HeaderProps {
+  columnName: string;
+  children?: ReactNode;
+  onBack: () => void;
+}
 
-Header.defaultProps = {
-  direction: "row",
-  justify: "space-between",
-  p: "sm",
-};
+export function Header({ columnName, children, onBack }: HeaderProps) {
+  return (
+    <FilterHeaderRoot>
+      <BackButton onClick={onBack}>{columnName}</BackButton>
+      {children}
+    </FilterHeaderRoot>
+  );
+}
