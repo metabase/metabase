@@ -36,6 +36,15 @@ export function getInstanceAnalyticsCustomCollection(
   return PLUGIN_COLLECTIONS.getInstanceAnalyticsCustomCollection(collections);
 }
 
+export function isInstanceAnalyticsCustomCollection(
+  collection: Collection,
+): boolean {
+  return (
+    PLUGIN_COLLECTIONS.CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID ===
+    collection.entity_id
+  );
+}
+
 // Replace the name for the current user's collection
 // @Question - should we just update the API to do this?
 function preparePersonalCollection(c: Collection): Collection {

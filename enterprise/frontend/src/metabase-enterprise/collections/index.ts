@@ -13,6 +13,7 @@ import {
   AUTHORITY_LEVELS,
   REGULAR_COLLECTION,
   OFFICIAL_COLLECTION,
+  CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID,
 } from "./constants";
 import {
   getCollectionType,
@@ -70,6 +71,8 @@ if (hasPremiumFeature("audit_app")) {
   PLUGIN_COLLECTIONS.getCollectionType = getCollectionType;
   PLUGIN_COLLECTIONS.getInstanceAnalyticsCustomCollection =
     getInstanceAnalyticsCustomCollection;
+  PLUGIN_COLLECTIONS.CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID =
+    CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID;
 
   PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE = t`This instance analytics collection is read-only for admin users`;
 }
