@@ -1,11 +1,11 @@
 import { jt, t } from "ttag";
 import { useSelector } from "metabase/lib/redux";
-import { alpha, color } from "metabase/lib/colors";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
-import { Center, Stack, Text } from "metabase/ui";
+import { Box, Center, Stack, Text } from "metabase/ui";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { isEmpty } from "metabase/lib/utils";
 import { isSameOrigin } from "metabase/lib/dom";
+import { SameSiteAlert } from "./EmbeddingAppSameSiteCookieDescription.styled";
 
 export const EmbeddingAppSameSiteCookieDescription = () => {
   const docsUrl = useSelector(state =>
@@ -41,22 +41,17 @@ export const EmbeddingAppSameSiteCookieDescription = () => {
 
 function AuthorizedOriginsNote() {
   return (
-    <Center
-      data-testid="authorized-origins-note"
-      bg={alpha("warning", 0.1)}
-      w="22rem"
-      p="0.75rem"
-      style={{
-        border: `1px solid ${color("warning")}`,
-        borderRadius: `0.5rem`,
-      }}
-    >
-      <Text>{jt`You should probably change this setting to ${(
-        <Text span fw="bold">
-          {t`None`}
-        </Text>
-      )}.`}</Text>
-    </Center>
+    <Box data-testid="authorized-origins-note" w="22rem">
+      <SameSiteAlert variant="warning" hasBorder>
+        <Center>
+          <Text>{jt`You should probably change this setting to ${(
+            <Text span fw="bold">
+              {t`None`}
+            </Text>
+          )}.`}</Text>
+        </Center>
+      </SameSiteAlert>
+    </Box>
   );
 }
 
