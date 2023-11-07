@@ -1,12 +1,14 @@
 import { t } from "ttag";
 import { useState, useMemo } from "react";
-import { Checkbox, Flex } from "metabase/ui";
+import { Box, Checkbox, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import { MAX_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
-import { SimpleLayout } from "../SimpleLayout";
 import { ColumnValuesWidget } from "../ColumnValuesWidget";
+import { Header } from "../Header";
+import { Footer } from "../Footer";
 
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
@@ -78,40 +80,35 @@ export function StringFilterPicker({
   const canHaveManyValues = !Number.isFinite(valueCount);
 
   return (
-    <SimpleLayout
-      columnName={columnName}
-      isNew={isNew}
-      canSubmit={isValid}
-      onSubmit={handleFilterChange}
-      onBack={onBack}
-      headerRight={
+    <Box maw={MAX_WIDTH} data-testid="string-filter-picker">
+      <Header columnName={columnName} onBack={onBack}>
         <FilterOperatorPicker
           value={operatorName}
           options={availableOperators}
           onChange={handleOperatorChange}
         />
-      }
-      footerLeft={
-        hasCaseSensitiveOption && (
-          <CaseSensitiveOption
-            value={options["case-sensitive"] ?? false}
-            onChange={newValue => setOptions({ "case-sensitive": newValue })}
-          />
-        )
-      }
-      testID="string-filter-picker"
-    >
-      {valueCount > 0 && (
-        <FlexWithScroll p="md" mah={MAX_HEIGHT}>
-          <ColumnValuesWidget
-            column={column}
-            value={values}
-            canHaveManyValues={canHaveManyValues}
-            onChange={setValues}
-          />
-        </FlexWithScroll>
-      )}
-    </SimpleLayout>
+      </Header>
+      <Box>
+        {valueCount > 0 && (
+          <FlexWithScroll p="md" mah={MAX_HEIGHT}>
+            <ColumnValuesWidget
+              column={column}
+              value={values}
+              canHaveManyValues={canHaveManyValues}
+              onChange={setValues}
+            />
+          </FlexWithScroll>
+        )}
+        <Footer isNew={isNew} canSubmit={isValid} onSubmit={handleFilterChange}>
+          {hasCaseSensitiveOption && (
+            <CaseSensitiveOption
+              value={options["case-sensitive"] ?? false}
+              onChange={newValue => setOptions({ "case-sensitive": newValue })}
+            />
+          )}
+        </Footer>
+      </Box>
+    </Box>
   );
 }
 

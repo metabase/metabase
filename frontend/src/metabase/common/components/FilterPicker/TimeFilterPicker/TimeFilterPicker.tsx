@@ -1,13 +1,15 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Flex, Text, TimeInput } from "metabase/ui";
+import { Box, Flex, Text, TimeInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import { MAX_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
-import { SimpleLayout } from "../SimpleLayout";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { Header } from "../Header";
+import { Footer } from "../Footer";
 
 import { OPERATOR_OPTIONS } from "./constants";
 import {
@@ -73,31 +75,31 @@ export function TimeFilterPicker({
   };
 
   return (
-    <SimpleLayout
-      columnName={columnName}
-      isNew={isNew}
-      canSubmit={isValid}
-      onSubmit={handleFilterChange}
-      onBack={onBack}
-      headerRight={
+    <Box maw={MAX_WIDTH} data-testid="time-filter-picker">
+      <Header columnName={columnName} onBack={onBack}>
         <FilterOperatorPicker
           value={operatorName}
           options={availableOperators}
           onChange={handleOperatorChange}
         />
-      }
-      testID="time-filter-picker"
-    >
-      {valueCount > 0 && (
-        <Flex p="md">
-          <ValuesInput
-            values={values}
-            valueCount={valueCount}
-            onChange={setValues}
-          />
-        </Flex>
-      )}
-    </SimpleLayout>
+      </Header>
+      <Box>
+        {valueCount > 0 && (
+          <Flex p="md">
+            <ValuesInput
+              values={values}
+              valueCount={valueCount}
+              onChange={setValues}
+            />
+          </Flex>
+        )}
+        <Footer
+          isNew={isNew}
+          canSubmit={isValid}
+          onSubmit={handleFilterChange}
+        />
+      </Box>
+    </Box>
   );
 }
 

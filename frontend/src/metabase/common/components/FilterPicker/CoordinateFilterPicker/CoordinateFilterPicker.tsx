@@ -1,15 +1,17 @@
 import { t } from "ttag";
 import { useState, useMemo } from "react";
 
-import { Flex, NumberInput, Text, Stack } from "metabase/ui";
+import { Box, Flex, NumberInput, Text, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import { MAX_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
-import { SimpleLayout } from "../SimpleLayout";
 import { ColumnValuesWidget } from "../ColumnValuesWidget";
-import { FlexWithScroll } from "../FilterPicker.styled";
+import { Header } from "../Header";
+import { Footer } from "../Footer";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { FlexWithScroll } from "../FilterPicker.styled";
 
 import { OPERATOR_OPTIONS } from "./constants";
 import { findSecondColumn, isFilterValid } from "./utils";
@@ -98,37 +100,37 @@ export function CoordinateFilterPicker({
   };
 
   return (
-    <SimpleLayout
-      columnName={columnName}
-      isNew={isNew}
-      canSubmit={isValid}
-      onSubmit={handleFilterChange}
-      onBack={onBack}
-      headerRight={
+    <Box maw={MAX_WIDTH} data-testid="coordinate-filter-picker">
+      <Header columnName={columnName} onBack={onBack}>
         <FilterOperatorPicker
           value={operatorName}
           options={availableOperators}
           onChange={handleOperatorChange}
         />
-      }
-      testID="coordinate-filter-picker"
-    >
-      {operatorName === "inside" && (
-        <CoordinateColumnSelect
-          query={query}
-          stageIndex={stageIndex}
+      </Header>
+      <Box>
+        {operatorName === "inside" && (
+          <CoordinateColumnSelect
+            query={query}
+            stageIndex={stageIndex}
+            column={column}
+            value={column2}
+            onChange={(newCol2: Lib.ColumnMetadata) => setColumn2(newCol2)}
+          />
+        )}
+        <CoordinateValueInput
+          values={values}
+          valueCount={valueCount ?? 0}
           column={column}
-          value={column2}
-          onChange={(newCol2: Lib.ColumnMetadata) => setColumn2(newCol2)}
+          onChange={setValues}
         />
-      )}
-      <CoordinateValueInput
-        values={values}
-        valueCount={valueCount ?? 0}
-        column={column}
-        onChange={setValues}
-      />
-    </SimpleLayout>
+        <Footer
+          isNew={isNew}
+          canSubmit={isValid}
+          onSubmit={handleFilterChange}
+        />
+      </Box>
+    </Box>
   );
 }
 

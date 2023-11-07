@@ -1,14 +1,17 @@
 import { t } from "ttag";
 import { useState, useMemo } from "react";
-import { Flex, NumberInput, Text } from "metabase/ui";
+import { Box, Flex, NumberInput, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import type { FilterPickerWidgetProps } from "../types";
+import { MAX_WIDTH } from "../constants";
 import { getAvailableOperatorOptions } from "../utils";
-import { SimpleLayout } from "../SimpleLayout";
 import { ColumnValuesWidget } from "../ColumnValuesWidget";
-import { FlexWithScroll } from "../FilterPicker.styled";
+import { Header } from "../Header";
+import { Footer } from "../Footer";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { FlexWithScroll } from "../FilterPicker.styled";
+
 import { OPERATOR_OPTIONS } from "./constants";
 import { isFilterValid } from "./utils";
 
@@ -65,28 +68,28 @@ export function NumberFilterPicker({
   };
 
   return (
-    <SimpleLayout
-      columnName={columnName}
-      isNew={isNew}
-      canSubmit={isValid}
-      onSubmit={handleFilterChange}
-      onBack={onBack}
-      headerRight={
+    <Box maw={MAX_WIDTH} data-testid="number-filter-picker">
+      <Header columnName={columnName} onBack={onBack}>
         <FilterOperatorPicker
           value={operatorName}
           options={availableOperators}
           onChange={handleOperatorChange}
         />
-      }
-      testID="number-filter-picker"
-    >
-      <NumberValueInput
-        values={values}
-        valueCount={valueCount}
-        column={column}
-        onChange={setValues}
-      />
-    </SimpleLayout>
+      </Header>
+      <Box>
+        <NumberValueInput
+          values={values}
+          valueCount={valueCount}
+          column={column}
+          onChange={setValues}
+        />
+        <Footer
+          isNew={isNew}
+          canSubmit={isValid}
+          onSubmit={handleFilterChange}
+        />
+      </Box>
+    </Box>
   );
 }
 
