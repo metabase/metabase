@@ -1,9 +1,6 @@
 (ns metabase.query-processor.reducible
   (:require
    [clojure.core.async :as a]
-   [metabase.async.util :as async.u]
-   [metabase.query-processor.context :as qp.context]
-   [metabase.util :as u]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -31,107 +28,6 @@
        (vswap! row-count inc)
        (vswap! rows conj! row)
        result))))
-
-(defn ^:deprecated identity-qp
-  "The initial value of `qp` passed to QP middleware."
-  [query rff context]
-  (qp.context/runf query rff context))
-
-(defn ^:deprecated combine-middleware
-  "Combine a collection of QP middleware into a single QP function. The QP function, like the middleware, will have the
-  signature:
-
-    (qp query rff context)"
-  ([middleware]
-   (combine-middleware middleware identity-qp))
-
-  ([middleware qp]
-   (reduce
-    (fn [qp middleware]
-      (when (var? middleware)
-        (assert (not (:private (meta middleware))) (format "%s is private" (pr-str middleware))))
-      (if (some? middleware)
-        (middleware qp)
-        qp))
-    qp
-    middleware)))
-
-(defn- ^:deprecated wire-up-context-channels!
-  "Wire up the core.async channels in a QP `context`
-
-  1. If query doesn't complete by [[qp.context/timeout]], call [[qp.context/timeoutf]], which should raise an Exception.
-
-  2. When [[qp.context/out-chan]] is closed prematurely, send a message to [[qp.context/canceled-chan]].
-
-  3. When [[qp.context/out-chan]] is closed or gets a result, close both [[qp.context/out-chan]]
-     and [[qp.context/canceled-chan]]."
-  [context]
-  (let [out-chan      (qp.context/out-chan context)
-        canceled-chan (qp.context/canceled-chan context)
-        timeout       (qp.context/timeout context)]
-    (a/go
-      (let [[val port] (a/alts! [out-chan (a/timeout timeout)] :priority true)]
-        (log/tracef "Port %s got %s"
-                    (if (= port out-chan) "out-chan" (format "[timeout after %s]" (u/format-milliseconds timeout)))
-                    val)
-        (cond
-          (not= port out-chan) (qp.context/timeoutf context)
-          (nil? val)           (a/>!! canceled-chan ::cancel))
-        (log/tracef "Closing out-chan.")
-        (a/close! out-chan)
-        (a/close! canceled-chan)))
-    nil))
-
-(defn ^:deprecated async-qp
-  "Wrap a QP function (middleware or a composition of middleware created with [[combine-middleware]]) with the signature:
-
-    (qp query rff context)
-
-  And return a function with the signatures:
-
-    (qp query)
-    (qp query context)
-
-  While you can use a 3-arg QP function directly, this makes the function more user-friendly by providing a base
-  `rff` and a default `context`,"
-  [qp]
-  (fn qp*
-    ([query]
-     (qp* query nil))
-
-    ([query context]
-     (qp* query nil context))
-
-    ([query rff context]
-     {:pre [(map? query) ((some-fn nil? map?) context)]}
-     (let [context (doto context
-                     wire-up-context-channels!)
-           rff     (or rff default-rff)
-           thunk   (fn [] (try
-                            (qp query rff context)
-                            (catch Throwable e
-                              (qp.context/raisef e context))))]
-       (thunk)
-       (qp.context/out-chan context)))))
-
-(defn- ^:deprecated wait-for-async-result [out-chan]
-  {:pre [(async.u/promise-chan? out-chan)]}
-  (let [result (a/<!! out-chan)]
-    (if (instance? Throwable result)
-      (throw result)
-      result)))
-
-(defn ^:deprecated sync-qp
-  "Wraps a QP function created by [[async-qp]] into one that synchronously waits for query results and rethrows any
-  Exceptions thrown. Resulting QP has the signatures
-
-    (qp query)
-    (qp query context)
-    (qp query rff context)"
-  [qp]
-  {:pre [(fn? qp)]}
-  (fn qp* [& args]
-    (wait-for-async-result (apply qp args))))
 
 (defn reducible-rows
   "Utility function for generating reducible rows when implementing [[metabase.driver/execute-reducible-query]].

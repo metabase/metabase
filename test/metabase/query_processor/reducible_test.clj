@@ -2,17 +2,13 @@
   "Some basic tests around very-low-level QP logic, and some of the new features of the QP (such as support for
   different reducing functions.)"
   (:require
-   [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.query-processor :as qp]
    [metabase.query-processor.context :as qp.context]
-   [metabase.query-processor.postprocess :as qp.postprocess]
-   [metabase.query-processor.reducible :as qp.reducible]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [metabase.query-processor.setup :as qp.setup]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 

@@ -350,7 +350,6 @@
     metabase.query-processor.middleware.parameters.native           qp.native
     metabase.query-processor.middleware.permissions                 qp.perms
     metabase.query-processor.middleware.pre-alias-aggregations      qp.pre-alias-aggregations
-    metabase.query-processor.middleware.resolve-database-and-driver qp.resolve-database-and-driver
     metabase.query-processor.middleware.resolve-fields              qp.resolve-fields
     metabase.query-processor.middleware.resolve-referenced          qp.resolve-referenced
     metabase.query-processor.middleware.resolve-source-table        qp.resolve-source-table

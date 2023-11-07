@@ -7,11 +7,9 @@
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.middleware.resolve-database-and-driver
-    :as qp.resolve-database-and-driver]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
-   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.setup :as qp.setup]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
@@ -239,7 +237,7 @@
 
   ([query rff context]
    (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
-     (qp.store/with-metadata-provider (qp.resolve-database-and-driver/resolve-database-id query)
+     (qp.setup/with-qp-setup [query query]
        (let [context                 (qp.context/sync-context context)
              rff                     (or rff qp.reducible/default-rff)
              query                   (mbql.normalize/normalize query)

@@ -7,7 +7,8 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util.i18n :as i18n]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (def ^:private middleware
   "Middleware that happens after compilation, AROUND query execution itself. Has the form
@@ -39,7 +40,14 @@
                              (log/infof "%s changed, rebuilding %s" varr `execute*)
                              (rebuild-execute-fn!))))
 
-(defn execute [compiled-query rff context]
+(mu/defn execute :- :some
+  "Execute a compiled query, then reduce the results. Return value of this depends on `context`; a synchronous context
+  will block and return reduced results, while an async context will return a core.async promise channel immediately
+  that can be polled for the reduced results."
+  [compiled-query :- [:map
+                      [:native :map]]
+   rff            :- ::qp.context/rff
+   context        :- ::qp.context/context]
   (qp.setup/with-qp-setup [compiled-query compiled-query]
     (try
       (execute* compiled-query rff context)

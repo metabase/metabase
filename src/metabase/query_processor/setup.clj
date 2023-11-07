@@ -147,7 +147,9 @@
    #'do-with-resolved-database])
 ;;; ↑↑↑ SETUP MIDDLEWARE ↑↑↑ happens from BOTTOM to TOP e.g. [[do-with-resolved-database]] is the first to do its thing
 
-(defn do-with-qp-setup [query f]
+(defn do-with-qp-setup
+  "Impl for [[with-qp-setup]]."
+  [query f]
   ;; TODO -- think about whether we should pre-compile this middleware
   (let [f (reduce
            (fn [f middleware]
@@ -156,7 +158,17 @@
            setup-middleware)]
     (f query)))
 
-(defmacro with-qp-setup [[query-binding query] & body]
+(defmacro with-qp-setup
+  "Execute `body` with things like the QP Store, driver, and Database-local Settings resolved and bound as needed, and
+  the `query` Database ID correctly resolved.
+
+  This should be used at the highest level possible for all various QP entrypoints that can be called independently,
+  e.g. [[metabase.query-processor/process-query]] or [[metabase.query-processor.preprocess/preprocess]]. This is a
+  no-op if these things are already bound, so duplicate calls won't negatively affect things.
+
+    (qp.setup/with-qp-setup [query query]
+      ...)"
+  [[query-binding query] & body]
   `(do-with-qp-setup
     ~query
     (^:once fn* [~query-binding]

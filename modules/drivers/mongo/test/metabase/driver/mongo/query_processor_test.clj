@@ -10,6 +10,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.date-time-zone-functions-test
     :as qp.datetime-test]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
    [metabase.util :as u]

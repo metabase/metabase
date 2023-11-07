@@ -2,7 +2,6 @@
   "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
   (:require
    [cheshire.core :as json]
-   [clojure.core.async :as a]
    [compojure.core :refer [GET]]
    [medley.core :as m]
    [metabase.actions :as actions]
@@ -14,7 +13,6 @@
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
-   [metabase.async.util :as async.u]
    [metabase.db.util :as mdb.u]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.action :as action]

@@ -3,17 +3,11 @@
   (:require
    [clojure.data :as data]
    [clojure.test :refer :all]
-   [environ.core :as env]
    [java-time.api :as t]
    [mb.hawk.init]
-   [mb.hawk.parallel]
-   [medley.core :as m]
    [metabase.models :refer [PermissionsGroupMembership User]]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.query-processor.context :as qp.context]
-   [metabase.query-processor.reducible :as qp.reducible]
    [metabase.test.initialize :as initialize]
-   [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.tools.with-temp :as t2.with-temp]))

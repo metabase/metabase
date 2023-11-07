@@ -10,7 +10,7 @@
     :refer [Card Database PermissionsGroup PersistedInfo Table]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.persisted-info :as persisted-info]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
@@ -162,7 +162,6 @@
           (fake-persist-card! card)
           (is (str/includes?
                (:query (qp.compile/compile
-
                         {:database (mt/id)
                          :query {:source-table (str "card__" (u/the-id card))}
                          :type :query}))

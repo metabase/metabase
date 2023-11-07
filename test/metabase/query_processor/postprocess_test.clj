@@ -5,6 +5,8 @@
    [metabase.query-processor.setup :as qp.setup]
    [metabase.test :as mt]))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel row-type-agnostic-test
   (let [api-qp-middleware-options (delay (-> (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query users {:limit 1}))
                                              :json_query
