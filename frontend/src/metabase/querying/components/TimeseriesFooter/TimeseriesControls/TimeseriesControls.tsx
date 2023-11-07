@@ -37,7 +37,7 @@ export function TimeseriesControls({
   }
 
   return (
-    <Group>
+    <Group p="md" position="center" spacing="sm">
       <Text>{t`View by`}</Text>
       <TemporalBucketSelect
         query={query}
