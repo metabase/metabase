@@ -1,36 +1,32 @@
-import type { Draft } from "@reduxjs/toolkit";
-import _ from "underscore";
-import { t } from "ttag";
-import { getExistingDashCards } from "metabase/dashboard/actions/utils";
-import { isUUID, isJWT } from "metabase/lib/utils";
-import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
-import {
-  getGenericErrorMessage,
-  getPermissionErrorMessage,
-} from "metabase/visualizations/lib/errors";
-import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import type {
-  Card,
-  CardId,
-  DashCardId,
-  Dashboard,
-  DashboardCard,
-  Database,
-  Dataset,
-  NativeDatasetQuery,
-  Parameter,
-  StructuredDatasetQuery,
-  ActionDashboardCard,
-  ParameterId,
-  DashboardId,
-} from "metabase-types/api";
-import type { DashboardState, SelectedTabId } from "metabase-types/store";
-import Question from "metabase-lib/Question";
 import {
   isDateParameter,
   isNumberParameter,
   isStringParameter,
 } from "metabase-lib/parameters/utils/parameter-type";
+import Question from "metabase-lib/Question";
+import type {
+  ActionDashboardCard,
+  Card,
+  CardId,
+  Dashboard,
+  DashboardCard,
+  DashCardId,
+  Database,
+  Dataset,
+  NativeDatasetQuery,
+  Parameter,
+  StructuredDatasetQuery,
+} from "metabase-types/api";
+import type { SelectedTabId } from "metabase-types/store";
+import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
+import { isJWT, isUUID } from "metabase/lib/utils";
+import {
+  getGenericErrorMessage,
+  getPermissionErrorMessage,
+} from "metabase/visualizations/lib/errors";
+import { t } from "ttag";
+import _ from "underscore";
 
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
   if (after.parameters && before.embedding_params) {
@@ -130,18 +126,6 @@ export function getAllDashboardCards(dashboard: Dashboard) {
     }
   }
   return results;
-}
-
-export function getAllDashboardCardsWithUnmappedParameters(
-  dashboard: Draft<DashboardState>,
-  dashboardId: DashboardId,
-  parameter_id: ParameterId,
-) {
-  return getExistingDashCards(dashboard, dashboardId).filter(dashcard => {
-    return !dashcard.parameter_mappings?.find(
-      mapping => mapping.parameter_id === parameter_id,
-    );
-  });
 }
 
 export function getCurrentTabDashboardCards(

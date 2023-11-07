@@ -13,10 +13,6 @@ import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import { updateDashboard } from "metabase/dashboard/actions/save";
-import {
-  getAutoApplyMappingsForDashcards,
-  getParameterMappings,
-} from "metabase/parameters/utils/mapping-options";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   isParameterValueEmpty,
@@ -33,7 +29,6 @@ import {
   getDashCardById,
 } from "../selectors";
 
-import { getAllDashboardCardsWithUnmappedParameters } from "../utils";
 import { trackAutoApplyFiltersDisabled } from "../analytics";
 
 import {
@@ -42,6 +37,10 @@ import {
   setMultipleDashCardAttributes,
 } from "./core";
 import { setSidebar, closeSidebar } from "./ui";
+import {
+    getAllDashboardCardsWithUnmappedParameters, getAutoApplyMappingsForDashcards,
+    getParameterMappings
+} from "metabase/dashboard/actions/auto-wire-parameters";
 
 function updateParameter(dispatch, getState, id, parameterUpdater) {
   const dashboard = getDashboard(getState());

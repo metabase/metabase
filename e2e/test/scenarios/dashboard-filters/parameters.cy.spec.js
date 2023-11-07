@@ -599,16 +599,13 @@ describe("scenarios > dashboard > parameters", () => {
     });
   });
 
-  describe("when auto-applying filters across cards with matching fields", () => {
+  describe("when auto-wiring parameters across cards with matching fields", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     });
 
-    describe("when applying filter to all cards for a filter", () => {
-      console.log("Hello world");
-      console.log("Hello world");
-      console.log("Hello world");
-      it("should automatically apply filters to cards with matching fields", () => {
+    describe("when wiring parameter to all cards for a filter", () => {
+      it("should automatically wire parameters to cards with matching fields", () => {
         createDashboardWithCards([
           {
             card_id: ORDERS_BY_YEAR_QUESTION_ID,
@@ -648,7 +645,7 @@ describe("scenarios > dashboard > parameters", () => {
         });
       });
 
-      it("should not automatically apply filters to cards that already have a parameter, despite matching fields", () => {
+      it("should not automatically wire parameters to cards that already have a parameter, despite matching fields", () => {
         createDashboardWithCards([
           {
             card_id: ORDERS_BY_YEAR_QUESTION_ID,
@@ -698,7 +695,7 @@ describe("scenarios > dashboard > parameters", () => {
         });
       });
 
-      it("should not automatically apply filters to cards that don't have a matching field", () => {
+      it("should not automatically wire parameters to cards that don't have a matching field", () => {
         cy.createQuestion({
           name: "Products Table",
           query: { "source-table": PRODUCTS_ID, limit: 1 },
@@ -743,7 +740,7 @@ describe("scenarios > dashboard > parameters", () => {
         });
       });
 
-      it("should auto apply filters to cards in different tabs", () => {
+      it("should autowire parameters to cards in different tabs", () => {
         const cards = [
           {
             card_id: ORDERS_BY_YEAR_QUESTION_ID,
@@ -797,8 +794,8 @@ describe("scenarios > dashboard > parameters", () => {
       });
     });
 
-    describe("applying filters when adding a card", () => {
-      it("should automatically apply a filter to cards that are added to the dashboard", () => {
+    describe("wiring parameters when adding a card", () => {
+      it("should automatically wire a parameters to cards that are added to the dashboard", () => {
         const cards = [
           {
             card_id: ORDERS_BY_YEAR_QUESTION_ID,
@@ -848,7 +845,7 @@ describe("scenarios > dashboard > parameters", () => {
         }
       });
 
-      it("should automatically apply a filter to cards that are added to the dashboard in a different tab", () => {
+      it("should automatically wire parameters to cards that are added to the dashboard in a different tab", () => {
         const cards = [
           {
             card_id: ORDERS_BY_YEAR_QUESTION_ID,
