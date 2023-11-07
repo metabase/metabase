@@ -270,7 +270,7 @@ To hide a question or dashboard's title, [additional info](#additional_info), an
 You can localize the user interface via a parameter. For example, to set the locale to Spanish:
 
 ```
-locale=es
+locale=es-ES
 ```
 
 Check out the [locales Metabase supports](https://github.com/metabase/metabase/tree/master/locales). And read more about [localization](../configuring-metabase/localization.md).
