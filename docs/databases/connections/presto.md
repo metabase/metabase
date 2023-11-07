@@ -56,7 +56,7 @@ You can specify a local file path, or upload a keystore. You'll also need to inp
 
 You can specify a local file path, or upload a truststore. You'll also need to input your truststore password.
 
-s### Authenticate with Kerberos
+### Authenticate with Kerberos
 
 Kerberos settings include:
 
