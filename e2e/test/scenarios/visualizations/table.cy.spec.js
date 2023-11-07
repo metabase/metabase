@@ -13,6 +13,8 @@ import {
   visitQuestionAdhoc,
   getTable,
   leftSidebar,
+  setupWritableDB,
+  addPostgresDatabase,
 } from "e2e/support/helpers";
 
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
@@ -320,10 +322,17 @@ describe("scenarios > visualizations > table", () => {
 });
 
 describe("scenarios > visualizations > table > conditional formatting", () => {
-  beforeEach(() => {
-    resetTestTable({ type: "postgres", table: "many_data_types" });
-    restore(`postgres-writable`);
+  before(() => {
+    restore("default");
     cy.signInAsAdmin();
+
+    setupWritableDB("postgres");
+    addPostgresDatabase("Writable Postgres12", true);
+  });
+
+  beforeEach(() => {
+    cy.signInAsAdmin();
+    resetTestTable({ type: "postgres", table: "many_data_types" });
     resyncDatabase({
       dbId: WRITABLE_DB_ID,
       tableName: "many_data_types",
