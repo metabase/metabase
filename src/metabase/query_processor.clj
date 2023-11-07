@@ -52,7 +52,7 @@
    (resolve 'metabase.query-processor-test.test-mlv2/around-middleware)
    #'qp.middleware.enterprise/handle-audit-app-internal-queries-middleware
    ;; userland queries only: save a QueryExecution
-   #'process-userland-query/save-query-execution-and-add-running-time
+   #'process-userland-query/process-userland-query-middleware
    #'normalize/normalize-around-middleware
    ;; userland queries only: catch Exceptions and return a special error response
    #'catch-exceptions/catch-exceptions])
@@ -70,7 +70,9 @@
   (alter-var-root #'process-query* (constantly
                                     (reduce
                                      (fn [qp middleware]
-                                       (middleware qp))
+                                       (if middleware
+                                         (middleware qp)
+                                         qp))
                                      process-query**
                                      around-middleware))))
 
@@ -120,10 +122,10 @@
   1. Exceptions are caught, and a special error shape is returned (see [[catch-exceptions/catch-exceptions]])
 
   2. A `QueryExecution` is saved in the application database (see
-     [[process-userland-query/save-query-execution-and-add-running-time]])
+     [[process-userland-query/process-userland-query-middleware]])
 
   3. A few extra keys like `:running_time` and `:started_at` are added to the QP
-     response (see [[process-userland-query/save-query-execution-and-add-running-time]])"
+     response (see [[process-userland-query/process-userland-query-middleware]])"
   ([query]
    (userland-query query nil))
 

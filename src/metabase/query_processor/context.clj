@@ -91,7 +91,7 @@
 (mr/def ::resultf
   [:=>
    [:cat ::result ::context]
-   :any])
+   :some])
 
 ;; Normal flow is something like:
 ;;
@@ -124,8 +124,8 @@
   ((:raisef context) e context))
 
 (mu/defn runf :- :some
-  "Called by the [[metabase.query-processor.reducible/identity-qp]] fn to run preprocessed query. Normally, this simply
-  calls [[executef]], but you can override this for test purposes. The result of this function is ignored."
+  "Normally, this simply calls [[executef]], but you can override this for test purposes. The result of this function is
+  ignored."
   [query   :- ::query
    rff     :- ::rff
    context :- ::context]
@@ -197,23 +197,35 @@
      20
      3)))
 
-(defn- default-raisef [e context]
+ (mu/defn ^:private default-raisef
+  [e       :- (ms/InstanceOfClass Throwable)
+   context :- ::context]
   (resultf e context))
 
-(defn- canceled? [context]
+(mu/defn ^:private canceled? [context :- ::context]
   (a/poll! (canceled-chan context)))
 
-(defn- sync-runf [query rff context]
+(mu/defn ^:private sync-runf :- :some
+  [query   :- ::query
+   rff     :- ::rff
+   context :- ::context]
   (assert driver/*driver* "driver/*driver* should be bound")
   (when-not (canceled? context)
     (letfn [(respond [metadata reducible-rows]
               (reducef rff context metadata reducible-rows))]
       (try
         (executef driver/*driver* query context respond)
+        (catch InterruptedException e
+          (log/tracef e "Caught InterruptedException when executing query, this means the query was canceled. Ignoring exception.")
+          ::cancel)
         (catch Throwable e
           (raisef e context))))))
 
-(defn- default-executef [driver query context respond]
+(mu/defn ^:private default-executef :- :some
+  [driver  :- ::driver
+   query   :- ::query
+   context :- ::context
+   respond :- ::respond]
   (when-not (canceled? context)
     (driver/execute-reducible-query driver query context respond)))
 
@@ -246,10 +258,10 @@
    context        :- ::context]
   (resultf reduced-result context))
 
-(defn- default-timeoutf
-  [context]
+(mu/defn ^:private default-timeoutf :- :any
+  [context :- ::context]
   (let [timeout (timeout context)]
-    (log/debugf "::query timed out after %s, raising timeout exception." (u/format-milliseconds timeout))
+    (log/debugf "Query timed out after %s, raising timeout exception." (u/format-milliseconds timeout))
     (raisef (ex-info (i18n/tru "Timed out after {0}." (u/format-milliseconds timeout))
                      {:status :timed-out
                       :type   qp.error-type/timed-out})
@@ -296,7 +308,10 @@
      (cond-> context
        (not (:canceled-chan context)) (assoc :canceled-chan (make-canceled-chan context))))))
 
-(defn- async-runf [query rff context]
+(mu/defn ^:private async-runf :- :some
+  [query   :- :map
+   rff     :- ::rff
+   context :- ::context.async]
   (let [futur         (.submit clojure.lang.Agent/pooledExecutor
                                ^Runnable (bound-fn*
                                           (^:once fn* []
@@ -304,17 +319,20 @@
         canceled-chan (canceled-chan context)]
     (a/go
       (when (some? (a/<! canceled-chan))
-        (future-cancel futur))))
+        (try
+          (future-cancel futur)
+          (catch Throwable e
+            (log/warnf e "Error canceling future in async QP context: %s" (ex-message e)))))))
   (out-chan context))
 
-(defn- async-resultf [result context]
+(mu/defn ^:private async-resultf :- async.u/PromiseChan
+  [result :- :some context :- ::context.async]
+  (log/tracef "Async context resultf got result\n%s" (pr-str result))
   (a/close! (canceled-chan context))
   (let [out-chan (out-chan context)]
     (a/>!! out-chan result)
-    (a/close! out-chan))
-  (if (instance? Throwable result)
-    (throw result)
-    result))
+    (a/close! out-chan)
+    out-chan))
 
 (def ^:private base-async-context
   (merge base-sync-context
@@ -323,7 +341,7 @@
           ::type   ::async}))
 
 (mu/defn ^:private make-async-out-chan :- async.u/PromiseChan
-  "Wire up the core.async channels in a QP `context`
+  "Wire up the core.async channels in a QP `context`:
 
   1. If query doesn't complete by [[qp.context/timeout]], call [[qp.context/timeoutf]], which should raise an Exception.
 
@@ -331,18 +349,19 @@
 
   3. When [[qp.context/out-chan]] is closed or gets a result, close both [[qp.context/out-chan]]
      and [[qp.context/canceled-chan]]."
-  [context]
+  [context :- ::context]
   (let [out-chan      (a/promise-chan)
+        context       (assoc context :out-chan out-chan)
         canceled-chan (canceled-chan context)
         timeout-chan  (a/timeout (timeout context))]
     (a/go
       (let [[val port] (a/alts! [out-chan timeout-chan] :priority true)]
         (log/tracef "Port %s got %s"
-                    (if (= port out-chan) "out-chan" (format "[timeout after %s]" (u/format-milliseconds timeout)))
+                    (if (= port out-chan) "out-chan" (format "timeout-chan (%s)" (u/format-milliseconds timeout)))
                     val)
         (cond
-          (not= port out-chan) (timeoutf context)
-          (nil? val)           (a/>!! canceled-chan ::cancel))
+          (= port timeout-chan) (timeoutf context)
+          (nil? val)            (a/>!! canceled-chan ::cancel))
         (log/tracef "Closing out-chan.")
         (a/close! out-chan)
         (a/close! canceled-chan)))

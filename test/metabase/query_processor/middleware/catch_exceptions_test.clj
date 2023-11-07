@@ -1,6 +1,8 @@
 (ns metabase.query-processor.middleware.catch-exceptions-test
   (:require
    [clojure.test :refer :all]
+   [metabase.async.util :as async.u]
+   [metabase.driver :as driver]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -10,11 +12,9 @@
    [metabase.query-processor.middleware.catch-exceptions
     :as catch-exceptions]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.test :as mt]
-   [metabase.test.data.users :as test.users]
    [metabase.query-processor.reducible :as qp.reducible]
-   [medley.core :as m]
-   [metabase.async.util :as async.u]))
+   [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]))
 
 (deftest ^:parallel exception-chain-test
   (testing "Should be able to get a sequence of exceptions by following causes, with the top-level Exception first"
@@ -62,22 +62,25 @@
    (catch-exceptions run query nil))
 
   ([run query context]
-   (let [qp      (fn [_query rff _context]
-                   (let [metadata {}
-                         rows     []]
-                     (run)
-                     (qp.context/reducef rff context metadata rows)))
-         qp      (catch-exceptions/catch-exceptions qp)
-         context (or context (qp.context/sync-context))
-         result  (qp (qp/userland-query query) qp.reducible/default-rff context)]
+   (let [metadata {}
+         rows     []
+         context  (merge
+                   (or context (qp.context/sync-context))
+                   {:executef (fn [_driver _query _context respond]
+                                (respond metadata rows))})
+         qp       (fn [_query rff context]
+                    (run)
+                    (qp.context/runf query rff context))
+         qp       (catch-exceptions/catch-exceptions qp)
+         result   (driver/with-driver :h2
+                    (qp (qp/userland-query query) qp.reducible/default-rff context))]
      (cond-> result
        (map? result) (update :data dissoc :rows)))))
 
 (deftest ^:parallel no-exception-test
   (testing "No Exception -- should return response as-is"
     (is (= {:data {}, :row_count 0, :status :completed}
-           (catch-exceptions
-            (fn []))))))
+           (catch-exceptions (fn run []))))))
 
 (deftest ^:synchronized no-exception-test-2
   (testing "compile and preprocess should not be called if no exception occurs"
@@ -86,8 +89,7 @@
       (with-redefs [qp.compile/compile       (fn [_] (swap! compile-call-count inc))
                     qp.preprocess/preprocess (fn [_] (swap! preprocess-call-count inc))]
         (is (= {:data {}, :row_count 0, :status :completed}
-               (catch-exceptions
-                (fn []))))
+               (catch-exceptions (fn run []))))
         (is (= 0 @compile-call-count))
         (is (= 0 @preprocess-call-count))))))
 
@@ -96,12 +98,11 @@
     (is (=? {:status     :failed
              :class      (partial = java.lang.Exception)
              :error      "Something went wrong"
-             :stacktrace true
+             :stacktrace vector?
              :json_query {}
              :row_count  0
              :data       {:cols []}}
-            (-> (catch-exceptions (fn [] (throw (Exception. "Something went wrong"))))
-                (update :stacktrace boolean))))))
+            (catch-exceptions (fn [] (throw (Exception. "Something went wrong"))))))))
 
 (deftest ^:parallel async-exception-test
   (testing "if an Exception is returned asynchronously by `raise`, should format it the same way"
@@ -110,49 +111,48 @@
                                      (qp.context/async-context
                                       {:runf (fn [_query _rff context]
                                                (future
-                                                 (qp.context/raisef (Exception. "Something went wrong") context)))}))]
+                                                 (qp.context/raisef (Exception. "Something went wrong") context))
+                                               (qp.context/out-chan context))}))]
       (is (async.u/promise-chan? out-chan))
       (is (=? {:status     :failed
                :class      (partial = java.lang.Exception)
                :error      "Something went wrong"
-               :stacktrace true
+               :stacktrace vector?
                :json_query {}
                :row_count  0
                :data       {:cols []}}
               (mt/wait-for-result out-chan 1000))))))
 
-;; FIXME NOCOMMIT
-#_(deftest ^:parallel catch-exceptions-test
+(deftest ^:parallel catch-exceptions-test
   (testing "include-query-execution-info-test"
     (testing "Should include info from QueryExecution if added to the thrown/raised Exception"
       (is (=? {:status     :failed
                :class      (partial = java.lang.Exception)
                :error      "Something went wrong"
-               :stacktrace true
+               :stacktrace vector?
                :card_id    300
                :json_query {}
                :row_count  0
                :data       {:cols []}
                :a          100
                :b          200}
-              (-> (mt/test-qp-middleware catch-exceptions/catch-exceptions
-                                         (qp/userland-query {}) {} []
-                                         {:runf (fn [_ _ context]
-                                                  (qp.context/raisef (ex-info "Something went wrong."
-                                                                              {:query-execution {:a            100
-                                                                                                 :b            200
-                                                                                                 :card_id      300
-                                                                                                 ;; these keys should all get removed
-                                                                                                 :result_rows  400
-                                                                                                 :hash         500
-                                                                                                 :executor_id  500
-                                                                                                 :dashboard_id 700
-                                                                                                 :pulse_id     800
-                                                                                                 :native       900}}
-                                                                              (Exception. "Something went wrong"))
-                                                                     context))})
-                  :metadata
-                  (update :stacktrace boolean)))))))
+              (catch-exceptions (fn run [])
+                                {}
+                                (qp.context/sync-context
+                                 {:runf (fn [_query _rff context]
+                                          (qp.context/raisef (ex-info "Something went wrong."
+                                                                      {:query-execution {:a            100
+                                                                                         :b            200
+                                                                                         :card_id      300
+                                                                                         ;; these keys should all get removed
+                                                                                         :result_rows  400
+                                                                                         :hash         500
+                                                                                         :executor_id  500
+                                                                                         :dashboard_id 700
+                                                                                         :pulse_id     800
+                                                                                         :native       900}}
+                                                                      (Exception. "Something went wrong"))
+                                                             context))})))))))
 
 (deftest ^:parallel catch-exceptions-test-2
   (testing "Should always include :error (#23258, #23281)"

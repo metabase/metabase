@@ -78,7 +78,8 @@
             (user-recent-views! new-views)))))))
 
 (methodical/defmethod events/publish-event! ::event
-  "Handle processing for a single event notification received on the view-log-channel"
+  "Update the recent views for a User and add a new row to the ViewLog table, when a `:event/dashboard-read` or
+  `:event/table-read` event is published (a Dashboard or Table is viewed)."
   [topic {:keys [object user-id] :as event}]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
@@ -96,7 +97,9 @@
 (derive :event/card-query ::card-query)
 
 (methodical/defmethod events/publish-event! ::card-query
-  "Handle processing for a single event notification received on the view-log-channel"
+  "Update the recent views for a User and a new row in the ViewLog table when an `:event/card-query` event is
+  published (a Card is viewed/executed). Not recorded if the Card is viewed in the `:context` of a `:dashboard` or
+  `:collection`."
   [topic {:keys [card-id user-id] :as event}]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
@@ -107,7 +110,7 @@
            {:keys [context] :as metadata} (events/object->metadata event)]
        ;; we don't want to count pinned card views
        (when ((complement #{:collection :dashboard}) context)
-         (update-users-recent-views! user-id model card-id))
-       (record-view! model card-id user-id metadata)))
+         (update-users-recent-views! user-id model card-id)
+         (record-view! model card-id user-id metadata))))
    (catch Throwable e
      (log/warnf e "Failed to process activity event. %s" topic))))

@@ -1,7 +1,10 @@
 (ns metabase.query-processor.middleware.process-userland-query
   "Middleware related to doing extra steps for queries that are ran via API endpoints (i.e., most of them -- as opposed
-  to queries ran internally e.g. as part of the sync process).
-  These include things like saving QueryExecutions and adding query ViewLogs, storing exceptions and formatting the results."
+  to queries ran internally e.g. as part of the sync process). These include things like saving QueryExecutions and
+  adding query ViewLogs, storing exceptions and formatting the results.
+
+  ViewLog recording is triggered indirectly by the call to [[events/publish-event!]] with the `:event/card-query`
+  event -- see [[metabase.events.view-log]]."
   (:require
    [java-time.api :as t]
    [metabase.events :as events]
@@ -9,9 +12,11 @@
    [metabase.models.query-execution
     :as query-execution
     :refer [QueryExecution]]
+   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -38,7 +43,7 @@
   (when-not (:cache_hit query-execution)
     (query/save-query-and-update-average-execution-time! query query-hash running-time))
   (if-not context
-    (log/warn (trs "Cannot save QueryExecution, missing :context"))
+    (log/warn "Cannot save QueryExecution, missing :context")
     (t2/insert! QueryExecution (dissoc query-execution :json_query))))
 
 (defn- save-query-execution!
@@ -64,7 +69,10 @@
     (save-query-execution! qe-map)))
 
 (defn- save-failed-query-execution! [query-execution message]
-  (save-query-execution! (assoc query-execution :error (str message))))
+  (try
+    (save-query-execution! (assoc query-execution :error (str message)))
+    (catch Throwable e
+      (log/errorf e "Unexpected error saving failed query execution: %s" (ex-message e)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -131,30 +139,37 @@
    :result_rows       0
    :start_time_millis (System/currentTimeMillis)})
 
-(defn save-query-execution-and-add-running-time
-  "Userland-only: Record a `QueryExecution` entry in the application database when this query is finished running; add
-  extra info like `running_time` and `started_at` to the results."
-  [qp]
-  (fn [query rff {:keys [raisef], :as context}]
+(mu/defn process-userland-query-middleware :- fn?
+  "Around middleware.
+
+  Userland queries only:
+
+  1. Record a `QueryExecution` entry in the application database when this query is finished running
+
+  2. Record a ViewLog entry when running a query for a Card
+
+  3. Add extra info like `running_time` and `started_at` to the results"
+  [qp :- fn?]
+  (mu/fn [query                         :- :map
+          rff                           :- ::qp.context/rff
+          {:keys [raisef], :as context} :- ::qp.context/context]
     (if-not (get-in query [:middleware :userland-query?])
       (qp query rff context)
-      (do
-        (assert (fn? raisef) "Incomplete query processor context!")
-        (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
-              execution-info (query-execution-info query)]
-          (letfn [(rff* [metadata]
-                    (add-and-save-execution-info-xform! execution-info (rff metadata)))
-                  (raisef* [^Throwable e context]
-                    (save-failed-query-execution!
-                     execution-info
-                     (or
-                      (some-> e (.getCause) ex-message)
-                      (ex-message e)))
-                    (raisef (ex-info (ex-message e)
-                                     {:query-execution execution-info}
-                                     e)
-                            context))]
-            (try
-              (qp query rff* (assoc context :raisef raisef*))
-              (catch Throwable e
-                (raisef* e context)))))))))
+      (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
+            execution-info (query-execution-info query)]
+        (letfn [(rff* [metadata]
+                  (add-and-save-execution-info-xform! execution-info (rff metadata)))
+                (raisef* [^Throwable e context]
+                  (save-failed-query-execution!
+                   execution-info
+                   (or
+                    (some-> e (.getCause) ex-message)
+                    (ex-message e)))
+                  (raisef (ex-info (ex-message e)
+                                   {:query-execution execution-info}
+                                   e)
+                          context))]
+          (try
+            (qp query rff* (assoc context :raisef raisef*))
+            (catch Throwable e
+              (raisef* e context))))))))

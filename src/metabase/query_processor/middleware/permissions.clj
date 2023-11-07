@@ -12,6 +12,8 @@
    [metabase.models.query.permissions :as query-perms]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.fetch-source-query
+    :as fetch-source-query]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.tag-referenced-cards
     :as qp.u.tag-referenced-cards]
@@ -46,8 +48,8 @@
   for [[metabase.models.collection]] for more details.
 
   Note that this feature is Metabase© Enterprise Edition™ only. Actual implementation is
-  in [[metabase-enterprise.advanced-permissions.models.permissions.block-permissions/check-block-permissions]] if EE code is
-  present. This feature is only enabled if we have a valid Enterprise Edition™ token."
+  in [[metabase-enterprise.advanced-permissions.models.permissions.block-permissions/check-block-permissions]] if EE
+  code is present. This feature is only enabled if we have a valid Enterprise Edition™ token."
   (let [dlay (delay
               (when config/ee-available?
                 (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions.block-permissions)
@@ -103,21 +105,22 @@
   [{database-id :database, :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
-    (cond
-      *card-id*
-      (do
-        (check-card-read-perms database-id *card-id*)
+    (let [card-id (or *card-id* (::fetch-source-query/source-card-id outer-query))]
+      (cond
+        card-id
+        (do
+          (check-card-read-perms database-id card-id)
+          (when-not (has-data-perms? (required-perms outer-query))
+            (check-block-permissions outer-query)))
+
+        ;; set when querying for field values of dashboard filters, which only require
+        ;; collection perms for the dashboard and not ad-hoc query perms
+        *param-values-query*
         (when-not (has-data-perms? (required-perms outer-query))
-          (check-block-permissions outer-query)))
+          (check-block-permissions outer-query))
 
-      ;; set when querying for field values of dashboard filters, which only require
-      ;; collection perms for the dashboard and not ad-hoc query perms
-      *param-values-query*
-      (when-not (has-data-perms? (required-perms outer-query))
-        (check-block-permissions outer-query))
-
-      :else
-      (check-ad-hoc-query-perms outer-query))))
+        :else
+        (check-ad-hoc-query-perms outer-query)))))
 
 (defn check-query-permissions
   "Middleware that check that the current user has permissions to run the current query. This only applies if

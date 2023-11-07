@@ -120,7 +120,7 @@
   ;; clear out stale values in save/purge channels
   (while (a/poll! *save-chan*))
   (while (a/poll! *purge-chan*))
-  (let [qp       (cache/maybe-return-cached-results qp.reducible/identity-qp)
+  (let [qp       (cache/maybe-return-cached-results qp.context/runf)
         metadata {}
         rows     [[:toucan      71]
                   [:bald-eagle  92]

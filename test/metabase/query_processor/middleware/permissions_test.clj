@@ -7,6 +7,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.store :as qp.store]
@@ -17,7 +18,10 @@
    (clojure.lang ExceptionInfo)))
 
 (defn- check-perms [query]
-  (:pre (mt/test-qp-middleware qp.perms/check-query-permissions query)))
+  (let [qp (fn [query _rff context]
+             (qp.context/resultf query context))
+        qp (qp.perms/check-query-permissions qp)]
+    (qp query (constantly conj) (qp.context/sync-context))))
 
 (defn- check-perms-for-rasta
   "Check permissions for `query` with rasta as the current user."

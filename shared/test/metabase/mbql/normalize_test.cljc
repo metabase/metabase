@@ -1462,10 +1462,20 @@
   (t/are [clause] (= {:database 1
                       :type     :query
                       :query    {:order-by [[:asc [:aggregation 0]]]}}
-                     (metabase.mbql.normalize/normalize
+                     (mbql.normalize/normalize
                       {:database 1
                        :type     :query
                        :query    {:order-by [[:asc clause]]}}))
     [:aggregation 0 nil]
     [:aggregation 0 {}]
     [:aggregation 0]))
+
+(t/deftest ^:parallel normalize-info-test
+  (t/is (= {:database 1
+            :type     :query
+            :query    {:source-table 2}
+            :info     {:context :collection}}
+           (mbql.normalize/normalize {:database 1
+                                      :type     :query
+                                      :query    {:source-table 2}
+                                      :info     {:context "collection"}}))))
