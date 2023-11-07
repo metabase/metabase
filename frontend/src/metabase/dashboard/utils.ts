@@ -144,18 +144,6 @@ export function getAllDashboardCardsWithUnmappedParameters(
   });
 }
 
-export function getAllDashboardCardsWithMappedParameter(
-  dashboard: Draft<DashboardState>,
-  dashboardId: DashboardId,
-  parameter_id: ParameterId,
-) {
-  return getExistingDashCards(dashboard, dashboardId).filter(dashcard =>
-    dashcard.parameter_mappings?.find(
-      mapping => mapping.parameter_id === parameter_id,
-    ),
-  );
-}
-
 export function getCurrentTabDashboardCards(
   dashboard: Dashboard,
   selectedTabId: SelectedTabId,
