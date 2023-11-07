@@ -9,7 +9,6 @@
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -119,15 +118,14 @@
                                                                           {:fields      [[:expression "My field"]]
                                                                            :expressions {"My field" [:ltrim "wow"]}})}]
           (with-gtap-cleanup
-            (is (schema= {:message  (s/eq "Sandbox Questions can't return columns that have different types than the Table they are sandboxing.")
-                          :expected (s/eq "type/Integer")
-                          :actual   (s/eq "type/Text")
-                          s/Keyword s/Any}
-                         (mt/user-http-request :crowberto :post 400 "mt/gtap"
-                                               {:table_id             table-id
-                                                :group_id             group-id
-                                                :card_id              card-id
-                                                :attribute_remappings {"foo" 1}})))))))))
+            (is (=? {:message  "Sandbox Questions can't return columns that have different types than the Table they are sandboxing."
+                     :expected "type/Integer"
+                     :actual   "type/Text"}
+                    (mt/user-http-request :crowberto :post 400 "mt/gtap"
+                                          {:table_id             table-id
+                                           :group_id             group-id
+                                           :card_id              card-id
+                                           :attribute_remappings {"foo" 1}})))))))))
 
 (deftest validate-sandbox-test
   (testing "POST /api/mt/gtap/validate"
@@ -155,15 +153,14 @@
                                                              {:fields      [[:expression "My field"]]
                                                               :expressions {"My field" [:ltrim "wow"]}})}]
           (with-gtap-cleanup
-            (is (schema= {:message  (s/eq "Sandbox Questions can't return columns that have different types than the Table they are sandboxing.")
-                          :expected (s/eq "type/Integer")
-                          :actual   (s/eq "type/Text")
-                          s/Keyword s/Any}
-                         (mt/user-http-request :crowberto :post 400 "mt/gtap/validate"
-                                               {:table_id             table-id
-                                                :group_id             group-id
-                                                :card_id              card-id
-                                                :attribute_remappings {"foo" 1}})))))))))
+            (is (=? {:message  "Sandbox Questions can't return columns that have different types than the Table they are sandboxing."
+                     :expected "type/Integer"
+                     :actual   "type/Text"}
+                    (mt/user-http-request :crowberto :post 400 "mt/gtap/validate"
+                                          {:table_id             table-id
+                                           :group_id             group-id
+                                           :card_id              card-id
+                                           :attribute_remappings {"foo" 1}})))))))))
 
 (deftest delete-gtap-test
   (testing "DELETE /api/mt/gtap/:id"

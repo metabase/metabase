@@ -14,7 +14,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)))
@@ -501,12 +501,11 @@
                          :target [:dimension [:field ["my-db" nil "orders" "subtotal"]
                                               {:source-field ["my-db" nil "orders" "invoice"]}]]}]
                        (:parameter_mappings card)))
-                (is (schema= [{:parameter_mappings [{:parameter_id (s/eq "deadbeef")
-                                                     :card_id      (s/eq (:entity_id @card1s))
-                                                     :target       (s/eq [:dimension [:field ["my-db" nil "orders" "subtotal"]
-                                                                                      {:source-field ["my-db" nil "orders" "invoice"]}]])}]
-                               s/Keyword s/Any}]
-                       (:dashcards dash))))
+                (is (=? [{:parameter_mappings [{:parameter_id "deadbeef"
+                                                :card_id      (:entity_id @card1s)
+                                                :target       [:dimension [:field ["my-db" nil "orders" "subtotal"]
+                                                                           {:source-field ["my-db" nil "orders" "invoice"]}]]}]}]
+                        (:dashcards dash))))
 
               (testing "exported :visualization_settings are properly converted"
                 (let [expected {:table.pivot_column "SOURCE"
@@ -620,30 +619,33 @@
                   timeline1 (first (filter #(= (:entity_id %) (:entity_id @timeline1s)) timelines))
                   timeline2 (first (filter #(= (:entity_id %) (:entity_id @timeline2s)) timelines))]
               (testing "with inline :events"
-                (is (schema= {:serdes/meta                 (s/eq [{:model "Timeline"
-                                                                   :id    (:entity_id timeline1)
-                                                                   :label "some_events"}])
-                              :archived                    (s/eq false)
-                              :collection_id               (s/eq (:entity_id @coll1s))
-                              :name                        (s/eq "Some events")
-                              :creator_id                  (s/eq "tom@bost.on")
-                              (s/optional-key :updated_at) OffsetDateTime
-                              :created_at                  OffsetDateTime
-                              :entity_id                   (s/eq (:entity_id timeline1))
-                              (s/optional-key :icon)       (s/maybe s/Str)
-                              :description                 (s/maybe s/Str)
-                              (s/optional-key :default)    s/Bool
-                              :events                      [{:timezone                    s/Str
-                                                             :time_matters                s/Bool
-                                                             :name                        s/Str
-                                                             :archived                    s/Bool
-                                                             :description                 (s/maybe s/Str)
-                                                             :creator_id                  s/Str
-                                                             (s/optional-key :icon)       (s/maybe s/Str)
-                                                             :created_at                  OffsetDateTime
-                                                             (s/optional-key :updated_at) OffsetDateTime
-                                                             :timestamp                   s/Str}]}
-                             timeline1))
+                (is (malli= [:map
+                             [:serdes/meta                 [:= [{:model "Timeline"
+                                                                 :id    (:entity_id timeline1)
+                                                                 :label "some_events"}]]]
+                             [:archived                    [:= false]]
+                             [:collection_id               [:= (:entity_id @coll1s)]]
+                             [:name                        [:= "Some events"]]
+                             [:creator_id                  [:= "tom@bost.on"]]
+                             [:created_at                  (ms/InstanceOfClass OffsetDateTime)]
+                             [:entity_id                   [:= (:entity_id timeline1)]]
+                             [:description                 [:maybe :string]]
+                             [:events                      [:sequential
+                                                            [:map
+                                                             [:timezone                    :string]
+                                                             [:time_matters                :boolean]
+                                                             [:name                        :string]
+                                                             [:archived                    :boolean]
+                                                             [:description                 [:maybe :string]]
+                                                             [:creator_id                  :string]
+                                                             [:created_at                  (ms/InstanceOfClass OffsetDateTime)]
+                                                             [:timestamp                   :string]
+                                                             [:icon {:optional true}       [:maybe :string]]
+                                                             [:updated_at {:optional true} (ms/InstanceOfClass OffsetDateTime)]]]]
+                             [:updated_at {:optional true} (ms/InstanceOfClass OffsetDateTime)]
+                             [:icon {:optional true}       [:maybe :string]]
+                             [:default {:optional true}    :boolean]]
+                            timeline1))
                 (is (= 2 (-> timeline1 :events count)))
                 (is (= 1 (-> timeline2 :events count)))))))
 

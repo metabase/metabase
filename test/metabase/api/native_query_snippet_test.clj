@@ -10,7 +10,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -137,9 +136,8 @@
               (is (= {:name "test-snippet", :collection_id collection-id}
                      (select-keys response [:name :collection_id]))))
             (testing "\nobject in application DB"
-              (is (schema= {:collection_id (s/eq collection-id)
-                            s/Keyword      s/Any}
-                           db)))))
+              (is (=? {:collection_id collection-id}
+                      db)))))
 
         (testing "\nShould throw an error if the Collection isn't in the 'snippets' namespace"
           (t2.with-temp/with-temp [Collection {collection-id :id}]

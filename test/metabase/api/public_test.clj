@@ -29,7 +29,6 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [throttle.core :as throttle]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -242,20 +241,18 @@
   (testing "JSON-encoded MBQL parameters passed as a query parameter should work (#17019)"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-card [{uuid :public_uuid} {:dataset_query (native-query-with-template-tag)}]
-        (is (schema= {:status     (s/eq "completed")
-                      :json_query {:parameters (s/eq [{:id    "_VENUE_ID_"
-                                                       :name  "venue_id"
-                                                       :slug  "venue_id"
-                                                       :type  "number"
-                                                       :value 2}])
-                                   s/Keyword   s/Any}
-                      s/Keyword   s/Any}
-                     (client/client :get 202 (str "public/card/" uuid "/query")
-                                    :parameters (json/encode [{:id    "_VENUE_ID_"
-                                                               :name  "venue_id"
-                                                               :slug  "venue_id"
-                                                               :type  "number"
-                                                               :value 2}])))))
+        (is (=? {:status     "completed"
+                 :json_query {:parameters [{:id    "_VENUE_ID_"
+                                            :name  "venue_id"
+                                            :slug  "venue_id"
+                                            :type  "number"
+                                            :value 2}]}}
+                (client/client :get 202 (str "public/card/" uuid "/query")
+                               :parameters (json/encode [{:id    "_VENUE_ID_"
+                                                          :name  "venue_id"
+                                                          :slug  "venue_id"
+                                                          :type  "number"
+                                                          :value 2}])))))
 
       ;; see longer explanation in [[metabase.mbql.schema/parameter-types]]
       (testing "If the FE client is incorrectly passing in the parameter as a `:category` type, allow it for now"
@@ -268,15 +265,13 @@
                                                                                   :name         "foo"
                                                                                   :display-name "Filter"
                                                                                   :type         :text}}}}}]
-          (is (schema= {:status   (s/eq "completed")
-                        :data     {:rows     (s/eq [["456"]])
-                                   s/Keyword s/Any}
-                        s/Keyword s/Any}
-                       (client/client :get 202 (format "public/card/%s/query" uuid)
-                                     :parameters (json/encode [{:type   "category"
-                                                                      :value  "456"
-                                                                      :target ["variable" ["template-tag" "foo"]]
-                                                                      :id     "ed1fd39e-2e35-636f-ec44-8bf226cca5b0"}])))))))))
+          (is (=? {:status "completed"
+                   :data   {:rows [["456"]]}}
+                  (client/client :get 202 (format "public/card/%s/query" uuid)
+                                 :parameters (json/encode [{:type   "category"
+                                                            :value  "456"
+                                                            :target ["variable" ["template-tag" "foo"]]
+                                                            :id     "ed1fd39e-2e35-636f-ec44-8bf226cca5b0"}])))))))))
 
 (deftest execute-public-card-with-default-parameters-test
   (testing "GET /api/public/card/:uuid/query with parameters with default values"
@@ -296,20 +291,18 @@
                                                                    :type         :dimension,
                                                                    :widget-type  :id}}}}}
                           (shared-obj))]
-        (is (schema= {:status     (s/eq "completed")
-                      :json_query {:parameters (s/eq [{:id    "_VENUE_ID_"
-                                                       :name  "venue_id"
-                                                       :slug  "venue_id"
-                                                       :type  "number"
-                                                       :value 2}])
-                                   s/Keyword   s/Any}
-                      s/Keyword   s/Any}
-                     (client/client :get 202 (card-query-url card "")
-                                    :parameters (json/encode [{:id    "_VENUE_ID_"
-                                                               :name  "venue_id"
-                                                               :slug  "venue_id"
-                                                               :type  "number"
-                                                               :value 2}]))))
+        (is (=? {:status     "completed"
+                 :json_query {:parameters [{:id    "_VENUE_ID_"
+                                            :name  "venue_id"
+                                            :slug  "venue_id"
+                                            :type  "number"
+                                            :value 2}]}}
+                (client/client :get 202 (card-query-url card "")
+                               :parameters (json/encode [{:id    "_VENUE_ID_"
+                                                          :name  "venue_id"
+                                                          :slug  "venue_id"
+                                                          :type  "number"
+                                                          :value 2}]))))
         (testing "the default should apply if no param value is provided"
           (is (= [[1]]
                  (mt/rows (client/client :get 202 (card-query-url card "")
@@ -590,22 +583,19 @@
                (mt/rows (client/client :get 202 (dashcard-url dash card dashcard)))))
 
         (testing "with parameters"
-          (is (schema= {:json_query {:parameters (s/eq [{:id      "_VENUE_ID_"
-                                                         :name    "Venue ID"
-                                                         :slug    "venue_id"
-                                                         :target  ["dimension" ["field" (mt/id :venues :id) nil]]
-                                                         :value   [10]
-                                                         :type    "id"}])
-                                     s/Keyword   s/Any}
-                        :data       {:rows     (s/eq [[1]])
-                                     s/Keyword s/Any}
-                        s/Keyword   s/Any}
-                       (client/client :get 202 (dashcard-url dash card dashcard)
-                                      :parameters (json/encode [{:name   "Venue ID"
-                                                                 :slug   :venue_id
-                                                                 :target [:dimension (mt/id :venues :id)]
-                                                                 :value  [10]
-                                                                 :id     "_VENUE_ID_"}])))))))))
+          (is (=? {:json_query {:parameters [{:id     "_VENUE_ID_"
+                                              :name   "Venue ID"
+                                              :slug   "venue_id"
+                                              :target ["dimension" ["field" (mt/id :venues :id) nil]]
+                                              :value  [10]
+                                              :type   "id"}]}
+                   :data       {:rows [[1]]}}
+                  (client/client :get 202 (dashcard-url dash card dashcard)
+                                 :parameters (json/encode [{:name   "Venue ID"
+                                                            :slug   :venue_id
+                                                            :target [:dimension (mt/id :venues :id)]
+                                                            :value  [10]
+                                                            :id     "_VENUE_ID_"}])))))))))
 
 (deftest execute-public-dashcard-with-default-parameters-test
   (testing "GET /api/public/dashboard/:uuid/card/:card-id with parameters with default values"
@@ -1514,9 +1504,8 @@
                           (apply client/client :get 202 (pivot-dashcard-url dash card dashcard) query-parameters))]
                   (testing "without parameters"
                     (let [result (results)]
-                      (is (schema= {:status   (s/eq "completed")
-                                    s/Keyword s/Any}
-                                   result))
+                      (is (=? {:status "completed"}
+                              result))
                       ;; [[metabase.api.public/transform-results]] should remove `row_count`
                       (testing "row_count isn't included in public endpoints"
                         (is (nil? (:row_count result))))
@@ -1533,9 +1522,8 @@
                                                                      :slug   :state
                                                                      :target [:dimension (mt/$ids $orders.user_id->people.state)]
                                                                      :value  ["CA" "WA"]}]))]
-                      (is (schema= {:status   (s/eq "completed")
-                                    s/Keyword s/Any}
-                                   result))
+                      (is (=? {:status "completed"}
+                              result))
                       (testing "row_count isn't included in public endpoints"
                         (is (nil? (:row_count result))))
                       (is (= 6 (count (get-in result [:data :cols]))))

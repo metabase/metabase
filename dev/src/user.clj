@@ -17,7 +17,7 @@
 (humane-are/install!)
 
 (comment metabase.bootstrap/keep-me
-         ;; make sure stuff like `schema=` and what not are loaded
+         ;; make sure stuff like `=?` and what not are loaded
          mb.hawk.assert-exprs/keep-me
          metabase.test-runner.assert-exprs/keep-me)
 

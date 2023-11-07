@@ -21,7 +21,6 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -55,15 +54,14 @@
     (mt/with-temp-scheduler
       (task/init! ::task.sync-databases/SyncDatabases)
       (t2.with-temp/with-temp [Database {db-id :id}]
-        (is (schema= {:description         (s/eq (format "sync-and-analyze Database %d" db-id))
-                      :key                 (s/eq (format "metabase.task.sync-and-analyze.trigger.%d" db-id))
-                      :misfire-instruction (s/eq "DO_NOTHING")
-                      :may-fire-again?     (s/eq true)
-                      :schedule            (s/eq "0 50 * * * ? *")
-                      :final-fire-time     (s/eq nil)
-                      :data                (s/eq {"db-id" db-id})
-                      s/Keyword            s/Any}
-                     (trigger-for-db db-id)))
+        (is (=? {:description         (format "sync-and-analyze Database %d" db-id)
+                 :key                 (format "metabase.task.sync-and-analyze.trigger.%d" db-id)
+                 :misfire-instruction "DO_NOTHING"
+                 :may-fire-again?     true
+                 :schedule            "0 50 * * * ? *"
+                 :final-fire-time     nil
+                 :data                {"db-id" db-id}}
+                (trigger-for-db db-id)))
 
         (testing "When deleting a Database, sync tasks should get removed"
           (t2/delete! Database :id db-id)

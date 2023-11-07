@@ -4,8 +4,8 @@
    [clojure.test :refer :all]
    [metabase.api.automagic-dashboards :as api.magic]
    [metabase.automagic-dashboards.util :as magic.util]
-   [metabase.models :refer [Card Collection Dashboard Metric ModelIndex
-                            ModelIndexValue Segment]]
+   [metabase.models
+    :refer [Card Collection Dashboard Metric ModelIndex ModelIndexValue Segment]]
    [metabase.models.model-index :as model-index]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -19,7 +19,6 @@
    [metabase.transforms.materialize :as tf.materialize]
    [metabase.transforms.specs :as tf.specs]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -29,15 +28,15 @@
   [dashcards]
   (testing "check if all cards in dashcards contain the required fields"
     (doseq [card dashcards]
-      (is (schema= {:id                     (s/cond-pre s/Str s/Int)
-                    :dashboard_tab_id       (s/maybe s/Int)
-                    :row                    s/Int
-                    :col                    s/Int
-                    :size_x                 s/Int
-                    :size_y                 s/Int
-                    :visualization_settings (s/maybe (s/named clojure.lang.IPersistentMap "valid map"))
-                    s/Any                   s/Any}
-                   card)))))
+      (is (malli= [:map
+                   [:id                     [:or :string :int]]
+                   [:dashboard_tab_id       [:maybe :int]]
+                   [:row                    :int]
+                   [:col                    :int]
+                   [:size_x                 :int]
+                   [:size_y                 :int]
+                   [:visualization_settings [:maybe :map]]]
+                  card)))))
 
 (defn- api-call
   ([template args]

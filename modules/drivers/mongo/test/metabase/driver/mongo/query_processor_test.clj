@@ -13,7 +13,6 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel query->collection-name-test
@@ -103,57 +102,56 @@
                     :mbql?       true}
                    (qp/compile
                     (mt/mbql-query attempts
-                      {:aggregation [[:count]]
-                       :filter      [:time-interval $datetime :last :month]}))))
+                                   {:aggregation [[:count]]
+                                    :filter      [:time-interval $datetime :last :month]}))))
 
             (testing "should still work even with bucketing bucketing"
-              (let [tz (qp.timezone/results-timezone-id :mongo mt/db)
+              (let [tz    (qp.timezone/results-timezone-id :mongo mt/db)
                     query (mt/with-metadata-provider (mt/id)
                             (qp/compile
                              (mt/mbql-query attempts
-                               {:aggregation [[:count]]
-                                :breakout    [[:field %datetime {:temporal-unit :month}]
-                                              [:field %datetime {:temporal-unit :day}]]
-                                :filter      [:= [:field %datetime {:temporal-unit :month}] [:relative-datetime -1 :month]]})))]
+                                            {:aggregation [[:count]]
+                                             :breakout    [[:field %datetime {:temporal-unit :month}]
+                                                           [:field %datetime {:temporal-unit :day}]]
+                                             :filter      [:= [:field %datetime {:temporal-unit :month}] [:relative-datetime -1 :month]]})))]
                 (is (= {:projections ["datetime" "datetime_2" "count"]
                         :query       [{"$match"
                                        {"$and"
                                         [{"$expr" {"$gte" ["$datetime" {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}
                                          {"$expr" {"$lt" ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
                                       {"$group" {"_id"   (if (date-arithmetic-supported?)
-                                                           {"datetime" {:$dateTrunc {:date "$datetime"
-                                                                                     :startOfWeek "sunday"
-                                                                                     :timezone tz
-                                                                                     :unit "month"}}
-                                                            "datetime_2" {:$dateTrunc {:date "$datetime"
+                                                           {"datetime"   {:$dateTrunc {:date        "$datetime"
                                                                                        :startOfWeek "sunday"
-                                                                                       :timezone tz
-                                                                                       :unit "day"}}}
-                                                           {"datetime" {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
-                                                                                                             :timezone tz}}}
-                                                                               :in   {:$dateFromParts {:year  "$$parts.year"
-                                                                                                       :month "$$parts.month"
-                                                                                                       :timezone tz}}}}
-                                                            "datetime_2"   {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
-                                                                                                                 :timezone tz}}}
-                                                                                   :in   {:$dateFromParts {:year  "$$parts.year"
-                                                                                                           :month "$$parts.month"
-                                                                                                           :day   "$$parts.day"
-                                                                                                           :timezone tz}}}}})
+                                                                                       :timezone    tz
+                                                                                       :unit        "month"}}
+                                                            "datetime_2" {:$dateTrunc {:date        "$datetime"
+                                                                                       :startOfWeek "sunday"
+                                                                                       :timezone    tz
+                                                                                       :unit        "day"}}}
+                                                           {"datetime"   {:$let {:vars {:parts {:$dateToParts {:date     "$datetime"
+                                                                                                               :timezone tz}}}
+                                                                                 :in   {:$dateFromParts {:year     "$$parts.year"
+                                                                                                         :month    "$$parts.month"
+                                                                                                         :timezone tz}}}}
+                                                            "datetime_2" {:$let {:vars {:parts {:$dateToParts {:date     "$datetime"
+                                                                                                               :timezone tz}}}
+                                                                                 :in   {:$dateFromParts {:year     "$$parts.year"
+                                                                                                         :month    "$$parts.month"
+                                                                                                         :day      "$$parts.day"
+                                                                                                         :timezone tz}}}}})
                                                  "count" {"$sum" 1}}}
                                       {"$sort" {"_id" 1}}
-                                      {"$project" {"_id"              false
-                                                   "datetime" "$_id.datetime"
-                                                   "datetime_2"   "$_id.datetime_2"
-                                                   "count"            true}}
+                                      {"$project" {"_id"        false
+                                                   "datetime"   "$_id.datetime"
+                                                   "datetime_2" "$_id.datetime_2"
+                                                   "count"      true}}
                                       {"$sort" {"datetime" 1}}]
                         :collection  "attempts"
                         :mbql?       true}
                        query))
                 (testing "Make sure we can actually run the query"
-                  (is (schema= {:status   (s/eq :completed)
-                                s/Keyword s/Any}
-                               (qp/process-query (mt/native-query query)))))))))))))
+                  (is (=? {:status :completed}
+                          (qp/process-query (mt/native-query query)))))))))))))
 
 (deftest ^:parallel field-filter-relative-time-native-test
   (mt/test-driver :mongo

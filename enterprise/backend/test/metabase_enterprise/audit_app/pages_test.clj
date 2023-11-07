@@ -17,7 +17,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [ring.util.codec :as codec]
-   [schema.core :as s]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
@@ -168,9 +167,8 @@
   [query-type objects]
   (doseq [query (test-query-maps query-type objects)]
     (testing (format "\nquery =\n%s" (u/pprint-to-str query))
-      (is (schema= {:status (s/eq :completed)
-                    s/Keyword s/Any}
-                   (qp/process-query query))))))
+      (is (=? {:status :completed}
+              (qp/process-query query))))))
 
 (defn- do-with-temp-objects [f]
   (t2.with-temp/with-temp [Database      database {}

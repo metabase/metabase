@@ -5,7 +5,6 @@
    [metabase.models.task-history :refer [TaskHistory]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -113,6 +112,8 @@
            (mt/user-http-request :rasta :get 403 "task/info"))))
 
   (testing "Superusers could get task info"
-    (is (schema= {:scheduler s/Any
-                  :jobs      [{s/Any s/Any}]}
-                 (mt/user-http-request :crowberto :get 200 "task/info")))))
+    (is (malli= [:map
+                 [:scheduler :any]
+                 [:jobs      [:sequential
+                              [:map-of :any :any]]]]
+                (mt/user-http-request :crowberto :get 200 "task/info")))))

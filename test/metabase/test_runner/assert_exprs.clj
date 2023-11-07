@@ -2,7 +2,7 @@
   "Custom implementations of a few [[clojure.test/is]] expressions (i.e., implementations of [[clojure.test/assert-expr]]):
   `query=` and `sql=`.
 
-  Other expressions (`re=`, `schema=`, `=?`, and so forth) are implemented with the Hawk test-runner."
+  Other expressions (`re=`, `=?`, and so forth) are implemented with the Hawk test-runner."
   (:require
    [clojure.data :as data]
    [clojure.test :as t]

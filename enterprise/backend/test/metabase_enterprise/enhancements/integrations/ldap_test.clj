@@ -9,7 +9,6 @@
    [metabase.test :as mt]
    [metabase.test.integrations.ldap :as ldap.test]
    [metabase.util.malli.schema :as ms]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (deftest find-test
@@ -172,13 +171,12 @@
         (try
           (let [user-info (ldap/find-user "jsmith1")]
             (testing "First let a user get created for John Smith"
-              (is (schema= {:email    (s/eq "john.smith@metabase.com")
-                            s/Keyword s/Any}
-                           (ldap/fetch-or-create-user! user-info))))
+              (is (=? {:email "john.smith@metabase.com"}
+                      (ldap/fetch-or-create-user! user-info))))
             (testing "Call fetch-or-create-user! again to trigger update"
               (is (malli= [:and [:map-of :keyword :any]
                            [:map [:id ms/PositiveInt]]]
-                    (ldap/fetch-or-create-user! (assoc-in user-info [:attributes :unladenspeed] 100)))))
+                          (ldap/fetch-or-create-user! (assoc-in user-info [:attributes :unladenspeed] 100)))))
             (is (= {:first_name       "John"
                     :last_name        "Smith"
                     :common_name      "John Smith"
@@ -205,7 +203,7 @@
               (testing "Call fetch-or-create-user! again to trigger update"
                 (is (malli= [:and [:map-of :keyword :any]
                              [:map [:id ms/PositiveInt]]]
-                      (ldap/fetch-or-create-user! (assoc-in user-info [:attributes :unladenspeed] 100)))))
+                            (ldap/fetch-or-create-user! (assoc-in user-info [:attributes :unladenspeed] 100)))))
               (is (= {:first_name       "John"
                       :last_name        "Smith"
                       :common_name      "John Smith"

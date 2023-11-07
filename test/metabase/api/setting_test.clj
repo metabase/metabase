@@ -9,8 +9,7 @@
     :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.i18n :refer [deferred-tru]]
-   [schema.core :as s]))
+   [metabase.util.i18n :refer [deferred-tru]]))
 
 (comment h2/keep-me)
 
@@ -139,17 +138,16 @@
   (testing "GET /api/setting"
     (testing "Should return the correct `:value` for Settings with no underlying DB/env var value"
       (premium-features-test/with-premium-features #{:embedding}
-        (is (schema= {:key            (s/eq "hide-embed-branding?")
-                      :value          (s/eq true)
-                      :is_env_setting (s/eq false)
-                      :env_name       (s/eq "MB_HIDE_EMBED_BRANDING")
-                      :default        (s/eq nil)
-                      s/Keyword       s/Any}
-                     (some
-                      (fn [{setting-name :key, :as setting}]
-                        (when (= setting-name "hide-embed-branding?")
-                          setting))
-                      (mt/user-http-request :crowberto :get 200 "setting"))))))))
+        (is (=? {:key            "hide-embed-branding?"
+                 :value          true
+                 :is_env_setting false
+                 :env_name       "MB_HIDE_EMBED_BRANDING"
+                 :default        nil}
+                (some
+                 (fn [{setting-name :key, :as setting}]
+                   (when (= setting-name "hide-embed-branding?")
+                     setting))
+                 (mt/user-http-request :crowberto :get 200 "setting"))))))))
 
 (deftest fetch-internal-settings-test
   (testing "Test that we can't fetch internal settings"

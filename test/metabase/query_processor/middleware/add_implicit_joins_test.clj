@@ -11,8 +11,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [metabase.util :as u]
-   [schema.core :as s]))
+   [metabase.util :as u]))
 
 (deftest ^:parallel distinct-fields-test
   (testing "distinct-fields should consider type information unimportant for determining whether two Fields are the same"
@@ -208,9 +207,8 @@
                                                               :base_type    :type/Text
                                                               :id           %products.title
                                                               :field_ref    $product_id->products.title}]))]
-                        (is (schema= {:status   (s/eq :completed)
-                                      s/Keyword s/Any}
-                                     (qp/process-query query-with-metadata)))))))
+                        (is (=? {:status :completed}
+                                (qp/process-query query-with-metadata)))))))
                 (is (= (-> (mt/mbql-query orders
                              {:source-table $$orders
                               :fields       [$id
