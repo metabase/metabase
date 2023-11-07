@@ -19,8 +19,8 @@
   :setter :none)
 
 (multi-setting/define-multi-setting-impl multi-setting-test-bird-name :yellow-friend
-  :getter (partial setting/get-value-of-type :string :multi-setting-test-bird-name)
-  :setter (partial setting/set-value-of-type! :string :multi-setting-test-bird-name))
+  :getter (partial setting/get-parsed-value :multi-setting-test-bird-name)
+  :setter (partial setting/set-parsed-value! :multi-setting-test-bird-name))
 
 (deftest preserve-metadata-test
   (testing "define-multi-setting should preserve metadata on the setting symbol in the getter/setter functions"
@@ -52,11 +52,11 @@
 
 (multi-setting/define-multi-setting-impl multi-setting-read-only :green-friend
   :getter (constantly "Green Friend")
-  :setter (partial setting/set-value-of-type! :string :multi-setting-read-only))
+  :setter (partial setting/set-parsed-value! :multi-setting-read-only))
 
 (multi-setting/define-multi-setting-impl multi-setting-read-only :yellow-friend
   :getter (constantly "Yellow Friend")
-  :setter (partial setting/set-value-of-type! :string :multi-setting-read-only))
+  :setter (partial setting/set-parsed-value! :multi-setting-read-only))
 
 (deftest keys-in-definition-should-overshadow-keys-in-impls
   (testing "Specifying :getter or :setter in `define-multi-setting` should mean ones in any `impl` are ignored"

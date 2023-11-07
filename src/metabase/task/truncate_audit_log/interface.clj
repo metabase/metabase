@@ -10,6 +10,7 @@
 (define-multi-setting audit-max-retention-days
   (deferred-tru "Retention policy for the `query_execution` table.")
   (fn [] (if (and config/ee-available? (premium-features/enable-audit-app?)) :ee :oss))
+  :type       :integer
   :visibility :internal
   :setter     :none)
 

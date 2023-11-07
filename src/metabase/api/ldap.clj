@@ -86,7 +86,7 @@
                       (when-not (= :SUCCESS (:status result))
                         (throw (ex-info (tru "Unable to connect to LDAP server with current settings")
                                         (humanize-error-messages result))))))
-                  (setting/set-value-of-type! :boolean :ldap-enabled new-value)))
+                  (setting/set-parsed-value! :ldap-enabled new-value)))
   :default    false)
 
 (defn- update-password-if-needed
@@ -112,7 +112,7 @@
     (if (= :SUCCESS (:status results))
       (t2/with-transaction [_conn]
        (setting/set-many! ldap-settings)
-       (setting/set-value-of-type! :boolean :ldap-enabled (boolean (:ldap-enabled settings))))
+       (setting/set-parsed-value! :ldap-enabled (:ldap-enabled settings)))
       ;; test failed, return result message
       {:status 500
        :body   (humanize-error-messages results)})))

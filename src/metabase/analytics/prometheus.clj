@@ -44,7 +44,7 @@
                                 parsed
                                 (log/warn (trs "MB_PROMETHEUS_SERVER_PORT value of ''{0}'' is not parseable as an integer."
                                                raw-value))))]
-                  (setting/get-raw-value :prometheus-server-port integer? parse))))
+                  (setting/get-parsed-value :prometheus-server-port integer? parse))))
 
 (p.types/defprotocol+ PrometheusActions
   (stop-web-server [this]))

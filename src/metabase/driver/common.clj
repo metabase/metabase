@@ -310,7 +310,7 @@
   `0` (`:monday`) to `6` (`:sunday`). This is guaranteed to return a value."
   {:added "0.42.0"}
   []
-  (.indexOf days-of-week (or *start-of-week* (setting/get-value-of-type :keyword :start-of-week))))
+  (.indexOf days-of-week (or *start-of-week* (setting/get-parsed-value :start-of-week))))
 
 (defn start-of-week-offset-for-day
   "Like [[start-of-week-offset]] but takes a `start-of-week` keyword like `:sunday` rather than ` driver`. Returns the

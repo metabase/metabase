@@ -47,7 +47,7 @@
   :visibility :settings-manager
   :setter (fn [new-value]
            (if (validate-reply-to-addresses new-value)
-             (setting/set-value-of-type! :json :email-reply-to new-value)
+             (setting/set-parsed-value! :email-reply-to new-value)
              (throw (ex-info "Invalid reply-to address" {:value new-value})))))
 
 (defsetting email-smtp-host

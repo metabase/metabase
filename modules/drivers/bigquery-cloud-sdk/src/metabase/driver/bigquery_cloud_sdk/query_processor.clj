@@ -435,7 +435,7 @@
 
 (defmethod sql.qp/date [:bigquery-cloud-sdk :week]
   [_ _ expr]
-  (trunc (keyword (format "week(%s)" (name (setting/get-value-of-type :keyword :start-of-week)))) expr))
+  (trunc (keyword (format "week(%s)" (name (setting/get-parsed-value :start-of-week)))) expr))
 
 ;; TODO: bigquery supports week(weekday), maybe we don't have to do the complicated math for bigquery?
 (defmethod sql.qp/date [:bigquery-cloud-sdk :week-of-year-iso] [_ _ expr] (extract :isoweek expr))

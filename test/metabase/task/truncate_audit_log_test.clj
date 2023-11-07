@@ -32,7 +32,7 @@
         (mt/with-temp-env-var-value [mb-audit-max-retention-days 0]
           (is (= ##Inf (truncate-audit-log.i/audit-max-retention-days))))
 
-        (mt/with-temp-env-var-value [mb-audit-max-retention-days 100]
+        (mt/with-temp-env-var-value [mb-audit-max-retention-days "100"]
           (is (= 100 (truncate-audit-log.i/audit-max-retention-days))))
 
         ;; Acceptable values have a lower bound of 30

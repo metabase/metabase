@@ -29,7 +29,7 @@
   :getter (fn []
             (if-not (premium-features/is-hosted?)
               ##Inf
-              (let [env-var-value      (setting/get-value-of-type :integer :audit-max-retention-days)
+              (let [env-var-value      (setting/get-parsed-value :audit-max-retention-days)
                     min-retention-days truncate-audit-log.i/min-retention-days]
                 (cond
                   ((some-fn nil? zero?) env-var-value) ##Inf

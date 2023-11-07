@@ -253,7 +253,7 @@
   (driver/with-driver :h2
     (binding [hx/*honey-sql-version* 2]
       (with-redefs [driver/db-start-of-week   (constantly :monday)
-                    setting/get-value-of-type (constantly :sunday)]
+                    setting/get-parsed-value (constantly :sunday)]
         (is (= [:dateadd
                 (hx/literal "day")
                 (hx/with-database-type-info [:cast [:inline -1] [:raw "long"]] "long")
@@ -267,7 +267,7 @@
                (sql.qp/adjust-start-of-week :h2 (partial hx/call :week) :created_at)))))
     (testing "Do we skip the adjustment if offset = 0"
       (with-redefs [driver/db-start-of-week   (constantly :monday)
-                    setting/get-value-of-type (constantly :monday)]
+                    setting/get-parsed-value (constantly :monday)]
         (is (= (hx/call :week :created_at)
                (sql.qp/adjust-start-of-week :h2 (partial hx/call :week) :created_at)))))))
 

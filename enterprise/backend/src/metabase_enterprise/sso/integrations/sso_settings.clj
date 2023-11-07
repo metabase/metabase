@@ -46,7 +46,7 @@ open it in a text editor, then copy and paste the certificate's contents here.")
             ;; when setting the idp cert validate that it's something we
              (when new-value
                (validate-saml-idp-cert new-value))
-             (setting/set-value-of-type! :string :saml-identity-provider-certificate new-value)))
+             (setting/set-parsed-value! :saml-identity-provider-certificate new-value)))
 
 (defsetting saml-identity-provider-issuer
   (deferred-tru "This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'. Depending
@@ -108,7 +108,7 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   :cache?  false
   :default {}
   :feature :sso-saml
-  :setter  (comp (partial setting/set-value-of-type! :json :saml-group-mappings)
+  :setter  (comp (partial setting/set-parsed-value! :saml-group-mappings)
                  (partial mu/validate-throw validate-group-mappings)))
 
 (defsetting saml-configured
@@ -128,7 +128,7 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   :feature :sso-saml
   :getter  (fn []
              (if (saml-configured)
-               (setting/get-value-of-type :boolean :saml-enabled)
+               (setting/get-parsed-value :saml-enabled)
                false)))
 
 (defsetting jwt-identity-provider-uri
@@ -176,7 +176,7 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   :cache?  false
   :default {}
   :feature :sso-jwt
-  :setter  (comp (partial setting/set-value-of-type! :json :jwt-group-mappings)
+  :setter  (comp (partial setting/set-parsed-value! :jwt-group-mappings)
                  (partial mu/validate-throw validate-group-mappings)))
 
 (defsetting jwt-configured
@@ -196,12 +196,13 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   :feature :sso-jwt
   :getter  (fn []
              (if (jwt-configured)
-               (setting/get-value-of-type :boolean :jwt-enabled)
+               (setting/get-parsed-value :jwt-enabled)
                false)))
 
 (define-multi-setting-impl integrations.common/send-new-sso-user-admin-email? :ee
-  :getter (fn [] (setting/get-value-of-type :boolean :send-new-sso-user-admin-email?))
-  :setter (fn [send-emails] (setting/set-value-of-type! :boolean :send-new-sso-user-admin-email? send-emails)))
+  :getter (fn [] (setting/get-parsed-value :send-new-sso-user-admin-email?))
+  :setter (fn [send-emails]
+            (setting/set-raw-value! :send-new-sso-user-admin-email? (setting/->string send-emails))))
 
 (defsetting other-sso-enabled?
   "Are we using an SSO integration other than LDAP or Google Auth? These integrations use the `/auth/sso` endpoint for

@@ -64,7 +64,7 @@
   [path]
   (spit-yaml (str path "/settings.yaml")
              (into {} (for [{:keys [key value]} (setting/admin-writable-site-wide-settings
-                                                 :getter (partial setting/get-value-of-type :string))]
+                                                 :getter setting/get-parsed-value)]
                         [key value]))))
 
 (defn dump-dimensions
