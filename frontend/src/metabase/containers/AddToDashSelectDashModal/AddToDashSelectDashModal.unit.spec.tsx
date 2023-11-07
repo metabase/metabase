@@ -685,7 +685,7 @@ describe("AddToDashSelectDashModal", () => {
             ).toBeInTheDocument();
           });
 
-          describe('when "Create a new dashboard" option is clicked', () => {
+          describe('when "Create a new dashboard" option is clicked when opening personal collections', () => {
             beforeEach(async () => {
               // "Create a new dashboard" option only renders when opening personal collections
               userEvent.click(
@@ -726,7 +726,7 @@ describe("AddToDashSelectDashModal", () => {
               ).not.toBeInTheDocument();
             });
 
-            it('should not render "New collection" option', async () => {
+            it('should not render "New collection" option when opening the root collection (public collection)', async () => {
               // Create a new dashboard modal
               expect(
                 screen.getByRole("heading", { name: "New dashboard" }),
@@ -745,7 +745,7 @@ describe("AddToDashSelectDashModal", () => {
               ).not.toBeInTheDocument();
             });
 
-            describe('when "New collection" option is clicked', () => {
+            describe('when "New collection" option is clicked when opening personal collections', () => {
               beforeEach(async () => {
                 // Create a new dashboard modal
                 userEvent.click(screen.getByTestId("select-button"));
