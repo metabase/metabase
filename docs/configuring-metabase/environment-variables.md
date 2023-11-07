@@ -1198,6 +1198,8 @@ Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about 
 
 Learn more about SameSite cookies: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite
 
+NOTE: setting this value to "none" will make Chrome and Safari to reject the authentication on non-embedded contexts.
+
 ### `MB_SESSION_COOKIES`
 
 Type: boolean<br>
