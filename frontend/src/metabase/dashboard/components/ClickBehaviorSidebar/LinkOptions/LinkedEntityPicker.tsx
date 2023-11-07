@@ -1,9 +1,11 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
+import { useDashboardQuery } from "metabase/common/hooks";
 import { Icon } from "metabase/core/components/Icon";
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import { Select } from "metabase/ui";
 
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
@@ -22,6 +24,7 @@ import type {
   CardId,
   ClickBehavior,
   EntityCustomDestinationClickBehavior,
+  DashboardTab,
 } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
 
@@ -49,6 +52,8 @@ const LINK_TARGETS = {
     getPickerButtonLabel: () => t`Pick a dashboard…`,
   },
 };
+
+const NO_DASHBOARD_TABS: DashboardTab[] = [];
 
 function PickerControl({
   clickBehavior,
@@ -91,17 +96,17 @@ function getTargetClickMappingsHeading(entity: Question | Dashboard) {
 }
 
 function TargetClickMappings({
-  isDash,
+  isDashboard,
   clickBehavior,
   dashcard,
   updateSettings,
 }: {
-  isDash: boolean;
+  isDashboard: boolean;
   clickBehavior: EntityCustomDestinationClickBehavior;
   dashcard: DashboardCard;
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }) {
-  const Entity = isDash ? Dashboards : Questions;
+  const Entity = isDashboard ? Dashboards : Questions;
   return (
     <Entity.Loader id={clickBehavior.targetId}>
       {({ object }: { object: Question | Dashboard }) => (
@@ -110,7 +115,7 @@ function TargetClickMappings({
           <ClickMappings
             object={object}
             dashcard={dashcard}
-            isDash={isDash}
+            isDashboard={isDashboard}
             clickBehavior={clickBehavior}
             updateSettings={updateSettings}
           />
@@ -129,20 +134,36 @@ function LinkedEntityPicker({
   clickBehavior: EntityCustomDestinationClickBehavior;
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }) {
-  const { linkType } = clickBehavior;
+  const { linkType, targetId } = clickBehavior;
+  const isDashboard = linkType === "dashboard";
   const hasSelectedTarget = clickBehavior.targetId != null;
   const { PickerComponent, getModalTitle } = LINK_TARGETS[linkType];
 
   const handleSelectLinkTargetEntityId = useCallback(
     targetId => {
-      const nextSettings = { ...clickBehavior, targetId };
       const isNewTargetEntity = targetId !== clickBehavior.targetId;
-      if (isNewTargetEntity) {
-        // For new target entity, parameter mappings for the previous link target
-        // don't make sense and have to be reset
-        nextSettings.parameterMapping = {};
+
+      if (!isNewTargetEntity) {
+        return;
       }
-      updateSettings(nextSettings);
+
+      // For new target entity, parameter mappings for the previous link target
+      // don't make sense and have to be reset.
+      // The same goes for tabId when changing dashboard link target.
+      if (clickBehavior.linkType === "dashboard") {
+        updateSettings({
+          ...clickBehavior,
+          targetId,
+          parameterMapping: {},
+          tabId: undefined,
+        });
+      } else {
+        updateSettings({
+          ...clickBehavior,
+          targetId,
+          parameterMapping: {},
+        });
+      }
     },
     [clickBehavior, updateSettings],
   );
@@ -156,6 +177,61 @@ function LinkedEntityPicker({
       linkType: null,
     });
   }, [clickBehavior, updateSettings]);
+
+  const { data: dashboard } = useDashboardQuery({
+    enabled: isDashboard,
+    id: targetId,
+  });
+  const dashboardTabs = dashboard?.tabs ?? NO_DASHBOARD_TABS;
+  const defaultDashboardTabId: number | undefined = dashboardTabs[0]?.id;
+  const dashboardTabId = isDashboard
+    ? clickBehavior.tabId ?? defaultDashboardTabId
+    : undefined;
+  const dashboardTabExists = dashboardTabs.some(
+    tab => tab.id === dashboardTabId,
+  );
+  const dashboardTabIdValue =
+    typeof dashboardTabId === "undefined" ? undefined : String(dashboardTabId);
+
+  const handleDashboardTabChange = (value: string) => {
+    if (!isDashboard) {
+      throw new Error("This should never happen");
+    }
+
+    updateSettings({ ...clickBehavior, tabId: Number(value) });
+  };
+
+  useEffect(
+    function migrateUndefinedDashboardTabId() {
+      if (
+        isDashboard &&
+        typeof clickBehavior.tabId === "undefined" &&
+        typeof defaultDashboardTabId !== "undefined"
+      ) {
+        updateSettings({ ...clickBehavior, tabId: defaultDashboardTabId });
+      }
+    },
+    [clickBehavior, defaultDashboardTabId, isDashboard, updateSettings],
+  );
+
+  useEffect(
+    function migrateDeletedTab() {
+      if (
+        isDashboard &&
+        !dashboardTabExists &&
+        typeof defaultDashboardTabId !== "undefined"
+      ) {
+        updateSettings({ ...clickBehavior, tabId: defaultDashboardTabId });
+      }
+    },
+    [
+      clickBehavior,
+      dashboardTabExists,
+      defaultDashboardTabId,
+      isDashboard,
+      updateSettings,
+    ],
+  );
 
   return (
     <div>
@@ -187,9 +263,23 @@ function LinkedEntityPicker({
           )}
         </ModalWithTrigger>
       </div>
+
+      {isDashboard && dashboardTabs.length > 1 && (
+        <Select
+          data={dashboardTabs.map(tab => ({
+            label: tab.name,
+            value: String(tab.id),
+          }))}
+          label={t`Select a dashboard tab`}
+          mt="md"
+          value={dashboardTabIdValue}
+          onChange={handleDashboardTabChange}
+        />
+      )}
+
       {hasSelectedTarget && (
         <TargetClickMappings
-          isDash={linkType === "dashboard"}
+          isDashboard={isDashboard}
           clickBehavior={clickBehavior}
           dashcard={dashcard}
           updateSettings={updateSettings}

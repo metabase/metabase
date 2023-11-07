@@ -5,6 +5,7 @@ import {
   setupCollectionByIdEndpoint,
   setupDatabaseEndpoints,
   setupTableEndpoints,
+  setupUserRecipientsEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -76,6 +77,7 @@ async function setup({
   setupCollectionByIdEndpoint({
     collections: [MOCK_COLLECTION],
   });
+  setupUserRecipientsEndpoint({ users: [MOCK_USER, MOCK_OTHER_USER] });
 
   const result = createSearchResult({ model, ...resultProps });
 

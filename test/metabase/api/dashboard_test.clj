@@ -1580,8 +1580,10 @@
                  updated-card-2
                  new-card]
                 cards))
-       ;; dashcard 3 is deleted
-       (is (nil? (t2/select-one DashboardCard :id dashcard-id-3)))))))
+        ;; dashcard 3 is deleted
+        (is (nil? (t2/select-one DashboardCard :id dashcard-id-3)))
+        (testing "only one revision is created"
+          (is (= 1 (t2/count :model/Revision :model_id dashboard-id))))))))
 
 (deftest e2e-update-tabs-only-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete tabs in a single req"
