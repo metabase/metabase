@@ -32,7 +32,7 @@ export const EmbeddingAppSameSiteCookieDescription = () => {
       <Text>{t`Determines whether or not cookies are allowed to be sent on cross-site requests. You’ll likely need to change this to None if your embedding application is hosted under a different domain than Metabase. Otherwise, leave it set to Lax, as it's more secure.`}</Text>
       <Text>{jt`If you set this to None, you'll have to use HTTPS (unless you're just embedding locally), or browsers will reject the request. ${(
         <ExternalLink key="learn-more" href={docsUrl}>
-          Learn more
+          {t`Learn more`}
         </ExternalLink>
       )}`}</Text>
     </Stack>
@@ -53,7 +53,7 @@ function AuthorizedOriginsNote() {
     >
       <Text>{jt`You should probably change this setting to ${(
         <Text span fw="bold">
-          None
+          {t`None`}
         </Text>
       )}.`}</Text>
     </Center>
