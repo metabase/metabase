@@ -313,6 +313,7 @@ class ChartSettings extends Component {
 
     // This sorts the section radio buttons.
     const sectionSortOrder = [
+      "card",
       "data",
       "display",
       "axes",

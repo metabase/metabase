@@ -12,6 +12,7 @@ import {
 
 const COMMON_SETTINGS = {
   "card.title": {
+    section: t`Card`,
     title: t`Title`,
     widget: "input",
     getDefault: series => (series.length === 1 ? series[0].card.name : null),
@@ -19,6 +20,7 @@ const COMMON_SETTINGS = {
     useRawSeries: true,
   },
   "card.description": {
+    section: t`Card`,
     title: t`Description`,
     widget: "input",
     getDefault: series =>
@@ -27,6 +29,7 @@ const COMMON_SETTINGS = {
     useRawSeries: true,
   },
   "card.hide_empty": {
+    section: t`Card`,
     title: t`Hide this card if there are no results`,
     widget: "toggle",
     inline: true,

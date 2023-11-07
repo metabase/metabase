@@ -47,6 +47,9 @@ function ChartSettingsButton({
         isDashboard
         dashboard={dashboard}
         dashcard={dashcard}
+        initial={{
+          section: t`Card`,
+        }}
       />
     </ModalWithTrigger>
   );
