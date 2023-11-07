@@ -1,7 +1,9 @@
 import _ from "underscore";
 
 import type { Draft } from "@reduxjs/toolkit";
-import type { DashboardState } from "metabase-types/store";
+import { t } from "ttag";
+import { truncate } from "humanize-plus";
+import type { DashboardState, StoreDashcard } from "metabase-types/store";
 import type {
   Dashboard,
   DashboardId,
@@ -57,3 +59,25 @@ export function haveDashboardCardsChanged(
     )
   );
 }
+
+export const getDashCardMoveToTabUndoMessage = (dashCard: StoreDashcard) => {
+  const virtualCardType =
+    dashCard.visualization_settings?.virtual_card?.display;
+
+  if (dashCard.card.name) {
+    return truncate(t`Card moved: ${dashCard.card.name}`, 75);
+  }
+
+  switch (virtualCardType) {
+    case "action":
+      return t`Action card moved`;
+    case "text":
+      return t`Text card moved`;
+    case "heading":
+      return t`Heading card moved`;
+    case "link":
+      return t`Link card moved`;
+    default:
+      return t`Card moved`;
+  }
+};

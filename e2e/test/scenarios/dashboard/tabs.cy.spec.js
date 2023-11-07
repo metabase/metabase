@@ -130,6 +130,12 @@ describe("scenarios > dashboard > tabs", () => {
       cy.findAllByTestId("toast-undo").should("have.length", 2);
       getDashboardCards().should("have.length", 0);
 
+      cy.log("should show undo toast with the correct text");
+      cy.findByTestId("undo-list").within(() => {
+        cy.findByText("Text card moved").should("be.visible");
+        cy.findByText("Card moved: Orders").should("be.visible");
+      });
+
       cy.log("cards should be in second tab");
       goToTab("Tab 2");
       getDashboardCards().should("have.length", 2);
