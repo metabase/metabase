@@ -380,10 +380,12 @@ export const tabsReducer = createReducer<DashboardState>(
         state,
         filterRemovedTabs: true,
       });
+
       if (!prevDash) {
-        throw Error(
-          `Dashboards.action.update was dispatched but prevDash (${prevDash}) is null`,
-        );
+        // If there's no previous version of the dashboard loaded we don't need to update
+        // the IDs of dashcards and tabs. The app can't be in a state where the dashcards
+        // and tabs have been updated.
+        return;
       }
 
       // 1. Replace temporary with real dashcard ids
