@@ -1,3 +1,4 @@
+import { t } from "ttag";
 import type {
   Card,
   DashboardCard,
@@ -18,6 +19,7 @@ import {
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 import { getDashCardById } from "metabase/dashboard/selectors";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
+import { addUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Dispatch, GetState } from "metabase-types/store";
 import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
@@ -41,6 +43,10 @@ export function autoWireDashcardsWithMatchingParameters(
       parameter_id,
     );
 
+    if (dashcardsToAutoApply.length === 0) {
+      return;
+    }
+
     const dashcardAttributes = getAutoWiredMappingsForDashcards(
       dashcard,
       dashcardsToAutoApply,
@@ -52,6 +58,31 @@ export function autoWireDashcardsWithMatchingParameters(
     dispatch(
       setMultipleDashCardAttributes({
         dashcards: dashcardAttributes,
+      }),
+    );
+
+    dispatch(
+      addUndo({
+        message: t`This filter has been auto-connected with questions with the same field.`,
+        actionLabel: t`Undo auto-connection`,
+        undo: true,
+        action: () => {
+          dispatch(
+            setMultipleDashCardAttributes({
+              dashcards: dashcardsToAutoApply.map(dc => ({
+                id: dc.id,
+                attributes: {
+                  parameter_mappings: getParameterMappings(
+                    dc,
+                    parameter_id,
+                    dc.card.id,
+                    null,
+                  ),
+                },
+              })),
+            }),
+          );
+        },
       }),
     );
   };

@@ -115,7 +115,7 @@ export function getParameterMappings(
   dashcard: DashboardCard,
   parameter_id: ParameterId,
   card_id: CardId,
-  target: ParameterTarget,
+  target: ParameterTarget | null,
 ) {
   const isVirtual = isVirtualDashCard(dashcard);
   const isAction = isActionDashCard(dashcard);
