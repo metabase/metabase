@@ -16,7 +16,7 @@ import type {
 import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard } from "metabase/dashboard/utils";
 
-import { DashCardTabMenu } from "../DashCardTabMenu/DashCardTabMenu";
+import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
 import DashCardActionButton from "./DashCardActionButton";
 
 import AddSeriesButton from "./AddSeriesButton";

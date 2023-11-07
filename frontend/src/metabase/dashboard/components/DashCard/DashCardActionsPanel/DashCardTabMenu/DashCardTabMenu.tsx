@@ -5,7 +5,7 @@ import { Divider, Menu } from "metabase/ui";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
 import { moveDashCardToTab } from "metabase/dashboard/actions";
-import DashCardActionButton from "../DashCardActionsPanel/DashCardActionButton";
+import DashCardActionButton from "../DashCardActionButton";
 import { MoveDashCardActionContainer } from "./DashCardTabMenu.styled";
 
 interface DashCardTabMenuProps {
