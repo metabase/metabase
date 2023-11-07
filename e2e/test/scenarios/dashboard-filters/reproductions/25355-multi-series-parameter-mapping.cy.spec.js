@@ -77,8 +77,8 @@ const createDashboard = () => {
     dashboardDetails,
   }).then(({ body: { id, card_id, dashboard_id } }) => {
     cy.createQuestion(question2Details).then(({ body: { id: card_2_id } }) => {
-      cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-        cards: [
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        dashcards: [
           {
             id,
             card_id,

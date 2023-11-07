@@ -747,8 +747,8 @@ describe("scenarios > dashboard", () => {
     });
 
     cy.log("Connect filter to the existing card");
-    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}/cards`, {
-      cards: [
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      dashcards: [
         {
           id: 1,
           card_id: 1,
@@ -808,8 +808,8 @@ describe("scenarios > dashboard", () => {
         }).then(({ body: { id: NEW_DASHBOARD_ID } }) => {
           const COLUMN_REF = `["ref",["field-id",${ORDERS.ID}]]`;
           // Add click behavior to the existing "Orders in a dashboard" dashboard
-          cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}/cards`, {
-            cards: [
+          cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+            dashcards: [
               {
                 id: ORDERS_DASHBOARD_DASHCARD_ID,
                 card_id: ORDERS_QUESTION_ID,
@@ -853,8 +853,8 @@ describe("scenarios > dashboard", () => {
 
   it("should be possible to scroll vertically after fullscreen layer is closed (metabase#15596)", () => {
     // Make this dashboard card extremely tall so that it spans outside of visible viewport
-    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}/cards`, {
-      cards: [
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      dashcards: [
         {
           id: ORDERS_DASHBOARD_DASHCARD_ID,
           card_id: ORDERS_QUESTION_ID,
@@ -897,8 +897,8 @@ describe("scenarios > dashboard", () => {
     });
 
     cy.log("Connect filter to the existing card");
-    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}/cards`, {
-      cards: [
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      dashcards: [
         {
           id: ORDERS_DASHBOARD_DASHCARD_ID,
           card_id: ORDERS_QUESTION_ID,

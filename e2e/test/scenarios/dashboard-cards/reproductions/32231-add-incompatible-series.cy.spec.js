@@ -46,8 +46,8 @@ describe("issue 32231", () => {
     cy.createNativeQuestion(incompleteQuestion);
     cy.createQuestionAndDashboard({ questionDetails: baseQuestion }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
-        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-          cards: [
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
             {
               id,
               card_id,
@@ -93,8 +93,8 @@ describe("issue 32231", () => {
     cy.createNativeQuestionAndDashboard({
       questionDetails: incompleteQuestion,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
-      cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-        cards: [
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        dashcards: [
           {
             id,
             card_id,

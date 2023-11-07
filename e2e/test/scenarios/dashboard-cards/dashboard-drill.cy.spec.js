@@ -385,8 +385,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
           });
 
           // Connect filter to the dashboard card
-          cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-            cards: [
+          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+            dashcards: [
               {
                 id,
                 card_id,
@@ -454,8 +454,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
         },
       ],
     });
-    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}/cards`, {
-      cards: [
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      dashcards: [
         {
           id: ORDERS_DASHBOARD_DASHCARD_ID,
           card_id: ORDERS_QUESTION_ID,
@@ -515,8 +515,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
 
     cy.log("Connect filter to the existing card");
-    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}/cards`, {
-      cards: [
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      dashcards: [
         {
           id: ORDERS_DASHBOARD_DASHCARD_ID,
           card_id: ORDERS_QUESTION_ID,
@@ -879,8 +879,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
       });
 
       // Connect those filters to the existing dashboard card
-      cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}/cards`, {
-        cards: [
+      cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+        dashcards: [
           {
             id: ORDERS_DASHBOARD_DASHCARD_ID,
             card_id: ORDERS_QUESTION_ID,

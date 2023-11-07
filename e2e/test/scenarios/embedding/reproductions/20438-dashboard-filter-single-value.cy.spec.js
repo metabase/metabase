@@ -52,8 +52,8 @@ describe("issue 20438", () => {
       dashboardDetails,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
       // Connect filter to the card
-      cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-        cards: [
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        dashcards: [
           {
             id,
             card_id,

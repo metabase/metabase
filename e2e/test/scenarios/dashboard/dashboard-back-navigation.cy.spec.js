@@ -398,8 +398,8 @@ const createDashboardWithCards = () => {
       cy.createQuestion(modelDetails).then(({ body: { id: model_id } }) => {
         createAction({ ...actionDetails, model_id }).then(
           ({ body: { id: action_id } }) => {
-            cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-              cards: [
+            cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+              dashcards: [
                 { id: -1, card_id: question_id, ...questionDashcardDetails },
                 getTextCardDetails({ id: -2, size_y: 1 }),
                 getActionCardDetails({ id: -3, action_id }),
@@ -475,8 +475,8 @@ const createDashboardWithSlowCard = () => {
     questionDetails,
     dashboardDetails,
   }).then(({ body: { id, card_id, dashboard_id } }) => {
-    cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-      cards: [
+    cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+      dashcards: [
         {
           id,
           card_id,
@@ -524,8 +524,8 @@ const createDashboardWithPermissionError = () => {
     cy.createQuestion(question2Details).then(({ body: { id: card_id_2 } }) => {
       cy.createDashboard(dashboardDetails).then(
         ({ body: { id: dashboard_id } }) => {
-          cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-            cards: [
+          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+            dashcards: [
               { id: -1, card_id: card_id_1, ...dashcard1Details },
               { id: -2, card_id: card_id_2, ...dashcard2Details },
             ],
