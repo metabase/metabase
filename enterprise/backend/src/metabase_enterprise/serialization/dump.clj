@@ -1,6 +1,7 @@
 (ns metabase-enterprise.serialization.dump
   "Serialize entities into a directory structure of YAMLs."
   (:require
+   [clojure.edn :as edn]
    [clojure.java.io :as io]
    [metabase-enterprise.serialization.names
     :refer [fully-qualified-name name-for-logging safe-name]]
@@ -17,7 +18,6 @@
    [metabase.models.setting :as setting]
    [metabase.models.table :refer [Table]]
    [metabase.models.user :refer [User]]
-   [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
@@ -25,13 +25,42 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private serialization-order
+  (delay (-> (edn/read-string (slurp (io/resource "serialization-order.edn")))
+             (update-keys name)
+             (update-vals (fn [order]
+                            (into {} (map vector order (range))))))))
+
+(def ^:private serialization-sorted-map
+  (memoize
+   (fn [t]
+     (if-let [order (get @serialization-order t)]
+       ;; known columns are sorted by their order, then unknown are sorted alphabetically
+       (let [getter #(if (contains? order %)
+                       [0 (get order %)]
+                       [1 %])]
+         (sorted-map-by (fn [k1 k2]
+                          (compare (getter k1) (getter k2)))))
+       (sorted-map)))))
+
+(defn- serialization-deep-sort [m]
+  (let [t    (-> (:serdes/meta m) last :model)
+        smap (serialization-sorted-map t)]
+    (into smap
+          (update-vals m (fn [val]
+                           (cond
+                             (map? val)               (serialization-deep-sort val)
+                             (and (sequential? val)
+                                  (map? (first val))) (into (empty val) (map serialization-deep-sort val))
+                             :else                    val))))))
+
 (defn spit-yaml
   "Writes obj to filename and creates parent directories if necessary.
 
   Writes (even nested) yaml keys in a deterministic fashion."
   [filename obj]
   (io/make-parents filename)
-  (spit filename (yaml/generate-string (u/deep-sort-map obj)
+  (spit filename (yaml/generate-string (serialization-deep-sort obj)
                                        {:dumper-options {:flow-style :block :split-lines false}})))
 
 (defn- as-file?

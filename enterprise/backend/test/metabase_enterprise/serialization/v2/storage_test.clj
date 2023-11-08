@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.storage :as storage]
@@ -168,7 +169,23 @@
                                (doseq [coll (->> (yaml/parse-string yaml-data)
                                                  (tree-seq coll? identity)
                                                  (filter map?))]
-                                 (when (seq coll)
-                                   (is (= (sort (keys coll))
-                                          (keys coll)))))))]
+                                 (let [t     (-> (:serdes/meta coll) last :model)
+                                       order (when t
+                                               (get @@#'dump/serialization-order t))]
+                                   (if-not order
+                                     (is (= (not-empty (sort (keys coll)))
+                                            (keys coll)))
+                                     (testing t
+                                       (loop [[k :as ks] (keys coll)
+                                              idx        -1]
+                                         (let [new-idx (get order k)]
+                                           (if (nil? new-idx)
+                                             ;; rest are sorted alphabetically
+                                             (is (= (sort ks)
+                                                    ks))
+                                             (do
+                                               ;; check every present key is sorted in a monotone increasing order
+                                               (is (< idx (get order k)))
+                                               (recur (rest ks)
+                                                      (long new-idx))))))))))))]
           (storage/store! export "/non-existent"))))))
