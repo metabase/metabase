@@ -227,7 +227,11 @@ const dashcards = handleActions(
     }),
     [UNDO_REMOVE_CARD_FROM_DASH]: (state, { payload: { dashcardId } }) => ({
       ...state,
-      [dashcardId]: { ...state[dashcardId], isRemoved: false },
+      [dashcardId]: {
+        ...state[dashcardId],
+        isRemoved: false,
+        row: state[dashcardId].row - 0.1,
+      },
     }),
     [MARK_NEW_CARD_SEEN]: (state, { payload: dashcardId }) => ({
       ...state,

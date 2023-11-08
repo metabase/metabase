@@ -366,7 +366,9 @@ export const tabsReducer = createReducer<DashboardState>(
       ) => {
         const dashCard = state.dashcards[dashCardId];
 
-        dashCard.row = originalRow;
+        // when a card is moved, another card could steal its position,
+        // this trick gives the original tab precedence on the position
+        dashCard.row = originalRow - 0.1;
         dashCard.col = originalCol;
         dashCard.dashboard_tab_id = originalTabId;
         dashCard.isDirty = true;
