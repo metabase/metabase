@@ -3,14 +3,13 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.field-values :refer [FieldValues]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.models.metric :refer [Metric]]
    [metabase.models.permissions :as perms :refer [Permissions]]
-   [metabase.models.segment :refer [Segment]]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [methodical.core :as methodical]
@@ -179,7 +178,7 @@
   [tables]
   (with-objects :segments
     (fn [table-ids]
-      (t2/select Segment :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+      (t2/select :model/Segment :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
     tables))
 
 (mi/define-batched-hydration-method with-metrics
@@ -188,7 +187,7 @@
   [tables]
   (with-objects :metrics
     (fn [table-ids]
-      (t2/select Metric :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+      (t2/select :model/Metric :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
     tables))
 
 (defn with-fields
@@ -253,3 +252,9 @@
 (defmethod serdes/storage-path "Table" [table _ctx]
   (concat (serdes/storage-table-path-prefix (serdes/path table))
           [(:name table)]))
+
+;;; -------------------------------------------------- Audit Log Table -------------------------------------------------
+
+(defmethod audit-log/model-details Table
+  [table _event-type]
+  (select-keys table [:id :name :db_id]))

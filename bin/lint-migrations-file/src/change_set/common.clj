@@ -3,6 +3,8 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]))
 
+(set! *warn-on-reflection* true)
+
 ;; See PR #18821 for more info on the new migration ID format adopted in 0.42.0+
 
 (s/def ::legacy-id

@@ -5,7 +5,9 @@ import {
   isPersonalCollection,
   isRootCollection,
 } from "metabase/collections/utils";
+import { color } from "metabase/lib/colors";
 import type { Collection } from "metabase-types/api";
+
 import {
   CaptionDescription,
   CaptionRoot,
@@ -18,7 +20,7 @@ export interface CollectionCaptionProps {
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
 }
 
-const CollectionCaption = ({
+export const CollectionCaption = ({
   collection,
   onUpdateCollection,
 }: CollectionCaptionProps): JSX.Element => {
@@ -44,10 +46,7 @@ const CollectionCaption = ({
   return (
     <CaptionRoot>
       <CaptionTitleContainer>
-        <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
-          collection={collection}
-          size={24}
-        />
+        <CollectionCaptionIcon collection={collection} />
         <CaptionTitle
           key={collection.id}
           initialValue={collection.name}
@@ -74,5 +73,22 @@ const CollectionCaption = ({
   );
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default CollectionCaption;
+const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
+  if (!collection.type) {
+    return (
+      <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
+        collection={collection}
+        size={24}
+      />
+    );
+  } else {
+    return (
+      <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
+        size={24}
+        color={color("brand")}
+        collection={collection}
+        entity="collection"
+      />
+    );
+  }
+};

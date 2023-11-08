@@ -38,10 +38,12 @@
           (recur rest-x rest-y)
           (recur xs rest-y)))))
 
+(def ^:private default-collection {:id false :name nil :authority_level nil :type nil})
+
 (def ^:private default-search-row
   {:archived                   false
    :bookmark                   nil
-   :collection                 {:id false :name nil :authority_level nil}
+   :collection                 default-collection
    :collection_authority_level nil
    :collection_position        nil
    :context                    nil
@@ -95,7 +97,8 @@
 (def ^:private test-collection (make-result "collection test collection"
                                             :bookmark false
                                             :model "collection"
-                                            :collection {:id true, :name true :authority_level nil}
+                                            ;; TODO the default-collection data for this doesn't make sense:
+                                            :collection (assoc default-collection :id true :name true)
                                             :updated_at false))
 
 (def ^:private action-model-params {:name "ActionModel", :dataset true})
@@ -131,7 +134,7 @@
 
 (defn- default-results-with-collection []
   (on-search-types #{"dashboard" "pulse" "card" "dataset" "action"}
-                   #(assoc % :collection {:id true, :name (if (= (:model %) "action") nil true) :authority_level nil})
+                   #(assoc % :collection {:id true, :name (if (= (:model %) "action") nil true) :authority_level nil :type nil})
                    (default-search-results)))
 
 (defn- do-with-search-items [search-string in-root-collection? f]
@@ -241,6 +244,7 @@
              [:like [:lower :display_name]      "%foo%"] [:inline 0]
              [:like [:lower :description]       "%foo%"] [:inline 0]
              [:like [:lower :collection_name]   "%foo%"] [:inline 0]
+             [:like [:lower :collection_type]   "%foo%"] [:inline 0]
              [:like [:lower :table_schema]      "%foo%"] [:inline 0]
              [:like [:lower :table_name]        "%foo%"] [:inline 0]
              [:like [:lower :table_description] "%foo%"] [:inline 0]

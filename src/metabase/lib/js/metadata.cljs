@@ -232,8 +232,9 @@
                                           (walk/keywordize-keys v)
                                           (js->clj v :keywordize-keys true))
       :has-field-values                 (keyword v)
-      :lib/source                       (if (= v "aggregation")
-                                          :source/aggregations
+      :lib/source                       (case v
+                                          "aggregation" :source/aggregations
+                                          "breakout"    :source/breakouts
                                           (keyword "source" v))
       :metabase.lib.field/temporal-unit (keyword v)
       :semantic-type                    (keyword v)

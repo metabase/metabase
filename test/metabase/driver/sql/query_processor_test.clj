@@ -1074,17 +1074,17 @@
   (testing "Don't include nonsense like `+ 0.0` and `- 0.0` when generating expressions for binning"
     (binding [hx/*honey-sql-version* 2]
       (is (= ["SELECT"
-              "  FLOOR((ORDERS.QUANTITY / 10)) * 10 AS QUANTITY,"
+              "  FLOOR((ORDERS.QUANTITY / 10.0)) * 10.0 AS QUANTITY,"
               "  COUNT(*) AS count"
               "FROM"
               "  ORDERS"
               "GROUP BY"
-              "  FLOOR((ORDERS.QUANTITY / 10)) * 10"
+              "  FLOOR((ORDERS.QUANTITY / 10.0)) * 10.0"
               "ORDER BY"
-              "  FLOOR((ORDERS.QUANTITY / 10)) * 10 ASC"]
+              "  FLOOR((ORDERS.QUANTITY / 10.0)) * 10.0 ASC"]
              (->> (mbql->native (lib.tu.macros/mbql-query orders
-                                 {:aggregation [[:count]]
-                                  :breakout    [:binning-strategy $quantity :num-bins 10]}))
+                                  {:aggregation [[:count]]
+                                   :breakout    [:binning-strategy $quantity :num-bins 10]}))
                   (driver/prettify-native-form :h2)
                   str/split-lines))))))
 

@@ -33,6 +33,7 @@ import {
   setupCardsEndpoints,
   setupCardQueryEndpoints,
   setupDatabasesEndpoints,
+  setupCollectionsEndpoints,
   setupSearchEndpoints,
   setupTimelinesEndpoints,
   setupModelIndexEndpoints,
@@ -234,6 +235,7 @@ const setup = async ({
   setupDatabasesEndpoints([TEST_DB]);
   setupCardDataset(dataset);
   setupSearchEndpoints([]);
+  setupCollectionsEndpoints({ collections: [] });
   setupBookmarksEndpoints([]);
   setupTimelinesEndpoints([]);
   setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION] });

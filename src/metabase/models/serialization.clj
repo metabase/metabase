@@ -29,18 +29,83 @@
 
 (set! *warn-on-reflection* true)
 
+;;; # Serialization Overview
+;;;
+;;; Serialization (or "serdes") is a system for exporting entities (Dashboards, Cards, Collections, etc.) from one
+;;; Metabase instance to disk files, and later importing them into 1 or more separate Metabase instances.
+;;;
+;;; There are two versions of serdes, known as v1 and v2. v2 was built in late 2022 to solve some problems with v1,
+;;; especially: accidentally duplicating entities because of a human change like renaming a collection; and that several
+;;; newly added models (eg. Timelines) were not added to serdes. v1's code is in `metabase-enterprise.serialization.*`;
+;;; v2 is split between infrastructure in `metabase-enterprise.serialization.v2.*` and integration with each model in
+;;; `metabase.models.*`.
+;;;
+;;; There are tests which query the set of Toucan models and ensure that they either support serialization or are
+;;; explicitly listed as exempt. Therefore serdes for new models is not forgotten.
+;;;
+;;; ## More details
+;;; This file is probably best not read top to bottom - it's organized in `def` order, not necessarily a good order for
+;;; understanding. Probably you want to read below on the "Export process" and "Import process" next.
+
+
+;;; # Entity IDs
+;;; Every serializable entity needs the be identified in a way that is:
+;;;
+;;; 1. unique, at least among the serialized entities
+;;; 2. permanent, even if eg. a collection's `:name` changes
+;;; 3. portable between Metabase instances and over time
+;;;
+;;; Database primary keys fail (3); matching based on the value fails (2) and maybe (1). So there's no easy way to solve
+;;; this requirement. We've taken three approaches for different kinds of entities:
+;;;
+;;; 1. Some have unique names already and we can use those: Databases are uniquely named and don't change.
+;;;     - Some are unique within a namespace: Fields are unique in Tables, Tables in Schemas, Schemas in Databases.
+;;; 2. Some are "embedded" as part of a parent entity, and don't need to exist independently, eg. the recipients of a
+;;;    pulse/dashboard subscription are reduced to a list of email addresses.
+;;; 3. For everything else (Dashboards, Cards, etc.)
+;;;    - Add an `entity_id` column to the tables
+;;;    - Populate it `on-insert` with a randomly-generated NanoID like `"V1StGXR8_Z5jdHi6B-myT"`.
+;;;    - For entities that existed before the column was added, have a portable way to rebuild them (see below on
+;;;      hashing).
+
 (defmulti entity-id
   "Given the model name and an entity, returns its entity ID (which might be nil).
 
   This abstracts over the exact definition of the \"entity ID\" for a given entity.
   By default this is a column, `:entity_id`.
 
-  Models that have a different portable ID should override this."
+  Models that have a different portable ID (`Database`, `Field`, etc.) should override this."
   {:arglists '([model-name instance])}
   (fn [model-name _instance] model-name))
 
 (defmethod entity-id :default [_ {:keys [entity_id]}]
   entity_id)
+
+;;; ## Hashing entities
+;;; In the worst case, an entity is already present in two instances linked by serdes, and it doesn't have `entity_id`
+;;; set because it existed before we added the column. If we write a migration to just generate random `entity_id`s on
+;;; both sides, those entities will get duplicated on the next `import`.
+;;;
+;;; So every entity implements [[hash-fields]], which determines the set of fields whose values are used to generate the
+;;; hash. The 32-bit [[identity-hash]] is then used to seed the PRNG and generate a "random" NanoID. Since this is based
+;;; on properties of the entity, it is reproducible on both `export` and `import` sides, so entities are not duplicated.
+;;;
+;;; Before any `export` or `import`, [[metabase-enterprise.serialization.v2.backfill-ids/backfill-ids]] is called. It
+;;; does `SELECT * FROM SomeModel WHERE entity_id IS NULL` and populates all the blanks with this hash-based NanoID.
+;;;
+;;; <h3>Whoops, two kinds of backfill</h3>
+;;; Braden discovered in Nov 2023 that for more than a year, we've had two inconsistent ways to backfill all the
+;;; `entity_id` fields in an instance.
+;;;
+;;; 1. The one described above, [[metabase-enterprise.serialization.v2.backfill-ids/backfill-ids]] which runs before
+;;;    any export or import.
+;;; 2. A separate JAR command `seed_entity_ids` which is powered by
+;;;    [[metabase-enterprise.serialization.v2.entity-ids/seed-entity-ids!]] and uses the [[identity-hash]] hex strings
+;;;    directly rather than seeding a NanoID with them.
+;;;
+;;; Therefore the import machinery has to look out for both kinds of IDs and use them. This is foolish and should be
+;;; simplified. We should write a Clojure-powered migration that finds any short 8-character `entity_id`s and generates
+;;; NanoIDs from them.
 
 (defn raw-hash
   "Hashes a Clojure value into an 8-character hex string, which is used as the identity hash.
@@ -57,7 +122,13 @@
   mi/dispatch-on-model)
 
 (defn identity-hash
-  "Returns an identity hash string from an entity map."
+  "Returns an identity hash string (8 hex digits) from an `entity` map.
+
+  This string is generated by:
+  - calling [[hash-fields]] for the model
+  - passing the `entity` to each function it returns
+  - calling [[hash]] on that list
+  - converting to an 8-character hex string"
   [entity]
   {:pre [(some? entity)]}
   (-> (for [f (hash-fields entity)]
@@ -71,12 +142,36 @@
 
 (defn hydrated-hash
   "Returns a function which accepts an entity and returns the identity hash of
-   the value of the hydrated property under key k."
+   the value of the hydrated property under key k.
+
+  This is a helper for writing [[hash-fields]] implementations."
   [k]
   (fn [entity]
     (or
      (some-> entity (t2/hydrate k) (get k) identity-hash)
      "<none>")))
+
+;;; # Serdes paths and <tt>:serdes/meta</tt>
+;;; The Clojure maps from extraction and ingestion always include a special key `:serdes/meta` giving some information
+;;; about the serialized entity. The value is always a vector of maps that give a "path" to the entity. This is **not**
+;;; a filesystem path; rather it defines the nesting of some entities inside others.
+;;;
+;;; Most paths are a single layer:
+;;; `[{:model "ModelName" :id "entity ID" :label "Human-readonly name"}]`
+;;; where `:model` and `:id` are required, and `:label` is optional.
+;;;
+;;; But for some entities, it can be deeper. For example, Fields belong to Tables, which are in Schemas, which are in
+;;; Databases. (Schemas don't exist separately in the appdb, but they're used here to keep Table names unique.)
+;;; For example:
+;;; <pre><code>[{:model "Database" :id "my_db"}
+;;;  {:model "Schema"   :id "PUBLIC"}
+;;;  {:model "Table"    :id "Users"}
+;;;  {:model "Field"    :id "email"}]</code></pre>
+;;;
+;;; Many of the serdes multimethods are keyed on the `:model` field of the leaf entry (the last).
+;;;
+;;; ## Two kinds of nesting
+;;; To reiterate, `:serdes/meta` paths are not filesystem paths. When `extract`ed entities are stored to disk.
 
 (defmulti generate-path
   "Given the model name and raw entity from the database, returns a vector giving its *path*.
@@ -113,12 +208,91 @@
   ;; This default works for most models, but needs overriding for nested ones.
   (maybe-labeled model-name entity :name))
 
+;;; # Export Process
+;;; An *export* (writing a Metabase instance's entities to disk) happens in two stages: *extraction* and *storage*.
+;;; These are independent, and deliberately decoupled. The result of extraction is a reducible stream of Clojure maps,
+;;; each with `:serdes/meta` keys on them (see below about these paths). In particular, note that extraction happens
+;;; inside Clojure, and has nothing to do with file formats or anything of the kind.
+;;;
+;;; Storage takes the stream of extracted entities and actually stores it to disk or sends it over the network.
+;;; Traditionally we serialize to a directory of YAML files, and that's the only storage approach currently implemented.
+;;; But since the export process is split into (complicated) extraction and (straightforward) storage, we or a user
+;;; could write a new storage layer fairly easily if we wanted to use JSON, protocol buffers, or any other format.
+;;;
+;;; Both extraction and storage are written as a set of multimethods, with defaults for the common case.
+;;;
+;;; ## Extraction
+;;; Extraction is controlled by a map of options and settings, with details below.
+;;;
+;;; - [[metabase-enterprise.serialization.v2.models/exported-models]] gives the set of models to be exported.
+;;;     - A test enforces that all models are either exported or explicitly excluded, so we can't forget serdes for new
+;;;       models.
+;;; - [[metabase-enterprise.serialization.v2.extract/extract]] is the entry point for extraction.
+;;;     - It can work in a "selective" mode or extract everything; see below on selective serialization.
+;;; - It calls `(extract-all "ModelName" opts)` for each model.
+;;;     - By default this calls `(extract-query "ModelName" opts)`, getting back a reducible stream of entities.
+;;;     - For each entity in that stream, it calls `(extract-one "ModelName" entity)`, which converts the map from the
+;;;       database (with instance-specific FKs in it) to a portable map with `:serdes/meta` on it and all FKs replaced
+;;;       with portable references.
+;;;
+;;; The default [[extract-all]] works for nearly all models. Override [[extract-query]] if you need to control which
+;;; entities get serialized (eg. to exclude `archived` ones). Every model implements [[extract-one]] to make its
+;;; entities portable.
+;;;
+;;; ## Storage
+;;; Storage transforms the reducible stream in some arbitrary way. It returns nothing; storage is expected to have side
+;;; effects like writing files to disk or transmitting them over the network.
+;;;
+;;; Not all storage implementations use directory structure, but for those that do [[storage-path]] should give the path
+;;; for an entity as a list of strings: `["foo" "bar" "some_file"]`. Note the lack of a file extension! That is
+;;; deliberately left off the shared [[storage-path]] code so it can be set by different implementations to `.yaml`,
+;;; `.json`, etc.
+;;;
+;;; By convention, models are named as *plural* and in *lower case*:
+;;; `["collections" "1234ABC_my_collection" "dashboards" "8765def_health_metrics"]`.
+;;;
+;;; As a final remark, note that some entities have their own directories and some do not. For example, a Field is
+;;; simply a file, while a Table has a directory. So a subset of the tree might look something like this:
+;;; <pre><code>my-export/
+;;; ├── collections
+;;; └── databases
+;;;     └── Sample Database
+;;;         ├── Sample Database.yaml
+;;;         └── schemas
+;;;             └── PUBLIC
+;;;                 └── tables
+;;;                     └── ORDERS
+;;;                         ├── ORDERS.yaml
+;;;                         └── fields
+;;;                             ├── CREATED_AT.yaml
+;;;                             ├── DISCOUNT.yaml
+;;;                             ├── ID.yaml
+;;;                             ├── PRODUCT_ID.yaml
+;;;                             ├── QUANTITY.yaml
+;;;                             ├── SUBTOTAL.yaml
+;;;                             ├── TAX.yaml
+;;;                             ├── TOTAL.yaml
+;;;                             └── USER_ID.yaml
+;;; </code></pre>
+;;;
+;;; ## Selective serialization
+;;; It's common to only export certain entities from an instance, rather than everything. We might export a single
+;;; Question, or a Dashboard with all its DashboardCards and their Cards.
+;;;
+;;; There's a relation to be captured here: the *descendants* of an entity are the ones it semantically "contains", or
+;;; those it needs in order to be executed. (As when a question depends on another, or a SQL question references a
+;;; NativeQuerySnippet.
+;;;
+;;; [[descendants]] returns a set of such descendants for a given entity; see there for more details.
+;;;
+;;; *Note:* "descendants" and "dependencies" are quite different things!
+
 (defmulti extract-all
   "Entry point for extracting all entities of a particular model:
   `(extract-all \"ModelName\" {opts...})`
   Keyed on the model name.
 
-  Returns a reducible stream of extracted maps (ie. vanilla Clojure maps with `:serdes/meta` keys).
+  Returns a **reducible stream** of extracted maps (ie. vanilla Clojure maps with `:serdes/meta` keys).
 
   You probably don't want to implement this directly. The default implementation delegates to [[extract-query]] and
   [[extract-one]], which are usually more convenient to override."
@@ -133,9 +307,9 @@
 
   Keyed on the model name, the first argument.
 
-  Returns a reducible stream of modeled Toucan maps.
+  Returns a **reducible stream** of modeled Toucan maps.
 
-  Defaults to using `(toucan.t2/select model)` for the entire table.
+  Defaults to using `(t2/select model)` for the entire table.
 
   You may want to override this to eg. skip archived entities, or otherwise filter what gets serialized."
   {:arglists '([model-name opts])}
@@ -150,10 +324,9 @@
 
   That suffices for a few simple entities, but most entities will need to override this.
   They should follow the pattern of:
-  - Convert to a vanilla Clojure map, not a [[models/IModel]] instance.
-  - Drop the numeric database primary key
-  - Replace any foreign keys with portable values (eg. entity IDs or `identity-hash`es, owning user's ID with their
-    email, etc.)
+  - Convert to a vanilla Clojure map, not a modeled Toucan 2 entity.
+  - Drop the numeric database primary key (usually `:id`)
+  - Replace any foreign keys with portable values (eg. entity IDs, or a user ID with their email, etc.)
 
   When overriding this, [[extract-one-basics]] is probably a useful starting point.
 
@@ -215,6 +388,56 @@
 (defmethod descendants :default [_ _]
   nil)
 
+;;; # Import Process
+;;; Deserialization is split into two stages, mirroring serialization. They are called *ingestion* and *loading*.
+;;; Ingestion turns whatever serialized form was produced by storage (eg. a tree of YAML files) into Clojure maps with
+;;; `:serdes/meta` maps. Loading imports these entities into the appdb, updating and inserting rows as needed.
+;;;
+;;; ## Ingestion
+;;; Ingestion is intended to be a black box, like storage above.
+;;; [[metabase-enterprise.serialization.v2.ingest/Ingestable]] is defined as a protocol to allow easy [[reify]] usage
+;;; for testing deserialization in memory.
+;;;
+;;; Factory functions consume some details (like a path to the export) and return an `Ingestable` instance, with its
+;;; two methods:
+;;;
+;;; - `(ingest-list ingestable)` returns a reducible stream of `:serdes/meta` paths in any order.
+;;; - `(ingest-one ingestable meta-path)` ingests a single entity into memory, returning it as a map.
+;;;
+;;; This two-stage design avoids needing all the data in memory at once. (Assuming the underlying storage media is
+;;; something like files, and not a network stream that won't wait!)
+;;;
+;;; ## Loading
+;;; Loading tries to find, for each ingested entity, a corresponding entity in the destination appdb, using the entity
+;;; IDs. If it finds a match, that row will be `UPDATE`d, rather than `INSERT`ing a duplicate.
+;;;
+;;; The entry point is [[metabase-enterprise.serialization.v2.load/load-metabase]].
+;;;
+;;; First, `(ingest-list ingestable)` gets the `:serdes/meta` "path" for every exported entity in arbitrary order.
+;;; Then for each ingested entity:
+;;;
+;;; - `(ingest-one serdes-path opts)` is called to read the value into memory, then
+;;; - `(serdes-dependencies ingested)` gets a list of other `:serdes/meta` paths need to be loaded first.
+;;;     - See below on depenencies.
+;;; - Dependencies are loaded recursively in postorder; that is an entity is loaded after all its deps.
+;;;     - Circular dependencies will make the load process throw.
+;;; - Once an entity's deps are all loaded, we check for an existing one:
+;;;     - `(load-find-local serdes-path)` returns the corresponding entity, or nil.
+;;; - `(load-one! ingested maybe-local-entity)` is called with the `ingested` map and `nil` or the local match.
+;;;     - `load-one!` is a side-effecting black box to the rest of the deserialization process.
+;;;     - `load-one! returns the primary key of the new or existing entity, which is necessary to resolve foreign keys.
+;;;
+;;; `load-one!` has a default implementation that works for most models:
+;;;
+;;; - Call `(load-xform ingested)` to transform the ingested map as needed.
+;;;     - Override [[load-xform]] to convert any foreign keys from portable entity IDs to the local database FKs.
+;;; - Then call either:
+;;;     - `(load-update! ingested local-entity)` if the local entity exists, or
+;;;     - `(load-insert! ingested)` if it's new.
+;;;
+;;; Both `load-update!` and `load-insert!` have the obvious defaults of updating or inserting with Toucan, but they
+;;; can be overridden if special handling is needed.
+
 (defn- ingested-model
   "The dispatch function for several of the load multimethods: dispatching on the model of the incoming entity."
   [ingested]
@@ -232,10 +455,7 @@
   Returns nil, or the local Toucan entity that corresponds to the given path.
   Keyed on the model name at the leaf of the path.
 
-  By default, this tries to look up the entity by its `:entity_id` column, or identity hash, depending on the shape of
-  the incoming key. For the identity hash, this scans the entire table and builds a cache of
-  [[identity-hash]] to primary keys, since the identity hash cannot be queried directly.
-  This cache is cleared at the beginning and end of the deserialization process."
+  By default, this tries to look up the entity by its `:entity_id` column."
   {:arglists '([path])}
   (fn [path]
     (-> path last :model)))
@@ -247,6 +467,20 @@
         model                      (t2.model/resolve-model (symbol model-name))]
     (when model
       (lookup-by-id model id))))
+
+;;; ## Dependencies
+;;; The files of an export are returned in arbitrary order by [[ingest-list]]. But in order to load any entity,
+;;; everything it has a foreign key to must be loaded first. This is the purpose of one of the most complicated parts of
+;;; serdes: [[dependencies]].
+;;;
+;;; This multimethod returns a list (possibly empty) of `:serdes/meta` paths that this entity depends on. A `Card`
+;;; depends on the `Table`s it queries, the `Collection` it belongs to, and possibly much else.
+;;; Collections depend (recursively) on their parent collections.
+;;;
+;;; **Think carefully** about the dependencies of any model. Do they have optional fields that sometimes have FKs?
+;;; Eg. a DashboardCard can contain custom `click_behavior` which might include linking to a different `Card`!
+;;; Missing dependencies will cause flaky deserialization failures, since sometimes the FK target will exist already,
+;;; and sometimes not, depending on the arbitrary order of `ingest-list`.
 
 (defmulti dependencies
   "Given an entity map as ingested (not a Toucan entity) returns a (possibly empty) list of its dependencies, where each
@@ -358,6 +592,8 @@
                 (string? id-str)
                 (re-matches #"^[A-Za-z0-9_-]{21}$" id-str))))
 
+;; TODO: Clean up this [[identity-hash]] infrastructure once the `seed_entity_ids` issue is fixed. See above on the
+;; details of the two hashing schemes.
 (defn- find-by-identity-hash
   "Given a model and a target identity hash, this scans the appdb for any instance of the model corresponding to the
   hash. Does a complete scan, so this should be called sparingly!"
@@ -396,7 +632,7 @@
                 (str id "_" (truncate-label label)))))
 
 (defn storage-default-collection-path
-  "Implements the most common structure for [[storage-path]] - `collections/c1/c2/c3/models/entityid_slug.ext`"
+  "Implements the most common structure for [[storage-path]] - `collections/c1/c2/c3/models/entityid_label.ext`"
   [entity {:keys [collections]}]
   (let [{:keys [model id label]} (-> entity path last)]
     (concat ["collections"]
@@ -431,9 +667,12 @@
        (str/join " > ")))
 
 
-;; utils
+;;; # Utilities for implementing serdes
+;;; Note that many of these use `^::cache` to cache their lookups during deserialization. This greatly reduces the
+;;; number of database lookups, since many entities might belong to eg. a single collection.
 
-;; -------------------------------------------- General Foreign Keys -------------------------------------------------
+;;; ## General foreign keys
+
 (defn ^:dynamic ^::cache *export-fk*
   "Given a numeric foreign key and its model (symbol, name or IModel), looks up the entity by ID and gets its entity ID
   or identity hash.
@@ -479,7 +718,7 @@
   "Given a numeric ID, look up a different identifying field for that entity, and return it as a portable ID.
   Eg. `Database.name`.
   [[import-fk-keyed]] is the inverse.
-  Unusual parameter order lets this be called as, for example, `(update x :creator_id export-fk-keyed 'Database :name)`.
+  Unusual parameter order lets this be called as, for example, `(update x :db_id export-fk-keyed 'Database :name)`.
 
   Note: This assumes the primary key is called `:id`."
   [id model field]
@@ -495,7 +734,7 @@
   [portable model field]
   (t2/select-one-pk model field portable))
 
-;; -------------------------------------------------- Users ----------------------------------------------------------
+;;; ## Users
 (defn ^:dynamic ^::cache *export-user*
   "Exports a user as the email address.
   This just calls [[export-fk-keyed]], but the counterpart [[import-user]] is more involved. This is a unique function
@@ -514,7 +753,8 @@
         ;; Need to break a circular dependency here.
         (:id ((resolve 'metabase.models.user/serdes-synthesize-user!) {:email email})))))
 
-;; -------------------------------------------------- Tables ---------------------------------------------------------
+;;; ## Tables
+
 (defn ^:dynamic ^::cache *export-table-fk*
   "Given a numeric `table_id`, return a portable table reference.
   If the `table_id` is `nil`, return `nil`. This is legal for a native question.
@@ -558,7 +798,8 @@
             (when schema ["schemas" schema])
             ["tables" table-name])))
 
-;; -------------------------------------------------- Fields ---------------------------------------------------------
+;;; ## Fields
+
 (defn ^:dynamic ^::cache *export-field-fk*
   "Given a numeric `field_id`, return a portable field reference.
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
@@ -585,7 +826,8 @@
                   {:model "Table" :id table-name}
                   {:model "Field" :id field-name}]))
 
-;; ---------------------------------------------- MBQL Fields --------------------------------------------------------
+;;; ## MBQL Fields
+
 (defn- mbql-entity-reference?
   "Is given form an MBQL entity reference?"
   [form]
@@ -805,6 +1047,8 @@
     (seqable? entity) (mbql-deps-vector entity)
     :else             (mbql-deps-vector [entity])))
 
+;;; ## Dashboard/Question Parameters
+
 (defn export-parameter-mappings
   "Given the :parameter_mappings field of a `Card` or `DashboardCard`, as a vector of maps, converts
   it to a portable form with the field IDs replaced with `[db schema table field]` references."
@@ -845,12 +1089,14 @@
             (set/union #{[{:model "Card" :id (:card_id config)}]}
                        (mbql-deps-vector (:value_field config))))))
 
+;;; ## Viz settings
+
 (def link-card-model->toucan-model
   "A map from model on linkcards to its corresponding toucan model.
 
   Link cards are dashcards that link to internal entities like Database/Dashboard/... or an url.
 
-  It's here instead of [metabase.models.dashboard_card] to avoid cyclic deps."
+  It's here instead of [[metabase.models.dashboard-card]] to avoid cyclic deps."
   {"card"       :model/Card
    "dataset"    :model/Card
    "collection" :model/Collection
@@ -980,6 +1226,8 @@
     (->> (concat vis-column-settings [(mbql-deps viz) link-card-deps])
          (filter some?)
          (reduce set/union #{}))))
+
+;;; ## Memoizing appdb lookups
 
 (defmacro with-cache
   "Runs body with all functions marked with ::cache re-bound to memoized versions for performance."

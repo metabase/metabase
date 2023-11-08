@@ -35,13 +35,14 @@
 
   :unresolved-symbol
   {:exclude
-   [instaparse.core/transform
+   [(build.uberjar/with-duration-ms)
     (cljs.test/is [=? malli=])
     (clojure.core.logic/fresh)
     (clojure.core.logic/matcha)
     (clojure.core.logic/run)
     (clojure.test/is [query= sql= =? malli=])
     (clojure.tools.macro/macrolet)
+    instaparse.core/transform
     (metabase.async.streaming-response/streaming-response)
     (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
     (metabase.mbql.util.match/match)
@@ -657,7 +658,7 @@
    :name    test-namespaces}
   {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util$)(?!^metabase\\.test.*).*$"
    :name    source-namespaces}
-  {:pattern "metabase\\.cmd.*"
+  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))"
    :name    printable-namespaces}
   {:pattern "^metabase\\.lib\\.*"
    :name    metabase-lib}
@@ -711,7 +712,13 @@
 
   printable-namespaces
   {:linters
-   {:discouraged-var {:level :off}}}
+   {:main-without-gen-class {:level :off}
+    :discouraged-var        {clojure.pprint/pprint     {:level :off}
+                             clojure.core/print        {:level :off}
+                             clojure.core/printf       {:level :off}
+                             clojure.core/println      {:level :off}
+                             clojure.string/lower-case {:level :off}
+                             clojure.string/upper-case {:level :off}}}}
 
   honey-sql-2-namespaces
   {:linters

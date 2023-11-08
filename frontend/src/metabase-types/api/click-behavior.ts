@@ -1,6 +1,7 @@
 import type {
   CardId,
   DashboardId,
+  DashboardTabId,
   FieldReference,
   ParameterId,
   TemplateTagName,
@@ -52,21 +53,35 @@ export type ClickBehaviorType =
   | "crossfilter"
   | "link";
 
-export type CustomDestinationClickBehaviorEntity = "dashboard" | "question";
-
 export type CustomDestinationClickBehaviorLinkType =
-  | CustomDestinationClickBehaviorEntity
-  | "url";
+  | EntityCustomDestinationClickBehavior["linkType"]
+  | ArbitraryCustomDestinationClickBehavior["linkType"];
 
 export interface CrossFilterClickBehavior {
   type: "crossfilter";
   parameterMapping?: ClickBehaviorParameterMapping;
 }
 
-export interface EntityCustomDestinationClickBehavior {
+export type EntityCustomDestinationClickBehavior =
+  | DashboardCustomDestinationClickBehavior
+  | QuestionCustomDestinationClickBehavior;
+
+export interface DashboardCustomDestinationClickBehavior {
   type: "link";
-  linkType: CustomDestinationClickBehaviorEntity;
-  targetId: CardId | DashboardId;
+  linkType: "dashboard";
+  targetId: DashboardId;
+  /**
+   * tabId will be undefined when user edits click behavior that
+   * was created before we supported links to dashboard tabs.
+   */
+  tabId?: DashboardTabId;
+  parameterMapping?: ClickBehaviorParameterMapping;
+}
+
+export interface QuestionCustomDestinationClickBehavior {
+  type: "link";
+  linkType: "question";
+  targetId: CardId;
   parameterMapping?: ClickBehaviorParameterMapping;
 }
 
