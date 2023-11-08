@@ -1,0 +1,130 @@
+description: null
+archived: false
+collection_position: null
+table_id:
+- Internal Metabase Database
+- public
+- v_audit_log
+result_metadata: null
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Recent activity
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  database: Internal Metabase Database
+  type: query
+  query:
+    fields:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - topic
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - entity_qualified_id
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - details
+      - base-type: type/Text
+    order-by:
+    - - desc
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_audit_log
+          - timestamp
+        - base-type: type/DateTimeWithLocalTZ
+    joins:
+    - fields: none
+      strategy: left-join
+      alias: People - User
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_audit_log
+          - user_id
+        - base-type: type/Integer
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
+          - user_id
+        - base-type: type/Integer
+          join-alias: People - User
+      source-table: 0wVIfjBJWclD0lKeABYYl
+    source-table: -lNDM3tJmuL5ltGbX0oyT
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: WlQ-en2l-iRRCvO2-v5j1
+  label: recent_activity
+display: table
+entity_id: WlQ-en2l-iRRCvO2-v5j1
+collection_preview: true
+visualization_settings:
+  table.pivot_column: topic
+  table.cell_column: details
+  table.columns:
+  - name: timestamp
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_audit_log
+      - timestamp
+    - base-type: type/DateTimeWithLocalTZ
+      temporal-unit: default
+    enabled: true
+  - name: topic
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_audit_log
+      - topic
+    - base-type: type/Text
+    enabled: true
+  - name: entity_qualified_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_audit_log
+      - entity_qualified_id
+    - base-type: type/Text
+    enabled: true
+  - name: details
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_audit_log
+      - details
+    - base-type: type/Text
+    enabled: true
+  column_settings: null
+metabase_version: vUNKNOWN (ad99d37)
+parameters: []
+dataset: false
+created_at: '2023-11-01T01:06:15.554648Z'
+public_uuid: null

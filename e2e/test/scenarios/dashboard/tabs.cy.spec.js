@@ -40,7 +40,6 @@ import {
 
 describe("scenarios > dashboard > tabs", () => {
   beforeEach(() => {
-    cy.in;
     restore();
     cy.signInAsAdmin();
   });
@@ -255,7 +254,7 @@ describe("scenarios > dashboard > tabs", () => {
   });
 
   it("should only fetch cards on the current tab", () => {
-    cy.intercept("PUT", "/api/dashboard/*/cards").as("saveDashboardCards");
+    cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
 
     visitDashboardAndCreateTab({
       dashboardId: ORDERS_DASHBOARD_ID,
@@ -271,7 +270,7 @@ describe("scenarios > dashboard > tabs", () => {
     saveDashboard();
 
     cy.wait("@saveDashboardCards").then(({ response }) => {
-      cy.wrap(response.body.cards[1].id).as("secondTabDashcardId");
+      cy.wrap(response.body.dashcards[1].id).as("secondTabDashcardId");
     });
 
     cy.intercept(

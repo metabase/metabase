@@ -504,12 +504,23 @@ export default class PieChart extends Component {
       };
     };
 
-    const isClickable =
-      onVisualizationClick && visualizationIsClickable(getSliceClickObject(0));
-    const getSliceIsClickable = index =>
-      isClickable && slices[index] !== otherSlice;
-
+    const isClickable = onVisualizationClick != null;
     const shouldRenderLabels = settings["pie.percent_visibility"] === "inside";
+
+    const handleSliceClick = (e, index) => {
+      if (onVisualizationClick) {
+        const isSliceClickable =
+          visualizationIsClickable(getSliceClickObject(index)) &&
+          slices[index] !== otherSlice;
+
+        if (isSliceClickable) {
+          onVisualizationClick({
+            ...getSliceClickObject(index),
+            event: e.nativeEvent,
+          });
+        }
+      }
+    };
 
     return (
       <ChartWithLegend
@@ -579,19 +590,9 @@ export default class PieChart extends Component {
                       }
                       onMouseLeave={() => onHoverChange?.(null)}
                       className={cx({
-                        "cursor-pointer": getSliceIsClickable(index),
+                        "cursor-pointer": isClickable,
                       })}
-                      onClick={
-                        // We use a ternary here because using
-                        // `condition && function` yields a console warning.
-                        getSliceIsClickable(index)
-                          ? e =>
-                              onVisualizationClick({
-                                ...getSliceClickObject(index),
-                                event: e.nativeEvent,
-                              })
-                          : undefined
-                      }
+                      onClick={e => handleSliceClick(e, index)}
                       data-testid="slice"
                     />
                   );

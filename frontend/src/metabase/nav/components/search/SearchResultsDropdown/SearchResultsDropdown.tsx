@@ -14,12 +14,14 @@ export type SearchResultsDropdownProps = {
   searchText: string;
   onSearchItemSelect: (item: WrappedResult) => void;
   goToSearchApp: () => void;
+  isSearchBar?: boolean;
 };
 
 export const SearchResultsDropdown = ({
   searchText,
   onSearchItemSelect,
   goToSearchApp,
+  isSearchBar = false,
 }: SearchResultsDropdownProps) => {
   const renderFooter: SearchResultsFooter = ({ metadata, isSelected }) => {
     const resultText =
@@ -55,6 +57,7 @@ export const SearchResultsDropdown = ({
         onEntitySelect={onSearchItemSelect}
         footerComponent={renderFooter}
         onFooterSelect={goToSearchApp}
+        isSearchBar={isSearchBar}
       />
     </SearchResultsContainer>
   );

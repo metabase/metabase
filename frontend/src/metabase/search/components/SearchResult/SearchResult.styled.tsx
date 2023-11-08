@@ -3,8 +3,8 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import type { AnchorHTMLAttributes, HTMLAttributes, RefObject } from "react";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import type { AnchorProps, BoxProps } from "metabase/ui";
-import { Box, Divider, Stack, Anchor } from "metabase/ui";
+import type { AnchorProps, BoxProps, ButtonProps } from "metabase/ui";
+import { Box, Divider, Stack, Anchor, Button } from "metabase/ui";
 
 const { ModerationStatusIcon } = PLUGIN_MODERATION;
 
@@ -46,7 +46,7 @@ export const SearchResultContainer = styled(Box, {
     }
 >`
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr auto auto;
   justify-content: center;
   align-items: center;
   gap: 0.5rem 0.75rem;
@@ -88,8 +88,20 @@ export const ModerationIcon = styled(ModerationStatusIcon)`
 `;
 
 export const LoadingSection = styled(Box)<BoxProps>`
-  grid-row: 1 / span 2;
+  grid-row: 1 / span 1;
   grid-column: 3;
+`;
+
+export const XRaySection = styled(Box)<BoxProps>`
+  grid-row: 1 / span 1;
+  grid-column: 4;
+`;
+
+export const XRayButton = styled(Button)<
+  ButtonProps & HTMLAttributes<HTMLButtonElement>
+>`
+  width: 2rem;
+  height: 2rem;
 `;
 
 export const DescriptionSection = styled(Box)`

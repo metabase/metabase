@@ -191,7 +191,17 @@ export function SmartScalar({
     settings,
   };
 
-  const isClickable = visualizationIsClickable(clicked);
+  const isClickable = onVisualizationClick != null;
+
+  const handleClick = () => {
+    if (
+      scalarRef.current &&
+      onVisualizationClick &&
+      visualizationIsClickable(clicked)
+    ) {
+      onVisualizationClick({ ...clicked, element: scalarRef.current });
+    }
+  };
 
   return (
     <ScalarWrapper>
@@ -202,15 +212,7 @@ export function SmartScalar({
         alwaysShowTooltip={fullScalarValue !== displayValue}
         isClickable={isClickable}
       >
-        <span
-          onClick={
-            isClickable &&
-            (() =>
-              scalarRef.current &&
-              onVisualizationClick({ ...clicked, element: scalarRef.current }))
-          }
-          ref={scalarRef}
-        >
+        <span onClick={handleClick} ref={scalarRef}>
           <ScalarValue
             fontFamily={fontFamily}
             gridSize={gridSize}

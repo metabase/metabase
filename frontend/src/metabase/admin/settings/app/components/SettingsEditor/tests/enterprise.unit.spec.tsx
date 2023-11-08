@@ -16,7 +16,7 @@ const setupEnterprise = async (opts?: SetupOpts) => {
 };
 
 describe("SettingsEditor", () => {
-  it("should not allow to configure the origin for interactive embedding", async () => {
+  it("should not allow to configure the origin and SameSite cookie for interactive embedding", async () => {
     await setupEnterprise({
       settings: [
         createMockSettingDefinition({ key: "enable-embedding" }),
@@ -29,6 +29,9 @@ describe("SettingsEditor", () => {
     userEvent.click(screen.getByText("Interactive embedding"));
     expect(screen.getByText(/some of our paid plans/)).toBeInTheDocument();
     expect(screen.queryByText("Authorized origins")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("SameSite cookie setting"),
+    ).not.toBeInTheDocument();
   });
 
   it("should not allow to toggle off password login", async () => {

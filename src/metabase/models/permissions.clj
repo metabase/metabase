@@ -1079,6 +1079,60 @@
     (when (and has-native-perms? (not (group-has-native-perms? group-or-id database-or-id)))
       (grant-native-readwrite-permissions! group-or-id database-or-id))))
 
+; Audit Permissions helper fns
+
+(def audit-db-id
+  "ID of Audit DB which is loaded when running an EE build. ID is placed in OSS code to facilitate permission checks."
+  13371337)
+
+(defenterprise default-audit-collection
+  "OSS implementation of `audit-db/default-audit-collection`, which is an enterprise feature, so does nothing in the OSS
+  version."
+  metabase-enterprise.audit-db [] ::noop)
+
+(defenterprise default-custom-reports-collection
+  "OSS implementation of `audit-db/default-custom-reports-collection`, which is an enterprise feature, so does nothing in the OSS
+  version."
+  metabase-enterprise.audit-db [] ::noop)
+
+(defn check-audit-db-permissions
+  "Check that the changes coming in does not attempt to change audit database permission. Admins should
+  change these permissions in application monitoring permissions."
+  [changes]
+  (let [changes-ids (->> changes
+                         vals
+                         (map keys)
+                         (apply concat))]
+    (when (some #{audit-db-id} changes-ids)
+      (throw (ex-info (tru
+                       (str "Audit database permissions can only be changed by updating audit collection permissions."))
+                      {:status-code 400})))))
+
+(defn is-collection-id-audit?
+  "Check if an id is one of the audit collection ids."
+  [id]
+  (contains? (set [(:id (default-audit-collection)) (:id (default-custom-reports-collection))]) id))
+
+(defn is-parent-collection-audit?
+  "Check if an instance's parent collection is the audit collection."
+  [instance]
+  (let [parent-id (:collection_id instance)]
+    (and (some? parent-id) (is-collection-id-audit? parent-id))))
+
+(defn can-read-audit-helper
+  "Audit instances should only be fetched if audit app is enabled."
+  [model instance]
+  (if (and (not (premium-features/enable-audit-app?))
+           (case model
+             :model/Collection (is-collection-id-audit? (:id instance))
+             (is-parent-collection-audit? instance)))
+    false
+    (case model
+      :model/Collection (mi/current-user-has-full-permissions? :read instance)
+      (mi/current-user-has-full-permissions? (perms-objects-set-for-parent-collection instance :read)))))
+
+; Audit permissions helper fns end
+
 (defn revoke-application-permissions!
   "Remove all permissions entries for a Group to access a Application permisisons"
   [group-or-id perm-type]
@@ -1445,6 +1499,7 @@
      (when (or (seq old) (seq new))
        (log-permissions-changes old new)
        (check-revision-numbers old-graph new-graph)
+       (check-audit-db-permissions new)
        (t2/with-transaction [_conn]
         (doseq [[group-id changes] new]
           (update-group-permissions! group-id changes))

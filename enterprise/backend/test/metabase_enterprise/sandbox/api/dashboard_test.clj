@@ -75,7 +75,7 @@
                        (mt/user-http-request :rasta :get 200 url)))))))))))
 
 (deftest add-card-parameter-mapping-permissions-test
-  (testing "PUT /api/dashboard/:id/cards"
+  (testing "PUT /api/dashboard/:id"
     (testing "Should check current user's data permissions for the `parameter_mapping`"
       (met/with-gtaps {:gtaps {:venues {}}}
         (api.dashboard-test/do-with-add-card-parameter-mapping-permissions-fixtures
@@ -89,7 +89,7 @@
                                                     s/Keyword     s/Any}
                                                    "mapping")]
                             s/Keyword           s/Any}]
-                          (:cards (add-card! 200))))
+                          (:dashcards (add-card! 200))))
              (is (schema= [(s/one {:card_id            (s/eq card-id)
                                    :parameter_mappings (s/eq mappings)
                                    s/Keyword           s/Any}
@@ -97,7 +97,7 @@
                           (dashcards))))))))))
 
 (deftest update-cards-parameter-mapping-permissions-test
-  (testing "PUT /api/dashboard/:id/cards"
+  (testing "PUT /api/dashboard/:id"
     (testing "Should check current user's data permissions for the `parameter_mapping`"
       (met/with-gtaps {:gtaps {:venues {}}}
         (api.dashboard-test/do-with-update-cards-parameter-mapping-permissions-fixtures

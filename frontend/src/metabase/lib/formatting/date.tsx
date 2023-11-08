@@ -530,7 +530,10 @@ export function getDateFormatFromStyle(
   return format;
 }
 
-export function formatDateTimeForParameter(value: string, unit: DatetimeUnit) {
+export function formatDateTimeForParameter(
+  value: string,
+  unit: DatetimeUnit | null,
+) {
   const m = parseTimestamp(value, unit);
   if (!m.isValid()) {
     return String(value);
@@ -551,7 +554,7 @@ export function formatDateTimeForParameter(value: string, unit: DatetimeUnit) {
 
 export function formatDateToRangeForParameter(
   value: string,
-  unit: DatetimeUnit,
+  unit: DatetimeUnit | null,
 ) {
   const m = parseTimestamp(value, unit);
   if (!m.isValid()) {

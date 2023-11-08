@@ -688,11 +688,11 @@
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
   [card-id is-creation?]
   (revision/push-revision!
-   :object       (t2/select-one :model/Card :id card-id)
-   :entity       :model/Card
-   :id           card-id
-   :user-id      (mt/user->id :crowberto)
-   :is-creation? is-creation?))
+   {:object       (t2/select-one :model/Card :id card-id)
+    :entity       :model/Card
+    :id           card-id
+    :user-id      (mt/user->id :crowberto)
+    :is-creation? is-creation?}))
 
 (deftest record-revision-and-description-completeness-test
   (t2.with-temp/with-temp

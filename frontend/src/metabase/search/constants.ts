@@ -18,4 +18,10 @@ export const enabledSearchTypes: EnabledSearchModelType[] = [
   "database",
   "table",
   "action",
+  "indexed-entity",
 ];
+
+export const SearchContextTypes = {
+  SEARCH_BAR: "search-bar",
+  SEARCH_APP: "search-app",
+};

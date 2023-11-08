@@ -28,11 +28,8 @@ describe("#22206 adding and removing columns doesn't duplicate columns", () => {
     cy.findByTestId("sidebar-content")
       .findByText("Subtotal")
       .parent()
-      .find(".Icon-add")
+      .find(".Icon-eye_crossed_out")
       .click();
-
-    cy.wait("@dataset");
-    cy.findByTestId("loading-spinner").should("not.exist");
 
     // fails because there are 2 columns, when there should be one
     cy.findByTestId("sidebar-content").findByText("Subtotal");

@@ -55,7 +55,7 @@ describe("scenarios > visualizations > table", () => {
     headerCells().findAllByText("ID updated").should("have.length", 1);
   });
 
-  it("should allow you to reorder columns in the table header", () => {
+  it("should allow you to reorder and hide columns in the table header", () => {
     openNativeEditor().type("select * from orders LIMIT 2");
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
@@ -74,6 +74,11 @@ describe("scenarios > visualizations > table", () => {
       .trigger("mouseup", -220, 0, { force: true });
 
     headerCells().eq(1).should("contain.text", "TOTAL");
+
+    headerCells().contains("QUANTITY").click();
+    popover().icon("eye_crossed_out").click();
+
+    headerCells().contains("QUANTITY").should("not.exist");
   });
 
   it("should allow to display any column as link with extrapolated url and text", () => {
@@ -181,7 +186,7 @@ describe("scenarios > visualizations > table", () => {
           // semantic type
           cy.contains("No special type");
           // fingerprint
-          cy.findByText("-07:00");
+          cy.findByText(/-0\d:00/);
           cy.findByText("April 26, 1958, 12:00 AM");
           cy.findByText("April 3, 2000, 12:00 AM");
         },
@@ -355,7 +360,7 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
     });
   });
 
-  it("should work with boolean columns", () => {
+  it("should work with boolean columns", { tags: ["@external"] }, () => {
     cy.findByTestId("viz-settings-button").click();
     leftSidebar().findByText("Conditional Formatting").click();
     cy.findByRole("button", { name: /add a rule/i }).click();

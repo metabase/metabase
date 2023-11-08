@@ -5,8 +5,10 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.combination :as combination]
+   [metabase.automagic-dashboards.comparison :as comparison]
    [metabase.automagic-dashboards.core :as magic]
    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.automagic-dashboards.interesting :as interesting]
@@ -18,6 +20,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.query :as query :refer [Query]]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.async :as qp.async]
    [metabase.sync :as sync]
    [metabase.test :as mt]
@@ -1322,7 +1325,7 @@
 (deftest singular-cell-dimensions-test
   (testing "Find the cell dimensions for a cell query"
     (is (= #{1 2 "TOTAL"}
-           (#'magic/singular-cell-dimensions
+           (#'magic/singular-cell-dimension-field-ids
             {:cell-query
              [:and
               [:= [:field 1 nil]]
@@ -1495,15 +1498,16 @@
                                               ;; Why do we need (or do we) the last remove form?
                                               :filters (->> dashboard_filters
                                                             (mapcat (comp :matches ground-dimensions))
-                                                            (remove (comp (#'magic/singular-cell-dimensions root) #'magic/id-or-name)))
+                                                            (remove (comp (#'magic/singular-cell-dimension-field-ids root) #'magic/id-or-name)))
                                               :cards dashcards)
-                final-dashboard             (populate/create-dashboard base-dashboard show)]
+                final-dashboard             (populate/create-dashboard base-dashboard show)
+                strip-ids                   (partial walk/prewalk (fn [v] (cond-> v (map? v) (dissoc :id :card_id))))]
             (is (pos? (count (:dashcards final-dashboard))))
-            (is (= (count (:dashcards final-dashboard))
-                   (count (:dashcards (#'magic/generate-dashboard base-context template
-                                        {:dimensions ground-dimensions
-                                         :metrics    grounded-metrics
-                                         :filters    ground-filters})))))))))))
+            (is (= (strip-ids (:dashcards final-dashboard))
+                   (strip-ids (:dashcards (#'magic/generate-dashboard base-context template
+                                            {:dimensions ground-dimensions
+                                             :metrics    grounded-metrics
+                                             :filters    ground-filters})))))))))))
 
 (deftest adhoc-query-with-explicit-joins-14793-test
   (testing "A verification of the fix for https://github.com/metabase/metabase/issues/14793,
@@ -1542,3 +1546,229 @@
             (testing "An expectation check -- this dashboard should produce this group heading"
               (is (= expected-section
                      (section-headings expected-section))))))))))
+
+(deftest compare-to-the-rest-25278+32557-test
+  (testing "Ensure valid queries are generated for an automatic comparison dashboard (fixes 25278 & 32557)"
+    (mt/dataset sample-dataset
+      (mt/with-test-user :rasta
+        (let [left                 (query/adhoc-query
+                                     {:database (mt/id)
+                                      :type     :query
+                                      :query
+                                      {:source-table (mt/id :orders)
+                                       :joins
+                                       [{:strategy     :left-join
+                                         :alias        "Products"
+                                         :condition
+                                         [:=
+                                          [:field (mt/id :orders :product_id) {:base-type :type/Integer}]
+                                          [:field (mt/id :products :id) {:base-type :type/BigInteger :join-alias "Products"}]]
+                                         :source-table (mt/id :products)}]
+                                       :aggregation  [[:avg [:field (mt/id :orders :tax) {:base-type :type/Float}]]]
+                                       :breakout     [[:field (mt/id :products :title)
+                                                       {:base-type :type/Text :join-alias "Products"}]]}})
+              right                (t2/select-one :model/Table (mt/id :orders))
+              cell-query           [:= [:field (mt/id :products :title)
+                                        {:base-type :type/Text :join-alias "Products"}]
+                                    "Intelligent Granite Hat"]
+              dashboard            (magic/automagic-analysis left {:show         nil
+                                                                   :query-filter nil
+                                                                   :comparison?  true})
+              comparison-dashboard (comparison/comparison-dashboard dashboard left right {:left {:cell-query cell-query}})
+              sample-card-title "Average of Tax per state"
+              [{base-query :dataset_query :as card-without-cell-query}
+               {filtered-query :dataset_query :as card-with-cell-query}] (->> comparison-dashboard
+                                                                              :dashcards
+                                                                              (filter (comp #{sample-card-title} :name :card))
+                                                                              (map :card))]
+          (testing "Comparison cards exist"
+            (is (some? card-with-cell-query))
+            (is (some? card-without-cell-query)))
+          (testing "The cell-query exists in only one of the cards"
+            (is (not= cell-query (get-in base-query [:query :filter])))
+            (is (= cell-query (get-in filtered-query [:query :filter]))))
+          (testing "Join aliases exist in the queries"
+            ;; The reason issues 25278 & 32557 would blow up is the lack of join aliases.
+            (is (= ["Products"] (map :alias (get-in base-query [:query :joins]))))
+            (is (= ["Products"] (map :alias (get-in filtered-query [:query :joins])))))
+          (testing "Card queries are both executable and produce different results"
+            ;; Note that issues 25278 & 32557 would blow up on the filtered queries.
+            (let [base-data           (get-in (qp/process-query base-query) [:data :rows])
+                  filtered-data       (get-in (qp/process-query filtered-query) [:data :rows])]
+              (is (some? base-data))
+              (is (some? filtered-data))
+              (is (not= base-data filtered-data)))))))))
+
+(deftest compare-to-the-rest-with-expression-16680-test
+  (testing "Ensure a valid comparison dashboard is generated with custom expressions (fixes 16680)"
+    (mt/dataset sample-dataset
+      (mt/with-test-user :rasta
+        (let [left                 (query/adhoc-query
+                                     {:database (mt/id)
+                                      :type     :query
+                                      :query
+                                      {:source-table (mt/id :orders)
+                                       :expressions  {"TestColumn" [:+ 1 1]}
+                                       :aggregation  [[:count]]
+                                       :breakout     [[:expression "TestColumn"]
+                                                      [:field (mt/id :orders :created_at)
+                                                       {:temporal-unit :month}]]}})
+              right                (t2/select-one :model/Table (mt/id :orders))
+              cell-query           [:and
+                                    [:= [:expression "TestColumn"] 2]
+                                    [:= [:field (mt/id :orders :created_at)
+                                         {:temporal-unit :month}]
+                                     "2019-02-01T00:00:00Z"]]
+              dashboard            (magic/automagic-analysis left {:show         nil
+                                                                   :query-filter nil
+                                                                   :comparison?  true})
+              {:keys [dashcards]} (comparison/comparison-dashboard dashboard left right {:left {:cell-query cell-query}})
+              ;; Select a few cards to compare -- there are many more but we're just going to sample
+              distinct-values-card-label "Distinct values"
+              [{base-query :dataset_query :as card-without-cell-query}
+               {filtered-query :dataset_query :as card-with-cell-query}] (->> dashcards
+                                                                              (filter (comp #{distinct-values-card-label} :name :card))
+                                                                              (map :card))
+
+              series-card-label    "Number of Orders per day of the week (Number of Orders where TestColumn is 2 and Created At is in February 2019)"
+              {[{series-dataset-query :dataset_query}] :series
+               {card-dataset-query :dataset_query} :card
+               :as                                     series-card} (some
+                                                                      (fn [{{card-name :name} :card :as dashcard}]
+                                                                        (when (= series-card-label card-name)
+                                                                          dashcard))
+                                                                      dashcards)]
+          (testing "Comparisons that exist on two cards"
+            (testing "Comparison cards exist"
+              (is (some? card-with-cell-query))
+              (is (some? card-without-cell-query)))
+            (testing "The cell-query exists in only one of the cards"
+              (is (not= cell-query (get-in base-query [:query :filter])))
+              (is (= cell-query (get-in filtered-query [:query :filter]))))
+            (testing "Expressions exist in the queries"
+              (is (= {"TestColumn" [:+ 1 1]} (get-in base-query [:query :expressions])))
+              (is (= {"TestColumn" [:+ 1 1]} (get-in filtered-query [:query :expressions]))))
+            (testing "Card queries are both executable and produce different results"
+              (let [base-data     (get-in (qp/process-query base-query) [:data :rows])
+                    filtered-data (get-in (qp/process-query filtered-query) [:data :rows])]
+                (is (some? base-data))
+                (is (some? filtered-data))
+                (is (not= base-data filtered-data)))))
+          (testing "Comparisons that exist on the same card"
+            (testing "Both series (original and comparison) are present on the same chart"
+              (is (= ["Number of Orders per day of the week (Number of Orders where TestColumn is 2 and Created At is in February 2019)"
+                      "Number of Orders per day of the week (All Orders)"]
+                     (get-in series-card [:visualization_settings :graph.series_labels]))))
+            (testing "Both the series and card datasets are present and queryable"
+              (is (some? series-dataset-query))
+              (is (= 7 (:row_count (qp/process-query series-dataset-query))))
+              (is (some? card-dataset-query))
+              (is (= 7 (:row_count (qp/process-query card-dataset-query)))))))))))
+
+(deftest preserve-entity-element-test
+  (testing "Join preservation scenarios: merge, empty expressions, no expressions, no card"
+    (is (= [[{:strategy :left-join, :alias "Orders"}
+             {:strategy :left-join, :alias "Products"}]
+            [{:strategy :left-join, :alias "Products"}]
+            [{:strategy :left-join, :alias "Products"}]
+            nil]
+           (->>
+             (#'magic/preserve-entity-element
+               {:dashcards [{:card {:dataset_query {:query {:joins [{:strategy :left-join :alias "Orders"}]}}}}
+                            {:card {:dataset_query {:query {:joins []}}}}
+                            {:card {:dataset_query {:query {}}}}
+                            {:viz_settings nil}]}
+               {:dataset_query {:query {:joins [{:strategy :left-join :alias "Products"}]}}}
+               :joins)
+             :dashcards
+             (mapv (comp :joins :query :dataset_query :card))))))
+  (testing "Expression preservation scenarios: merge, empty expressions, no expressions, no card"
+    (is (= [{"Existing" [:- 1 1] "TestColumn" [:+ 1 1]}
+            {"TestColumn" [:+ 1 1]}
+            {"TestColumn" [:+ 1 1]}
+            nil]
+           (->>
+             (#'magic/preserve-entity-element
+               {:dashcards [{:card {:dataset_query {:query {:expressions {"Existing" [:- 1 1]}}}}}
+                            {:card {:dataset_query {:query {:expressions {}}}}}
+                            {:card {:dataset_query {:query {}}}}
+                            {:viz_settings nil}]}
+               {:dataset_query {:query {:expressions {"TestColumn" [:+ 1 1]}}}}
+               :expressions)
+             :dashcards
+             (mapv (comp :expressions :query :dataset_query :card)))))))
+
+(deftest compare-to-the-rest-15655-test
+  (testing "Questions based on native questions should produce a valid dashboard."
+    (mt/dataset sample-dataset
+      (mt/with-test-user :rasta
+        (let [native-query {:native   {:query "select * from people"}
+                            :type     :native
+                            :database (mt/id)}]
+          (mt/with-temp
+            [Card {native-card-id :id :as native-card} {:table_id        nil
+                                                        :name            "15655"
+                                                        :dataset_query   native-query
+                                                        :result_metadata (mt/with-test-user :rasta (result-metadata-for-query native-query))}
+             ;card__19169
+             Card card {:table_id      (mt/id :orders)
+                        :dataset_query {:query    {:source-table (format "card__%s" native-card-id)
+                                                   :aggregation  [[:count]]
+                                                   :breakout     [[:field "SOURCE" {:base-type :type/Text}]]}
+                                        :type     :query
+                                        :database (mt/id)}}]
+            (let [{:keys [description dashcards] :as dashboard} (magic/automagic-analysis card {})]
+              (testing "Questions based on native queries produce a dashboard"
+                (is (= "A closer look at the metrics and dimensions used in this saved question."
+                       description))
+                (is (set/subset?
+                      #{{:group-name "# A look at the SOURCE fields", :card-name nil}
+                        {:group-name "## The number of 15655 over time", :card-name nil}
+                        {:group-name nil, :card-name "Over time"}
+                        {:group-name nil, :card-name "Number of 15655 per day of the week"}
+                        {:group-name "## How this metric is distributed across different categories", :card-name nil}
+                        {:group-name nil, :card-name "Number of 15655 per NAME over time"}
+                        {:group-name nil, :card-name "Number of 15655 per CITY over time"}
+                        {:group-name "## Overview", :card-name nil}
+                        {:group-name nil, :card-name "Count"}
+                        {:group-name nil, :card-name "How the SOURCE is distributed"}
+                        {:group-name "## How the SOURCE fields is distributed", :card-name nil}
+                        {:group-name nil, :card-name "SOURCE by NAME"}
+                        {:group-name nil, :card-name "SOURCE by CITY"}}
+                      (set (map (fn [dashcard]
+                                  {:group-name (get-in dashcard [:visualization_settings :text])
+                                   :card-name  (get-in dashcard [:card :name])})
+                                dashcards)))))
+              (let [cell-query ["=" ["field" "SOURCE" {:base-type "type/Text"}] "Affiliate"]
+                    {comparison-description :description
+                     comparison-dashcards   :dashcards
+                     transient_name         :transient_name} (comparison/comparison-dashboard
+                                                               dashboard
+                                                               card
+                                                               native-card
+                                                               {:left {:cell-query cell-query}})]
+                (testing "Questions based on native queries produce a comparable dashboard"
+                  (is (= "Comparison of Number of 15655 where SOURCE is Affiliate and \"15655\", all 15655"
+                         transient_name))
+                  (is (= "Automatically generated comparison dashboard comparing Number of 15655 where SOURCE is Affiliate and \"15655\", all 15655"
+                         comparison-description))
+                  (is (= (take 10
+                               [{:group-name nil, :card-name "SOURCE by CITY"}
+                                {:group-name nil, :card-name "SOURCE by CITY"}
+                                {:group-name nil, :card-name "SOURCE by NAME"}
+                                {:group-name nil, :card-name "SOURCE by NAME"}
+                                {:group-name "## How the SOURCE fields is distributed", :card-name nil}
+                                {:group-name nil, :card-name "How the SOURCE is distributed (Number of 15655 where SOURCE is Affiliate)"}
+                                {:group-name nil, :card-name "Distinct values"}
+                                {:group-name nil, :card-name "Distinct values"}
+                                {:group-name nil, :card-name "Null values"}
+                                {:group-name nil, :card-name "Null values"}])
+                         (->> comparison-dashcards
+                              (take 10)
+                              (map (fn [dashcard]
+                                     {:group-name (get-in dashcard [:visualization_settings :text])
+                                      :card-name  (get-in dashcard [:card :name])})))))
+                  (mapv (fn [dashcard]
+                          {:group-name (get-in dashcard [:visualization_settings :text])
+                           :card-name  (get-in dashcard [:card :name])})
+                        comparison-dashcards))))))))))

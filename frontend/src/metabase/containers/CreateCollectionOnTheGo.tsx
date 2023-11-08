@@ -16,6 +16,7 @@ interface State {
   enabled?: boolean;
   resumedValues?: Values;
   openCollectionId?: CollectionId;
+  showOnlyPersonalCollections?: boolean;
 }
 
 const Context = createContext<{
@@ -33,7 +34,12 @@ export function CreateCollectionOnTheGo({
     (newState: State) => setState({ ...state, ...newState }),
     [state, setState],
   );
-  const { enabled, resumedValues, openCollectionId } = state;
+  const {
+    enabled,
+    resumedValues,
+    openCollectionId,
+    showOnlyPersonalCollections,
+  } = state;
   return enabled ? (
     <CreateCollectionModal
       collectionId={openCollectionId}
@@ -44,6 +50,7 @@ export function CreateCollectionOnTheGo({
           resumedValues: { ...resumedValues, collection_id: collection.id },
         });
       }}
+      showOnlyPersonalCollections={showOnlyPersonalCollections}
     />
   ) : (
     <Context.Provider value={{ canCreateNew: true, updateState }}>
@@ -52,11 +59,15 @@ export function CreateCollectionOnTheGo({
   );
 }
 
+interface CreateCollectionOnTheGoButtonProps {
+  openCollectionId?: CollectionId;
+  showOnlyPersonalCollections?: boolean;
+}
+
 export function CreateCollectionOnTheGoButton({
   openCollectionId,
-}: {
-  openCollectionId?: CollectionId;
-}) {
+  showOnlyPersonalCollections,
+}: CreateCollectionOnTheGoButtonProps) {
   const { canCreateNew, updateState } = useContext(Context);
   const formik = useFormikContext<Values>();
   return canCreateNew && formik ? (
@@ -68,6 +79,7 @@ export function CreateCollectionOnTheGoButton({
           enabled: true,
           resumedValues: formik.values,
           openCollectionId,
+          showOnlyPersonalCollections,
         })
       }
     >

@@ -5,7 +5,7 @@
 
 (s/def ::init-step (spell/keys :req-un [::step]))
 
-(defmulti init-step-type :step)
+(defmulti ^:private init-step-type :step)
 
 (s/def ::namespace string?)
 (defmethod init-step-type "load-namespace" [_]

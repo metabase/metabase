@@ -346,7 +346,7 @@
   ^Double [^Integer decimal-place, ^Number number]
   {:pre [(integer? decimal-place) (number? number)]}
   #?(:clj  (double (.setScale (bigdec number) decimal-place BigDecimal/ROUND_HALF_UP))
-     :cljs (double (.toPrecision number decimal-place))))
+     :cljs (parse-double (.toFixed number decimal-place))))
 
 (defn real-number?
   "Is `x` a real number (i.e. not a `NaN` or an `Infinity`)?"
@@ -843,3 +843,9 @@
   [xs]
   (or (empty? xs)
       (apply distinct? xs)))
+
+(defn deep-sort-map
+  "Converts a map (with potentially nested maps as values) into a sorted map of sorted maps."
+  [m]
+  (into (sorted-map)
+        (update-vals m (fn [val] (cond-> val (map? val) deep-sort-map)))))
