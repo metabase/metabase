@@ -35,11 +35,12 @@
 
 (m/defmethod events/publish-event! ::query-event
   "Handle processing for a single read event notification received on the view-log-channel"
-  [topic {:keys [user-id card-id] :as event}]
+  [topic {:keys [user-id card-id context] :as event}]
   (try
     (when event
-      (let [model    "card"
-            user-id  (or user-id api/*current-user-id*)]
-        (recent-views/update-users-recent-views! user-id model card-id)))
+      (let [model   "card"
+            user-id (or user-id api/*current-user-id*)]
+        (when ((complement #{:collection :dashboard}) context)
+          (recent-views/update-users-recent-views! user-id model card-id))))
     (catch Throwable e
       (log/warnf e "Failed to process activity event. %s" topic))))
