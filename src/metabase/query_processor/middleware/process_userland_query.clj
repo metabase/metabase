@@ -4,8 +4,6 @@
   These include things like saving QueryExecutions and adding query ViewLogs, storing exceptions and formatting the results."
   (:require
    [java-time.api :as t]
-   [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
-    :as row-level-restrictions]
    [metabase.events :as events]
    [metabase.models.query :as query]
    [metabase.models.query-execution
@@ -132,7 +130,7 @@
    :running_time      0
    :result_rows       0
    :start_time_millis (System/currentTimeMillis)
-   :is_sandboxed      (or (get-in query [:query :source-query ::row-level-restrictions/gtap?]) false)})
+   :is_sandboxed      (or (get-in query [:query :source-query :metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/gtap?]) false)})
 
 (defn process-userland-query
   "Do extra handling 'userland' queries (i.e. ones ran as a result of a user action, e.g. an API call, scheduled Pulse,
