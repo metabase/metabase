@@ -1,4 +1,3 @@
-import type { Draft } from "@reduxjs/toolkit";
 import _ from "underscore";
 import type {
   CardId,
@@ -17,21 +16,19 @@ import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targe
 import type Metadata from "metabase-lib/metadata/Metadata";
 
 export function getAllDashboardCardsWithUnmappedParameters(
-  dashboard: Draft<DashboardState>,
+  dashboard: DashboardState,
   dashboardId: DashboardId,
   parameter_id: ParameterId,
   excludeDashcardIds: DashCardId[] = [],
 ) {
-  return getExistingDashCards(dashboard, dashboardId).filter(
-    (dashcard: DashboardCard) => {
-      return (
-        !excludeDashcardIds.includes(dashcard.id) &&
-        !dashcard.parameter_mappings?.some(
-          mapping => mapping.parameter_id === parameter_id,
-        )
-      );
-    },
-  );
+  return getExistingDashCards(dashboard, dashboardId).filter(dashcard => {
+    return (
+      !excludeDashcardIds.includes(dashcard.id) &&
+      !dashcard.parameter_mappings?.some(
+        mapping => mapping.parameter_id === parameter_id,
+      )
+    );
+  });
 }
 
 export function getMatchingParameterOption(

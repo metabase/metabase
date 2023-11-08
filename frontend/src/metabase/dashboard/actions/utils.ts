@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import type { Draft } from "@reduxjs/toolkit";
 import type { DashboardState } from "metabase-types/store";
 import type {
   Dashboard,
@@ -10,7 +9,7 @@ import type {
 } from "metabase-types/api";
 
 export function getExistingDashCards(
-  dashboardState: Draft<DashboardState>,
+  dashboardState: DashboardState,
   dashId: DashboardId,
   tabId: DashboardTabId | null = null,
 ) {

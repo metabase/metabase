@@ -28,6 +28,11 @@ export function autoWireDashcardsWithMatchingParameters(
   return function (dispatch: Dispatch, getState: GetState) {
     const metadata = getMetadata(getState());
     const dashboard_state = getState().dashboard;
+
+    if (!dashboard_state.dashboardId) {
+      return;
+    }
+
     const dashcardsToAutoApply: DashboardCard[] =
       getAllDashboardCardsWithUnmappedParameters(
         dashboard_state,
@@ -58,6 +63,11 @@ export function autoWireParametersToNewCard({
     const metadata = getMetadata(getState());
     const dashboardState = getState().dashboard;
     const dashboardId = dashboardState.dashboardId;
+
+    if (!dashboardId) {
+      return;
+    }
+
     const dashcards = getExistingDashCards(dashboardState, dashboardId);
 
     const targetDashcard: DashboardCard = getDashCardById(

@@ -72,6 +72,7 @@ const INIT_TABS = "metabase/dashboard/INIT_TABS";
 const createNewTabAction = createAction<CreateNewTabPayload>(CREATE_NEW_TAB);
 
 let tempTabId = -2;
+
 // Needed for testing
 export function resetTempTabId() {
   tempTabId = -2;
@@ -351,7 +352,10 @@ export const tabsReducer = createReducer<DashboardState>(
 
     builder.addCase(
       _moveDashCardToTab,
-      (state, { payload: { dashCardId, destinationTabId } }) => {
+      (
+        state: DashboardState,
+        { payload: { dashCardId, destinationTabId } },
+      ) => {
         const dashCard = state.dashcards[dashCardId];
         const dashboardId = checkNotNull(state.dashboardId);
 
