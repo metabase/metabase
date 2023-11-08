@@ -294,7 +294,7 @@
   set-test-drivers!
   with-test-drivers]
 
- ;; Option A: define these in hawk and we simply import them
+ ;; TODO: define these in hawk and we simply import them
  ;; [mb.hawk.assert-exprs.approximately-equal
  ;;  =?-malli
  ;;  =?-exacty
@@ -302,7 +302,8 @@
  ;;  =?-approx]
  )
 
-;; Option B: This would be defined in mb.hawk.assert-exprs.approximately-equal
+;; TODO: replace this with above imports
+;; This will be defined in the mb.hawk.assert-exprs.approximately-equal namespace
 (defn =?-malli
   "Used inside hawk's =? expression to use a Malli schema for comparison.
   For example:
