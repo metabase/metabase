@@ -8,6 +8,7 @@
    [humane-are.core :as humane-are]
    [mb.hawk.init]
    [mb.hawk.parallel]
+   [mb.hawk.assert-exprs.approximately-equal]
    [metabase.actions.test-util :as actions.test-util]
    [metabase.config :as config]
    [metabase.driver :as driver]
@@ -291,6 +292,9 @@
 
  [tx.env
   set-test-drivers!
-  with-test-drivers])
+  with-test-drivers]
+
+ [mb.hawk.assert-exprs.approximately-equal
+  ->Malli])
 
 (alter-meta! #'with-temp update :doc #(str % "\n\nNote: this version of [[with-temp]] will execute body in a transaction, for cases where that's not desired, use [[mt/with-temp!]]\n"))

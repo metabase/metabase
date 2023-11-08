@@ -579,12 +579,12 @@
                                  :name           "Rome"
                                  :model_id       (:id model)
                                  :model_name     (:name model)
-                                 :model_index_id #hawk/malli :int}
+                                 :model_index_id (->Malli :int)}
                        "Tromsø" {:pk_ref         (mt/$ids $municipality.id)
                                  :name           "Tromsø"
                                  :model_id       (:id model)
                                  :model_name     (:name model)
-                                 :model_index_id #hawk/malli :int}}
+                                 :model_index_id (->Malli :int)}}
                       (into {} (comp relevant (map (juxt :name normalize)))
                             (search! "rom")))))))))))
 
