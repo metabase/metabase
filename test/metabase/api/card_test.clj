@@ -40,10 +40,12 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.server.middleware.util :as mw.util]
    [metabase.task :as task]
@@ -861,7 +863,7 @@
 (defn- to-native [query]
   {:database (:database query)
    :type     :native
-   :native   (mt/compile query)})
+   :native   (qp.compile/compile query)})
 
 (deftest updating-card-updates-metadata
   (let [query          (updating-card-updates-metadata-query)
@@ -2472,7 +2474,7 @@
           to-native      (fn [q]
                            {:database (:database q)
                             :type     :native
-                            :native   (mt/compile q)})
+                            :native   (qp.compile/compile q)})
           update-card!  (fn [card]
                           (mt/user-http-request :rasta :put 200
                                                 (str "card/" (u/the-id card)) card))]

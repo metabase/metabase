@@ -481,7 +481,7 @@
     :mongo
     (testing "Should use $expr for simple comparisons and ops for others"
       (are [x y] (partial= {:query [{"$match" x}]}
-                           (mt/compile (mt/mbql-query venues {:filter y})))
+                           (qp.compile/compile (mt/mbql-query venues {:filter y})))
         {"price" 100}
         [:= $price 100]
 

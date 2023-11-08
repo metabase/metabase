@@ -3,7 +3,6 @@
 
   (Prefer using `metabase.test` to requiring bits and pieces from these various namespaces going forward, since it
   reduces the cognitive load required to write tests.)"
-  (:refer-clojure :exclude [compile])
   (:require
    [humane-are.core :as humane-are]
    [mb.hawk.init]
@@ -155,7 +154,6 @@
   with-current-user]
 
  [qp
-  compile
   process-query]
 
  [qp.store
