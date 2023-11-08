@@ -3,6 +3,10 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
+import {
+  isInstanceAnalyticsCollection,
+  getInstanceAnalyticsCustomCollection,
+} from "metabase/collections/utils";
 import entityType from "./EntityType";
 
 export function getForm(entityDef) {
@@ -20,6 +24,7 @@ const EForm = ({
   onSubmit = object => (object.id ? update(object) : create(object)),
   onSaved,
   resumedValues,
+  collections,
   ...props
 }) => {
   // custom lazy loading to prevent circular deps problem
@@ -28,6 +33,14 @@ const EForm = ({
     typeof entityObject?.getPlainObject === "function"
       ? entityObject.getPlainObject()
       : entityObject;
+
+  if (isInstanceAnalyticsCollection(entityObject?.collection)) {
+    const customCollection = getInstanceAnalyticsCustomCollection(collections);
+    if (customCollection) {
+      initialValues.collection_id = customCollection.id;
+    }
+  }
+
   return (
     <FormikForm
       {...props}

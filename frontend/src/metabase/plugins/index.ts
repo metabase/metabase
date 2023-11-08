@@ -165,6 +165,10 @@ export const PLUGIN_COLLECTIONS = {
     _: Partial<Collection>,
   ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
     AUTHORITY_LEVEL_REGULAR,
+  getInstanceAnalyticsCustomCollection: (
+    collections: Collection[],
+  ): Collection | null => null,
+  CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: "",
   INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE: UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
   getAuthorityLevelMenuItems: (
     _collection: Collection,
