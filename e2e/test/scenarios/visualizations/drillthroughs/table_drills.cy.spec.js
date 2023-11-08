@@ -103,7 +103,10 @@ describe("scenarios > visualizations > drillthroughs > table_drills", function (
       { visitQuestion: true },
     );
 
-    cy.get(".cellData").contains("abbey-heidenreich").click();
+    cy.findByTestId("TableInteractive-root")
+      .findByText("abbey-heidenreich")
+      .click();
+
     popover().within(() => {
       cy.findByText(`Is abbey-heidenreich`).should("be.visible");
       cy.findByText(`Is not abbey-heidenreich`).should("be.visible");

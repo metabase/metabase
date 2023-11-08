@@ -80,7 +80,7 @@
   "SerDes v2 load entry point for internal users.
 
   `opts` are passed to [[v2.load/load-metabase]]."
-  [path
+  [path :- :string
    opts :- [:map [:abort-on-error {:optional true} [:maybe :boolean]]]
    ;; Deliberately separate from the opts so it can't be set from the CLI.
    & {:keys [token-check?]
@@ -100,7 +100,7 @@
   "SerDes v2 load entry point.
 
    opts are passed to load-metabase"
-  [path
+  [path :- :string
    opts :- [:map [:abort-on-error {:optional true} [:maybe :boolean]]]]
   (v2-load-internal path opts :token-check? true))
 

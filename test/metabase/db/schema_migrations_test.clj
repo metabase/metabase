@@ -1205,3 +1205,31 @@
         (db.setup/migrate! db-type data-source :down 47)
         (testing "Rollback to the previous version should restore the column column, and set the default color value"
           (is (= "#31698A" (:color (t2/select-one :model/Collection :id collection-id)))))))))
+
+(deftest audit-v2-views-test
+  (testing "Migrations v48.00-029 - v48.00-040"
+    (impl/test-migrations ["v48.00-029" "v48.00-040"] [migrate!]
+      (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
+            new-view-names ["v_audit_log"
+                            "v_content"
+                            "v_dashboardcard"
+                            "v_group_members"
+                            "v_subscriptions"
+                            "v_alerts"
+                            "v_users"
+                            "v_databases"
+                            "v_fields"
+                            "v_query_log"
+                            "v_tables"
+                            "v_view_log"]]
+        (migrate!)
+        (doseq [view-name new-view-names]
+          (testing (str "View " view-name " should be created")
+            (is (= [] (t2/query (str "SELECT 1 FROM " view-name))))))
+
+        (db.setup/migrate! db-type data-source :down 47)
+        (testing "Views should be removed when downgrading"
+          (doseq [view-name new-view-names]
+            (is (thrown?
+                 clojure.lang.ExceptionInfo
+                 (t2/query (str "SELECT 1 FROM " view-name))))))))))

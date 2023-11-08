@@ -537,7 +537,7 @@
           :when             (pos-int? card_id)]
       (snowplow/track-event! ::snowplow/question-added-to-dashboard
                              api/*current-user-id*
-                             {:dashboard-id dashboard-id :question-id card_id})))
+                             {:dashboard-id dashboard-id :question-id card_id :user-id api/*current-user-id*})))
   ;; Tabs events
   (when (seq deleted-tab-ids)
     (snowplow/track-event! ::snowplow/dashboard-tab-deleted

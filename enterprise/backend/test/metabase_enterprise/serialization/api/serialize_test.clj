@@ -53,9 +53,7 @@
            (testing "collections"
              (is (= 1
                     (->> (files "collections")
-                         (remove #{"cards" "dashboards" "timelines"})
-                         ;; TODO: use better IA test data
-                         (remove #(str/ends-with? % "instance_analytics"))
+                         (remove #(str/ends-with? % "metabase_analytics"))
                          count))))
            (testing "dashboards"
              (is (= 1

@@ -1,0 +1,212 @@
+description: null
+archived: false
+collection_position: null
+table_id:
+- Internal Metabase Database
+- public
+- v_content
+result_metadata: null
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Dashboard metadata
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  database: Internal Metabase Database
+  type: query
+  query:
+    fields:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_id
+      - base-type: type/Integer
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_type
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - created_at
+      - base-type: type/DateTimeWithLocalTZ
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - updated_at
+      - base-type: type/DateTimeWithLocalTZ
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - creator_id
+      - base-type: type/Integer
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - description
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - made_public_by_user
+      - base-type: type/Integer
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - is_embedding_enabled
+      - base-type: type/Boolean
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - archived
+      - base-type: type/Boolean
+    source-table: AxSackBiyXVRUzM_TyyQY
+    filter:
+    - =
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_type
+      - base-type: type/Text
+    - dashboard
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: W34-Nzp-T3-SPdZwGvLeB
+  label: dashboard_metadata
+display: object
+entity_id: W34-Nzp-T3-SPdZwGvLeB
+collection_preview: true
+visualization_settings:
+  table.pivot_column: full_name
+  table.cell_column: model_id
+  table.columns:
+  - name: entity_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - entity_id
+    - base-type: type/Integer
+    enabled: true
+  - name: name
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - name
+    - base-type: type/Text
+    enabled: true
+  - name: entity_type
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - entity_type
+    - base-type: type/Text
+    enabled: true
+  - name: created_at
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - created_at
+    - base-type: type/DateTimeWithLocalTZ
+      temporal-unit: default
+    enabled: true
+  - name: updated_at
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - updated_at
+    - base-type: type/DateTimeWithLocalTZ
+      temporal-unit: default
+    enabled: true
+  - name: creator_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - creator_id
+    - base-type: type/Integer
+    enabled: true
+  - name: description
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - description
+    - base-type: type/Text
+    enabled: true
+  - name: made_public_by_user
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - made_public_by_user
+    - base-type: type/Integer
+    enabled: true
+  - name: is_embedding_enabled
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - is_embedding_enabled
+    - base-type: type/Boolean
+    enabled: true
+  - name: archived
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - archived
+    - base-type: type/Boolean
+    enabled: true
+  column_settings:
+    '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"join-alias":"Question 1"}]]':
+      column_title: Creator Name
+    '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35"}]]':
+      column_title: Name
+    '["ref",["field",["Internal Metabase Database","public","v_content","description"],{"join-alias":"Question 35"}]]':
+      column_title: Description
+    '["ref",["field",["Internal Metabase Database","public","v_audit_log","model_id"],null]]':
+      column_title: Content ID
+    '["ref",["field",["Internal Metabase Database","public","v_audit_log","timestamp"],null]]':
+      column_title: Creation Date
+metabase_version: null
+parameters: []
+dataset: false
+created_at: '2023-08-17T21:47:25.11498Z'
+public_uuid: null

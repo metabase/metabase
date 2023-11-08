@@ -843,3 +843,9 @@
   [xs]
   (or (empty? xs)
       (apply distinct? xs)))
+
+(defn deep-sort-map
+  "Converts a map (with potentially nested maps as values) into a sorted map of sorted maps."
+  [m]
+  (into (sorted-map)
+        (update-vals m (fn [val] (cond-> val (map? val) deep-sort-map)))))
