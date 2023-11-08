@@ -153,6 +153,70 @@
                                [:distinct $price]]
                  :limit       5})))))))
 
+(defn- extract-projections [projections q]
+  (select-keys (get-in q [:query 0 "$project"]) projections))
+
+(deftest expressions-test
+  (mt/test-driver :mongo
+    (testing "Should be able to deal with expressions (#9382 is for BQ but we're doing it for mongo too)"
+      (is (= {"bob" "$latitude", "cobb" "$name"}
+             (extract-projections
+               ["bob" "cobb"]
+               (qp/query->native
+                 (mt/mbql-query venues
+                                {:fields      [[:expression "bob"] [:expression "cobb"]]
+                                 :expressions {:bob   [:field $latitude nil]
+                                               :cobb [:field $name nil]}
+                                 :limit       5}))))))
+    (testing "Should be able to deal with 1-arity functions"
+      (is (= {"cobb" {"$toUpper" "$name"},
+              "bob" {"$abs" "$latitude"} }
+             (extract-projections
+               ["bob" "cobb"]
+               (qp/query->native
+                 (mt/mbql-query venues
+                                {:filters     [[:expression "bob"] [:expression "cobb"]]
+                                 :expressions {:bob   [:abs $latitude]
+                                               :cobb [:upper $name]}
+                                 :limit       5}))))))
+    (testing "Should be able to deal with 2-arity functions"
+      (is (= {"bob" {"$add" ["$price" 300]}}
+             (extract-projections
+               ["bob"]
+               (qp/query->native
+                 (mt/mbql-query venues
+                                {:filters     [[:expression "bob"] [:expression "cobb"]]
+                                 :expressions {:bob   [:+ $price 300]}
+                                 :limit       5}))))))
+    (testing "Should be able to deal with a little indirection"
+      (is (= {"bob" {"$abs" {"$subtract" ["$price" 300]}}}
+             (extract-projections
+               ["bob"]
+               (qp/query->native
+                 (mt/mbql-query venues
+                                {:filters     [[:expression "bob"] [:expression "cobb"]]
+                                 :expressions {:bob   [:abs [:- $price 300]]}
+                                 :limit       5}))))))
+    (testing "Should be able to deal with a little indirection, with an expression in"
+      (is (= {"bob" {"$abs" "$latitude"},
+              "cobb" {"$ceil" {"$abs" "$latitude"}}}
+             (extract-projections
+               ["bob" "cobb"]
+               (qp/query->native
+                 (mt/mbql-query venues
+                                {:filters     [[:expression "bob"] [:expression "cobb"]]
+                                 :expressions {:bob  [:abs $latitude]
+                                               :cobb [:ceil [:expression "bob"]]}
+                                 :limit       5}))))))
+    (testing "Should be able to deal with coalescing"
+      (is (= {"bob" {"$ifNull" ["$latitude" "$price"]}}
+             (extract-projections
+               ["bob"]
+               (qp/query->native
+                 (mt/mbql-query venues
+                                {:expressions {:bob [:coalesce [:field $latitude nil] [:field $price nil]]}
+                                 :limit       5}))))))))
+
 (deftest compile-time-interval-test
   (mt/test-driver :mongo
     (testing "Make sure time-intervals work the way they're supposed to."

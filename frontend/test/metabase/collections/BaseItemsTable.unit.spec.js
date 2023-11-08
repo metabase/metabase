@@ -1,5 +1,4 @@
 import React from "react";
-import "@testing-library/jest-dom/extend-expect";
 import { render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import moment from "moment";
@@ -27,7 +26,7 @@ describe("Collections BaseItemsTable", () => {
       last_name: "Doe",
       timestamp: timestamp,
     },
-    getIcon: () => "dashboard",
+    getIcon: () => ({ name: "dashboard" }),
     getUrl: () => "/dashboard/1",
   };
 

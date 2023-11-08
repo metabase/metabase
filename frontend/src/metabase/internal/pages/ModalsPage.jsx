@@ -7,7 +7,7 @@ import ModalContent from "metabase/components/ModalContent";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 
 const Section = ({ children }) => (
-  <Box className="bordered shadowed rounded" my={3} w={520}>
+  <Box className="bordered shadowed rounded" my={3} width={520}>
     {children}
   </Box>
 );

@@ -191,11 +191,12 @@ export const getDashboardActions = (
         <span
           data-metabase-event={"Dashboard;Fullscreen Mode;" + !isFullscreen}
         >
-          <DashboardHeaderButton>
+          <DashboardHeaderButton
+            onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
+          >
             <FullscreenIcon
-              className="text-brand-hover cursor-pointer"
+              className="text-brand-hover"
               isFullscreen={isFullscreen}
-              onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
             />
           </DashboardHeaderButton>
         </span>

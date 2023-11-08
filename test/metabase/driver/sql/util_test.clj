@@ -4,7 +4,7 @@
             [metabase.util.honeysql-extensions :as hx]))
 
 (deftest select-clause-deduplicate-aliases
-  (testing `select-clause-deduplicate-aliases`
+  (testing 'select-clause-deduplicate-aliases
     (testing "should use the last component of an identifier as the alias if it does not already have one"
       (is (= [[(hx/identifier :field "A" "B" "C" "D") (hx/identifier :field-alias "D")]
               [(hx/identifier :field "F")             (hx/identifier :field-alias "G")]]

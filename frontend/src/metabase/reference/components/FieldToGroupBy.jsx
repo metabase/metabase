@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
-import pure from "recompose/pure";
 import { t } from "ttag";
 import cx from "classnames";
 import S from "./FieldToGroupBy.css";
@@ -42,4 +41,4 @@ FieldToGroupBy.propTypes = {
   secondaryOnClick: PropTypes.func,
 };
 
-export default pure(FieldToGroupBy);
+export default React.memo(FieldToGroupBy);

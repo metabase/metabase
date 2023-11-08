@@ -2,11 +2,11 @@
   (:require [clojure.test :refer :all]
             [metabase.integrations.google :as google]
             [metabase.models.user :as user :refer [User]]
-            [metabase.public-settings.metastore :as metastore]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.test :as mt]))
 
 (deftest google-auth-create-new-user!-test
-  (with-redefs [metastore/enable-sso? (constantly true)]
+  (with-redefs [premium-features/enable-sso? (constantly true)]
     (testing "should support multiple domains (#5218)"
       (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com,example.com"]
         (mt/with-model-cleanup [User]

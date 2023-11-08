@@ -16,7 +16,7 @@ describe("StructuredQuery nesting", () => {
       const j = ORDERS.query()
         .join(EXAMPLE_JOIN)
         .joins()[0];
-      expect(j.parentDimension().mbql()).toEqual([
+      expect(j.parentDimensions()[0].mbql()).toEqual([
         "field",
         ORDERS.PRODUCT_ID.id,
         null,
@@ -28,7 +28,7 @@ describe("StructuredQuery nesting", () => {
       const j = ORDERS.query()
         .join(EXAMPLE_JOIN)
         .joins()[0];
-      expect(j.joinDimension().mbql()).toEqual([
+      expect(j.joinDimensions()[0].mbql()).toEqual([
         "field",
         PRODUCTS.ID.id,
         { "join-alias": "join0" },

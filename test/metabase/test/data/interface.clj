@@ -16,6 +16,7 @@
             [metabase.models.table :refer [Table]]
             [metabase.plugins.classloader :as classloader]
             [metabase.query-processor :as qp]
+            [metabase.test-runner.init :as test-runner.init]
             [metabase.test.initialize :as initialize]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -153,6 +154,7 @@
   "Like `driver/the-driver`, but guaranteed to return a driver with test extensions loaded, throwing an Exception
   otherwise. Loads driver and test extensions automatically if not already done."
   [driver]
+  (test-runner.init/assert-tests-are-not-initializing (pr-str (list 'the-driver-with-test-extensions driver)))
   (initialize/initialize-if-needed! :plugins)
   (let [driver (driver/the-initialized-driver driver)]
     (load-test-extensions-namespace-if-needed driver)
@@ -321,12 +323,15 @@
 
 
 (defmulti sorts-nil-first?
-  "Whether this database will sort nil values before or after non-nil values. Defaults to `true`."
-  {:arglists '([driver])}
+  "Whether this database will sort nil values (of type `base-type`) before or after non-nil values. Defaults to `true`.
+  Of course, in real queries, multiple sort columns can be specified, so considering only one `base-type` isn't 100%
+  correct. However, it is good enough for our test cases, which currently don't sort nulls across multiple columns
+  having different types."
+  {:arglists '([driver base-type])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defmethod sorts-nil-first? ::test-extensions [_] true)
+(defmethod sorts-nil-first? ::test-extensions [_ _] true)
 
 
 (defmulti aggregate-column-info

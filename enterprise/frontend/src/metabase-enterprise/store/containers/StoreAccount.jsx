@@ -209,7 +209,7 @@ const AccountStatus = ({
       flexDirection="column"
       className={className}
       p={[2, 4]}
-      w="100%"
+      width="100%"
     >
       <Box>
         <h2>{title}</h2>
@@ -219,7 +219,7 @@ const AccountStatus = ({
           {subtitle}
         </Box>
       )}
-      <Flex mt={4} align="center" flexWrap="wrap" w="100%">
+      <Flex mt={4} align="center" flexWrap="wrap" width="100%">
         {featuresOrdered.map(([id, feature]) => (
           <Feature
             key={id}
@@ -245,7 +245,7 @@ const CallToAction = ({ title, buttonText, buttonLink }) => (
 );
 
 const Feature = ({ feature, included, expired, preview }) => (
-  <Box w={[1, 1 / 2, 1 / 4]} p={2}>
+  <Box width={[1, 1 / 2, 1 / 4]} p={2}>
     <Card
       p={[1, 2]}
       style={{

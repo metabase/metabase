@@ -13,20 +13,21 @@
                   [goog.string :as gstring]
                   [metabase.shared.models.visualization-settings :as mb.viz])]))
 
-(def ^:private all-instrument-fns [`mb.viz/field-id->column-ref
-                                   `mb.viz/column-name->column-ref
-                                   `mb.viz/field-str->column-ref
-                                   `mb.viz/keyname
-                                   `mb.viz/parse-json-string
-                                   `mb.viz/encode-json-string
-                                   `mb.viz/parse-db-column-ref
-                                   `mb.viz/with-col-settings
-                                   `mb.viz/crossfilter-click-action
-                                   `mb.viz/url-click-action
-                                   `mb.viz/entity-click-action
-                                   `mb.viz/with-click-action
-                                   `mb.viz/with-entity-click-action
-                                   `mb.viz/fk-parameter-mapping])
+(def all-instrument-fns
+  [`mb.viz/field-id->column-ref
+   `mb.viz/column-name->column-ref
+   `mb.viz/field-str->column-ref
+   `mb.viz/keyname
+   `mb.viz/parse-json-string
+   `mb.viz/encode-json-string
+   `mb.viz/parse-db-column-ref
+   `mb.viz/with-col-settings
+   `mb.viz/crossfilter-click-action
+   `mb.viz/url-click-action
+   `mb.viz/entity-click-action
+   `mb.viz/with-click-action
+   `mb.viz/with-entity-click-action
+   `mb.viz/fk-parameter-mapping])
 
 (defn with-spec-instrumentation-fixture
   "`clojure.test` fixture that turns on instrumentation of all specs in the viz settings namespace, then turns it off."
@@ -43,12 +44,15 @@
   (t/testing "Column ref strings are parsed correctly"
     (let [f-qual-nm "/databases/MY_DB/tables/MY_TBL/fields/COL1"
           f-id      42
-          col-nm    "Year"]
+          col-nm    "Year"
+          expn-nm   "Calculated Column"]
       (doseq [[input-str expected] [[(fmt "[\"ref\",[\"field\",%d,null]]" f-id) {::mb.viz/field-id f-id}]
                                     [(fmt "[\"ref\",[\"field\",\"%s\",null]]" f-qual-nm)
                                      {::mb.viz/field-str f-qual-nm}]
                                     [(fmt "[\"name\",\"Year\"]" col-nm)
-                                     {::mb.viz/column-name col-nm}]]]
+                                     {::mb.viz/column-name col-nm}]
+                                    [(fmt "[\"ref\",[\"expression\",\"%s\"]]" expn-nm)
+                                     {::mb.viz/column-name expn-nm}]]]
         (t/is (= expected (mb.viz/parse-db-column-ref input-str)))))))
 
 (t/deftest form-conversion-test
@@ -76,11 +80,19 @@
                                ::mb.viz/link-type           ::mb.viz/card
                                ::mb.viz/parameter-mapping   {}
                                ::mb.viz/link-target-id      target-id}
+<<<<<<< HEAD
           norm-col-nm         {::mb.viz/column-title       "Name Column"
                                ::mb.viz/show-mini-barchart true}
           norm-click-bhvr-map {::mb.viz/click-behavior norm-click-behavior}
           norm-col-settings {(mb.viz/field-id->column-ref f-id {"base-type" "type/Integer"}) norm-click-bhvr-map
                              (mb.viz/column-name->column-ref col-name)                       norm-col-nm}
+=======
+          norm-col-nm         {::mb.viz/column-title  "Name Column"
+                               ::mb.viz/show-mini-bar true}
+          norm-click-bhvr-map {::mb.viz/click-behavior norm-click-behavior}
+          norm-col-settings   {(mb.viz/field-id->column-ref f-id {"base-type" "type/Integer"}) norm-click-bhvr-map
+                               (mb.viz/column-name->column-ref col-name)                       norm-col-nm}
+>>>>>>> tags/v0.41.0
           norm-viz-settings   {::mb.viz/column-settings norm-col-settings
                                ::mb.viz/table-columns [{::mb.viz/table-column-name      "ID"
                                                         ::mb.viz/table-column-field-ref [:field f-id nil]
@@ -94,7 +106,14 @@
           (let [to-db (mb.viz/norm->db to-norm)]
             (t/is (= db-form to-db)))))
       ;; for a non-table card, the :click_behavior map is directly underneath :visualization_settings
-      (t/is (= norm-click-bhvr-map (mb.viz/db->norm db-click-bhv-map))))))
+      (t/is (= norm-click-bhvr-map (mb.viz/db->norm db-click-bhv-map)))))
+
+  (t/testing "The deprecated k:mm :time_style is converted to HH:mm when normalized, and kept in the new style when converted back to the DB form"
+    (let [db-col-settings-old {:column_settings {"[\"name\",\"Column Name\"]" {:time_style "k:mm"}}}
+          db-col-settings-new {:column_settings {"[\"name\",\"Column Name\"]" {:time_style "HH:mm"}}}
+          norm-col-settings   {::mb.viz/column-settings {{::mb.viz/column-name "Column Name"} {::mb.viz/time-style "HH:mm"}}}]
+      (t/is (= norm-col-settings (mb.viz/db->norm db-col-settings-old)))
+      (t/is (= db-col-settings-new (mb.viz/norm->db norm-col-settings))))))
 
 (t/deftest virtual-card-test
   (t/testing "Virtual card in visualization settings is preserved through normalization roundtrip"

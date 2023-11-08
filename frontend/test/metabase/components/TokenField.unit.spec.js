@@ -62,6 +62,21 @@ class TokenFieldWithStateAndDefaults extends React.Component {
 }
 
 describe("TokenField", () => {
+  beforeAll(() => {
+    // temporarily until JSDOM updates
+    if (!global.Element.prototype.closest) {
+      global.Element.prototype.closest = function(selector) {
+        let element = this;
+        while (element) {
+          if (element.matches(selector)) {
+            return element;
+          }
+          element = element.parentElement;
+        }
+      };
+    }
+  });
+
   const input = () => {
     return screen.getByRole("textbox");
   };
@@ -142,7 +157,7 @@ describe("TokenField", () => {
       />,
     );
     userEvent.type(input(), "yep");
-    expect(input().value).toEqual("");
+    expect(input().value).toEqual("yep");
 
     type("yep");
     expect(input().value).toEqual("yep");

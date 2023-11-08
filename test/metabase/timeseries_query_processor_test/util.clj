@@ -7,7 +7,7 @@
 (defn timeseries-drivers []
   #{:druid})
 
-(def ^:private flattened-db-def
+(def flattened-db-def
   "The normal test-data DB definition as a flattened, single-table DB definition."
   (tx/flattened-dataset-definition defs/test-data "checkins"))
 

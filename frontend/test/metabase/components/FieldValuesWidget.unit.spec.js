@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import "mutationobserver-shim";
 
 import { ORDERS, PRODUCTS, PEOPLE } from "__support__/sample_dataset_fixture";
 import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";

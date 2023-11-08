@@ -147,7 +147,7 @@
                         :result_rows  (s/eq 0)
                         :row_count    (s/eq 0)
                         :context      (s/eq :ad-hoc)
-                        :error        (s/eq "Error executing query")
+                        :error        #"Syntax error in SQL statement"
                         :database_id  (s/eq (mt/id))
                         :executor_id  (s/eq (mt/user->id :rasta))
                         :native       (s/eq true)
@@ -157,6 +157,16 @@
                         s/Keyword     s/Any}
                        (most-recent-query-execution-for-query query))))))))
 
+(defn- test-download-response-headers
+  [url]
+  (-> (http-client/client-full-response (test-users/username->token :rasta)
+                                        :post 200 url
+                                        :query (json/generate-string (mt/mbql-query checkins {:limit 1})))
+      :headers
+      (select-keys ["Cache-Control" "Content-Disposition" "Content-Type" "Expires" "X-Accel-Buffering"])
+      (update "Content-Disposition" #(some-> % (str/replace #"query_result_.+(\.\w+)"
+                                                            "query_result_<timestamp>$1")))))
+
 (deftest download-response-headers-test
   (testing "Make sure CSV/etc. download requests come back with the correct headers"
     (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
@@ -164,13 +174,19 @@
             "Content-Type"        "text/csv"
             "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
             "X-Accel-Buffering"   "no"}
-           (-> (http-client/client-full-response (test-users/username->token :rasta)
-                                                 :post 200 "dataset/csv"
-                                                 :query (json/generate-string (mt/mbql-query checkins {:limit 1})))
-               :headers
-               (select-keys ["Cache-Control" "Content-Disposition" "Content-Type" "Expires" "X-Accel-Buffering"])
-               (update "Content-Disposition" #(some-> % (str/replace #"query_result_.+(\.\w+)"
-                                                                                   "query_result_<timestamp>$1"))))))))
+           (test-download-response-headers "dataset/csv")))
+    (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
+            "Content-Disposition" "attachment; filename=\"query_result_<timestamp>.json\""
+            "Content-Type"        "application/json;charset=utf-8"
+            "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
+            "X-Accel-Buffering"   "no"}
+           (test-download-response-headers "dataset/json")))
+    (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
+            "Content-Disposition" "attachment; filename=\"query_result_<timestamp>.xlsx\""
+            "Content-Type"        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
+            "X-Accel-Buffering"   "no"}
+           (test-download-response-headers "dataset/xlsx")))))
 
 (deftest check-that-we-can-export-the-results-of-a-nested-query
   (mt/with-temp-copy-of-db
@@ -190,7 +206,7 @@
         (testing "with data perms"
           (do-test))
         (testing "with collection perms only"
-          (perms/revoke-permissions! (group/all-users) (mt/db))
+          (perms/revoke-data-perms! (group/all-users) (mt/db))
           (do-test))))))
 
 (deftest formatted-results-ignore-query-constraints
@@ -229,7 +245,7 @@
     (mt/with-temp-copy-of-db
       ;; give all-users *partial* permissions for the DB, so we know we're checking more than just read permissions for
       ;; the Database
-      (perms/revoke-permissions! (group/all-users) (mt/id))
+      (perms/revoke-data-perms! (group/all-users) (mt/id))
       (perms/grant-permissions! (group/all-users) (mt/id) "schema_that_does_not_exist")
       (is (schema= {:status   (s/eq "failed")
                     :error    (s/eq "You do not have permissions to run this query.")
@@ -264,7 +280,7 @@
         (mt/suppress-output
           (mt/with-temp-copy-of-db
             ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
-            (perms/revoke-permissions! (group/all-users) (mt/id))
+            (perms/revoke-data-perms! (group/all-users) (mt/id))
             (perms/grant-permissions! (group/all-users) (mt/id) "PUBLIC" (mt/id :venues))
             (is (schema= {:permissions-error? (s/eq true)
                           :message            (s/eq "You do not have permissions to run this query.")
@@ -286,7 +302,7 @@
                      (select-keys [:requested_timezone :results_timezone])))))))))
 
 (deftest pivot-dataset-test
-  (mt/test-drivers pivots/applicable-drivers
+  (mt/test-drivers (pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
@@ -303,7 +319,7 @@
 
         ;; this only works on a handful of databases -- most of them don't allow you to ask for a Field that isn't in
         ;; the GROUP BY expression
-        (when (#{:bigquery :mongo :presto :redshift :h2 :sqlite} metabase.driver/*driver*)
+        (when (#{:bigquery :mongo :presto :h2 :sqlite} metabase.driver/*driver*)
           (testing "with an added expression"
             ;; the added expression is coming back in this query because it is explicitly included in `:fields` -- see
             ;; comments on `metabase.query-processor.pivot-test/pivots-should-not-return-expressions-test`.
@@ -325,6 +341,7 @@
                         "test-expr"]
                        (map :display_name cols)))
                 (is (= {:base_type       "type/Integer"
+                        :effective_type  "type/Integer"
                         :name            "pivot-grouping"
                         :display_name    "pivot-grouping"
                         :expression_name "pivot-grouping"
@@ -335,7 +352,7 @@
               (is (= [nil nil nil 7 18760 69540 "wheeee"] (last rows))))))))))
 
 (deftest pivot-filter-dataset-test
-  (mt/test-drivers pivots/applicable-drivers
+  (mt/test-drivers (pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
@@ -352,7 +369,7 @@
             (is (= [nil nil 3 7562] (last rows)))))))))
 
 (deftest pivot-parameter-dataset-test
-  (mt/test-drivers pivots/applicable-drivers
+  (mt/test-drivers (pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"

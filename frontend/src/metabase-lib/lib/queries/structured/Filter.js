@@ -115,28 +115,28 @@ export default class Filter extends MBQLClause {
   /**
    * Returns true if this is a "standard" filter
    */
-  isStandard(): boolean {
+  isStandard() {
     return isStandard(this);
   }
 
   /**
    * Returns true if this is a segment
    */
-  isSegment(): boolean {
+  isSegment() {
     return isSegment(this);
   }
 
   /**
    * Returns true if this is custom filter created with the expression editor
    */
-  isCustom(): boolean {
+  isCustom() {
     return isCustom(this);
   }
 
   /**
    * Returns true for filters where the first argument is a field
    */
-  isFieldFilter(): boolean {
+  isFieldFilter() {
     return isFieldFilter(this);
   }
 
@@ -308,7 +308,7 @@ export default class Filter extends MBQLClause {
     }
   }
 
-  isDimension(otherDimension: Dimension): boolean {
+  isDimension(otherDimension: Dimension) {
     const dimension = this.dimension();
     return dimension ? dimension.isEqual(otherDimension) : false;
   }

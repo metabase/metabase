@@ -63,12 +63,12 @@ export function seriesSetting({
     },
     "line.interpolate": {
       title: t`Line style`,
-      widget: "buttonGroup",
+      widget: "segmentedControl",
       props: {
         options: [
-          { icon: "straight", name: t`Line`, value: "linear" },
-          { icon: "curved", name: t`Curve`, value: "cardinal" },
-          { icon: "stepped", name: t`Step`, value: "step-after" },
+          { icon: "straight", value: "linear" },
+          { icon: "curved", value: "cardinal" },
+          { icon: "stepped", value: "step-after" },
         ],
       },
       getHidden: (single, settings) =>
@@ -80,7 +80,7 @@ export function seriesSetting({
     },
     "line.marker_enabled": {
       title: t`Show dots on lines`,
-      widget: "buttonGroup",
+      widget: "segmentedControl",
       props: {
         options: [
           { name: t`Auto`, value: null },
@@ -116,7 +116,7 @@ export function seriesSetting({
     },
     axis: {
       title: t`Which axis?`,
-      widget: "buttonGroup",
+      widget: "segmentedControl",
       default: null,
       props: {
         options: [

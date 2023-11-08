@@ -11,8 +11,8 @@
             [metabase.db.setup :as mdb.setup]
             [metabase.models :refer [Activity Card CardFavorite Collection CollectionPermissionGraphRevision Dashboard
                                      DashboardCard DashboardCardSeries DashboardFavorite Database Dependency Dimension Field
-                                     FieldValues LoginHistory Metric MetricImportantField NativeQuerySnippet Permissions
-                                     PermissionsGroup PermissionsGroupMembership PermissionsRevision Pulse PulseCard
+                                     FieldValues LoginHistory Metric MetricImportantField ModerationReview NativeQuerySnippet
+                                     Permissions PermissionsGroup PermissionsGroupMembership PermissionsRevision Pulse PulseCard
                                      PulseChannel PulseChannelRecipient Revision Segment Session Setting Table User
                                      ViewLog]]
             [metabase.util :as u]
@@ -54,6 +54,7 @@
    Segment
    Metric
    MetricImportantField
+   ModerationReview
    Revision
    ViewLog
    Session

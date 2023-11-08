@@ -26,6 +26,11 @@
   overflow-x: scroll;
 }
 
+.bounded-overflow-x-scroll {
+  width: 100%;
+  overflow-x: scroll;
+}
+
 .overflow-y-scroll {
   overflow-y: scroll;
 }

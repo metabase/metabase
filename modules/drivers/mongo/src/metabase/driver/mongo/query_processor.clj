@@ -105,9 +105,17 @@
   [field]
   (field->name field \.))
 
+(defmethod ->lvalue :expression
+  [[_ expression-name]]
+  expression-name)
+
 (defmethod ->rvalue :default
   [x]
   x)
+
+(defmethod ->rvalue :expression
+  [[_ expression-name]]
+  (->rvalue (mbql.u/expression-with-name (:query *query*) expression-name)))
 
 (defmethod ->rvalue (class Field)
   [{coercion :coercion_strategy, :as field}]
@@ -284,6 +292,77 @@
             (u.date/add unit amount)
             (u.date/bucket unit)))))))
 
+;;; ---------------------------------------------------- functions ---------------------------------------------------
+
+;; It doesn't make 100% sense to have lvalues for all these but it's a formal requirement
+
+(defmethod ->lvalue :avg       [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :stddev    [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :sum       [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :min       [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :max       [[_ inp]] (->lvalue inp))
+
+(defmethod ->lvalue :floor     [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :ceil      [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :round     [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :abs       [[_ inp]] (->lvalue inp))
+
+(defmethod ->lvalue :log       [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :exp       [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :sqrt      [[_ inp]] (->lvalue inp))
+
+(defmethod ->lvalue :trim      [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :ltrim     [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :rtrim     [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :upper     [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :lower     [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :length    [[_ inp]] (->lvalue inp))
+
+(defmethod ->lvalue :power     [[_ & args]] (->lvalue (first args)))
+(defmethod ->lvalue :replace   [[_ & args]] (->lvalue (first args)))
+(defmethod ->lvalue :concat    [[_ & args]] (->lvalue (first args)))
+(defmethod ->lvalue :substring [[_ & args]] (->lvalue (first args)))
+
+(defmethod ->lvalue :+ [[_ & args]] (->lvalue (first args)))
+(defmethod ->lvalue :- [[_ & args]] (->lvalue (first args)))
+(defmethod ->lvalue :* [[_ & args]] (->lvalue (first args)))
+(defmethod ->lvalue :/ [[_ & args]] (->lvalue (first args)))
+
+(defmethod ->rvalue :coalesce [[_ & args]] (->lvalue (first args)))
+
+(defmethod ->rvalue :avg       [[_ inp]] {"$avg" (->rvalue inp)})
+(defmethod ->rvalue :stddev    [[_ inp]] {"$stdDevPop" (->rvalue inp)})
+(defmethod ->rvalue :sum       [[_ inp]] {"$sum" (->rvalue inp)})
+(defmethod ->rvalue :min       [[_ inp]] {"$min" (->rvalue inp)})
+(defmethod ->rvalue :max       [[_ inp]] {"$max" (->rvalue inp)})
+
+(defmethod ->rvalue :floor     [[_ inp]] {"$floor" (->rvalue inp)})
+(defmethod ->rvalue :ceil      [[_ inp]] {"$ceil" (->rvalue inp)})
+(defmethod ->rvalue :round     [[_ inp]] {"$round" (->rvalue inp)})
+(defmethod ->rvalue :abs       [[_ inp]] {"$abs" (->rvalue inp)})
+
+(defmethod ->rvalue :log       [[_ inp]] {"$log10" (->rvalue inp)})
+(defmethod ->rvalue :exp       [[_ inp]] {"$exp" (->rvalue inp)})
+(defmethod ->rvalue :sqrt      [[_ inp]] {"$sqrt" (->rvalue inp)})
+
+(defmethod ->rvalue :trim      [[_ inp]] {"$trim" (->rvalue inp)})
+(defmethod ->rvalue :ltrim     [[_ inp]] {"$ltrim" (->rvalue inp)})
+(defmethod ->rvalue :rtrim     [[_ inp]] {"$rtrim" (->rvalue inp)})
+(defmethod ->rvalue :upper     [[_ inp]] {"$toUpper" (->rvalue inp)})
+(defmethod ->rvalue :lower     [[_ inp]] {"$toLower" (->rvalue inp)})
+(defmethod ->rvalue :length    [[_ inp]] {"$strLenCP" (->rvalue inp)})
+
+(defmethod ->rvalue :power     [[_ & args]] {"$pow" (mapv ->rvalue args)})
+(defmethod ->rvalue :replace   [[_ & args]] {"$replaceAll" (mapv ->rvalue args)})
+(defmethod ->rvalue :concat    [[_ & args]] {"$concat" (mapv ->rvalue args)})
+(defmethod ->rvalue :substring [[_ & args]] {"$substrCP" (mapv ->rvalue args)})
+
+(defmethod ->rvalue :+ [[_ & args]] {"$add" (mapv ->rvalue args)})
+(defmethod ->rvalue :- [[_ & args]] {"$subtract" (mapv ->rvalue args)})
+(defmethod ->rvalue :* [[_ & args]] {"$multiply" (mapv ->rvalue args)})
+(defmethod ->rvalue :/ [[_ & args]] {"$divide" (mapv ->rvalue args)})
+
+(defmethod ->rvalue :coalesce [[_ & args]] {"$ifNull" (mapv ->rvalue args)})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               CLAUSE APPLICATION                                               |
@@ -644,7 +723,6 @@
                                                         (when-not (zero? offset)
                                                           {$skip offset}))
                                                       {$limit items-per-page}]))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Process & Run                                                  |

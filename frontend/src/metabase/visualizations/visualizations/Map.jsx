@@ -5,6 +5,7 @@ import ChoroplethMap, {
   getColorplethColorScale,
 } from "../components/ChoroplethMap";
 import PinMap from "../components/PinMap";
+import LeafletGridHeatMap from "../components/LeafletGridHeatMap";
 
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import {
@@ -46,7 +47,8 @@ export default class Map extends Component {
   static isSensible({ cols, rows }) {
     return (
       PinMap.isSensible({ cols, rows }) ||
-      ChoroplethMap.isSensible({ cols, rows })
+      ChoroplethMap.isSensible({ cols, rows }) ||
+      LeafletGridHeatMap.isSensible({ cols, rows })
     );
   }
 

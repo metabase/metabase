@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
@@ -17,7 +17,7 @@ describe("scenarios > visualizations > scalar", () => {
   };
 
   Object.entries(SCREEN_SIZES).forEach(([size, viewport]) => {
-    it(`should render human readable numbers on ${size} screen size (metabase#12629)`, () => {
+    it(`should render human readable numbers on ${size} screen size (metabase`, () => {
       const [width, height] = viewport;
 
       cy.skipOn(size === "mobile");
@@ -31,7 +31,7 @@ describe("scenarios > visualizations > scalar", () => {
         },
         display: "scalar",
       }).then(({ body: { id: questionId } }) => {
-        cy.createDashboard("12629").then(({ body: { id: dashboardId } }) => {
+        cy.createDashboard().then(({ body: { id: dashboardId } }) => {
           // Add previously created question to the dashboard
           cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
             cardId: questionId,
@@ -55,5 +55,25 @@ describe("scenarios > visualizations > scalar", () => {
         });
       });
     });
+  });
+
+  it(`should render date without time (metabase#7494)`, () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `SELECT cast('2018-05-01T00:00:00Z'::timestamp as date)`,
+          "template-tags": {},
+        },
+        database: 1,
+      },
+      display: "scalar",
+    });
+
+    cy.findByText("April 30, 2018");
+    cy.findByText("Settings").click();
+
+    cy.findByText("Show the time").should("be.hidden");
+    cy.findByText("Time style").should("be.hidden");
   });
 });

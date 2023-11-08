@@ -6,7 +6,6 @@ import moment from "moment";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
-
 import * as Urls from "metabase/lib/urls";
 
 import EntityMenu from "metabase/components/EntityMenu";
@@ -23,6 +22,7 @@ import Group from "metabase/entities/groups";
 import UserGroupSelect from "../components/UserGroupSelect";
 import { USER_STATUS } from "../constants";
 import { loadMemberships } from "../people";
+import { PLUGIN_ADMIN_USER_MENU_ITEMS } from "metabase/plugins";
 
 @Group.loadList({
   reload: true,
@@ -203,6 +203,9 @@ export default class PeopleList extends Component {
                               title: t`Reset password`,
                               link: Urls.resetPassword(user.id),
                             },
+                            ...PLUGIN_ADMIN_USER_MENU_ITEMS.flatMap(getItems =>
+                              getItems(user),
+                            ),
                             !isCurrentUser(user) && {
                               title: t`Deactivate user`,
                               link: Urls.deactivateUser(user.id),

@@ -1,4 +1,9 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  describeWithToken,
+  mockSessionProperty,
+} from "__support__/e2e/cypress";
 
 function typeField(label, value) {
   cy.findByLabelText(label)
@@ -220,14 +225,12 @@ describe("scenarios > admin > databases > add", () => {
     it("should let you upload the service account json from a file", () => {
       cy.visit("/admin/databases/create");
 
-      // select BigQuery
-      cy.contains("Database type")
-        .parents(".Form-field")
-        .find(".AdminSelect")
-        .click();
-      popover()
-        .contains("BigQuery")
-        .click({ force: true });
+      chooseDatabase("BigQuery");
+
+      //Ensure deprecation warning is shown
+      cy.findByTestId("database-setup-driver-warning").within(() => {
+        cy.contains("The old driver has been deprecated");
+      });
 
       // enter text
       typeField("Name", "bq db");
@@ -293,13 +296,7 @@ describe("scenarios > admin > databases > add", () => {
   describe("Google Analytics ", () => {
     it("should generate well-formed external auth URLs", () => {
       cy.visit("/admin/databases/create");
-      cy.contains("Database type")
-        .parents(".Form-field")
-        .find(".AdminSelect")
-        .click();
-      popover()
-        .contains("Google Analytics")
-        .click({ force: true });
+      chooseDatabase("Google Analytics");
 
       typeField("Client ID", "   999  ");
 
@@ -310,6 +307,53 @@ describe("scenarios > admin > databases > add", () => {
             "https://accounts.google.com/o/oauth2/auth?access_type=offline&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/analytics.readonly&client_id=999",
           );
         });
+    });
+  });
+
+  describeWithToken("caching", () => {
+    beforeEach(() => {
+      mockSessionProperty("enable-query-caching", true);
+    });
+
+    it("sets cache ttl to null by default", () => {
+      cy.intercept("POST", "/api/database", { id: 42 }).as("createDatabase");
+      cy.visit("/admin/databases/create");
+
+      typeField("Name", "Test db name");
+      typeField("Host", "localhost");
+      typeField("Database name", "test_postgres_db");
+      typeField("Username", "uberadmin");
+
+      cy.button("Save").click();
+
+      cy.wait("@createDatabase").then(({ request }) => {
+        expect(request.body.cache_ttl).to.equal(null);
+      });
+    });
+
+    it("allows to set cache ttl", () => {
+      cy.intercept("POST", "/api/database", { id: 42 }).as("createDatabase");
+      cy.visit("/admin/databases/create");
+
+      typeField("Name", "Test db name");
+      typeField("Host", "localhost");
+      typeField("Database name", "test_postgres_db");
+      typeField("Username", "uberadmin");
+
+      cy.findByText("Use instance default (TTL)").click();
+      popover()
+        .findByText("Custom")
+        .click();
+      cy.findByDisplayValue("24")
+        .clear()
+        .type("48")
+        .blur();
+
+      cy.button("Save").click();
+
+      cy.wait("@createDatabase").then(({ request }) => {
+        expect(request.body.cache_ttl).to.equal(48);
+      });
     });
   });
 });

@@ -3,8 +3,8 @@
             [metabase-enterprise.serialization.names :as names]
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase.models :refer [Card Collection Dashboard Database Field Metric NativeQuerySnippet Segment Table]]
-            [metabase.util :as u]
-            [metabase.test :as mt]))
+            [metabase.test :as mt]
+            [metabase.util :as u]))
 
 (deftest safe-name-test
   (are [s expected] (= (names/safe-name {:name s}) expected)

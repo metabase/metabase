@@ -571,7 +571,7 @@ export function createEntity(def: EntityDefinition): Entity {
       return object.name;
     },
     getIcon(object) {
-      return "unknown";
+      return { name: "unknown" };
     },
     getColor(object) {
       return undefined;

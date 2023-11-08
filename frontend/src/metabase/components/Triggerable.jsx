@@ -152,7 +152,9 @@ export default ComposedComponent =>
           aria-disabled={this.props.disabled}
           style={triggerStyle}
         >
-          {triggerElement}
+          {typeof triggerElement === "function"
+            ? triggerElement({ isTriggeredComponentOpen: isOpen })
+            : triggerElement}
           <ComposedComponent
             {...this.props}
             isOpen={isOpen}

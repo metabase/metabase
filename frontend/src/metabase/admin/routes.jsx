@@ -3,7 +3,10 @@ import { Route } from "metabase/hoc/Title";
 import { IndexRoute, IndexRedirect } from "react-router";
 import { t } from "ttag";
 
-import { PLUGIN_ADMIN_ROUTES } from "metabase/plugins";
+import {
+  PLUGIN_ADMIN_ROUTES,
+  PLUGIN_ADMIN_USER_MENU_ROUTES,
+} from "metabase/plugins";
 
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
@@ -109,6 +112,7 @@ const getRoutes = (store, IsAdmin) => (
         <ModalRoute path="reset" modal={UserPasswordResetModal} />
         <ModalRoute path="deactivate" modal={UserActivationModal} />
         <ModalRoute path="reactivate" modal={UserActivationModal} />
+        {PLUGIN_ADMIN_USER_MENU_ROUTES.map(getRoutes => getRoutes(store))}
       </Route>
     </Route>
 
@@ -140,10 +144,12 @@ const getRoutes = (store, IsAdmin) => (
     </Route>
 
     {/* PERMISSIONS */}
-    {getAdminPermissionsRoutes(store)}
+    <React.Fragment>{getAdminPermissionsRoutes(store)}</React.Fragment>
 
     {/* PLUGINS */}
-    {PLUGIN_ADMIN_ROUTES.map(getRoutes => getRoutes(store))}
+    <React.Fragment>
+      {PLUGIN_ADMIN_ROUTES.map(getRoutes => getRoutes(store))}
+    </React.Fragment>
   </Route>
 );
 

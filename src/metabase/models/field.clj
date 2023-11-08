@@ -128,7 +128,7 @@
   (memoize/ttl
    (fn [table-id]
      (let [{schema :schema, database-id :db_id} (db/select-one ['Table :schema :db_id] :id table-id)]
-       #{(perms/object-path database-id schema table-id)}))
+       #{(perms/data-perms-path database-id schema table-id)}))
    :ttl/threshold 5000))
 
 (defn- perms-objects-set
@@ -138,7 +138,7 @@
   {:arglists '([field read-or-write])}
   (if db-id
     ;; if Field already has a hydrated `:table`, then just use that to generate perms set (no DB calls required)
-    #{(perms/object-path db-id schema table-id)}
+    #{(perms/data-perms-path db-id schema table-id)}
     ;; otherwise we need to fetch additional info about Field's Table. This is cached for 5 seconds (see above)
     (perms-objects-set* table-id)))
 

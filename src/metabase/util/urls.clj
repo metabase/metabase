@@ -44,3 +44,8 @@
   "URL prefix for a public Dashboards. Get the complete URL by adding the UUID to the end."
   []
   (str (public-settings/site-url) "/public/dashboard/"))
+
+(defn notification-management-url
+  "URL for the notification management page in account settings."
+  []
+  (str (public-settings/site-url) "/account/notifications"))

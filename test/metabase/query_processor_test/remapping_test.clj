@@ -51,7 +51,7 @@
                       :limit       3}))
                  qp.test/rows-and-cols
                  (update :cols (fn [[c1 c2 agg]]
-                                 [(dissoc c1 :source_alias) c2 (dissoc agg :base_type)]))))))))
+                                 [(dissoc c1 :source_alias) c2 (dissoc agg :base_type :effective_type)]))))))))
 
 (deftest nested-remapping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -202,8 +202,7 @@
         ))))
 
 (deftest remappings-with-implicit-joins-test
-  ;; Redshift excluded for now since the sample dataset seems to hang for Redshift.
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries) :redshift)
+  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
     (testing "Queries with implicit joins should still work when FK remaps are used (#13641)"
       (mt/dataset sample-dataset
         (mt/with-column-remappings [orders.product_id products.title]

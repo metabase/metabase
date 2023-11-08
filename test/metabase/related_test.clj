@@ -101,10 +101,11 @@
                   [k (if (sequential? v)
                        (sort (map :id v))
                        (:id v))]))]
-    ;; filter out Cards not created as part of `with-world` so these tests can be ran from the REPL.
-    (m/update-existing m
-                       :similar-questions
-                       (partial filter (set ((juxt :card-id-a :card-id-b :card-id-c) *world*))))))
+    (-> m
+        ;; filter out Cards not created as part of `with-world` so these tests can be ran from the REPL.
+        (m/update-existing :similar-questions (partial filter (set ((juxt :card-id-a :card-id-b :card-id-c) *world*))))
+        ;; do the same for Collections.
+        (m/update-existing :collections (partial filter (partial = (:collection-id *world*)))))))
 
 (deftest related-cards-test
   (with-world

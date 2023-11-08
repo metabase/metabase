@@ -64,6 +64,10 @@ describe("data_grid", () => {
         ["a", 1, 2, 3],
         ["b", 4, 5, 6],
       ]);
+      expect(pivotedData.sourceRows).toEqual([
+        [null, 0, 1, 2],
+        [null, 3, 4, 5],
+      ]);
     });
     it("should pivot non-numeric values correctly", () => {
       const data = makeData([
@@ -85,6 +89,10 @@ describe("data_grid", () => {
         ["a", "q", "w", "e"],
         ["b", "r", "t", "y"],
       ]);
+      expect(pivotedData.sourceRows).toEqual([
+        [null, 0, 1, 2],
+        [null, 3, 4, 5],
+      ]);
     });
     it("should pivot values correctly with columns flipped", () => {
       const data = makeData([
@@ -105,6 +113,11 @@ describe("data_grid", () => {
         ["x", 1, 4],
         ["y", 2, 5],
         ["z", 3, 6],
+      ]);
+      expect(pivotedData.sourceRows).toEqual([
+        [null, 0, 3],
+        [null, 1, 4],
+        [null, 2, 5],
       ]);
     });
 
@@ -137,6 +150,10 @@ describe("data_grid", () => {
       expect(pivotedData.rows.map(row => [...row])).toEqual([
         ["a", 1, null, 3],
         ["b", 4, 5, 6],
+      ]);
+      expect(pivotedData.sourceRows).toEqual([
+        [null, 0, null, 1],
+        [null, 2, 3, 4],
       ]);
     });
   });

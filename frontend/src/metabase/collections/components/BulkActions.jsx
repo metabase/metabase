@@ -66,8 +66,8 @@ function BulkActions(props) {
                    to the main content above to ensure the bulk checkbox lines up */}
       <Box px={[2, 4]} py={1}>
         <Grid>
-          <GridItem w={[1, 1 / 3]} />
-          <GridItem w={[1, 2 / 3]} px={[1, 2]}>
+          <GridItem width={[1, 1 / 3]} />
+          <GridItem width={[1, 2 / 3]} px={[1, 2]}>
             <Flex align="center" justify="center" px={2}>
               <SelectionControls {...props} />
               <BulkActionControls

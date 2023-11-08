@@ -2,14 +2,14 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
 
-export const GridItem = ({ children, w, px, py, ...props }) => (
-  <Box w={w} px={px} py={py} {...props}>
+export const GridItem = ({ children, width, px, py, ...props }) => (
+  <Box px={px} py={py} {...props} width={width}>
     {children}
   </Box>
 );
 
 GridItem.defaultProps = {
-  w: 1 / 4,
+  width: 1 / 4,
   px: 1,
   py: 1,
 };

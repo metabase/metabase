@@ -19,6 +19,16 @@
         (u/announce "Driver init class file found.")
         (throw (ex-info (format "Driver verification failed: init class file %s not found" driver-init-class-filename) {}))))))
 
+(defn- verify-does-not-have-clojure-core [driver]
+  (let [jar-filename (c/driver-jar-destination-path driver)]
+    (u/step (format "Check %s does not contain Clojure core classes" jar-filename)
+      (doseq [file ["clojure/spec/alpha__init.class"
+                    "clojure/core__init.class"
+                    "clojure/core.clj"]]
+        (when (jar-contains-file? jar-filename file)
+          (throw (ex-info (format "Driver verification failed: driver contains compiled Clojure core file %s" file)
+                          {:file file})))))))
+
 (defn- verify-has-plugin-manifest [driver]
   (let [jar-filename (c/driver-jar-destination-path driver)]
     (u/step (format "Check %s contains metabase-plugin.yaml" jar-filename)
@@ -34,4 +44,5 @@
     (u/assert-file-exists (c/driver-jar-destination-path driver))
     (verify-has-init-class driver)
     (verify-has-plugin-manifest driver)
+    (verify-does-not-have-clojure-core driver)
     (u/announce (format "%s driver verification successful." driver))))

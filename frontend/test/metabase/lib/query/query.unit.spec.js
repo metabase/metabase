@@ -108,6 +108,65 @@ describe("Query", () => {
     });
   });
 
+  describe("updateBreakout", () => {
+    it("should update the field", () => {
+      expect(
+        Query.updateBreakout(
+          {
+            breakout: [["field", 1, null]],
+          },
+          0,
+          ["field", 2, null],
+        ),
+      ).toEqual({
+        breakout: [["field", 2, null]],
+      });
+      expect(
+        Query.updateBreakout(
+          {
+            breakout: [["field", "CREATED_AT", null]],
+          },
+          0,
+          ["field", "DISCOUNT", null],
+        ),
+      ).toEqual({
+        breakout: [["field", "DISCOUNT", null]],
+      });
+    });
+    it("should update sort as well", () => {
+      expect(
+        Query.updateBreakout(
+          {
+            breakout: [["field", 3, { "temporal-unit": "month" }]],
+            "order-by": [["asc", ["field", 3, { "temporal-unit": "month" }]]],
+          },
+          0,
+          ["field", 3, { "temporal-unit": "year" }],
+        ),
+      ).toEqual({
+        breakout: [["field", 3, { "temporal-unit": "year" }]],
+        "order-by": [["asc", ["field", 3, { "temporal-unit": "year" }]]],
+      });
+      expect(
+        Query.updateBreakout(
+          {
+            breakout: [["field", "CREATED_AT", { "temporal-unit": "month" }]],
+            "order-by": [
+              ["asc", ["field", "CREATED_AT", { "temporal-unit": "month" }]],
+            ],
+          },
+          0,
+          ["field", "CREATED_AT", { "temporal-unit": "year" }],
+        ),
+      ).toEqual({
+        breakout: [["field", "CREATED_AT", { "temporal-unit": "year" }]],
+        "order-by": [
+          ["asc", ["field", "CREATED_AT", { "temporal-unit": "year" }]],
+        ],
+      });
+    });
+  });
+
   describe("removeBreakout", () => {
     it("should remove sort as well", () => {
       expect(

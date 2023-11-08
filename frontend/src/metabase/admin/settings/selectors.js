@@ -15,9 +15,13 @@ import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import EmbeddingLevel from "./components/widgets/EmbeddingLevel";
 import FormattingWidget from "./components/widgets/FormattingWidget";
+<<<<<<< HEAD
 
 import { SettingsCloudStoreLink } from "./components/SettingsCloudStoreLink";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm";
+=======
+import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
+>>>>>>> tags/v0.41.0
 import SettingsEmailForm from "./components/SettingsEmailForm";
 import SettingsSetupList from "./components/SettingsSetupList";
 import SettingsSlackForm from "./components/SettingsSlackForm";
@@ -36,10 +40,12 @@ function updateSectionsWithPlugins(sections) {
     // the update functions may change the key ordering inadvertently
     // see: https://github.com/aearly/icepick/issues/48
     // therefore, re-sort the reduced object according to the original key order
-    const reSortFn = ([, aVal], [, bVal]) =>
-      aVal && bVal && aVal.order - bVal.order;
+    const sortByOrder = (
+      [, { order: order1 = Number.MAX_VALUE }],
+      [, { order: order2 = Number.MAX_VALUE }],
+    ) => order1 - order2;
 
-    return Object.fromEntries(Object.entries(reduced).sort(reSortFn));
+    return Object.fromEntries(Object.entries(reduced).sort(sortByOrder));
   } else {
     return sections;
   }

@@ -2,10 +2,12 @@
   "A `PermissionsGroup` is a group (or role) that can be assigned certain permissions. Users can be members of one or
   more of these groups.
 
-  A few 'magic' groups exist: `all-users`, which predicably contains All Users; `admin`, which contains all
-  superusers, and `metabot`, which is used to set permissions for the MetaBot. These groups are 'magic' in the sense
+  A few 'magic' groups exist: [[all-users]], which predicably contains All Users; [[admin]], which contains all
+  superusers, and [[metabot]], which is used to set permissions for the MetaBot. These groups are 'magic' in the sense
   that you cannot add users to them yourself, nor can you delete them; they are created automatically. You can,
-  however, set permissions for them. "
+  however, set permissions for them.
+
+  See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.db.connection :as mdb.connection]

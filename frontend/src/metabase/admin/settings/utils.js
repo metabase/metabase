@@ -15,3 +15,5 @@ export const settingToFormField = setting => ({
     : setting.placeholder || setting.default,
   validate: setting.required ? value => !value && "required" : null,
 });
+
+export const settingToFormFieldId = setting => `setting-${setting.key}`;

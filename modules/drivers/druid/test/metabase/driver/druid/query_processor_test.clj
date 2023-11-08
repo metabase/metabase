@@ -288,26 +288,31 @@
                                             :source       :native
                                             :display_name "id"
                                             :field_ref    [:field "id" {:base-type :type/Integer}]
-                                            :base_type    :type/Integer}
+                                            :base_type    :type/Integer
+                                            :effective_type :type/Integer}
                                            {:name         "user_name"
                                             :source       :native
                                             :display_name "user_name"
                                             :base_type    :type/Text
+                                            :effective_type :type/Text
                                             :field_ref    [:field "user_name" {:base-type :type/Text}]}
                                            {:name         "venue_price"
                                             :source       :native
                                             :display_name "venue_price"
                                             :base_type    :type/Integer
+                                            :effective_type :type/Integer
                                             :field_ref    [:field "venue_price" {:base-type :type/Integer}]}
                                            {:name         "venue_name"
                                             :source       :native
                                             :display_name "venue_name"
                                             :base_type    :type/Text
+                                            :effective_type :type/Text
                                             :field_ref    [:field "venue_name" {:base-type :type/Text}]}
                                            {:name         "count"
                                             :source       :native
                                             :display_name "count"
                                             :base_type    :type/Integer
+                                            :effective_type :type/Integer
                                             :field_ref    [:field "count" {:base-type :type/Integer}]}]
                         :native_form      {:query native-query-1}
                         :results_timezone "UTC"}}

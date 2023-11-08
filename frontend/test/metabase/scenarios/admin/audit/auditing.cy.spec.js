@@ -29,7 +29,7 @@ function generateQuestions(user) {
 }
 
 function generateDashboards(user) {
-  cy.createDashboard(`${user} dashboard`);
+  cy.createDashboard({ name: `${user} dashboard` });
 }
 
 describeWithToken("audit > auditing", () => {

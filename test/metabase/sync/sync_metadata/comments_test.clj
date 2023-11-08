@@ -15,7 +15,7 @@
   (let [table-ids (db/select-ids Table :db_id (u/the-id db))]
     (set (map (partial into {}) (db/select ['Field :name :description] :table_id [:in table-ids])))))
 
-(tx/defdataset ^:private basic-field-comments
+(tx/defdataset basic-field-comments
   [["basic_field_comments"
     [{:field-name "with_comment", :base-type :type/Text, :field-comment "comment"}
      {:field-name "no_comment", :base-type :type/Text}]
@@ -30,7 +30,7 @@
                  {:name (mt/format-name "no_comment"), :description nil}}
                (db->fields (mt/db))))))))
 
-(tx/defdataset ^:private update-desc
+(tx/defdataset update-desc
   [["update_desc"
     [{:field-name "updated_desc", :base-type :type/Text, :field-comment "original comment"}]
     [["foo"]]]])
@@ -103,7 +103,7 @@
           ;; change the description in metabase while the source table comment remains the same
           (db/update-where! Table {:id (mt/id "table_with_updated_desc")}, :description "updated table description")
           ;; now sync the DB again, this should NOT overwrite the manually updated description
-          (sync-tables/sync-tables! (mt/db))
+          (sync-tables/sync-tables-and-database! (mt/db))
           (is (= #{{:name (mt/format-name "table_with_updated_desc"), :description "updated table description"}}
                  (db->tables (mt/db)))))))))
 
@@ -114,6 +114,6 @@
         ;; modify the source DB to add the comment and resync
         (driver/notify-database-updated driver/*driver* (mt/db))
         (tx/create-db! driver/*driver* (basic-table "table_with_comment_after_sync" "added comment"))
-        (sync-tables/sync-tables! (mt/db))
+        (sync-tables/sync-tables-and-database! (mt/db))
         (is (= #{{:name (mt/format-name "table_with_comment_after_sync"), :description "added comment"}}
                (db->tables (mt/db))))))))

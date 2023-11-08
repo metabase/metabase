@@ -356,7 +356,14 @@ export default class TableInteractive extends Component {
     isPivoted,
     series,
   ) {
-    const clickedRowData = getTableClickedObjectRowData(series, rowIndex);
+    const clickedRowData = getTableClickedObjectRowData(
+      series,
+      rowIndex,
+      columnIndex,
+      isPivoted,
+      data,
+    );
+
     return getTableCellClickedObject(
       data,
       settings,
@@ -869,7 +876,6 @@ export default class TableInteractive extends Component {
   _benchmark() {
     const grid = ReactDOM.findDOMNode(this.grid);
     const height = grid.scrollHeight;
-    console.log("height", height);
     let top = 0;
     let start = Date.now();
     // console.profile();

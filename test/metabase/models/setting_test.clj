@@ -15,9 +15,6 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 ;; ## TEST SETTINGS DEFINITIONS
-;; TODO! These don't get loaded by `lein ring server` unless this file is touched
-;; so if you run unit tests while `lein ring server` is running (i.e., no Jetty server is started)
-;; these tests will fail. FIXME
 
 (defsetting test-setting-1
   (deferred-tru "Test setting - this only shows up in dev (1)"))
@@ -30,33 +27,40 @@
   (deferred-tru "Test setting - this only shows up in dev (3)")
   :visibility :internal)
 
-(defsetting ^:private test-boolean-setting
+(defsetting test-boolean-setting
   "Test setting - this only shows up in dev (3)"
   :visibility :internal
   :type :boolean)
 
-(defsetting ^:private test-json-setting
+(defsetting test-json-setting
   (deferred-tru "Test setting - this only shows up in dev (4)")
   :type :json)
 
-(defsetting ^:private test-csv-setting
+(defsetting test-csv-setting
   "Test setting - this only shows up in dev (5)"
   :visibility :internal
   :type :csv)
 
-(defsetting ^:private test-csv-setting-with-default
+(defsetting test-csv-setting-with-default
   "Test setting - this only shows up in dev (6)"
   :visibility :internal
   :type :csv
-  :default "A,B,C")
+  :default ["A" "B" "C"])
 
-(defsetting ^:private test-env-setting
+(defsetting test-env-setting
   "Test setting - this only shows up in dev (7)"
   :visibility :internal)
 
 (setting/defsetting toucan-name
   "Name for the Metabase Toucan mascot."
   :visibility :internal)
+
+(setting/defsetting test-setting-calculated-getter
+  "Test setting - this only shows up in dev (8)"
+  :type       :boolean
+  :setter     :none
+  :getter     (fn []
+                true))
 
 ;; ## HELPER FUNCTIONS
 
@@ -84,12 +88,18 @@
   (testing "Test getting a default value -- if you clear the value of a Setting it should revert to returning the default value"
     (test-setting-2 nil)
     (is (= "[Default Value]"
-           (test-setting-2))))
+           (test-setting-2)))))
 
+(deftest user-facing-value-test
   (testing "`user-facing-value` should return `nil` for a Setting that is using the default value"
     (test-setting-2 nil)
     (is (= nil
-           (setting/user-facing-value :test-setting-2)))))
+           (setting/user-facing-value :test-setting-2))))
+  (testing "`user-facing-value` should work correctly for calculated Settings (no underlying value)"
+    (is (= true
+           (test-setting-calculated-getter)))
+    (is (= true
+           (setting/user-facing-value :test-setting-calculated-getter)))))
 
 (deftest defsetting-setter-fn-test
   (test-setting-2 "FANCY NEW VALUE <3")
@@ -261,7 +271,7 @@
                    :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
                setting))))))
 
-(defsetting ^:private test-i18n-setting
+(defsetting test-i18n-setting
   (deferred-tru "Test setting - with i18n"))
 
 (deftest validate-description-test
@@ -305,8 +315,9 @@
 
   (testing "if value isn't true / false"
     (testing "getter should throw exception"
-      (is (thrown?
+      (is (thrown-with-msg?
            Exception
+           #"Invalid value for string: must be either \"true\" or \"false\" \(case-insensitive\)"
            (test-boolean-setting "X"))))
 
     (testing "user-facing info should just return `nil` instead of failing entirely"
@@ -419,25 +430,26 @@
 
 (deftest previously-encrypted-settings-test
   (testing "Make sure settings that were encrypted don't cause `user-facing-info` to blow up if encyrption key changed"
-    (encryption-test/with-secret-key "0B9cD6++AME+A7/oR7Y2xvPRHX3cHA2z7w+LbObd/9Y="
-      (test-json-setting {:abc 123})
-      (is (not= "{\"abc\":123}"
-                (actual-value-in-db :test-json-setting))))
-    (testing (str "If fetching the Setting fails (e.g. because key changed) `user-facing-info` should return `nil` "
-                  "rather than failing entirely")
-      (encryption-test/with-secret-key nil
-        (is (= {:key            :test-json-setting
-                :value          nil
-                :is_env_setting false
-                :env_name       "MB_TEST_JSON_SETTING"
-                :description    "Test setting - this only shows up in dev (4)"
-                :default        nil}
-               (#'setting/user-facing-info (setting/resolve-setting :test-json-setting))))))))
+    (mt/discard-setting-changes [test-json-setting]
+      (encryption-test/with-secret-key "0B9cD6++AME+A7/oR7Y2xvPRHX3cHA2z7w+LbObd/9Y="
+        (test-json-setting {:abc 123})
+        (is (not= "{\"abc\":123}"
+                  (actual-value-in-db :test-json-setting))))
+      (testing (str "If fetching the Setting fails (e.g. because key changed) `user-facing-info` should return `nil` "
+                    "rather than failing entirely")
+        (encryption-test/with-secret-key nil
+          (is (= {:key            :test-json-setting
+                  :value          nil
+                  :is_env_setting false
+                  :env_name       "MB_TEST_JSON_SETTING"
+                  :description    "Test setting - this only shows up in dev (4)"
+                  :default        nil}
+                 (#'setting/user-facing-info (setting/resolve-setting :test-json-setting)))))))))
 
 
 ;;; ----------------------------------------------- TIMESTAMP SETTINGS -----------------------------------------------
 
-(defsetting ^:private test-timestamp-setting
+(defsetting test-timestamp-setting
   "Test timestamp setting"
   :visibility :internal
   :type :timestamp)
@@ -464,7 +476,7 @@
   []
   (db/select-one-field :value Setting :key cache/settings-last-updated-key))
 
-(defsetting ^:private uncached-setting
+(defsetting uncached-setting
   "A test setting that should *not* be cached."
   :visibility :internal
   :cache? false)
@@ -525,7 +537,6 @@
     (is (= "Banana Beak"
            (toucan-name)))))
 
-
 (deftest duplicated-setting-name
   (testing "can re-register a setting in the same ns (redefining or reloading ns)"
     (is (defsetting foo (deferred-tru "A testing setting") :visibility :public))
@@ -554,7 +565,7 @@
                  (ex-message e))))
         (finally (in-ns current-ns))))))
 
-(defsetting ^:private test-setting-with-question-mark?
+(defsetting test-setting-with-question-mark?
   "Test setting - this only shows up in dev (6)"
   :visibility :internal)
 
@@ -573,32 +584,70 @@
             {:name :test-setting-with-question-mark????
              :munged-name "test-setting-with-question-mark"}}
            (m/map-vals #(select-keys % [:name :munged-name])
-                       (try (defsetting ^:private test-setting-with-question-mark????
+                       (try (defsetting test-setting-with-question-mark????
                               "Test setting - this only shows up in dev (6)"
                               :visibility :internal)
                             (catch Exception e (ex-data e)))))))
   (testing "Munge collision on first definition"
-    (defsetting ^:private test-setting-normal
+    (defsetting test-setting-normal
       "Test setting - this only shows up in dev (6)"
       :visibility :internal)
     (is (= {:existing-setting {:name :test-setting-normal, :munged-name "test-setting-normal"},
             :new-setting {:name :test-setting-normal??, :munged-name "test-setting-normal"}}
            (m/map-vals #(select-keys % [:name :munged-name])
-                       (try (defsetting ^:private test-setting-normal??
+                       (try (defsetting test-setting-normal??
                               "Test setting - this only shows up in dev (6)"
                               :visibility :internal)
                             (catch Exception e (ex-data e)))))))
   (testing "Munge collision on second definition"
-    (defsetting ^:private test-setting-normal-1??
+    (defsetting test-setting-normal-1??
       "Test setting - this only shows up in dev (6)"
       :visibility :internal)
     (is (= {:new-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1},
              :existing-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1??}}
            (m/map-vals #(select-keys % [:name :munged-name])
-                       (try (defsetting ^:private test-setting-normal-1
+                       (try (defsetting test-setting-normal-1
                               "Test setting - this only shows up in dev (6)"
                               :visibility :internal)
                             (catch Exception e (ex-data e)))))))
   (testing "Removes characters not-compliant with shells"
     (is (= "aa1aa-b2b_cc3c"
            (#'setting/munge-setting-name "aa1'aa@#?-b2@b_cc'3?c?")))))
+
+(deftest validate-default-value-for-type-test
+  (letfn [(validate [tag default]
+            (@#'setting/validate-default-value-for-type
+             {:tag tag, :default default, :name :a-setting, :type :fake-type}))]
+    (testing "No default value"
+      (is (nil? (validate `String nil))))
+    (testing "No tag"
+      (is (nil? (validate nil "abc"))))
+    (testing "tag is not a symbol or string"
+      (is (thrown-with-msg?
+           AssertionError
+           #"Setting :tag should be a symbol or string, got: \^clojure\.lang\.Keyword :string"
+           (validate :string "Green Friend"))))
+    (doseq [[tag valid-tag?]     {"String"           false
+                                  "java.lang.String" true
+                                  'STRING            false
+                                  `str               false
+                                  `String            true}
+            [value valid-value?] {"Green Friend" true
+                                  :green-friend  false}]
+      (testing (format "Tag = %s (valid = %b)" (pr-str tag) valid-tag?)
+        (testing (format "Value = %s (valid = %b)" (pr-str value) valid-value?)
+          (cond
+            (and valid-tag? valid-value?)
+            (is (nil? (validate tag value)))
+
+            (not valid-tag?)
+            (is (thrown-with-msg?
+                 Exception
+                 #"Cannot resolve :tag .+ to a class"
+                 (validate tag value)))
+
+            (not valid-value?)
+            (is (thrown-with-msg?
+                 Exception
+                 #"Wrong :default type: got \^clojure\.lang\.Keyword :green-friend, but expected a java\.lang\.String"
+                 (validate tag value)))))))))

@@ -97,6 +97,11 @@ export const extractRemappings = series => {
   return se;
 };
 
+export function getMaxMetricsSupported(display) {
+  const visualization = visualizations.get(display);
+  return visualization.maxMetricsSupported || Infinity;
+}
+
 // removes columns with `remapped_from` property and adds a `remapping` to the appropriate column
 const extractRemappedColumns = data => {
   const cols = data.cols.map(col => ({

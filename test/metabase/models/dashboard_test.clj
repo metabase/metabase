@@ -3,7 +3,7 @@
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.core :as magic]
             [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
+            [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.dashboard :as dashboard :refer :all]
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
             [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
@@ -34,6 +34,7 @@
                   DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
     (is (= {:name         "Test Dashboard"
             :description  nil
+            :cache_ttl    nil
             :cards        [{:sizeX   2
                             :sizeY   2
                             :row     0
@@ -75,11 +76,12 @@
                           :card_id 1
                           :series  []}]})))
 
-  (is (= "rearranged the cards, modified the series on card 1 and added some series to card 2."
+  (is (= "changed the cache ttl from \"333\" to \"1227\", rearranged the cards, modified the series on card 1 and added some series to card 2."
          (#'dashboard/diff-dashboards-str
           nil
           {:name        "Diff Test"
            :description nil
+           :cache_ttl   333
            :cards       [{:sizeX   2
                           :sizeY   2
                           :row     0
@@ -96,6 +98,7 @@
                           :series  []}]}
           {:name        "Diff Test"
            :description nil
+           :cache_ttl   1227
            :cards       [{:sizeX   2
                           :sizeY   2
                           :row     0
@@ -124,10 +127,15 @@
                                          :id      (= dashcard-id id)
                                          :card_id (= card-id card_id)
                                          :series  (= [series-id-1 series-id-2] series))])
+          empty-dashboard      {:name        "Revert Test"
+                                :description "something"
+                                :cache_ttl   nil
+                                :cards       []}
           serialized-dashboard (serialize-dashboard dashboard)]
       (testing "original state"
         (is (= {:name         "Test Dashboard"
                 :description  nil
+                :cache_ttl    nil
                 :cards        [{:sizeX   2
                                 :sizeY   2
                                 :row     0
@@ -142,14 +150,13 @@
           :name        "Revert Test"
           :description "something")
         (testing "capture updated Dashboard state"
-          (is (= {:name        "Revert Test"
-                  :description "something"
-                  :cards       []}
+          (is (= empty-dashboard
                  (serialize-dashboard (Dashboard dashboard-id))))))
       (testing "now do the reversion; state should return to original"
         (#'dashboard/revert-dashboard! nil dashboard-id (users/user->id :crowberto) serialized-dashboard)
         (is (= {:name         "Test Dashboard"
                 :description  nil
+                :cache_ttl    nil
                 :cards        [{:sizeX   2
                                 :sizeY   2
                                 :row     0
@@ -157,7 +164,11 @@
                                 :id      false
                                 :card_id true
                                 :series  true}]}
-               (update (serialize-dashboard (Dashboard dashboard-id)) :cards check-ids)))))))
+               (update (serialize-dashboard (Dashboard dashboard-id)) :cards check-ids))))
+      (testing "revert back to the empty state"
+        (#'dashboard/revert-dashboard! nil dashboard-id (users/user->id :crowberto) empty-dashboard)
+        (is (= empty-dashboard
+               (serialize-dashboard (Dashboard dashboard-id))))))))
 
 (deftest public-sharing-test
   (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."
@@ -228,7 +239,7 @@
     (testing (str "Check that if a Dashboard is in a Collection, someone who would otherwise be able to see it under "
                   "the old artifact-permissions regime will *NOT* be able to see it if they don't have permissions for "
                   "that Collection"))
-    (binding [api/*current-user-permissions-set* (atom #{(perms/object-path (u/the-id db))})]
+    (binding [api/*current-user-permissions-set* (atom #{(perms/data-perms-path (u/the-id db))})]
       (is (= false
              (mi/can-read? dash))))
 
@@ -239,17 +250,13 @@
 (deftest transient-dashboards-test
   (testing "test that we save a transient dashboard"
     (tu/with-model-cleanup [Card Dashboard DashboardCard Collection]
-      (binding [api/*current-user-id*              (users/user->id :rasta)
-                api/*current-user-permissions-set* (-> :rasta
-                                                       users/user->id
-                                                       user/permissions-set
-                                                       atom)]
-        (let [dashboard                  (magic/automagic-analysis (Table (id :venues)) {})
-              rastas-personal-collection (db/select-one-field :id 'Collection
-                                           :personal_owner_id api/*current-user-id*)
-              saved-dashboard            (save-transient-dashboard! dashboard rastas-personal-collection)]
-          (is (= (db/count 'DashboardCard :dashboard_id (:id saved-dashboard))
-                 (-> dashboard :ordered_cards count))))))))
+      (let [rastas-personal-collection (collection/user->personal-collection (users/user->id :rasta))]
+        (binding [api/*current-user-id*              (users/user->id :rasta)
+                  api/*current-user-permissions-set* (-> :rasta users/user->id user/permissions-set atom)]
+          (let [dashboard       (magic/automagic-analysis (Table (id :venues)) {})
+                saved-dashboard (save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
+            (is (= (db/count DashboardCard :dashboard_id (u/the-id saved-dashboard))
+                   (-> dashboard :ordered_cards count)))))))))
 
 (deftest validate-collection-namespace-test
   (mt/with-temp Collection [{collection-id :id} {:namespace "currency"}]

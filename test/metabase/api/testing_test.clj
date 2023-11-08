@@ -1,5 +1,6 @@
 (ns metabase.api.testing-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.java.io :as io]
+            [clojure.test :refer :all]
             [metabase.api.testing :as testing]
             [metabase.db.connection :as mdb.conn]
             [metabase.test :as mt]
@@ -9,7 +10,7 @@
   (when (= (mdb.conn/db-type) :h2)
     (let [snapshot-name (mt/random-name)]
       (testing "Just make sure the snapshot endpoint doesn't crash."
-        (let [file (java.io.File. (#'testing/snapshot-path-for-name snapshot-name))]
+        (let [file (io/file (#'testing/snapshot-path-for-name snapshot-name))]
           (try
             (is (= nil
                    (mt/user-http-request :rasta :post 204 (format "testing/snapshot/%s" snapshot-name))))
@@ -34,4 +35,4 @@
           (is (= nil
                  (mt/user-http-request :rasta :post 204 (format "testing/restore/%s" snapshot-name))))
           (finally
-            (.delete (java.io.File. (#'testing/snapshot-path-for-name snapshot-name)))))))))
+            (.delete (io/file (#'testing/snapshot-path-for-name snapshot-name)))))))))

@@ -24,7 +24,7 @@ function DatabaseBrowser({ databases }) {
 
       <Grid>
         {databases.map(database => (
-          <GridItem w={ITEM_WIDTHS} key={database.id}>
+          <GridItem width={ITEM_WIDTHS} key={database.id}>
             <Link
               to={Urls.browseDatabase(database)}
               data-metabase-event={`${ANALYTICS_CONTEXT};Database Click`}

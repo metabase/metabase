@@ -33,6 +33,7 @@ export type LayoutRendererProps = {
   optionsList: ?React.Element,
   isFocused: boolean,
   isAllSelected: boolean,
+  isFiltered: boolean,
   onClose: () => void,
 };
 
@@ -49,6 +50,7 @@ type Props = {
   style: { [key: string]: string | number },
   color: string,
 
+  idKey: string | number | (() => string),
   valueKey: string | number | (() => any),
   labelKey: string | number | (() => string),
 
@@ -60,7 +62,7 @@ type Props = {
   onFocus?: () => void,
   onBlur?: () => void,
 
-  updateOnInputChange: boolean,
+  updateOnInputChange?: boolean,
   updateOnInputBlur?: boolean,
   // if provided, parseFreeformValue parses the input string into a value,
   // or returns null to indicate an invalid value
@@ -149,6 +151,18 @@ export default class TokenField extends Component {
     this.setInputValue("", clearSearchValue);
   }
 
+  _id(value: Value) {
+    const { idKey } = this.props;
+
+    if (typeof idKey === "function") {
+      return idKey(value);
+    } else if (typeof idKey === "string") {
+      return value[idKey];
+    } else {
+      return value;
+    }
+  }
+
   _value(option: Option) {
     const { valueKey } = this.props;
     return typeof valueKey === "function" ? valueKey(option) : option[valueKey];
@@ -176,7 +190,9 @@ export default class TokenField extends Component {
   _updateFilteredValues = (props: Props) => {
     let { options = [], value, removeSelected, filterOption } = props;
     let { searchValue, selectedOptionValue } = this.state;
-    const selectedValues = new Set(value.map(v => JSON.stringify(v)));
+    const selectedValueIds = new Set(
+      value.map(v => JSON.stringify(this._id(v))),
+    );
 
     if (!filterOption) {
       filterOption = (option, searchValue) =>
@@ -185,8 +201,8 @@ export default class TokenField extends Component {
 
     let selectedCount = 0;
     const filteredOptions = options.filter(option => {
-      const isSelected = selectedValues.has(
-        JSON.stringify(this._value(option)),
+      const isSelected = selectedValueIds.has(
+        JSON.stringify(this._id(this._value(option))),
       );
       const isLastFreeform =
         this._isLastFreeformValue(this._value(option)) &&
@@ -452,6 +468,8 @@ export default class TokenField extends Component {
   }
 
   componentDidUpdate(prevProps: Props, prevState: State) {
+    const input = this.inputRef.current;
+
     if (
       prevState.selectedOptionValue !== this.state.selectedOptionValue &&
       this.scrollElement != null
@@ -461,12 +479,21 @@ export default class TokenField extends Component {
         element.scrollIntoView({ block: "nearest" });
       }
     }
+
     // if we added a value then scroll to the last item (the input)
     if (this.props.value.length > prevProps.value.length) {
-      const input = this.inputRef.current;
       if (input && isObscured(input)) {
         input.scrollIntoView({ block: "nearest" });
       }
+    }
+
+    // We focus on the input here, and not on the input itself as a prop
+    // (say by passing prop autoFocus={isFocused})
+    // because certain TokenFields will live in position: fixed containers.
+    // Autofocusing like that would make the page jump in scroll position.
+    // One example: parameter filters in dashboard pages.
+    if (this.state.isFocused) {
+      input.focus({ preventScroll: true });
     }
   }
 
@@ -575,7 +602,6 @@ export default class TokenField extends Component {
             size={10}
             placeholder={placeholder}
             value={inputValue}
-            autoFocus={isFocused}
             onKeyDown={this.onInputKeyDown}
             onChange={this.onInputChange}
             onFocus={this.onInputFocus}

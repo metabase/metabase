@@ -173,6 +173,17 @@ export const isNumericBaseType = field => {
   }
 };
 
+export const isDateWithoutTime = field => {
+  if (!field) {
+    return false;
+  }
+  if (field.effective_type) {
+    return isa(field.effective_type, TYPE.Date);
+  } else {
+    return isa(field.base_type, TYPE.Date);
+  }
+};
+
 // ZipCode, ID, etc derive from Number but should not be formatted as numbers
 export const isNumber = field =>
   field &&
@@ -759,6 +770,7 @@ export const ICON_MAPPING = {
   [NUMBER]: "int",
   [BOOLEAN]: "io",
   [FOREIGN_KEY]: "connections",
+  [PRIMARY_KEY]: "label",
 };
 
 export function getIconForField(field) {

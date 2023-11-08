@@ -12,14 +12,15 @@
             [metabase.driver.mongo.parameters :as parameters]
             [metabase.driver.mongo.query-processor :as qp]
             [metabase.driver.mongo.util :refer [with-mongo-connection]]
-            [metabase.plugins.classloader :as classloader]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
             [monger.collection :as mc]
             [monger.command :as cmd]
             [monger.conversion :as m.conversion]
+            [monger.core :as mg]
             [monger.db :as mdb]
+            monger.json
             [schema.core :as s]
             [taoensso.nippy :as nippy])
   (:import com.mongodb.DB
@@ -29,7 +30,7 @@
 
 ;; See http://clojuremongodb.info/articles/integration.html Loading this namespace will load appropriate Monger
 ;; integrations with Cheshire.
-(classloader/require 'monger.json)
+(comment monger.json/keep-me)
 
 ;; JSON Encoding (etc.)
 
@@ -174,8 +175,9 @@
 (defmethod driver/describe-database :mongo
   [_ database]
   (with-mongo-connection [^com.mongodb.DB conn database]
-    {:tables (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
-                    {:schema nil, :name collection}))}))
+    {:tables  (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
+                    {:schema nil, :name collection}))
+     :version (get (mg/command conn {:buildInfo 1}) "version")}))
 
 (defn- table-sample-column-info
   "Sample the rows (i.e., documents) in `table` and return a map of information about the column keys we found in that
@@ -214,6 +216,13 @@
                  :nested-fields
                  :native-parameters]]
   (defmethod driver/supports? [:mongo feature] [_ _] true))
+
+(defmethod driver/database-supports? [:mongo :expressions] [_ _ db]
+  (let [version (some-> (get-in db [:details :version])
+                        (str/split #"\.")
+                        first
+                        Integer/parseInt)]
+    (and (some? version) (<= 5 version))))
 
 (defmethod driver/mbql->native :mongo
   [_ query]

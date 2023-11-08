@@ -2,7 +2,8 @@
   "Functions for creating JDBC DB specs for a given driver.
   Only databases that are supported as application DBs should have functions in this namespace;
   otherwise, similar functions are only needed by drivers, and belong in those namespaces."
-  (:require [metabase.config :as config]))
+  (:require [clojure.string :as str]
+            [metabase.config :as config]))
 
 (defn h2
   "Create a Clojure JDBC database specification for a H2 database."
@@ -14,8 +15,12 @@
           :subname     db}
          (dissoc opts :db)))
 
-(defn- make-subname [host port db]
-  (str "//" host ":" port "/" db))
+(defn make-subname
+  "Make a subname for the given `host`, `port`, and `db` params.  Iff `db` is not blank, then a slash will
+  precede it in the subname."
+  {:arglists '([host port db]), :added "0.39.0"}
+  [host port db]
+  (str "//" host ":" port (if-not (str/blank? db) (str "/" db) "/")))
 
 (defn postgres
   "Create a Clojure JDBC database specification for a Postgres database."

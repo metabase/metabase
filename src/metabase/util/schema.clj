@@ -99,7 +99,7 @@
           (deferred-tru "value may be nil, or if non-nil, {0}" message)))
       ;; we can do something similar for enum schemas which are also likely to be defined inline
       (when (instance? schema.core.EnumSchema schema)
-        (deferred-tru "value must be one of: {0}." (str/join ", " (for [v (sort (:vs schema))]
+        (deferred-tru "value must be one of: {0}." (str/join ", " (for [v (sort (map str (:vs schema)))]
                                                                     (str "`" v "`")))))
       ;; For cond-pre schemas we'll generate something like
       ;; value must satisfy one of the following requirements:

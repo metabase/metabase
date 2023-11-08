@@ -4,6 +4,8 @@ import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { MODAL_TYPES } from "metabase/query_builder/constants";
+
 import Modal from "metabase/components/Modal";
 
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
@@ -34,13 +36,13 @@ export default class QueryModals extends React.Component {
       onCloseModal();
     } else {
       // HACK: in a timeout because save modal closes itself
-      setTimeout(() => onOpenModal("create-alert"));
+      setTimeout(() => onOpenModal(MODAL_TYPES.CREATE_ALERT));
     }
   };
 
   render() {
     const { modal, question, onCloseModal, onOpenModal } = this.props;
-    return modal === "save" ? (
+    return modal === MODAL_TYPES.SAVE ? (
       <Modal form onClose={onCloseModal}>
         <SaveQuestionModal
           card={this.props.card}
@@ -54,21 +56,21 @@ export default class QueryModals extends React.Component {
           }}
           onCreate={async card => {
             await this.props.onCreate(card);
-            onOpenModal("saved");
+            onOpenModal(MODAL_TYPES.SAVED);
           }}
           onClose={onCloseModal}
         />
       </Modal>
-    ) : modal === "saved" ? (
+    ) : modal === MODAL_TYPES.SAVED ? (
       <Modal small onClose={onCloseModal}>
         <QuestionSavedModal
           onClose={onCloseModal}
           addToDashboardFn={() => {
-            onOpenModal("add-to-dashboard");
+            onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
           }}
         />
       </Modal>
-    ) : modal === "add-to-dashboard-save" ? (
+    ) : modal === MODAL_TYPES.ADD_TO_DASHBOARD_SAVE ? (
       <Modal onClose={onCloseModal}>
         <SaveQuestionModal
           card={this.props.card}
@@ -77,17 +79,17 @@ export default class QueryModals extends React.Component {
           initialCollectionId={this.props.initialCollectionId}
           onSave={async card => {
             await this.props.onSave(card);
-            onOpenModal("add-to-dashboard");
+            onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
           }}
           onCreate={async card => {
             await this.props.onCreate(card);
-            onOpenModal("add-to-dashboard");
+            onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
           }}
           onClose={onCloseModal}
           multiStep
         />
       </Modal>
-    ) : modal === "add-to-dashboard" ? (
+    ) : modal === MODAL_TYPES.ADD_TO_DASHBOARD ? (
       <Modal onClose={onCloseModal}>
         <AddToDashSelectDashModal
           card={this.props.card}
@@ -95,14 +97,14 @@ export default class QueryModals extends React.Component {
           onChangeLocation={this.props.onChangeLocation}
         />
       </Modal>
-    ) : modal === "create-alert" ? (
+    ) : modal === MODAL_TYPES.CREATE_ALERT ? (
       <Modal full onClose={onCloseModal}>
         <CreateAlertModalContent
           onCancel={onCloseModal}
           onAlertCreated={onCloseModal}
         />
       </Modal>
-    ) : modal === "save-question-before-alert" ? (
+    ) : modal === MODAL_TYPES.SAVE_QUESTION_BEFORE_ALERT ? (
       <Modal onClose={onCloseModal}>
         <SaveQuestionModal
           card={this.props.card}
@@ -121,7 +123,7 @@ export default class QueryModals extends React.Component {
           initialCollectionId={this.props.initialCollectionId}
         />
       </Modal>
-    ) : modal === "save-question-before-embed" ? (
+    ) : modal === MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED ? (
       <Modal onClose={onCloseModal}>
         <SaveQuestionModal
           card={this.props.card}
@@ -129,18 +131,18 @@ export default class QueryModals extends React.Component {
           tableMetadata={this.props.tableMetadata}
           onSave={async card => {
             await this.props.onSave(card, false);
-            onOpenModal("embed");
+            onOpenModal(MODAL_TYPES.EMBED);
           }}
           onCreate={async card => {
             await this.props.onCreate(card, false);
-            onOpenModal("embed");
+            onOpenModal(MODAL_TYPES.EMBED);
           }}
           onClose={onCloseModal}
           multiStep
           initialCollectionId={this.props.initialCollectionId}
         />
       </Modal>
-    ) : modal === "history" ? (
+    ) : modal === MODAL_TYPES.HISTORY ? (
       <Modal onClose={onCloseModal}>
         <QuestionHistoryModal
           questionId={this.props.card.id}
@@ -151,7 +153,7 @@ export default class QueryModals extends React.Component {
           }}
         />
       </Modal>
-    ) : modal === "move" ? (
+    ) : modal === MODAL_TYPES.MOVE ? (
       <Modal onClose={onCloseModal}>
         <CollectionMoveModal
           title={t`Which collection should this be in?`}
@@ -167,11 +169,11 @@ export default class QueryModals extends React.Component {
           }}
         />
       </Modal>
-    ) : modal === "archive" ? (
+    ) : modal === MODAL_TYPES.ARCHIVE ? (
       <Modal onClose={onCloseModal}>
         <ArchiveQuestionModal question={question} onClose={onCloseModal} />
       </Modal>
-    ) : modal === "edit" ? (
+    ) : modal === MODAL_TYPES.EDIT ? (
       <Modal onClose={onCloseModal}>
         <EditQuestionInfoModal
           question={question}
@@ -179,11 +181,11 @@ export default class QueryModals extends React.Component {
           onSave={card => this.props.onSave(card, false)}
         />
       </Modal>
-    ) : modal === "embed" ? (
+    ) : modal === MODAL_TYPES.EMBED ? (
       <Modal full onClose={onCloseModal}>
         <QuestionEmbedWidget card={this.props.card} onClose={onCloseModal} />
       </Modal>
-    ) : modal === "clone" ? (
+    ) : modal === MODAL_TYPES.CLONE ? (
       <Modal onClose={onCloseModal}>
         <EntityCopyModal
           entityType="questions"
@@ -197,7 +199,7 @@ export default class QueryModals extends React.Component {
             return { payload: { object } };
           }}
           onClose={onCloseModal}
-          onSaved={() => onOpenModal("saved")}
+          onSaved={() => onOpenModal(MODAL_TYPES.SAVED)}
         />
       </Modal>
     ) : null;

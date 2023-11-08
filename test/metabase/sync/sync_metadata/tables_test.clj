@@ -8,7 +8,7 @@
             [metabase.util :as u]
             [toucan.db :as db]))
 
-(tx/defdataset ^:private db-with-some-cruft
+(tx/defdataset db-with-some-cruft
   [["acquired_toucans"
      [{:field-name "species",              :base-type :type/Text}
       {:field-name "cam_has_acquired_one", :base-type :type/Boolean}]

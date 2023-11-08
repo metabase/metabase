@@ -50,13 +50,15 @@ describe("scenarios > dashboard > text-box", () => {
   describe("when text-box is the only element on the dashboard", () => {
     beforeEach(() => {
       cy.server();
-      cy.createDashboard("Test Dashboard");
+      cy.createDashboard().then(({ body: { id } }) => {
+        cy.intercept("PUT", `/api/dashboard/${id}`).as("dashboardUpdated");
+
+        cy.visit(`/dashboard/${id}`);
+      });
     });
 
     // fixed in metabase#11358
     it("should load after save/refresh (metabase#12873)", () => {
-      cy.visit(`/dashboard/2`);
-
       cy.findByText("Test Dashboard");
       cy.findByText("This dashboard is looking empty.");
 
@@ -80,10 +82,6 @@ describe("scenarios > dashboard > text-box", () => {
     });
 
     it("should have a scroll bar for long text (metabase#8333)", () => {
-      cy.intercept("PUT", "/api/dashboard/2").as("dashboardUpdated");
-
-      cy.visit(`/dashboard/2`);
-
       addTextBox(
         "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
       );

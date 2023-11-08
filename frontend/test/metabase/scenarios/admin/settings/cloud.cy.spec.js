@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { restore } from "__support__/e2e/cypress";
+=======
+import { restore, setupMetabaseCloud } from "__support__/e2e/cypress";
+>>>>>>> tags/v0.41.0
 
 describe("Cloud settings section", () => {
   beforeEach(() => {
@@ -29,9 +33,12 @@ describe("Cloud settings section", () => {
     cy.findByText(/Cloud Settings/i).should("not.exist");
   });
 });
+<<<<<<< HEAD
 
 function setupMetabaseCloud() {
   cy.request("PUT", "/api/setting/site-url", {
     value: "https://CYPRESSTESTENVIRONMENT.metabaseapp.com",
   });
 }
+=======
+>>>>>>> tags/v0.41.0

@@ -1,5 +1,9 @@
 import React from "react";
 import PropTypes from "prop-types";
+import _ from "underscore";
+
+import Icon, { iconPropTypes } from "metabase/components/Icon";
+
 import {
   TreeNodeRoot,
   ExpandToggleButton,
@@ -8,8 +12,6 @@ import {
   IconContainer,
   RightArrowContainer,
 } from "./TreeNode.styled";
-
-import Icon from "metabase/components/Icon";
 
 const propTypes = {
   isExpanded: PropTypes.bool.isRequired,
@@ -20,11 +22,14 @@ const propTypes = {
   depth: PropTypes.number.isRequired,
   item: PropTypes.shape({
     name: PropTypes.string.isRequired,
-    icon: PropTypes.string,
+    icon: PropTypes.oneOfType([
+      PropTypes.string,
+      PropTypes.shape(iconPropTypes),
+    ]),
     hasRightArrow: PropTypes.string,
     id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   }).isRequired,
-  variant: PropTypes.string,
+  colorScheme: PropTypes.oneOf(["default", "admin"]),
 };
 
 // eslint-disable-next-line react/display-name
@@ -38,12 +43,17 @@ export const TreeNode = React.memo(
       onSelect,
       depth,
       item,
+<<<<<<< HEAD
       variant,
+=======
+      colorScheme,
+>>>>>>> tags/v0.41.0
     },
     ref,
   ) {
     const { name, icon, hasRightArrow, id } = item;
 
+<<<<<<< HEAD
     const handleSelect = () => {
       onSelect(item);
       onToggleExpand(id);
@@ -85,6 +95,51 @@ export const TreeNode = React.memo(
         )}
         <NameContainer>{name}</NameContainer>
 
+=======
+    const iconProps = _.isObject(icon) ? icon : { name: icon };
+
+    const handleSelect = () => {
+      onSelect(item);
+      onToggleExpand(id);
+    };
+
+    const handleKeyDown = ({ key }) => {
+      switch (key) {
+        case "Enter":
+          onSelect(item);
+          break;
+        case "ArrowRight":
+          !isExpanded && onToggleExpand(id);
+          break;
+        case "ArrowLeft":
+          isExpanded && onToggleExpand(id);
+          break;
+      }
+    };
+
+    return (
+      <TreeNodeRoot
+        innerRef={ref}
+        role="menuitem"
+        tabIndex={0}
+        colorScheme={colorScheme}
+        depth={depth}
+        onClick={handleSelect}
+        isSelected={isSelected}
+        onKeyDown={handleKeyDown}
+      >
+        <ExpandToggleButton hidden={!hasChildren}>
+          <ExpandToggleIcon isExpanded={isExpanded} />
+        </ExpandToggleButton>
+
+        {icon && (
+          <IconContainer colorScheme={colorScheme}>
+            <Icon {...iconProps} />
+          </IconContainer>
+        )}
+        <NameContainer>{name}</NameContainer>
+
+>>>>>>> tags/v0.41.0
         {hasRightArrow && (
           <RightArrowContainer isSelected={isSelected}>
             <Icon name="chevronright" size={14} />

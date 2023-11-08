@@ -3,17 +3,18 @@
             [metabase.integrations.ldap :as ldap]
             [metabase.integrations.ldap.default-implementation :as default-impl]
             [metabase.models.user :as user :refer [User]]
-            [metabase.public-settings.metastore :as metastore]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.test :as mt]
             [metabase.test.integrations.ldap :as ldap.test]
-            [toucan.db :as db]))
+            [toucan.db :as db])
+  (:import com.unboundid.ldap.sdk.LDAPConnectionPool))
 
 (defn- get-ldap-details []
   {:host       "localhost"
    :port       (ldap.test/get-ldap-port)
    :bind-dn    "cn=Directory Manager"
    :password   "password"
-   :security   "none"
+   :security   :none
    :user-base  "dc=metabase,dc=com"
    :group-base "dc=metabase,dc=com"})
 
@@ -46,7 +47,7 @@
 
     (testing "basic get-connection works, will throw otherwise"
       (is (= nil
-             (.close (#'ldap/get-connection)))))
+             (.close ^LDAPConnectionPool (#'ldap/get-connection)))))
 
     (testing "login should succeed"
       (is (= true
@@ -74,7 +75,7 @@
 
 (deftest find-test
   ;; there are EE-specific versions of this test in `metabase-enterprise.enhancements.integrations.ldap-test`
-  (with-redefs [metastore/enable-enhancements? (constantly false)]
+  (with-redefs [premium-features/enable-enhancements? (constantly false)]
     (ldap.test/with-ldap-server
       (testing "find by username"
         (is (= {:dn         "cn=John Smith,ou=People,dc=metabase,dc=com"
@@ -129,7 +130,7 @@
 
 (deftest fetch-or-create-user-test
   ;; there are EE-specific versions of this test in `metabase-enterprise.enhancements.integrations.ldap-test`
-  (with-redefs [metastore/enable-enhancements? (constantly false)]
+  (with-redefs [premium-features/enable-enhancements? (constantly false)]
     (ldap.test/with-ldap-server
       (testing "a new user is created when they don't already exist"
         (try

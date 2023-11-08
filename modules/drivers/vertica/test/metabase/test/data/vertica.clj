@@ -7,18 +7,22 @@
             [java-time :as t]
             [medley.core :as m]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
             [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
             [metabase.test.data.sql-jdbc.execute :as execute]
             [metabase.test.data.sql-jdbc.load-data :as load-data]
-            [metabase.test :as mt]
             [metabase.util :as u]
             [metabase.util.files :as files]))
 
 (sql-jdbc.tx/add-test-extensions! :vertica)
 
-(defmethod tx/sorts-nil-first? :vertica [_] false)
+;; In ORDER BY clause, nulls come last for FLOAT, STRING, and BOOLEAN columns, and first otherwise
+;; https://www.vertica.com/docs/9.2.x/HTML/Content/Authoring/AnalyzingData/Optimizations/NULLPlacementByAnalyticFunctions.htm#2
+(defmethod tx/sorts-nil-first? :vertica [_ base-type]
+  (not (contains? #{:type/Text :type/Boolean :type/Float}
+                  base-type)))
 
 (doseq [[base-type sql-type] {:type/BigInteger     "BIGINT"
                               :type/Boolean        "BOOLEAN"

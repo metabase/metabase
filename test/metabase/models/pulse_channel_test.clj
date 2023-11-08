@@ -6,6 +6,7 @@
             [metabase.models.pulse-channel-recipient :as pcr :refer [PulseChannelRecipient]]
             [metabase.models.user :refer [User]]
             [metabase.test :as mt]
+            [metabase.util :as u]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
 
@@ -415,3 +416,26 @@
                  :last_name   "Toucan"
                  :common_name "Rasta Toucan"}]))
              (:recipients (hydrate channel :recipients)))))))
+
+(deftest validate-email-domains-check-user-ids-match-emails
+  (testing `pc/validate-email-domains
+    (testing "should check that User `:id` and `:email`s match for User `:recipients`"
+      (let [input {:recipients [{:email "rasta@metabase.com"
+                                 :id    (mt/user->id :rasta)}]}]
+        (is (= input
+               (pc/validate-email-domains input))))
+      (testing "Throw Exception if User does not exist"
+        ;; should validate even if `:email` isn't specified
+        (doseq [input [{:id Integer/MAX_VALUE}
+                       {:email "rasta@example.com"
+                        :id    Integer/MAX_VALUE}]]
+          (testing (format "\ninput = %s" (u/pprint-to-str input))
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"User [\d,]+ does not exist"
+                 (pc/validate-email-domains {:recipients [input]}))))))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Wrong email address for User [\d,]+"
+           (pc/validate-email-domains {:recipients [{:email "rasta@example.com"
+                                                     :id    (mt/user->id :rasta)}]}))))))

@@ -31,12 +31,7 @@ export const rangeForValue = (
   value: Value,
   column: ?Column,
 ): ?[number, number] => {
-  if (
-    typeof value === "number" &&
-    column &&
-    column.binning_info &&
-    column.binning_info.bin_width
-  ) {
+  if (typeof value === "number" && column?.binning_info?.bin_width) {
     return [value, value + column.binning_info.bin_width];
   }
 };

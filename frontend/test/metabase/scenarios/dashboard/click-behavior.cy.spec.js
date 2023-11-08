@@ -25,7 +25,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     }).then(({ body: { id: question1Id } }) => {
       cy.createNativeQuestion({ native: { query: "select 0" } }).then(
         ({ body: { id: nativeId } }) => {
-          cy.createDashboard("15993D").then(({ body: { id: dashboardId } }) => {
+          cy.createDashboard().then(({ body: { id: dashboardId } }) => {
             // Add native question to the dashboard
             cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
               cardId: nativeId,
@@ -100,7 +100,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
   });
 
-  it.skip("should not change the visualization type in a targetted question with mapped filter (metabase#16334)", () => {
+  it("should not change the visualization type in a targetted question with mapped filter (metabase#16334)", () => {
     // Question 2, that we're adding to the dashboard
     const questionDetails = {
       query: {

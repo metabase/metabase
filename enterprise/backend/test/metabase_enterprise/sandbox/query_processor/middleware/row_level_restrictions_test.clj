@@ -107,7 +107,7 @@
   {:query (mt/native-query
             {:query
              (format-honeysql
-              {:select   [(identifier :venues :name)]
+              {:select   [(identifier :venues :id) (identifier :venues :name)]
                :from     [(identifier :venues)]
                :order-by [(identifier :venues :id)]})})})
 
@@ -271,10 +271,11 @@
                (run-venues-count-query)))))
 
     (testing "Make sure that you can still use a SQL-based GTAP without needing to have SQL read perms for the Database"
-      (is (= [["Red Medicine"] ["Stout Burgers & Beers"]]
-             (mt/rows
+      (is (= [[1 "Red Medicine"]
+              [2 "Stout Burgers & Beers"]]
+             (mt/formatted-rows [int str]
                (mt/with-gtaps {:gtaps {:venues (venue-names-native-gtap-def)}}
-                 (mt/run-mbql-query venues {:limit 2}))))))
+                 (mt/run-mbql-query venues {:limit 2, :order-by [[:asc [:field (mt/id :venues :id)]]]}))))))
 
     (testing (str "When no card_id is included in the GTAP, should default to a query against the table, with the GTAP "
                   "criteria applied")
@@ -294,7 +295,7 @@
         (mt/with-temp* [Collection [collection]
                         Card       [card        {:collection_id (u/the-id collection)}]]
           (mt/with-group [group]
-            (perms/revoke-permissions! (perms-group/all-users) (mt/id))
+            (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
             (perms/grant-collection-read-permissions! group collection)
             (mt/with-test-user :rasta
               (binding [qp.perms/*card-id* (u/the-id card)]
@@ -327,14 +328,16 @@
 
 (defn- row-level-restrictions-fk-drivers
   "Drivers to test row-level restrictions against foreign keys with. Includes BigQuery, which for whatever reason does
-  not normally have FK tests ran for it."
+  not normally have FK tests ran for it. Excludes Presto JDBC, because that driver does NOT support fetching foreign
+  keys from the JDBC metadata, even though we enable the feature in the UI."
   []
   (cond-> (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
-    (@tx.env/test-drivers :bigquery) (conj :bigquery)))
+    (@tx.env/test-drivers :bigquery) (conj :bigquery)
+    true                             (disj :presto-jdbc)))
 
 (deftest e2e-fks-test
   (mt/test-drivers (row-level-restrictions-fk-drivers)
-    (mt/with-bigquery-fks
+    (mt/with-bigquery-fks :bigquery
      (testing (str "1 - Creates a GTAP filtering question, looking for any checkins happening on or after 2014\n"
                    "2 - Apply the `user` attribute, looking for only our user (i.e. `user_id` =  5)\n"
                    "3 - Checkins are related to Venues, query for checkins, grouping by the Venue's price\n"
@@ -674,7 +677,7 @@
                        {:gtaps      {:reviews {:remappings {"user_id" [:dimension $product_id]}}}
                         :attributes {"user_id" 1}})
         ;; grant full data perms for products
-        (perms/grant-permissions! (perms-group/all-users) (perms/object-path
+        (perms/grant-permissions! (perms-group/all-users) (perms/data-perms-path
                                                            (mt/id)
                                                            (db/select-one-field :schema Table :id (mt/id :products))
                                                            (mt/id :products)))
@@ -798,7 +801,7 @@
                        {:gtaps      {:orders {:remappings {:user_id [:dimension $orders.user_id]}}}
                         :attributes {:user_id "1"}})
         ;; make sure the sandboxed group can still access the Products table, which is referenced below.
-        (perms/grant-permissions! &group (perms/object-path (mt/id) "PUBLIC" (mt/id :products)))
+        (perms/grant-permissions! &group (perms/data-perms-path (mt/id) "PUBLIC" (mt/id :products)))
         (letfn [(do-tests []
                   ;; create a query based on the sandboxed Table
                   (testing "should be able to run the query. Results should come back with correct metadata"
@@ -859,10 +862,6 @@
     (is (seq metadata))
     (db/update! Card card-id :result_metadata metadata)))
 
-(defn- unset-query-metadata-for-gtap-card! [group table-name]
-  (let [card-id (db/select-one-field :card_id GroupTableAccessPolicy :group_id (u/the-id group), :table_id (mt/id table-name))]
-    (db/update! Card card-id :result_metadata nil)))
-
 (deftest native-fk-remapping-test
   (testing "FK remapping should still work for questions with native sandboxes (EE #520)"
     (mt/dataset sample-dataset
@@ -914,8 +913,11 @@
                          (mt/rows (mt/run-mbql-query orders {:limit 1})))))))))))))
 
 (deftest pivot-query-test
-  ;; sample-dataset doesn't work on Redshift yet -- see #14784
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join) :redshift)
+  (mt/test-drivers (disj
+                    (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join)
+                    ;; this test relies on a FK relation between $product_id->products.category, so skip for Presto
+                    ;; JDBC, because that driver doesn't support resolving FKs from the JDBC metadata
+                    :presto-jdbc)
     (testing "Pivot table queries should work with sandboxed users (#14969)"
       (mt/dataset sample-dataset
         (mt/with-gtaps {:gtaps      (mt/$ids
@@ -929,7 +931,11 @@
                        [nil       "Widget" 1 498.59]
                        ["Twitter" nil      2 900.1]
                        [nil       nil      3 900.1]]
+<<<<<<< HEAD
                       (sort-by (let [nil-first? (mt/sorts-nil-first? driver/*driver*)
+=======
+                      (sort-by (let [nil-first? (mt/sorts-nil-first? driver/*driver* :type/Text)
+>>>>>>> tags/v0.41.0
                                      sort-str   (fn [s]
                                                   (cond
                                                     (some? s)  s

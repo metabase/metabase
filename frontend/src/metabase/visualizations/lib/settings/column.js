@@ -11,6 +11,7 @@ import {
   isNumber,
   isCoordinate,
   isCurrency,
+  isDateWithoutTime,
 } from "metabase/lib/schema_metadata";
 
 // HACK: cyclical dependency causing errors in unit tests
@@ -29,7 +30,7 @@ import {
   hasHour,
 } from "metabase/lib/formatting/date";
 
-import currency from "metabase/lib/currency";
+import { currency } from "cljs/metabase.shared.util.currency";
 
 import type { Settings, SettingDef } from "../settings";
 import type { DateStyle, TimeStyle } from "metabase/lib/formatting/date";
@@ -70,20 +71,17 @@ export function columnSettings({
 }
 
 import MetabaseSettings from "metabase/lib/settings";
-import { isa } from "metabase/lib/types";
 
 export function getGlobalSettingsForColumn(column: Column) {
-  const settings = {};
+  const columnSettings = {};
+  const customFormatting = MetabaseSettings.get("custom-formatting") || {};
 
-  const customFormatting = MetabaseSettings.get("custom-formatting");
   // NOTE: the order of these doesn't matter as long as there's no overlap between settings
-  for (const [type, globalSettings] of Object.entries(customFormatting || {})) {
-    if (isa(column.semantic_type || column.base_type, type)) {
-      Object.assign(settings, globalSettings);
-    }
+  for (const [, globalSettings] of Object.entries(customFormatting)) {
+    Object.assign(columnSettings, globalSettings);
   }
 
-  return settings;
+  return columnSettings;
 }
 
 function getLocalSettingsForColumn(column: Column): Settings {
@@ -255,7 +253,8 @@ export const DATE_COLUMN_SETTINGS = {
       }
       return { options };
     },
-    getHidden: ({ unit }: Column, settings: ColumnSettings) => !hasHour(unit),
+    getHidden: (column: Column, settings: ColumnSettings) =>
+      !hasHour(column.unit) || isDateWithoutTime(column),
     getDefault: ({ unit }: Column) => (hasHour(unit) ? "minutes" : null),
   },
   time_style: {
@@ -272,7 +271,7 @@ export const DATE_COLUMN_SETTINGS = {
       ],
     }),
     getHidden: (column: Column, settings: ColumnSettings) =>
-      !settings["time_enabled"],
+      !settings["time_enabled"] || isDateWithoutTime(column),
     readDependencies: ["time_enabled"],
   },
 };
@@ -312,8 +311,8 @@ export const NUMBER_COLUMN_SETTINGS = {
     widget: "select",
     props: {
       // FIXME: rest of these options
-      options: Object.values(currency).map(
-        (currency: { name: string, code: string }) => ({
+      options: currency.map(
+        ([_, currency: { name: string, code: string }]) => ({
           name: currency.name,
           value: currency.code,
         }),
@@ -330,24 +329,36 @@ export const NUMBER_COLUMN_SETTINGS = {
     widget: "radio",
     getProps: (column: Column, settings: ColumnSettings) => {
       const c = settings["currency"] || "USD";
+      const symbol = getCurrency(c, "symbol");
+      const code = getCurrency(c, "code");
+      const name = getCurrency(c, "name");
       return {
         options: [
+          ...(symbol !== code
+            ? [
+                {
+                  name: t`Symbol` + ` ` + `(${symbol})`,
+                  value: "symbol",
+                },
+              ]
+            : []),
           {
-            name: t`Symbol` + ` ` + `(${getCurrency(c, "symbol")})`,
-            value: "symbol",
-          },
-          {
-            name: t`Code` + ` ` + `(${getCurrency(c, "code")})`,
+            name: t`Code` + ` ` + `(${code})`,
             value: "code",
           },
           {
-            name: t`Name` + ` ` + `(${getCurrency(c, "name")})`,
+            name: t`Name` + ` ` + `(${name})`,
             value: "name",
           },
         ],
       };
     },
-    default: "symbol",
+    getDefault: (column: Column, settings: ColumnSettings) => {
+      const c = settings["currency"] || "USD";
+      return getCurrency(c, "symbol") !== getCurrency(c, "code")
+        ? "symbol"
+        : "code";
+    },
     getHidden: (column: Column, settings: ColumnSettings) =>
       settings["number_style"] !== "currency",
     readDependencies: ["number_style"],
@@ -467,7 +478,7 @@ export function getSettingDefintionsForColumn(series: Series, column: Column) {
       ? visualization.columnSettings(column)
       : visualization.columnSettings || {};
 
-  if (isDate(column)) {
+  if (isDate(column) || (column.unit && column.unit !== "default")) {
     return {
       ...extraColumnSettings,
       ...DATE_COLUMN_SETTINGS,

@@ -10,7 +10,7 @@
 
 (models/defmodel ^:private FakedCard :report_card)
 
-(extend-type (class FakedCard)
+(extend-type FakedCardInstance
   revision/IRevisioned
   (serialize-instance [_ _ obj]
     (assoc obj :serialized true))
@@ -36,23 +36,22 @@
                 "normalized")
     (is (= {:model "Card", :object {:dataset_query {:type :query}}}
            (mt/derecordize
-            (#'revision/do-post-select-for-object {:model "Card", :object {:dataset_query {:type "query"}}})))))
-
+            (#'revision/do-post-select-for-object {:model "Card", :object {:dataset_query {:type "query"}}}))))))
 
 ;;; # Default diff-* implementations
 
-  (deftest default-diff-str-test
-    (testing (str "Check that pattern matching allows specialization and that string only reflects the keys that have "
-                  "changed")
-      (is (= "renamed this Card from \"Tips by State\" to \"Spots by State\"."
-             (revision/default-diff-str Card
-                                        {:name "Tips by State", :private false}
-                                        {:name "Spots by State", :private false})))
+(deftest default-diff-str-test
+  (testing (str "Check that pattern matching allows specialization and that string only reflects the keys that have "
+                "changed")
+    (is (= "renamed this Card from \"Tips by State\" to \"Spots by State\"."
+           (revision/default-diff-str Card
+                                      {:name "Tips by State", :private false}
+                                      {:name "Spots by State", :private false})))
 
-      (is (= "made this Card private."
-             (revision/default-diff-str Card
-                                        {:name "Spots by State", :private false}
-                                        {:name "Spots by State", :private true}))))))
+    (is (= "made this Card private."
+           (revision/default-diff-str Card
+                                      {:name "Spots by State", :private false}
+                                      {:name "Spots by State", :private true})))))
 
 (deftest fallback-description-test
   (testing "Check the fallback sentence fragment for key without specialized sentence fragment"

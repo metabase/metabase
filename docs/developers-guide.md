@@ -1,5 +1,8 @@
-**This guide will teach you:**
+<!-- Do not remove this file since the published HTML in the public doc
+(https://www.metabase.com/docs/latest/developers-guide.html)
+is often referred to in various issues, discussions, etc -->
 
+<<<<<<< HEAD
 - [How to compile your own copy of Metabase](#build-metabase)
 - [How to set up a development environment](#development-environment)
 - [How to run the Metabase Server](#development-server-quick-start)
@@ -268,3 +271,6 @@ If you see incorrect or missing strings for your language, please visit our [POE
 Copyright © 2021 Metabase, Inc.
 
 Distributed under the terms of the GNU Affero General Public License (AGPL) except as otherwise noted. See individual files for details.
+=======
+Please refer to the detailed [Developer's Guide](developers-guide/start.md).
+>>>>>>> tags/v0.41.0

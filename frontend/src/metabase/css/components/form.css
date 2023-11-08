@@ -104,28 +104,6 @@
   transition: border 300ms ease-in-out;
 }
 
-.Form-radio {
-  display: none;
-}
-
-.Form-radio + label {
-  cursor: pointer;
-  display: inline-block;
-  flex: 0 0 auto;
-  position: relative;
-  margin-right: var(--margin-1);
-  width: 8px;
-  height: 8px;
-  border: 2px solid white;
-  box-shadow: 0 0 0 2px var(--color-shadow);
-  border-radius: 8px;
-}
-
-.Form-radio:checked + label {
-  box-shadow: 0 0 0 2px var(--color-shadow);
-  background-color: var(--color-brand);
-}
-
 .Form-field .AdminSelect {
   border-color: var(--form-field-border-color);
 }

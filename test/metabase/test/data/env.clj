@@ -52,7 +52,7 @@
 
   *  by setting env var `DRIVERS` when running tests from the command line or CI.
 
-      DRIVERS=h2,mongo lein test
+      DRIVERS=h2,mongo clojure -X:dev:test
 
   *  temporarily from the REPL, by using the `with-test-drivers-macro`
 

@@ -4,11 +4,12 @@
             [colorize.core :as colorize]
             [metabase.config :as config]
             [metabase.plugins.classloader :as classloader]
+            [metabase.test-runner.init :as test-runner.init]
             [metabase.util :as u]))
 
 (defmulti ^:private do-initialization!
   "Perform component-specific initialization. This is guaranteed to only be called once."
-  {:arglists '([init-setp])}
+  {:arglists '([init-step])}
   keyword)
 
 (defn- log-init-message [task-name]
@@ -51,6 +52,10 @@
 
     (initialize-if-needed! :db :web-server)"
   [& steps]
+  ;; `:plugins` initialization is ok when loading test namespaces. Nothing else is tho (e.g. starting up the
+  ;; application DB, or starting up the web server).
+  (when-not (= steps [:plugins])
+    (test-runner.init/assert-tests-are-not-initializing (pr-str (cons 'initialize-if-needed! steps))))
   (doseq [step steps
           :let [step (keyword step)]]
     (when-not (@initialized step)
@@ -77,6 +82,15 @@
 (define-initialization :plugins
   (classloader/require 'metabase.test.initialize.plugins)
   ((resolve 'metabase.test.initialize.plugins/init!)))
+
+;; initialize test drivers that are not shipped as part of the product
+;; this is needed because if DRIVERS=all in the environment, then only the directories within modules are searched to
+;; determine the set of available drivers, so the "test only" drivers that live under test_modules will never be
+;; registered
+(define-initialization :test-drivers
+  (classloader/require 'metabase.test.initialize.plugins)
+  ((resolve 'metabase.test.initialize.plugins/init-test-drivers!)
+   [:driver-deprecation-test-legacy :driver-deprecation-test-new]))
 
 ;; initializing the DB also does setup needed so the scheduler will work correctly. (Remember that the scheduler uses
 ;; a JDBC backend!)
@@ -108,5 +122,6 @@
   []
   (set (keys (methods do-initialization!))))
 
-;; change the arglists for `initialize-if-needed!` to list all the possible args for REPL-usage convenience
+;; change the arglists for `initialize-if-needed!` to list all the possible args for REPL-usage convenience. Don't do
+;; this directly in `initialize-if-needed!` itself because it breaks Eastwood.
 (alter-meta! #'initialize-if-needed! assoc :arglists (list (into ['&] (sort (all-components)))))

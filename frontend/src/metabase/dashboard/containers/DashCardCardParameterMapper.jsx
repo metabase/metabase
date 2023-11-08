@@ -17,7 +17,7 @@ import {
   makeGetParameterMappingOptions,
   getMappingsByParameter,
 } from "../selectors";
-import { setParameterMapping } from "../dashboard";
+import { setParameterMapping } from "../actions";
 
 import cx from "classnames";
 import { getIn } from "icepick";

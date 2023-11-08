@@ -28,7 +28,7 @@ describe("LOCAL TESTING ONLY > dashboard", () => {
       name: "15694",
       query: { "source-table": PEOPLE_ID },
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard("15694D").then(({ body: { id: DASHBOARD_ID } }) => {
+      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         // Add filter to the dashboard
         cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
           parameters: [

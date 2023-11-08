@@ -29,7 +29,12 @@ export function setRelativeDate(term) {
   cy.findByText(term).click();
 }
 
-export function setAdHocFilter({ condition, quantity, timeBucket } = {}) {
+export function setAdHocFilter({
+  condition,
+  quantity,
+  timeBucket,
+  includeCurrent = false,
+} = {}) {
   if (condition) {
     cy.get(".AdminSelect")
       .contains("Previous")
@@ -57,6 +62,8 @@ export function setAdHocFilter({ condition, quantity, timeBucket } = {}) {
       .contains(timeBucket)
       .click();
   }
+
+  includeCurrent && cy.findByText(/^Include/).click();
 
   cy.button("Update filter").click();
 }

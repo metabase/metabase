@@ -63,11 +63,11 @@
 (s/defn ^:private table->fields :- [i/FieldInstance]
   "Fetch active Fields from the Metabase application database for a given `table`."
   [table :- i/TableInstance]
-(db/select [Field :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
-            :parent_id :id :description :database_position]
-    :table_id  (u/the-id table)
-    :active    true
-    {:order-by table/field-order-rule}))
+ (db/select [Field :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
+             :parent_id :id :description :database_position]
+     :table_id  (u/the-id table)
+     :active    true
+     {:order-by table/field-order-rule}))
 
 (s/defn our-metadata :- #{common/TableMetadataFieldWithID}
   "Return information we have about Fields for a `table` in the application database in (almost) exactly the same

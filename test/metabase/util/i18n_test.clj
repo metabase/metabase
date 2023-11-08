@@ -4,6 +4,11 @@
             [metabase.test :as mt]
             [metabase.util.i18n :as i18n]))
 
+(deftest available-locales-test
+  (testing "Should return locale in normalized format"
+    (is (contains? (set (i18n/available-locales-with-names))
+                   ["pt_BR", "Portuguese (Brazil)"]))))
+
 (deftest tru-test
   (mt/with-mock-i18n-bundles {"es" {"must be {0} characters or less" "deben tener {0} caracteres o menos"}}
     (doseq [[message f] {"tru"          (fn [] (i18n/tru "must be {0} characters or less" 140))

@@ -1,24 +1,37 @@
-## Getting and activating the Enterprise edition
+## Activating your Metabase commercial license
 
-The Enterprise edition of Metabase is distinct from the open-source edition, so to use it you'll need to first get a license, get the Enterprise edition, and then activate enterprise features with your license.
+The paid Pro and Enterprise editions of Metabase are distinct from the free Open Source edition, so to use your paid features you’ll need to first get a license. And if you want to self-host, you'll need a different JAR or Docker image that you can use to activate the advanced features with your license token.
 
-You can get a license by signing up for a free trial of the Enterprise edition. [Find out more here](https://metabase.com/enterprise/). Once you sign up for a free trial, you will receive an email containing a license token
+### Where to get a license
 
-To get the Enterprise edition, you can either [download the latest .jar file](https://downloads.metabase.com/enterprise/latest/metabase.jar), or get the [latest Docker image](https://hub.docker.com/r/metabase/metabase-enterprise/) at `metabase/metabase-enterprise:latest`
+You can get a license by signing up for a free trial of the [Pro or Enterprise edition plans](https://www.metabase.com/pricing), both of which can be self-hosted or hosted on Metabase Cloud.
 
-If you don't want to host the Enterprise Edition yourself, you can have it hosted for you with [Metabase Cloud](https://www.metabase.com/start/hosted/index.html).
+If you sign up for a Metabase Cloud option, you're already good to go.
 
-Once you have the Enterprise edition running, to activate all of its features go to the Admin Panel within Metabase, click on the Enterprise tab, click the "Activate a license" button, and then paste in your license token. The page should change to show you that Enterprise features are now active.
+### How to activate your token when self-hosting
 
-### Validating Your Enterprise Token
+If you chose to host Metabase yourself, you'll get an email containing a unique license token. But to use it, you'll need to install the right JAR file.
 
-Your Metabase instance will need to be able to access the internet (specifically `https://store.metabase.com/api/[token-id]/v2/status`) in order to validate your token and grant access to the Enterprise feature set. 
+You can either:
 
-If you need to route outbound Metabase traffic through a proxy on your network, use the following command:
+- [Download the latest metabase-enterprise JAR](https://downloads.metabase.com/enterprise/latest/metabase.jar) (the filename is the same, irrespective of your plan), or
+- [Get the latest Docker image](https://hub.docker.com/r/metabase/metabase-enterprise/) at `metabase/metabase-enterprise:latest`. 
 
-`java -Dhttps.proxyHost=[your proxy's hostname] -Dhttps.proxyPort=[your proxy's port] -jar enterprise_metabase.jar`
+Run Metabase as you would normally, then go to the __Admin__ > __Enterprise__ tab, click the __Activate a license__ button, and paste in your license token. The page will show you the features that are now active.
 
-Depending on your organization's set-up, additional configuration steps may need to be taken. If the command above does not work for you, we would recommend reaching out to your internal infrastructure or dev ops teams for assistance.
+### **Validating your token**
+
+Your Metabase needs to be able to access the internet (specifically `https://store.metabase.com/api/[token-id]/v2/status`) in order to validate the token and maintain access to the advanced features.
+
+If your Metabase can't validate the token, it'll disable the advanced features, but will continue to work normally otherwise, as if it were the Open Source edition.
+
+In case you need to route outbound Metabase traffic through a proxy on your network, use the following command when starting Metabase:
+
+```
+java -Dhttps.proxyHost=[your proxy's hostname] -Dhttps.proxyPort=[your proxy's port] -jar enterprise_metabase.jar
+```
+
+Depending on your organization’s setup, you may need to take additional configuration steps. If the command above doesn't work for you, we recommend reaching out to your internal infrastructure or dev ops teams for assistance.
 
 ---
 

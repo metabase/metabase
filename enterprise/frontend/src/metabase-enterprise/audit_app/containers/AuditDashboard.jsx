@@ -9,7 +9,7 @@ import DashboardData from "metabase/dashboard/hoc/DashboardData";
 
 const DashboardWithData = DashboardData(Dashboard);
 
-import { AuditMode } from "../lib/util";
+import { AuditMode } from "../lib/mode";
 
 import type { AuditCard } from "../types";
 

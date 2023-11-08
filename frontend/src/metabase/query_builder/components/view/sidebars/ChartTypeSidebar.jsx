@@ -87,7 +87,7 @@ const ChartTypeOption = ({
 }) => (
   <Box
     p={1}
-    w={1 / 3}
+    width={1 / 3}
     className="text-centered"
     style={{ opacity: !isSensible ? 0.25 : 1 }}
   >
@@ -105,6 +105,8 @@ const ChartTypeOption = ({
         borderRadius: 10,
         padding: 12,
       }}
+      data-testid={`${visualization.uiName}-button`}
+      data-is-sensible={isSensible}
     >
       <Icon name={visualization.iconName} size={20} />
     </Flex>

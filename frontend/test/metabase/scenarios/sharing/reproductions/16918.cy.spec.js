@@ -16,7 +16,11 @@ const questionDetails = {
   display: "line",
 };
 
+<<<<<<< HEAD
 describe.skip("issue 16918", () => {
+=======
+describe("issue 16918", () => {
+>>>>>>> tags/v0.41.0
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

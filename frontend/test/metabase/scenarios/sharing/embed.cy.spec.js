@@ -58,12 +58,10 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
     // click pencil icon to edit
     cy.icon("ellipsis").click();
     // update title
-    popover().within(() =>
-      cy.findByText("Change title and description").click(),
-    );
+    popover().within(() => cy.findByText("Edit dashboard details").click());
 
     modal().within(() => {
-      cy.findByText("Change title and description");
+      cy.findByText("Edit dashboard details");
       cy.findByLabelText("Name").type("{selectall}Orders per year");
       cy.findByLabelText("Description").type(
         "{selectall}How many orders were placed in each year?",

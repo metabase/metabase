@@ -46,9 +46,9 @@ To make a dashboard or pulse, click the plus (+) icon in the top-right of the ma
 
 ### Use search to quickly find things
 
-![Search results](images/sharing-answers/search-results.gif)
+![Search results](images/basic-exploration/search-results.gif)
 
-The search bar at the top of the screen helps you find tables, dashboards, collections, saved questions, metrics, segments, and pulses in an instant. 
+The search bar at the top of the screen helps you find tables, dashboards, collections, saved questions, metrics, segments, and pulses in an instant.
 
 ## A primer on databases
 

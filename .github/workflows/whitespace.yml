@@ -1,0 +1,41 @@
+name: Whitespace
+
+on:
+  pull_request:
+  push:
+    branches:
+      - '**'
+    paths:
+      - '**.yaml'
+      - '**.yml'
+      - '**.clj'
+      - '**.edn'
+      - '**.el'
+      - '**.html'
+      - '**.json'
+      - '**.js*'
+      - '**.sh'
+
+jobs:
+  whitespace-linter:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 5
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare JDK 11
+      uses: actions/setup-java@v1
+      with:
+        java-version: 11
+    - name: Install Clojure CLI
+      run: |
+        curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh &&
+        sudo bash ./linux-install-1.10.3.933.sh
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.m2
+          ~/.gitlibs
+        key: ${{ runner.os }}-whitespace-linter-${{ hashFiles('**/deps.edn') }}
+    - run: clojure -T:whitespace-linter lint
+      name: Run Whitespace Linter

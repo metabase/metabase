@@ -4,12 +4,6 @@ on:
   pull_request:
   push:
     branches:
-      - master
-      - 'release**'
-      - 'feature**'
-      - 'fix**'
-      - 'ci**'
-    tags:
       - '**'
     paths:
     - 'frontend/**'
@@ -18,6 +12,7 @@ on:
     - 'docs/**'
     - '**/package.json'
     - '**/yarn.lock'
+    - '**/.eslintrc'
     - '.github/workflows/**'
 
 jobs:
@@ -49,6 +44,11 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: 14.x
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-cljs-${{ hashFiles('**/shadow-cljs.edn') }}
     - name: Get yarn cache
       uses: actions/cache@v2
       with:
@@ -78,21 +78,31 @@ jobs:
 
   fe-tests-unit:
     runs-on: ubuntu-20.04
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
     - uses: actions/checkout@v2
     - name: Prepare Node.js
       uses: actions/setup-node@v1
       with:
         node-version: 14.x
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-cljs-${{ hashFiles('**/shadow-cljs.edn') }}
     - name: Get yarn cache
       uses: actions/cache@v2
       with:
         path: ~/.cache/yarn
         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
     - run: yarn install --frozen-lockfile --prefer-offline
-    - run: yarn run test-unit
+    - run: yarn run test-unit --coverage --silent
       name: Run frontend unit tests
+    - name: Upload coverage to codecov.io
+      uses: codecov/codecov-action@v2
+      with:
+        files: ./coverage/lcov.info
+        flags: front-end
 
   fe-tests-timezones:
     runs-on: ubuntu-20.04
@@ -103,6 +113,11 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: 14.x
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-cljs-${{ hashFiles('**/shadow-cljs.edn') }}
     - name: Get yarn cache
       uses: actions/cache@v2
       with:

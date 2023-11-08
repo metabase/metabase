@@ -12,9 +12,9 @@
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
-;;; ----------------------------------------------- valid-object-path? -----------------------------------------------
+;;; ----------------------------------------------- valid-path? -----------------------------------------------
 
-(deftest valid-object-path-test
+(deftest valid-path-test
   (testing "valid paths"
     (doseq [path
             ["/db/1/"
@@ -32,10 +32,15 @@
              "/db/1/schema//table/1/"
              "/db/1/schema/1234/table/1/"
              "/db/1/schema/PUBLIC/table/1/query/"
-             "/db/1/schema/PUBLIC/table/1/query/segmented/"]]
+             "/db/1/schema/PUBLIC/table/1/query/segmented/"
+             ;; block permissions
+             "/block/db/1/"
+             "/block/db/1000/"
+             ;; full admin (everything) root permissions
+             "/"]]
       (testing (pr-str path)
         (is (= true
-               (perms/valid-object-path? path)))))
+               (perms/valid-path? path)))))
 
     (testing "\nWe should allow slashes in permissions paths? (#8693, #13263)\n"
       (doseq [path [ ;; COMPANY-NET\ should get escaped to COMPANY-NET\\
@@ -50,7 +55,7 @@
                     "/db/1/schema/my\\/schema/table/1/"]]
         (testing (pr-str path)
           (is (= true
-                 (perms/valid-object-path? path)))))))
+                 (perms/valid-path? path)))))))
 
   (testing "invalid paths"
     (doseq [[reason paths]
@@ -85,8 +90,7 @@
               "/db/1/schema//db/1/table/2//"]
 
              "not referencing a specific object. These might be valid permissions paths but not valid paths to objects"
-             ["/"
-              "/db/"
+             ["/db/"
               "/db/1/schema/public/db/"
               "/db/1/schema/public/db/1/table/"]
 
@@ -144,14 +148,22 @@
               "/db/1/schema/my\\\\\\schema/table/1/"]
 
              "forward slash must be escaped by a backslash" ; e.g. / -> \/
-             ["/db/1/schema/my/schema/table/1/"]}]
+             ["/db/1/schema/my/schema/table/1/"]
+
+             "block permissions are currently allowed for Databases only."
+             ["/block/"
+              "/block/db/1/schema/"
+              "/block/db/1/schema/PUBLIC/"
+              "/block/db/1/schema/PUBLIC/table/"
+              "/block/db/1/schema/PUBLIC/table/2/"
+              "/block/collection/1/"]}]
       (testing reason
         (doseq [path paths]
           (testing (str "\n" (pr-str path))
             (is (= false
-                   (perms/valid-object-path? path)))))))))
+                   (perms/valid-path? path)))))))))
 
-(deftest valid-object-path-backslashes-test
+(deftest valid-path-backslashes-test
   (testing "Only even numbers of backslashes should be valid (backslash must be escaped by another backslash)"
     (doseq [[num-backslashes expected schema-name] [[0 true "PUBLIC"]
                                                     [0 true  "my_schema"]
@@ -163,19 +175,19 @@
                     (format "/db/1/schema/%s/table/2/query/" schema-name)]]
         (testing (str "\n" (pr-str path))
           (is (= expected
-                 (perms/valid-object-path? path))))))))
+                 (perms/valid-path? path))))))))
 
 
-;;; -------------------------------------------------- object-path ---------------------------------------------------
+;;; -------------------------------------------------- data-perms-path ---------------------------------------------------
 
-(deftest object-path-test
+(deftest data-perms-path-test
   (testing "valid paths"
     (doseq [[expected args] {"/db/1/"                       [1]
                              "/db/1/schema/public/"         [1 "public"]
                              "/db/1/schema/public/table/2/" [1 "public" 2]}]
-      (testing (pr-str (cons 'perms/object-path args))
+      (testing (pr-str (cons 'perms/data-perms-path args))
         (is (= expected
-               (apply perms/object-path args))))))
+               (apply perms/data-perms-path args))))))
 
   (testing "invalid paths"
     (testing "invalid input should throw an exception"
@@ -201,12 +213,12 @@
                     [1 "public" false]
                     [1 "public" {}]
                     [1 "public" []]]]
-        (testing (pr-str (cons 'perms/object-path args))
+        (testing (pr-str (cons 'perms/data-perms-path args))
           (is (thrown?
                Exception
-               (apply perms/object-path args))))))))
+               (apply perms/data-perms-path args))))))))
 
-(deftest object-path-escape-slashes-test
+(deftest data-perms-path-escape-slashes-test
   (doseq [{:keys [slash-direction schema-name expected-escaped]} [{:slash-direction  "back (#8693)"
                                                                    :schema-name      "my\\schema"
                                                                    :expected-escaped "my\\\\schema"}
@@ -224,15 +236,15 @@
                                                                    :expected-escaped "my\\\\\\\\\\/schema"}]]
     (testing (format "We should handle slashes in permissions paths\nDirection = %s\nSchema = %s\n"
                      slash-direction (pr-str schema-name))
-      (testing (pr-str (list 'object-path {:id 1}))
+      (testing (pr-str (list 'data-perms-path {:id 1}))
         (is (= "/db/1/"
-               (perms/object-path {:id 1}))))
-      (testing (pr-str (list 'object-path {:id 1} schema-name))
+               (perms/data-perms-path {:id 1}))))
+      (testing (pr-str (list 'data-perms-path {:id 1} schema-name))
         (is (= (format "/db/1/schema/%s/" expected-escaped)
-               (perms/object-path {:id 1} schema-name))))
-      (testing (pr-str (list 'object-path {:id 1} schema-name {:id 2}))
+               (perms/data-perms-path {:id 1} schema-name))))
+      (testing (pr-str (list 'data-perms-path {:id 1} schema-name {:id 2}))
         (is (= (format "/db/1/schema/%s/table/2/" expected-escaped)
-               (perms/object-path {:id 1} schema-name {:id 2})))))))
+               (perms/data-perms-path {:id 1} schema-name {:id 2})))))))
 
 
 ;;; ---------------------------------- Generating permissions paths for Collections ----------------------------------
@@ -534,20 +546,20 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- test-data-graph [group]
-  (get-in (perms/graph) [:groups (u/the-id group) (mt/id) :schemas "PUBLIC"]))
+  (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :schemas "PUBLIC"]))
 
 (deftest graph-set-partial-permissions-for-table-test
   (testing "Test that setting partial permissions for a table retains permissions for other tables -- #3888"
     (mt/with-temp PermissionsGroup [group]
       (testing "before"
         ;; first, graph permissions only for VENUES
-        (perms/grant-permissions! group (perms/object-path (mt/id) "PUBLIC" (mt/id :venues)))
+        (perms/grant-permissions! group (perms/data-perms-path (mt/id) "PUBLIC" (mt/id :venues)))
         (is (= {(mt/id :venues) :all}
                (test-data-graph group))))
       (testing "after"
         ;; next, grant permissions via `update-graph!` for CATEGORIES as well. Make sure permissions for VENUES are
         ;; retained (#3888)
-        (perms/update-graph! [(u/the-id group) (mt/id) :schemas "PUBLIC" (mt/id :categories)] :all)
+        (perms/update-data-perms-graph! [(u/the-id group) (mt/id) :schemas "PUBLIC" (mt/id :categories)] :all)
         (is (= {(mt/id :categories) :all, (mt/id :venues) :all}
                (test-data-graph group)))))))
 
@@ -557,11 +569,11 @@
                     Database         [database]
                     Table            [table    {:db_id (u/the-id database)}]]
       ;; try to grant idential permissions to the table twice
-      (perms/update-graph! [(u/the-id group) (u/the-id database) :schemas] {"" {(u/the-id table) :all}})
-      (perms/update-graph! [(u/the-id group) (u/the-id database) :schemas] {"" {(u/the-id table) :all}})
+      (perms/update-data-perms-graph! [(u/the-id group) (u/the-id database) :schemas] {"" {(u/the-id table) :all}})
+      (perms/update-data-perms-graph! [(u/the-id group) (u/the-id database) :schemas] {"" {(u/the-id table) :all}})
       ;; now fetch the perms that have been granted
       (is (= {"" {(u/the-id table) :all}}
-             (get-in (perms/graph) [:groups (u/the-id group) (u/the-id database) :schemas]))))))
+             (get-in (perms/data-perms-graph) [:groups (u/the-id group) (u/the-id database) :schemas]))))))
 
 (deftest metabot-graph-test
   (testing (str "The data permissions graph should never return permissions for the MetaBot, because the MetaBot can "
@@ -569,9 +581,9 @@
     ;; need to swap out the perms check function because otherwise we couldn't even insert the object we want to insert
     (with-redefs [perms/assert-valid-metabot-permissions (constantly nil)]
       (mt/with-temp* [Database    [db]
-                      Permissions [perms {:group_id (u/the-id (group/metabot)), :object (perms/object-path db)}]]
+                      Permissions [perms {:group_id (u/the-id (group/metabot)), :object (perms/data-perms-path db)}]]
         (is (= false
-               (contains? (:groups (perms/graph)) (u/the-id (group/metabot)))))))))
+               (contains? (:groups (perms/data-perms-graph)) (u/the-id (group/metabot)))))))))
 
 (deftest broken-out-read-query-perms-in-graph-test
   (testing "Make sure we can set the new broken-out read/query perms for a Table and the graph works as we'd expect"
@@ -586,23 +598,56 @@
              (test-data-graph group))))
 
     (mt/with-temp PermissionsGroup [group]
-      (perms/update-graph! [(u/the-id group) (mt/id) :schemas]
-                           {"PUBLIC"
-                            {(mt/id :venues)
-                             {:read :all, :query :segmented}}})
+      (perms/update-data-perms-graph! [(u/the-id group) (mt/id) :schemas]
+                                      {"PUBLIC"
+                                       {(mt/id :venues)
+                                        {:read :all, :query :segmented}}})
       (is (= {(mt/id :venues) {:read  :all
-                                 :query :segmented}}
+                               :query :segmented}}
              (test-data-graph group))))))
 
 (deftest root-permissions-graph-test
   (testing "A \"/\" permission grants all dataset permissions"
-    (mt/with-temp Database [{db_id :id}]
-      (let [{:keys [group_id]} (db/select-one 'Permissions {:object "/"})]
-        (is (= {db_id {:native  :write
+    (mt/with-temp Database [{db-id :id}]
+      (let [{:keys [group_id]} (db/select-one Permissions {:object "/"})]
+        (is (= {db-id {:native  :write
                        :schemas :all}}
-               (-> (perms/graph)
+               (-> (perms/data-perms-graph)
                    (get-in [:groups group_id])
-                   (select-keys [db_id]))))))))
+                   (select-keys [db-id]))))))))
+
+(deftest update-graph-validate-db-perms-test
+  (testing "Check that validation of DB `:schemas` and `:native` perms doesn't fail if only one of them changes"
+    (mt/with-temp Database [{db-id :id}]
+      (perms/revoke-data-perms! (group/all-users) db-id)
+      (let [ks [:groups (u/the-id (group/all-users)) db-id]]
+        (letfn [(perms []
+                  (get-in (perms/data-perms-graph) ks))
+                (set-perms! [new-perms]
+                  (perms/update-data-perms-graph! (assoc-in (perms/data-perms-graph) ks new-perms))
+                  (perms))]
+          (testing "Should initially have no perms"
+            (is (= nil
+                   (perms))))
+          (testing "grant schema perms"
+            (is (= {:schemas :all}
+                   (set-perms! {:schemas :all}))))
+          (testing "grant native perms"
+            (is (= {:schemas :all, :native :write}
+                   (set-perms! {:schemas :all, :native :write}))))
+          (testing "revoke native perms"
+            (is (= {:schemas :all}
+                   (set-perms! {:schemas :all, :native :none}))))
+          (testing "revoke schema perms"
+            (is (= nil
+                   (set-perms! {:schemas :none}))))
+          (testing "disallow schemas :none + :native :write"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"DB permissions with a valid combination of values for :native and :schemas"
+                 (set-perms! {:schemas :none, :native :write})))
+            (is (= nil
+                   (perms)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -651,7 +696,7 @@
 (deftest grant-revoke-root-collection-permissions-test
   (mt/with-temp PermissionsGroup [{group-id :id}]
     (letfn [(perms []
-              (db/select-field :object 'Permissions :group_id group-id))]
+              (db/select-field :object Permissions :group_id group-id))]
       (is (= nil
              (perms)))
       (testing "Should be able to grant Root Collection perms"

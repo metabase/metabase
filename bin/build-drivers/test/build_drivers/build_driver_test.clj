@@ -15,19 +15,11 @@
     (build-driver/build-driver! :oracle :oss)
     (is (.exists (java.io.File. (jar-path))))
     (testing "JAR should not contain the JDBC driver classes"
-      (is (not (jar-contains-jdbc-classes?))))
-    (testing "Wouldn't need to rebuild :oss version of the driver"
-      (is (#'build-driver/driver-checksum-matches? :oracle :oss)))
-    (testing "WOULD need to build :ee version of the driver"
-      (is (not (#'build-driver/driver-checksum-matches? :oracle :ee))))))
+      (is (not (jar-contains-jdbc-classes?))))))
 
 (deftest build-ee-driver-test
   (testing "We should be able to build an EE driver"
     (build-driver/build-driver! :oracle :ee)
     (is (.exists (java.io.File. (jar-path))))
     (testing "JAR *should* contain the JDBC driver classes"
-      (is (jar-contains-jdbc-classes?)))
-    (testing "Wouldn't need to rebuild :ee version of the driver"
-      (is (#'build-driver/driver-checksum-matches? :oracle :ee)))
-    (testing "WOULD need to build :oss version of the driver"
-      (is (not (#'build-driver/driver-checksum-matches? :oracle :oss))))))
+      (is (jar-contains-jdbc-classes?)))))

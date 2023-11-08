@@ -29,6 +29,7 @@ const QueryDownloadWidget = ({
   dashcardId,
   icon,
   params,
+  visualizationSettings,
 }) => (
   <PopoverWithTrigger
     triggerElement={
@@ -41,7 +42,7 @@ const QueryDownloadWidget = ({
   >
     <Box
       p={2}
-      w={result.data && result.data.rows_truncated != null ? 300 : 260}
+      width={result.data && result.data.rows_truncated != null ? 300 : 260}
     >
       <Box p={1}>
         <h4>{t`Download full results`}</h4>
@@ -54,7 +55,7 @@ const QueryDownloadWidget = ({
       )}
       <Box>
         {EXPORT_FORMATS.map(type => (
-          <Box key={type} w={"100%"}>
+          <Box key={type} width={"100%"}>
             {dashcardId && token ? (
               <DashboardEmbedQueryButton
                 key={type}
@@ -92,9 +93,12 @@ const QueryDownloadWidget = ({
               <UnsavedQueryButton
                 key={type}
                 type={type}
-                card={card}
                 result={result}
+<<<<<<< HEAD
                 className="mr1 text-uppercase text-default unsaved-query-button"
+=======
+                visualizationSettings={visualizationSettings}
+>>>>>>> tags/v0.41.0
               />
             ) : null}
           </Box>
@@ -104,10 +108,17 @@ const QueryDownloadWidget = ({
   </PopoverWithTrigger>
 );
 
-const UnsavedQueryButton = ({ type, result: { json_query = {} }, card }) => (
+const UnsavedQueryButton = ({
+  type,
+  result: { json_query = {} },
+  visualizationSettings,
+}) => (
   <DownloadButton
     url={`api/dataset/${type}`}
-    params={{ query: JSON.stringify(_.omit(json_query, "constraints")) }}
+    params={{
+      query: JSON.stringify(_.omit(json_query, "constraints")),
+      visualization_settings: JSON.stringify(visualizationSettings),
+    }}
     extensions={[type]}
   >
     {type}

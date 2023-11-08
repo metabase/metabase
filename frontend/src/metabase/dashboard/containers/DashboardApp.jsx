@@ -6,7 +6,7 @@ import fitViewport from "metabase/hoc/FitViewPort";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
-import Dashboard from "metabase/dashboard/components/Dashboard";
+import Dashboard from "metabase/dashboard/components/Dashboard/Dashboard";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { setErrorPage } from "metabase/redux/app";
@@ -26,11 +26,13 @@ import {
   getLoadingStartTime,
   getClickBehaviorSidebarDashcard,
   getIsAddParameterPopoverOpen,
+  getSidebar,
+  getShowAddQuestionSidebar,
 } from "../selectors";
 import { getDatabases, getMetadata } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-import * as dashboardActions from "../dashboard";
+import * as dashboardActions from "../actions";
 import { parseHashOptions } from "metabase/lib/browser";
 import * as Urls from "metabase/lib/urls";
 
@@ -57,6 +59,8 @@ const mapStateToProps = (state, props) => {
     loadingStartTime: getLoadingStartTime(state),
     clickBehaviorSidebarDashcard: getClickBehaviorSidebarDashcard(state),
     isAddParameterPopoverOpen: getIsAddParameterPopoverOpen(state),
+    sidebar: getSidebar(state),
+    showAddQuestionSidebar: getShowAddQuestionSidebar(state),
   };
 };
 

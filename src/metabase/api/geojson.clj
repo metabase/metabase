@@ -36,7 +36,13 @@
        (tru "URLs referring to hosts that supply internal hosting metadata are prohibited.")))
 
 (def ^:private invalid-hosts
+<<<<<<< HEAD
   #{"metadata.google.internal"}) ; internal metadata for GCP
+=======
+  #{"169.254.169.254" ; internal metadata for AWS, OpenStack, and Azure
+    "metadata.google.internal"}) ; internal metadata for GCP
+
+>>>>>>> tags/v0.41.0
 
 (defn- valid-host?
   [^URL url]

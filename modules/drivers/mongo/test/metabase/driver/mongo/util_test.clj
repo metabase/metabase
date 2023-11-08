@@ -3,7 +3,7 @@
             [metabase.driver.mongo.util :as mongo-util]
             [metabase.driver.util :as driver.u]
             [metabase.test :as mt])
-  (:import [com.mongodb DB MongoClient MongoClientException ReadPreference ServerAddress]))
+  (:import [com.mongodb DB MongoClient MongoClientException MongoClientOptions$Builder ReadPreference ServerAddress]))
 
 (defn- connect-mongo [opts]
   (let [connection-info (#'mongo-util/details->mongo-connection-info
@@ -167,18 +167,21 @@
         (is (= 1010
                mongo-port))))))
 
+(defn- connection-options-builder ^MongoClientOptions$Builder [& args]
+  (apply #'mongo-util/connection-options-builder args))
+
 (deftest additional-connection-options-test
   (testing "test that people can specify additional connection options like `?readPreference=nearest`"
     (is (= (ReadPreference/nearest)
-           (.getReadPreference (-> (#'mongo-util/connection-options-builder :additional-options "readPreference=nearest")
+           (.getReadPreference (-> (connection-options-builder :additional-options "readPreference=nearest")
                                    .build))))
 
     (is (= (ReadPreference/secondaryPreferred)
-           (.getReadPreference (-> (#'mongo-util/connection-options-builder :additional-options "readPreference=secondaryPreferred")
+           (.getReadPreference (-> (connection-options-builder :additional-options "readPreference=secondaryPreferred")
                                    .build))))
 
     (testing "make sure we can specify multiple options"
-      (let [opts (-> (#'mongo-util/connection-options-builder :additional-options "readPreference=secondary&replicaSet=test")
+      (let [opts (-> (connection-options-builder :additional-options "readPreference=secondary&replicaSet=test")
                      .build)]
         (is (= "test"
                (.getRequiredReplicaSetName opts)))
@@ -190,7 +193,7 @@
       (is (thrown-with-msg?
            IllegalArgumentException
            #"No match for read preference of ternary"
-           (-> (#'mongo-util/connection-options-builder :additional-options "readPreference=ternary")
+           (-> (connection-options-builder :additional-options "readPreference=ternary")
                .build))))))
 
 (deftest test-ssh-connection

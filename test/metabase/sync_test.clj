@@ -120,7 +120,7 @@
     :fingerprint_version true
     :fingerprint         true))
 
-(def ^:private field:movie-id
+(defn- field:movie-id []
   (merge
    (field-defaults)
    {:name              "id"
@@ -193,7 +193,7 @@
                 {:schema       "default"
                  :name         "movie"
                  :display_name "Movie"
-                 :fields       [field:movie-id (field:movie-studio) (field:movie-title)]})
+                 :fields       [(field:movie-id) (field:movie-studio) (field:movie-title)]})
                movie)))
       (testing "`studio` Table"
         (is (= (merge
@@ -217,7 +217,7 @@
             {:schema       "default"
              :name         "movie"
              :display_name "Movie"
-             :fields       [field:movie-id
+             :fields       [(field:movie-id)
                             (assoc (field:movie-studio) :fk_target_field_id false :semantic_type nil)
                             (field:movie-title)]})
            (table-details (Table (:id table)))))))

@@ -49,7 +49,9 @@ function walkStyleSheets(sheets, fn) {
       }
       if (rule.style) {
         for (const prop of rule.style) {
-          fn(rule.style, prop, rule.style[prop]);
+          const cssValue = rule.style.getPropertyValue(prop);
+          const cssPriority = rule.style.getPropertyPriority(prop);
+          fn(rule.style, prop, cssValue, cssPriority);
         }
       }
     }
@@ -74,12 +76,15 @@ const replaceColors = (cssValue, matchColor, replacementColor) => {
 
 const getColorStyleProperties = memoize(function() {
   const properties = [];
-  walkStyleSheets(document.styleSheets, (style, cssProperty, cssValue) => {
-    // don't bother with checking if there are no colors
-    if (COLOR_REGEX.test(cssValue)) {
-      properties.push({ style, cssProperty, cssValue });
-    }
-  });
+  walkStyleSheets(
+    document.styleSheets,
+    (style, cssProperty, cssValue, cssPriority) => {
+      // don't bother with checking if there are no colors
+      if (COLOR_REGEX.test(cssValue)) {
+        properties.push({ style, cssProperty, cssValue, cssPriority });
+      }
+    },
+  );
   return properties;
 });
 
@@ -96,11 +101,17 @@ function initColorCSS(colorName) {
 
   const originalColor = Color(originalColors[colorName]);
   // look for CSS rules which have colors matching the brand colors or very light or desaturated
-  for (const { style, cssProperty, cssValue } of getColorStyleProperties()) {
+  for (const {
+    style,
+    cssProperty,
+    cssValue,
+    cssPriority,
+  } of getColorStyleProperties()) {
     // try replacing with a random color to see if we actually need to
     if (cssValue !== replaceColors(cssValue, originalColor, RANDOM_COLOR)) {
       CSS_COLOR_UPDATORS_BY_COLOR_NAME[colorName].push(themeColor => {
-        style[cssProperty] = replaceColors(cssValue, originalColor, themeColor);
+        const newCssValue = replaceColors(cssValue, originalColor, themeColor);
+        style.setProperty(cssProperty, newCssValue, cssPriority);
       });
     }
   }

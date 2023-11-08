@@ -19,6 +19,12 @@ const OPTIONS_WITH_ICONS = [
   { name: "Doohickey", value: 2, icon: "insight" },
 ];
 
+const OPTIONS_ICONS_ONLY = [
+  { value: 0, icon: "lightbulb" },
+  { value: 1, icon: "folder" },
+  { value: 2, icon: "insight" },
+];
+
 const OPTIONS_WITH_COLORS = [
   {
     name: "Gadget",
@@ -43,6 +49,18 @@ function SegmentedControlDemo(props) {
 
 export const examples = {
   default: <SegmentedControlDemo options={SIMPLE_OPTIONS} />,
+  variants: (
+    <React.Fragment>
+      <SegmentedControlDemo options={SIMPLE_OPTIONS} variant="fill-text" />
+      <br />
+      <SegmentedControlDemo
+        options={SIMPLE_OPTIONS}
+        variant="fill-background"
+      />
+    </React.Fragment>
+  ),
   icons: <SegmentedControlDemo options={OPTIONS_WITH_ICONS} />,
+  iconsOnly: <SegmentedControlDemo options={OPTIONS_ICONS_ONLY} />,
   colored: <SegmentedControlDemo options={OPTIONS_WITH_COLORS} />,
+  fullWidth: <SegmentedControlDemo options={OPTIONS_WITH_ICONS} fullWidth />,
 };

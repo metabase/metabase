@@ -3,7 +3,7 @@
             [metabase-enterprise.enhancements.integrations.ldap :as ldap-ee]
             [metabase.integrations.ldap :as ldap]
             [metabase.models.user :as user :refer [User]]
-            [metabase.public-settings.metastore :as metastore]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.test :as mt]
             [metabase.test.integrations.ldap :as ldap.test]
             [metabase.util.schema :as su]
@@ -11,7 +11,7 @@
             [toucan.db :as db]))
 
 (deftest find-test
-  (with-redefs [metastore/enable-enhancements? (constantly true)]
+  (with-redefs [premium-features/enable-enhancements? (constantly true)]
     (ldap.test/with-ldap-server
       (testing "find by username"
         (is (= {:dn         "cn=John Smith,ou=People,dc=metabase,dc=com"
@@ -92,7 +92,7 @@
                  (ldap/find-user "sally.brown@metabase.com"))))))))
 
 (deftest attribute-sync-test
-  (with-redefs [metastore/enable-enhancements? (constantly true)]
+  (with-redefs [premium-features/enable-enhancements? (constantly true)]
     (ldap.test/with-ldap-server
       (testing "find by email/username should return other attributes as well"
         (is (= {:dn         "cn=Lucky Pigeon,ou=Birds,dc=metabase,dc=com"
@@ -165,7 +165,7 @@
               (db/delete! User :%lower.email "john.smith@metabase.com"))))))))
 
 (deftest update-attributes-on-login-test
-  (with-redefs [metastore/enable-enhancements? (constantly true)]
+  (with-redefs [premium-features/enable-enhancements? (constantly true)]
     (ldap.test/with-ldap-server
       (testing "Existing user's attributes are updated on fetch"
         (try
@@ -214,7 +214,7 @@
             (db/delete! User :%lower.email "john.smith@metabase.com")))))))
 
 (deftest fetch-or-create-user-test
-  (with-redefs [metastore/enable-enhancements? (constantly true)]
+  (with-redefs [premium-features/enable-enhancements? (constantly true)]
     (ldap.test/with-ldap-server
       (testing "a new user is created when they don't already exist"
         (try

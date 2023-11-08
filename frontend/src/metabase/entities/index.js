@@ -1,3 +1,4 @@
+export alerts from "./alerts";
 export collections from "./collections";
 export snippetCollections from "./snippet-collections";
 export dashboards from "./dashboards";
@@ -19,4 +20,5 @@ export users from "./users";
 export groups from "./groups";
 
 export search from "./search";
+export recents from "./recents";
 export snippets from "./snippets";

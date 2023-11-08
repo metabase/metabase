@@ -1,11 +1,24 @@
 (ns metabase.api.search-test
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [metabase.api.search :as api.search]
-            [metabase.models :refer [Card CardFavorite Collection Dashboard DashboardCard DashboardFavorite Database
-                                     Metric PermissionsGroup PermissionsGroupMembership Pulse PulseCard Segment Table]]
+            [metabase.models
+             :refer
+             [Card
+              CardFavorite
+              Collection
+              Dashboard
+              DashboardCard
+              DashboardFavorite
+              Database
+              Metric
+              PermissionsGroup
+              PermissionsGroupMembership
+              Pulse
+              PulseCard
+              Segment
+              Table]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.search.config :as search-config]
@@ -21,6 +34,7 @@
    :collection                 {:id false :name nil :authority_level nil}
    :collection_authority_level nil
    :collection_position        nil
+   :moderated_status           nil
    :context                    nil
    :dashboardcard_count        nil
    :favorite                   nil
@@ -73,8 +87,6 @@
 
 (defn- default-metric-segment-results []
   (filter #(contains? #{"metric" "segment"} (:model %)) (default-search-results)))
-
-(defn- subset-model [model res] (filter #(= (:model %) (name model)) res))
 
 (defn- default-archived-results []
   (for [result (default-search-results)
@@ -202,7 +214,7 @@
                (search-request-data :crowberto :q "test"))))))
   (testing "It prioritizes exact matches"
     (with-search-items-in-root-collection "test"
-      (with-redefs [search-config/db-max-results 1]
+      (with-redefs [search-config/*db-max-results* 1]
         (is (= [test-collection]
                (search-request-data :crowberto :q "test collection"))))))
   (testing "It limits matches properly"
@@ -348,7 +360,7 @@
                                               :schema nil}]
                     Metric   [_ {:table_id table-id
                                  :name     "test metric"}]]
-      (perms/revoke-permissions! (group/all-users) db-id)
+      (perms/revoke-data-perms! (group/all-users) db-id)
       (is (= []
              (search-request-data :rasta :q "test")))))
 
@@ -358,7 +370,7 @@
                                               :schema nil}]
                     Segment  [_ {:table_id table-id
                                  :name     "test segment"}]]
-      (perms/revoke-permissions! (group/all-users) db-id)
+      (perms/revoke-data-perms! (group/all-users) db-id)
       (is (= []
              (search-request-data :rasta :q "test"))))))
 
@@ -469,6 +481,12 @@
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "Round Table")]
                (search-request-data user :q "Round Table"))))))
+  (testing "You should not see hidden tables"
+    (mt/with-temp* [Table [normal {:name "Foo Visible"}]
+                    Table [hidden {:name "Foo Hidden", :visibility_type "hidden"}]]
+      (do-test-users [user [:crowberto :rasta]]
+        (is (= [(default-table-search-row "Foo Visible")]
+               (search-request-data user :q "Foo"))))))
   (testing "You should be able to search by their display name"
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp Table [table {:name "Round Table" :display_name lancelot}]
@@ -490,7 +508,7 @@
   (testing "you should not be able to see a Table if the current user doesn't have permissions for that Table"
     (mt/with-temp* [Database [{db-id :id}]
                     Table    [table {:db_id db-id}]]
-      (perms/revoke-permissions! (group/all-users) db-id)
+      (perms/revoke-data-perms! (group/all-users) db-id)
       (is (= []
              (binding [*search-request-results-database-id* db-id]
                (search-request-data :rasta :q (:name table))))))))
@@ -502,7 +520,7 @@
                     Table                      [table {:name "Round Table", :db_id db-id}]
                     PermissionsGroup           [{group-id :id}]
                     PermissionsGroupMembership [_ {:group_id group-id, :user_id (mt/user->id :rasta)}]]
-      (perms/revoke-permissions! (group/all-users) db-id (:schema table) (:id table))
+      (perms/revoke-data-perms! (group/all-users) db-id (:schema table) (:id table))
       (perms/grant-permissions! group-id (perms/table-read-path table))
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "Round Table")]
@@ -513,7 +531,7 @@
   (testing "If the All Users group doesn't have perms to view a Table they sholdn't see it (#16855)"
     (mt/with-temp* [Database                   [{db-id :id}]
                     Table                      [table {:name "Round Table", :db_id db-id}]]
-      (perms/revoke-permissions! (group/all-users) db-id (:schema table) (:id table))
+      (perms/revoke-data-perms! (group/all-users) db-id (:schema table) (:id table))
       (is (= []
              (filter #(= (:name %) "Round Table")
                      (binding [*search-request-results-database-id* db-id]

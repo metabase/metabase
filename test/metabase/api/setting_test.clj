@@ -1,8 +1,10 @@
 (ns metabase.api.setting-test
   (:require [clojure.test :refer :all]
             [metabase.models.setting-test :refer [test-sensitive-setting test-setting-1 test-setting-2 test-setting-3]]
+            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]))
+            [metabase.test.fixtures :as fixtures]
+            [schema.core :as s]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -45,12 +47,27 @@
       (is (= "OK!"
              (fetch-setting :test-setting-2 200))))))
 
+(deftest fetch-calculated-settings-test
+  (testing "GET /api/setting"
+    (testing "Should return the correct `:value` for Settings with no underlying DB/env var value"
+      (premium-features-test/with-premium-features #{:embedding}
+        (is (schema= {:key            (s/eq "hide-embed-branding?")
+                      :value          (s/eq true)
+                      :is_env_setting (s/eq false)
+                      :env_name       (s/eq "MB_HIDE_EMBED_BRANDING")
+                      :default        (s/eq nil)
+                      s/Keyword       s/Any}
+                     (some
+                      (fn [{setting-name :key, :as setting}]
+                        (when (= setting-name "hide-embed-branding?")
+                          setting))
+                      (mt/user-http-request :crowberto :get 200 "setting"))))))))
+
 (deftest fetch-internal-settings-test
   (testing "Test that we can't fetch internal settings"
     (test-setting-3 "NOPE!")
     (is (= "Setting :test-setting-3 is internal"
-           (mt/suppress-output
-             (:message (fetch-setting :test-setting-3 500)))))))
+           (:message (fetch-setting :test-setting-3 500))))))
 
 (deftest update-settings-test
   (testing "PUT /api/setting/:key"

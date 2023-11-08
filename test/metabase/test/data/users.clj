@@ -136,6 +136,8 @@
   (locking tokens
     (reset! tokens {})))
 
+(def ^:private ^:dynamic *retrying-authentication*  false)
+
 (defn- client-fn [username & args]
   (try
     (apply http/client (username->token username) args)
@@ -144,8 +146,15 @@
         (when-not (= status-code 401)
           (throw e))
         ;; If we got a 401 unauthenticated clear the tokens cache + recur
+        ;;
+        ;; If we're already recursively retrying throw an Exception so we don't recurse forever.
+        (when *retrying-authentication*
+          (throw (ex-info (format "Failed to authenticate %s after two tries: %s" username (ex-message e))
+                          {:user username}
+                          e)))
         (clear-cached-session-tokens!)
-        (apply client-fn username args)))))
+        (binding [*retrying-authentication*  true]
+          (apply client-fn username args))))))
 
 (s/defn ^:deprecated user->client :- (s/pred fn?)
   "Returns a `metabase.http-client/client` partially bound with the credentials for User with `username`.

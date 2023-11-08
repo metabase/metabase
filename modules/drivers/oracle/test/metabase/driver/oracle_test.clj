@@ -5,6 +5,7 @@
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [metabase.driver :as driver]
+            [metabase.driver.oracle :as oracle]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
@@ -25,7 +26,7 @@
             [toucan.util.test :as tt]))
 
 (deftest connection-details->spec-test
-  (doseq [[message expected-spec details]
+  (doseq [[^String message expected-spec details]
           [["You should be able to connect with an SID"
             {:classname   "oracle.jdbc.OracleDriver"
              :subprotocol "oracle:thin"
@@ -58,9 +59,14 @@
              :service-name            "MyCoolService"
              :sid                     "ORCL"
              :ssl                     true}]]]
-    (is (= expected-spec
-           (sql-jdbc.conn/connection-details->spec :oracle details))
-        message)))
+    (let [actual-spec (sql-jdbc.conn/connection-details->spec :oracle details)
+          prog-prop   (deref #'oracle/prog-name-property)]
+      (is (= (dissoc expected-spec prog-prop)
+             (dissoc actual-spec prog-prop))
+          message)
+      ;; check our truncated Oracle version of the version/UUID string
+      ;; in some test cases, the version info isn't set, to the string "null" is the value
+      (is (re-matches #"MB (?:null|v(?:.*)) [\-a-f0-9]*" (get actual-spec prog-prop))))))
 
 (deftest require-sid-or-service-name-test
   (testing "no SID and no Service Name should throw an exception"
@@ -109,15 +115,16 @@
            (tu/db-timezone-id)))))
 
 (deftest insert-rows-ddl-test
-  (is (= [[(str "INSERT ALL"
-                " INTO \"my_db\".\"my_table\" (\"col1\", \"col2\") VALUES (?, 1)"
-                " INTO \"my_db\".\"my_table\" (\"col1\", \"col2\") VALUES (?, 2) "
-                "SELECT * FROM dual")
-           "A"
-           "B"]]
-         (ddl/insert-rows-ddl-statements :oracle (hx/identifier :table "my_db" "my_table") [{:col1 "A", :col2 1}
-                                                                                            {:col1 "B", :col2 2}]))
-      "Make sure we're generating correct DDL for Oracle to insert all rows at once."))
+  (mt/test-driver :oracle
+    (testing "Make sure we're generating correct DDL for Oracle to insert all rows at once."
+      (is (= [[(str "INSERT ALL"
+                    " INTO \"my_db\".\"my_table\" (\"col1\", \"col2\") VALUES (?, 1)"
+                    " INTO \"my_db\".\"my_table\" (\"col1\", \"col2\") VALUES (?, 2) "
+                    "SELECT * FROM dual")
+               "A"
+               "B"]]
+             (ddl/insert-rows-ddl-statements :oracle (hx/identifier :table "my_db" "my_table") [{:col1 "A", :col2 1}
+                                                                                                {:col1 "B", :col2 2}]))))))
 
 (defn- do-with-temp-user [username f]
   (let [username (or username (tu/random-name))]

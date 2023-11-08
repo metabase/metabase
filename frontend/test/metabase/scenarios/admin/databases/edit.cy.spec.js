@@ -1,4 +1,10 @@
-import { restore, popover, modal } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  modal,
+  describeWithToken,
+  mockSessionProperty,
+} from "__support__/e2e/cypress";
 
 describe("scenarios > admin > databases > edit", () => {
   beforeEach(() => {
@@ -60,6 +66,44 @@ describe("scenarios > admin > databases > edit", () => {
       cy.findByLabelText(
         "Automatically run queries when doing simple filtering and summarizing",
       ).should("have.attr", "aria-checked", "false");
+    });
+
+    describeWithToken("caching", () => {
+      beforeEach(() => {
+        mockSessionProperty("enable-query-caching", true);
+      });
+
+      it("allows to manage cache ttl", () => {
+        cy.visit("/admin/databases/1");
+
+        cy.findByText("Use instance default (TTL)").click();
+        popover()
+          .findByText("Custom")
+          .click();
+        cy.findByDisplayValue("24")
+          .clear()
+          .type("32")
+          .blur();
+
+        cy.button("Save changes").click();
+        cy.wait("@databaseUpdate").then(({ request, response }) => {
+          expect(request.body.cache_ttl).to.equal(32);
+          expect(response.body.cache_ttl).to.equal(32);
+
+          cy.visit("/admin/databases");
+          cy.findByText("Sample Dataset").click();
+
+          cy.findByText("Custom").click();
+          popover()
+            .findByText("Use instance default (TTL)")
+            .click();
+
+          cy.button("Save changes").click();
+          cy.wait("@databaseUpdate").then(({ request }) => {
+            expect(request.body.cache_ttl).to.equal(null);
+          });
+        });
+      });
     });
   });
 

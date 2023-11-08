@@ -55,11 +55,13 @@ export default createEntity({
 
         return {
           ...rest,
-          data: data.map(item => ({
-            collection_id: canonicalCollectionId(collection),
-            archived: archived || false,
-            ...item,
-          })),
+          data: data
+            ? data.map(item => ({
+                collection_id: canonicalCollectionId(collection),
+                archived: archived || false,
+                ...item,
+              }))
+            : [],
         };
       } else {
         return searchList(query);

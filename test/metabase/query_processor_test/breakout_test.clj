@@ -68,11 +68,11 @@
   (mt/test-drivers (mt/normal-drivers)
     (mt/with-column-remappings [venues.category_id (values-of categories.name)]
       (let [{:keys [rows cols]} (qp.test/rows-and-cols
-                                  (mt/format-rows-by [int int str]
-                                    (mt/run-mbql-query venues
-                                      {:aggregation [[:count]]
-                                       :breakout    [$category_id]
-                                       :limit       5})))]
+                                 (mt/format-rows-by [int int str]
+                                   (mt/run-mbql-query venues
+                                     {:aggregation [[:count]]
+                                      :breakout    [$category_id]
+                                      :limit       5})))]
         (is (= [(assoc (qp.test/breakout-col :venues :category_id) :remapped_to "Category ID")
                 (qp.test/aggregate-col :count)
                 (#'add-dim-projections/create-remapped-col "Category ID" (mt/format-name "category_id") :type/Text)]
@@ -162,20 +162,12 @@
                                     [:> $latitude 20]]
                       :breakout    [[:field %latitude {:binning {:strategy :default}}]]})))))))))
 
-(defn- round-binning-decimals [result]
-  (let [round-to-decimal #(u/round-to-decimals 4 %)]
-    (-> result
-        (update :min_value round-to-decimal)
-        (update :max_value round-to-decimal)
-        (update-in [:binning_info :min_value] round-to-decimal)
-        (update-in [:binning_info :max_value] round-to-decimal))))
-
 (deftest binning-info-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)
     (testing "Validate binning info is returned with the binning-strategy"
       (testing "binning-strategy = default"
         ;; base_type can differ slightly between drivers and it's really not important for the purposes of this test
-        (is (= (assoc (dissoc (qp.test/breakout-col :venues :latitude) :base_type)
+        (is (= (assoc (dissoc (qp.test/breakout-col :venues :latitude) :base_type :effective_type)
                       :binning_info {:min_value 10.0, :max_value 50.0, :num_bins 4, :bin_width 10.0, :binning_strategy :bin-width}
                       :field_ref    [:field (mt/id :venues :latitude) {:binning {:strategy  :bin-width
                                                                                  :min-value 10.0
@@ -187,10 +179,10 @@
                       :breakout    [[:field %latitude {:binning {:strategy :default}}]]})
                    qp.test/cols
                    first
-                   (dissoc :base_type)))))
+                   (dissoc :base_type :effective_type)))))
 
       (testing "binning-strategy = num-bins: 5"
-        (is (= (assoc (dissoc (qp.test/breakout-col :venues :latitude) :base_type)
+        (is (= (assoc (dissoc (qp.test/breakout-col :venues :latitude) :base_type :effective_type)
                       :binning_info {:min_value 7.5, :max_value 45.0, :num_bins 5, :bin_width 7.5, :binning_strategy :num-bins}
                       :field_ref    [:field (mt/id :venues :latitude) {:binning {:strategy  :num-bins
                                                                                  :min-value 7.5
@@ -202,7 +194,7 @@
                       :breakout    [[:field %latitude {:binning {:strategy :num-bins, :num-bins 5}}]]})
                    qp.test/cols
                    first
-                   (dissoc :base_type))))))))
+                   (dissoc :base_type :effective_type))))))))
 
 (deftest binning-error-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)
@@ -244,7 +236,8 @@
                    {:source-query
                     {:source-table $$venues
                      :aggregation  [[:count]]
-                     :breakout     [[:field %latitude {:binning {:strategy :default}}]]}}))))))
+                     :breakout     [[:field %latitude {:binning {:strategy :default}}]]}
+                    :order-by [[:asc $latitude]]}))))))
 
     (testing "Binning is not supported when there is no fingerprint to determine boundaries"
       ;; Unfortunately our new `add-source-metadata` middleware is just too good at what it does and will pull in

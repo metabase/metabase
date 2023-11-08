@@ -123,9 +123,12 @@
                (cond-> form
                  (mbql-field-clause? form) normalize/normalize))
              form))]
-    (cond-> (walk/keywordize-keys (dissoc viz-settings "column_settings"))
+    (cond-> (walk/keywordize-keys (dissoc viz-settings "column_settings" "graph.metrics"))
       (get viz-settings "column_settings") (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings")))
-      true                                 normalize-mbql-clauses)))
+      true                                 normalize-mbql-clauses
+      ;; exclude graph.metrics from normalization as it may start with
+      ;; the word "expression" but it is not MBQL (metabase#15882)
+      (get viz-settings "graph.metrics")   (assoc :graph.metrics (get viz-settings "graph.metrics")))))
 
 (models/add-type! :visualization-settings
   :in  json-in
@@ -220,7 +223,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (p.types/defprotocol+ IObjectPermissions
-  "Methods for determining whether the current user has read/write permissions for a given object."
+  "Methods for determining whether the current user has read/write permissions for a given object. See documentation
+  for [[metabase.models.permissions]] for a high-level overview of the Metabase permissions system."
 
   (perms-objects-set [instance ^clojure.lang.Keyword read-or-write]
     "Return a set of permissions object paths that a user must have access to in order to access this object. This

@@ -1,7 +1,7 @@
 (ns metabase-enterprise.enhancements.ee-strategy-impl-test
   (:require [clojure.test :refer :all]
             [metabase-enterprise.enhancements.ee-strategy-impl :as ee-strategy-impl]
-            [metabase.public-settings.metastore :as settings.metastore]
+            [metabase.public-settings.premium-features :as settings.premium-features]
             [pretty.core :refer [PrettyPrintable]]))
 
 (defprotocol ^:private MyProtocol
@@ -20,17 +20,17 @@
 (deftest generate-method-impl-test
   (is (= '((m1 [_]
                (metabase-enterprise.enhancements.ee-strategy-impl/invoke-ee-when-enabled
-                #'metabase.public-settings.metastore/enable-enhancements?
+                #'metabase.public-settings.premium-features/enable-enhancements?
                 metabase-enterprise.enhancements.ee-strategy-impl-test/m1
                 ee oss))
            (m1 [_ a]
                (metabase-enterprise.enhancements.ee-strategy-impl/invoke-ee-when-enabled
-                #'metabase.public-settings.metastore/enable-enhancements?
+                #'metabase.public-settings.premium-features/enable-enhancements?
                 metabase-enterprise.enhancements.ee-strategy-impl-test/m1
                 ee oss
                 a)))
          (#'ee-strategy-impl/generate-method-impl
-          (list 'var 'metabase.public-settings.metastore/enable-enhancements?)
+          (list 'var 'metabase.public-settings.premium-features/enable-enhancements?)
           'ee 'oss
           {:var #'MyProtocol}
           {:name     'm1
@@ -45,23 +45,23 @@
         (is (= '(metabase_enterprise.enhancements.ee_strategy_impl_test.MyProtocol
                  (m1 [_]
                      (metabase-enterprise.enhancements.ee-strategy-impl/invoke-ee-when-enabled
-                      #'metabase.public-settings.metastore/enable-enhancements?
+                      #'metabase.public-settings.premium-features/enable-enhancements?
                       metabase-enterprise.enhancements.ee-strategy-impl-test/m1
                       ee oss))
                  (m1 [_ a]
                      (metabase-enterprise.enhancements.ee-strategy-impl/invoke-ee-when-enabled
-                      #'metabase.public-settings.metastore/enable-enhancements?
+                      #'metabase.public-settings.premium-features/enable-enhancements?
                       metabase-enterprise.enhancements.ee-strategy-impl-test/m1
                       ee oss
                       a))
                  (m2 [_ a b]
                      (metabase-enterprise.enhancements.ee-strategy-impl/invoke-ee-when-enabled
-                      #'metabase.public-settings.metastore/enable-enhancements?
+                      #'metabase.public-settings.premium-features/enable-enhancements?
                       metabase-enterprise.enhancements.ee-strategy-impl-test/m2
                       ee oss
                       a b)))
                (#'ee-strategy-impl/generate-protocol-impl
-                (list 'var 'metabase.public-settings.metastore/enable-enhancements?)
+                (list 'var 'metabase.public-settings.premium-features/enable-enhancements?)
                 'ee 'oss protocol-symb)))))))
 
 (deftest e2e-test
@@ -77,20 +77,20 @@
                MyProtocol
                (m2 [_ x y]
                  (- x y)))
-        impl (ee-strategy-impl/reify-ee-strategy-impl #'settings.metastore/enable-enhancements? ee oss MyProtocol)]
+        impl (ee-strategy-impl/reify-ee-strategy-impl #'settings.premium-features/enable-enhancements? ee oss MyProtocol)]
     (testing "sanity check"
       (is (= 3
              (m2 ee 1 2)))
       (is (= -1
              (m2 oss 1 2))))
-    (with-redefs [settings.metastore/enable-enhancements? (constantly false)]
+    (with-redefs [settings.premium-features/enable-enhancements? (constantly false)]
       (is (= -1
              (m2 impl 1 2))))
-    (with-redefs [settings.metastore/enable-enhancements? (constantly true)]
+    (with-redefs [settings.premium-features/enable-enhancements? (constantly true)]
       (is (= 3
              (m2 impl 1 2))))
     (testing "Should pretty print"
       (is (= (str "(metabase-enterprise.enhancements.ee-strategy-impl/reify-ee-strategy-impl"
-                  " #'metabase.public-settings.metastore/enable-enhancements?"
+                  " #'metabase.public-settings.premium-features/enable-enhancements?"
                   " (ee) (oss))")
              (pr-str impl))))))

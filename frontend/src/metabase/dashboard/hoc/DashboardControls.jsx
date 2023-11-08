@@ -189,6 +189,7 @@ export default (ComposedComponent: React.Class) =>
           await this.props.fetchDashboard(
             this.props.dashboardId,
             this.props.location.query,
+            true,
           );
           this.props.fetchDashboardCardData({
             reload: true,

@@ -1,0 +1,385 @@
+{
+  "description": null,
+  "archived": false,
+  "collection_position": null,
+  "ordered_cards": [
+    {
+      "sizeX": 7,
+      "series": [],
+      "collection_authority_level": null,
+      "card": {
+        "description": null,
+        "archived": false,
+        "collection_position": null,
+        "table_id": 6,
+        "result_metadata": [
+          {
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "couponUsed",
+            "field_ref": ["field", 120, null],
+            "effective_type": "type/Boolean",
+            "id": 120,
+            "display_name": "CouponUsed",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 2,
+                "nil%": 0
+              }
+            },
+            "base_type": "type/Boolean"
+          },
+          {
+            "name": "count",
+            "display_name": "Count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "fingerprint": {
+              "global": {
+                "distinct-count": 2,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 477,
+                  "q1": 477,
+                  "q3": 4523,
+                  "max": 4523,
+                  "sd": 2860.9540366807714,
+                  "avg": 2500
+                }
+              }
+            }
+          }
+        ],
+        "database_id": 3,
+        "enable_embedding": false,
+        "collection_id": null,
+        "query_type": "query",
+        "name": "BOOLEAN Sales, Count, Grouped by CouponUsed",
+        "query_average_duration": 1751,
+        "creator_id": 1,
+        "moderation_reviews": [],
+        "updated_at": "2021-09-21T11:08:28.451",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 3,
+          "query": {
+            "source-table": 6,
+            "aggregation": [["count"]],
+            "breakout": [["field", 120, null]]
+          },
+          "type": "query"
+        },
+        "id": 56,
+        "display": "bar",
+        "visualization_settings": {
+          "graph.dimensions": ["couponUsed"],
+          "graph.metrics": ["count"]
+        },
+        "created_at": "2021-09-21T11:08:28.451",
+        "public_uuid": null
+      },
+      "updated_at": "2021-09-29T15:20:25.763",
+      "col": 0,
+      "id": 81,
+      "parameter_mappings": [
+        {
+          "parameter_id": "parameter1",
+          "card_id": 56,
+          "target": ["dimension", ["field", 120, null]]
+        }
+      ],
+      "card_id": 56,
+      "visualization_settings": {},
+      "dashboard_id": 8,
+      "created_at": "2021-09-21T11:08:50.29",
+      "sizeY": 7,
+      "row": 0
+    },
+    {
+      "sizeX": 4,
+      "series": [],
+      "collection_authority_level": null,
+      "card": {
+        "description": null,
+        "archived": false,
+        "collection_position": null,
+        "table_id": null,
+        "result_metadata": [
+          {
+            "name": "count",
+            "display_name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "field_ref": [
+              "field",
+              "count",
+              {
+                "base-type": "type/BigInteger"
+              }
+            ],
+            "semantic_type": "type/Quantity",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 2,
+                  "q1": 2,
+                  "q3": 2,
+                  "max": 2,
+                  "sd": null,
+                  "avg": 2
+                }
+              }
+            }
+          }
+        ],
+        "database_id": 5,
+        "enable_embedding": false,
+        "collection_id": null,
+        "query_type": "native",
+        "name": "postgre native q bool",
+        "query_average_duration": null,
+        "creator_id": 1,
+        "moderation_reviews": [],
+        "updated_at": "2021-09-30T14:48:06.905",
+        "made_public_by_id": 1,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "type": "native",
+          "native": {
+            "query": "select count(*) from bools where 1=1 [[and {{bbb}}]] [[and {{ccc}}]]",
+            "template-tags": {
+              "bbb": {
+                "id": "5928ca74-ca36-8706-7bed-0143d7646b6a",
+                "name": "bbb",
+                "display-name": "Bbb",
+                "type": "dimension",
+                "dimension": ["field", 134, null],
+                "widget-type": "category"
+              },
+              "ccc": {
+                "id": "7a4c9451-91eb-4206-2bc4-47be3be2a289",
+                "name": "ccc",
+                "display-name": "Ccc",
+                "type": "text"
+              }
+            }
+          },
+          "database": 5
+        },
+        "id": 59,
+        "display": "scalar",
+        "visualization_settings": {},
+        "created_at": "2021-09-21T12:15:50.266",
+        "public_uuid": "08b9badf-c83e-492b-a4b2-c37be300f78a"
+      },
+      "updated_at": "2021-09-29T15:20:25.782",
+      "col": 7,
+      "id": 86,
+      "parameter_mappings": [
+        {
+          "parameter_id": "parameter1",
+          "card_id": 59,
+          "target": ["dimension", ["template-tag", "bbb"]]
+        }
+      ],
+      "card_id": 59,
+      "visualization_settings": {},
+      "dashboard_id": 8,
+      "created_at": "2021-09-24T13:54:37.176",
+      "sizeY": 4,
+      "row": 0
+    },
+    {
+      "sizeX": 7,
+      "series": [],
+      "collection_authority_level": null,
+      "card": {
+        "description": null,
+        "archived": false,
+        "collection_position": null,
+        "table_id": null,
+        "result_metadata": [
+          {
+            "name": "integer",
+            "display_name": "integer",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "field_ref": [
+              "field",
+              "integer",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0.25
+              },
+              "type": {
+                "type/Number": {
+                  "min": -1,
+                  "q1": -0.75,
+                  "q3": 0.75,
+                  "max": 1,
+                  "sd": 1,
+                  "avg": 0
+                }
+              }
+            }
+          },
+          {
+            "name": "boolean",
+            "display_name": "boolean",
+            "base_type": "type/Boolean",
+            "effective_type": "type/Boolean",
+            "semantic_type": null,
+            "field_ref": [
+              "field",
+              "boolean",
+              {
+                "base-type": "type/Boolean"
+              }
+            ],
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0.25
+              }
+            }
+          }
+        ],
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": null,
+        "query_type": "query",
+        "name": "nested native question",
+        "query_average_duration": 193,
+        "creator_id": 1,
+        "moderation_reviews": [],
+        "updated_at": "2021-09-30T14:48:06.942",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "query": {
+            "source-table": "card__61"
+          },
+          "type": "query"
+        },
+        "id": 62,
+        "display": "table",
+        "visualization_settings": {
+          "table.pivot_column": "boolean",
+          "table.cell_column": "integer"
+        },
+        "created_at": "2021-09-29T14:35:28.067",
+        "public_uuid": null
+      },
+      "updated_at": "2021-09-29T15:20:25.79",
+      "col": 11,
+      "id": 87,
+      "parameter_mappings": [
+        {
+          "parameter_id": "parameter1",
+          "card_id": 62,
+          "target": [
+            "dimension",
+            [
+              "field",
+              "boolean",
+              {
+                "base-type": "type/Boolean"
+              }
+            ]
+          ]
+        }
+      ],
+      "card_id": 62,
+      "visualization_settings": {},
+      "dashboard_id": 8,
+      "created_at": "2021-09-29T14:35:53.807",
+      "sizeY": 7,
+      "row": 0
+    }
+  ],
+  "param_values": {
+    "120": {
+      "values": [false, true],
+      "human_readable_values": [],
+      "field_id": 120
+    },
+    "134": {
+      "values": [false, true],
+      "human_readable_values": [],
+      "field_id": 134
+    }
+  },
+  "can_write": true,
+  "enable_embedding": false,
+  "collection_id": null,
+  "show_in_getting_started": false,
+  "name": "boolean",
+  "caveats": null,
+  "collection_authority_level": null,
+  "creator_id": 1,
+  "updated_at": "2021-09-29T15:20:25.835",
+  "made_public_by_id": 1,
+  "embedding_params": null,
+  "cache_ttl": null,
+  "id": 8,
+  "position": null,
+  "param_fields": {
+    "120": {
+      "id": 120,
+      "table_id": 6,
+      "display_name": "CouponUsed",
+      "base_type": "type/Boolean",
+      "semantic_type": null,
+      "has_field_values": "list",
+      "name_field": null,
+      "dimensions": []
+    },
+    "134": {
+      "id": 134,
+      "table_id": 8,
+      "display_name": "Bool",
+      "base_type": "type/Boolean",
+      "semantic_type": "type/Category",
+      "has_field_values": "list",
+      "name_field": null,
+      "dimensions": []
+    }
+  },
+  "last-edit-info": {
+    "id": 1,
+    "email": "dalton@metabase.com",
+    "first_name": "D",
+    "last_name": "J",
+    "timestamp": "2021-09-29T15:20:25.855"
+  },
+  "parameters": [
+    {
+      "name": "Category",
+      "slug": "category",
+      "id": "parameter1",
+      "type": "category"
+    }
+  ],
+  "created_at": "2021-09-21T11:08:34.361",
+  "public_uuid": "7609b35a-dcd8-414c-9148-faf73077a8cb",
+  "points_of_interest": null
+}

@@ -132,13 +132,13 @@ export const unsubscribeFromAlert = alert => {
 
 export const DELETE_ALERT = "metabase/alerts/DELETE_ALERT";
 const deleteAlertRequest = new RestfulRequest({
-  endpoint: AlertApi.delete,
+  endpoint: AlertApi.update,
   actionPrefix: DELETE_ALERT,
   storeAsDictionary: true,
 });
 export const deleteAlert = alertId => {
   return async (dispatch, getState) => {
-    await dispatch(deleteAlertRequest.trigger({ id: alertId }));
+    await dispatch(deleteAlertRequest.trigger({ id: alertId, archived: true }));
 
     dispatch(
       addUndo({

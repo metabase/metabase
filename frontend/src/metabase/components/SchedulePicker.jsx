@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import ButtonGroup from "metabase/components/ButtonGroup";
+import { SegmentedControl } from "metabase/components/SegmentedControl";
 import Select from "metabase/components/Select";
 
 import Settings from "metabase/lib/settings";
@@ -40,6 +40,13 @@ export const MONTH_DAY_OPTIONS = [
   { name: t`Last`, value: "last" },
   { name: t`15th (Midpoint)`, value: "mid" },
 ];
+
+const optionNameTranslations = {
+  hourly: t`Hourly`,
+  daily: t`Daily`,
+  weekly: t`Weekly`,
+  monthly: t`Monthly`,
+};
 
 /**
  * Picker for selecting a hourly/daily/weekly/monthly schedule.
@@ -147,7 +154,6 @@ export default class SchedulePicker extends Component {
           style={{ minWidth: "48px" }}
         >{t`on the`}</span>
         <Select
-          className="text-bold bg-white"
           value={schedule.schedule_frame}
           onChange={({ target: { value } }) =>
             this.handleChangeProperty("schedule_frame", value)
@@ -157,7 +163,6 @@ export default class SchedulePicker extends Component {
         {schedule.schedule_frame !== "mid" && (
           <span className="mx1">
             <Select
-              className="text-bold bg-white"
               value={schedule.schedule_day}
               onChange={({ target: { value } }) =>
                 this.handleChangeProperty("schedule_day", value)
@@ -175,9 +180,8 @@ export default class SchedulePicker extends Component {
 
     return (
       <span className="flex align-center">
-        <span className="text-bold mx1">on</span>
+        <span className="text-bold mx1">{t`on`}</span>
         <Select
-          className="text-bold bg-white"
           value={schedule.schedule_day}
           onChange={({ target: { value } }) =>
             this.handleChangeProperty("schedule_day", value)
@@ -201,7 +205,7 @@ export default class SchedulePicker extends Component {
             style={{ minWidth: "48px" }}
           >{t`at`}</span>
           <Select
-            className="mr1 text-bold bg-white"
+            className="mr1"
             value={minuteOfHour}
             options={MINUTE_OPTIONS}
             onChange={({ target: { value } }) =>
@@ -231,19 +235,20 @@ export default class SchedulePicker extends Component {
             style={{ minWidth: "48px" }}
           >{t`at`}</span>
           <Select
-            className="mr1 text-bold bg-white"
+            className="mr1"
             value={hour}
             options={HOUR_OPTIONS}
             onChange={({ target: { value } }) =>
               this.handleChangeProperty("schedule_hour", value + amPm * 12)
             }
           />
-          <ButtonGroup
+          <SegmentedControl
             value={amPm}
             onChange={value =>
               this.handleChangeProperty("schedule_hour", hour + value * 12)
             }
             options={AM_PM_OPTIONS}
+            fullWidth
           />
         </div>
         {textBeforeSendTime && (
@@ -268,13 +273,12 @@ export default class SchedulePicker extends Component {
             {textBeforeInterval}
           </span>
           <Select
-            className="text-bold bg-white"
             value={scheduleType}
             onChange={({ target: { value } }) =>
               this.handleChangeProperty("schedule_type", value)
             }
             options={scheduleOptions}
-            optionNameFn={o => capitalize(o)}
+            optionNameFn={o => optionNameTranslations[o] || capitalize(o)}
             optionValueFn={o => o}
           />
           {scheduleType === "weekly" && this.renderDayPicker()}

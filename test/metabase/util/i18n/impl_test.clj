@@ -55,24 +55,26 @@
       (is (= expected
              (impl/available-locale? locale))))))
 
-(deftest parent-locale-test
-  (doseq [[locale expected] {nil                                       nil
-                             :es                                       nil
-                             "es"                                      nil
+(deftest fallback-locale-test
+  (doseq [[locale expected] {nil                             nil
+                             :es                             nil
+                             "es"                            nil
                              (Locale/forLanguageTag "es")    nil
-                             "es-MX"                                   (Locale/forLanguageTag "es")
-                             "es_MX"                                   (Locale/forLanguageTag "es")
-                             :es/MX                                    (Locale/forLanguageTag "es")
-                             (Locale/forLanguageTag "es-MX") (Locale/forLanguageTag "es")}]
+                             "es-MX"                         (Locale/forLanguageTag "es")
+                             "es_MX"                         (Locale/forLanguageTag "es")
+                             :es/MX                          (Locale/forLanguageTag "es")
+                             (Locale/forLanguageTag "es-MX") (Locale/forLanguageTag "es")
+                             ;; 0.39 changed pt to pt_BR (metabase#15630)
+                             "pt"                            (Locale/forLanguageTag "pt-BR")
+                             "pt-PT"                         (Locale/forLanguageTag "pt-BR")}]
     (testing locale
       (is (= expected
-             (impl/parent-locale locale))))))
+             (impl/fallback-locale locale))))))
 
 (deftest graceful-fallback-test
   (testing "If a resource bundle doesn't exist, we should gracefully fall back to English"
     (is (= "Translate me 100"
-           (mt/suppress-output
-             (impl/translate "zz" "Translate me {0}" 100))))))
+           (impl/translate "zz" "Translate me {0}" 100)))))
 
 (deftest translate-test
   (mt/with-mock-i18n-bundles {"es"      {"Your database has been added!"  "¡Tu base de datos ha sido añadida!"

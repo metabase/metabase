@@ -527,7 +527,7 @@ describe("scenarios > visualizations > pivot tables", () => {
         display: "pivot",
         visualization_settings: {},
       }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.createDashboard(DASHBOARD_NAME).then(
+        cy.createDashboard({ name: DASHBOARD_NAME }).then(
           ({ body: { id: DASHBOARD_ID } }) => {
             cy.log("Add previously created question to that dashboard");
             cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
@@ -587,7 +587,7 @@ describe("scenarios > visualizations > pivot tables", () => {
           enable_embedding: true,
         });
 
-        cy.createDashboard(DASHBOARD_NAME).then(
+        cy.createDashboard({ name: DASHBOARD_NAME }).then(
           ({ body: { id: DASHBOARD_ID } }) => {
             cy.log("Add previously created question to that dashboard");
             cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {

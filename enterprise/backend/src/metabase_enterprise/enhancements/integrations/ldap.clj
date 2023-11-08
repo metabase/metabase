@@ -6,7 +6,7 @@
             [metabase.integrations.ldap.interface :as i]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.models.user :as user :refer [User]]
-            [metabase.public-settings.metastore :as settings.metastore]
+            [metabase.public-settings.premium-features :as settings.premium-features]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs]]
             [metabase.util.schema :as su]
@@ -113,5 +113,5 @@
   forwards method invocations to `impl`; if EE features *are not* enabled, forwards method invocations to the
   default OSS impl."
   ;; TODO -- should we require `:sso` token features for using the LDAP enhancements?
-  (ee-strategy-impl/reify-ee-strategy-impl #'settings.metastore/enable-enhancements? impl default-impl/impl
+  (ee-strategy-impl/reify-ee-strategy-impl #'settings.premium-features/enable-enhancements? impl default-impl/impl
     LDAPIntegration))

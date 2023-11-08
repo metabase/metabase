@@ -56,7 +56,6 @@ const MultiTimePicker = ({ filter, onFilterChange }) => (
 );
 
 const sortTimes = (a, b) => {
-  console.log(parseTime(a).isAfter(parseTime(b)));
   return parseTime(a).isAfter(parseTime(b)) ? [b, a] : [a, b];
 };
 

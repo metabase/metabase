@@ -16,12 +16,12 @@
 
 ;;; ----------------------------------------------- Constants + Entity -----------------------------------------------
 
-(def ^:const visibility-types
+(def visibility-types
   "Valid values for `Table.visibility_type` (field may also be `nil`).
    (Basically any non-nil value is a reason for hiding the table.)"
   #{:hidden :technical :cruft})
 
-(def ^:const field-orderings
+(def field-orderings
   "Valid values for `Table.field_order`.
   `:database`     - use the same order as in the table definition in the DB;
   `:alphabetical` - order alphabetically by name;
@@ -42,14 +42,14 @@
     (merge defaults table)))
 
 (defn- pre-delete [{:keys [db_id schema id]}]
-  (db/delete! Permissions :object [:like (str (perms/object-path db_id schema id) "%")]))
+  (db/delete! Permissions :object [:like (str (perms/data-perms-path db_id schema id) "%")]))
 
 (defn- perms-objects-set [table read-or-write]
   ;; To read (e.g., fetch metadata) a Table you (predictably) have read permissions; to write a Table (e.g. update its
   ;; metadata) you must have *full* permissions.
   #{(case read-or-write
       :read  (perms/table-read-path table)
-      :write (perms/object-path (:db_id table) (:schema table) (:id table)))})
+      :write (perms/data-perms-path (:db_id table) (:schema table) (:id table)))})
 
 (u/strict-extend (class Table)
   models/IModel

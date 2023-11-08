@@ -94,17 +94,13 @@ export default class FilterOptions extends Component {
     return (
       <div className="flex align-center">
         {options.map(([name, option]) => (
-          <div
-            key={name}
-            className="flex align-center"
-            onClick={() => this.toggleOptionValue(name)}
-          >
+          <div key={name} className="flex align-center">
             <CheckBox
-              color="purple"
+              label={this.getOptionName(name)}
+              checkedColor="accent2"
               checked={this.getOptionValue(name)}
               onChange={() => this.toggleOptionValue(name)}
             />
-            <label className="ml1">{this.getOptionName(name)}</label>
           </div>
         ))}
       </div>

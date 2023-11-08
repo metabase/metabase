@@ -1,5 +1,6 @@
 (ns metabase.sync.analyze.fingerprint.fingerprinters-test
   (:require [cheshire.core :as json]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.models.field :as field :refer [Field]]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
@@ -146,8 +147,8 @@
       (testing "date fingerprints"
         (is (schema= {:global {:distinct-count (s/eq 618)
                                :nil%           (s/eq 0.0)}
-                      :type   {:type/DateTime {:earliest (s/pred #(.startsWith % "2013-01-03"))
-                                               :latest   (s/pred #(.startsWith % "2015-12-29"))}}}
+                      :type   {:type/DateTime {:earliest (s/pred #(str/starts-with? % "2013-01-03"))
+                                               :latest   (s/pred #(str/starts-with? % "2015-12-29"))}}}
                      (db/select-one-field :fingerprint Field :id (mt/id :checkins :date)))))
       (testing "number fingerprints"
         (is (schema= {:global {:distinct-count (s/eq 4)

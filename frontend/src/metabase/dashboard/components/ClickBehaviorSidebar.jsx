@@ -333,6 +333,8 @@ class ClickBehaviorSidebar extends React.Component {
     } = this.props;
     const { selectedColumn } = this.state;
 
+    const clickBehavior = this.getClickBehavior() || { type: "menu" };
+
     if (isTableDisplay(dashcard) && selectedColumn == null) {
       return (
         <Sidebar
@@ -390,7 +392,6 @@ class ClickBehaviorSidebar extends React.Component {
         </Sidebar>
       );
     }
-    const clickBehavior = this.getClickBehavior() || { type: "menu" };
 
     const { showTypeSelector } = this.state;
     if (showTypeSelector === null) {

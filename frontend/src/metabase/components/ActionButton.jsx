@@ -11,6 +11,8 @@ import cx from "classnames";
 type Props = {
   actionFn: (...args: any[]) => Promise<any>,
   className?: string,
+  successClassName?: string,
+  failedClassName?: string,
   children?: any,
   normalText?: string,
   activeText?: string,
@@ -46,6 +48,8 @@ export default class ActionButton extends Component {
 
   static defaultProps = {
     className: "Button",
+    successClassName: "Button--success",
+    failedClassName: "Button--danger",
     normalText: t`Save`,
     activeText: t`Saving...`,
     failedText: t`Save failed`,
@@ -118,11 +122,14 @@ export default class ActionButton extends Component {
       // eslint-disable-next-line no-unused-vars
       actionFn,
       className,
+      successClassName,
+      failedClassName,
       forceActiveStyle,
       children,
       ...props
     } = this.props;
     const { active, result } = this.state;
+    const isActionDisabled = active || result === "success";
 
     return (
       <Button
@@ -131,9 +138,10 @@ export default class ActionButton extends Component {
           forceActiveStyle
             ? cx("Button", "Button--waiting")
             : cx(className, {
-                "Button--waiting pointer-events-none": active,
-                "Button--success pointer-events-none": result === "success",
-                "Button--danger": result === "failed",
+                "Button--waiting": active,
+                [successClassName]: result === "success",
+                [failedClassName]: result === "failed",
+                "pointer-events-none": isActionDisabled,
               })
         }
         onClick={this.onClick}

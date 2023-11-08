@@ -51,19 +51,11 @@
        (when-not (= (:email_verified <>) "true")
          (throw (ex-info (tru "Email is not verified.") {:status-code 400})))))))
 
-; TODO - are these general enough to move to `metabase.util`?
-(defn- email->domain ^String [email]
-  (last (re-find #"^.*@(.*$)" email)))
-
-(defn- email-in-domain? ^Boolean [email domain]
-  {:pre [(u/email? email)]}
-  (= (email->domain email) domain))
-
 (defn- autocreate-user-allowed-for-email? [email]
   (boolean
    (when-let [domains (google.i/google-auth-auto-create-accounts-domain)]
      (some
-      (partial email-in-domain? email)
+      (partial u/email-in-domain? email)
       (str/split domains #"\s*,\s*")))))
 
 (defn- check-autocreate-user-allowed-for-email
@@ -86,9 +78,9 @@
 (s/defn ^:private google-auth-fetch-or-create-user! :- metabase.models.user.UserInstance
   [first-name last-name email]
   (or (db/select-one [User :id :email :last_login] :%lower.email (u/lower-case-en email))
-                      (google-auth-create-new-user! {:first_name first-name
-                                                     :last_name  last-name
-                                                     :email      email})))
+      (google-auth-create-new-user! {:first_name first-name
+                                     :last_name  last-name
+                                     :email      email})))
 
 (defn do-google-auth
   "Call to Google to perform an authentication"

@@ -9,7 +9,7 @@ import {
 } from "metabase/plugins";
 
 import MetabaseSettings from "metabase/lib/settings";
-import CollectionPermissionsModal from "metabase/admin/permissions/containers/CollectionPermissionsModal";
+import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import Modal from "metabase/components/Modal";
 
 import CollectionRow from "./components/CollectionRow";

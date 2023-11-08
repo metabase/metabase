@@ -1,0 +1,8 @@
+{:paths
+ ["src" "resources"]
+
+ :mvn/repos
+ {"redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}}
+
+ :deps
+ {com.amazon.redshift/redshift-jdbc42 {:mvn/version "2.0.0.3"}}}

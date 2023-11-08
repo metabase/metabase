@@ -10,7 +10,7 @@
   "Look up a database schema transform"
   [db-id schema transform-name]
   (api/check-403 (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                   (perms/object-path db-id schema)))
+                   (perms/data-perms-path db-id schema)))
   (->> @transform.specs/transform-specs
        (m/find-first (comp #{transform-name} :name))
        (transform/apply-transform! db-id schema)))

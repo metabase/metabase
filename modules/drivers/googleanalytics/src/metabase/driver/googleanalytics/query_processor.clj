@@ -14,7 +14,6 @@
 
 (def ^:private ^:const earliest-date "2005-01-01")
 (def ^:private ^:const latest-date   "today")
-(def ^:private ^:const max-rows-maximum 10000)
 
 (defmulti ^:private ->rvalue mbql.u/dispatch-by-clause-name-or-class)
 

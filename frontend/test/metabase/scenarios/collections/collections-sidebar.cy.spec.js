@@ -27,4 +27,17 @@ describe("collections sidebar (metabase#15006)", () => {
 
     cy.icon("burger");
   });
+
+  it("should close collections sidebar when collection is clicked in mobile screen size", () => {
+    cy.viewport(480, 800);
+    cy.icon("burger").click();
+
+    sidebar().should("be.visible");
+
+    sidebar().within(() => {
+      cy.findByText("First collection").click();
+    });
+
+    cy.icon("burger");
+  });
 });

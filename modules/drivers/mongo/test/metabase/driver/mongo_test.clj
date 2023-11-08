@@ -61,10 +61,33 @@
                                                 :expected true}
                                                {:details  {:conn-uri "mongodb://localhost:3000/bad-db-name?connectTimeoutMS=50"}
                                                 :expected false}]]
-      (testing (str "connect with " details)
-        (is (= expected
-               (driver.u/can-connect-with-details? :mongo details))
-            message)))))
+     (testing (str "connect with " details)
+       (is (= expected
+              (driver.u/can-connect-with-details? :mongo details))
+           (str message))))))
+
+(deftest database-supports?-test
+(mt/test-driver
+   :mongo
+   (doseq [{:keys [details expected]} [{:details  {:host    "localhost"
+                                                   :port    3000
+                                                   :dbname  "bad-db-name"
+                                                   :version "5.0.0"}
+                                        :expected true}
+                                       {:details  {}
+                                        :expected false}
+                                       {:details  {:version nil}
+                                        :expected false}
+                                       {:details  {:host    "localhost"
+                                                   :port    27017
+                                                   :dbname  "metabase-test"
+                                                   :version "2.2134234.lol"}
+                                        :expected false}]]
+     (testing (str "connect with " details)
+       (is (= expected
+              (let [db (db/insert! Database {:name "dummy", :engine "mongo", :details details})]
+                (driver/database-supports? :mongo :expressions db))))))))
+
 
 (def ^:private native-query
   "[{\"$project\": {\"_id\": \"$_id\"}},
@@ -81,6 +104,7 @@
                         :cols             [{:name         "count"
                                             :display_name "count"
                                             :base_type    :type/Integer
+                                            :effective_type :type/Integer
                                             :source       :native
                                             :field_ref    [:field "count" {:base-type :type/Integer}]}]
                         :native_form      {:collection "venues"
@@ -96,11 +120,11 @@
 
 (deftest describe-database-test
   (mt/test-driver :mongo
-    (is (= {:tables #{{:schema nil, :name "checkins"}
-                      {:schema nil, :name "categories"}
-                      {:schema nil, :name "users"}
-                      {:schema nil, :name "venues"}}}
-           (driver/describe-database :mongo (mt/db))))))
+    (is (= #{{:schema nil, :name "checkins"}
+             {:schema nil, :name "categories"}
+             {:schema nil, :name "users"}
+             {:schema nil, :name "venues"}}
+             (:tables (driver/describe-database :mongo (mt/db)))))))
 
 (deftest describe-table-test
   (mt/test-driver :mongo
@@ -155,7 +179,7 @@
                     :limit       4}))))))))
 
 ;; Make sure that all-NULL columns work and are synced correctly (#6875)
-(tx/defdataset ^:private all-null-columns
+(tx/defdataset all-null-columns
   [["bird_species"
     [{:field-name "name", :base-type :type/Text}
      {:field-name "favorite_snack", :base-type :type/Text}]
@@ -231,7 +255,7 @@
                            (into {} field))))))))))
 
 
-(tx/defdataset ^:private with-bson-ids
+(tx/defdataset with-bson-ids
   [["birds"
      [{:field-name "name", :base-type :type/Text}
       {:field-name "bird_id", :base-type :type/MongoBSONID}]

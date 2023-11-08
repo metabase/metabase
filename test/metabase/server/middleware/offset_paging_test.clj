@@ -8,17 +8,17 @@
             [schema.core :as s]))
 
 (defn- handler [request]
-  (let [handler (-> (fn [request respond _]
-                      (respond (response/response {:limit  mw.offset-paging/*limit*
-                                                   :offset mw.offset-paging/*offset*
-                                                   :paged? mw.offset-paging/*paged?*
-                                                   :params (:params request)})))
-                    mw.offset-paging/handle-paging
-                    wrap-keyword-params
-                    wrap-params)
+  (let [handler* (-> (fn [request respond _]
+                       (respond (response/response {:limit  mw.offset-paging/*limit*
+                                                    :offset mw.offset-paging/*offset*
+                                                    :paged? mw.offset-paging/*paged?*
+                                                    :params (:params request)})))
+                     mw.offset-paging/handle-paging
+                     wrap-keyword-params
+                     wrap-params)
         respond identity
         raise   (fn [e] (throw e))]
-    (handler request respond raise)))
+    (handler* request respond raise)))
 
 (deftest paging-test
   (testing "no paging params"

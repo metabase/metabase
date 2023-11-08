@@ -5,7 +5,7 @@
             [metabase.models.interface :as i]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
-            [metabase.public-settings.metastore-test :as metastore-test]
+            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]))
 
 (def ^:private root-collection (assoc collection/root-collection :name "Root Collection", :namespace "snippets"))
@@ -22,9 +22,9 @@
                   (is (= expected
                          (has-perms-for-id?)))))))]
     (testing "should be allowed if EE perms aren't enabled"
-      (metastore-test/with-metastore-token-features #{}
+      (premium-features-test/with-premium-features #{}
         (test-perms* true)))
-    (metastore-test/with-metastore-token-features #{:enhancements}
+    (premium-features-test/with-premium-features #{:enhancements}
       (testing "should NOT be allowed if EE perms are enabled and you do not have perms"
         (test-perms* false))
       (testing "should be allowed if you have perms"

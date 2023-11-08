@@ -8,7 +8,7 @@
   "Protocol for Sandbox deletion behavior when permissions are granted or revoked."
   (delete-gtaps-if-needed-after-permissions-change!* [this changes]
     "For use only inside `metabase.models.permissions`; don't call this elsewhere. Delete GTAPs that are no longer
-needed after the permissions graph is updated. See docstring for `delete-gtaps-if-needed-after-permissions-change!` for
+ needed after the permissions graph is updated. See docstring for `delete-gtaps-if-needed-after-permissions-change!` for
  more information."))
 
 (def oss-default-impl

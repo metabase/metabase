@@ -3,10 +3,11 @@
             [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.config :as config]
+            [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.metastore :as metastore]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
             [metabase.util.password :as password]
@@ -14,7 +15,7 @@
   (:import java.util.UUID))
 
 ;; These modules register settings but are otherwise unused. They still must be imported.
-(comment metabase.public-settings.metastore/keep-me)
+(comment metabase.public-settings.premium-features/keep-me)
 
 (defn- google-auth-configured? []
   (boolean (setting/get :google-auth-client-id)))
@@ -197,13 +198,13 @@
 (defsetting query-caching-max-ttl
   (deferred-tru "The absolute maximum time to keep any cached query results, in seconds.")
   :type    :double
-  :default (* 60 60 24 100)) ; 100 days
+  :default (* 60.0 60.0 24.0 100.0)) ; 100 days
 
 ;; TODO -- this isn't really a TTL at all. Consider renaming to something like `-min-duration`
 (defsetting query-caching-min-ttl
   (deferred-tru "Metabase will cache all saved questions with an average query execution time longer than this many seconds:")
   :type    :double
-  :default 60)
+  :default 60.0)
 
 (defsetting query-caching-ttl-ratio
   (str (deferred-tru "To determine how long each saved question''s cached result should stick around, we take the query''s average execution time and multiply that by whatever you input here.")
@@ -252,8 +253,13 @@
   :type       :boolean
   :default    true
   :getter     (fn []
-                (or (setting/get-boolean :enable-password-login)
-                    (not (sso-configured?)))))
+                ;; if `:enable-password-login` has an *explict* (non-default) value, and SSO is configured, use that;
+                ;; otherwise this always returns true.
+                (let [v (setting/get-boolean :enable-password-login)]
+                  (if (and (some? v)
+                           (sso-configured?))
+                    v
+                    true))))
 
 (defsetting breakout-bins-num
   (deferred-tru "When using the default binning strategy and a number of bins is not provided, this number will be used as the default.")
@@ -353,7 +359,7 @@
   "Current report timezone abbreviation"
   :visibility :public
   :setter     :none
-  :getter     (fn [] (short-timezone-name (setting/get :report-timezone))))
+  :getter     (fn [] (short-timezone-name (driver/report-timezone))))
 
 (defsetting version
   "Metabase's version info"
@@ -362,14 +368,17 @@
   :getter     (constantly config/mb-version-info))
 
 (defsetting premium-features
-  "Premium EE features enabled for this instance."
+  "Premium  features enabled for this instance."
   :visibility :public
   :setter     :none
-  :getter     (fn [] {:embedding  (metastore/hide-embed-branding?)
-                      :whitelabel (metastore/enable-whitelabeling?)
-                      :audit_app  (metastore/enable-audit-app?)
-                      :sandboxes  (metastore/enable-sandboxes?)
-                      :sso        (metastore/enable-sso?)}))
+  :getter     (fn [] {:embedding            (premium-features/hide-embed-branding?)
+                      :whitelabel           (premium-features/enable-whitelabeling?)
+                      :audit_app            (premium-features/enable-audit-app?)
+                      :sandboxes            (premium-features/enable-sandboxes?)
+                      :sso                  (premium-features/enable-sso?)
+                      :advanced_config      (premium-features/enable-advanced-config?)
+                      :advanced_permissions (premium-features/enable-advanced-permissions?)
+                      :content_management   (premium-features/enable-content-management?)}))
 
 (defsetting redirect-all-requests-to-https
   (deferred-tru "Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS")
@@ -390,7 +399,7 @@
   It won''t affect SQL queries.")
   :visibility :public
   :type       :keyword
-  :default    "sunday")
+  :default    :sunday)
 
 (defsetting ssh-heartbeat-interval-sec
   (deferred-tru "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).")

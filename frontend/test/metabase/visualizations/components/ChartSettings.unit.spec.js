@@ -1,5 +1,4 @@
 import React from "react";
-import "@testing-library/jest-dom/extend-expect";
 import { render, fireEvent } from "@testing-library/react";
 
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
@@ -20,10 +19,6 @@ function widget(widget = {}) {
   };
 }
 
-function expectTabSelected(node, value) {
-  expect(node.parentNode.getAttribute("aria-selected")).toBe(String(value));
-}
-
 describe("ChartSettings", () => {
   it("should not crash if there are no widgets", () => {
     render(<ChartSettings {...DEFAULT_PROPS} widgets={[]} />);
@@ -38,17 +33,17 @@ describe("ChartSettings", () => {
     );
   });
   it("should default to the first section (if no section in DEFAULT_TAB_PRIORITY)", () => {
-    const { getByText } = render(
+    const { getByLabelText } = render(
       <ChartSettings
         {...DEFAULT_PROPS}
         widgets={[widget({ section: "Foo" }), widget({ section: "Bar" })]}
       />,
     );
-    expectTabSelected(getByText("Foo"), true);
-    expectTabSelected(getByText("Bar"), false);
+    expect(getByLabelText("Foo")).toBeChecked();
+    expect(getByLabelText("Bar")).not.toBeChecked();
   });
   it("should default to the DEFAULT_TAB_PRIORITY", () => {
-    const { getByText } = render(
+    const { getByLabelText } = render(
       <ChartSettings
         {...DEFAULT_PROPS}
         widgets={[
@@ -57,21 +52,21 @@ describe("ChartSettings", () => {
         ]}
       />,
     );
-    expectTabSelected(getByText("Foo"), false);
-    expectTabSelected(getByText("Display"), true);
+    expect(getByLabelText("Foo")).not.toBeChecked();
+    expect(getByLabelText("Display")).toBeChecked();
   });
   it("should be able to switch sections", () => {
-    const { getByText } = render(
+    const { getByText, getByLabelText } = render(
       <ChartSettings
         {...DEFAULT_PROPS}
         widgets={[widget({ section: "Foo" }), widget({ section: "Bar" })]}
       />,
     );
-    expectTabSelected(getByText("Foo"), true);
-    expectTabSelected(getByText("Bar"), false);
+    expect(getByLabelText("Foo")).toBeChecked();
+    expect(getByLabelText("Bar")).not.toBeChecked();
     fireEvent.click(getByText("Bar"));
-    expectTabSelected(getByText("Foo"), false);
-    expectTabSelected(getByText("Bar"), true);
+    expect(getByLabelText("Foo")).not.toBeChecked();
+    expect(getByLabelText("Bar")).toBeChecked();
   });
 
   it("should show widget names", () => {

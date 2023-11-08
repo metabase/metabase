@@ -55,8 +55,8 @@
     (testing "misses"
       (is (nil?
            (score ["rasta"]
-                  (result-row "just a straight-up imposter")))
-          (nil?
+                  (result-row "just a straight-up imposter"))))
+      (is (nil?
            (score ["rasta" "the" "toucan"]
                   (result-row "")))))))
 

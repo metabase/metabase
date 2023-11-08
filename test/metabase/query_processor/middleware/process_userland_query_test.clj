@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.process-userland-query-test
   (:require [clojure.core.async :as a]
             [clojure.test :refer :all]
+            [metabase.events :as events]
             [metabase.query-processor.context :as context]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
@@ -87,6 +88,14 @@
               :dashboard_id nil}
              (qe))
           "QueryExecution saved in the DB should have query execution info. empty `:data` should get added to failures"))))
+
+(deftest viewlog-call-test
+  (let [query {:query? true}]
+    (testing "no viewlog event with nil card id"
+      (let [call-count (atom 0)]
+        (with-redefs [events/publish-event! (fn [& args] (swap! call-count inc))]
+          (mt/test-qp-middleware process-userland-query/process-userland-query {:query? true} {} [] nil)
+          (is (= 0 @call-count)))))))
 
 (defn- async-middleware [qp]
   (fn async-middleware-qp [query rff context]

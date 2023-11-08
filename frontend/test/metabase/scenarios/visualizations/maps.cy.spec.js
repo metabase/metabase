@@ -83,8 +83,8 @@ describe("scenarios > visualizations > maps", () => {
     cy.get("@vizButton").find(".Icon-pinmap");
     cy.get("@vizButton").click();
     cy.findByText("Choose a visualization");
-    // Sidebar should really have a distinct class name
-    cy.get(".scroll-y .scroll-y").as("vizSidebar");
+
+    cy.findByTestId("sidebar-left").as("vizSidebar");
 
     cy.get("@vizSidebar").within(() => {
       // There should be a unique class for "selected" viz type
@@ -185,4 +185,42 @@ describe("scenarios > visualizations > maps", () => {
     cy.findByText("Longitude:");
     cy.findByText("1");
   });
+<<<<<<< HEAD
+=======
+
+  it("should render grid map visualization for native questions (metabase#8362)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `
+              select 20 as "Latitude", -110 as "Longitude", 1 as "metric" union all
+              select 70 as "Latitude", -170 as "Longitude", 5 as "metric"
+            `,
+          "template-tags": {},
+        },
+        database: 1,
+      },
+      display: "map",
+      visualization_settings: {
+        "map.type": "grid",
+        "map.latitude_column": "Latitude",
+        "map.longitude_column": "Longitude",
+        "map.metric_column": "metric",
+      },
+    });
+
+    // Ensure chart is rendered
+    cy.get(".leaflet-interactive");
+
+    cy.findByText("Visualization").click();
+
+    // Ensure the Map visualization is sensible
+    cy.findByTestId("Map-button").should(
+      "have.attr",
+      "data-is-sensible",
+      "true",
+    );
+  });
+>>>>>>> tags/v0.41.0
 });

@@ -3,6 +3,7 @@ import {
   getParameterTargetFieldId,
   parameterToMBQLFilter,
   normalizeParameterValue,
+  getValuePopulatedParameters,
 } from "metabase/meta/Parameter";
 
 import * as Query from "metabase/lib/query/query";
@@ -125,7 +126,7 @@ export function getTemplateTagsForParameters(card: ?Card): Array<TemplateTag> {
   );
 }
 
-export function getParameters(card: ?Card): Parameter[] {
+export function getParametersFromCard(card: ?Card): Parameter[] {
   if (card && card.parameters) {
     return card.parameters;
   }
@@ -134,15 +135,17 @@ export function getParameters(card: ?Card): Parameter[] {
   return getTemplateTagParameters(tags);
 }
 
-export function getParametersWithExtras(
+export function getValueAndFieldIdPopulatedParametersFromCard(
   card: Card,
   parameterValues?: ParameterValues,
 ): Parameter[] {
-  return getParameters(card).map(parameter => {
-    // if we have a parameter value for this parameter, set "value"
-    if (parameterValues && parameter.id in parameterValues) {
-      parameter = assoc(parameter, "value", parameterValues[parameter.id]);
-    }
+  const parameters = getParametersFromCard(card);
+  const valuePopulatedParameters = getValuePopulatedParameters(
+    parameters,
+    parameterValues,
+  );
+
+  return valuePopulatedParameters.map(parameter => {
     // if we have a field id for this parameter, set "field_id"
     const fieldId = getParameterTargetFieldId(
       parameter.target,
@@ -232,7 +235,7 @@ export function questionUrlWithParameters(
 
   card = Utils.copy(card);
 
-  const cardParameters = getParameters(card);
+  const cardParameters = getParametersFromCard(card);
   const datasetQuery = applyParameters(
     card,
     parameters,

@@ -376,14 +376,30 @@
         (.close stmt)
         (throw e)))))
 
-;; (.getObject rs i LocalDate) doesn't seem to work, nor does `(.getDate)`; and it seems to be the case that
-;; timestamps come back as `Types/DATE` as well? Fetch them as a String and then parse them
+;; SQLite has no intrinsic date/time type. The sqlite-jdbc driver provides the following de-facto mappings:
+;;    DATE or DATETIME => Types/DATE (only if type is int or string)
+;;    TIMESTAMP => Types/TIMESTAMP (only if type is int)
+;; The data itself can be stored either as
+;;    1) integer (unix epoch) - this is "point in time", so no confusion about timezone
+;;    2) float (julian days) - this is "point in time", so no confusion about timezone
+;;    3) string (ISO8601) - zoned or unzoned depending on content, sqlite-jdbc always treat it as local time
+;; Note that it is possible to store other invalid data in the column as SQLite does not perform any validation.
+(defn- sqlite-handle-timestamp
+  [^ResultSet rs ^Integer i]
+  (let [obj (.getObject rs i)]
+    (cond
+      ;; For strings, use our own parser which is more flexible than sqlite-jdbc's and handles timezones correctly
+      (instance? String obj) (u.date/parse obj)
+      ;; For other types, fallback to sqlite-jdbc's parser
+      ;; Even in DATE column, it is possible to put DATETIME, so always treat as DATETIME
+      (some? obj) (t/local-date-time (.getTimestamp rs i)))))
+
 (defmethod sql-jdbc.execute/read-column-thunk [:sqlite Types/DATE]
   [_ ^ResultSet rs _ ^Integer i]
   (fn []
-    (try
-      (when-let [t (.getDate rs i)]
-        (t/local-date t))
-      (catch Throwable _
-        (when-let [s (.getString rs i)]
-          (u.date/parse s))))))
+    (sqlite-handle-timestamp rs i)))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:sqlite Types/TIMESTAMP]
+  [_ ^ResultSet rs _ ^Integer i]
+  (fn []
+    (sqlite-handle-timestamp rs i)))

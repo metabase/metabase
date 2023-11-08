@@ -19,7 +19,7 @@
                    ffirst)))
         ;; now, check the actual diagnostic info map
         (let [diag-info (diag-info-fn)]
-          (is map? diag-info)
+          (is (map? diag-info))
           (let [{:keys [::sql-jdbc.execute.diagnostic/driver
                         ::sql-jdbc.execute.diagnostic/database-id
                         ::sql-jdbc.execute.diagnostic/active-connections

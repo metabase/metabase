@@ -37,7 +37,9 @@ describe("scenarios > collection items listing", () => {
         });
       });
 
-      _.times(ADDED_DASHBOARDS, i => cy.createDashboard(`dashboard ${i}`));
+      _.times(ADDED_DASHBOARDS, i =>
+        cy.createDashboard({ name: `dashboard ${i}` }),
+      );
       _.times(ADDED_QUESTIONS, i =>
         cy.createQuestion({
           name: `generated question ${i}`,
@@ -99,7 +101,8 @@ describe("scenarios > collection items listing", () => {
 
       it(testName, () => {
         ["A", "B", "C"].forEach((letter, i) => {
-          cy.createDashboard(`${letter} Dashboard`, {
+          cy.createDashboard({
+            name: `${letter} Dashboard`,
             collection_position: pinned ? i + 1 : null,
           });
 
@@ -213,9 +216,10 @@ describe("scenarios > collection items listing", () => {
 
     it("should allow to separately sort pinned and not pinned items", () => {
       ["A", "B", "C"].forEach((letter, i) => {
-        cy.createDashboard(`${letter} Dashboard`);
+        cy.createDashboard({ name: `${letter} Dashboard` });
 
-        cy.createDashboard(`${letter} Dashboard (pinned)`, {
+        cy.createDashboard({
+          name: `${letter} Dashboard (pinned)`,
           collection_position: i + 1,
         });
 

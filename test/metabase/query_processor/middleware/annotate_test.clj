@@ -416,6 +416,7 @@
       (is (= {:cols [{:name         "metric"
                       :display_name "Total Events"
                       :base_type    :type/Text
+                      :effective_type :type/Text
                       :source       :aggregation
                       :field_ref    [:aggregation 0]}]}
              (add-column-info
@@ -486,6 +487,7 @@
   (testing "Make sure `:cols` always come back with a unique `:name` key (#8759)"
     (is (= {:cols
             [{:base_type     :type/Number
+              :effective_type :type/Number
               :semantic_type :type/Quantity
               :name          "count"
               :display_name  "count"
@@ -495,14 +497,17 @@
               :name         "sum"
               :display_name "sum"
               :base_type    :type/Number
+              :effective_type :type/Number
               :field_ref    [:aggregation 1]}
              {:base_type     :type/Number
+              :effective_type :type/Number
               :semantic_type :type/Quantity
               :name          "count_2"
               :display_name  "count"
               :source        :aggregation
               :field_ref     [:aggregation 2]}
              {:base_type     :type/Number
+              :effective_type :type/Number
               :semantic_type :type/Quantity
               :name          "count_3"
               :display_name  "count_2"

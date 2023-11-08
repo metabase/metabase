@@ -11,29 +11,54 @@
             [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
             "2019-04-01"
             "2019-04-30"]
-           (dates/date-string->filter "2019-04" [:field "field" {:base-type :type/DateTime}])))
-    (testing "quarter year"
-      (is (= [:between
-              [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
-              "2019-04-01"
-              "2019-06-30"]
-             (dates/date-string->filter "Q2-2019" [:field "field" {:base-type :type/DateTime}]))))
-    (testing "single day"
-      (is (= [:=
-              [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
-              "2019-04-01"]
-             (dates/date-string->filter "2019-04-01" [:field "field" {:base-type :type/DateTime}]))))
-    (testing "day range"
-      (is (= [:between
-              [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
-              "2019-04-01"
-              "2019-04-03"]
-             (dates/date-string->filter "2019-04-01~2019-04-03" [:field "field" {:base-type :type/DateTime}]))))
-    (testing "after day"
-      (is (= [:>
-              [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
-              "2019-04-01"]
-             (dates/date-string->filter "2019-04-01~" [:field "field" {:base-type :type/DateTime}]))))))
+           (dates/date-string->filter "2019-04" [:field "field" {:base-type :type/DateTime}]))))
+  (testing "quarter year"
+    (is (= [:between
+            [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
+            "2019-04-01"
+            "2019-06-30"]
+           (dates/date-string->filter "Q2-2019" [:field "field" {:base-type :type/DateTime}]))))
+  (testing "single day"
+    (is (= [:=
+            [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
+            "2019-04-01"]
+           (dates/date-string->filter "2019-04-01" [:field "field" {:base-type :type/DateTime}]))))
+  (testing "day range"
+    (is (= [:between
+            [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
+            "2019-04-01"
+            "2019-04-03"]
+           (dates/date-string->filter "2019-04-01~2019-04-03" [:field "field" {:base-type :type/DateTime}]))))
+  (testing "after day"
+    (is (= [:>
+            [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
+            "2019-04-01"]
+           (dates/date-string->filter "2019-04-01~" [:field "field" {:base-type :type/DateTime}]))))
+  (testing "relative (past) exclusive"
+    (is (= [:time-interval
+            [:field "field" {:base-type :type/DateTime}]
+            -3
+            :day
+            {:include-current false}]
+           (dates/date-string->filter "past3days" [:field "field" {:base-type :type/DateTime}]))))
+  (testing "relative (past) inclusive"
+    (is (= [:time-interval [:field "field" {:base-type :type/DateTime}]
+            -3
+            :day
+            {:include-current true}]
+           (dates/date-string->filter "past3days~" [:field "field" {:base-type :type/DateTime}]))))
+  (testing "relative (next) exclusive"
+    (is (= [:time-interval [:field "field" {:base-type :type/DateTime}]
+            3
+            :day
+            {:include-current false}]
+           (dates/date-string->filter "next3days" [:field "field" {:base-type :type/DateTime}]))))
+  (testing "relative (next) inclusive"
+    (is (= [:time-interval [:field "field" {:base-type :type/DateTime}]
+            3
+            :day
+            {:include-current true}]
+           (dates/date-string->filter "next3days~" [:field "field" {:base-type :type/DateTime}])))))
 
 (deftest date-string->range-test
   (t/with-clock (t/mock-clock #t "2016-06-07T12:13:55Z")

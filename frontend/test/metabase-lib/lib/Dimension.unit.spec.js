@@ -138,26 +138,6 @@ describe("Dimension", () => {
   });
 
   describe("INSTANCE METHODS", () => {
-    describe("dimensions()", () => {
-      it("returns `dimension_options` of the underlying field if available", () => {
-        pending();
-      });
-      it("returns sub-dimensions for matching dimension if no `dimension_options`", () => {
-        // just a single scenario should be sufficient here as we will test
-        // `static dimensions()` individually for each dimension
-        pending();
-      });
-    });
-
-    describe("isSameBaseDimension(other)", () => {
-      it("returns true if the base dimensions are same", () => {
-        pending();
-      });
-      it("returns false if the base dimensions don't match", () => {
-        pending();
-      });
-    });
-
     describe("foriegn", () => {
       it("should return a FieldDimension", () => {
         const dimension = ORDERS.PRODUCT_ID.dimension().foreign(
@@ -314,20 +294,6 @@ describe("Dimension", () => {
       metadata,
     );
 
-    describe("STATIC METHODS", () => {
-      describe("dimensions(parentDimension)", () => {
-        it("should return array of FK dimensions for foreign key field dimension", () => {
-          pending();
-          // Something like this:
-          // fieldsInProductsTable = metadata.table(1).fields.length;
-          // expect(FieldDimension.dimensions(fkFieldIdDimension).length).toEqual(fieldsInProductsTable);
-        });
-        it("should return empty array for non-FK field dimension", () => {
-          pending();
-        });
-      });
-    });
-
     describe("INSTANCE METHODS", () => {
       describe("mbql()", () => {
         it("returns a fk clause", () => {
@@ -383,28 +349,6 @@ describe("Dimension", () => {
       ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "month" }],
       metadata,
     );
-
-    describe("STATIC METHODS", () => {
-      describe("dimensions(parentDimension)", () => {
-        it("should return an array with dimensions for each datetime unit", () => {
-          pending();
-          // Something like this:
-          // fieldsInProductsTable = metadata.table(1).fields.length;
-          // expect(FieldDimension.dimensions(fkFieldIdDimension).length).toEqual(fieldsInProductsTable);
-        });
-        it("should return empty array for non-date field dimension", () => {
-          pending();
-        });
-      });
-      describe("defaultDimension(parentDimension)", () => {
-        it("should return dimension with 'day' datetime unit", () => {
-          pending();
-        });
-        it("should return null for non-date field dimension", () => {
-          pending();
-        });
-      });
-    });
 
     describe("INSTANCE METHODS", () => {
       describe("mbql()", () => {
@@ -532,17 +476,6 @@ describe("Dimension", () => {
       metadata,
     );
 
-    describe("STATIC METHODS", () => {
-      describe("dimensions(parentDimension)", () => {
-        it("should return an array of dimensions based on default binning", () => {
-          pending();
-        });
-        it("should return empty array for non-number field dimension", () => {
-          pending();
-        });
-      });
-    });
-
     describe("INSTANCE METHODS", () => {
       describe("mbql()", () => {
         it("returns a field clause with binning strategy", () => {
@@ -592,20 +525,6 @@ describe("Dimension", () => {
       ["expression", "Hello World"],
       metadata,
     );
-
-    describe("STATIC METHODS", () => {
-      describe("dimensions(parentDimension)", () => {
-        it("should return array of FK dimensions for foreign key field dimension", () => {
-          pending();
-          // Something like this:
-          // fieldsInProductsTable = metadata.table(1).fields.length;
-          // expect(FieldDimension.dimensions(fkFieldIdDimension).length).toEqual(fieldsInProductsTable);
-        });
-        it("should return empty array for non-FK field dimension", () => {
-          pending();
-        });
-      });
-    });
 
     describe("INSTANCE METHODS", () => {
       describe("mbql()", () => {

@@ -7,7 +7,6 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import SidebarItem from "metabase/components/SidebarItem";
 
 import cx from "classnames";
-import pure from "recompose/pure";
 
 const BaseSidebar = ({ style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
@@ -47,4 +46,4 @@ BaseSidebar.propTypes = {
   style: PropTypes.object,
 };
 
-export default pure(BaseSidebar);
+export default React.memo(BaseSidebar);

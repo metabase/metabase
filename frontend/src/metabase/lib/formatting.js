@@ -4,37 +4,47 @@ import inflection from "inflection";
 import moment from "moment-timezone";
 import Humanize from "humanize-plus";
 import React from "react";
+<<<<<<< HEAD
 import ReactMarkdown from "react-markdown";
 import { ngettext, msgid } from "ttag";
+=======
+import { msgid, ngettext } from "ttag";
+>>>>>>> tags/v0.41.0
 
 import Mustache from "mustache";
 
 import ExternalLink from "metabase/components/ExternalLink";
 
 import {
-  isDate,
-  isNumber,
   isCoordinate,
+  isDate,
+  isDateWithoutTime,
+  isEmail,
   isLatitude,
   isLongitude,
+  isNumber,
   isTime,
   isURL,
-  isEmail,
 } from "metabase/lib/schema_metadata";
-import { parseTimestamp, parseTime } from "metabase/lib/time";
+import { parseTime, parseTimestamp } from "metabase/lib/time";
 import { rangeForValue } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { decimalCount } from "metabase/visualizations/lib/numeric";
 
 import {
-  getDataFromClicked,
   clickBehaviorIsValid,
+  getDataFromClicked,
 } from "metabase/lib/click-behavior";
 
+import type {
+  DateStyle,
+  TimeEnabled,
+  TimeStyle,
+} from "metabase/lib/formatting/date";
 import {
   DEFAULT_DATE_STYLE,
-  getDateFormatFromStyle,
   DEFAULT_TIME_STYLE,
+  getDateFormatFromStyle,
   getTimeFormatFromStyle,
   hasHour,
 } from "metabase/lib/formatting/date";
@@ -42,18 +52,12 @@ import {
   renderLinkTextForClick,
   renderLinkURLForClick,
 } from "metabase/lib/formatting/link";
-import { NULL_NUMERIC_VALUE, NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { NULL_DISPLAY_VALUE, NULL_NUMERIC_VALUE } from "metabase/lib/constants";
 
 import type Field from "metabase-lib/lib/metadata/Field";
 import type { Column, Value } from "metabase-types/types/Dataset";
 import type { DatetimeUnit } from "metabase-types/types/Query";
 import type { Moment } from "metabase-types/types";
-
-import type {
-  DateStyle,
-  TimeStyle,
-  TimeEnabled,
-} from "metabase/lib/formatting/date";
 import type { ClickObject } from "metabase-types/types/Visualization";
 
 // a one or two character string specifying the decimal and grouping separator characters
@@ -476,7 +480,11 @@ function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
   if (dateFormat) {
     format.push(replaceDateFormatNames(dateFormat, options));
   }
-  if (timeFormat && options.time_enabled) {
+
+  const shouldIncludeTime =
+    timeFormat && options.time_enabled && !isDateWithoutTime(options.column);
+
+  if (shouldIncludeTime) {
     format.push(timeFormat);
   }
   return m.format(format.join(", "));
@@ -533,7 +541,7 @@ export function formatDateTimeWithUnit(
     );
   }
 
-  return formatDateTimeWithFormats(value, dateFormat, timeFormat, options);
+  return formatDateTimeWithFormats(m, dateFormat, timeFormat, options);
 }
 
 export function formatTime(value: Value) {
@@ -543,6 +551,33 @@ export function formatTime(value: Value) {
   } else {
     return m.format("LT");
   }
+}
+
+export function formatTimeWithUnit(
+  value: Value,
+  unit: DatetimeUnit,
+  options: FormattingOptions = {},
+) {
+  const m = parseTimestamp(value, unit, options.local);
+  if (!m.isValid()) {
+    return String(value);
+  }
+
+  const timeStyle = options.time_style
+    ? options.time_style
+    : DEFAULT_TIME_STYLE;
+
+  const timeEnabled = options.time_enabled
+    ? options.time_enabled
+    : hasHour(unit)
+    ? "minutes"
+    : null;
+
+  const timeFormat = options.time_format
+    ? options.time_format
+    : getTimeFormatFromStyle(timeStyle, unit, timeEnabled);
+
+  return m.format(timeFormat);
 }
 
 // https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L27
@@ -689,7 +724,7 @@ function formatStringFallback(value: Value, options: FormattingOptions = {}) {
 
 const MARKDOWN_RENDERERS = {
   // eslint-disable-next-line react/display-name
-  link: ({ href, children }) => (
+  a: ({ href, children }) => (
     <ExternalLink href={href}>{children}</ExternalLink>
   ),
 };
@@ -707,14 +742,25 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
     };
   }
   const formatted = formatValueRaw(value, options);
+  let maybeJson = {};
+  try {
+    maybeJson = JSON.parse(value);
+  } catch {
+    // do nothing
+  }
   if (options.markdown_template) {
     if (options.jsx) {
       // inject the formatted value as "value" and the unformatted value as "raw"
       const markdown = Mustache.render(options.markdown_template, {
         value: formatted,
         raw: value,
+        json: maybeJson,
       });
-      return <ReactMarkdown source={markdown} renderers={MARKDOWN_RENDERERS} />;
+      return (
+        <ReactMarkdown components={MARKDOWN_RENDERERS}>
+          {markdown}
+        </ReactMarkdown>
+      );
     } else {
       // FIXME: render and get the innerText?
       console.warn(
@@ -900,13 +946,20 @@ export function conjunct(list: string[], conjunction: string) {
 }
 
 export function duration(milliseconds: number) {
-  if (milliseconds < 60000) {
-    const seconds = Math.round(milliseconds / 1000);
-    return ngettext(msgid`${seconds} second`, `${seconds} seconds`, seconds);
-  } else {
-    const minutes = Math.round(milliseconds / 1000 / 60);
+  const SECOND = 1000;
+  const MINUTE = 60 * SECOND;
+  const HOUR = 60 * MINUTE;
+
+  if (milliseconds >= HOUR) {
+    const hours = Math.round(milliseconds / HOUR);
+    return ngettext(msgid`${hours} hour`, `${hours} hours`, hours);
+  }
+  if (milliseconds >= MINUTE) {
+    const minutes = Math.round(milliseconds / MINUTE);
     return ngettext(msgid`${minutes} minute`, `${minutes} minutes`, minutes);
   }
+  const seconds = Math.round(milliseconds / SECOND);
+  return ngettext(msgid`${seconds} second`, `${seconds} seconds`, seconds);
 }
 
 // Removes trailing "id" from field names

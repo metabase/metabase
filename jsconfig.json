@@ -14,6 +14,8 @@
         "./enterprise/frontend/src/*",
         "./enterprise/frontend/test/*"
       ]
-    }
+    },
+    "experimentalDecorators": true,
+    "strictBindCallApply": true
   }
 }

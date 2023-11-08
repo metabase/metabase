@@ -19,6 +19,7 @@ import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 
 import _ from "underscore";
+import { getMaxMetricsSupported } from "metabase/visualizations";
 
 // NOTE: currently we don't consider any date extracts to be histgrams
 const HISTOGRAM_DATE_EXTRACTS = new Set([
@@ -152,13 +153,20 @@ export const GRAPH_DATA_SETTINGS = {
       const options = data.cols
         .filter(vizSettings["graph._metric_filter"])
         .map(getOptionFromColumn);
+
+      const hasBreakout = vizSettings["graph.dimensions"].length > 1;
+      const addedMetricsCount = vizSettings["graph.metrics"].length;
+      const maxMetricsSupportedCount = getMaxMetricsSupported(card.display);
+
+      const hasMetricsToAdd = options.length > value.length;
+      const canAddAnother =
+        addedMetricsCount < maxMetricsSupportedCount &&
+        hasMetricsToAdd &&
+        !hasBreakout;
+
       return {
         options,
-        addAnother:
-          options.length > value.length &&
-          vizSettings["graph.dimensions"].length < 2
-            ? t`Add another series...`
-            : null,
+        addAnother: canAddAnother ? t`Add another series...` : null,
         columns: data.cols,
         showColumnSetting: true,
       };
@@ -250,12 +258,9 @@ export const STACKABLE_SETTINGS = {
   "stackable.stack_display": {
     section: t`Display`,
     title: t`Stacked chart type`,
-    widget: "buttonGroup",
+    widget: "segmentedControl",
     props: {
-      options: [
-        { icon: "area", name: t`Area`, value: "area" },
-        { icon: "bar", name: t`Bar`, value: "bar" },
-      ],
+      options: [{ icon: "area", value: "area" }, { icon: "bar", value: "bar" }],
     },
     getDefault: (series, settings) => {
       const displays = series.map(single => settings.series(single).display);

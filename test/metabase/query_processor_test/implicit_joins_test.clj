@@ -139,8 +139,7 @@
                     :filter      [:= $receiver_id->users.name "Rasta Toucan"]}))))))))
 
 (deftest implicit-joins-with-expressions-test
-  ;; Redshift excluded for now since the sample dataset seems to hang for Redshift -- see #14784
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :expressions) :redshift)
+  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :expressions)
     (testing "Should be able to run query with multiple implicit joins and breakouts"
       (mt/dataset sample-dataset
         (is (= [["Doohickey" "Facebook" "2019-01-01T00:00:00Z" 0 263]

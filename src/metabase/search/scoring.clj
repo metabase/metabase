@@ -14,6 +14,7 @@
 ;;; Utility functions
 
 (s/defn normalize :- s/Str
+  "Normalize a `query` to lower-case."
   [query :- s/Str]
   (str/lower-case query))
 

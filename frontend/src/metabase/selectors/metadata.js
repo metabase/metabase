@@ -13,7 +13,7 @@ import Metric from "metabase-lib/lib/metadata/Metric";
 import Segment from "metabase-lib/lib/metadata/Segment";
 
 import _ from "underscore";
-import { shallowEqual } from "recompose";
+import shallowEqual from "./shallowEqual";
 import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 
 import { getIn } from "icepick";
@@ -22,10 +22,14 @@ import { getIn } from "icepick";
 export const getNormalizedDatabases = state => state.entities.databases;
 export const getNormalizedSchemas = state => state.entities.schemas;
 const getNormalizedTablesUnfiltered = state => state.entities.tables;
+const getIncludeHiddenTables = (_state, props) => props?.includeHiddenTables;
 export const getNormalizedTables = createSelector(
-  [getNormalizedTablesUnfiltered],
+  [getNormalizedTablesUnfiltered, getIncludeHiddenTables],
   // remove hidden tables from the metadata graph
-  tables => filterValues(tables, table => table.visibility_type == null),
+  (tables, includeHiddenTables) =>
+    includeHiddenTables
+      ? tables
+      : filterValues(tables, table => table.visibility_type == null),
 );
 
 const getNormalizedFieldsUnfiltered = state => state.entities.fields;
@@ -68,6 +72,13 @@ export const getShallowFields = getNormalizedFields;
 export const getShallowMetrics = getNormalizedMetrics;
 export const getShallowSegments = getNormalizedSegments;
 
+export const instantiateDatabase = obj => new Database(obj);
+export const instantiateSchema = obj => new Schema(obj);
+export const instantiateTable = obj => new Table(obj);
+export const instantiateField = obj => new Field(obj);
+export const instantiateSegment = obj => new Segment(obj);
+export const instantiateMetric = obj => new Metric(obj);
+
 // fully connected graph of all databases, tables, fields, segments, and metrics
 // TODO: do this lazily using ES6 Proxies
 export const getMetadata = createSelector(
@@ -81,15 +92,13 @@ export const getMetadata = createSelector(
   ],
   (databases, schemas, tables, fields, segments, metrics): Metadata => {
     const meta = new Metadata();
-    meta.databases = copyObjects(meta, databases, Database);
-    meta.schemas = copyObjects(meta, schemas, Schema);
-    meta.tables = copyObjects(meta, tables, Table);
-    meta.fields = copyObjects(meta, fields, Field);
-    meta.segments = copyObjects(meta, segments, Segment);
-    meta.metrics = copyObjects(meta, metrics, Metric);
+    meta.databases = copyObjects(meta, databases, instantiateDatabase);
+    meta.schemas = copyObjects(meta, schemas, instantiateSchema);
+    meta.tables = copyObjects(meta, tables, instantiateTable);
+    meta.fields = copyObjects(meta, fields, instantiateField);
+    meta.segments = copyObjects(meta, segments, instantiateSegment);
+    meta.metrics = copyObjects(meta, metrics, instantiateMetric);
 
-    // database
-    hydrateList(meta.databases, "tables", meta.tables);
     // schema
     hydrate(meta.schemas, "database", s => meta.database(s.database));
     // table
@@ -98,6 +107,16 @@ export const getMetadata = createSelector(
     hydrateList(meta.tables, "metrics", meta.metrics);
     hydrate(meta.tables, "db", t => meta.database(t.db_id || t.db));
     hydrate(meta.tables, "schema", t => meta.schema(t.schema));
+
+    hydrate(meta.databases, "tables", database => {
+      if (database.tables?.length > 0) {
+        return database.tables.map(tableId => meta.table(tableId));
+      }
+
+      return Object.values(meta.tables).filter(
+        table => table.db_id === database.id,
+      );
+    });
 
     // NOTE: special handling for schemas
     // This is pretty hacky
@@ -260,11 +279,11 @@ export const makeGetMergedParameterFieldValues = () => {
 // UTILS:
 
 // clone each object in the provided mapping of objects
-export function copyObjects(metadata, objects, Klass) {
+export function copyObjects(metadata, objects, instantiate) {
   const copies = {};
   for (const object of Object.values(objects)) {
     if (object && object.id != null) {
-      copies[object.id] = new Klass(object);
+      copies[object.id] = instantiate(object);
       copies[object.id].metadata = metadata;
     } else {
       console.warn("Missing id:", object);

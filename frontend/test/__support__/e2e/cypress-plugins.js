@@ -17,6 +17,11 @@
 const hasEnterpriseToken =
   process.env["ENTERPRISE_TOKEN"] && process.env["MB_EDITION"] === "ee";
 
+<<<<<<< HEAD
+=======
+const isQaDatabase = process.env["QA_DB_ENABLED"];
+
+>>>>>>> tags/v0.41.0
 // This function is called when a project is opened or re-opened (e.g. due to
 // the project's config changing)
 const webpack = require("@cypress/webpack-preprocessor");
@@ -30,6 +35,7 @@ const webpackPluginOptions = {
 module.exports = (on, config) => {
   // `on` is used to hook into various events Cypress emits
   // `config` is the resolved Cypress config
+  require("cypress-grep/src/plugin")(config);
 
   /********************************************************************
    **                          WEBPACK                               **
@@ -41,19 +47,35 @@ module.exports = (on, config) => {
    **                         BROWSERS                               **
    ********************************************************************/
 
-  //  Open dev tools in Chrome by default
   on("before:browser:launch", (browser = {}, launchOptions) => {
+    //  Open dev tools in Chrome by default
     if (browser.name === "chrome" || browser.name === "chromium") {
       launchOptions.args.push("--auto-open-devtools-for-tabs");
-
-      return launchOptions;
     }
+
+    // Start browsers with prefers-reduced-motion set to "reduce"
+    if (browser.family === "firefox") {
+      launchOptions.preferences["ui.prefersReducedMotion"] = 1;
+    }
+
+    if (browser.family === "chromium") {
+      launchOptions.args.push("--force-prefers-reduced-motion");
+    }
+
+    return launchOptions;
   });
 
   /********************************************************************
    **                          CONFIG                                **
    ********************************************************************/
 
+<<<<<<< HEAD
+=======
+  if (!isQaDatabase) {
+    config.ignoreTestFiles = "qa-db.cy.snap.js";
+  }
+
+>>>>>>> tags/v0.41.0
   config.env.HAS_ENTERPRISE_TOKEN = hasEnterpriseToken;
 
   return config;

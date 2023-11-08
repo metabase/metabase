@@ -1,12 +1,20 @@
+<<<<<<< HEAD
 import { spawn } from "child_process";
 
 const getVersion = require("./cypress-runner-get-version");
 const { printBold, printYellow } = require("./cypress-runner-utils");
+=======
+const { printBold } = require("./cypress-runner-utils");
+const runCypress = require("./cypress-runner-run-tests");
+const getVersion = require("./cypress-runner-get-version");
+const generateSnapshots = require("./cypress-runner-generate-snapshots");
+>>>>>>> tags/v0.41.0
 
 // Use require for BackendResource to run it after the mock afterAll has been set
 const BackendResource = require("./backend.js").BackendResource;
 
 const server = BackendResource.get({ dbKey: "" });
+<<<<<<< HEAD
 
 // We currently accept three (optional) command line arguments
 // --open - Opens the Cypress test browser
@@ -20,6 +28,9 @@ const sourceFolderLocation = userArgs[userArgs.indexOf("--folder") + 1];
 const specs = userArgs[userArgs.indexOf("--spec") + 1];
 const isSingleSpec = !specs || !specs.match(/,/);
 const testFiles = isSingleSpec ? specs : specs.split(",");
+=======
+const baseUrl = server.host;
+>>>>>>> tags/v0.41.0
 
 const init = async () => {
   printBold("Metabase version info");
@@ -29,9 +40,10 @@ const init = async () => {
   await BackendResource.start(server);
 
   printBold("Generating snapshots");
-  await generateSnapshots();
+  await generateSnapshots(baseUrl, cleanup);
 
   printBold("Starting Cypress");
+<<<<<<< HEAD
   if (!isOpenMode) {
     printYellow(
       "If you are developing locally, prefer using `yarn test-cypress-open` instead.\n",
@@ -88,6 +100,9 @@ const init = async () => {
   return new Promise((resolve, reject) => {
     cypressProcess.on("exit", resolve);
   });
+=======
+  await runCypress(baseUrl, cleanup);
+>>>>>>> tags/v0.41.0
 };
 
 const cleanup = async (exitCode = 0) => {
@@ -108,6 +123,7 @@ launch();
 
 process.on("SIGTERM", cleanup);
 process.on("SIGINT", cleanup);
+<<<<<<< HEAD
 
 async function generateSnapshots() {
   const cypressProcess = spawn(
@@ -127,3 +143,5 @@ async function generateSnapshots() {
     cypressProcess.on("exit", resolve);
   });
 }
+=======
+>>>>>>> tags/v0.41.0

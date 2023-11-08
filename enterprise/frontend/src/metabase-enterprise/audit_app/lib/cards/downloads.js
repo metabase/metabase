@@ -4,7 +4,7 @@ export const perDayBySize = () => ({
     display: "scatter",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.downloads/per-day-by-size",
+      fn: "metabase-enterprise.audit-app.pages.downloads/per-day-by-size",
       args: [],
     },
     visualization_settings: {
@@ -21,7 +21,7 @@ export const perUser = () => ({
     display: "row",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.downloads/per-user",
+      fn: "metabase-enterprise.audit-app.pages.downloads/per-user",
       args: [],
     },
     visualization_settings: {
@@ -37,7 +37,7 @@ export const bySize = () => ({
     display: "bar",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.downloads/by-size",
+      fn: "metabase-enterprise.audit-app.pages.downloads/by-size",
       args: [],
     },
   },
@@ -49,7 +49,7 @@ export const table = () => ({
     display: "table",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.downloads/table",
+      fn: "metabase-enterprise.audit-app.pages.downloads/table",
       args: [],
     },
   },

@@ -34,7 +34,7 @@
 (def ^:private sync-steps
   [(sync-util/create-sync-step "sync-timezone" sync-tz/sync-timezone! sync-timezone-summary)
    ;; Make sure the relevant table models are up-to-date
-   (sync-util/create-sync-step "sync-tables" sync-tables/sync-tables! sync-tables-summary)
+   (sync-util/create-sync-step "sync-tables" sync-tables/sync-tables-and-database! sync-tables-summary)
    ;; Now for each table, sync the fields
    (sync-util/create-sync-step "sync-fields" sync-fields/sync-fields! sync-fields-summary)
    ;; Now for each table, sync the FKS. This has to be done after syncing all the fields to make sure target fields exist

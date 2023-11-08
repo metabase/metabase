@@ -23,7 +23,7 @@
 
 (deftest api-param-test
   (testing "check that API error message respects `api-param` when specified"
-    (is (= (str "## `POST metabase.util.schema-test/:id/dimension`\n"
+    (is (= (str "### `POST metabase.util.schema-test/:id/dimension`\n"
                 "\n"
                 "Sets the dimension for the given object with ID.\n"
                 "\n"

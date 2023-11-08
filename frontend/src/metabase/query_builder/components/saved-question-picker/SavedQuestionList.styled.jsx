@@ -11,3 +11,9 @@ export const SavedQuestionListRoot = styled(SelectList)`
     min-height: 220px;
   }
 `;
+
+export const SavedQuestionListItem = styled(SelectList.Item)`
+  .Icon:last-child {
+    justify-self: start;
+  }
+`;

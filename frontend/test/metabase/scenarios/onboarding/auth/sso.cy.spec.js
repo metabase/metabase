@@ -20,7 +20,7 @@ describe("scenarios > auth > signin > SSO", () => {
   ["ldap_auth", "google_auth"].forEach(auth => {
     it(`login history tab should be available with ${auth} enabled (metabase#15558)`, () => {
       mockCurrentUserProperty(auth, true);
-      cy.visit("/user/edit_current");
+      cy.visit("/account/profile");
       cy.findByText("Login History");
     });
   });
@@ -53,7 +53,7 @@ describe("scenarios > auth > signin > SSO", () => {
     });
 
     it("should pass `redirect` search params from Google button screen to email/password screen (metabase#16216)", () => {
-      const loginProtectedURL = "/admin/permissions/databases";
+      const loginProtectedURL = "/admin/permissions/data";
 
       cy.visit(loginProtectedURL);
       cy.findByText("Sign in with email").click();

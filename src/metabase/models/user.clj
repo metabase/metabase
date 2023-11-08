@@ -65,34 +65,38 @@
         :user_id  user-id
         :group_id (:id (group/admin))))))
 
-(defn- pre-update [{:keys [email reset_token is_superuser id locale] :as user}]
+(defn- pre-update
+  [{reset-token :reset_token, superuser? :is_superuser, active? :is_active, :keys [email id locale], :as user}]
   ;; when `:is_superuser` is toggled add or remove the user from the 'Admin' group as appropriate
-  (when-not (nil? is_superuser)
+  (when (some? superuser?)
     (let [membership-exists? (db/exists? PermissionsGroupMembership
                                :group_id (:id (group/admin))
                                :user_id  id)]
       (cond
-        (and is_superuser
+        (and superuser?
              (not membership-exists?))
         (db/insert! PermissionsGroupMembership
           :group_id (u/the-id (group/admin))
           :user_id  id)
-
         ;; don't use `delete!` here because that does the opposite and tries to update this user
         ;; which leads to a stack overflow of calls between the two
         ;; TODO - could we fix this issue by using `post-delete!`?
-        (and (not is_superuser)
+        (and (not superuser?)
              membership-exists?)
         (db/simple-delete! PermissionsGroupMembership
           :group_id (u/the-id (group/admin))
           :user_id  id))))
+  ;; make sure email and locale are valid if set
   (when email
     (assert (u/email? email)))
   (when locale
     (assert (i18n/available-locale? locale)))
+  ;; delete all subscriptions to pulses/alerts/etc. if the User is getting archived (`:is_active` status changes)
+  (when (false? active?)
+    (db/delete! 'PulseChannelRecipient :user_id id))
   ;; If we're setting the reset_token then encrypt it before it goes into the DB
   (cond-> user
-    reset_token (update :reset_token creds/hash-bcrypt)
+    reset-token (update :reset_token creds/hash-bcrypt)
     locale      (update :locale i18n/normalized-locale-string)
     email       (update :email u/lower-case-en)))
 

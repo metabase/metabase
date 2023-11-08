@@ -1,4 +1,0 @@
-/* disable focus rings on react-virtualized's Grids */
-:local(.fixedHeaderGrid) [tabindex] {
-  outline: none !important;
-}

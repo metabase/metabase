@@ -1,31 +1,28 @@
-import React, { useEffect, useRef } from "react";
+import React, { useRef, useEffect } from "react";
 
 import Icon from "metabase/components/Icon";
 import TextInput from "metabase/components/TextInput";
 
-export default function ListSearchField(props) {
+export default function ListSearchField({ autoFocus, ...props }) {
   const inputRef = useRef();
 
   useEffect(() => {
-    if (!props.autoFocus) {
-      return;
+    // this component is used within virtualized lists
+    // rerendering an input with autoFocus causes the list to be scrolled to the top
+    // so we override an autoFocus prop here to prevent any scrolling
+    if (inputRef.current && autoFocus) {
+      inputRef.current.focus({
+        preventScroll: true,
+      });
     }
 
-    // Call focus() with a small delay because instant input focus causes an abrupt scroll to top of page
-    // when ListSearchField is used inside a popover. It seems that it takes a while for Tether library
-    // to correctly position the popover.
-    const timerId = setTimeout(
-      () => inputRef.current && inputRef.current.focus(),
-      50,
-    );
-    return () => clearTimeout(timerId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <TextInput
-      {...props}
       ref={inputRef}
+      {...props}
       padding="sm"
       borderRadius="md"
       icon={<Icon name="search" size={16} />}

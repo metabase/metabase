@@ -48,7 +48,6 @@ export default class AggregationWidget extends React.Component {
       children,
       className,
     } = this.props;
-    console.log("aggregation", aggregation);
 
     const popover = this.state.isOpen && (
       <Popover onClose={this.handleClose}>

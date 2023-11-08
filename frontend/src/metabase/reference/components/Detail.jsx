@@ -5,7 +5,6 @@ import { Link } from "react-router";
 import S from "./Detail.css";
 import { t } from "ttag";
 import cx from "classnames";
-import pure from "recompose/pure";
 
 const Detail = ({
   name,
@@ -64,4 +63,4 @@ Detail.propTypes = {
   field: PropTypes.object,
 };
 
-export default pure(Detail);
+export default React.memo(Detail);

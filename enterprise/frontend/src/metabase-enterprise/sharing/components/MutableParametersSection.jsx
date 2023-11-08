@@ -10,7 +10,7 @@ import { t } from "ttag";
 import CollapseSection from "metabase/components/CollapseSection";
 import ParametersList from "metabase/parameters/components/ParametersList";
 
-import { collateParametersWithValues } from "metabase/meta/Parameter";
+import { getValuePopulatedParameters } from "metabase/meta/Parameter";
 import {
   getPulseParameters,
   getActivePulseParameters,
@@ -31,7 +31,7 @@ function MutableParametersSection({
     return map;
   }, {});
 
-  const collatedParameters = collateParametersWithValues(
+  const valuePopulatedParameters = getValuePopulatedParameters(
     parameters,
     pulseParamValuesById,
   );
@@ -63,7 +63,7 @@ function MutableParametersSection({
         className="align-stretch row-gap-1"
         vertical
         dashboard={dashboard}
-        parameters={collatedParameters}
+        parameters={valuePopulatedParameters}
         setParameterValue={setParameterValue}
       />
     </CollapseSection>

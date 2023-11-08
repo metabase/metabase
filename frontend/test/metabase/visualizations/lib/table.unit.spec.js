@@ -17,22 +17,76 @@ const DIMENSION_COLUMN = {
 
 describe("metabase/visualization/lib/table", () => {
   describe("getTableClickedObjectRowData", () => {
-    it("should get row data from series", () => {
-      const series = [
-        {
-          data: {
-            rows: [[1, 2, 3]],
-            cols: [DIMENSION_COLUMN, METRIC_COLUMN, RAW_COLUMN],
-          },
+    const series = [
+      {
+        data: {
+          rows: [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+          cols: [DIMENSION_COLUMN, METRIC_COLUMN, RAW_COLUMN],
         },
-      ];
-      const rowIndex = 0;
+      },
+    ];
 
-      expect(getTableClickedObjectRowData(series, rowIndex)).toEqual([
+    it("should get row data from series", () => {
+      const rowIndex = 0;
+      const colIndex = 0;
+      const isPivoted = false;
+      const data = {};
+
+      expect(
+        getTableClickedObjectRowData(
+          series,
+          rowIndex,
+          colIndex,
+          isPivoted,
+          data,
+        ),
+      ).toEqual([
         { col: { source: "breakout" }, value: 1 },
         { col: { source: "aggregation" }, value: 2 },
         { col: { source: "fields" }, value: 3 },
       ]);
+    });
+
+    it("should get correct row data when pivoted", () => {
+      const rowIndex = 1;
+      const colIndex = 2;
+      const isPivoted = true;
+      const pivotedData = {
+        sourceRows: [[null, 0, 1], [null, null, 2]],
+      };
+
+      expect(
+        getTableClickedObjectRowData(
+          series,
+          rowIndex,
+          colIndex,
+          isPivoted,
+          pivotedData,
+        ),
+      ).toEqual([
+        { col: { source: "breakout" }, value: 7 },
+        { col: { source: "aggregation" }, value: 8 },
+        { col: { source: "fields" }, value: 9 },
+      ]);
+    });
+
+    it("should return null when asked for an empty cell in a pivot table", () => {
+      const rowIndex = 1;
+      const colIndex = 1;
+      const isPivoted = true;
+      const pivotedData = {
+        sourceRows: [[null, 0, 1], [null, null, 2]],
+      };
+
+      expect(
+        getTableClickedObjectRowData(
+          series,
+          rowIndex,
+          colIndex,
+          isPivoted,
+          pivotedData,
+        ),
+      ).toBeNull();
     });
   });
 

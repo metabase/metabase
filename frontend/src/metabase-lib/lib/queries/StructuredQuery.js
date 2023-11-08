@@ -72,7 +72,7 @@ export const STRUCTURED_QUERY_TEMPLATE = {
  * A wrapper around an MBQL (`query` type @type {DatasetQuery}) object
  */
 export default class StructuredQuery extends AtomicQuery {
-  static isDatasetQueryType(datasetQuery: DatasetQuery): boolean {
+  static isDatasetQueryType(datasetQuery: DatasetQuery) {
     return datasetQuery && datasetQuery.type === STRUCTURED_QUERY_TEMPLATE.type;
   }
 
@@ -117,7 +117,7 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns true if this query is in a state where it can be edited. Must have database and table set, and metadata for the table loaded.
    */
-  isEditable(): boolean {
+  isEditable() {
     return this.hasMetadata();
   }
 
@@ -158,7 +158,7 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * Returns true if the database metadata (or lack thererof indicates the user can modify and run this query
    */
-  readOnly(): boolean {
+  readOnly() {
     return !this.database();
   }
 
@@ -361,7 +361,11 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   cleanJoins(): StructuredQuery {
-    return this._cleanClauseList("joins");
+    let query = this;
+    this.joins().forEach((join, index) => {
+      query = query.updateJoin(index, join.clean());
+    });
+    return query._cleanClauseList("joins");
   }
 
   cleanExpressions(): StructuredQuery {
@@ -404,7 +408,7 @@ export default class StructuredQuery extends AtomicQuery {
     }
   }
 
-  isValid(): boolean {
+  isValid() {
     if (!this.hasData()) {
       return false;
     }
@@ -647,21 +651,21 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns true if the aggregation can be removed
    */
-  canRemoveAggregation(): boolean {
+  canRemoveAggregation() {
     return this.aggregations().length > 1;
   }
 
   /**
    * @returns true if the query has no aggregation
    */
-  isBareRows(): boolean {
+  isBareRows() {
     return !this.hasAggregations();
   }
 
   /**
    * @returns true if the query has no aggregation or breakouts
    */
-  isRaw(): boolean {
+  isRaw() {
     return !this.hasAggregations() && !this.hasBreakouts();
   }
 
@@ -734,14 +738,14 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns whether a new breakout can be added or not
    */
-  canAddBreakout(): boolean {
+  canAddBreakout() {
     return this.breakoutOptions().count > 0;
   }
 
   /**
    * @returns whether the current query has a valid breakout
    */
-  hasValidBreakout(): boolean {
+  hasValidBreakout() {
     const breakouts = this.breakouts();
     return breakouts.length > 0 && breakouts[0].isValid();
   }
@@ -878,7 +882,7 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns whether a new filter can be added or not
    */
-  canAddFilter(): boolean {
+  canAddFilter() {
     return (
       Q.canAddFilter(this.query()) &&
       (this.filterDimensionOptions().count > 0 ||
@@ -952,7 +956,7 @@ export default class StructuredQuery extends AtomicQuery {
       return new DimensionOptions(sortOptions);
     }
   }
-  canAddSort(): boolean {
+  canAddSort() {
     const sorts = this.sorts();
     return (
       this.sortOptions().count > 0 &&
@@ -1087,6 +1091,32 @@ export default class StructuredQuery extends AtomicQuery {
 
   // DIMENSION OPTIONS
 
+  _keyForFK(source, destination) {
+    if (source && destination) {
+      return `${source.id},${destination.id}`;
+    }
+    return null;
+  }
+
+  _getExplicitJoinsSet(joins) {
+    const joinDimensionPairs = joins.map(join => {
+      const dimensionPairs = join.getDimensions();
+      return dimensionPairs.map(pair => {
+        const [parentDimension, joinDimension] = pair;
+        return this._keyForFK(
+          parentDimension && parentDimension.field(),
+          joinDimension && joinDimension.field(),
+        );
+      });
+    });
+
+    const flatJoinDimensions = _.flatten(joinDimensionPairs);
+    const explicitJoins = new Set(flatJoinDimensions);
+    explicitJoins.delete(null);
+
+    return explicitJoins;
+  }
+
   // TODO Atte Keinänen 6/18/17: Refactor to dimensionOptions which takes a dimensionFilter
   // See aggregationFieldOptions for an explanation why that covers more use cases
   dimensionOptions(
@@ -1121,21 +1151,12 @@ export default class StructuredQuery extends AtomicQuery {
       }
 
       // de-duplicate explicit and implicit joined tables
-      const keyForFk = (src, dst) =>
-        src && dst ? `${src.id},${dst.id}` : null;
-      const explicitJoins = new Set(
-        joins.map(join => {
-          const p = join.parentDimension();
-          const j = join.joinDimension();
-          return keyForFk(p && p.field(), j && j.field());
-        }),
-      );
-      explicitJoins.delete(null);
+      const explicitJoins = this._getExplicitJoinsSet(joins);
 
       const fkDimensions = this.dimensions().filter(dimensionIsFKReference);
       for (const dimension of fkDimensions) {
         const field = dimension.field();
-        if (field && explicitJoins.has(keyForFk(field, field.target))) {
+        if (field && explicitJoins.has(this._keyForFK(field, field.target))) {
           continue;
         }
 

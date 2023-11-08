@@ -62,7 +62,7 @@
   (::quit-result (ex-data e)))
 
 (defn- quittable-out-chan
-  "Take a core.async promise chan `out-chan` and return a piped one that will unwrap a `quit-result` automatically."
+  "Take a core.async promise chan `out-chan` and return a piped one that will unwrap a [[quit-result]] automatically."
   [out-chan]
   (let [out-chan* (a/promise-chan (map (fn [result]
                                          (or (quit-result result)
@@ -73,13 +73,13 @@
     out-chan*))
 
 (def ^:dynamic *run-on-separate-thread?*
-  "Whether to run the query on a separate thread. When running a query asynchronously (i.e., with `async-qp`), this is
+  "Whether to run the query on a separate thread. When running a query asynchronously (i.e., with [[async-qp]]), this is
   normally `true`, meaning the `out-chan` is returned immediately. When running a query synchronously (i.e., with
   `sync-qp`), this is normally `false`, becuase we are blocking while waiting for results."
   true)
 
 (defn async-qp
-  "Wrap a QP function (middleware or a composition of middleware created with `combine-middleware`) with the signature:
+  "Wrap a QP function (middleware or a composition of middleware created with [[combine-middleware]]) with the signature:
 
     (qp query rff context)
 
@@ -118,7 +118,7 @@
       result)))
 
 (defn sync-qp
-  "Wraps a QP function created by `async-qp` into one that synchronously waits for query results and rethrows any
+  "Wraps a QP function created by [[async-qp]] into one that synchronously waits for query results and rethrows any
   Exceptions thrown. Resulting QP has the signatures
 
     (qp query)
@@ -137,10 +137,8 @@
 
 ;;; ------------------------------------------------- Other Util Fns -------------------------------------------------
 
-()
-
 (defn reducible-rows
-  "Utility function for generating reducible rows when implementing `metabase.driver/execute-reducible-query`.
+  "Utility function for generating reducible rows when implementing [[metabase.driver/execute-reducible-query]].
 
   `row-thunk` is a function that, when called, should return the next row in the results, or falsey if no more rows
   exist."
@@ -177,7 +175,8 @@
   This is useful for post-processing steps that need to reduce the result rows to provide some metadata that can be
   added to the final result.
 
-  This is conceptually similar to a combination of `redux/juxt` and `redux/post-complete`, with these differences:
+  This is conceptually similar to a combination of [[redux.core/juxt]] and [[redux.core/post-complete]], with these
+  differences:
 
   1. The accumulators of the additional reducing functions are maintained separately in a `volatile!`, so any
   transducers applied to the result of this function will work normally, exactly as if they were applied directly to

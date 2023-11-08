@@ -5,7 +5,8 @@
             [compojure.core :as compojure]
             [honeysql.types :as htypes]
             [medley.core :as m]
-            [metabase.api.common.internal :refer :all]
+            [metabase.api.common.internal :refer [add-route-param-regexes auto-parse route-dox route-fn-name
+                                                  validate-params wrap-response-if-needed]]
             [metabase.models.interface :as mi]
             [metabase.public-settings :as public-settings]
             [metabase.util :as u]
@@ -33,7 +34,8 @@
   false)
 
 (def ^:dynamic *current-user-permissions-set*
-  "Delay to the set of permissions granted to the current user."
+  "Delay to the set of permissions granted to the current user. See documentation in [[metabase.models.permissions]] for
+  more information about the Metabase permissions system."
   (atom #{}))
 
 
@@ -246,7 +248,6 @@
   "Impl macro for `defendpoint`; don't use this directly."
   [{:keys [method route fn-name docstr args arg->schema original-body body]}]
   {:pre [(or (string? route) (vector? route))]}
-  (require 'compojure.core)
   `(def ~(vary-meta fn-name
                     assoc
 
@@ -424,9 +425,7 @@
   [limit offset]
   (do
     (check (not (and limit (not offset))) [400 (tru "When including a limit, an offset must also be included.")])
-    (check (not (and offset (not limit))) [400 (tru "When including an offset, a limit must also be included.")])
-    ))
-
+    (check (not (and offset (not limit))) [400 (tru "When including an offset, a limit must also be included.")])))
 
 (s/defn column-will-change? :- s/Bool
   "Helper for PATCH-style operations to see if a column is set to change when `object-updates` (i.e., the input to the

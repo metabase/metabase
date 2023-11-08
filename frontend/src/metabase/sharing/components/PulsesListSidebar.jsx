@@ -2,6 +2,7 @@
 
 import React from "react";
 import PropTypes from "prop-types";
+import cx from "classnames";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { t, ngettext, msgid } from "ttag";
@@ -29,6 +30,7 @@ export const PulsesListSidebar = connect(mapStateToProps)(_PulsesListSidebar);
 
 function _PulsesListSidebar({
   pulses,
+  formInput,
   createSubscription,
   onCancel,
   editPulse,
@@ -59,33 +61,46 @@ function _PulsesListSidebar({
         </Flex>
       </div>
       <div className="my2 mx4">
-        {pulses.map(pulse => (
-          <Card
-            key={pulse.id}
-            flat
-            className="mb3 cursor-pointer bg-brand-hover"
-            onClick={() => editPulse(pulse, pulse.channels[0].channel_type)}
-          >
-            <div className="px3 py2 hover-parent hover--inherit text-white-hover">
-              <div className="flex align-center hover-child hover--inherit">
-                <Icon
-                  name={
-                    pulse.channels[0].channel_type === "email"
-                      ? "mail"
-                      : "slack"
-                  }
-                  className="mr1"
-                  style={{ paddingBottom: "5px" }}
-                  size={16}
-                />
-                <Label className="hover-child hover--inherit">
-                  {friendlySchedule(pulse.channels[0])}
-                </Label>
+        {pulses.map(pulse => {
+          const canEdit = canEditPulse(pulse, formInput);
+
+          return (
+            <Card
+              key={pulse.id}
+              flat
+              className={cx("mb3", {
+                "cursor-pointer": canEdit,
+                "bg-brand-hover": canEdit,
+              })}
+              onClick={() =>
+                canEdit && editPulse(pulse, pulse.channels[0].channel_type)
+              }
+            >
+              <div
+                className={cx("px3 py2 hover-parent hover--inherit", {
+                  "text-white-hover": canEdit,
+                })}
+              >
+                <div className="flex align-center hover-child hover--inherit">
+                  <Icon
+                    name={
+                      pulse.channels[0].channel_type === "email"
+                        ? "mail"
+                        : "slack"
+                    }
+                    className="mr1"
+                    style={{ paddingBottom: "5px" }}
+                    size={16}
+                  />
+                  <Label className="hover-child hover--inherit">
+                    {friendlySchedule(pulse.channels[0])}
+                  </Label>
+                </div>
+                <PulseDetails pulse={pulse} parameters={parameters} />
               </div>
-              <PulseDetails pulse={pulse} parameters={parameters} />
-            </div>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
     </Sidebar>
   );
@@ -93,11 +108,21 @@ function _PulsesListSidebar({
 
 _PulsesListSidebar.propTypes = {
   pulses: PropTypes.array.isRequired,
+  formInput: PropTypes.object.isRequired,
   createSubscription: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
   editPulse: PropTypes.func.isRequired,
   parameters: PropTypes.array.isRequired,
 };
+
+function canEditPulse(pulse, formInput) {
+  switch (pulse.channels[0].channel_type) {
+    case "email":
+      return formInput.channels.email != null;
+    case "slack":
+      return formInput.channels.slack != null;
+  }
+}
 
 function buildRecipientText(pulse) {
   const {

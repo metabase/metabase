@@ -44,6 +44,7 @@ export default class CreateDashboardModal extends Component {
     const { initialCollectionId, onSaved, onClose } = this.props;
     return (
       <Dashboard.ModalForm
+        form={Dashboard.forms.create}
         overwriteOnInitialValuesChange
         dashboard={{ collection_id: initialCollectionId }}
         onClose={onClose}

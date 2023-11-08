@@ -206,7 +206,7 @@
 (p.types/deftype+ StreamingResponse [f options donechan]
   pretty/PrettyPrintable
   (pretty [_]
-    (list (symbol (str (.getCanonicalName StreamingResponse) \.)) f options))
+    (list (pretty/qualify-symbol-for-*ns* `->StreamingResponse) f options donechan))
 
   server.protocols/Respond
   (respond [this context]
@@ -221,12 +221,6 @@
   compojure.response/Sendable
   (send* [this request respond* _]
     (respond* (compojure.response/render this request))))
-
-  ;; TODO -- if we want this to work when running via `lein ring server` we need to add an impl for
-  ;; `ring.core.protocols/StreamableResponseBody`. Not sure if we want to do that because it would result in different
-  ;; behavior when running via `lein ring server` vs `lein run`/uberjar. Maybe better just to take `lein ring server`
-  ;; out and replace it with an auto-reload version of `lein run`
-
 
 ;; TODO -- don't think any of this is needed any mo
 (defn- render [^StreamingResponse streaming-response gzip?]

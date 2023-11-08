@@ -1,5 +1,4 @@
 import React from "react";
-import "@testing-library/jest-dom/extend-expect";
 import { render } from "@testing-library/react";
 
 // these tests use ChartSettings directly, but logic we're testing lives in ChartNestedSettingSeries

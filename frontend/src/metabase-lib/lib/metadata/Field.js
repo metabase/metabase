@@ -1,5 +1,4 @@
 import Base from "./Base";
-import Table from "./Table";
 
 import moment from "moment";
 
@@ -34,19 +33,14 @@ import {
   getFilterOperators,
 } from "metabase/lib/schema_metadata";
 
-import type { FieldValues } from "metabase-types/types/Field";
+/**
+ * @typedef { import("./metadata").FieldValues } FieldValues
+ */
 
 /**
  * Wrapper class for field metadata objects. Belongs to a Table.
  */
 export default class Field extends Base {
-  name: string;
-  display_name: string;
-  description: string;
-
-  table: Table;
-  name_field: ?Field;
-
   parent() {
     return this.metadata ? this.metadata.field(this.parent_id) : null;
   }
@@ -153,7 +147,10 @@ export default class Field extends Base {
     return isEntityName(this);
   }
 
-  isCompatibleWith(field: Field) {
+  /**
+   * @param {Field} field
+   */
+  isCompatibleWith(field) {
     return (
       this.isDate() === field.isDate() ||
       this.isNumeric() === field.isNumeric() ||
@@ -161,7 +158,10 @@ export default class Field extends Base {
     );
   }
 
-  fieldValues(): FieldValues {
+  /**
+   * @returns {FieldValues}
+   */
+  fieldValues() {
     return getFieldValues(this._object);
   }
 
@@ -282,8 +282,9 @@ export default class Field extends Base {
 
   /**
    * Returns the remapped field, if any
+   * @return {?Field}
    */
-  remappedField(): ?Field {
+  remappedField() {
     const displayFieldId =
       this.dimensions && this.dimensions.human_readable_field_id;
     if (displayFieldId != null) {
@@ -299,8 +300,9 @@ export default class Field extends Base {
 
   /**
    * Returns the human readable remapped value, if any
+   * @returns {?string}
    */
-  remappedValue(value): ?string {
+  remappedValue(value) {
     // TODO: Ugh. Should this be handled further up by the parameter widget?
     if (this.isNumeric() && typeof value !== "number") {
       value = parseFloat(value);
@@ -310,8 +312,9 @@ export default class Field extends Base {
 
   /**
    * Returns whether the field has a human readable remapped value for this value
+   * @returns {?string}
    */
-  hasRemappedValue(value): ?string {
+  hasRemappedValue(value) {
     // TODO: Ugh. Should this be handled further up by the parameter widget?
     if (this.isNumeric() && typeof value !== "number") {
       value = parseFloat(value);
@@ -321,8 +324,9 @@ export default class Field extends Base {
 
   /**
    * Returns true if this field can be searched, e.x. in filter or parameter widgets
+   * @returns {boolean}
    */
-  isSearchable(): boolean {
+  isSearchable() {
     // TODO: ...?
     return this.isString();
   }
@@ -333,8 +337,39 @@ export default class Field extends Base {
 
   /**
    * Returns a FKDimension for this field and the provided field
+   * @param {Field} foreignField
+   * @return {Dimension}
    */
-  foreign(foreignField: Field): Dimension {
+  foreign(foreignField) {
     return this.dimension().foreign(foreignField.dimension());
+  }
+
+  /**
+   * @private
+   * @param {number} id
+   * @param {string} name
+   * @param {string} display_name
+   * @param {string} description
+   * @param {Table} table
+   * @param {?Field} name_field
+   * @param {Metadata} metadata
+   */
+  /* istanbul ignore next */
+  _constructor(
+    id,
+    name,
+    display_name,
+    description,
+    table,
+    name_field,
+    metadata,
+  ) {
+    this.id = id;
+    this.name = name;
+    this.display_name = display_name;
+    this.description = description;
+    this.table = table;
+    this.name_field = name_field;
+    this.metadata = metadata;
   }
 }

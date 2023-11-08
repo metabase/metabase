@@ -9,7 +9,7 @@ import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 //  args: [],
 // }
 export default class InternalQuery extends AtomicQuery {
-  static isDatasetQueryType(datasetQuery: DatasetQuery): boolean {
+  static isDatasetQueryType(datasetQuery: DatasetQuery) {
     return datasetQuery.type === "internal";
   }
 }

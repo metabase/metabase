@@ -15,24 +15,24 @@ export const Position = styled(Box)`
 
 Position.displayName = "Position";
 
-export const Relative = Position.extend`
+export const Relative = styled(Position)`
   position: relative;
 `;
 
 Relative.displayName = "Relative";
 
-export const Absolute = Position.extend`
+export const Absolute = styled(Position)`
   position: absolute;
 `;
 
 Absolute.displayName = "Absolute";
 
-export const Fixed = Position.extend`
+export const Fixed = styled(Position)`
   position: fixed;
 `;
 
 Fixed.displayName = "Fixed";
 
-export const Sticky = Position.extend`
+export const Sticky = styled(Position)`
   position: sticky;
 `;

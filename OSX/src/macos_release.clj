@@ -22,7 +22,7 @@
    :upload                     upload/upload!))
 
 (defn- do-step! [step-name]
-  (let [thunk (or (get steps* (keyword step-name))
+  (let [thunk (or (get steps* (u/parse-as-keyword step-name))
                   (throw (ex-info (format "Invalid step name: %s" step-name)
                            {:found (set (keys steps*))})))]
     (println (colorize/magenta (format "Running step %s..." step-name)))

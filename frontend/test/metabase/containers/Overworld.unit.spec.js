@@ -4,8 +4,8 @@ import {
   PIN_MESSAGE_STORAGE_KEY,
 } from "metabase/containers/Overworld";
 
-import "@testing-library/jest-dom/extend-expect";
 import { fireEvent, render, screen } from "@testing-library/react";
+import "mutationobserver-shim";
 
 const PIN_MESSAGE_DESCRIPTION = "Your team's most important dashboards go here";
 const PIN_MESSAGE_HINT =

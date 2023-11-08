@@ -5,7 +5,7 @@ export const viewsByTime = questionId => ({
     dataset_query: {
       type: "internal",
       fn:
-        "metabase-enterprise.audit.pages.question-detail/cached-views-by-time",
+        "metabase-enterprise.audit-app.pages.question-detail/cached-views-by-time",
       args: [questionId, "day"],
     },
     visualization_settings: {
@@ -34,7 +34,7 @@ export const averageExecutionTime = questionId => ({
     dataset_query: {
       type: "internal",
       fn:
-        "metabase-enterprise.audit.pages.question-detail/avg-execution-time-by-time",
+        "metabase-enterprise.audit-app.pages.question-detail/avg-execution-time-by-time",
       args: [questionId, "day"],
     },
   },
@@ -46,7 +46,8 @@ export const revisionHistory = (questionId: number) => ({
     display: "table",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.question-detail/revision-history",
+      fn:
+        "metabase-enterprise.audit-app.pages.question-detail/revision-history",
       args: [questionId],
     },
     visualization_settings: {
@@ -66,13 +67,24 @@ export const auditLog = (questionId: number) => ({
     display: "table",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.question-detail/audit-log",
+      fn: "metabase-enterprise.audit-app.pages.question-detail/audit-log",
       args: [questionId],
     },
     visualization_settings: {
       "table.columns": [
         { name: "user_id", enabled: true },
         { name: "when", enabled: true },
+        {
+          name: "what",
+          enabled: true,
+          // This needs to combinatorially explore the metadata boolean space: if n grows above 2, replace mustache
+          markdown_template: `
+{{#json.ignore_cache}}Requested un-cached results{{/json.ignore_cache}}
+{{^json.ignore_cache}}
+{{#json.cached}}Viewed (cached){{/json.cached}}
+{{^json.cached}}Viewed{{/json.cached}}
+{{/json.ignore_cache}}`,
+        },
       ],
     },
   },

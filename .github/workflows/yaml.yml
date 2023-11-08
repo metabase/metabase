@@ -4,10 +4,6 @@ on:
   pull_request:
   push:
     branches:
-      - master
-      - 'release**'
-      - 'feature**'
-    tags:
       - '**'
     paths:
     - '**.yml'

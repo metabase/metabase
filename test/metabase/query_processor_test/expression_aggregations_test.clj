@@ -274,9 +274,22 @@
                  {:aggregation [[:sum [:expression "double-price"]]]
                   :expressions {"double-price" [:* $price 2]}})))))))
 
+(deftest order-by-named-aggregation-test
+  (testing "Ordering by a named aggregation whose alias has uppercase letters works (#18211)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
+      (mt/dataset sample-dataset
+        (is (= [["Doohickey" 156.6]
+                ["Widget" 170.3]
+                ["Gadget" 181.9]
+                ["Gizmo" 185.5]]
+              (mt/formatted-rows [str 1.0]
+                (mt/run-mbql-query products
+                  {:aggregation [[:aggregation-options [:sum $rating] {:name "MyCE"}]]
+                   :breakout    [$category]
+                   :order-by    [[:asc [:aggregation 0]]]}))))))))
+
 #_(deftest multiple-cumulative-sums-test
-  ;; sample-dataset doesn't work on Redshift yet -- see #14784
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :expression-aggregations) :redshift)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "The results of divide or multiply two CumulativeSum should be correct (#15118)"
       (mt/dataset sample-dataset
         (is (= [["2016-01-01T00:00:00Z" 3236  2458.0  5694.0   1]

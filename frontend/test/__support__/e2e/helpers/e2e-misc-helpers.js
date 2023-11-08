@@ -39,3 +39,30 @@ export function runNativeQuery(xhrAlias = "dataset") {
   cy.wait("@" + xhrAlias);
   cy.icon("play").should("not.exist");
 }
+<<<<<<< HEAD
+=======
+
+/**
+ * Intercepts a request and returns resolve function that allows
+ * the request to continue
+ *
+ * @param {string} method - Request method ("GET", "POST", etc)
+ * @param {string} path - Request URL to intercept
+ * @example
+ * const req = interceptPromise("GET", "/dashboard/1");
+ * // ... do something before request is allowed to go through ...
+ * req.resolve();
+ */
+export function interceptPromise(method, path) {
+  const state = {};
+  const promise = new Promise(resolve => {
+    state.resolve = resolve;
+  });
+  cy.intercept(method, path, req => {
+    return promise.then(() => {
+      req.continue();
+    });
+  });
+  return state;
+}
+>>>>>>> tags/v0.41.0

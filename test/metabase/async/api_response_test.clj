@@ -106,12 +106,10 @@
         (testing "output-channel should get closed"
           ;; output-chan may or may not get the InterruptedException written to it -- it's a race condition -- we're just
           ;; want to make sure it closes
-          (not= ::tu.async/timed-out (tu.async/wait-for-result output-chan))
-
+          (is (not= ::tu.async/timed-out (tu.async/wait-for-result output-chan)))
           (testing "...as should the output stream"
             (is (= true
                    (wait-for-close os-closed-chan)))))
-
         (testing "An error should be written to the output stream"
           (is (schema= {:message (s/eq "Input channel unexpectedly closed.")
                         :_status (s/eq 500)

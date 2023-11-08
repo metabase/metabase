@@ -67,6 +67,7 @@ import {
 
 import { lineAddons } from "./graph/addons";
 import { initBrush } from "./graph/brush";
+import { stack, stackOffsetDiverging } from "./graph/stack";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 
@@ -193,11 +194,17 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
 
   const dimension = dataset.dimension(d => d[0]);
   const groups = [
-    datas.map((data, seriesIndex) =>
-      reduceGroup(dimension.group(), seriesIndex + 1, () =>
-        warn(unaggregatedDataWarning(props.series[seriesIndex].data.cols[0])),
-      ),
-    ),
+    datas.map((data, seriesIndex) => {
+      // HACK: waterfall chart is a stacked bar chart that supports only one series
+      // and the groups number does not match the series number due to the implementation
+      const realSeriesIndex = props.chartType === "waterfall" ? 0 : seriesIndex;
+
+      return reduceGroup(dimension.group(), seriesIndex + 1, () =>
+        warn(
+          unaggregatedDataWarning(props.series[realSeriesIndex].data.cols[0]),
+        ),
+      );
+    }),
   ];
 
   return { dimension, groups };
@@ -433,6 +440,11 @@ function applyChartLineBarSettings(
         forceCenterBar || settings["graph.x_axis.scale"] !== "ordinal",
       );
   }
+
+  // AREA/BAR:
+  if (settings["stackable.stack_type"] === "stacked") {
+    chart.stackLayout(stack().offset(stackOffsetDiverging));
+  }
 }
 
 // TODO - give this a good name when I figure out what it does
@@ -523,12 +535,12 @@ function getCharts(
   const { settings, chartType, series, onChangeCardAndRun } = props;
   const { yAxisSplit } = yAxisProps;
 
-  const isHeterogenous =
-    _.uniq(series.map(single => getSeriesDisplay(settings, single))).length > 1;
-  const isHeterogenousOrdinal =
-    settings["graph.x_axis.scale"] === "ordinal" && isHeterogenous;
+  const displays = _.uniq(series.map(s => getSeriesDisplay(settings, s)));
+  const isMixedBar = displays.includes("bar") && displays.length > 1;
+  const isOrdinal = settings["graph.x_axis.scale"] === "ordinal";
+  const isMixedOrdinalBar = isMixedBar && isOrdinal;
 
-  if (isHeterogenousOrdinal) {
+  if (isMixedOrdinalBar) {
     // HACK: ordinal + mix of line and bar results in uncentered points, shift by
     // half the width
     parent.on("renderlet.shift", () => {
@@ -589,7 +601,7 @@ function getCharts(
       settings,
       seriesChartType,
       seriesSettings,
-      isHeterogenousOrdinal,
+      isMixedOrdinalBar,
     );
 
     return chart;

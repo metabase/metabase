@@ -111,23 +111,17 @@ Click on a record's ID number (or primary key) to see more information about a g
 
 ![Record details](./images/notebook/record-details.png)
 
-## Downloading Your Results
-
-You can download or export the results of a question by clicking on the Download arrow in the lower right of the screen. Results can be downloaded into .csv, .xlsx, or .json files. The maximum download size is 1 million rows.
-
-![Download Button](./images/download-button.png)
-
 ## Starting new explorations from saved questions
 
-Each time you start modifying a saved question, Metabase will create a new question for you. It'll give the new question a placeholder title, and let you know which question you started from. 
+Each time you start modifying a saved question, Metabase will create a new question for you. It'll give the new question a placeholder title, and let you know which question you started from.
 
 ![Starting from a saved question](./images/notebook/started-from-saved-question.png)
 
 So feel free to play around with any saved question, as you won't have any effect on the existing question. When you hit **Save** on the question, you can choose either to save as a new question (the default), or you can overwrite the existing question you started from.
 
-You can also explicitly **Duplicate this question** from the edit menu (the pencil icon).
+## Editing and sharing questions
 
-![Duplicate a question](./images/notebook/duplicate-question.png)
+Check out [sharing answers](06-sharing-answers.md).
 
 ---
 

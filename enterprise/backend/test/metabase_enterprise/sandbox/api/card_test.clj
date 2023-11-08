@@ -18,7 +18,7 @@
                         PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta)
                                                        :group_id (u/the-id group)}]]
           (mt/with-db db
-            (perms/revoke-permissions! (perms-group/all-users) db)
+            (perms/revoke-data-perms! (perms-group/all-users) db)
             (perms/grant-permissions! group (perms/table-segmented-query-path table))
             (perms/grant-collection-readwrite-permissions! group collection)
             (is (some? ((mt/user->client :rasta) :post 202 "card"
@@ -36,7 +36,7 @@
                         Card                       [card {:name "Some Name"
                                                           :collection_id (u/the-id collection)}]]
           (mt/with-db db
-            (perms/revoke-permissions! (perms-group/all-users) db)
+            (perms/revoke-data-perms! (perms-group/all-users) db)
             (perms/grant-permissions! group (perms/table-segmented-query-path table))
             (perms/grant-collection-readwrite-permissions! group collection)
             (is (= "Another Name"

@@ -59,56 +59,58 @@ function createQuestion(options, callback) {
 // Once created, add the provided questionId to the dashboard and then
 // map the city/state filters to the template-tags in the native query.
 function createDashboard({ dashboardName, questionId }, callback) {
-  cy.createDashboard(dashboardName).then(({ body: { id: dashboardId } }) => {
-    cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-      parameters: [
-        {
-          name: "State",
-          slug: "state",
-          id: "e8f79be9",
-          type: "location/state",
-        },
-        {
-          name: "City",
-          slug: "city",
-          id: "170b8e99",
-          type: "location/city",
-          filteringParameters: ["e8f79be9"],
-        },
-      ],
-    });
-
-    cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-      cardId: questionId,
-    }).then(({ body: { id: dashCardId } }) => {
-      cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-        cards: [
+  cy.createDashboard({ name: dashboardName }).then(
+    ({ body: { id: dashboardId } }) => {
+      cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+        parameters: [
           {
-            id: dashCardId,
-            card_id: questionId,
-            row: 0,
-            col: 0,
-            sizeX: 10,
-            sizeY: 10,
-            parameter_mappings: [
-              {
-                parameter_id: "e8f79be9",
-                card_id: questionId,
-                target: ["dimension", ["template-tag", "state"]],
-              },
-              {
-                parameter_id: "170b8e99",
-                card_id: questionId,
-                target: ["dimension", ["template-tag", "city"]],
-              },
-            ],
+            name: "State",
+            slug: "state",
+            id: "e8f79be9",
+            type: "location/state",
+          },
+          {
+            name: "City",
+            slug: "city",
+            id: "170b8e99",
+            type: "location/city",
+            filteringParameters: ["e8f79be9"],
           },
         ],
       });
 
-      callback(dashboardId);
-    });
-  });
+      cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
+        cardId: questionId,
+      }).then(({ body: { id: dashCardId } }) => {
+        cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
+          cards: [
+            {
+              id: dashCardId,
+              card_id: questionId,
+              row: 0,
+              col: 0,
+              sizeX: 10,
+              sizeY: 10,
+              parameter_mappings: [
+                {
+                  parameter_id: "e8f79be9",
+                  card_id: questionId,
+                  target: ["dimension", ["template-tag", "state"]],
+                },
+                {
+                  parameter_id: "170b8e99",
+                  card_id: questionId,
+                  target: ["dimension", ["template-tag", "city"]],
+                },
+              ],
+            },
+          ],
+        });
+
+        callback(dashboardId);
+      });
+    },
+  );
 }
 
 describe("scenarios > dashboard > chained filter", () => {
@@ -264,7 +266,7 @@ describe("scenarios > dashboard > chained filter", () => {
       name: "15170",
       query: { "source-table": PRODUCTS_ID },
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard("15170D").then(({ body: { id: DASHBOARD_ID } }) => {
+      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         // Add filter to the dashboard
         cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
           parameters: [

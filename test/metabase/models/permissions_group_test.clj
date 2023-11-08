@@ -9,6 +9,8 @@
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.schema :as su]
+            [schema.core :as s]
             [toucan.db :as db])
   (:import metabase.models.permissions_group.PermissionsGroupInstance))
 
@@ -70,10 +72,9 @@
                      :user_id  user-id
                      :group_id (u/the-id (perm-group/metabot))))))))))
 
-(defn- group-has-full-access?
+(s/defn ^:private group-has-full-access?
   "Does a group have permissions for `object` and *all* of its children?"
-  [group-id object]
-  {:pre [(perms/valid-object-path? object)]}
+  [group-id :- su/IntGreaterThanOrEqualToZero object :- perms/Path]
   ;; e.g. WHERE (object || '%') LIKE '/db/1000/'
   (db/exists? Permissions
     :group_id group-id
@@ -85,9 +86,9 @@
       (doseq [group [(perm-group/all-users)
                      (perm-group/admin)]]
         (testing (format "Group = %s" (pr-str (:name group)))
-          (group-has-full-access? (u/the-id group) (perms/object-path database-id))))
+          (group-has-full-access? (u/the-id group) (perms/data-perms-path database-id))))
       (testing "(Except for the MetaBot, which doesn't get data permissions)"
-        (is (not (group-has-full-access? (u/the-id (perm-group/metabot)) (perms/object-path database-id))))))))
+        (is (not (group-has-full-access? (u/the-id (perm-group/metabot)) (perms/data-perms-path database-id))))))))
 
 (deftest no-data-perms-for-metabot-test
   (testing "Attempting to create a data permissions entry for the MetaBot should throw an Exception"
@@ -95,7 +96,7 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"MetaBot can only have Collection permissions"
-           (db/insert! Permissions :group_id (u/the-id (perm-group/metabot)), :object (perms/object-path database-id)))))))
+           (db/insert! Permissions :group_id (u/the-id (perm-group/metabot)), :object (perms/data-perms-path database-id)))))))
 
 (deftest add-remove-from-admin-group-test
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"

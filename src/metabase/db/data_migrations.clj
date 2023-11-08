@@ -116,7 +116,7 @@
             database-id    db-ids]
       (u/ignore-exceptions
         (db/insert! Permissions
-          :object   (perms/object-path database-id)
+          :object   (perms/data-perms-path database-id)
           :group_id group-id)))))
 
 ;; Copy the value of the old setting `-site-url` to the new `site-url` if applicable.  (`site-url` used to be stored

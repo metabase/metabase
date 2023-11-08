@@ -25,8 +25,8 @@ export default class SegmentItem extends Component {
         <td className="px1 py1 text-wrap">
           <span className="flex align-center">
             <Icon
+              {...segment.getIcon()}
               size={12}
-              name={segment.getIcon()}
               className="mr1 text-medium"
             />
             <span className="text-dark text-bold">{segment.name}</span>

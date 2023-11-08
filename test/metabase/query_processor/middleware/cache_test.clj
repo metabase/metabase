@@ -440,7 +440,7 @@
 (deftest perms-checks-should-still-apply-test
   (testing "Double-check that perms checks still happen even for cached results"
     (mt/with-temp-copy-of-db
-      (perms/revoke-permissions! (group/all-users) (mt/db))
+      (perms/revoke-data-perms! (group/all-users) (mt/db))
       (mt/with-test-user :rasta
         (with-mock-cache [save-chan]
           (letfn [(run-forbidden-query []

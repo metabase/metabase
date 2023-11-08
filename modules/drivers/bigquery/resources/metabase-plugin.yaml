@@ -6,7 +6,7 @@ dependencies:
   - plugin: Metabase Google Drivers Shared Dependencies
 driver:
   name: bigquery
-  display-name: BigQuery
+  display-name: BigQuery (Deprecated Driver)
   lazy-load: true
   parent:
     - google
@@ -16,3 +16,4 @@ init:
     namespace: metabase.driver.google
   - step: load-namespace
     namespace: metabase.driver.bigquery
+superseded-by: bigquery-cloud-sdk

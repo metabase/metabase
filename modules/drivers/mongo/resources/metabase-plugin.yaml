@@ -38,6 +38,9 @@ driver:
     - name: ssl-cert
       type: string
       display-name: Server SSL certificate chain
+      visible-if:
+        ssl: true
+
   connection-properties-include-tunnel-config: true
 init:
   - step: load-namespace

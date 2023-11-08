@@ -72,7 +72,7 @@
   (str (->> segment :table_id (fully-qualified-name Table)) "/segments/" (safe-name segment)))
 
 (defn- local-collection-name [collection]
-  (let [ns-part (if-let [coll-ns (:namespace collection)]
+  (let [ns-part (when-let [coll-ns (:namespace collection)]
                   (str ":" (if (keyword? coll-ns) (name coll-ns) coll-ns) "/"))]
     (str "/collections/" ns-part (safe-name collection))))
 

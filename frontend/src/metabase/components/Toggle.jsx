@@ -24,6 +24,8 @@ export default class Toggle extends Component {
     return (
       <a
         {...props}
+        role="checkbox"
+        aria-checked={value}
         className={cx(
           styles.toggle,
           "no-decoration",

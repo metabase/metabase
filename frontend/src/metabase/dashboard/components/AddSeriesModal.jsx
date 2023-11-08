@@ -329,6 +329,7 @@ export default class AddSeriesModal extends Component {
                   >
                     <span className="px1 flex-no-shrink">
                       <CheckBox
+                        label={question.displayName()}
                         checked={enabledQuestions[question.id()]}
                         onChange={e =>
                           this.handleQuestionSelectedChange(
@@ -338,7 +339,6 @@ export default class AddSeriesModal extends Component {
                         }
                       />
                     </span>
-                    <span className="px1">{question.displayName()}</span>
                     {!question.isStructured() && (
                       <Tooltip
                         tooltip={t`We're not sure if this question is compatible`}

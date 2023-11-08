@@ -11,15 +11,9 @@ export default class FormMessage extends Component {
 
     if (!message) {
       if (formError) {
-        if (formError.data && formError.data.message) {
-          message = formError.data.message;
-        } else if (formError.status >= 400) {
-          message = SERVER_ERROR_MESSAGE;
-        } else {
-          message = UNKNOWN_ERROR_MESSAGE;
-        }
-      } else if (formSuccess && formSuccess.data.message) {
-        message = formSuccess.data.message;
+        message = getErrorMessage(formError);
+      } else if (formSuccess) {
+        message = getSuccessMessage(formSuccess);
       }
     }
 
@@ -32,3 +26,21 @@ export default class FormMessage extends Component {
     return <span className={classes}>{message}</span>;
   }
 }
+
+export const getErrorMessage = formError => {
+  if (formError) {
+    if (formError.data && formError.data.message) {
+      return formError.data.message;
+    } else if (formError.status >= 400) {
+      return SERVER_ERROR_MESSAGE;
+    } else {
+      return UNKNOWN_ERROR_MESSAGE;
+    }
+  }
+};
+
+export const getSuccessMessage = formSuccess => {
+  if (formSuccess && formSuccess.data.message) {
+    return formSuccess.data.message;
+  }
+};

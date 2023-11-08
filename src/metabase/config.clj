@@ -1,6 +1,7 @@
 (ns metabase.config
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [environ.core :as environ]
             [metabase.plugins.classloader :as classloader])
   (:import clojure.lang.Keyword
@@ -70,9 +71,9 @@
 (defn ^Boolean config-bool "Fetch a configuration key and parse it as a boolean."  [k] (some-> k config-str Boolean/parseBoolean))
 (defn ^Keyword config-kw   "Fetch a configuration key and parse it as a keyword."  [k] (some-> k config-str keyword))
 
-(def ^Boolean is-dev?  "Are we running in `dev` mode (i.e. in a REPL or via `lein ring server`)?" (= :dev  (config-kw :mb-run-mode)))
-(def ^Boolean is-prod? "Are we running in `prod` mode (i.e. from a JAR)?"                         (= :prod (config-kw :mb-run-mode)))
-(def ^Boolean is-test? "Are we running in `test` mode (i.e. via `lein test`)?"                    (= :test (config-kw :mb-run-mode)))
+(def ^Boolean is-dev?  "Are we running in `dev` mode (i.e. in a REPL or via `clojure -M:run`)?" (= :dev  (config-kw :mb-run-mode)))
+(def ^Boolean is-prod? "Are we running in `prod` mode (i.e. from a JAR)?"                       (= :prod (config-kw :mb-run-mode)))
+(def ^Boolean is-test? "Are we running in `test` mode (i.e. via `clojure -X:test`)?"            (= :test (config-kw :mb-run-mode)))
 
 ;;; Version stuff
 
@@ -128,13 +129,17 @@
   "Value for session cookie's `SameSite` directive. Must be one of \"none\", \"lax\", or \"strict\" (case insensitive)."
   (mb-session-cookie-samesite*))
 
-
-;; This only affects dev:
+;; In 0.41.0 we switched from Leiningen to deps.edn. This warning here to keep people from being bitten in the ass by
+;; the little gotcha described below.
 ;;
-;; If for some wacky reason the test namespaces are getting loaded (e.g. when running via
-;; `lein ring` or `lein ring sever`, DO NOT RUN THE EXPECTATIONS TESTS AT SHUTDOWN! THIS WILL NUKE YOUR APPLICATION DB
-(try
-  (classloader/require 'expectations)
-  ((resolve 'expectations/disable-run-on-shutdown))
-  ;; This will fail if the test dependencies aren't present (e.g. in a JAR situation) which is totally fine
-  (catch Throwable _))
+;; TODO -- after we've shipped 0.43.0, remove this warning. At that point, the last three shipped major releases will
+;; all be deps.edn based.
+(when (and (not is-prod?)
+           (.exists (io/file ".lein-env")))
+  ;; don't need to i18n since this is a dev-only warning.
+  (log/warn
+   (str "Found .lein-env in the project root directory.\n"
+        "This file was previously created automatically by the Leiningen lein-env plugin.\n"
+        "Environ will use values from it in preference to env var or Java system properties you've specified.\n"
+        "You should delete it; it will be recreated as needed when switching to a branch still using Leiningen.\n"
+        "See https://github.com/metabase/metabase/wiki/Migrating-from-Leiningen-to-tools.deps#custom-env-var-values for more details.")))

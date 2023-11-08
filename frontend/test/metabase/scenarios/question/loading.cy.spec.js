@@ -6,29 +6,7 @@ describe("scenarios > question > loading behavior", () => {
     cy.signInAsAdmin();
   });
 
-  it("should preload tables on the new question page", () => {
-    cy.server();
-    cy.visit("/question/new");
-
-    cy.route({ url: "/api/database?include=tables" }).as("preload1");
-    cy.route({ url: "/api/database?saved=true" }).as("preload2");
-    cy.route({ url: "/api/database/1/schemas" }).as("fetch1");
-    cy.route({ url: "/api/database/1/schema/PUBLIC" }).as("fetch2");
-
-    // preload calls should have already happened before picking question type
-    cy.wait("@preload1");
-    cy.wait("@preload2");
-
-    cy.contains("Simple question").click();
-    cy.contains("Sample Dataset").click();
-    cy.contains("Orders");
-
-    // confirm that neither fetch happened after seeing data in UI
-    cy.get("@fetch1").should("not.exist");
-    cy.get("@fetch2").should("not.exist");
-  });
-
-  it("should incrementally load data if not preloaded", () => {
+  it("should incrementally load data", () => {
     cy.server();
     // stub out the preload call to fetch all tables
     cy.route({

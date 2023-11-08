@@ -18,16 +18,6 @@ describe("query_time", () => {
         parseFieldBucketing(["field", 3, { "temporal-unit": "day" }]),
       ).toBe("day");
     });
-
-    it("returns the default unit for FK reference", () => {
-      pending();
-    });
-    it("returns the default unit for local field reference", () => {
-      pending();
-    });
-    it("returns the default unit for other field types", () => {
-      pending();
-    });
   });
 
   describe("expandTimeIntervalFilter", () => {

@@ -13,6 +13,7 @@ export default class RowChart extends LineAreaBarChart {
   static iconName = "horizontal_bar";
   static noun = t`row chart`;
 
+  static maxMetricsSupported = 1;
   static supportsSeries = false;
 
   static renderer = rowRenderer;

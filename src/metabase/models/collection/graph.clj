@@ -1,4 +1,6 @@
 (ns metabase.models.collection.graph
+  "Code for generating and updating the Collection permissions graph. See [[metabase.models.permissions]] for more
+  details and for the code for generating and updating the *data* permissions graph."
   (:require [clojure.data :as data]
             [metabase.api.common :as api :refer [*current-user-id*]]
             [metabase.models.collection :as collection :refer [Collection]]
@@ -145,7 +147,7 @@
          new-perms          (select-keys new-perms (keys old-perms))
          ;; filter out any collections not in the old graph
          new-perms          (into {} (for [[group-id collection-id->perms] new-perms]
-                              [group-id (select-keys collection-id->perms (keys (get old-perms group-id)))]))
+                                      [group-id (select-keys collection-id->perms (keys (get old-perms group-id)))]))
          [diff-old changes] (data/diff old-perms new-perms)]
      (perms/log-permissions-changes diff-old changes)
      (perms/check-revision-numbers old-graph new-graph)

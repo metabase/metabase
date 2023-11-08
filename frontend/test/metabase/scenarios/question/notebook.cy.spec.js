@@ -6,6 +6,7 @@ import {
   popover,
   modal,
   visitQuestionAdhoc,
+  interceptPromise,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -68,6 +69,16 @@ describe("scenarios > question > notebook", () => {
     cy.contains("Visualize").click();
     cy.contains("2372"); // user's id in the table
     cy.contains("Showing 1 row"); // ensure only one user was returned
+  });
+
+  it("shouldn't show sub-dimensions for FK (metabase#16787)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Summarize").click();
+    cy.findByText("Pick a column to group by").click();
+    cy.findByText("User ID")
+      .closest(".List-item")
+      .find(".Field-extra")
+      .should("not.have.descendants", "*");
   });
 
   it("should show the original custom expression filter field on subsequent click (metabase#14726)", () => {
@@ -141,6 +152,41 @@ describe("scenarios > question > notebook", () => {
       .clear()
       .type("[Price] > 1 AND [Price] < 5{enter}");
     cy.contains(/^Price is less than 5/i);
+  });
+
+  it("should show the real number of rows instead of HARD_ROW_LIMIT when loading", () => {
+    // start a custom question with orders
+    cy.visit("/question/new");
+    cy.contains("Custom question").click();
+    cy.contains("Sample Dataset").click();
+    cy.contains("Orders").click();
+
+    // Add filter for ID < 100
+    cy.findByText("Add filters to narrow your answer").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("ID < 100", { delay: 50 });
+    cy.button("Done")
+      .should("not.be.disabled")
+      .click();
+    cy.contains("Visualize").click();
+
+    cy.contains("Showing 99 rows");
+
+    const req = interceptPromise("POST", "/api/dataset");
+    cy.contains("ID is less than 100").click();
+    cy.get(".Icon-chevronleft").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("ID < 2010");
+    cy.button("Done").click();
+    cy.contains("Showing 99 rows");
+    req.resolve();
+    cy.contains("Showing first 2000 rows");
   });
 
   describe("joins", () => {
@@ -248,7 +294,7 @@ describe("scenarios > question > notebook", () => {
 
     it("should allow joins based on saved questions (metabase#13000)", () => {
       // pass down a joined question alias
-      joinTwoSavedQuestions("13000");
+      joinTwoSavedQuestions();
     });
 
     // NOTE: - This repro is really tightly coupled to the `joinTwoSavedQuestions()` function.
@@ -256,15 +302,14 @@ describe("scenarios > question > notebook", () => {
     //       - The alternative approach would have been to write one longer repro instead of two separate ones.
     it("joined questions should create custom column (metabase#13649)", () => {
       // pass down a joined question alias
-      joinTwoSavedQuestions("13649");
+      joinTwoSavedQuestions();
 
       // add a custom column on top of the steps from the #13000 repro which was simply asserting
       // that a question could be made by joining two previously saved questions
-      cy.findByText("Custom column").click();
+      cy.icon("add_data").click();
       popover().within(() => {
         cy.get("[contenteditable='true']").type(
-          // reference joined question by previously set alias
-          "[13649 → sum] / [Sum of Rating]",
+          "[Question 5 → sum] / [Sum of Rating]",
         );
         cy.findByPlaceholderText("Something nice and descriptive")
           .click()
@@ -274,10 +319,9 @@ describe("scenarios > question > notebook", () => {
           .should("not.be.disabled")
           .click();
       });
-      cy.route("POST", "/api/dataset").as("visualization");
       cy.button("Visualize").click();
 
-      cy.wait("@visualization").then(xhr => {
+      cy.wait("@cardQuery").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
       });
       cy.findByText("Sum Divide");
@@ -930,9 +974,7 @@ describe("scenarios > question > notebook", () => {
 });
 
 // Extracted repro steps for #13000
-function joinTwoSavedQuestions(ALIAS = "Joined Question") {
-  cy.server();
-
+function joinTwoSavedQuestions() {
   cy.createQuestion({
     name: "Q1",
     query: {
@@ -940,7 +982,7 @@ function joinTwoSavedQuestions(ALIAS = "Joined Question") {
       breakout: [["field", ORDERS.PRODUCT_ID, null]],
       "source-table": ORDERS_ID,
     },
-  }).then(({ body: { id: Q1_ID } }) => {
+  }).then(() => {
     cy.createQuestion({
       name: "Q2",
       query: {
@@ -948,40 +990,35 @@ function joinTwoSavedQuestions(ALIAS = "Joined Question") {
         breakout: [["field", PRODUCTS.ID, null]],
         "source-table": PRODUCTS_ID,
       },
-    }).then(({ body: { id: Q2_ID } }) => {
-      cy.log("Create Question 3 based on 2 previously saved questions");
-      cy.createQuestion({
-        name: "Q3",
-        query: {
-          joins: [
-            {
-              alias: ALIAS,
-              condition: [
-                "=",
-                ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
-                [
-                  "field",
-                  "ID",
-                  { "base-type": "type/BigInteger", "join-alias": ALIAS },
-                ],
-              ],
-              fields: "all",
-              "source-table": `card__${Q2_ID}`,
-            },
-          ],
-          "source-table": `card__${Q1_ID}`,
-        },
-      }).then(({ body: { id: Q3_ID } }) => {
-        cy.route("POST", `/api/card/${Q3_ID}/query`).as("cardQuery");
-        cy.visit(`/question/${Q3_ID}`);
+    }).then(() => {
+      cy.intercept("POST", "/api/dataset").as("cardQuery");
+      cy.visit(`/question/new`);
+      cy.findByText("Custom question").click();
 
-        cy.wait("@cardQuery");
-
-        cy.log("Reported in v0.36.0");
-        cy.icon("notebook").click();
-        cy.url().should("contain", "/notebook");
-        cy.button("Visualize").should("exist");
+      popover().within(() => {
+        cy.findByText("Saved Questions").click();
+        cy.findByText("Q1").click();
       });
+
+      cy.icon("join_left_outer").click();
+      popover().within(() => {
+        cy.icon("chevronleft").click();
+        cy.findByText("Saved Questions").click();
+        cy.findByText("Q2").click();
+      });
+
+      popover()
+        .findByText("Product ID")
+        .click();
+      popover()
+        .findByText("ID")
+        .click();
+
+      cy.button("Visualize").click();
+      cy.wait("@cardQuery");
+
+      cy.icon("notebook").click();
+      cy.url().should("contain", "/notebook");
     });
   });
 }

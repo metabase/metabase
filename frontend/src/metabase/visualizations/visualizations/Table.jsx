@@ -422,7 +422,7 @@ export default class Table extends Component {
             "
             className="mb2"
           />
-          <span className="h4 text-bold">Every field is hidden right now</span>
+          <span className="h4 text-bold">{t`Every field is hidden right now`}</span>
         </div>
       );
     }

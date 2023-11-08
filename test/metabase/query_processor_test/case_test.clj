@@ -86,8 +86,7 @@
 
 (deftest two-case-functions-test
   (testing "We should support expressions with two case statements (#15107)"
-    ;; sample-dataset doesn't work on Redshift yet -- see #14784
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions) :redshift)
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
       (mt/dataset sample-dataset
         (is (= [[1
                  "1018947080336"

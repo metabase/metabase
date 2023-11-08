@@ -1,6 +1,6 @@
 /*eslint-disable react/no-danger */
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import PropTypes from "prop-types";
 import styled from "styled-components";
 import { color, space, hover } from "styled-system";
 import cx from "classnames";
@@ -38,20 +38,27 @@ IconWrapper.defaultProps = {
   },
 };
 
+const stringOrNumberPropType = PropTypes.oneOfType([
+  PropTypes.number,
+  PropTypes.string,
+]);
+
+export const iconPropTypes = {
+  name: PropTypes.string.isRequired,
+  size: stringOrNumberPropType,
+  width: stringOrNumberPropType,
+  height: stringOrNumberPropType,
+  scale: stringOrNumberPropType,
+  tooltip: PropTypes.string,
+  defaultName: PropTypes.string,
+  className: PropTypes.string,
+};
+
+const defaultProps = {
+  defaultName: "unknown",
+};
+
 class BaseIcon extends Component {
-  static props: {
-    name: string,
-    size?: string | number,
-    width?: string | number,
-    height?: string | number,
-    scale?: string | number,
-    tooltip?: string, // using Tooltipify
-  };
-
-  static defaultProps = {
-    defaultName: "unknown",
-  };
-
   render() {
     const { name, defaultName, className, ...rest } = this.props;
 
@@ -111,10 +118,14 @@ class BaseIcon extends Component {
   }
 }
 
+BaseIcon.propTypes = iconPropTypes;
+BaseIcon.defaultProps = defaultProps;
+
 const Icon = styled(BaseIcon)`
   ${space}
   ${color}
   ${hover}
   flex-shrink: 0
 `;
+
 export default Tooltipify(Icon);

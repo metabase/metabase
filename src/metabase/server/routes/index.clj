@@ -44,8 +44,8 @@
      (when-not (= locale-name "en")
        (try
          (slurp (or (io/resource (localization-json-file-name locale-name))
-                    (when-let [parent-locale (i18n/parent-locale locale-name)]
-                      (io/resource (localization-json-file-name (str parent-locale))))
+                    (when-let [fallback-locale (i18n/fallback-locale locale-name)]
+                      (io/resource (localization-json-file-name (str fallback-locale))))
                     ;; don't try to i18n the Exception message below, we have no locale to translate it to!
                     (throw (FileNotFoundException. (format "Locale '%s' not found." locale-name)))))
          (catch Throwable e

@@ -21,7 +21,7 @@
 
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util))
 
-(defn- check-self-or-superuser
+(defn check-self-or-superuser
   "Check that `user-id` is *current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
   [user-id]
   {:pre [(integer? user-id)]}
@@ -319,6 +319,5 @@
           join-url    (str (user/form-password-reset-url reset-token) "#new")]
       (email/send-new-user-email! user @api/*current-user* join-url)))
   {:success true})
-
 
 (api/define-routes)

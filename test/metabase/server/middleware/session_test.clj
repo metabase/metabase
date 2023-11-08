@@ -8,7 +8,6 @@
             [metabase.db :as mdb]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models :refer [Session User]]
-            [metabase.public-settings :as public-settings]
             [metabase.server.middleware.session :as mw.session]
             [metabase.test :as mt]
             [metabase.util.i18n :as i18n]

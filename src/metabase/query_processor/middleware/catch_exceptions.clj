@@ -85,15 +85,10 @@
 
 ;; TODO -- some of this logic duplicates the functionality of `clojure.core/Throwable->map`, we should consider
 ;; whether we can use that more extensively and remove some of this logic
-(defn- cause [^Throwable e]
-  (let [cause (.getCause e)]
-    (when-not (= cause e)
-      cause)))
-
-(defn- exception-chain [^Throwable e]
-  (->> (iterate cause e)
-       (take-while some?)
-       reverse))
+(defn- exception-chain
+  "Exception chain in reverse order, e.g. inner-most cause first."
+  [e]
+  (reverse (u/full-exception-chain e)))
 
 (defn- best-top-level-error
   "In cases where the top-level Exception doesn't have the best error message, return a better one to use instead. We
@@ -118,6 +113,7 @@
      (when (seq more)
        {:via (vec more)}))))
 
+
 (defn- query-info
   "Map of about `query` to add to the exception response."
   [{query-type :type, :as query} {:keys [preprocessed native]}]
@@ -131,7 +127,7 @@
                       native)})))
 
 (defn- query-execution-info [query-execution]
-  (dissoc query-execution :result_rows :hash :executor_id :card_id :dashboard_id :pulse_id :native :start_time_millis))
+  (dissoc query-execution :result_rows :hash :executor_id :dashboard_id :pulse_id :native :start_time_millis))
 
 (defn- format-exception*
   "Format a `Throwable` into the usual userland error-response format."

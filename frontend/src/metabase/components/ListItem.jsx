@@ -7,7 +7,6 @@ import Icon from "./Icon";
 import Ellipsified from "./Ellipsified";
 
 import cx from "classnames";
-import pure from "recompose/pure";
 import Card from "metabase/components/Card";
 
 //TODO: extend this to support functionality required for questions
@@ -50,4 +49,4 @@ ListItem.propTypes = {
   field: PropTypes.object,
 };
 
-export default pure(ListItem);
+export default React.memo(ListItem);

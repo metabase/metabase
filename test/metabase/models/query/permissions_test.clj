@@ -124,7 +124,7 @@
     (mt/with-temp* [Database [db]
                     Table    [table {:db_id (u/the-id db), :schema nil}]
                     Field    [_     {:table_id (u/the-id table)}]]
-      (perms/revoke-permissions! (perms-group/all-users) db)
+      (perms/revoke-data-perms! (perms-group/all-users) db)
       (binding [*current-user-permissions-set* (atom nil)
                 *current-user-id*              (mt/user->id :rasta)]
         (is (= #{(perms/table-query-path db nil table)}

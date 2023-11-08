@@ -54,12 +54,12 @@ export default class HomepageApp extends Component {
           <Subhead>{t`Activity`}</Subhead>
         </Box>
         <Flex>
-          <Box w={2 / 3}>
+          <Box width={2 / 3}>
             <Card px={1}>
               <Activity {...this.props} />
             </Card>
           </Box>
-          <Box w={1 / 3}>
+          <Box width={1 / 3}>
             <NextStep />
             <RecentViews {...this.props} />
           </Box>

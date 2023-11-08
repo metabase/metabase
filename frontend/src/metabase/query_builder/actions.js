@@ -29,7 +29,12 @@ import Utils from "metabase/lib/utils";
 import { defer } from "metabase/lib/promise";
 import Question from "metabase-lib/lib/Question";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
-import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
+import {
+  cardIsEquivalent,
+  cardQueryIsEquivalent,
+  getValueAndFieldIdPopulatedParametersFromCard,
+} from "metabase/meta/Card";
+import { getParameterValuesByIdFromQueryParams } from "metabase/meta/Parameter";
 import { normalize } from "cljs/metabase.mbql.js";
 
 import {
@@ -49,6 +54,7 @@ import {
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getSnippetCollectionId,
+  getQueryResults,
 } from "./selectors";
 
 import { MetabaseApi, CardApi, UserApi } from "metabase/services";
@@ -123,6 +129,19 @@ export const onCloseChartSettings = createAction(
   "metabase/qb/CLOSE_CHART_SETTINGS",
 );
 export const onOpenChartType = createAction("metabase/qb/OPEN_CHART_TYPE");
+export const onOpenQuestionDetails = createAction(
+  "metabase/qb/OPEN_QUESTION_DETAILS",
+);
+export const onCloseQuestionDetails = createAction(
+  "metabase/qb/CLOSE_QUESTION_DETAILS",
+);
+export const onOpenQuestionHistory = createAction(
+  "metabase/qb/OPEN_QUESTION_HISTORY",
+);
+export const onCloseQuestionHistory = createAction(
+  "metabase/qb/CLOSE_QUESTION_HISTORY",
+);
+
 export const onCloseChartType = createAction("metabase/qb/CLOSE_CHART_TYPE");
 export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");
 
@@ -300,15 +319,11 @@ export const RESET_QB = "metabase/qb/RESET_QB";
 export const resetQB = createAction(RESET_QB);
 
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
-export const initializeQB = (location, params) => {
+export const initializeQB = (location, params, queryParams) => {
   return async (dispatch, getState) => {
     // do this immediately to ensure old state is cleared before the user sees it
     dispatch(resetQB());
     dispatch(cancelQuery());
-
-    // preload metadata that's used in DataSelector
-    dispatch(Databases.actions.fetchList({ include: "tables" }));
-    dispatch(Databases.actions.fetchList({ saved: true }));
 
     const { currentUser } = getState();
 
@@ -507,12 +522,20 @@ export const initializeQB = (location, params) => {
     }
 
     card = question && question.card();
+    const metadata = getMetadata(getState());
+    const parameters = getValueAndFieldIdPopulatedParametersFromCard(card);
+    const parameterValues = getParameterValuesByIdFromQueryParams(
+      parameters,
+      queryParams,
+      metadata,
+    );
 
     // Update the question to Redux state together with the initial state of UI controls
     dispatch.action(INITIALIZE_QB, {
       card,
       originalCard,
       uiControls,
+      parameterValues,
     });
 
     // if we have loaded up a card that we can run then lets kick that off as well
@@ -721,10 +744,26 @@ export const setParameterValue = createAction(
   },
 );
 
+// refetches the card without triggering a run of the card's query
+export const SOFT_RELOAD_CARD = "metabase/qb/SOFT_RELOAD_CARD";
+export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
+  return async (dispatch, getState) => {
+    const outdatedCard = getCard(getState());
+    const action = await dispatch(
+      Questions.actions.fetch({ id: outdatedCard.id }, { reload: true }),
+    );
+
+    return Questions.HACK_getObjectFromAction(action);
+  };
+});
+
 export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
 export const reloadCard = createThunkAction(RELOAD_CARD, () => {
   return async (dispatch, getState) => {
-    const outdatedCard = getState().qb.card;
+    const outdatedCard = getCard(getState());
+
+    dispatch(resetQB());
+
     const action = await dispatch(
       Questions.actions.fetch({ id: outdatedCard.id }, { reload: true }),
     );
@@ -891,6 +930,15 @@ export const updateQuestion = (
     }
     // </PIVOT LOGIC>
 
+    // Native query should never be in notebook mode (metabase#12651)
+    if (getQueryBuilderMode(getState()) !== "view" && newQuestion.isNative()) {
+      await dispatch(
+        setQueryBuilderMode("view", {
+          shouldUpdateUrl: false,
+        }),
+      );
+    }
+
     // Replace the current question with a new one
     await dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
 
@@ -1010,7 +1058,6 @@ export const apiUpdateQuestion = question => {
     // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
     dispatch(setRequestUnloaded(["entities", "databases"]));
 
-    dispatch(updateUrl(updatedQuestion.card(), { dirty: false }));
     MetabaseAnalytics.trackEvent(
       "QueryBuilder",
       "Update Card",
@@ -1104,6 +1151,7 @@ export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
 export const queryCompleted = (question, queryResults) => {
   return async (dispatch, getState) => {
     const [{ data }] = queryResults;
+    const [{ data: prevData }] = getQueryResults(getState()) || [{}];
     const originalQuestion = getOriginalQuestion(getState());
     const dirty =
       !originalQuestion ||
@@ -1120,7 +1168,14 @@ export const queryCompleted = (question, queryResults) => {
       // Otherwise, trust that the question was saved with the correct display.
       question = question
         // if we are going to trigger autoselection logic, check if the locked display no longer is "sensible".
+<<<<<<< HEAD
         .maybeUnlockDisplay(getSensibleDisplays(data))
+=======
+        .maybeUnlockDisplay(
+          getSensibleDisplays(data),
+          prevData && getSensibleDisplays(prevData),
+        )
+>>>>>>> tags/v0.41.0
         .setDefaultDisplay()
         .switchTableScalar(data);
     }
@@ -1340,3 +1395,14 @@ export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
 // these are just temporary mappings to appease the existing QB code and it's naming prefs
 export const onUpdateVisualizationSettings = updateCardVisualizationSettings;
 export const onReplaceAllVisualizationSettings = replaceAllCardVisualizationSettings;
+
+export const REVERT_TO_REVISION = "metabase/qb/REVERT_TO_REVISION";
+export const revertToRevision = createThunkAction(
+  REVERT_TO_REVISION,
+  revision => {
+    return async dispatch => {
+      await revision.revert();
+      await dispatch(reloadCard());
+    };
+  },
+);

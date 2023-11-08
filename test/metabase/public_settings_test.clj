@@ -118,7 +118,7 @@
 
   (testing "query-caching-max-kb should throw an error if you try to put in a huge value"
     (mt/discard-setting-changes [query-caching-max-kb]
-      (is (thrown?
+      (is (thrown-with-msg?
            IllegalArgumentException
            #"Values greater than 204,800 \(200\.0 MB\) are not allowed"
            (public-settings/query-caching-max-kb (* 1024 1024)))))))
@@ -129,16 +129,18 @@
       (testing "invalid format"
         (testing "blank string"
           (mt/with-temporary-setting-values [site-locale "en_US"]
-            (is (thrown?
+            (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
+                 #"Invalid locale \"\""
                  (public-settings/site-locale "")))
             (is (= "en_US"
                    (public-settings/site-locale)))))
 
         (testing "non-existant locale"
           (mt/with-temporary-setting-values [site-locale "en_US"]
-            (is (thrown?
+            (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
+                 #"Invalid locale \"en_EN\""
                  (public-settings/site-locale "en_EN")))
             (is (= "en_US"
                    (public-settings/site-locale)))))))
