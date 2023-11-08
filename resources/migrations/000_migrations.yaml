@@ -15794,7 +15794,7 @@ databaseChangeLog:
       comment: Added 0.48.0 - new view v_alerts
       changes:
         - sqlFile:
-            dbms: postgres
+            dbms: postgresql
             path: instance_analytics_views/alerts/v1/postgres-alerts.sql
             relativeToChangelogFile: true
         - sqlFile:
