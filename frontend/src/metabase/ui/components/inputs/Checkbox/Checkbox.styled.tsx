@@ -34,9 +34,6 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
           },
         },
       },
-      body: {
-        alignItems: "center",
-      },
       inner: {
         width: getSize({ size, sizes: SIZES }),
         height: getSize({ size, sizes: SIZES }),
@@ -89,6 +86,9 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
         label: {
           paddingLeft: labelPosition === "right" ? "0.75rem" : "0.5rem",
         },
+        description: {
+          paddingLeft: labelPosition === "right" ? "0.75rem" : "0.5rem",
+        },
         input: {
           "&:after": {
             content: "''",
@@ -113,7 +113,8 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
           },
         },
         labelWrapper: {
-          paddingBottom: rem(2),
+          psoition: "relative",
+          top: rem(-2),
         },
       }),
     },
