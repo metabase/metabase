@@ -1494,3 +1494,32 @@
                (lib/legacy-card-or-table-id (first (lib/returned-columns (-> query
                                                                              (lib/breakout (first (lib/returned-columns query)))
                                                                              lib/append-stage))))))))))
+
+(deftest ^:parallel fields-list-and-breakout-by-joined-columns-test
+  ;; TODO: This test throws on `(lib/returned-columns removed)`. The FE avoids this by knowing not to try to really
+  ;; remove-field on a breakout column. So this test failing has nothing to do with #22563, but we should either:
+  ;; - make remove-field refuse to remove a breakout column, or
+  ;; - make `returned-columns` work even after a breakout column was "removed" from the :fields list, or
+  ;; - fix `(lib/remove-field some-breakout-column)` to remove the breakout itself?
+  #_(testing "#22563 when breaking out by joined columns, removing one breakout column should not remove the others"
+    (let [query   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                      (lib/join (lib/with-join-alias
+                                  (lib/join-clause (meta/table-metadata :products)
+                                                   [(lib/= (meta/field-metadata :products :id)
+                                                           (meta/field-metadata :orders :product-id))])
+                                  "Products"))
+                      (lib/breakout (lib/with-join-alias (meta/field-metadata :products :rating)   "Products"))
+                      (lib/breakout (lib/with-join-alias (meta/field-metadata :products :category) "Products"))
+                      (lib/aggregate (lib/count)))
+          [rating
+           category
+           count-col] (lib/returned-columns query)
+          removed     (lib/remove-field query -1 rating)]
+      (is (some? rating))
+      (is (=? [rating category count-col]
+              (lib/returned-columns query)))
+      (is (=? [[:field {:join-alias "Products"} (meta/id :products :category)]
+               [:aggregation {} (-> query lib/aggregations first lib.options/uuid)]]
+              (-> removed :stages first :fields)))
+      (is (= [category count-col]
+             (lib/returned-columns removed))))))
