@@ -53,6 +53,7 @@ describe("qa databases snapshots", { tags: "@external" }, () => {
 
 function restoreAndAuthenticate() {
   restore("default");
+  cy.wait(500);
   cy.signInAsAdmin();
 }
 

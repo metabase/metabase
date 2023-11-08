@@ -65,11 +65,14 @@ const MODEL_NAME = "Test Action Model";
           restore(`${dialect}-writable`);
           cy.signInAsAdmin();
           enableTracking();
-          resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
+          resyncDatabase({
+            dbId: WRITABLE_DB_ID,
+            tableName: TEST_TABLE,
+            enableActions: true,
+          });
           createModelFromTableName({
             tableName: TEST_TABLE,
             modelName: MODEL_NAME,
-            enableActions: true,
           });
         });
 

@@ -101,6 +101,10 @@ function recursiveCheck(id, i = 0) {
   cy.wait(500);
 
   cy.request("GET", `/api/database/${id}`).then(({ body: database }) => {
+    cy.task("log", {
+      dbId: database.id,
+      syncStatus: database.initial_sync_status,
+    });
     if (database.initial_sync_status !== "complete") {
       recursiveCheck(id, ++i);
     }
