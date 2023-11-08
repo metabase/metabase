@@ -15906,6 +15906,21 @@ databaseChangeLog:
             sql: drop view if exists v_view_log;
 
   - changeSet:
+      id: v48.00-045
+      author: qwef
+      comment: Added 0.48.0 - add is_sandboxed to query_execution
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: is_sandboxed
+                  type: boolean
+                  remarks: "Is query from a sandboxed user"
+                  constraints:
+                    nullable: true
+
+  - changeSet:
       id: v48.00-047
       author: noahmoss
       comment: Drop foreign key on recent_views so that it can be recreated with onDelete policy
@@ -15988,21 +16003,6 @@ databaseChangeLog:
                   )
               FROM activity;
       rollback: # not necessary
-
-  - changeSet:
-      id: v48.00-045
-      author: qwef
-      comment: Added 0.48.0 - add is_sandboxed to query_execution
-      changes:
-        - addColumn:
-            tableName: query_execution
-            columns:
-              - column:
-                  name: is_sandboxed
-                  type: boolean
-                  remarks: "Is query from a sandboxed user"
-                  constraints:
-                    nullable: true
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
