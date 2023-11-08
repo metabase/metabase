@@ -15827,7 +15827,7 @@ databaseChangeLog:
       comment: Added 0.48.0 - new view v_fields
       changes:
         - sqlFile:
-            dbms: postgres
+            dbms: postgresql
             path: instance_analytics_views/fields/v1/postgres-fields.sql
             relativeToChangelogFile: true
         - sqlFile:
@@ -15848,7 +15848,7 @@ databaseChangeLog:
       comment: Added 0.48.0 - new view v_query_log
       changes:
         - sqlFile:
-            dbms: postgres
+            dbms: postgresql
             path: instance_analytics_views/query_log/v1/postgres-query_log.sql
             relativeToChangelogFile: true
         - sqlFile:
