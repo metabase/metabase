@@ -62,9 +62,10 @@
                   :field_order  (driver/default-field-order (t2/select-one-fn :engine Database :id (:db_id table)))}]
     (merge defaults table)))
 
+;; TODO: should we do this after the deletion?
 (t2/define-before-delete :model/Table
   [{:keys [db_id schema id]}]
-  (t2/delete! Permissions :object [:like (str (perms/data-perms-path db_id schema id) "%")]))
+  (t2/delete! Permissions :object [:like (str "%" (perms/data-perms-path db_id schema id) "%")]))
 
 (defmethod mi/perms-objects-set :model/Table
   [{db-id :db_id, schema :schema, table-id :id, :as table} read-or-write]

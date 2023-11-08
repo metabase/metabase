@@ -197,16 +197,6 @@ Twice a day, Metabase will delete rows older than this threshold.
 
 The minimum value is `30` days (Metabase will treat entered values of `1` to `29` the same as `30`). If set to `0`, Metabase will keep all rows.
 
-## MB_INACTIVE_TABLE_MAX_DAYS
-
-Type: integer<br>
-Default: `180`<br>
-Since: v48.0
-
-Sets the maximum number of days Metabase keep inactive tables.
-
-Once a day, Metabase will delete inactive tables older than this threshold
-
 ### `MB_BREAKOUT_BIN_WIDTH`
 
 Type: double<br>
@@ -529,6 +519,16 @@ Type: string<br>
 Default: `null`
 
 Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled.
+
+## MB_INACTIVE_TABLE_MAX_DAYS
+
+Type: integer<br>
+Default: `180`<br>
+Since: v48.0
+
+Sets the maximum number of days Metabase keep inactive tables.
+
+Once a day, Metabase will delete inactive tables older than this threshold.
 
 ### `MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE`
 
