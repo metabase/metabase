@@ -28,6 +28,7 @@ interface Props {
   tab: string;
   hasDataPermissions: boolean;
   hasActionsTab: boolean;
+  supportsNestedQueries: boolean;
   onChangeName: (name?: string) => void;
   onChangeDescription: (description?: string | null) => void;
   onChangeCollection: (collection: Collection) => void;
@@ -39,6 +40,7 @@ function ModelDetailPage({
   mainTable,
   hasDataPermissions,
   hasActionsTab,
+  supportsNestedQueries,
   onChangeName,
   onChangeDescription,
   onChangeCollection,
@@ -75,7 +77,7 @@ function ModelDetailPage({
             <TabPanelContent>
               <ModelUsageDetails
                 model={model}
-                hasNewQuestionLink={hasDataPermissions}
+                hasNewQuestionLink={hasDataPermissions && supportsNestedQueries}
               />
             </TabPanelContent>
           </TabPanel>

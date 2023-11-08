@@ -78,9 +78,9 @@ class Database {
         set.has("inner-join") ||
         set.has("full-join")
       );
-    } else {
-      return set.has(feature);
     }
+
+    return set.has(feature);
   }
 
   supportsPivots() {

@@ -90,6 +90,8 @@ function ModelDetailPage({
   const hasActions = actions.length > 0;
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
   const hasActionsTab = hasActions || hasActionsEnabled;
+  const supportsNestedQueries =
+    database != null && database.hasFeature("nested-queries");
 
   const mainTable = useMemo(
     () => (model.isStructured() ? model.query().sourceTable() : null),
@@ -177,6 +179,7 @@ function ModelDetailPage({
         tab={tab}
         hasDataPermissions={hasDataPermissions}
         hasActionsTab={hasActionsTab}
+        supportsNestedQueries={supportsNestedQueries}
         onChangeName={handleNameChange}
         onChangeDescription={handleDescriptionChange}
         onChangeCollection={handleCollectionChange}
