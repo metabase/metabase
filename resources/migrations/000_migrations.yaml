@@ -15966,7 +15966,7 @@ databaseChangeLog:
                   user_id,
                   model,
                   model_id,
-                  JSON_MERGE_PRESERVE(
+                  JSON_MERGE(
                       details,
                       JSON_OBJECT('database_id', database_id, 'table_id', table_id)
                   )
