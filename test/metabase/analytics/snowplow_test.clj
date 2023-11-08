@@ -149,11 +149,11 @@
 
       (snowplow/track-event! ::snowplow/database-connection-successful
                              1
-                             {:database :postgres, :database-id 1, :source :admin, :dbms_verrsion "14.1"})
+                             {:database :postgres, :database-id 1, :source :admin, :dbms_version "14.1"})
       (is (= [{:data    {"database" "postgres"
                          "database_id" 1
                          "event" "database_connection_successful"
-                         "dbms_verrsion" "14.1"
+                         "dbms_version" "14.1"
                          "source" "admin"}
                :user-id "1"}]
              (pop-event-data-and-user-id!)))

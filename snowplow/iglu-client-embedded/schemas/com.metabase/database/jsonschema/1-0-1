@@ -1,11 +1,11 @@
 {
-  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-1#",
   "description": "Database connection",
   "self": {
     "vendor": "com.metabase",
     "name": "database",
     "format": "jsonschema",
-    "version": "1-0-0"
+    "version": "1-0-1"
   },
   "type": "object",
   "properties": {
