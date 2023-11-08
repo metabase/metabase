@@ -107,7 +107,7 @@
                                   :table_id [:in (t2/select-pks-set Table :db_id (u/the-id database))])))))))
 
 (deftest mark-inactive-remove-fks-test
-  (testing "when a column is dropped from the DB, sync should wipe foreign key targets"
+  (testing "when a column is dropped from the DB, sync should wipe foreign key targets and their semantic type"
     (is (=? {:before-sync {:semantic_type      :type/FK
                            :fk_target_field_id int?}
              :after-sync  {:semantic_type      nil
