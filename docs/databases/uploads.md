@@ -43,6 +43,16 @@ When people upload a CSV to a collection, Metabase will:
 - Create a table to store that data in the database and schema that the Admin selected to store uploads.
 - Create a [model](../data-modeling/models.md) that wraps the uploaded table, and save that model to the collection the person uploaded the CSV data to.
 
+## Primary key detection or auto-generation of CSV uploads
+
+Metabase will try to detect whether an uploaded CSV file includes an incrementing ID.
+
+When you upload a CSV file, Metabase will check for a column named `id` or `pk` that has integers for each row in the uploaded CSV. Each integer in this column should be unique, so if your CSV includes duplicate ID integers, the column won't work as [an entity key](../data-modeling/field-types.md#list-of-metabase-field-types).
+
+If Metabase doesn't detect a primary key, it will create an ID column for you and include the column as the first (left-most) column of the uploaded CSV table.
+
+You can always delete this auto-generated ID column if you like.
+
 ### Add people to a group with unrestricted data access to the upload schema
 
 In order to upload CSVs, a person must be in a group with Unrestricted access to the schema you've selected to store your uploaded data. Native query editing isn't required for uploading. See [groups](../people-and-groups/managing.md) and [data permissions](../permissions/data.md).
