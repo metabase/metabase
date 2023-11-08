@@ -78,4 +78,24 @@ describe("SettingsEditor", () => {
       ).not.toBeInTheDocument();
     });
   });
+
+  describe("SMTP configuration", () => {
+    it("should be visible with self-hosted email", async () => {
+      await setup({
+        settings: [
+          createMockSettingDefinition({ key: "user-visibility" }),
+          createMockSettingDefinition({ key: "email-configured?" }),
+          createMockSettingDefinition({ key: "is-hosted?" }),
+        ],
+        settingValues: createMockSettings({
+          "user-visibility": "all",
+          "email-configured?": true,
+          "is-hosted?": false,
+        }),
+        initialRoute: EMAIL_URL,
+      });
+
+      expect(screen.getByTestId("smtp-connection-card")).toBeInTheDocument();
+    });
+  });
 });
