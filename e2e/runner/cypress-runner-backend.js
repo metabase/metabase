@@ -28,7 +28,7 @@ const CypressBackend = {
         "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
         "-Duser.timezone=US/Pacific",
         // if you comment this line 👇 you can get (very noisy) backend console logs in the terminal for e2e tests
-        `-Dlog4j.configurationFile=file:${__dirname}/../../frontend/test/__runner__/log4j2.xml`,
+        // `-Dlog4j.configurationFile=file:${__dirname}/../../frontend/test/__runner__/log4j2.xml`,
         "-Dclojure.server.repl={:port,5555,:accept,clojure.core.server/repl}",
       ];
 
