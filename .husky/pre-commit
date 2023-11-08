@@ -2,4 +2,11 @@
 . "$(dirname "$0")/_/husky.sh"
 
 yarn precommit
+
+# Run the linter
+./bin/quick_lint.bb
+
+# Run the formatter
+./bin/cljfmt.sh
+
 ./hooks/pre-commit.nocommit
