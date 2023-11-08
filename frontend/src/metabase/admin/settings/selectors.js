@@ -16,6 +16,8 @@ import { refreshCurrentUser } from "metabase/redux/user";
 
 import { isPersonalCollectionOrChild } from "metabase/collections/utils";
 
+import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
+
 import { updateSetting } from "./settings";
 
 import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
@@ -40,7 +42,7 @@ import ModelCachingScheduleWidget from "./components/widgets/ModelCachingSchedul
 import SectionDivider from "./components/widgets/SectionDivider";
 
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
-import SettingsEmailForm from "./components/SettingsEmailForm";
+import { SettingsEmailForm } from "./components/Email/SettingsEmailForm";
 import SetupCheckList from "./setup/components/SetupCheckList";
 import SlackSettings from "./slack/containers/SlackSettings";
 import {
@@ -200,6 +202,35 @@ export const ADMIN_SETTINGS_SECTIONS = {
     component: SettingsEmailForm,
     settings: [
       {
+        key: "email-from-name",
+        display_name: t`From Name`,
+        placeholder: "Metabase",
+        type: "string",
+        required: false,
+      },
+      {
+        key: "email-from-address",
+        display_name: t`From Address`,
+        placeholder: "metabase@yourcompany.com",
+        type: "string",
+        required: true,
+        validations: [["email", t`That's not a valid email address`]],
+      },
+      {
+        key: "email-reply-to",
+        display_name: t`Reply-To Address`,
+        placeholder: "metabase-replies@yourcompany.com",
+        type: "string",
+        required: false,
+        widget: SettingCommaDelimitedInput,
+        validations: [["email_list", t`That's not a valid email address`]],
+      },
+    ],
+  },
+  "email/smtp": {
+    component: SMTPConnectionForm,
+    settings: [
+      {
         key: "email-smtp-host",
         display_name: t`SMTP Host`,
         placeholder: "smtp.yourservice.com",
@@ -237,30 +268,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
         placeholder: "Shhh...",
         type: "password",
         getHidden: () => MetabaseSettings.isHosted(),
-      },
-      {
-        key: "email-from-name",
-        display_name: t`From Name`,
-        placeholder: "Metabase",
-        type: "string",
-        required: false,
-      },
-      {
-        key: "email-from-address",
-        display_name: t`From Address`,
-        placeholder: "metabase@yourcompany.com",
-        type: "string",
-        required: true,
-        validations: [["email", t`That's not a valid email address`]],
-      },
-      {
-        key: "email-reply-to",
-        display_name: t`Reply-To Address`,
-        placeholder: "metabase-replies@yourcompany.com",
-        type: "string",
-        required: false,
-        widget: SettingCommaDelimitedInput,
-        validations: [["email_list", t`That's not a valid email address`]],
       },
     ],
   },
