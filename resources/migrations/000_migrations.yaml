@@ -15926,6 +15926,7 @@ databaseChangeLog:
             dbms: h2
             path: instance_analytics_views/h2-indexes.sql
             relativeToChangelogFile: true
+      rollback: # not needed
 
   - changeSet:
       id: v48.00-047
