@@ -1247,7 +1247,7 @@
                                                     :model_id    2
                                                     :database_id 1
                                                     :table_id    6
-                                                    :details     "{arbitrary_key: \"arbitrary_value\"}"})]
+                                                    :details     "{\"arbitrary_key\": \"arbitrary_value\"}"})]
          (testing "activity rows are copied into audit_log"
            (is (= 0 (t2/count :model/AuditLog)))
            (is (= 1 (t2/count :model/Activity)))
@@ -1278,7 +1278,7 @@
                                                     :model_id    2
                                                     :database_id 1
                                                     :table_id    6
-                                                    :details     "{arbitrary_key: \"arbitrary_value\"}"})]
+                                                    :details     "{\"arbitrary_key\": \"arbitrary_value\"}"})]
          (testing "activity rows are copied into audit_log"
            (is (= 0 (t2/count :model/AuditLog)))
            (is (= 1 (t2/count :model/Activity)))
