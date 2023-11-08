@@ -15939,6 +15939,57 @@ databaseChangeLog:
             baseTableName: recent_views
             constraintName: fk_recent_views_ref_user_id
 
+  - changeSet:
+      id: v48.00-049
+      author: noahmoss
+      comment: Migrate data from activity to audit_log
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO audit_log (topic, timestamp, user_id, model, model_id, details)
+              SELECT
+                topic,
+                timestamp,
+                user_id,
+                model,
+                model_id,
+                details::jsonb || json_strip_nulls(json_build_object('database_id', database_id, 'table_id', table_id))::jsonb
+              FROM activity;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT INTO audit_log (topic, timestamp, user_id, model, model_id, details)
+              SELECT
+                  topic,
+                  timestamp,
+                  user_id,
+                  model,
+                  model_id,
+                  JSON_MERGE(
+                      details,
+                      JSON_OBJECT('database_id', database_id, 'table_id', table_id)
+                  )
+              FROM activity;
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO audit_log (topic, timestamp, user_id, model, model_id, details)
+              SELECT
+                  topic,
+                  timestamp,
+                  user_id,
+                  model,
+                  model_id,
+                  JSON_OBJECT(
+                    'database_id': database_id,
+                    'table_id': table_id
+                    ABSENT ON NULL
+                  )
+              FROM activity;
+      rollback: # not necessary
+
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
