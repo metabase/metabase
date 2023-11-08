@@ -15,6 +15,11 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { updateDashboard } from "metabase/dashboard/actions/save";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
+  getAllDashboardCardsWithUnmappedParameters,
+  getAutoWiredMappingsForDashcards,
+  getParameterMappings,
+} from "metabase/dashboard/actions/auto-wire-parameters";
+import {
   isParameterValueEmpty,
   PULSE_PARAM_EMPTY,
 } from "metabase-lib/parameters/utils/parameter-values";
@@ -37,10 +42,6 @@ import {
   setMultipleDashCardAttributes,
 } from "./core";
 import { setSidebar, closeSidebar } from "./ui";
-import {
-    getAllDashboardCardsWithUnmappedParameters, getAutoApplyMappingsForDashcards,
-    getParameterMappings
-} from "metabase/dashboard/actions/auto-wire-parameters";
 
 function updateParameter(dispatch, getState, id, parameterUpdater) {
   const dashboard = getDashboard(getState());
@@ -136,7 +137,7 @@ export const setParameterMapping = createThunkAction(
 
         dispatch(
           setMultipleDashCardAttributes({
-            dashcards: getAutoApplyMappingsForDashcards(
+            dashcards: getAutoWiredMappingsForDashcards(
               dashcard,
               dashcardsToAutoApply,
               parameter_id,

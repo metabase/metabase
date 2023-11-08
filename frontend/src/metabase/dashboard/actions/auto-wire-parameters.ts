@@ -35,7 +35,7 @@ export function getAllDashboardCardsWithUnmappedParameters(
   });
 }
 
-export function autoApplyParametersToNewCard({
+export function autoWireParametersToNewCard({
   dashcard_id,
 }: {
   dashcard_id: DashCardId;
@@ -126,7 +126,7 @@ export function getMatchingParameterOption(
   );
 }
 
-export function getAutoApplyMappingsForDashcards(
+export function getAutoWiredMappingsForDashcards(
   sourceDashcard: DashboardCard,
   targetDashcards: DashboardCard[],
   parameter_id: ParameterId,

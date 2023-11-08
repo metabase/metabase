@@ -11,7 +11,7 @@ import {
 import { createCard } from "metabase/lib/card";
 
 import { getVisualizationRaw } from "metabase/visualizations";
-import {autoApplyParametersToNewCard} from "metabase/dashboard/actions/auto-wire-parameters";
+import { autoWireParametersToNewCard } from "metabase/dashboard/actions/auto-wire-parameters";
 import { trackCardCreated } from "../analytics";
 import { getDashCardById } from "../selectors";
 import {
@@ -64,7 +64,7 @@ export const addCardToDashboard =
     dispatch(loadMetadataForDashboard([dashcard]));
 
     dispatch(
-      autoApplyParametersToNewCard({
+      autoWireParametersToNewCard({
         dashboard_id: dashId,
         dashcard_id: dashcardId,
       }),
@@ -223,4 +223,3 @@ export const addActionToDashboard =
       }),
     );
   };
-
