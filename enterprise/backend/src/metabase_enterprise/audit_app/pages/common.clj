@@ -114,9 +114,8 @@
                       e)))))
 
 (mu/defn ^:private reduce-results* :- :some
-  [honeysql-query :- ::qp.schema/query
+  [honeysql-query :- :map
    context        :- ::qp.context/context
-
    rff            :- ::qp.schema/rff
    init]
   (let [driver         (mdb/db-type)

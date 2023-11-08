@@ -441,12 +441,17 @@
       ;; re-run and blend the saved into the new metadata
       (and dataset? (or valid-metadata? (seq original-metadata)))
       (do
-       (log/debug (trs "Querying for metadata and blending model metadata"))
-       (a/go (let [metadata' (if valid-metadata?
-                               (map mbql.normalize/normalize-source-metadata metadata)
-                               original-metadata)
-                   fresh     (a/<! (qp.async/result-metadata-for-query-async query))]
-               (qp.util/combine-metadata fresh metadata'))))
+        (log/debug (trs "Querying for metadata and blending model metadata"))
+        (let [metadata'            (if valid-metadata?
+                                     (map mbql.normalize/normalize-source-metadata metadata)
+                                     original-metadata)
+              result-metadata-chan (qp.async/result-metadata-for-query-async query)]
+          ;; return a channel that combines the results of `result-metadata-chan`, once they come in, with `metadata'`.
+          (a/pipe
+           result-metadata-chan
+           (a/promise-chan
+            (map (fn [result-metadata]
+                   (qp.util/combine-metadata result-metadata metadata')))))))
       :else
       ;; compute fresh
       (do

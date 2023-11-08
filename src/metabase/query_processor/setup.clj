@@ -15,7 +15,8 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [clojure.core.async.impl.dispatch :as a.impl.dispatch]))
 
 (mu/defn ^:private query-type :- [:enum :query :native :internal :mbql/query]
   [query :- ::qp.schema/query]
@@ -180,6 +181,9 @@
   [query :- ::qp.schema/query
    f     :- [:=> [:cat ::qp.schema/query] :any]]
   ;; TODO -- think about whether we should pre-compile this middleware
+  (when (a.impl.dispatch/in-dispatch-thread?)
+    (throw (ex-info "QP calls are not allowed inside core.async dispatch pool threads."
+                    {:type qp.error-type/qp})))
   (let [f (reduce
            (fn [f middleware]
              (middleware f))

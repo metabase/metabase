@@ -75,11 +75,11 @@
                   (Thread/sleep (long sleep))
                   (respond {:cols [{:name "Sleep", :base_type :type/Integer}]} [[sleep]])
                   (catch InterruptedException e
-                    (reset! canceled? true)
+                    (reset! canceled? ::interrupted-exception)
                     (throw e))))]
     (a/go
       (when (a/<! (qp.context/canceled-chan context))
-        (reset! canceled? true)
+        (reset! canceled? ::canceled-chan-message)
         (future-cancel futur)))))
 
 (defmethod driver/connection-properties ::test-driver
@@ -134,20 +134,19 @@
                                                           {:database (mt/id)
                                                            :type     "native"
                                                            :native   {:query {:sleep 5000}}})
-                  futur         (http/post url request identity (fn [e] (throw e)))]
+                  futur         (http/post url (assoc request :async? true) identity (fn [e] (throw e)))]
               (is (future? futur))
               ;; wait a little while for the query to start running -- this should usually happen fairly quickly
               (mt/wait-for-result start-chan (u/seconds->ms 15))
               (future-cancel futur)
               ;; check every 50ms, up to 1000ms, whether `canceled?` is now `true`
-              (is (= true
-                     (loop [[wait & more] (repeat 10 100)]
-                       (or @canceled?
-                           (if wait
-                             (do
-                               (Thread/sleep (long wait))
-                               (recur more))
-                             ::timed-out))))))))))))
+              (is (loop [[wait & more] (repeat 10 100)]
+                    (or @canceled?
+                        (if wait
+                          (do
+                            (Thread/sleep (long wait))
+                            (recur more))
+                          ::timed-out)))))))))))
 
 (def ^:private ^:dynamic *number-of-cans* nil)
 

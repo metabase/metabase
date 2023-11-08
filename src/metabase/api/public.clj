@@ -14,6 +14,7 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
    [metabase.db.util :as mdb.u]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.action :as action]
    [metabase.models.card :as card :refer [Card]]
@@ -23,7 +24,6 @@
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -34,10 +34,12 @@
    [metabase.util :as u]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [schema.core :as s]
    [throttle.core :as throttle]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [metabase.query-processor.context :as qp.context])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -99,16 +101,16 @@
   (validation/check-public-sharing-enabled)
   (card-with-uuid uuid))
 
-(defmulti ^:private transform-results
+(defmulti ^:private transform-qp-result
   "Transform results to be suitable for a public endpoint"
   {:arglists '([results])}
   :status)
 
-(defmethod transform-results :default
+(defmethod transform-qp-result :default
   [x]
   x)
 
-(defmethod transform-results :completed
+(defmethod transform-qp-result :completed
   [results]
   (u/select-nested-keys
    results
@@ -116,7 +118,7 @@
     [:json_query :parameters]
     :status]))
 
-(defmethod transform-results :failed
+(defmethod transform-qp-result :failed
   [{error-type :error_type, :as results}]
   ;; if the query failed instead, unless the error type is specified and is EXPLICITLY allowed to be shown for embeds,
   ;; instead of returning anything about the query just return a generic error message
@@ -125,34 +127,38 @@
    (when-not (qp.error-type/show-in-embeds? error-type)
      {:error (tru "An error occurred while running the query.")})))
 
-(defn public-reducedf
-  "Reducer function for public data"
-  [orig-reducedf]
-  (fn reducedf* [context final-metadata]
-    (orig-reducedf context (transform-results final-metadata))))
+(defn- public-resultf
+  [orig-resultf]
+  (fn resultf [context result]
+    (orig-resultf context (transform-qp-result result))))
 
 (defn- process-query-for-card-with-id-run-fn
   "Create the `:run` function used for [[process-query-for-card-with-id]] and [[process-query-for-dashcard]]."
   [qp export-format]
-  (fn [query info]
-    (qp.streaming/streaming-response [{:keys [rff], {:keys [reducedf], :as context} :context}
-                                      export-format
-                                      (u/slugify (:card-name info))]
-      (let [context (assoc context :reducedf (public-reducedf reducedf))
-            rff'    (fn [metadata]
+  (fn run [query info]
+    (qp.streaming/streaming-response [{:keys [rff context]} export-format (u/slugify (:card-name info))]
+      (let [context (update context :resultf public-resultf)
+            rff'    (fn rff' [metadata]
                       (let [rf (rff metadata)]
-                        ((map transform-results) rf)))]
+                        (fn rf'
+                          ([]
+                           (rf))
+                          ([result]
+                           (transform-qp-result (rf result)))
+                          ([acc row]
+                           (rf acc row)))))]
         (mw.session/as-admin
           (qp (update query :info merge info) rff' context))))))
 
-(defn process-query-for-card-with-id
+(mu/defn process-query-for-card-with-id
   "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`).
   Returns a `StreamingResponse` object that should be returned as the result of an API endpoint."
-  [card-id export-format parameters & {:keys [qp]
-                                       :or   {qp (^:once fn* [query rff context]
-                                                  (qp/process-query (qp/userland-query query) rff context))}
-                                       :as   options}]
-  {:pre [(integer? card-id)]}
+  [card-id :- ::lib.schema.id/card
+   export-format
+   parameters
+   & {:keys [qp]
+      :or   {qp qp.card/process-query-for-card-default-qp}
+      :as   options}]
   ;; run this query with full superuser perms
   ;;
   ;; we actually need to bind the current user perms here twice, once so `card-api` will have the full perms when it
@@ -263,8 +269,7 @@
   Throws a 404 immediately if the Card isn't part of the Dashboard. Returns a `StreamingResponse`."
   {:arglists '([& {:keys [dashboard-id card-id dashcard-id export-format parameters] :as options}])}
   [& {:keys [export-format parameters qp]
-      :or   {qp            (^:once fn* [query rff context]
-                            (qp/process-query (qp/userland-query query) rff context))
+      :or   {qp            qp.card/process-query-for-card-default-qp
              export-format :api}
       :as   options}]
   (let [options (merge

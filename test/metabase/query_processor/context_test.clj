@@ -11,7 +11,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- process-query* [context]
-  (qp.context/runf context {} (constantly conj)))
+  (qp.context/runf context {:type :query} (constantly conj)))
 
 (defn- async-context-with-timeout [timeout]
   (qp.context/async-context

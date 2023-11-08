@@ -78,6 +78,8 @@
   The implementation of [[executef]] should call `respond` with this information once it is available. The result of
   this function is ignored.")
 
+  ;; TODO -- not sure why we need [[reducef]] and [[reducedf]], can't anything that happens there be done in the `rff`?
+
   (reducef [context rff metadata reducible-rows]
     "Called by [[runf]] (inside the `respond` callback provided by it) to reduce results of query. [[reducedf]] is called
   with the reduced results. The actual output of this function is ignored, but the entire result set must be reduced
@@ -265,17 +267,17 @@
     (let [rf              (try
                             (rff metadata)
                             (catch Throwable e
-                              (raisef (ex-info (i18n/tru "Error building query results reducing function: {0}" (ex-message e))
+                              (raisef context
+                                      (ex-info (i18n/tru "Error building query results reducing function: {0}" (ex-message e))
                                                {:type qp.error-type/qp}
-                                               e)
-                                      context)))
+                                               e))))
           [status result] (try
                             [::success (transduce identity rf reducible-rows)]
                             (catch Throwable e
-                              [::error (raisef (ex-info (i18n/tru "Error reducing result rows: {0}" (ex-message e))
+                              [::error (raisef context
+                                               (ex-info (i18n/tru "Error reducing result rows: {0}" (ex-message e))
                                                         {:type qp.error-type/qp}
-                                                        e)
-                                               context)]))]
+                                                        e))]))]
       (case status
         ::success (reducedf context result)
         ::error   result))))

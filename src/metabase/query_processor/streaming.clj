@@ -164,6 +164,14 @@
                    {:canceled-chan canceled-chan})))
       :rff     (streaming-rff results-writer)})))
 
+(defn- await-async-result [out-chan canceled-chan]
+  ;; if we get a cancel message, close `out-chan` so the query will be canceled
+  (a/go
+    (when (a/<! canceled-chan)
+      (a/close! out-chan)))
+  ;; block until `out-chan` closes or gets a result
+  (a/<!! out-chan))
+
 (defn -streaming-response
   "Impl for [[streaming-response]]."
   ^StreamingResponse [export-format filename-prefix f]
@@ -173,18 +181,21 @@
                                   (f {:rff rff, :context context})
                                   (catch Throwable e
                                     e))
+          result (if (instance? ManyToManyChannel result)
+                   (await-async-result result canceled-chan)
+                   result)
           ;; NOCOMMIT FIXME
-          result (if-not (instance? ManyToManyChannel result)
-                   result
-                   (do
-                     (log/warn (u/colorize :red (format "WARNING: STREAMING CONTEXT SHOULD BE A SYNCHRONOUS CONTEXT! GOT %s" result)))
-                     (let [[port val] (a/alts!! [result (a/timeout (qp.context/timeout context))])]
-                       (if (= port result)
-                         val
-                         (do
-                           (a/close! result)
-                           (ex-info (format "TIMED OUT AFTER %s" (u/format-milliseconds (qp.context/timeout context)))
-                                    {:type qp.error-type/timed-out}))))))]
+          #_result #_(if-not (instance? ManyToManyChannel result)
+                       result
+                       (do
+                         #_(log/warn (u/colorize :red (format "WARNING: STREAMING CONTEXT SHOULD BE A SYNCHRONOUS CONTEXT! GOT %s" result)))
+                         (let [[port val] (a/alts!! [result (a/timeout (qp.context/timeout context))])]
+                           (if (= port result)
+                             val
+                             (do
+                               (a/close! result)
+                               (ex-info (format "TIMED OUT AFTER %s" (u/format-milliseconds (qp.context/timeout context)))
+                                        {:type qp.error-type/timed-out}))))))]
       (when (or (instance? Throwable result)
                 (= (:status result) :failed))
         (streaming-response/write-error! os result)))))
@@ -204,7 +215,7 @@
   cancelations properly."
   {:style/indent 1}
   [[map-binding export-format filename-prefix] & body]
-  `(-streaming-response ~export-format ~filename-prefix (bound-fn [~map-binding] ~@body)))
+  `(-streaming-response ~export-format ~filename-prefix (bound-fn ~'streaming-response-body [~map-binding] ~@body)))
 
 (defn export-formats
   "Set of valid streaming response formats. Currently, `:json`, `:csv`, `:xlsx`, and `:api` (normal JSON API results

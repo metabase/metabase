@@ -63,7 +63,8 @@
    (catch-exceptions run query nil))
 
   ([run query context]
-   (let [metadata {}
+   (let [query    (merge {:type :query} query)
+         metadata {}
          rows     []
          context  (merge
                    (or context (qp.context/sync-context))

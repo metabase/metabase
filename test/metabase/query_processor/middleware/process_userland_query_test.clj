@@ -58,7 +58,7 @@
        (qp query qp.reducible/default-rff context)))))
 
 (deftest success-test
-  (let [query {:query {:type ::success-test}}]
+  (let [query {:type ::success-test}]
     (with-query-execution [qe query]
       (is (= #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
              (t/zoned-date-time))
@@ -74,7 +74,7 @@
                :running_time           int?}
               (process-userland-query query))
           "Result should have query execution info")
-      (is (=? {:hash         "29f0bca06d6679e873b1f5a3a36dac18a5b4642c6545d24456ad34b1cad4ecc6"
+      (is (=? {:hash         "310be80813db561159a218a09fa84afb4bec04ae1f9e1a1d036c944dabcdbdb0"
                :database_id  nil
                :result_rows  0
                :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
@@ -92,7 +92,7 @@
           "QueryExecution should be saved"))))
 
 (deftest failure-test
-  (let [query {:query {:type ::failure-test}}]
+  (let [query {:type ::failure-test}]
     (with-query-execution [qe query]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
@@ -101,7 +101,7 @@
                                           {:runf (fn [context _query _rff]
                                                    (qp.context/raisef context
                                                                       (ex-info "Oops!" {:type qp.error-type/qp})))}))))
-      (is (=? {:hash         "d673f355de41679623bfcbda4923d29c1ca64aec6314d79de0369bea2ac246d1"
+      (is (=? {:hash         "8d5080dfc63b7f1c46537cf9ec915a4353b2aa9ca6069c6d5db56e087f027209"
                :database_id  nil
                :error        "Oops!"
                :result_rows  0
@@ -130,7 +130,7 @@
 (deftest ^:parallel viewlog-call-test
   (testing "no viewlog event with nil card id"
     (binding [*viewlog-call-count* (atom 0)]
-      (process-userland-query {:query? true})
+      (process-userland-query {:type :query, :query? true})
       (is (zero? @*viewlog-call-count*)))))
 
 ;;; ViewLog recording is triggered indirectly by the call to [[metabase.events/publish-event!]] with the
@@ -185,7 +185,7 @@
         (future
           (let [status   (atom ::not-started)
                 out-chan (process-userland-query
-                          {}
+                          {:type :query}
                           (qp.context/async-context
                            {:canceled-chan canceled-chan
                             :reducef       (fn [context _rff _metadata rows]

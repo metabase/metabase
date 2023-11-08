@@ -30,6 +30,7 @@
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.pulse.parameters :as params]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.util :as u]
@@ -269,8 +270,7 @@
   [& {:keys [dashboard-id dashcard-id card-id export-format embedding-params token-params
              query-params constraints qp]
       :or   {constraints (qp.constraints/default-query-constraints)
-             qp          (^:once fn* [query rff context]
-                          (qp/process-query (qp/userland-query query) rff context))}}]
+             qp          qp.card/process-query-for-card-default-qp}}]
   {:pre [(integer? dashboard-id) (integer? dashcard-id) (integer? card-id) (u/maybe? map? embedding-params)
          (map? token-params) (map? query-params)]}
   (let [slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
@@ -379,7 +379,7 @@
     (check-embedding-enabled-for-dashboard (embed/get-in-unsigned-token-or-throw unsigned [:resource :dashboard]))
     (dashboard-for-unsigned-token unsigned, :constraints [:enable_embedding true])))
 
-(defn- dashcard-results-for-signed-token-async
+(defn- process-query-for-dashcard-with-signed-token
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
    `embedding-secret-key`.
 
@@ -416,7 +416,7 @@
   [token dashcard-id card-id & query-params]
   {dashcard-id ms/PositiveInt
    card-id     ms/PositiveInt}
-  (dashcard-results-for-signed-token-async token dashcard-id card-id :api query-params))
+  (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api query-params))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -506,7 +506,7 @@
   {dashcard-id   ms/PositiveInt
    card-id       ms/PositiveInt
    export-format (into [:enum] api.dataset/export-formats)}
-  (dashcard-results-for-signed-token-async token
+  (process-query-for-dashcard-with-signed-token token
     dashcard-id
     card-id
     export-format
@@ -674,6 +674,6 @@
   [token dashcard-id card-id & query-params]
   {dashcard-id ms/PositiveInt
    card-id ms/PositiveInt}
-  (dashcard-results-for-signed-token-async token dashcard-id card-id :api query-params :qp qp.pivot/run-pivot-query))
+  (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api query-params :qp qp.pivot/run-pivot-query))
 
 (api/define-routes)

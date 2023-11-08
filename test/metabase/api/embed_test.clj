@@ -104,7 +104,7 @@
        ~@body)))
 
 (defn ^:deprecated test-query-results
-  "DEPRECATED -- you should use `schema=` instead"
+  "DEPRECATED -- you should use `malli=` or `=?` instead"
   ([actual]
    (is (=? {:data       {:cols             [(mt/obj->json->obj (qp.test-util/aggregate-col :count))]
                          :rows             [[100]]
@@ -296,14 +296,18 @@
 (deftest card-query-test
   (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
     (mt/with-ensure-with-temp-no-transaction!
-      (do-response-formats [response-format request-options]
+      (do-response-formats [response-format _request-options]
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
           (mt/with-temporary-setting-values [enable-embedding false]
             (with-new-secret-key
               (with-temp-card [card]
                 (is (= "Embedding is not enabled."
-                       (client/real-client :get 400 (card-query-url card response-format))))))))
+                       (client/real-client :get 400 (card-query-url card response-format))))))))))))
 
+(deftest card-query-test-2
+  (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
+    (mt/with-ensure-with-temp-no-transaction!
+      (do-response-formats [response-format request-options]
         (with-embedding-enabled-and-new-secret-key
           (let [expected-status (response-format->status-code response-format)]
             (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
@@ -312,9 +316,15 @@
                 (test-query-results
                  response-format
                  (client/real-client :get expected-status (card-query-url card response-format)
-                                     {:request-options request-options}))))
+                                     {:request-options request-options}))))))))))
 
-            (testing (str "...but if the card has an invalid query we should just get a generic \"query failed\" "
+(deftest card-query-test-3
+  (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
+    (mt/with-ensure-with-temp-no-transaction!
+      (do-response-formats [response-format _request-options]
+        (with-embedding-enabled-and-new-secret-key
+          (let [expected-status (response-format->status-code response-format)]
+            (testing (str "If the card has an invalid query we should just get a generic \"query failed\" "
                           "exception (rather than leaking query info)")
               (with-temp-card [card {:enable_embedding true, :dataset_query {:database (mt/id)
                                                                              :type     :native
@@ -322,13 +332,23 @@
                 (is (= {:status     "failed"
                         :error      "An error occurred while running the query."
                         :error_type "invalid-query"}
-                       (client/real-client :get expected-status (card-query-url card response-format)))))))
+                       (client/real-client :get expected-status (card-query-url card response-format))))))))))))
 
+(deftest card-query-test-4
+  (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
+    (mt/with-ensure-with-temp-no-transaction!
+      (do-response-formats [response-format _request-options]
+        (with-embedding-enabled-and-new-secret-key
           (testing "check that if embedding *is* enabled globally but not for the Card the request fails"
             (with-temp-card [card]
               (is (= "Embedding is not enabled for this object."
-                     (client/real-client :get 400 (card-query-url card response-format))))))
+                     (client/real-client :get 400 (card-query-url card response-format)))))))))))
 
+(deftest card-query-test-5
+  (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
+    (mt/with-ensure-with-temp-no-transaction!
+      (do-response-formats [response-format _request-options]
+        (with-embedding-enabled-and-new-secret-key
           (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are "
                         "signed with the wrong key")
             (with-temp-card [card {:enable_embedding true}]
