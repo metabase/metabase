@@ -1,5 +1,6 @@
 (ns metabase.query-processor.execute
   (:require
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.cache :as cache]
@@ -10,6 +11,12 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
+(defn- add-native-form-to-result-metadata [qp]
+  (fn [query rff context]
+    (letfn [(rff* [metadata]
+              (rff (assoc metadata :native_form (:native query))))]
+      (qp query rff* context))))
+
 (def ^:private middleware
   "Middleware that happens after compilation, AROUND query execution itself. Has the form
 
@@ -18,7 +25,8 @@
   e.g.
 
     (f (f query rff context)) -> (f query rff context)"
-  [#'cache/maybe-return-cached-results
+  [#'add-native-form-to-result-metadata
+   #'cache/maybe-return-cached-results
    #'qp.perms/check-query-permissions
    #'qp.middleware.enterprise/check-download-permissions-middleware
    #'qp.middleware.enterprise/maybe-apply-column-level-perms-check-middleware])
@@ -45,6 +53,7 @@
   will block and return reduced results, while an async context will return a core.async promise channel immediately
   that can be polled for the reduced results."
   [compiled-query :- [:map
+                      [:database ::lib.schema.id/database]
                       [:native :map]]
    rff            :- ::qp.context/rff
    context        :- ::qp.context/context]

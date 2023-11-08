@@ -43,13 +43,13 @@
               "ROW 3 -> [3 \"The Apple Pan\" 11 34.0406 -118.428 2]"]
              output)))))
 
-(defn print-rows-to-writer-rff-and-context [filename]
+(defn- print-rows-to-writer-rff-and-context [filename]
   (letfn [(reducef* [rff context metadata reducible-rows]
             (with-open [w (io/writer filename)]
               (binding [*out* w]
                 (#'qp.context/default-reducef rff context metadata reducible-rows))))]
     {:rff     print-rows-rff
-     :context {:reducef reducef*}}))
+     :context (qp.context/sync-context {:reducef reducef*})}))
 
 (deftest ^:parallel write-rows-to-file-test
   (mt/with-temp-file [filename]

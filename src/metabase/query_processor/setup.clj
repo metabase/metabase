@@ -76,7 +76,6 @@
 (mu/defn ^:private resolve-database-id :- ::lib.schema.id/database
   [query :- :map]
   (let [database-id (get-normalized query :database)]
-
     (cond
       (pos-int? database-id)
       database-id
@@ -89,7 +88,8 @@
                       {:query query, :type qp.error-type/invalid-query})))))
 
 (defn- do-with-resolved-database [f]
-  (fn [query]
+  (mu/fn
+    [query :- :map]
     (let [query       (set/rename-keys query {"database" :database})
           database-id (resolve-database-id query)
           query       (assoc query :database database-id)]

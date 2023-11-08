@@ -317,7 +317,8 @@
 
 (mu/defn ^:private make-canceled-chan :- async.u/PromiseChan
   [context]
-  (let [chan (a/promise-chan)]
+  (let [chan    (a/promise-chan)
+        context (assoc context :canceled-chan chan)]
     (a/go
       (when (a/<! chan)
         (a/close! chan)

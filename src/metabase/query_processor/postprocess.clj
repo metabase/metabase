@@ -1,6 +1,7 @@
 (ns metabase.query-processor.postprocess
   (:require
    [metabase.config :as config]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
@@ -57,7 +58,8 @@
 
 (mu/defn post-processing-rff :- fn?
   "Apply post-processing middleware to `rff`. Returns an rff."
-  [preprocessed-query :- :map
+  [preprocessed-query :- [:map
+                          [:database ::lib.schema.id/database]]
    rff                :- fn?]
   (qp.setup/with-qp-setup [preprocessed-query preprocessed-query]
     (try

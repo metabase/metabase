@@ -157,7 +157,7 @@
       (qp query rff context)
       (let [extra-info (delay
                          {:native       (u/ignore-exceptions
-                                          (:native ((requiring-resolve 'metabase.query-processor.compile/compile) query)))
+                                          ((requiring-resolve 'metabase.query-processor.compile/compile) query))
                           :preprocessed (u/ignore-exceptions
                                           ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query))})]
         (letfn [(raisef* [e context]

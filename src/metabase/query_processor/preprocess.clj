@@ -1,5 +1,6 @@
 (ns metabase.query-processor.preprocess
   (:require
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.add-default-temporal-unit :as qp.add-default-temporal-unit]
    [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
@@ -85,7 +86,8 @@
    #'qp.middleware.enterprise/apply-download-limit
    #'check-features/check-features])
 
-(mu/defn preprocess :- :map
+(mu/defn preprocess :- [:map
+                        [:database ::lib.schema.id/database]]
   "Fully preprocess a query, but do not compile it to a native query or execute it."
   [query :- :map]
   (qp.setup/with-qp-setup [query query]

@@ -410,10 +410,13 @@
                                             ::add/source-alias  "COOL.double_price"
                                             ::add/desired-alias "COOL.COOL.double_price"
                                             ::add/position      0}]]
-                         {:aggregation [[:aggregation-options [:count] {:name               "COOL.count"
+                         ;; this is escaped once during preprocessing by
+                         ;; the [[metabase.query-processor.middleware.pre-alias-aggregations]] middleware and then once
+                         ;; more when we call [[metabase.query-processor.util.add-alias-info/add-alias-info]]
+                         {:aggregation [[:aggregation-options [:count] {:name               "COOL.COOL.count"
                                                                         ::add/position      1
-                                                                        ::add/source-alias  "count"
-                                                                        ::add/desired-alias "COOL.count"}]]
+                                                                        ::add/source-alias  "COOL.count"
+                                                                        ::add/desired-alias "COOL.COOL.count"}]]
                           :breakout    [double-price]
                           :order-by    [[:asc double-price]]})))
                     (-> (lib.tu.macros/mbql-query venues
@@ -489,7 +492,7 @@
       (is (query= (lib.tu.macros/$ids nil
                     {:source-query {:source-table $$orders
                                     :joins        [{:source-table $$products
-                                                    :alias        "Products Renamed"
+                                                    :alias        "Products_Renamed"
                                                     :condition
                                                     [:=
                                                      [:field
@@ -501,16 +504,16 @@
                                                       {::add/desired-alias "Products_Renamed__ID"
                                                        ::add/position      0
                                                        ::add/source-alias  "ID"
-                                                       ::add/source-table  "Products Renamed"
-                                                       :join-alias         "Products Renamed"}]]
+                                                       ::add/source-table  "Products_Renamed"
+                                                       :join-alias         "Products_Renamed"}]]
                                                     :fields
                                                     [[:field
                                                       %products.id
                                                       {::add/desired-alias "Products_Renamed__ID"
                                                        ::add/position      0
                                                        ::add/source-alias  "ID"
-                                                       ::add/source-table  "Products Renamed"
-                                                       :join-alias         "Products Renamed"}]]
+                                                       ::add/source-table  "Products_Renamed"
+                                                       :join-alias         "Products_Renamed"}]]
                                                     :strategy     :left-join}]
                                     :expressions  {"CC" [:+ 1 1]}
                                     :fields
@@ -519,16 +522,16 @@
                                       {::add/desired-alias "Products_Renamed__ID"
                                        ::add/position      0
                                        ::add/source-alias  "ID"
-                                       ::add/source-table  "Products Renamed"
-                                       :join-alias         "Products Renamed"}]
+                                       ::add/source-table  "Products_Renamed"
+                                       :join-alias         "Products_Renamed"}]
                                      [:expression "CC" {::add/desired-alias "CC", ::add/position 1}]]
                                     :filter
                                     [:=
                                      [:field
                                       %products.category
                                       {::add/source-alias "CATEGORY"
-                                       ::add/source-table  "Products Renamed"
-                                       :join-alias        "Products Renamed"}]
+                                       ::add/source-table  "Products_Renamed"
+                                       :join-alias        "Products_Renamed"}]
                                      [:value
                                       "Doohickey"
                                       {:base_type         :type/Text
@@ -543,7 +546,7 @@
                                       ::add/position      0
                                       ::add/source-alias  "Products_Renamed__ID"
                                       ::add/source-table  ::add/source
-                                      :join-alias         "Products Renamed"}]
+                                      :join-alias         "Products_Renamed"}]
                                     [:field
                                      "CC"
                                      {::add/desired-alias "CC"

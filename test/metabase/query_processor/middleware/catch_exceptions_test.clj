@@ -1,4 +1,5 @@
 (ns metabase.query-processor.middleware.catch-exceptions-test
+  "There are additional tests in [[metabase.query-processor-test.failure-test]]."
   (:require
    [clojure.test :refer :all]
    [metabase.async.util :as async.u]

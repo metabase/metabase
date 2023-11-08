@@ -61,7 +61,7 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.malli :as mu]))
 
-(defn prefix-field-alias
+(defn- prefix-field-alias
   "Generate a field alias by applying `prefix` to `field-alias`. This is used for automatically-generated aliases for
   columns that are the result of joins."
   [prefix field-alias]

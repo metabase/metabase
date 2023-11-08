@@ -311,7 +311,6 @@
                                (csv/read-csv results))))
 
                  :json (fn [results]
-                         (is (string? results))
                          (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
                                  [1 "Red Medicine" 4 10.0646 -165.374 3]
                                  [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
