@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import { t } from "ttag";
 
 import { Box, Flex, Text, TimeInput } from "metabase/ui";
@@ -74,8 +75,18 @@ export function TimeFilterPicker({
     );
   };
 
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    handleFilterChange();
+  };
+
   return (
-    <Box maw={MAX_WIDTH} data-testid="time-filter-picker">
+    <Box
+      component="form"
+      maw={MAX_WIDTH}
+      data-testid="time-filter-picker"
+      onSubmit={handleSubmit}
+    >
       <Header columnName={columnName} onBack={onBack}>
         <FilterOperatorPicker
           value={operatorName}
@@ -93,11 +104,7 @@ export function TimeFilterPicker({
             />
           </Flex>
         )}
-        <Footer
-          isNew={isNew}
-          canSubmit={isValid}
-          onSubmit={handleFilterChange}
-        />
+        <Footer isNew={isNew} canSubmit={isValid} />
       </Box>
     </Box>
   );

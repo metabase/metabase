@@ -8,14 +8,13 @@ interface FooterProps {
   isNew: boolean;
   canSubmit: boolean;
   children?: ReactNode;
-  onSubmit: () => void;
 }
 
-export function Footer({ isNew, canSubmit, children, onSubmit }: FooterProps) {
+export function Footer({ isNew, canSubmit, children }: FooterProps) {
   return (
     <FilterFooterRoot>
       {isValidElement(children) ? children : <Box />}
-      <Button variant="filled" disabled={!canSubmit} onClick={onSubmit}>
+      <Button type="submit" variant="filled" disabled={!canSubmit}>
         {isNew ? t`Add filter` : t`Update filter`}
       </Button>
     </FilterFooterRoot>

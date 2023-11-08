@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import { t } from "ttag";
 import { Icon } from "metabase/core/components/Icon";
 import { Box, Button, Radio, Stack } from "metabase/ui";
@@ -43,12 +44,13 @@ export function BooleanFilterPicker({
     setOptionType(type as OptionType);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
     onChange(getFilterClause(column, optionType));
   };
 
   return (
-    <Box data-testid="boolean-filter-picker">
+    <form data-testid="boolean-filter-picker" onSubmit={handleSubmit}>
       <Header columnName={columnName} onBack={onBack} />
       <Box>
         <Radio.Group value={optionType} onChange={handleOptionChange}>
@@ -75,8 +77,8 @@ export function BooleanFilterPicker({
             {t`More options`}
           </Button>
         )}
-        <Footer isNew={isNew} canSubmit onSubmit={handleSubmit} />
+        <Footer isNew={isNew} canSubmit />
       </Box>
-    </Box>
+    </form>
   );
 }
