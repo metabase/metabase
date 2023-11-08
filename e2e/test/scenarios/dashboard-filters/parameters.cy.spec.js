@@ -10,6 +10,8 @@ import {
   saveDashboard,
   updateDashboardCards,
   visitDashboardAndCreateTab,
+  goToTab,
+  createNewTab,
 } from "e2e/support/helpers";
 import {
   ORDERS_DASHBOARD_ID,
@@ -772,21 +774,14 @@ describe("scenarios > dashboard > parameters", () => {
           cy.findByText("Is").click();
         });
 
-        cy.findByTestId("dashboard-header").icon("add").click();
-
-        cy.findByTestId("add-card-sidebar").findByText("Orders Model").click();
-        cy.findByTestId("edit-dashboard-parameters-widget-container")
-          .findByText("Text")
-          .click();
+        addCardToDashboard();
+        goToFilterMapping();
 
         selectDashboardFilter(getDashboardCard(0), "Name");
 
         getDashboardCard(0).findByText("User.Name").should("exist");
 
-        cy.findByRole("tablist")
-          .findAllByTestId("tab-button-input-wrapper")
-          .first()
-          .click();
+        goToTab("Tab 1");
 
         for (let i = 0; i < cards.length; i++) {
           getDashboardCard(i).findByText("User.Name").should("exist");
@@ -832,13 +827,8 @@ describe("scenarios > dashboard > parameters", () => {
           getDashboardCard(i).findByText("User.Name").should("exist");
         }
 
-        cy.findByTestId("dashboard-header").icon("add").click();
-
-        cy.findByTestId("add-card-sidebar").findByText("Orders Model").click();
-
-        cy.findByTestId("edit-dashboard-parameters-widget-container")
-          .findByText("Text")
-          .click();
+        addCardToDashboard();
+        goToFilterMapping();
 
         for (let i = 0; i < cards.length + 1; i++) {
           getDashboardCard(i).findByText("User.Name").should("exist");
@@ -881,13 +871,9 @@ describe("scenarios > dashboard > parameters", () => {
           getDashboardCard(i).findByText("User.Name").should("exist");
         }
 
-        cy.findByRole("tablist").icon("add").click();
-        cy.findByTestId("dashboard-header").icon("add").click();
-
-        cy.findByTestId("add-card-sidebar").findByText("Orders Model").click();
-        cy.findByTestId("edit-dashboard-parameters-widget-container")
-          .findByText("Text")
-          .click();
+        createNewTab();
+        addCardToDashboard();
+        goToFilterMapping();
 
         getDashboardCard(0).findByText("User.Name").should("exist");
       });
@@ -912,4 +898,15 @@ function createDashboardWithCards(cards) {
 
     cy.wrap(id).as("dashboardId");
   });
+}
+
+function addCardToDashboard(name = "Orders Model") {
+  cy.findByTestId("dashboard-header").icon("add").click();
+  cy.findByTestId("add-card-sidebar").findByText("Orders Model").click();
+}
+
+function goToFilterMapping(name = "Text") {
+  cy.findByTestId("edit-dashboard-parameters-widget-container")
+    .findByText("Text")
+    .click();
 }
