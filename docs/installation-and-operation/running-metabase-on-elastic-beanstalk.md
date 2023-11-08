@@ -66,3 +66,14 @@ Return to RDS and select the **Snapshots** option on the left of the page. You s
 Select that snapshot and click on **Actions** > **Restore Snapshot**.
 
 From this step on, you can follow the same steps as the [Configuring RDS for Metabase](./creating-RDS-database-on-AWS.md). 
+
+## Upgrade your Elastic Beanstalk deployment
+
+If you want to stay in Elastic Beanstalk, you can keep upgrading it by following these steps:
+
+1. Download the [last published Beanstalk artifact file](https://downloads.metabase.com/v0.47.2/metabase-aws-eb.zip).
+2. Unzip the file.
+3. Edit the Dockerrun.aws.json file and change the image tag to the latest available version. (Avoid using `:latest`. Instead, use the latest version number.
+4. Compress the file.
+5. Upload the file to AWS as a new Beanstalk version.
+6. Upgrade your environment.
