@@ -1301,7 +1301,7 @@
 
 (deftest audit-v2-downgrade-test
   (testing "Migration v48.00-050"
-    (impl/test-migrations "v48.00-047" [migrate!]
+    (impl/test-migrations "v48.00-050" [migrate!]
       (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
             _db-audit-id (first (t2/insert-returning-pks! (t2/table-name :model/Database)
                                                           {:name       "Audit DB"
@@ -1320,16 +1320,20 @@
             _coll-normal-id (first (t2/insert-returning-pks! (t2/table-name :model/Collection)
                                                              {:name       "Normal Collection"
                                                               :type       nil
-                                                              :slug       "normal_collection"}))]
+                                                              :slug       "normal_collection"}))
+            original-db (t2/query {:datasource data-source} "SELECT * FROM metabase_database")
+            original-collections (t2/query {:datasource data-source}    "SELECT * FROM collection")]
         ;; Verify that data is inserted correctly
-        (is (= 2 (count (t2/query "SELECT * FROM metabase_database"))))
-        (is (= 2 (count (t2/query "SELECT * FROM collection"))))
+        (is (= 2 (count original-db)))
+        (is (= 2 (count original-collections)))
 
         (migrate!) ;; no-op forward migration
 
         ;; Verify that forward migration did not change data
-        (is (= 2 (count (t2/query "SELECT * FROM metabase_database"))))
-        (is (= 2 (count (t2/query "SELECT * FROM collection"))))
+        (is (partial= (set (map :name original-db))
+                      (set (map :name (t2/query {:datasource data-source} "SELECT name FROM metabase_database")))))
+        (is (partial= (set (map :name original-collections))
+                      (set (map :name (t2/query {:datasource data-source} "SELECT name FROM collection")))))
 
         (db.setup/migrate! db-type data-source :down 47)
 
