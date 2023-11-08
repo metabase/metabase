@@ -3791,3 +3791,53 @@
                                       (mt/user-http-request :rasta :post 403 execute-path
                                                             {:parameters {"id" 1}}))
                             "Data permissions should be required")))))))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                GET /api/dashboard/:id/params/:param-key/values                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest param-values-no-field-ids-test
+  (testing "Ensure param value lookup works for values where field ids are not provided, but field refs are."
+    ;; This is a common case for nested queries
+    (mt/dataset sample-dataset
+      (mt/with-temp-copy-of-db
+        (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+        (perms/grant-permissions! (perms-group/all-users) (perms/table-read-path (mt/id :people)))
+        (let [query (mt/native-query {:query "select * from people"})]
+          (mt/with-temp [Dashboard {dashboard-id :id} {:name       "Test Dashboard"
+                                                       :parameters [{:name      "User Source"
+                                                                     :slug      "user_source"
+                                                                     :id        "_USER_SOURCE_"
+                                                                     :type      :string/=
+                                                                     :sectionId "string"}
+                                                                    {:name      "City is not"
+                                                                     :slug      "city_name"
+                                                                     :id        "_CITY_IS_NOT_"
+                                                                     :type      :string/!=
+                                                                     :sectionId "string"}]}
+                         Card {native-card-id :id} (mt/card-with-source-metadata-for-query query)
+                         Card {final-card-id :id} {:dataset_query {:query    {:source-table (str "card__" native-card-id)}
+                                                                   :type     :query
+                                                                   :database (mt/id)}}
+                         DashboardCard {_ :id} {:dashboard_id       dashboard-id
+                                                :card_id            final-card-id
+                                                :parameter_mappings [{:card_id      final-card-id
+                                                                      :parameter_id "_USER_SOURCE_"
+                                                                      :target       [:dimension
+                                                                                     [:field "SOURCE" {:base-type :type/Text}]]}
+                                                                     {:card_id      final-card-id
+                                                                      :parameter_id "_CITY_IS_NOT_"
+                                                                      :target       [:dimension
+                                                                                     [:field "CITY" {:base-type :type/Text}]]}]}]
+            (let [param    "_USER_SOURCE_"
+                  url      (str "dashboard/" dashboard-id "/params/" param "/values")
+                  response (mt/user-http-request :rasta :get 200 url)]
+              (is (= {:values          [["Affiliate"] ["Facebook"] ["Google"] ["Organic"] ["Twitter"]]
+                      :has_more_values false}
+                     response)))
+            (let [param    "_CITY_IS_NOT_"
+                  url      (str "dashboard/" dashboard-id "/params/" param "/values")
+                  response (mt/user-http-request :rasta :get 200 url)]
+              (is (= {:values          [["Abbeville"] ["Aberdeen"] ["Abilene"] ["Abiquiu"] ["Ackworth"]]
+                      :has_more_values true}
+                     (update response :values (partial take 5)))))))))))
