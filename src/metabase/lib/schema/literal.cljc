@@ -1,12 +1,13 @@
 (ns metabase.lib.schema.literal
   "Malli schemas for string, temporal, number, and boolean literals."
   (:require
+   #?@(:clj ([metabase.lib.schema.literal.jvm]))
    [malli.core :as mc]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
-   [metabase.util.malli.registry :as mr]
-   #?@(:clj ([metabase.lib.schema.literal.jvm]))))
+   [metabase.shared.util.internal.time-common :as shared.ut.common]
+   [metabase.util.malli.registry :as mr]))
 
 (defmethod expression/type-of-method :dispatch-type/nil
   [_nil]
@@ -51,85 +52,33 @@
 
 ;;; TODO -- these temporal literals could be a little stricter, right now they are pretty permissive, you shouldn't be
 ;;; allowed to have month `13` or `02-29` for example
-
-(def ^:private year-part
-  "\\d{4}")
-
-(def ^:private month-part
-  "\\d{2}")
-
-(def ^:private day-part
-  "\\d{2}")
-
-(def ^:private date-part
-  (str year-part \- month-part \- day-part))
-
-(def ^:private hour-part
-  "\\d{2}")
-
-(def ^:private minutes-part
-  "\\d{2}")
-
-(defn- optional [& parts]
-  (str "(?:" (apply str parts) ")?"))
-
-(def ^:private seconds-milliseconds-part
-  (str ":\\d{2}" (optional "\\.\\d{1,6}")))
-
-(def ^:private time-part
-  (str hour-part \: minutes-part (optional seconds-milliseconds-part)))
-
-(def ^:private date-time-part
-  (str date-part \T time-part))
-
-(def ^:private offset-part
-  (str "(?:Z|(?:[+-]" time-part "))"))
-
-(def ^:private zone-offset-part-regex
-  (re-pattern (str "(?:Z|(?:[+-]" time-part "))")))
-
-(def ^:private ^:const local-date-regex
-  (re-pattern (str \^ date-part \$)))
-
-(def ^:private ^:const local-time-regex
-  (re-pattern (str \^ time-part \$)))
-
-(def ^:private ^:const offset-time-regex
-  (re-pattern (str \^ time-part offset-part \$)))
-
-(def ^:private ^:const local-datetime-regex
-  (re-pattern (str \^ date-time-part \$)))
-
-(def ^:private ^:const offset-datetime-regex
-  (re-pattern (str \^ date-time-part offset-part \$)))
-
 (mr/def ::string.date
   [:re
    {:error/message "date string literal"}
-   local-date-regex])
+   shared.ut.common/local-date-regex])
 
 (mr/def ::string.zone-offset
   [:re
    {:error/message "timezone offset string literal"}
-   zone-offset-part-regex])
+   shared.ut.common/zone-offset-part-regex])
 
 (mr/def ::string.time
   [:or
    [:re
     {:error/message "local time string literal"}
-    local-time-regex]
+    shared.ut.common/local-time-regex]
    [:re
     {:error/message "offset time string literal"}
-    offset-time-regex]])
+    shared.ut.common/offset-time-regex]])
 
 (mr/def ::string.datetime
   [:or
    [:re
     {:error/message "local date time string literal"}
-    local-datetime-regex]
+    shared.ut.common/local-datetime-regex]
    [:re
     {:error/message "offset date time string literal"}
-    offset-datetime-regex]])
+    shared.ut.common/offset-datetime-regex]])
 
 (defmethod expression/type-of-method :dispatch-type/string
   [s]
@@ -168,23 +117,15 @@
 
 ;;; these are currently only allowed inside `:absolute-datetime`
 
-(def ^:const year-month-regex
-  "Regex for a year-month literal string."
-  (re-pattern (str \^ year-part \- month-part \$)))
-
 (mr/def ::string.year-month
   [:re
    {:error/message "year-month string literal"}
-   year-month-regex])
-
-(def ^:const year-regex
-  "Regex for a year literal string."
-  (re-pattern (str \^ year-part \$)))
+   shared.ut.common/year-month-regex])
 
 (mr/def ::string.year
   [:re
    {:error/message "year string literal"}
-   year-regex])
+   shared.ut.common/year-regex])
 
 ;;; `:effective-type` is required for `:value` clauses. This was not a rule in the legacy MBQL schema, but in actual
 ;;; usage they basically always have `:base-type`; in MLv2 we're trying to use `:effective-type` everywhere instead;

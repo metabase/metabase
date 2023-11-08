@@ -253,7 +253,7 @@ describe("scenarios > home > custom homepage", () => {
 
         //Ensure that child dashboards of personal collections do not
         //appear in search
-        cy.findByRole("button", { name: /search/ }).click();
+        cy.findByRole("button", { name: "Search" }).click();
         cy.findByPlaceholderText("Search").type("das{enter}");
         cy.findByText("Orders in a dashboard").should("exist");
         cy.findByText("nested dash").should("not.exist");
