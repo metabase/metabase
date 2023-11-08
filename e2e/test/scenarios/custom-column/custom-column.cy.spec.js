@@ -425,7 +425,7 @@ describe("scenarios > question > custom column", () => {
     cy.findByText("Gizmo2");
   });
 
-  it.skip("should drop custom column (based on a joined field) when a join is removed (metabase#14775)", () => {
+  it("should drop custom column (based on a joined field) when a join is removed (metabase#14775)", () => {
     const CE_NAME = "Rounded price";
 
     cy.createQuestion({
