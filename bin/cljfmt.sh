@@ -17,5 +17,5 @@ elif [ "${#STAGED_FILES}" -gt 0 ]; then
     --indents ./local/indents.clj \
     $STAGED_FILES
 else
-  echo "No input. Either pass --all to format all files or stage files to be formatted."
+  echo "No files to reformat. Either pass --all to format all files or stage files to be formatted."
 fi
