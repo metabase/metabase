@@ -51,7 +51,7 @@
                            (cond
                              (map? val)               (serialization-deep-sort val)
                              (and (sequential? val)
-                                  (map? (first val))) (into (empty val) (map serialization-deep-sort val))
+                                  (map? (first val))) (mapv serialization-deep-sort val)
                              :else                    val))))))
 
 (defn spit-yaml
