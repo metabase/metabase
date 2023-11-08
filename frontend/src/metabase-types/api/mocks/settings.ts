@@ -138,6 +138,7 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "application-name": "Metabase",
   "available-fonts": [],
   "available-locales": null,
+  "bcc-enabled?": true,
   "cloud-gateway-ips": null,
   "custom-formatting": {},
   "custom-homepage": false,
