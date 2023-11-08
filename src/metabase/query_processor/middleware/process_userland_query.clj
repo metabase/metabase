@@ -116,8 +116,6 @@
     database-id                                                                      :database
     query-type                                                                       :type
     :as                                                                              query}]
-  (println "query-execution-info")
-  (println query)
   {:pre [(instance? (Class/forName "[B") query-hash)]}
   {:database_id       database-id
    :executor_id       executed-by
