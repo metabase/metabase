@@ -493,7 +493,7 @@ describe("scenarios > visualizations > table column settings", () => {
         column: "Math",
         columnName: "Math",
         table: "orders",
-        scrollTimes: 2,
+        needsScroll: false,
       };
 
       _hideColumn(testData);
@@ -697,7 +697,7 @@ describe("scenarios > visualizations > table column settings", () => {
         column: "Math",
         columnName: "Math",
         table: "test question",
-        scrollTimes: 2,
+        needsScroll: false,
       };
 
       _hideColumn(mathColumn);
@@ -765,7 +765,7 @@ describe("scenarios > visualizations > table column settings", () => {
           column: "Math",
           columnName: `Question ${card.id} → Math`,
           table: `test question`,
-          scrollTimes: 2,
+          needsScroll: false,
         };
 
         _hideColumn(mathColumn);
