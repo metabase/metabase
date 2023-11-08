@@ -16,8 +16,6 @@ import { refreshCurrentUser } from "metabase/redux/user";
 
 import { isPersonalCollectionOrChild } from "metabase/collections/utils";
 
-import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
-
 import { updateSetting } from "./settings";
 
 import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
@@ -42,7 +40,9 @@ import ModelCachingScheduleWidget from "./components/widgets/ModelCachingSchedul
 import SectionDivider from "./components/widgets/SectionDivider";
 
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
+import { SMTPConnectionForm } from "./components/Email/SMTPConnectionForm";
 import { SettingsEmailForm } from "./components/Email/SettingsEmailForm";
+import { BccToggleWidget } from "./components/Email/BccToggleWidget";
 import SetupCheckList from "./setup/components/SetupCheckList";
 import SlackSettings from "./slack/containers/SlackSettings";
 import {
@@ -224,6 +224,20 @@ export const ADMIN_SETTINGS_SECTIONS = {
         required: false,
         widget: SettingCommaDelimitedInput,
         validations: [["email_list", t`That's not a valid email address`]],
+      },
+      {
+        key: "bcc-enabled?",
+        display_name: t`Add Recipients as CC or BCC`,
+        description: t`Control the visibility of recipients.`,
+        options: [
+          { value: true, name: t`BCC - Hide recipients` },
+          {
+            value: false,
+            name: t`CC - Disclose recipients`,
+          },
+        ],
+        defaultValue: true,
+        widget: BccToggleWidget,
       },
     ],
   },
