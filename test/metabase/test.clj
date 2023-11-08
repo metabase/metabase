@@ -296,7 +296,7 @@
 
  ;; TODO: define these in hawk and we simply import them
  ;; [mb.hawk.assert-exprs.approximately-equal
- ;;  =?-malli
+ ;;  malli=?
  ;;  =?-exacty
  ;;  =?-schema
  ;;  =?-approx]
@@ -304,7 +304,7 @@
 
 ;; TODO: replace this with above imports
 ;; This will be defined in the mb.hawk.assert-exprs.approximately-equal namespace
-(defn =?-malli
+(defn malli=?
   "Used inside hawk's =? expression to use a Malli schema for comparison.
   For example:
   (=? {:a (=?malli [:int])}
