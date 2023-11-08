@@ -69,6 +69,7 @@ const MODEL_NAME = "Test Action Model";
           createModelFromTableName({
             tableName: TEST_TABLE,
             modelName: MODEL_NAME,
+            enableActions: true,
           });
         });
 
@@ -469,6 +470,7 @@ const MODEL_NAME = "Test Action Model";
           resyncDatabase({
             dbId: WRITABLE_DB_ID,
             tableName: TEST_COLUMNS_TABLE,
+            enableActions: true,
           });
           createModelFromTableName({
             tableName: TEST_COLUMNS_TABLE,
@@ -856,6 +858,7 @@ const MODEL_NAME = "Test Action Model";
           resyncDatabase({
             dbId: WRITABLE_DB_ID,
             tableName: TEST_COLUMNS_TABLE,
+            enableActions: true,
           });
           createModelFromTableName({
             tableName: TEST_COLUMNS_TABLE,
@@ -975,7 +978,11 @@ describe("action error handling", { tags: ["@external", "@actions"] }, () => {
     resetTestTable({ type: "postgres", table: TEST_TABLE });
     restore("postgres-writable");
     cy.signInAsAdmin();
-    resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
+    resyncDatabase({
+      dbId: WRITABLE_DB_ID,
+      tableName: TEST_TABLE,
+      enableActions: true,
+    });
     createModelFromTableName({
       tableName: TEST_TABLE,
       modelName: MODEL_NAME,
@@ -1044,7 +1051,11 @@ describe(
         resetTestTable({ type: "postgres", table: TEST_TABLE });
         restore("postgres-writable");
         cy.signInAsAdmin();
-        resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
+        resyncDatabase({
+          dbId: WRITABLE_DB_ID,
+          tableName: TEST_TABLE,
+          enableActions: true,
+        });
         createModelFromTableName({
           tableName: TEST_TABLE,
           modelName: MODEL_NAME,

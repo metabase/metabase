@@ -76,19 +76,9 @@ function addQADatabase(engine, db_display_name, port, enable_actions = false) {
       expect(status).to.equal(200);
       cy.wrap(body.id).as(`${engine}ID`);
     })
-    .then(dbId => {
+    .then(() => {
       // Make sure we have all the metadata because we'll need to use it in tests
       assertOnDatabaseMetadata(engine);
-
-      // it's important that we don't enable actions until sync is complete
-      if (dbId && enable_actions) {
-        cy.log(`**-- Enabling actions --**`);
-        cy.request("PUT", `/api/database/${dbId}`, {
-          settings: { "database-enable-actions": true },
-        }).then(({ status }) => {
-          expect(status).to.equal(200);
-        });
-      }
     });
 }
 
@@ -267,9 +257,23 @@ export function waitForSyncToFinish({
   });
 }
 
-export function resyncDatabase({ dbId = 2, tableName = "", tableAlias }) {
+export function resyncDatabase({
+  dbId = 2,
+  tableName = "",
+  tableAlias,
+  enableActions = false,
+}) {
   // must be signed in as admin to sync
   cy.request("POST", `/api/database/${dbId}/sync_schema`);
   cy.request("POST", `/api/database/${dbId}/rescan_values`);
   waitForSyncToFinish({ iteration: 0, dbId, tableName, tableAlias });
+
+  if (enableActions) {
+    cy.log(`**-- Enabling actions --**`);
+    cy.request("PUT", `/api/database/${dbId}`, {
+      settings: { "database-enable-actions": true },
+    }).then(({ status }) => {
+      expect(status).to.equal(200);
+    });
+  }
 }
