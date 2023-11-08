@@ -16,7 +16,10 @@
 (deftest card-query-test
   (mt/with-temp [Card card {:creator_id (mt/user->id :rasta)}]
     (mt/with-test-user :rasta
-      (events/publish-event! :event/card-query {:card_id (u/id card) :cached false :ignore_cache true})
+      (events/publish-event! :event/card-query {:card-id      (u/id card)
+                                                :user-id      (mt/user->id :rasta)
+                                                :cached       false
+                                                :ignore_cache true})
       (is (= {:user_id  (mt/user->id :rasta)
               :model    "card"
               :model_id (:id card)}
@@ -25,7 +28,7 @@
 (deftest table-read-test
   (mt/with-temp [Table table {}]
     (mt/with-test-user :rasta
-     (events/publish-event! :event/table-read table)
+     (events/publish-event! :event/table-read {:object table :user-id (mt/user->id :rasta)})
      (is (partial=
           {:user_id  (mt/user->id :rasta)
            :model    "table"
@@ -35,7 +38,7 @@
 (deftest dashboard-read-test
   (mt/with-temp [Dashboard dashboard {:creator_id (mt/user->id :rasta)}]
     (mt/with-test-user :rasta
-     (events/publish-event! :event/dashboard-read dashboard)
+     (events/publish-event! :event/dashboard-read {:object dashboard :user-id (mt/user->id :rasta)})
      (is (partial
            {:user_id  (mt/user->id :rasta)
             :model    "dashboard"

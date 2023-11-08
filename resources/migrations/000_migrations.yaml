@@ -15794,7 +15794,7 @@ databaseChangeLog:
       comment: Added 0.48.0 - new view v_alerts
       changes:
         - sqlFile:
-            dbms: postgres
+            dbms: postgresql
             path: instance_analytics_views/alerts/v1/postgres-alerts.sql
             relativeToChangelogFile: true
         - sqlFile:
@@ -15827,7 +15827,7 @@ databaseChangeLog:
       comment: Added 0.48.0 - new view v_fields
       changes:
         - sqlFile:
-            dbms: postgres
+            dbms: postgresql
             path: instance_analytics_views/fields/v1/postgres-fields.sql
             relativeToChangelogFile: true
         - sqlFile:
@@ -15848,7 +15848,7 @@ databaseChangeLog:
       comment: Added 0.48.0 - new view v_query_log
       changes:
         - sqlFile:
-            dbms: postgres
+            dbms: postgresql
             path: instance_analytics_views/query_log/v1/postgres-query_log.sql
             relativeToChangelogFile: true
         - sqlFile:
@@ -15904,6 +15904,40 @@ databaseChangeLog:
       rollback:
         - sql:
             sql: drop view if exists v_view_log;
+
+  - changeSet:
+      id: v48.00-047
+      author: noahmoss
+      comment: Drop foreign key on recent_views so that it can be recreated with onDelete policy
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: recent_views
+            constraintName: fk_recent_views_ref_user_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: recent_views
+            constraintName: fk_recent_views_ref_user_id
+            referencedTableName: core_user
+            baseColumnNames: user_id
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v48.00-048
+      author: noahmoss
+      comment: Add foreign key on recent_views with onDelete CASCADE
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: recent_views
+            constraintName: fk_recent_views_ref_user_id
+            referencedTableName: core_user
+            baseColumnNames: user_id
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: recent_views
+            constraintName: fk_recent_views_ref_user_id
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

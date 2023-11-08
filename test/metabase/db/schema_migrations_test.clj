@@ -1214,9 +1214,8 @@
                             "v_content"
                             "v_dashboardcard"
                             "v_group_members"
-                            ;; TODO: re-enable test for v_subscriptions and v_alerts once these are fixed
-                            #_"v_subscriptions"
-                            #_"v_alerts"
+                            "v_subscriptions"
+                            "v_alerts"
                             "v_users"
                             "v_databases"
                             "v_fields"

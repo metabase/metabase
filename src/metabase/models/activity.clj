@@ -100,9 +100,9 @@
            table-id user-id model model-id]
     :or   {object {}}}                      :- [:map {:closed true}
                                                 [:topic                        :keyword]
-                                                [:user-id                      pos-int?]
-                                                [:model                        :string]
-                                                [:model-id                     pos-int?]
+                                                [:user-id     {:optional true} [:maybe pos-int?]]
+                                                [:model       {:optional true} [:maybe :string]]
+                                                [:model-id    {:optional true} [:maybe pos-int?]]
                                                 [:object      {:optional true} [:maybe :map]]
                                                 [:details     {:optional true} [:maybe :map]]
                                                 [:database-id {:optional true} [:maybe pos-int?]]

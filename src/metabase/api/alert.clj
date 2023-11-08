@@ -260,7 +260,8 @@
     (let [user @api/*current-user*]
       (when (email/email-configured?)
         (messages/send-you-unsubscribed-alert-email! alert user))
-      (events/publish-event! :event/alert-unsubscribe {:details {:email (:email user)}}))
+      (events/publish-event! :event/alert-unsubscribe {:object {:email (:email user)}
+                                                       :user-id api/*current-user-id*}))
     ;; finally, return a 204 No Content
     api/generic-204-no-content))
 

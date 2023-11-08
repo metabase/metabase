@@ -343,9 +343,11 @@
   [new-user :- NewUser invitor :- Invitor setup? :- :boolean]
   ;; create the new user
   (u/prog1 (insert-new-user! new-user)
-    (events/publish-event! :event/user-invited (assoc <>
-                                                      :invite_method "email"
-                                                      :sso_source (:sso_source new-user)))
+    (events/publish-event! :event/user-invited
+                           {:object
+                            (assoc <>
+                                   :invite_method "email"
+                                   :sso_source (:sso_source new-user))})
     (send-welcome-email! <> invitor setup?)))
 
 (mu/defn create-new-google-auth-user!
@@ -433,7 +435,10 @@
 (defmethod audit-log/model-details :model/User
   [entity event-type]
   (case event-type
-    :user-update               (:changes entity)
+    :user-update               (select-keys (t2/hydrate entity :user_group_memberships)
+                                            [:groups :first_name :last_name :email
+                                             :invite_method :sso_source
+                                             :user_group_memberships])
     :user-invited              (select-keys (t2/hydrate entity :user_group_memberships)
                                             [:groups :first_name :last_name :email
                                              :invite_method :sso_source

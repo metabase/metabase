@@ -494,7 +494,7 @@
 (deftest update-alerts-admin-test
   (testing "Admin users can update any alert"
     (mt/with-temp [Pulse                 alert (basic-alert)
-                   Card                  card {}
+                   Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    PulseChannel          pc    (pulse-channel alert)
                    PulseChannelRecipient _     (recipient pc :rasta)]
@@ -506,7 +506,7 @@
 
   (testing "Admin users can update any alert, changing the related alert attributes"
     (mt/with-temp [Pulse                 alert (basic-alert)
-                   Card                  card {}
+                   Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    PulseChannel          pc    (pulse-channel alert)
                    PulseChannelRecipient _     (recipient pc :rasta)]
@@ -522,7 +522,7 @@
 
   (testing "Admin users can add a recipient, that recipient should be notified"
     (mt/with-temp [Pulse                 alert (basic-alert)
-                   Card                  card {}
+                   Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    PulseChannel          pc    (pulse-channel alert)
                    PulseChannelRecipient _     (recipient pc :crowberto)]
@@ -543,7 +543,7 @@
 (deftest update-alerts-non-admin-test
   (testing "Non-admin users can update alerts they created"
     (mt/with-temp [Pulse                 alert (basic-alert)
-                   Card                  card {}
+                   Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    PulseChannel          pc    (pulse-channel alert)
                    PulseChannelRecipient _     (recipient pc :rasta)]
@@ -557,7 +557,7 @@
 
   (testing "Non-admin users cannot change the recipients of an alert"
     (mt/with-temp [Pulse                 alert (basic-alert)
-                   Card                  card {}
+                   Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    PulseChannel          pc    (pulse-channel alert)
                    PulseChannelRecipient _     (recipient pc :rasta)]
@@ -571,7 +571,7 @@
 (deftest admin-users-remove-recipient-test
   (testing "admin users can remove a recipieint, that recipient should be notified"
     (mt/with-temp [Pulse                 alert (basic-alert)
-                   Card                  card {}
+                   Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    PulseChannel          pc    (pulse-channel alert)
                    PulseChannelRecipient _     (recipient pc :crowberto)
@@ -658,7 +658,7 @@
                                    :channel      ["email"]
                                    :schedule     ["daily"]
                                    :recipients   [[]]}}
-                       (audit-log-test/event :alert-create (u/the-id alert)))))
+                       (audit-log-test/latest-event :alert-create (u/the-id alert)))))
               (testing "Updating alert also logs event."
                 (mt/user-http-request :crowberto :put 200 (alert-url alert) alert-details)
                 (is (= {:topic    :alert-update
@@ -672,7 +672,7 @@
                                    :channel    ["email"]
                                    :schedule   ["daily"]
                                    :recipients [[]]}}
-                       (audit-log-test/event :alert-update (u/the-id alert)))))))))))
+                       (audit-log-test/latest-event :alert-update (u/the-id alert)))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            GET /alert/question/:id                                             |
@@ -927,7 +927,7 @@
 
 (deftest alert-unsubscribe-event-test
   (testing "Alert has two recipients, and non-admin unsubscribes"
-    (mt/with-model-cleanup [:model/Activity :model/AuditLog :model/User]
+    (mt/with-model-cleanup [:model/User]
       (mt/with-temp [Card                  card  (basic-alert-query)
                      Pulse                 alert (basic-alert)
                      PulseCard             _     (pulse-card alert card)
@@ -939,4 +939,4 @@
                 :model    "Pulse"
                 :model_id nil
                 :details  {:email "rasta@metabase.com"}}
-               (audit-log-test/event :alert-unsubscribe)))))))
+               (audit-log-test/latest-event :alert-unsubscribe)))))))

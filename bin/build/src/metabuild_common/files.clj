@@ -161,7 +161,7 @@
    zip the directory and writes it to the destination"
   ([source-dir zip-file]
    (zip-directory->file source-dir zip-file {}))
-  ([^String source-dir ^String zip-file {:keys [verbose]}]
+  ([^String source-dir ^String zip-file {:keys [_verbose]}]
    (let [verbose true
          ^File source-path (File. source-dir)
          entry-count (atom 0)]
