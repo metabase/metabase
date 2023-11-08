@@ -13,12 +13,8 @@ import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import { updateDashboard } from "metabase/dashboard/actions/save";
-import { getMetadata } from "metabase/selectors/metadata";
-import {
-  getAllDashboardCardsWithUnmappedParameters,
-  getAutoWiredMappingsForDashcards,
-  getParameterMappings,
-} from "metabase/dashboard/actions/auto-wire-parameters";
+import { autoWireDashcardsWithMatchingParameters } from "metabase/dashboard/actions/auto-wire-parameters/actions";
+import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 import {
   isParameterValueEmpty,
   PULSE_PARAM_EMPTY,
@@ -36,11 +32,7 @@ import {
 
 import { trackAutoApplyFiltersDisabled } from "../analytics";
 
-import {
-  setDashboardAttributes,
-  setDashCardAttributes,
-  setMultipleDashCardAttributes,
-} from "./core";
+import { setDashboardAttributes, setDashCardAttributes } from "./core";
 import { setSidebar, closeSidebar } from "./ui";
 
 function updateParameter(dispatch, getState, id, parameterUpdater) {
@@ -127,24 +119,12 @@ export const setParameterMapping = createThunkAction(
       const dashcard = getDashCardById(getState(), dashcard_id);
 
       if (target !== null) {
-        const metadata = getMetadata(getState());
-        const dashboard_state = getState().dashboard;
-        const dashcardsToAutoApply = getAllDashboardCardsWithUnmappedParameters(
-          dashboard_state,
-          dashboard_state.dashboardId,
-          parameter_id,
-        );
-
         dispatch(
-          setMultipleDashCardAttributes({
-            dashcards: getAutoWiredMappingsForDashcards(
-              dashcard,
-              dashcardsToAutoApply,
-              parameter_id,
-              target,
-              metadata,
-            ),
-          }),
+          autoWireDashcardsWithMatchingParameters(
+            parameter_id,
+            dashcard,
+            target,
+          ),
         );
       }
 
