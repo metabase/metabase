@@ -42,9 +42,9 @@ import type {
   NavigateToNewCardFromDashboardOpts,
   DashCardOnChangeCardAndRunHandler,
 } from "./types";
-import DashCardActionButtons from "./DashCardActionButtons";
+import { DashCardActionsPanel } from "./DashCardActionsPanel";
 import DashCardVisualization from "./DashCardVisualization";
-import { DashCardRoot, DashboardCardActionsPanel } from "./DashCard.styled";
+import { DashCardRoot } from "./DashCard.styled";
 
 function preventDragging(event: React.SyntheticEvent) {
   event.stopPropagation();
@@ -115,8 +115,6 @@ function DashCard({
 }: DashCardProps) {
   const [isPreviewingCard, setIsPreviewingCard] = useState(false);
   const cardRootRef = useRef<HTMLDivElement>(null);
-
-  const [isDashCardTabMenuOpen, setIsDashCardTabMenuOpen] = useState(false);
 
   const handlePreviewToggle = useCallback(() => {
     setIsPreviewingCard(wasPreviewingCard => !wasPreviewingCard);
@@ -250,16 +248,21 @@ function DashCard({
     return handler;
   }, [dashcard, navigateToNewCardFromDashboard]);
 
-  const renderDashCardActions = useCallback(() => {
-    if (isEditingDashboardLayout) {
-      return (
-        <DashboardCardActionsPanel
-          onMouseDown={preventDragging}
-          data-testid="dashboardcard-actions-panel"
-          isDashCardTabMenuOpen={isDashCardTabMenuOpen}
-          onLeftEdge={dashcard.col === 0}
-        >
-          <DashCardActionButtons
+  return (
+    <ErrorBoundary>
+      <DashCardRoot
+        data-testid="dashcard"
+        className="Card rounded flex flex-column hover-parent hover--visibility"
+        hasHiddenBackground={hasHiddenBackground}
+        shouldForceHiddenBackground={shouldForceHiddenBackground}
+        isNightMode={isNightMode}
+        isUsuallySlow={isSlow === "usually-slow"}
+        ref={cardRootRef}
+      >
+        {isEditingDashboardLayout && (
+          <DashCardActionsPanel
+            onMouseDown={preventDragging}
+            onLeftEdge={dashcard.col === 0}
             series={series}
             dashboard={dashboard}
             dashcard={dashcard}
@@ -275,43 +278,8 @@ function DashCard({
             }
             showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
             onPreviewToggle={handlePreviewToggle}
-            onDashCardMenuClose={() => setIsDashCardTabMenuOpen(false)}
-            onDashCardMenuOpen={() => setIsDashCardTabMenuOpen(true)}
           />
-        </DashboardCardActionsPanel>
-      );
-    }
-
-    return null;
-  }, [
-    dashcard,
-    dashboard,
-    series,
-    hasError,
-    isLoading,
-    isPreviewingCard,
-    isEditingDashboardLayout,
-    onAddSeries,
-    onRemove,
-    onReplaceAllVisualizationSettings,
-    onUpdateVisualizationSettings,
-    handlePreviewToggle,
-    handleShowClickBehaviorSidebar,
-    isDashCardTabMenuOpen,
-  ]);
-
-  return (
-    <ErrorBoundary>
-      <DashCardRoot
-        data-testid="dashcard"
-        className="Card rounded flex flex-column hover-parent hover--visibility"
-        hasHiddenBackground={hasHiddenBackground}
-        shouldForceHiddenBackground={shouldForceHiddenBackground}
-        isNightMode={isNightMode}
-        isUsuallySlow={isSlow === "usually-slow"}
-        ref={cardRootRef}
-      >
-        {renderDashCardActions()}
+        )}
         <DashCardVisualization
           dashboard={dashboard}
           dashcard={dashcard}
