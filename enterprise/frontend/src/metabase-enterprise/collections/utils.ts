@@ -1,5 +1,9 @@
 import type { Bookmark, Collection } from "metabase-types/api";
-import { REGULAR_COLLECTION, COLLECTION_TYPES } from "./constants";
+import {
+  REGULAR_COLLECTION,
+  COLLECTION_TYPES,
+  CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID,
+} from "./constants";
 
 export function isRegularCollection({
   authority_level,
@@ -18,3 +22,11 @@ export function getCollectionType({
 }: Partial<Collection>) {
   return COLLECTION_TYPES[String(type || authority_level)];
 }
+
+export const getInstanceAnalyticsCustomCollection = (
+  collections: Collection[],
+) =>
+  collections?.find?.(
+    collection =>
+      collection.entity_id === CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID,
+  ) ?? null;
