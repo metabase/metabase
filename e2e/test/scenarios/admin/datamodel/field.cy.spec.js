@@ -186,7 +186,6 @@ describe("Unfold JSON", () => {
     resyncDatabase({
       dbId: WRITABLE_DB_ID,
       tableName: "many_data_types",
-      enableActions: true,
     });
   });
 

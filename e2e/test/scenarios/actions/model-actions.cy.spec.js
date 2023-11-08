@@ -379,7 +379,6 @@ describe(
       resyncDatabase({
         dbId: WRITABLE_DB_ID,
         tableName: WRITABLE_TEST_TABLE,
-        enableActions: true,
       });
 
       createModelFromTableName({
