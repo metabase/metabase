@@ -1,4 +1,6 @@
 import styled from "@emotion/styled";
+import type { BoxProps } from "metabase/ui";
+import { Box } from "metabase/ui";
 import Card from "metabase/components/Card";
 import { Icon } from "metabase/core/components/Icon";
 import Link from "metabase/core/components/Link";
@@ -13,6 +15,9 @@ export const UndoList = styled.ul`
   bottom: 0;
   margin: ${LIST_H_MARGINS};
   z-index: 999;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 `;
 
 export const ToastCard = styled(Card)<{
@@ -33,7 +38,7 @@ export const CardContent = styled.div`
   justify-content: space-between;
 `;
 
-export const CardContentSide = styled.div`
+export const CardContentSide = styled(Box)<BoxProps>`
   display: flex;
   align-items: center;
   overflow: hidden;

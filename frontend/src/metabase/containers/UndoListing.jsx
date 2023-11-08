@@ -67,9 +67,11 @@ function UndoToast({ undo, onUndo, onDismiss }) {
           role="status"
         >
           <CardContent>
-            <CardContentSide>
+            <CardContentSide maw="75ch">
               {undo.icon && <CardIcon name={undo.icon} color="white" />}
-              <Ellipsified>{renderMessage(undo)}</Ellipsified>
+              <Ellipsified showTooltip={false}>
+                {renderMessage(undo)}
+              </Ellipsified>
             </CardContentSide>
             <ControlsCardContent>
               {undo.actions?.length > 0 && (
