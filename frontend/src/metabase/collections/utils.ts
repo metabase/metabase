@@ -24,8 +24,24 @@ export function isInstanceAnalyticsCollection(
   collection: Partial<Collection>,
 ): boolean {
   return (
+    collection &&
     PLUGIN_COLLECTIONS.getCollectionType(collection).type ===
-    "instance-analytics"
+      "instance-analytics"
+  );
+}
+
+export function getInstanceAnalyticsCustomCollection(
+  collections: Collection[],
+): Collection | null {
+  return PLUGIN_COLLECTIONS.getInstanceAnalyticsCustomCollection(collections);
+}
+
+export function isInstanceAnalyticsCustomCollection(
+  collection: Collection,
+): boolean {
+  return (
+    PLUGIN_COLLECTIONS.CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID ===
+    collection.entity_id
   );
 }
 
