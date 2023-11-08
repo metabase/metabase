@@ -183,10 +183,7 @@ describe("Unfold JSON", () => {
     resetTestTable({ type: "postgres", table: "many_data_types" });
     restore(`postgres-writable`);
     cy.signInAsAdmin();
-    resyncDatabase({
-      dbId: WRITABLE_DB_ID,
-      tableName: "many_data_types",
-    });
+    resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "many_data_types" });
   });
 
   it("lets you enable/disable 'Unfold JSON' for JSON columns", () => {

@@ -376,10 +376,7 @@ describe(
       resetTestTable({ type: dialect, table: WRITABLE_TEST_TABLE });
       restore(`${dialect}-writable`);
       cy.signInAsAdmin();
-      resyncDatabase({
-        dbId: WRITABLE_DB_ID,
-        tableName: WRITABLE_TEST_TABLE,
-      });
+      resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: WRITABLE_TEST_TABLE });
 
       createModelFromTableName({
         tableName: WRITABLE_TEST_TABLE,

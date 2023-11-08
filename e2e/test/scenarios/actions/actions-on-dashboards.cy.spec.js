@@ -1050,10 +1050,7 @@ describe(
         resetTestTable({ type: "postgres", table: TEST_TABLE });
         restore("postgres-writable");
         cy.signInAsAdmin();
-        resyncDatabase({
-          dbId: WRITABLE_DB_ID,
-          tableName: TEST_TABLE,
-        });
+        resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
         createModelFromTableName({
           tableName: TEST_TABLE,
           modelName: MODEL_NAME,
