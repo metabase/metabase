@@ -4,11 +4,14 @@ import * as Yup from "yup";
 
 import Button from "metabase/core/components/Button";
 import FormFooter from "metabase/core/components/FormFooter";
-import { Form, FormProvider } from "metabase/forms";
-import FormInput from "metabase/core/components/FormInput";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormTextInput,
+  FormSubmitButton,
+} from "metabase/forms";
 import FormTextArea from "metabase/core/components/FormTextArea";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 
 import * as Errors from "metabase/lib/errors";
 
@@ -59,7 +62,7 @@ function CreateActionForm({
     >
       {({ isValid }) => (
         <Form disabled={!isValid} data-testid="create-action-form">
-          <FormInput
+          <FormTextInput
             name="name"
             title={t`Name`}
             placeholder={t`My new fantastic action`}
@@ -77,7 +80,7 @@ function CreateActionForm({
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
             )}
-            <FormSubmitButton title={t`Create`} disabled={!isValid} primary />
+            <FormSubmitButton label={t`Create`} disabled={!isValid} />
           </FormFooter>
         </Form>
       )}
