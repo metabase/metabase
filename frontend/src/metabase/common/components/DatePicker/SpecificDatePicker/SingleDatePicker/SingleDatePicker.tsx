@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { FormEvent } from "react";
 import { t } from "ttag";
 import type { DateValue } from "metabase/ui";
 import {
@@ -47,8 +48,13 @@ export function SingleDatePicker({
     onChange(clearTimePart(value));
   };
 
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    onSubmit();
+  };
+
   return (
-    <div>
+    <form onSubmit={handleSubmit}>
       <Stack p="md">
         <DateInput
           value={value}
@@ -84,10 +90,10 @@ export function SingleDatePicker({
         >
           {hasTime ? t`Remove time` : t`Add time`}
         </Button>
-        <Button variant="filled" onClick={onSubmit}>
+        <Button variant="filled" type="submit">
           {isNew ? t`Add filter` : t`Update filter`}
         </Button>
       </Group>
-    </div>
+    </form>
   );
 }

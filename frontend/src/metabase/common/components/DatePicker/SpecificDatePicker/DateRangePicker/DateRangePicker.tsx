@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { FormEvent } from "react";
 import { t } from "ttag";
 import { Button, DatePicker, Divider, Group, Stack, Text } from "metabase/ui";
 import type { DateValue, DatesRangeValue } from "metabase/ui";
@@ -60,8 +61,13 @@ export function DateRangePicker({
     onChange([clearTimePart(startDate), clearTimePart(endDate)]);
   };
 
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    onSubmit();
+  };
+
   return (
-    <div>
+    <form onSubmit={handleSubmit}>
       <Stack p="md">
         <Group align="center">
           <FlexDateInput
@@ -112,10 +118,10 @@ export function DateRangePicker({
         >
           {hasTime ? t`Remove time` : t`Add time`}
         </Button>
-        <Button variant="filled" onClick={onSubmit}>
+        <Button variant="filled" type="submit">
           {isNew ? t`Add filter` : t`Update filter`}
         </Button>
       </Group>
-    </div>
+    </form>
   );
 }
