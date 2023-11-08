@@ -45,7 +45,7 @@ When people upload a CSV to a collection, Metabase will:
 
 ## Primary key detection and auto-generation
 
-Metabase will try to detect whether an uploaded CSV file includes an incrementing ID.
+Metabase will try to detect whether an uploaded CSV file includes a column with an incrementing ID
 
 When you upload a CSV file, Metabase will check for a column named `id` or `pk` that has integers for each row in the uploaded CSV. Each integer in this column should be unique, so if your CSV includes duplicate ID integers, the column won't work as [an entity key](../data-modeling/field-types.md#list-of-metabase-field-types).
 
