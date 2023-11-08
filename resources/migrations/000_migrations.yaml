@@ -15912,19 +15912,19 @@ databaseChangeLog:
       changes:
         - sqlFile:
             dbms: postgresql
-            path: instance_analytics_views/postgres-indexes.sql
+            path: instance_analytics_views/indexes/v1/postgres-indexes.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: mysql
-            path: instance_analytics_views/mysql-indexes.sql
+            path: instance_analytics_views/indexes/v1/mysql-indexes.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: mariadb
-            path: instance_analytics_views/mariadb-indexes.sql
+            path: instance_analytics_views/indexes/v1/mariadb-indexes.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: h2
-            path: instance_analytics_views/h2-indexes.sql
+            path: instance_analytics_views/indexes/v1/h2-indexes.sql
             relativeToChangelogFile: true
       rollback: # not needed
 
