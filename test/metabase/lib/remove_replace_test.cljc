@@ -949,3 +949,15 @@
       (is (=?
             {:stages [(complement :joins)]}
             (lib/remove-clause query -1 (first (lib/joins query))))))))
+
+(deftest ^:parallel removing-aggregation-leaves-breakouts
+  (testing "Removing aggregation leaves breakouts (#28609)"
+    (let [query (-> lib.tu/venues-query
+                    (lib/aggregate (lib/count)))
+          query (reduce lib/breakout
+                        query
+                        (lib/breakoutable-columns query))
+          result (lib/remove-clause query (first (lib/aggregations query)))]
+      (is (seq (lib/breakouts result)))
+      (is (empty? (lib/aggregations result)))
+      (is (= (lib/breakouts query) (lib/breakouts result))))))
