@@ -32,13 +32,13 @@ import { getDashboard } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
 import type Question from "metabase-lib/Question";
 
-import { SidebarItem } from "../SidebarItem";
-import { Heading } from "../ClickBehaviorSidebar.styled";
+import { SidebarItem } from "../../SidebarItem";
+import { Heading } from "../../ClickBehaviorSidebar.styled";
 import {
   LinkTargetEntityPickerContent,
   SelectedEntityPickerIcon,
   SelectedEntityPickerContent,
-} from "./LinkOptions.styled";
+} from "../LinkOptions.styled";
 
 const LINK_TARGETS = {
   question: {
@@ -317,5 +317,4 @@ function isPublicCollection(collection: Partial<Collection>) {
   return !collection.is_personal;
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default LinkedEntityPicker;
+export { LinkedEntityPicker };

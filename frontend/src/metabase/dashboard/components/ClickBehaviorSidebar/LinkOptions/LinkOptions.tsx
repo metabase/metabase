@@ -13,7 +13,7 @@ import type { IconName } from "metabase/core/components/Icon";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import { SidebarContent } from "../ClickBehaviorSidebar.styled";
 import CustomLinkText from "./CustomLinkText";
-import LinkedEntityPicker from "./LinkedEntityPicker";
+import { LinkedEntityPicker } from "./LinkedEntityPicker";
 
 import CustomURLPicker from "./CustomURLPicker";
 import LinkOption from "./LinkOption";
