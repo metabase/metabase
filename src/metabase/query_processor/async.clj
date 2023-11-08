@@ -9,6 +9,8 @@
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -29,14 +31,20 @@
     ;; and `query-hash` ourselves so the remark gets added)
     (assoc-in query [:info :query-hash] (qp.util/query-hash query))))
 
-(defn- async-result-metadata-reducedf [context result]
-  (let [results-metdata (or (get-in result [:data :results_metadata :columns])
-                            [])]
-    (qp.context/resultf context results-metdata)))
-
 (defn- async-result-metdata-raisef [context e]
   (log/error e (trs "Error running query to determine Card result metadata:"))
   (qp.context/resultf context []))
+
+(mu/defn ^:private result-metadata-rff :- ::qp.schema/rff
+  [metadata]
+  (let [rf (qp.reducible/default-rff metadata)]
+    (fn rf*
+      ([]
+       (rf))
+      ([result]
+       (get-in (rf result) [:data :results_metadata :columns] []))
+      ([acc row]
+       (rf acc row)))))
 
 (mu/defn result-metadata-for-query-async :- async.u/PromiseChan
   "Fetch the results metadata for a `query` by running the query and seeing what the QP gives us in return.
@@ -53,6 +61,6 @@
       ;; for *native* queries we actually have to run it.
       (let [query (query-for-result-metadata query)]
         (qp/process-query query
+                          result-metadata-rff
                           (qp.context/async-context
-                           {:reducedf async-result-metadata-reducedf
-                            :raisef   async-result-metdata-raisef}))))))
+                           {:raisef async-result-metdata-raisef}))))))

@@ -5,11 +5,11 @@
 
   Normal sync flow is something like:
 
-    [middleware] → runf → executef → reducef → reducedf --+
-        ↓                                                 |-> resultf
-    [Exception]  → raisef --------------------------------+    ↑
-                                                               | ::cancel
-                                 canceled-chan ----------------+
+    [middleware] → runf → executef → reducef --+
+        ↓                                      |-> resultf
+    [Exception]  → raisef ---------------------+    ↑
+                                                    | ::cancel
+                                 canceled-chan -----+
                                       ↑
                        [message sent to canceled chan]
 
@@ -27,13 +27,14 @@
 
   Normal ASYNC flow is something like:
 
-    [middleware] → runf → executef → reducef → reducedf -+
-        ↓                                                |-> resultf → out-chan
-    [Exception]  → raisef -------------------------------+     ↑
-                     ↑                                         |
-                 [time out]    [out-chan closed early]         |
-                                         ↓                     | ::cancel
-                                    canceled-chan -------------+
+    [middleware] → runf → executef → reducef -+
+        ↓                                     |----> resultf → out-chan
+    [Exception]  → raisef --------------------+         ↑
+                     ↑                                  |
+                     |                                  |
+                 [time out]    [out-chan closed early]  |
+                                         ↓              | ::cancel
+                                    canceled-chan ------+
                                          ↑
                           [message sent to canceled chan]
 
@@ -78,18 +79,14 @@
   The implementation of [[executef]] should call `respond` with this information once it is available. The result of
   this function is ignored.")
 
-  ;; TODO -- not sure why we need [[reducef]] and [[reducedf]], can't anything that happens there be done in the `rff`?
+  ;; TODO -- not sure why we need [[reducef]], can't anything that happens there be done in the `rff`?
 
   (reducef [context rff metadata reducible-rows]
-    "Called by [[runf]] (inside the `respond` callback provided by it) to reduce results of query. [[reducedf]] is called
-  with the reduced results. The actual output of this function is ignored, but the entire result set must be reduced
-  and passed to [[reducedf]] before this function completes.")
-
-  (reducedf [context reduced-rows]
-    "Called in [[reducedf]] with fully reduced results. This result is passed to [[resultf]].")
+    "Called by [[runf]] (inside the `respond` callback provided by it) to reduce results of query. Reduces results, then
+  calls [[resultf]] with the reduced results. results.")
 
   (resultf [context result]
-    "Called exactly once with the final result, which is the result of either [[reducedf]] or [[raisef]].")
+    "Called exactly once with the final result, which is the result of either [[reducef]] or [[raisef]].")
 
   (timeout [context]
     "Maximum amount of time query is allowed to run, in ms.")
@@ -154,11 +151,6 @@
    reducible-rows :- ::reducible-rows]
   ((:reducef context) context rff metadata reducible-rows))
 
-(mu/defn ^:private -reducedf :- ::result
-  [context      :- ::context
-   reduced-rows :- ::reduced-rows]
-  ((:reducedf context) context reduced-rows))
-
 (mu/defn ^:private -resultf :- :some
   [context :- ::context
    result  :- ::result]
@@ -207,8 +199,6 @@
     (-executef this driver query respond))
   (reducef [this rff metadata reducible-rows]
     (-reducef this rff metadata reducible-rows))
-  (reducedf [this reduced-rows]
-    (-reducedf this reduced-rows))
   (resultf [this result]
     (-resultf this result))
   (timeout [this]
@@ -279,13 +269,8 @@
                                                         {:type qp.error-type/qp}
                                                         e))]))]
       (case status
-        ::success (reducedf context result)
+        ::success (resultf context result)
         ::error   result))))
-
-(mu/defn ^:private default-reducedf :- :some
-  [context        :- ::context
-   reduced-result :- :some]
-  (resultf context reduced-result))
 
 (mu/defn ^:private sync-resultf :- :some
   [context :- ::context
@@ -301,7 +286,6 @@
    :runf          #'sync-runf
    :executef      #'default-executef
    :reducef       #'default-reducef
-   :reducedf      #'default-reducedf
    :resultf       #'sync-resultf})
 
 (mu/defn sync-context :- [:and
@@ -382,8 +366,6 @@
     (-executef this driver query respond))
   (reducef [this rff metadata reducible-rows]
     (-reducef this rff metadata reducible-rows))
-  (reducedf [this reduced-rows]
-    (-reducedf this reduced-rows))
   (resultf [this result]
     (-resultf this result))
   (timeout [this]

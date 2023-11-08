@@ -200,7 +200,7 @@
                                    acc     (-> (orig-executef context driver query respond)
                                                (process-queries-append-results more-queries @vrf info context))]
                                ;; completion arity can't be threaded because the value is derefed too early
-                               (qp.context/reducedf context (@vrf acc)))))))}))
+                               (qp.context/resultf context (@vrf acc)))))))}))
 
 (defn process-multiple-queries
   "Allows the query processor to handle multiple queries, stitched together to appear as one"

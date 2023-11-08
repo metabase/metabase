@@ -192,7 +192,7 @@
                                              (reset! status ::started)
                                              (Thread/sleep 1000)
                                              (reset! status ::done)
-                                             (qp.context/reducedf context rows))}))]
+                                             (qp.context/resultf context rows))}))]
             (is (async.u/promise-chan? out-chan))
             (is (not= ::done
                       @status))

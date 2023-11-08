@@ -112,7 +112,8 @@
     [ordered-cols output-order]))
 
 (mu/defn ^:private streaming-rff :- ::qp.schema/rff
-  [results-writer :- (ms/InstanceOfClass metabase.query_processor.streaming.interface.StreamingResultsWriter)]
+  [results-writer   :- (ms/InstanceOfClass metabase.query_processor.streaming.interface.StreamingResultsWriter)
+   ^OutputStream os :- (ms/InstanceOfClass OutputStream)]
   (fn [{:keys [cols viz-settings] :as initial-metadata}]
     (let [[ordered-cols output-order] (order-cols cols viz-settings)
           viz-settings'               (assoc viz-settings :output-order output-order)
@@ -124,26 +125,19 @@
                        viz-settings')
          {:data initial-metadata})
 
-        ([metadata]
-         (assoc metadata
-                :row_count @row-count
-                :status :completed))
+        ([result]
+         (let [result (assoc result
+                             :row_count @row-count
+                             :status :completed)]
+           (qp.si/finish! results-writer result)
+           (u/ignore-exceptions
+             (.flush os)
+             (.close os))
+           result))
 
         ([metadata row]
          (qp.si/write-row! results-writer row (dec (vswap! row-count inc)) ordered-cols viz-settings')
          metadata)))))
-
-(mu/defn ^:private streaming-reducedf :- fn?
-  [results-writer   :- (ms/InstanceOfClass metabase.query_processor.streaming.interface.StreamingResultsWriter)
-   ^OutputStream os :- (ms/InstanceOfClass OutputStream)]
-  (mu/fn :- :some
-    [context        :- ::qp.context/context
-     final-metadata :- :some]
-    (qp.si/finish! results-writer final-metadata)
-    (u/ignore-exceptions
-      (.flush os)
-      (.close os))
-    (qp.context/resultf context final-metadata)))
 
 (defn streaming-context-and-rff
   "Context to pass to the QP to streaming results as `export-format` to an output stream. Can be used independently of
@@ -159,10 +153,9 @@
    (let [results-writer (qp.si/streaming-results-writer export-format os)]
      {:context (qp.context/sync-context
                 (merge
-                 {:reducedf (streaming-reducedf results-writer os)}
                  (when canceled-chan
                    {:canceled-chan canceled-chan})))
-      :rff     (streaming-rff results-writer)})))
+      :rff     (streaming-rff results-writer os)})))
 
 (defn- await-async-result [out-chan canceled-chan]
   ;; if we get a cancel message, close `out-chan` so the query will be canceled
