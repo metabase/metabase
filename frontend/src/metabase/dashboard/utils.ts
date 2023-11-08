@@ -1,32 +1,32 @@
+import _ from "underscore";
+import { t } from "ttag";
+import { isUUID, isJWT } from "metabase/lib/utils";
+import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import {
-  isDateParameter,
-  isNumberParameter,
-  isStringParameter,
-} from "metabase-lib/parameters/utils/parameter-type";
-import Question from "metabase-lib/Question";
+  getGenericErrorMessage,
+  getPermissionErrorMessage,
+} from "metabase/visualizations/lib/errors";
+import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import type {
-  ActionDashboardCard,
   Card,
   CardId,
+  DashCardId,
   Dashboard,
   DashboardCard,
-  DashCardId,
   Database,
   Dataset,
   NativeDatasetQuery,
   Parameter,
   StructuredDatasetQuery,
+  ActionDashboardCard,
 } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
-import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
-import { isJWT, isUUID } from "metabase/lib/utils";
+import Question from "metabase-lib/Question";
 import {
-  getGenericErrorMessage,
-  getPermissionErrorMessage,
-} from "metabase/visualizations/lib/errors";
-import { t } from "ttag";
-import _ from "underscore";
+  isDateParameter,
+  isNumberParameter,
+  isStringParameter,
+} from "metabase-lib/parameters/utils/parameter-type";
 
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
   if (after.parameters && before.embedding_params) {
