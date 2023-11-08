@@ -225,9 +225,7 @@ describe("scenarios > question > summarize sidebar", () => {
       });
   });
 
-  it.skip("should handle (removing) multiple metrics when one is sorted (metabase#12625)", () => {
-    cy.intercept("POST", `/api/dataset`).as("dataset");
-
+  it("should handle (removing) multiple metrics when one is sorted (metabase#12625)", () => {
     cy.createQuestion(
       {
         name: "12625",
