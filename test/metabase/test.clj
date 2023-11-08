@@ -6,9 +6,9 @@
   (:refer-clojure :exclude [compile])
   (:require
    [humane-are.core :as humane-are]
+   [mb.hawk.assert-exprs.approximately-equal]
    [mb.hawk.init]
    [mb.hawk.parallel]
-   [mb.hawk.assert-exprs.approximately-equal]
    [metabase.actions.test-util :as actions.test-util]
    [metabase.config :as config]
    [metabase.driver :as driver]
@@ -294,7 +294,21 @@
   set-test-drivers!
   with-test-drivers]
 
- [mb.hawk.assert-exprs.approximately-equal
-  ->Malli])
+ ;; Option A: define these in hawk and we simply import them
+ ;; [mb.hawk.assert-exprs.approximately-equal
+ ;;  =?-malli
+ ;;  =?-exacty
+ ;;  =?-schema
+ ;;  =?-approx]
+ )
+
+;; Option B: This would be defined in mb.hawk.assert-exprs.approximately-equal
+(defn =?-malli
+  "Used inside hawk's =? expression to use a Malli schema for comparison.
+  For example:
+  (=? {:a (=?malli [:int])}
+      {:a 1})"
+  [schema]
+  (mb.hawk.assert-exprs.approximately-equal/->Malli schema))
 
 (alter-meta! #'with-temp update :doc #(str % "\n\nNote: this version of [[with-temp]] will execute body in a transaction, for cases where that's not desired, use [[mt/with-temp!]]\n"))
