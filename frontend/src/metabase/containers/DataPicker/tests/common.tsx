@@ -4,8 +4,8 @@ import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
-  setupUsersEndpoints,
   setupCollectionByIdEndpoint,
+  setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 
@@ -248,7 +248,7 @@ export async function setup({
     setupSearchEndpoints([SAMPLE_QUESTION_SEARCH_ITEM]);
   }
 
-  setupUsersEndpoints([createMockUser()]);
+  setupUserRecipientsEndpoint({ users: [createMockUser()] });
 
   const settings = createMockSettingsState({
     "enable-nested-queries": hasNestedQueriesEnabled,

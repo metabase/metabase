@@ -2390,7 +2390,8 @@
    :auto-run-queries            true
    :metadata-sync-schedule      "0 50 * * * ? *"
    :name                        "test-data"
-   :settings                    nil
+   :settings                    {:breakout-bin-width 10.0
+                                 :breakout-bins-num  8}
    :caveats                     nil
    :tables                      [(table-metadata-method :categories)
                                  (table-metadata-method :checkins)

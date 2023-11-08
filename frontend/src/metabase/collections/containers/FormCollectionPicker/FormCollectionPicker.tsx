@@ -20,6 +20,7 @@ import { isValidCollectionId } from "metabase/collections/utils";
 
 import type { CollectionId } from "metabase-types/api";
 
+import { useSelector } from "metabase/lib/redux";
 import {
   PopoverItemPicker,
   MIN_POPOVER_WIDTH,
@@ -33,6 +34,7 @@ export interface FormCollectionPickerProps
   type?: "collections" | "snippet-collections";
   initialOpenCollectionId?: CollectionId;
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
+  showOnlyPersonalCollections?: boolean;
 }
 
 function ItemName({
@@ -58,6 +60,7 @@ function FormCollectionPicker({
   type = "collections",
   initialOpenCollectionId,
   onOpenCollectionChange,
+  showOnlyPersonalCollections,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
   const [{ value }, { error, touched }, { setValue }] = useField(name);
@@ -96,6 +99,15 @@ function FormCollectionPicker({
 
   const [openCollectionId, setOpenCollectionId] =
     useState<CollectionId>("root");
+  const openCollection = useSelector(state =>
+    Collections.selectors.getObject(state, {
+      entityId: openCollectionId,
+    }),
+  );
+
+  const isOpenCollectionInPersonalCollection = openCollection?.is_personal;
+  const showCreateNewCollectionOption =
+    !showOnlyPersonalCollections || isOpenCollectionInPersonalCollection;
 
   const renderContent = useCallback(
     ({ closePopover }) => {
@@ -120,18 +132,26 @@ function FormCollectionPicker({
             onOpenCollectionChange?.(id);
             setOpenCollectionId(id);
           }}
+          showOnlyPersonalCollections={showOnlyPersonalCollections}
         >
-          <CreateCollectionOnTheGoButton openCollectionId={openCollectionId} />
+          {showCreateNewCollectionOption && (
+            <CreateCollectionOnTheGoButton
+              showOnlyPersonalCollections={showOnlyPersonalCollections}
+              openCollectionId={openCollectionId}
+            />
+          )}
         </PopoverItemPicker>
       );
     },
     [
-      value,
       type,
+      value,
       width,
-      setValue,
       initialOpenCollectionId,
+      showOnlyPersonalCollections,
+      showCreateNewCollectionOption,
       openCollectionId,
+      setValue,
       onOpenCollectionChange,
     ],
   );

@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import { Button, Text } from "metabase/ui";
+import { Button } from "metabase/ui";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
@@ -84,15 +84,6 @@ export const QueryColumnSelector = ({
 
   return (
     <>
-      {!addRemoveColumns && (
-        <Text
-          component="label"
-          display="block"
-          fw={700}
-          mb="0.5rem"
-          fs="0.875em"
-        >{t`Columns`}</Text>
-      )}
       <Button
         variant="subtle"
         onClick={() => setAddRemoveColumns(value => !value)}
