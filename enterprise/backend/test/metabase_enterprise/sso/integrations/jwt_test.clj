@@ -208,8 +208,7 @@
               (testing "User Invite Event is logged."
                 (is (= "newuser@metabase.com"
                        (get-in (audit-log-test/latest-event :user-invited (:id new-user))
-                               [:details :email])
-                       #_(get-in (t2/select-one :model/AuditLog :topic :user-invited) [:details :email]))))
+                               [:details :email]))))
               (testing "attributes"
                 (is (= {"more" "stuff"
                         "for"  "the new user"}
