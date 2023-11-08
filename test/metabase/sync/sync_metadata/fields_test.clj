@@ -138,7 +138,6 @@
               (let [table (t2/hydrate (t2/select-one Table :db_id (u/the-id database)) :fields)]
                 (set (map :name (:fields table))))))))))
 
-;; TODO: is this test relevant?
 (deftest dont-splice-inactive-columns-into-queries-test
   (testing (str "make sure that inactive columns don't end up getting spliced into queries! This test arguably "
                 "belongs in the query processor tests since it's ultimately checking to make sure columns marked as "
