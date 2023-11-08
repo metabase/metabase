@@ -1,4 +1,9 @@
-import type { DashboardCard, DashCardId } from "metabase-types/api";
+import type {
+  DashboardCard,
+  DashCardId,
+  ParameterId,
+  ParameterTarget,
+} from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 import {
   setDashCardAttributes,
@@ -16,18 +21,19 @@ import {
 } from "./utils";
 
 export function autoWireDashcardsWithMatchingParameters(
-  parameter_id,
-  dashcard,
-  target,
+  parameter_id: ParameterId,
+  dashcard: DashboardCard,
+  target: ParameterTarget,
 ) {
   return function (dispatch: Dispatch, getState: GetState) {
     const metadata = getMetadata(getState());
     const dashboard_state = getState().dashboard;
-    const dashcardsToAutoApply = getAllDashboardCardsWithUnmappedParameters(
-      dashboard_state,
-      dashboard_state.dashboardId,
-      parameter_id,
-    );
+    const dashcardsToAutoApply: DashboardCard[] =
+      getAllDashboardCardsWithUnmappedParameters(
+        dashboard_state,
+        dashboard_state.dashboardId,
+        parameter_id,
+      );
 
     dispatch(
       setMultipleDashCardAttributes({

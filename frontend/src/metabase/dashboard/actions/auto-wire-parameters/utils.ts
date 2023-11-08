@@ -22,14 +22,16 @@ export function getAllDashboardCardsWithUnmappedParameters(
   parameter_id: ParameterId,
   excludeDashcardIds: DashCardId[] = [],
 ) {
-  return getExistingDashCards(dashboard, dashboardId).filter(dashcard => {
-    return (
-      !excludeDashcardIds.includes(dashcard.id) &&
-      !dashcard.parameter_mappings?.some(
-        mapping => mapping.parameter_id === parameter_id,
-      )
-    );
-  });
+  return getExistingDashCards(dashboard, dashboardId).filter(
+    (dashcard: DashboardCard) => {
+      return (
+        !excludeDashcardIds.includes(dashcard.id) &&
+        !dashcard.parameter_mappings?.some(
+          mapping => mapping.parameter_id === parameter_id,
+        )
+      );
+    },
+  );
 }
 
 export function getMatchingParameterOption(
