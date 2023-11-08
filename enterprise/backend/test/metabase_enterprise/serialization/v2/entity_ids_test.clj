@@ -87,6 +87,8 @@
                      :model/ImplicitAction
                      :model/User
                      :model/Revision
+                     :model/AuditLog
+                     :model/RecentViews
                      :model/PermissionsRevision
                      :model/CardBookmark
                      :model/CollectionPermissionGraphRevision

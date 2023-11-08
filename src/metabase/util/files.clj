@@ -6,6 +6,7 @@
   As much as possible, this namespace aims to abstract away the `nio.file` library and expose a set of high-level
   *file-manipulation* functions for the sorts of operations the plugin system needs to perform."
   (:require
+   [babashka.fs :as fs]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.util :as u]
@@ -17,7 +18,8 @@
    (java.nio.file CopyOption Files FileSystem FileSystemAlreadyExistsException FileSystems
                   LinkOption OpenOption Path Paths StandardCopyOption)
    (java.nio.file.attribute FileAttribute)
-   (java.util Collections)))
+   (java.util Collections)
+   (java.util.zip ZipInputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -128,7 +130,7 @@
       (f (get-path (.toString (Paths/get (.toURI url))))))))
 
 (defmacro with-open-path-to-resource
-  "Execute `body` with an Path to a resource file or directory (i.e. a file in the project `resources/` directory, or
+  "Execute `body` with a Path to a resource file or directory (i.e. a file in the project `resources/` directory, or
   inside the uberjar), cleaning up when finished.
 
   Throws a FileNotFoundException if the resource does not exist; be sure to check with `io/resource` or similar before
@@ -162,3 +164,23 @@
       (when (exists? file-path)
         (with-open [is (Files/newInputStream file-path (u/varargs OpenOption))]
           (slurp is))))))
+
+(defn unzip-file
+  "Decompress a zip archive from input to output."
+  [zip-file mod-fn]
+  (with-open [stream (-> zip-file io/input-stream ZipInputStream.)]
+    (loop [entry (.getNextEntry stream)]
+      (when entry
+        (let [out-path (mod-fn (.getName entry))
+              out-file (io/file out-path)]
+          (if (.isDirectory entry)
+            (when-not (.exists out-file) (.mkdirs out-file))
+            (let [parent-dir (fs/parent out-path)]
+              (when-not (fs/exists? (str parent-dir)) (fs/create-dirs parent-dir))
+              (io/copy stream out-file)))
+          (recur (.getNextEntry stream)))))))
+
+(defn relative-path
+  "Returns a java.nio.file.Path "
+  [path]
+  (fs/relativize (fs/absolutize ".") path))

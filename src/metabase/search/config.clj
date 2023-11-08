@@ -16,7 +16,8 @@
                 (public-settings/application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
-  :visibility :authenticated)
+  :visibility :authenticated
+  :audit      :getter)
 
 (def ^:dynamic *db-max-results*
   "Number of raw results to fetch from the database. This number is in place to prevent massive application DB load by
@@ -136,6 +137,7 @@
    ;; returned for Card, Dashboard, and Collection
    :collection_id       :integer
    :collection_name     :text
+   :collection_type     :text
    :collection_authority_level :text
    ;; returned for Card and Dashboard
    :collection_position :integer
@@ -293,6 +295,7 @@
   (conj (remove #{:updated_at} default-columns)
         [:collection.id :collection_id]
         [:name :collection_name]
+        [:type :collection_type]
         [:authority_level :collection_authority_level]
         bookmark-col))
 

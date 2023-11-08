@@ -66,6 +66,20 @@
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
+(defmethod mi/can-write? Collection
+  ([instance]
+   (mi/can-write? :model/Collection (:id instance)))
+  ([model pk]
+   (if (= pk (:id (perms/default-audit-collection)))
+     false
+     (mi/current-user-has-full-permissions? :write model pk))))
+
+(defmethod mi/can-read? Collection
+  ([instance]
+   (perms/can-read-audit-helper :model/Collection instance))
+  ([_ pk]
+   (mi/can-read? (t2/select-one :model/Collection :id pk))))
+
 (def AuthorityLevel
   "Malli Schema for valid collection authority levels."
   [:enum "official"])
@@ -101,7 +115,7 @@
 ;; assembling IDs into a location path, and so forth.
 
 (defn- unchecked-location-path->ids
-  "*** Don't use this directly! Instead use `location-path->ids`. ***
+  "*** Don't use this directly! Instead use [[location-path->ids]]. ***
 
   'Explode' a `location-path` into a sequence of Collection IDs, and parse them as integers. THIS DOES NOT VALIDATE
   THAT THE PATH OR RESULTS ARE VALID. This unchecked version exists solely to power the other version below."
@@ -561,6 +575,9 @@
   ;; Make sure we're not trying to archive the Root Collection...
   (when (collection.root/is-root-collection? collection)
     (throw (Exception. (tru "You cannot archive the Root Collection."))))
+  ;; Make sure we're not trying to archive the Custom Reports Collection...
+  (when (= (perms/default-custom-reports-collection) collection)
+    (throw (Exception. (tru "You cannot archive the Custom Reports Collection."))))
   ;; also make sure we're not trying to archive a PERSONAL Collection
   (when (t2/exists? Collection :id (u/the-id collection), :personal_owner_id [:not= nil])
     (throw (Exception. (tru "You cannot archive a Personal Collection."))))
@@ -1277,6 +1294,8 @@
        ([m]
         (->> (vals m)
              (map #(update % :children ->tree))
-             (sort-by (fn [{coll-name :name, coll-id :id}]
-                        [((fnil u/lower-case-en "") coll-name) coll-id])))))
+             (sort-by (fn [{coll-type :type, coll-name :name, coll-id :id}]
+                        ;; coll-type is `nil` or "instance-analytics"
+                        ;; nil sorts first, so we get instance-analytics at the end, which is what we want
+                        [coll-type ((fnil u/lower-case-en "") coll-name) coll-id])))))
      (annotate-collections coll-type-ids collections))))

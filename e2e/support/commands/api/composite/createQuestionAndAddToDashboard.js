@@ -9,8 +9,8 @@ Cypress.Commands.add(
         .request(`/api/dashboard/${dashboardId}`)
         .then(({ body: { dashcards } }) =>
           cy
-            .request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-              cards: [
+            .request("PUT", `/api/dashboard/${dashboardId}`, {
+              dashcards: [
                 ...dashcards,
                 {
                   id: -1,
@@ -26,7 +26,7 @@ Cypress.Commands.add(
             })
             .then(response => ({
               ...response,
-              body: response.body.cards[0],
+              body: response.body.dashcards[0],
             })),
         ),
     ),

@@ -1,12 +1,7 @@
 (ns metabase.models.activity
   (:require
    [metabase.api.common :as api]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
-   [metabase.models.metric :refer [Metric]]
-   [metabase.models.pulse :refer [Pulse]]
-   [metabase.models.segment :refer [Segment]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -14,11 +9,11 @@
 ;;; ------------------------------------------------- Perms Checking -------------------------------------------------
 
 (def ^:private model->entity
-  {"card"      Card
-   "dashboard" Dashboard
-   "metric"    Metric
-   "pulse"     Pulse
-   "segment"   Segment})
+  {"card"      :model/Card
+   "dashboard" :model/Dashboard
+   "metric"    :model/Metric
+   "pulse"     :model/Pulse
+   "segment"   :model/Segment})
 
 (defmulti can-?
   "Implementation for `can-read?`/`can-write?` for items in the activity feed. Dispatches off of the activity `:topic`,
@@ -38,7 +33,7 @@
 ;; or Dashboard). For all other activity feed items with no model everyone can read/write
 (defmethod can-? :default [perms-check-fn {model :model, model-id :model_id}]
   (if-let [object (when-let [entity (model->entity model)]
-                    (entity model-id))]
+                    (t2/select entity model-id))]
     (perms-check-fn object)
     true))
 
@@ -105,9 +100,9 @@
            table-id user-id model model-id]
     :or   {object {}}}                      :- [:map {:closed true}
                                                 [:topic                        :keyword]
-                                                [:user-id                      pos-int?]
-                                                [:model                        :string]
-                                                [:model-id                     pos-int?]
+                                                [:user-id     {:optional true} [:maybe pos-int?]]
+                                                [:model       {:optional true} [:maybe :string]]
+                                                [:model-id    {:optional true} [:maybe pos-int?]]
                                                 [:object      {:optional true} [:maybe :map]]
                                                 [:details     {:optional true} [:maybe :map]]
                                                 [:database-id {:optional true} [:maybe pos-int?]]

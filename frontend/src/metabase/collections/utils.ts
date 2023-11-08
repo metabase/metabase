@@ -5,6 +5,7 @@ import type {
   CollectionId,
   CollectionItem,
 } from "metabase-types/api";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
 export function nonPersonalOrArchivedCollection(
   collection: Collection,
@@ -13,8 +14,35 @@ export function nonPersonalOrArchivedCollection(
   return !isPersonalCollection(collection) && !collection.archived;
 }
 
-export function isPersonalCollection(collection: Partial<Collection>): boolean {
+export function isPersonalCollection(
+  collection: Partial<Collection> | CollectionItem,
+): boolean {
   return typeof collection.personal_owner_id === "number";
+}
+
+export function isInstanceAnalyticsCollection(
+  collection: Partial<Collection>,
+): boolean {
+  return (
+    collection &&
+    PLUGIN_COLLECTIONS.getCollectionType(collection).type ===
+      "instance-analytics"
+  );
+}
+
+export function getInstanceAnalyticsCustomCollection(
+  collections: Collection[],
+): Collection | null {
+  return PLUGIN_COLLECTIONS.getInstanceAnalyticsCustomCollection(collections);
+}
+
+export function isInstanceAnalyticsCustomCollection(
+  collection: Collection,
+): boolean {
+  return (
+    PLUGIN_COLLECTIONS.CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID ===
+    collection.entity_id
+  );
 }
 
 // Replace the name for the current user's collection
