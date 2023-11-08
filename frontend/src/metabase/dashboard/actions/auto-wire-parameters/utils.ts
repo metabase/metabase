@@ -33,17 +33,25 @@ export function getAllDashboardCardsWithUnmappedParameters(
 }
 
 export function getMatchingParameterOption(
-  dashcardToCheck,
-  targetDimension,
-  targetDashcard,
-  metadata,
+  dashcardToCheck: DashboardCard,
+  targetDimension: ParameterTarget,
+  targetDashcard: DashboardCard,
+  metadata: Metadata,
 ) {
+  if (!dashcardToCheck) {
+    return [];
+  }
+
   return getParameterMappingOptions(
     metadata,
     null,
     dashcardToCheck.card,
+    // TODO: mapping-options.js/getParameterMappingOptions needs to be converted to typescript as the TS
+    // checker thinks that this parameter should be (null | undefined), not (DashboardCard | null | undefined)
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
     dashcardToCheck,
-  ).find(param =>
+  ).find((param: { target: ParameterTarget }) =>
     compareMappingOptionTargets(
       targetDimension,
       param.target,

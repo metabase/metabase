@@ -1,4 +1,3 @@
-import _ from "underscore";
 import { tag_names } from "cljs/metabase.shared.parameters.parameters";
 import { isActionDashCard } from "metabase/actions/utils";
 import { isVirtualDashCard } from "metabase/dashboard/utils";
@@ -13,7 +12,6 @@ import {
   buildDimensionTarget,
   buildTemplateTagVariableTarget,
   buildTextTagTarget,
-  compareMappingOptionTargets,
 } from "metabase-lib/parameters/utils/targets";
 
 function buildStructuredQuerySectionOptions(section) {
