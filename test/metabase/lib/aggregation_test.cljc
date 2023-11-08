@@ -1,6 +1,7 @@
 (ns metabase.lib.aggregation-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   [clojure.set :as set]
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
@@ -802,3 +803,15 @@
       0 [:count {}]
       1 [:count {}]
       2 nil)))
+
+(deftest ^:parallel aggregation-operators-update-after-join
+  (testing "available operators includes avg and sum once numeric fields are present (#31384)"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :categories))]
+      (is (not (set/subset?
+                 #{:avg :sum}
+                 (set (mapv :short (lib/available-aggregation-operators query)))))
+          (is (set/subset?
+                #{:avg :sum}
+                (set (mapv :short (-> query
+                                      (lib/join (meta/table-metadata :venues))
+                                      lib/available-aggregation-operators)))))))))
