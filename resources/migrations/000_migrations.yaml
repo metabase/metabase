@@ -15926,7 +15926,12 @@ databaseChangeLog:
             dbms: h2
             path: instance_analytics_views/indexes/v1/h2-indexes.sql
             relativeToChangelogFile: true
-      rollback: # not needed
+      rollback:
+        # Only MySQL needes a rollback because all the other DBs support "CREATE INDEX IF NOT EXISTS"
+        - sqlFile:
+            dbms: mysql
+            path: instance_analytics_views/indexes/v1/mysql-rollback.sql
+            relativeToChangelogFile: true
 
   - changeSet:
       id: v48.00-047
