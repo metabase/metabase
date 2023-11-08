@@ -159,7 +159,7 @@
                  {:aggregation [[:count]]
                   :breakout    [[:field %latitude {:binning {:strategy :default}}]]})))))))
 
-(deftest breakout-bin-width-setting-test
+(deftest ^:parallel breakout-bin-width-setting-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)
     (testing "should default to 8 bins when number of bins isn't specified"
       (mt/with-temporary-setting-values [breakout-bin-width 5.0]
@@ -167,7 +167,11 @@
                (mt/formatted-rows [1.0 int]
                  (mt/run-mbql-query venues
                    {:aggregation [[:count]]
-                    :breakout    [[:field %latitude {:binning {:strategy :default}}]]})))))
+                    :breakout    [[:field %latitude {:binning {:strategy :default}}]]}))))))))
+
+(deftest ^:parallel breakout-bin-width-setting-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :binning)
+    (testing "should default to 8 bins when number of bins isn't specified"
       (mt/with-temporary-setting-values [breakout-bin-width 1.0]
         (is (= [[33.0 4] [34.0 57]]
                (mt/formatted-rows [1.0 int]
@@ -266,7 +270,7 @@
                    (mt/formatted-rows [1.0 int]
                      (qp/process-query query))))))))))
 
-(deftest bin-nested-queries-default-binning-test
+(deftest ^:parallel bin-nested-queries-default-binning-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
     (testing "should be able to use :default binning in a nested query"
       (mt/with-temporary-setting-values [breakout-bin-width 5.0]

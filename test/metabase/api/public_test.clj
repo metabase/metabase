@@ -388,17 +388,18 @@
 
 
 (deftest make-sure-it-also-works-with-the-forwarded-url
-  (mt/with-temporary-setting-values [enable-public-sharing true]
-    (mt/with-temp! [Card {uuid :public_uuid} (card-with-date-field-filter)]
-      ;; make sure the URL doesn't include /api/ at the beginning like it normally would
-      (binding [client/*url-prefix* ""]
-        (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
-          (is (= "count\n107\n"
-                 (client/real-client :get 200 (str "public/question/" uuid ".csv")
-                                :parameters (json/encode [{:id     "_DATE_"
-                                                           :type   :date/quarter-year
-                                                           :target [:dimension [:template-tag :date]]
-                                                           :value  "Q1-2014"}])))))))))
+  (mt/test-helpers-set-global-values!
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [Card {uuid :public_uuid} (card-with-date-field-filter)]
+        ;; make sure the URL doesn't include /api/ at the beginning like it normally would
+        (binding [client/*url-prefix* ""]
+          (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
+            (is (= "count\n107\n"
+                   (client/real-client :get 200 (str "public/question/" uuid ".csv")
+                                       :parameters (json/encode [{:id     "_DATE_"
+                                                                  :type   :date/quarter-year
+                                                                  :target [:dimension [:template-tag :date]]
+                                                                  :value  "Q1-2014"}]))))))))))
 
 (defn- card-with-trendline []
   (assoc (shared-obj)
@@ -411,7 +412,7 @@
 (deftest make-sure-we-include-all-the-relevant-fields-like-insights
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (t2.with-temp/with-temp [Card {uuid :public_uuid} (card-with-trendline)]
-      (is (= #{:cols :rows :insights :results_timezone}
+      (is (= #{:cols :rows :insights :results_timezone :requested_timezone}
              (-> (client/client :get 202 (str "public/card/" uuid "/query"))
                  :data
                  keys
@@ -426,8 +427,10 @@
       (mt/with-temporary-setting-values [enable-public-sharing false]
         (with-temp-public-dashboard [{uuid :public_uuid}]
           (is (= "An error occurred."
-                 (client/client :get 400 (str "public/dashboard/" uuid)))))))
+                 (client/client :get 400 (str "public/dashboard/" uuid)))))))))
 
+(deftest ^:parallel get-public-dashboard-errors-404-test
+  (testing "GET /api/public/dashboard/:uuid"
     (testing "Should get a 400 if the Dashboard doesn't exist"
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (is (= "Not found."

@@ -120,7 +120,7 @@
   (-> (ring.mock/request :get "/anyurl")
       (assoc :metabase-api-key api-key)))
 
-(deftest enforce-api-key-request
+(deftest ^:parallel enforce-api-key-request
   (mt/with-temporary-setting-values [api-key "test-api-key"]
     (testing "no apikey in the request, expect 403"
       (is (= mw.util/response-forbidden

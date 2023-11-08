@@ -70,6 +70,18 @@ title: Driver interface changelog
   removed in 0.51.0 or later. You can easily implement `metabase.driver/db-default-timezone` directly, and use
   `metabase.driver.sql-jdbc.execute/do-with-connection-with-options` to get a `java.sql.Connection` for a Database.
 
+- A new method, `metabase.driver/notify-database-deleted!`, has been added. This is called whenever a Database is
+  deleted so drivers can release cached resources such as connection pools as needed. Prior to 0.48.0,
+  `metabase.driver/notify-database-updated` was called for both updates and deletes; it is now only called for
+  updates. For backwards compatibility, the default implementation of `notify-database-deleted!` calls
+  `notify-database-updated`; if you want the same behavior in both situations, you can implement just
+  `notify-database-updated`; if you want different behaviors for updates or deletions you should implement both
+  methods.
+
+  Note that only drivers that manage their own cached resources need to worry about implementing this method; for
+  JDBC-based drivers, connection pool management is handled by the `:jdbc` driver itself; the default implementation
+  for other drivers is a no-op.
+
 ## Metabase 0.47.0
 
 - A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in

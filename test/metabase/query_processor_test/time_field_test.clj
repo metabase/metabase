@@ -51,7 +51,7 @@
              [[3 "Kaneonuskatew Eiran" "16:15:00Z"]])
            (time-query := "16:15:00Z")))))
 
-(deftest report-timezone-test
+(deftest ^:parallel report-timezone-test
   (mt/test-drivers (normal-drivers-that-support-time-type)
     (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
       (is (= (cond

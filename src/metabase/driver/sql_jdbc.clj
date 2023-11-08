@@ -82,8 +82,12 @@
   (sql-jdbc.execute/execute-reducible-query driver query chans respond))
 
 (defmethod driver/notify-database-updated :sql-jdbc
-  [_ database]
-  (sql-jdbc.conn/notify-database-updated database))
+  [_driver database]
+  (sql-jdbc.conn/notify-database-updated! database))
+
+(defmethod driver/notify-database-deleted! :sql-jdbc
+  [_driver database]
+  (sql-jdbc.conn/notify-database-deleted! database))
 
 (defmethod driver/dbms-version :sql-jdbc
   [driver database]

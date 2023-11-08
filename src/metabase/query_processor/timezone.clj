@@ -13,6 +13,8 @@
 
 (set! *warn-on-reflection* true)
 
+;;; TODO -- we can probably remove this now that you can just set the `report-timezone` Setting
+;;; with [[metabase.test/with-temporary-setting-values]] and it's thread-safe
 (def ^:private ^:dynamic *report-timezone-id-override* nil)
 
 (def ^:private ^:dynamic *database-timezone-id-override* nil)
@@ -40,8 +42,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn report-timezone-id-if-supported
-  "Timezone ID for the report timezone, if the current driver and database supports it. (If the current driver supports it, this is
-  bound by the `bind-effective-timezone` middleware.)"
+  "Timezone ID for the report timezone, if the current driver and database supports it. (If the current driver supports
+  it, this is bound by the `bind-effective-timezone` middleware.)"
   (^String []
    (report-timezone-id-if-supported driver/*driver* (lib.metadata/database (qp.store/metadata-provider))))
 

@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
+   [metabase-enterprise.advanced-config.file.databases :as advanced-config.file.databases]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver.h2 :as h2]
    [metabase.models :refer [Database Table]]
@@ -63,6 +64,8 @@
   (testing "We should be able to disable sync for new Databases by specifying a Setting in the config file"
     ;; make sure we're actually testing something if it was already set to false locally.
     (mt/with-temporary-setting-values [config-from-file-sync-databases true]
+      (is (advanced-config.file.databases/config-from-file-sync-databases)
+          "sanity check")
       (try
         (binding [advanced-config.file/*config* {:version 1
                                                  :config  {:settings  {:config-from-file-sync-databases false}

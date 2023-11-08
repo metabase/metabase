@@ -33,19 +33,19 @@
   (:import
    (java.io ByteArrayInputStream)))
 
-(defn random-embedding-secret-key [] (crypto-random/hex 32))
+(defn- random-embedding-secret-key [] (crypto-random/hex 32))
 
-(def ^:dynamic *secret-key* nil)
+(def ^:private ^:dynamic *secret-key* nil)
 
 (defn sign [claims] (jwt/sign claims *secret-key*))
 
-(defn do-with-new-secret-key [f]
+(defn do-with-new-secret-key [thunk]
   (binding [*secret-key* (random-embedding-secret-key)]
     (mt/with-temporary-setting-values [embedding-secret-key *secret-key*]
-      (f))))
+      (thunk))))
 
 (defmacro with-new-secret-key {:style/indent 0} [& body]
-  `(do-with-new-secret-key (fn [] ~@body)))
+  `(do-with-new-secret-key (^:once fn* [] ~@body)))
 
 (defn card-token {:style/indent 1} [card-or-id & [additional-token-params]]
   (sign (merge {:resource {:question (u/the-id card-or-id)}
@@ -135,10 +135,6 @@
        (is (= [{:col "Count"} {:col 100.0}]
               actual))))))
 
-(defn dissoc-id-and-name [obj]
-  (cond-> obj
-    (map? obj) (dissoc :id :name)))
-
 (def successful-card-info
   "Data that should be returned if `GET /api/embed/card/:token` completes successfully (minus `:id` and `:name`).
    This should only be the bare minimum amount of info needed to display the Card, leaving out other data we wouldn't
@@ -164,9 +160,8 @@
 (deftest it-should-be-possible-to-use-this-endpoint-successfully-if-all-the-conditions-are-met
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true}]
-      (is (= successful-card-info
-             (dissoc-id-and-name
-               (client/client :get 200 (card-url card))))))))
+      (is (=? successful-card-info
+              (client/client :get 200 (card-url card)))))))
 
 (deftest we-should-fail-when-attempting-to-use-an-expired-token
   (with-embedding-enabled-and-new-secret-key
@@ -295,14 +290,15 @@
 
 (deftest card-query-test
   (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
-    (mt/with-ensure-with-temp-no-transaction!
+    (mt/test-helpers-set-global-values!
       (do-response-formats [response-format request-options]
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
-          (mt/with-temporary-setting-values [enable-embedding false]
-            (with-new-secret-key
-              (with-temp-card [card]
-                (is (= "Embedding is not enabled."
-                       (client/real-client :get 400 (card-query-url card response-format))))))))
+          (mt/test-helpers-set-global-values!
+            (mt/with-temporary-setting-values [enable-embedding false]
+              (with-new-secret-key
+                (with-temp-card [card]
+                  (is (= "Embedding is not enabled."
+                         (client/real-client :get 400 (card-query-url card response-format)))))))))
 
         (with-embedding-enabled-and-new-secret-key
           (let [expected-status (response-format->status-code response-format)]
@@ -351,7 +347,7 @@
                    (count (csv/read-csv results))))))))))
 
 (deftest card-locked-params-test
-  (mt/with-ensure-with-temp-no-transaction!
+  (mt/test-helpers-set-global-values!
     (with-embedding-enabled-and-new-secret-key
       (with-temp-card [card {:enable_embedding true, :embedding_params {:venue_id "locked"}}]
         (do-response-formats [response-format request-options]
@@ -386,7 +382,7 @@
                  (client/client :get 400 (str (card-query-url card response-format) "?venue_id=200")))))))))
 
 (deftest card-enabled-params-test
-  (mt/with-ensure-with-temp-no-transaction!
+  (mt/test-helpers-set-global-values!
     (with-embedding-enabled-and-new-secret-key
       (with-temp-card [card {:enable_embedding true, :embedding_params {:venue_id "enabled"}}]
         (do-response-formats [response-format request-options]
@@ -484,13 +480,14 @@
                (client/client :get 200 (str (card-query-url card "/csv") "?date=Q1-2014"))))))))
 
 (deftest csv-forward-url-test
-  (with-embedding-enabled-and-new-secret-key
-    (mt/with-temp! [Card card (card-with-date-field-filter)]
-      ;; make sure the URL doesn't include /api/ at the beginning like it normally would
-      (binding [client/*url-prefix* ""]
-        (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
-          (is (= "count\n107\n"
-                 (client/real-client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014")))))))))
+  (mt/test-helpers-set-global-values!
+    (with-embedding-enabled-and-new-secret-key
+      (mt/with-temp [Card card (card-with-date-field-filter)]
+        ;; make sure the URL doesn't include /api/ at the beginning like it normally would
+        (binding [client/*url-prefix* ""]
+          (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
+            (is (= "count\n107\n"
+                   (client/real-client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014"))))))))))
 
 
 ;;; ---------------------------------------- GET /api/embed/dashboard/:token -----------------------------------------
@@ -501,9 +498,8 @@
 (deftest it-should-be-possible-to-call-this-endpoint-successfully
   (with-embedding-enabled-and-new-secret-key
     (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
-      (is (= successful-dashboard-info
-             (dissoc-id-and-name
-              (client/client :get 200 (dashboard-url dash))))))))
+      (is (=? successful-dashboard-info
+              (client/client :get 200 (dashboard-url dash)))))))
 
 (deftest we-should-fail-when-attempting-to-use-an-expired-token-2
   (with-embedding-enabled-and-new-secret-key
@@ -1278,7 +1274,7 @@
 
 (deftest pivot-dashcard-locked-params-test
   (mt/dataset sample-dataset
-    (mt/with-ensure-with-temp-no-transaction!
+    (mt/test-helpers-set-global-values!
       (with-embedding-enabled-and-new-secret-key
         (with-temp-dashcard [dashcard {:dash     {:enable_embedding true
                                                   :embedding_params {:abc "locked"}

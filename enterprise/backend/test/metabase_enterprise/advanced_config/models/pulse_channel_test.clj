@@ -21,11 +21,13 @@
                              ["cam@metabase.com" "cam@toucan.farm"]
                              ["cam@metabase.com" "cam@disallowed-domain.com"]]
             :let            [fail? (and allowed-domains
-                                    (not (every? (fn [email]
-                                                   (contains? allowed-domains (u/email->domain email)))
-                                                 emails)))]]
+                                        (not (every? (fn [email]
+                                                       (contains? allowed-domains (u/email->domain email)))
+                                                     emails)))]]
       (premium-features-test/with-premium-features #{:email-allow-list}
         (mt/with-temporary-setting-values [subscription-allowed-domains (str/join "," allowed-domains)]
+          (is (= (not-empty (str/join "," allowed-domains))
+                 (advanced-config.models.pulse-channel/subscription-allowed-domains)))
           ;; `with-premium-features` and `with-temporary-setting-values` will add `testing` context for the other
           ;; stuff.
           (testing (str (format "\nOperation = %s" operation)
@@ -54,7 +56,8 @@
       (is (= "metabase.com"
              (advanced-config.models.pulse-channel/subscription-allowed-domains! "metabase.com")))))
   (testing "Should be unable to set the subscription-allowed-domains setting without the email-allow-list feature"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Setting subscription-allowed-domains is not enabled because feature :email-allow-list is not available"
-         (advanced-config.models.pulse-channel/subscription-allowed-domains! "metabase.com")))))
+    (premium-features-test/with-premium-features nil
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Setting subscription-allowed-domains is not enabled because feature :email-allow-list is not available"
+           (advanced-config.models.pulse-channel/subscription-allowed-domains! "metabase.com"))))))

@@ -1,7 +1,7 @@
 (ns metabase.events.driver-notifications
   "Driver notifications are used to let drivers know database details or other relevant information has
   changed (`:database-update`) or that a Database has been deleted (`:database-delete`). Drivers can choose to be
-  notified of these events by implementing the `metabase.driver/notify-database-updated` multimethod. At the time of
+  notified of these events by implementing the [[metabase.driver/notify-database-updated]] multimethod. At the time of
   this writing, the SQL JDBC driver 'superclass' is the only thing that implements this method, and does so to close
   connection pools when database details change or when they are deleted."
   (:require

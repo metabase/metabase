@@ -11,7 +11,8 @@
    [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
-   (java.net URL)))
+   (java.net URL)
+   (java.nio.file Path)))
 
 (set! *warn-on-reflection* true)
 
@@ -21,7 +22,7 @@
 ;; Reuse the plugins directory for the destination to extract the sample database because it's pretty much guaranteed
 ;; to exist and be writable.
 (defn- target-path
-  []
+  ^Path []
   (u.files/append-to-path (plugins/plugins-dir) sample-database-filename))
 
 (defn- process-sample-db-path
@@ -35,7 +36,7 @@
   [^URL resource]
   (-> (.getPath resource)
       (str/replace #"^file:" "zip:") ; to connect to an H2 DB inside a JAR just replace file: with zip: (this doesn't
-                                     ;   do anything when running from the Clojure CLI, which has no `file:` prefix)
+                                     ; do anything when running from the Clojure CLI, which has no `file:` prefix)
       process-sample-db-path))
 
 (defn- extract-sample-database!

@@ -30,6 +30,10 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
+(use-fixtures :each (fn [thunk]
+                      (mt/with-temporary-setting-values [report-timezone "UTC"]
+                        (thunk))))
+
 (deftest ^:parallel basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a basic query with MBQL source-query"
@@ -367,7 +371,7 @@
       (str "make sure that dots in field literal identifiers get handled properly so you can't reference fields "
            "from other tables using them")))
 
-(deftest field-literals-date-time-fields-test
+(deftest ^:parallel field-literals-date-time-fields-test
   (mt/with-temporary-setting-values [start-of-week :sunday]
     (is (= (honeysql->sql
             {:select [[:source.ID :ID]

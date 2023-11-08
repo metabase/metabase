@@ -10,7 +10,7 @@
 
 (deftest fetch-values-save-execution-info-test
   (testing "fetch values for implicit action will save an execution info"
-    (mt/with-ensure-with-temp-no-transaction!
+    (mt/test-helpers-set-global-values!
       (mt/with-actions-enabled
         (mt/with-actions [_                   {:dataset true :dataset_query (mt/mbql-query venues {:fields [$id $name]})}
                           {:keys [action-id]} {:type :implicit :kind "row/update"}]

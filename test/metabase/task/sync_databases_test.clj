@@ -131,13 +131,14 @@
              (t2/insert! Database {:engine :postgres, k "0 * ABCD"}))))))
 
   (testing "Check that you can't UPDATE a DB's schedule to something invalid"
-    (mt/with-temp! [Database database {:engine :postgres}]
-      (doseq [k [:metadata_sync_schedule :cache_field_values_schedule]]
-        (testing (format "Update %s" k)
-          (is (thrown?
-               Exception
-               (t2/update! Database (u/the-id database)
-                           {k "2 CANS PER DAY"}))))))))
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp [Database database {:engine :postgres}]
+        (doseq [k [:metadata_sync_schedule :cache_field_values_schedule]]
+          (testing (format "Update %s" k)
+            (is (thrown?
+                 Exception
+                 (t2/update! Database (u/the-id database)
+                             {k "2 CANS PER DAY"})))))))))
 
 ;; this is a deftype due to an issue with Clojure. The `org.quartz.JobExecutionContext` interface has a put method and
 ;; defrecord emits a put method and things get

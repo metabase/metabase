@@ -524,8 +524,8 @@
         (doseq [[correct-password? ssh-password] [[true password] [false "wrong-password"]]]
           (with-actions-test-data-and-actions-permissively-enabled
             (let [ssh-port (.getPort ^SshServer ssh-server)]
-              (let [details (t2/select-one-fn :details 'Database :id (mt/id))]
-                (t2/update! 'Database (mt/id)
+              (let [details (t2/select-one-fn :details Database :id (mt/id))]
+                (t2/update! Database (mt/id)
                             ;; enable ssh tunnel
                             {:details (assoc details
                                              :tunnel-enabled true
@@ -546,18 +546,18 @@
                                     (catch Exception e e))]
                   (if correct-password?
                     (is (= {:rows-updated 2} response))
-                    (do
+                    (testing (format "\nresponse = %s" (u/pprint-to-str response))
                       (is (instance? Exception response) "Did not get an error with wrong password")
                       (is (some (partial instance? org.apache.sshd.common.SshException)
                                 (u/full-exception-chain response))
                           "None of the errors are from ssh")))))
               (testing "Can perform custom actions on ssh-enabled database"
                 (let [query (update (mt/native-query
-                                     {:query "update categories set name = 'foo' where id = {{id}}"
-                                      :template-tags {:id {:id "id"
-                                                           :name "id"
-                                                           :type "number"
-                                                           :display-name "Id"}}})
+                                      {:query "update categories set name = 'foo' where id = {{id}}"
+                                       :template-tags {:id {:id "id"
+                                                            :name "id"
+                                                            :type "number"
+                                                            :display-name "Id"}}})
                                     :type name)]
                   (mt/with-actions [{card-id :id} {:dataset true
                                                    :dataset_query (mt/mbql-query categories)}
@@ -580,7 +580,8 @@
                                (actions.execution/execute-action! action {"id" 1})))
                         (let [response (try (actions.execution/execute-action! action {"id" 1})
                                             (catch Exception e e))]
-                          (is (instance? Exception response) "Did not get an error with wrong password")
-                          (is (some (partial instance? org.apache.sshd.common.SshException)
-                                    (u/full-exception-chain response))
-                              "None of the errors are from ssh"))))))))))))))
+                          (testing (format "\nresponse = %s" (u/pprint-to-str response))
+                            (is (instance? Exception response) "Did not get an error with wrong password")
+                            (is (some (partial instance? org.apache.sshd.common.SshException)
+                                      (u/full-exception-chain response))
+                                "None of the errors are from ssh")))))))))))))))

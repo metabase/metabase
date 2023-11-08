@@ -80,7 +80,7 @@
         (let [bytea (.toByteArray bos)]
           (rest (csv/read-csv (String. bytea))))))))
 
-(deftest lazy-seq-realized-test
+(deftest ^:parallel lazy-seq-realized-test
   (testing "Lazy seqs within rows are automatically realized during exports (#26261)"
     (let [row (first (csv-export [[(lazy-seq [1 2 3])]]))]
       (is (= ["[1 2 3]"] row))))
@@ -89,7 +89,7 @@
     (let [row (first (csv-export [[(lazy-seq [#t "2021-03-30T"])]]))]
       (is (= ["[\"2021-03-30\"]"] row)))))
 
-(deftest format-datetimes-test
+(deftest ^:parallel format-datetimes-test
   (testing "Format datetime columns the way we expect (#10803)"
     (let [query   (str "SELECT cast(parsedatetime('2020-06-03', 'yyyy-MM-dd') AS timestamp) AS \"birth_date\",\n"
                        "       cast(parsedatetime('2020-06-03 23:41:23', 'yyyy-MM-dd HH:mm:ss') AS timestamp) AS \"created_at\"")

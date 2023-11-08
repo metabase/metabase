@@ -540,6 +540,9 @@
      (when-not (sql-jdbc.execute/recursive-connection?)
        ;; in H2, setting readOnly to true doesn't prevent writes
        ;; see https://github.com/h2database/h2database/issues/1163
+       ;;
+       ;; it seems like sometimes even when we try to make the Connection read-only or read-write it doesn't work. So
+       ;; this is a best-effort thing I guess.
        (.setReadOnly conn (not write?)))
      (f conn))))
 

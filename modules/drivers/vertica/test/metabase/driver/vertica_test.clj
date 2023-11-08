@@ -9,7 +9,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest db-timezone-test
+(deftest ^:parallel db-timezone-test
   (mt/test-driver :vertica
     (is (= "UTC"
            (driver/db-default-timezone :vertica (mt/db))))))

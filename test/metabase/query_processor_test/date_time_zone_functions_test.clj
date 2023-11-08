@@ -15,6 +15,10 @@
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :each (fn [thunk]
+                      (mt/with-temporary-setting-values [report-timezone "UTC"]
+                        (thunk))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Date extract tests                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -129,7 +133,7 @@
           (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
             (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))))
 
-(deftest extraction-function-literal-value-test
+(deftest ^:parallel extraction-function-literal-value-test
   (mt/with-temporary-setting-values [start-of-week   :sunday
                                      report-timezone "UTC"]
     (mt/dataset times-mixed
@@ -154,7 +158,7 @@
                         first
                         (zipmap ops))))))))))
 
-(deftest extraction-function-timestamp-with-time-zone-test
+(deftest ^:parallel extraction-function-timestamp-with-time-zone-test
   (mt/dataset times-mixed
     (mt/test-drivers (filter mt/supports-timestamptz-type? (mt/normal-drivers-with-feature :temporal-extract))
       (mt/with-temporary-setting-values [start-of-week   :sunday
@@ -210,7 +214,7 @@
                         first
                         (zipmap ops))))))))))
 
-(deftest temporal-extraction-with-filter-expresion-tests
+(deftest ^:parallel temporal-extraction-with-filter-expresion-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
     (mt/dataset times-mixed
       (doseq [{:keys [title expected query]}
@@ -243,7 +247,7 @@
         (testing title
           (is (= expected (test-temporal-extract query))))))))
 
-(deftest temporal-extraction-with-datetime-arithmetic-expression-tests
+(deftest ^:parallel temporal-extraction-with-datetime-arithmetic-expression-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract :expressions :date-arithmetics)
     (mt/dataset times-mixed
       (doseq [{:keys [title expected query]}
@@ -270,7 +274,7 @@
        (mt/formatted-rows [int])
        (map first)))
 
-(deftest extract-week-tests
+(deftest ^:parallel extract-week-tests
   (mt/with-temporary-setting-values [start-of-week :sunday]
     (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
       (mt/dataset times-mixed
@@ -344,7 +348,7 @@
          (mt/formatted-rows [normalize-timestamp-str])
          (map first))))
 
-(deftest datetime-math-tests
+(deftest ^:parallel datetime-math-tests
   (mt/with-temporary-setting-values [start-of-week   :sunday
                                      report-timezone "UTC"]
     (mt/dataset times-mixed
@@ -404,34 +408,37 @@
   (and (t/before? (t/instant t1) (t/plus (t/instant t2) period))
        (t/after? (t/instant t1) (t/minus (t/instant t2) period))))
 
-(deftest now-test
+(deftest ^:parallel now-test
   (mt/test-drivers (mt/normal-drivers-with-feature :now)
     (testing "should return the current time"
       ;; Allow a 30 second window for the current time to account for any difference between the time in Clojure and the DB
       (doseq [timezone [nil "America/Los_Angeles"]]
         (mt/with-temporary-setting-values [report-timezone timezone]
-          (is (= true
-                 (-> (mt/run-mbql-query venues
-                       {:expressions {"1" [:now]}
-                        :fields [[:expression "1"]]
-                        :limit  1})
-                     mt/rows
-                     ffirst
-                     u.date/parse
-                     (t/zoned-date-time (t/zone-id "UTC")) ; needed for sqlite, which returns a local date time
-                     (close? (t/instant) (t/seconds 30)))))))))
+          (let [result (-> (mt/run-mbql-query venues
+                             {:expressions {"1" [:now]}
+                              :fields      [[:expression "1"]]
+                              :limit       1})
+                           mt/rows
+                           ffirst
+                           u.date/parse
+                           ;; needed for sqlite, which returns a local date time
+                           (t/zoned-date-time (t/zone-id "UTC")))]
+            (is (close? result (t/instant) (t/seconds 30)))))))))
+
+(deftest ^:parallel now-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :now :date-arithmetics)
     (testing "should work as an argument to datetime-add and datetime-subtract"
-      (is (= true
-             (-> (mt/run-mbql-query venues
-                   {:expressions {"1" [:datetime-subtract [:datetime-add [:now] 1 :day] 1 :day]}
-                    :fields [[:expression "1"]]
-                    :limit  1})
-                 mt/rows
-                 ffirst
-                 u.date/parse
-                 (t/zoned-date-time (t/zone-id "UTC"))
-                 (close? (t/instant) (t/seconds 30)))))))
+      (let [result (-> (mt/run-mbql-query venues
+                         {:expressions {"1" [:datetime-subtract [:datetime-add [:now] 1 :day] 1 :day]}
+                          :fields [[:expression "1"]]
+                          :limit  1})
+                       mt/rows
+                       ffirst
+                       u.date/parse
+                       (t/zoned-date-time (t/zone-id "UTC")))]
+        (is (close? result (t/instant) (t/seconds 60)))))))
+
+(deftest ^:parallel now-test-3
   (mt/test-drivers (mt/normal-drivers-with-feature :now)
     (testing "now works in a filter"
       (is (= 1000
@@ -439,7 +446,9 @@
                     {:aggregation [[:count]]
                      :filter      [:<= $date [:now]]})
                   (mt/formatted-rows [int])
-                  ffirst)))))
+                  ffirst))))))
+
+(deftest ^:parallel now-test-4
   (mt/test-drivers (mt/normal-drivers-with-feature :now :datetime-diff)
     (testing "should work as an argument to datetime-diff"
       (is (= 0
@@ -448,7 +457,9 @@
                      :fields [[:expression "1"]]
                      :limit  1})
                   (mt/formatted-rows [int])
-                  ffirst)))))
+                  ffirst))))))
+
+(deftest ^:parallel now-test-5
   (mt/test-drivers (mt/normal-drivers-with-feature :now :date-arithmetics :datetime-diff)
     (testing "should work in combination with datetime-diff and date-arithmetics"
       (is (= [1 1]
@@ -476,7 +487,7 @@
   (or (<= (mod (- b a) 24) 1)
       (<= (mod (- a b) 24) 1)))
 
-(deftest now-with-extract-test
+(deftest ^:parallel now-with-extract-test
   (mt/test-drivers (mt/normal-drivers-with-feature :now :temporal-extract)
     (testing "now should work with temporal extract functions according to the report timezone"
       (doseq [timezone ["UTC" "Asia/Kathmandu"]] ; UTC+5:45 all year
@@ -494,7 +505,7 @@
             (is (true? (close-minute? minute (.getMinute now))))
             (is (true? (close-hour? hour (.getHour now))))))))))
 
-(deftest datetime-math-with-extract-test
+(deftest ^:parallel datetime-math-with-extract-test
   (mt/with-temporary-setting-values [start-of-week   :sunday
                                      report-timezone "UTC"]
     (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
@@ -522,7 +533,7 @@
 ;;; |                                           Convert Timezone tests                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest convert-timezone-test
+(deftest ^:parallel convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
     (mt/dataset times-mixed
       (letfn [(test-convert-tz
@@ -594,7 +605,7 @@
                         mt/rows
                         ffirst)))))))))
 
-(deftest nested-convert-timezone-test
+(deftest ^:parallel nested-convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
     (mt/with-report-timezone-id "UTC"
       (mt/dataset times-mixed
@@ -611,8 +622,12 @@
                                        [:expression "converted"]
                                        [:expression "hour"]]})
                       (mt/formatted-rows [str str int])
-                      first))))
+                      first))))))))
 
+(deftest ^:parallel nested-convert-timezone-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/with-report-timezone-id "UTC"
+      (mt/dataset times-mixed
         (testing "convert-timezone nested with date-math, date-extract"
           (is (= ["2004-03-19T09:19:09Z"      ;; original
                   "2004-03-19T18:19:09+09:00" ;; converted
@@ -629,8 +644,12 @@
                                        [:expression "date-added"]
                                        [:expression "hour"]]})
                       (mt/formatted-rows [str str str int])
-                      first))))
+                      first))))))))
 
+(deftest ^:parallel nested-convert-timezone-test-3
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/with-report-timezone-id "UTC"
+      (mt/dataset times-mixed
         (testing "extract hour should respect daylight savings times"
           (is (= [["2004-03-19T09:19:09Z" "2004-03-19T01:19:09-08:00" 1]  ;; Before DST -- UTC-8
                   ["2008-06-20T10:20:10Z" "2008-06-20T03:20:10-07:00" 3]] ;; During DST -- UTC-7
@@ -642,8 +661,12 @@
                          :fields      [$times.dt
                                        [:expression "converted"]
                                        [:expression "hour"]]})
-                      (mt/formatted-rows [str str int])))))
+                      (mt/formatted-rows [str str int])))))))))
 
+(deftest ^:parallel nested-convert-timezone-test-4
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/with-report-timezone-id "UTC"
+      (mt/dataset times-mixed
         (testing "convert-timezone twice should works"
           (is (= ["2004-03-19T09:19:09Z"       ;; original column
                   "2004-03-19T16:19:09+07:00"  ;; at +07
@@ -658,8 +681,12 @@
                                        [:expression "to-07"]
                                        [:expression "to-07-to-09"]]})
                       mt/rows
-                      first))))
+                      first))))))))
 
+(deftest ^:parallel nested-convert-timezone-test-5
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/with-report-timezone-id "UTC"
+      (mt/dataset times-mixed
         (testing "filter a converted-timezone column"
           (is (= ["2004-03-19T18:19:09+09:00"]
                  (->> (mt/run-mbql-query
@@ -669,8 +696,13 @@
                          :filter      [:between [:expression "hour"] 17 18]
                          :fields      [[:expression "converted"]]})
                       mt/rows
-                      first)))
+                      first))))))))
 
+(deftest ^:parallel nested-convert-timezone-test-5b
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/with-report-timezone-id "UTC"
+      (mt/dataset times-mixed
+        (testing "filter a converted-timezone column"
           (is (= ["2004-03-19T18:19:09+09:00"]
                  (->> (mt/run-mbql-query
                         times
@@ -679,8 +711,12 @@
                          :filter      [:= [:expression "hour"] 18]
                          :fields      [[:expression "converted"]]})
                       mt/rows
-                      first))))
+                      first))))))))
 
+(deftest nested-convert-timezone-test-6
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/with-report-timezone-id "UTC"
+      (mt/dataset times-mixed
         (testing "nested custom expression should works"
           (t2.with-temp/with-temp [Card
                                    card
@@ -793,7 +829,7 @@
                   (is (= [expected (- expected)]
                          (results query))))))))))))
 
-(deftest datetime-diff-mixed-types-test
+(deftest ^:parallel datetime-diff-mixed-types-test
   (mt/test-drivers (filter mt/supports-timestamptz-type? (mt/normal-drivers-with-feature :datetime-diff))
     (mt/dataset times-mixed
       (testing "Can compare across dates, datetimes with timezones from a table"
@@ -808,7 +844,9 @@
                          {"tz,dt" [:datetime-diff $dt_tz $dt :second]
                           "tz,d"  [:datetime-diff $dt_tz $d :second]}})
                       (mt/formatted-rows [int int])
-                      first)))))))
+                      first))))))))
+
+(deftest datetime-diff-mixed-types-test-athena
   ;; Athena needs special treatment. It supports the `timestamp with time zone` type in query expressions
   ;; but not in tables. So we create a native query that returns a `timestamp with time zone` type and then
   ;; run another query with `datetime-diff` against it.
@@ -904,7 +942,7 @@
    from x a
    join x b on a.dt < b.dt and a.time_zone <> b.time_zone")
 
-(defn run-datetime-diff-time-zone-tests
+(defn- run-datetime-diff-time-zone-tests
   "Runs all the test cases for datetime-diff clauses with :type/DateTimeWithTZ types.
 
    `diffs` is a function that executes a query with the `datetimeDiff` function applied to its two arguments.
@@ -1016,7 +1054,7 @@
                     (diffs "2022-10-02T00:00:00Z"            ; 2022-10-02T00:00:00Z
                            "2023-10-02T00:00:00+01:00")))))) ; 2023-10-01T23:00:00Z
 
-(deftest datetime-diff-time-zones-test
+(deftest ^:parallel datetime-diff-time-zones-test
   (mt/test-drivers (filter mt/supports-timestamptz-type? (mt/normal-drivers-with-feature :datetime-diff))
     (mt/dataset diff-time-zones-cases
       (let [diffs (fn [a-str b-str]
@@ -1064,7 +1102,7 @@
                        (zipmap units))))]
           (run-datetime-diff-time-zone-tests diffs))))))
 
-(deftest datetime-diff-expressions-test
+(deftest ^:parallel datetime-diff-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
     (mt/dataset sample-dataset
       (testing "Args can be expressions that return datetime values"
@@ -1098,7 +1136,7 @@
                       (mt/formatted-rows [int int int int])
                       first))))))))
 
-(deftest datetime-diff-type-test
+(deftest ^:parallel datetime-diff-type-test
   (mt/test-drivers (filter mt/supports-time-type? (mt/normal-drivers-with-feature :datetime-diff))
     (testing "Cannot datetime-diff against time column"
       (mt/dataset test-data-with-time

@@ -225,7 +225,7 @@
                                                     {:parameters {:id 1 :source "Twitter"}})))))))))))
 
 (deftest unified-action-create-test
-  (mt/with-ensure-with-temp-no-transaction!
+  (mt/test-helpers-set-global-values!
     (mt/with-actions-enabled
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-actions-test-data-tables #{"users" "categories"}

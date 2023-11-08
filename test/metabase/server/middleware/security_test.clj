@@ -33,7 +33,7 @@
       (is (not (str/includes? (csp-directive "script-src") "sha256")))
       (is (str/includes? (csp-directive "script-src") "'unsafe-inline'")))))
 
-(deftest csp-header-frame-ancestor-tests
+(deftest ^:parallel csp-header-frame-ancestor-tests
   (premium-features-test/with-premium-features #{:embedding}
     (testing "Frame ancestors from `embedding-app-origin` setting"
       (let [multiple-ancestors "https://*.metabase.com http://metabase.internal"]
@@ -54,7 +54,7 @@
         (is (= "frame-ancestors 'none'"
                (csp-directive "frame-ancestors")))))))
 
-(deftest xframeoptions-header-tests
+(deftest ^:parallel xframeoptions-header-tests
   (premium-features-test/with-premium-features #{:embedding}
     (testing "`DENY` when embedding is disabled"
       (tu/with-temporary-setting-values [enable-embedding     false

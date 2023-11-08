@@ -251,16 +251,10 @@
 (defmethod sql.qp/datetime-diff [:presto-jdbc :second]  [_driver _unit x y] (date-diff :second x y))
 
 (defmethod driver/db-default-timezone :presto-jdbc
-  [driver database]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver database nil
-   (fn [^java.sql.Connection conn]
-     ;; TODO -- this is the session timezone, right? As opposed to the default timezone? Ick. Not sure how to get the
-     ;; default timezone if session timezone is unspecified.
-     (with-open [stmt (.prepareStatement conn "SELECT current_timezone()")
-                 rset (.executeQuery stmt)]
-       (when (.next rset)
-         (.getString rset 1))))))
+  [_driver _database]
+  ;; as far as I know Presto doesn't have any sort of default system timezone? Who knows. It seems to return UTC if we
+  ;; don't say otherwise.
+  "UTC")
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Custom HoneySQL Clause Impls                                          |

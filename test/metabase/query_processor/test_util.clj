@@ -581,11 +581,6 @@
   "Impl for `with-report-timezone-id`."
   [timezone-id thunk]
   {:pre [((some-fn nil? string?) timezone-id)]}
-  ;; This will fail if the app DB isn't initialized yet. That's fine — there's no DBs to notify if the app DB isn't
-  ;; set up.
-  (try
-    (#'driver/notify-all-databases-updated)
-    (catch Throwable _))
   (binding [qp.timezone/*report-timezone-id-override* (or timezone-id ::nil)]
     (testing (format "\nreport timezone id = %s" timezone-id)
       (thunk))))
