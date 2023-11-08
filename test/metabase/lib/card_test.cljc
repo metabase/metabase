@@ -228,7 +228,7 @@
                     (lib/aggregate (lib/distinct filter-col))
                     (as-> $q (lib/breakout $q (m/find-first (comp #{"SOURCE"} :name)
                                                             (lib/breakoutable-columns $q)))))]
-      (is (=
-           [["Source" "Distinct values of ID"] ["ID is equal to 1"]]
-           [(map #(lib/display-name query %) (lib/returned-columns query))
-            (map #(lib/display-name query %) (lib/filters query))])))))
+      (is (= ["Source" "Distinct values of ID"]
+             (map #(lib/display-name query %) (lib/returned-columns query))))
+      (is (= ["ID is equal to 1"]
+             (map #(lib/display-name query %) (lib/filters query)))))))
