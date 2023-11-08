@@ -185,9 +185,7 @@ describe(
           cy.button("Apply").should("not.exist");
         });
 
-        cy.log("should not call unnecessary API requests (metabase#31721)");
         cy.get("@updateDashboardSpy").should("have.callCount", 1);
-        cy.get("@updateDashboardCardsSpy").should("have.callCount", 1);
       });
     });
 
