@@ -40,7 +40,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.related :as related]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -638,7 +638,8 @@
   (update-dashboard id dash-updates))
 
 (api/defendpoint PUT "/:id/cards"
-  "Update `Cards` and `Tabs` on a Dashboard. Request body should have the form:
+  "(DEPRECATED -- Use the `PUT /api/dashboard/:id` endpoint instead.)
+   Update `Cards` and `Tabs` on a Dashboard. Request body should have the form:
 
     {:cards        [{:id                 ... ; DashboardCard ID
                      :size_x             ...
@@ -657,6 +658,8 @@
    ;; tabs should be required in production, making it optional because lots of
    ;; e2e tests curerntly doesn't include it
    tabs [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
+  (log/warn
+   (trs "DELETE /api/dashboard/:id/cards is deprecated. Use PUT /api/dashboard/:id instead."))
   (let [dashboard (update-dashboard id {:dashcards cards :tabs tabs})]
     {:cards (:dashcards dashboard)
      :tabs  (:tabs dashboard)}))
