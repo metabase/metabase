@@ -164,8 +164,7 @@
   (u/prog1 (t2/changes field)
     (when (false? (:active field))
       (t2/update! :model/Field {:fk_target_field_id (:id field)} {:semantic_type      nil
-                                                                  :fk_target_field_id nil})))
-  field)
+                                                                  :fk_target_field_id nil}))))
 
 ;;; Field permissions
 ;; There are several API endpoints where large instances can return many thousands of Fields. Normally Fields require
