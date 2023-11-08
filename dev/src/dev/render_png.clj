@@ -2,16 +2,17 @@
   "Improve feedback loop for dealing with png rendering code. Will create images using the rendering that underpins
   pulses and subscriptions and open those images without needing to send them to slack or email."
   (:require
-   [clojure.java.io :as io]
-   [clojure.java.shell :as sh]
-   [hiccup.core :as hiccup]
-   [metabase.models.card :as card]
-   [metabase.models.user :as user]
-   [metabase.pulse :as pulse]
-   [metabase.pulse.render :as render]
-   [metabase.pulse.render.test-util :as render.tu]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.permissions :as qp.perms]))
+    [clojure.java.io :as io]
+    [clojure.java.shell :as sh]
+    [hiccup.core :as hiccup]
+    [metabase.models.card :as card]
+    [metabase.models.user :as user]
+    [metabase.pulse :as pulse]
+    [metabase.pulse.render :as render]
+    [metabase.pulse.render.test-util :as render.tu]
+    [metabase.query-processor :as qp]
+    [metabase.query-processor.middleware.permissions :as qp.perms]
+    [toucan2.core :as t2]))
 
 ;; taken from https://github.com/aysylu/loom/blob/master/src/loom/io.clj
 (defn- os
@@ -75,6 +76,8 @@
 
 (comment
   (render-card-to-png 1)
+  (render-card-to-png 2700)
+
   ;; open viz in your browser
   (-> [["A" "B"]
        [1 2]
@@ -91,5 +94,6 @@
                                        :custom-column-names {:names ["-A-" "-B-" "-C-" "-D-"]}
                                        :hidden-columns      {:hide [0 2]}})
       :viz-tree
-      open-hiccup-as-html))
+      open-hiccup-as-html)
+  )
 
