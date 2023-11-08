@@ -41,6 +41,7 @@ import SectionDivider from "./components/widgets/SectionDivider";
 
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
+import { BccToggleWidget } from "./components/Email/BccToggleWidget";
 import SetupCheckList from "./setup/components/SetupCheckList";
 import SlackSettings from "./slack/containers/SlackSettings";
 import {
@@ -261,6 +262,20 @@ export const ADMIN_SETTINGS_SECTIONS = {
         required: false,
         widget: SettingCommaDelimitedInput,
         validations: [["email_list", t`That's not a valid email address`]],
+      },
+      {
+        key: "bcc-enabled?",
+        display_name: t`Add Recipients as CC or BCC`,
+        description: t`Control the visibility of recipients.`,
+        options: [
+          { value: true, name: t`BCC - Hide recipients` },
+          {
+            value: false,
+            name: t`CC - Disclose recipients`,
+          },
+        ],
+        defaultValue: true,
+        widget: BccToggleWidget,
       },
     ],
   },
