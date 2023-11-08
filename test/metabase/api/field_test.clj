@@ -782,7 +782,7 @@
                                                      :has_field_values   "search"
                                                      :fk_target_field_id (mt/id :categories :name)})
 
-      (is (= [["African"]]
+      (is (= [["African" "African"]]
              (api.field/search-values (t2/select-one :model/Field (mt/id :users :name))
                                       (t2/select-one :model/Field (mt/id :users :name))
                                       "African"
