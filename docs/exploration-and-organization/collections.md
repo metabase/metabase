@@ -6,7 +6,7 @@ redirect_from:
 
 # Collections
 
- After your team has been using Metabase for a while, you’ll probably end up with lots of saved questions and dashboards.
+After your team has been using Metabase for a while, you’ll probably end up with lots of saved questions and dashboards.
 
 ![Our analytics](./images/our-analytics-page.png)
 
@@ -81,4 +81,3 @@ Uploads will only be available if your admin has enabled uploads for your Metaba
 
 [dashboards]: ../dashboards/introduction.md
 [models]: ../data-modeling/models.md
-
