@@ -30,7 +30,7 @@
                                                :fields       [[:field (mt/id :venues :id) nil]]}}
                                    additional-options)
                             rff   (qp.postprocess/post-processing-rff query (constantly conj))]
-                        (qp.setup/with-qp-setup [query query]
+                        (qp.setup/with-qp-setup [_query query]
                           (transduce identity (rff nil) rows))))]
               (is (= [[1]
                       [2147483647]]

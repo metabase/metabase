@@ -1,5 +1,6 @@
 (ns metabase.query-processor.streaming
   (:require
+   [clojure.core.async :as a]
    [metabase.async.streaming-response :as streaming-response]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.context :as qp.context]
@@ -11,11 +12,7 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [metabase.util.log :as log]
-   [metabase.async.util :as async.u]
-   [clojure.core.async :as a]
-   [metabase.query-processor.error-type :as qp.error-type])
+   [metabase.util.malli.schema :as ms])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (java.io OutputStream)
@@ -112,8 +109,7 @@
     [ordered-cols output-order]))
 
 (mu/defn ^:private streaming-rff :- ::qp.schema/rff
-  [results-writer   :- (ms/InstanceOfClass metabase.query_processor.streaming.interface.StreamingResultsWriter)
-   ^OutputStream os :- (ms/InstanceOfClass OutputStream)]
+  [results-writer :- (ms/InstanceOfClass metabase.query_processor.streaming.interface.StreamingResultsWriter)]
   (fn [{:keys [cols viz-settings] :as initial-metadata}]
     (let [[ordered-cols output-order] (order-cols cols viz-settings)
           viz-settings'               (assoc viz-settings :output-order output-order)
@@ -126,18 +122,25 @@
          {:data initial-metadata})
 
         ([result]
-         (let [result (assoc result
-                             :row_count @row-count
-                             :status :completed)]
-           (qp.si/finish! results-writer result)
-           (u/ignore-exceptions
-             (.flush os)
-             (.close os))
-           result))
+         (assoc result
+                :row_count @row-count
+                :status :completed))
 
         ([metadata row]
          (qp.si/write-row! results-writer row (dec (vswap! row-count inc)) ordered-cols viz-settings')
          metadata)))))
+
+(mu/defn ^:private streaming-resultf :- fn?
+  [orig-resultf     :- ifn?
+   results-writer   :- (ms/InstanceOfClass metabase.query_processor.streaming.interface.StreamingResultsWriter)
+   ^OutputStream os :- (ms/InstanceOfClass OutputStream)]
+  (fn resultf [context result]
+    (when (= (:status result) :completed)
+      (qp.si/finish! results-writer result)
+      (u/ignore-exceptions
+        (.flush os)
+        (.close os)))
+    (orig-resultf context result)))
 
 (defn streaming-context-and-rff
   "Context to pass to the QP to streaming results as `export-format` to an output stream. Can be used independently of
@@ -151,11 +154,11 @@
 
   ([export-format os canceled-chan]
    (let [results-writer (qp.si/streaming-results-writer export-format os)]
-     {:context (qp.context/sync-context
-                (merge
-                 (when canceled-chan
-                   {:canceled-chan canceled-chan})))
-      :rff     (streaming-rff results-writer os)})))
+     {:context (-> (qp.context/sync-context
+                    (when canceled-chan
+                      {:canceled-chan canceled-chan}))
+                   (update :resultf streaming-resultf results-writer os))
+      :rff     (streaming-rff results-writer)})))
 
 (defn- await-async-result [out-chan canceled-chan]
   ;; if we get a cancel message, close `out-chan` so the query will be canceled

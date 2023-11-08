@@ -239,7 +239,7 @@
                                                  :fingerprint {:type {:type/Number {:min nil, :max nil}}}}]})
       (is (=? {:status :failed
                :class  (partial = clojure.lang.ExceptionInfo)
-               :error  "Error preprocessing query in #'metabase.query-processor.middleware.binning/update-binning-strategy: Unable to bin Field without a min/max value"}
+               :error  "Unable to bin Field without a min/max value"}
               (qp/process-query
                (qp/userland-query
                 (mt/mbql-query venues

@@ -254,23 +254,22 @@
    metadata       :- ::qp.schema/metadata
    reducible-rows :- ::reducible-rows]
   (when-not (canceled? context)
-    (let [rf              (try
-                            (rff metadata)
+    (let [[status rf]     (try
+                            [::ok (rff metadata)]
                             (catch Throwable e
-                              (raisef context
-                                      (ex-info (i18n/tru "Error building query results reducing function: {0}" (ex-message e))
-                                               {:type qp.error-type/qp}
-                                               e))))
-          [status result] (try
-                            [::success (transduce identity rf reducible-rows)]
-                            (catch Throwable e
-                              [::error (raisef context
-                                               (ex-info (i18n/tru "Error reducing result rows: {0}" (ex-message e))
-                                                        {:type qp.error-type/qp}
-                                                        e))]))]
+                              [::error (ex-info (i18n/tru "Error building query results reducing function: {0}" (ex-message e))
+                                                {:type qp.error-type/qp, :rff rff}
+                                                e)]))
+          [status result] (when (= status ::ok)
+                            (try
+                              [::success (transduce identity rf reducible-rows)]
+                              (catch Throwable e
+                                [::error (ex-info (i18n/tru "Error reducing result rows: {0}" (ex-message e))
+                                                  {:type qp.error-type/qp}
+                                                  e)])))]
       (case status
         ::success (resultf context result)
-        ::error   result))))
+        ::error   (raisef context result)))))
 
 (mu/defn ^:private sync-resultf :- :some
   [context :- ::context

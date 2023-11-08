@@ -38,8 +38,7 @@
    [metabase.util.malli.schema :as ms]
    [schema.core :as s]
    [throttle.core :as throttle]
-   [toucan2.core :as t2]
-   [metabase.query-processor.context :as qp.context])
+   [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -137,18 +136,18 @@
   [qp export-format]
   (fn run [query info]
     (qp.streaming/streaming-response [{:keys [rff context]} export-format (u/slugify (:card-name info))]
-      (let [context (update context :resultf public-resultf)
-            rff'    (fn rff' [metadata]
-                      (let [rf (rff metadata)]
-                        (fn rf'
-                          ([]
-                           (rf))
-                          ([result]
-                           (transform-qp-result (rf result)))
-                          ([acc row]
-                           (rf acc row)))))]
+      (let [context' (update context :resultf public-resultf)
+            #_rff'     #_(fn rff' [metadata]
+                       (let [rf (rff metadata)]
+                         (fn rf'
+                           ([]
+                            (rf))
+                           ([result]
+                            (transform-qp-result (rf result)))
+                           ([acc row]
+                            (rf acc row)))))]
         (mw.session/as-admin
-          (qp (update query :info merge info) rff' context))))))
+          (qp (update query :info merge info) rff #_rff' context'))))))
 
 (mu/defn process-query-for-card-with-id
   "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`).

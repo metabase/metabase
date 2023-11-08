@@ -107,7 +107,8 @@
                               {:fn middleware-fn, :query query, :type qp.error-type/qp}))))
           (catch Throwable e
             (throw (ex-info (i18n/tru "Error preprocessing query in {0}: {1}" middleware-fn (ex-message e))
-                            {:fn middleware-fn, :query query, :type qp.error-type/qp}))))))
+                            {:fn middleware-fn, :query query, :type qp.error-type/qp}
+                            e))))))
      query
      middleware)))
 

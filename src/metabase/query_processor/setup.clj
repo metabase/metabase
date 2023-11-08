@@ -1,5 +1,6 @@
 (ns metabase.query-processor.setup
   (:require
+   [clojure.core.async.impl.dispatch :as a.impl.dispatch]
    [clojure.set :as set]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -15,8 +16,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]
-   [clojure.core.async.impl.dispatch :as a.impl.dispatch]))
+   [toucan2.core :as t2]))
 
 (mu/defn ^:private query-type :- [:enum :query :native :internal :mbql/query]
   [query :- ::qp.schema/query]
