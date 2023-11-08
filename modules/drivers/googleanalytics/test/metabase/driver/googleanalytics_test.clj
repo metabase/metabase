@@ -291,9 +291,9 @@
                                (#'ga.execute/add-col-metadata query col))
                      rows    [["Toucan Sighting" 1000]]
                      context {:timeout (u/seconds->ms 2)
-                              :runf    (fn [_query rff context]
+                              :runf    (fn [context _query rff]
                                          (let [metadata {:cols cols}]
-                                           (qp.context/reducef rff context metadata rows)))}
+                                           (qp.context/reducef context rff metadata rows)))}
                      qp      (fn [query]
                                (qp/process-query query context))]
                  (is (partial=

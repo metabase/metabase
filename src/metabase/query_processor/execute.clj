@@ -4,8 +4,10 @@
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.cache :as cache]
-   [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
+   [metabase.query-processor.middleware.enterprise
+    :as qp.middleware.enterprise]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -38,7 +40,8 @@
                               (reduce
                                (fn [qp middleware-fn]
                                  (middleware-fn qp))
-                               qp.context/runf
+                               (fn qp [query rff context]
+                                 (qp.context/runf context query rff))
                                middleware))))
 
 (rebuild-execute-fn!)
@@ -55,7 +58,7 @@
   [compiled-query :- [:map
                       [:database ::lib.schema.id/database]
                       [:native :map]]
-   rff            :- ::qp.context/rff
+   rff            :- ::qp.schema/rff
    context        :- ::qp.context/context]
   (qp.setup/with-qp-setup [compiled-query compiled-query]
     (try

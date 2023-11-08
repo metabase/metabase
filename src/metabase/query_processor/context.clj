@@ -1,5 +1,48 @@
 (ns metabase.query-processor.context
-  "Interface for the QP context/utility functions for using the things in the context correctly."
+  "Interface for the QP context/utility functions for using the things in the context correctly.
+
+  ## Sync Contexts
+
+  Normal sync flow is something like:
+
+    [middleware] → runf → executef → reducef → reducedf --+
+        ↓                                                 |-> resultf
+    [Exception]  → raisef --------------------------------+    ↑
+                                                               | ::cancel
+                                 canceled-chan ----------------+
+                                      ↑
+                       [message sent to canceled chan]
+
+  1. ::qp.schema/query normally runs thru middleware and then a series of context functions as described above; result
+     is sent thru [[resultf]]; this is the overall result of the QP
+
+  2. If an `Exception` is thrown, it is sent thru [[raisef]] and then to [[resultf]]
+
+  3. If the query is canceled (by sending [[canceled-chan]] a message), [[resultf]] is immediately called with the
+     value `::cancel`
+
+  ## Async Contexts
+
+  Largely similar with a few extra things going on:
+
+  Normal ASYNC flow is something like:
+
+    [middleware] → runf → executef → reducef → reducedf -+
+        ↓                                                |-> resultf → out-chan
+    [Exception]  → raisef -------------------------------+     ↑
+                     ↑                                         |
+                 [time out]    [out-chan closed early]         |
+                                         ↓                     | ::cancel
+                                    canceled-chan -------------+
+                                         ↑
+                          [message sent to canceled chan]
+
+  1. Query returns a core.async promise channel, [[out-chan]], after query is preprocessed and compiled; query is
+     executed on a separate thread. You can poll [[out-chan]] for the query results.
+
+  2. If [[out-chan]] is closed before receiving a result, it will trigger query cancellation.
+
+  3. Query cancellation will cancel the query execution happening on the separate thread."
   (:require
    [clojure.core.async :as a]
    [metabase.async.util :as async.u]
@@ -7,214 +50,169 @@
    [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
 
-(mr/def ::timeout-ms
-  ::lib.schema.common/positive-int)
+(p/defprotocol+ Context
+  (raisef [context e]
+    "Raise an Exception.")
 
-(mr/def ::context
-  [:map
-   [:timeout       ::timeout-ms]      ; TODO -- should this only be part of an async context? Not really used for sync contexts.
-   [:raisef        [:ref ::raisef]]
-   [:runf          [:ref ::runf]]
-   [:executef      [:ref ::executef]]
-   [:reducef       [:ref ::reducef]]
-   [:reducedf      [:ref ::reducedf]]
-   [:timeoutf      [:ref ::timeoutf]]
-   [:resultf       [:ref ::resultf]]
-   [:canceled-chan async.u/PromiseChan]])
+  (runf [context query rff]
+    "Normally, this simply calls [[executef]], but you can override this for test purposes. The result of this function is
+  ignored.")
 
-(mr/def ::context.async
-  [:merge
-   [:ref ::context]
-   [:map
-    [:out-chan async.u/PromiseChan]]])
-
-;;; these aliases are mostly to make the function signature schemas below a little clearer.
-(mr/def ::query          :map)
-(mr/def ::driver         :keyword)
-(mr/def ::metadata       :any)
-(mr/def ::reducible-rows :some)
-(mr/def ::reduced-rows   :some)
-(mr/def ::result         :some)
-
-(mr/def ::rff
-  [:=>
-   [:cat ::metadata]
-   [:function
-    [:=> [:cat]           :any]
-    [:=> [:cat :any]      :any]
-    [:=> [:cat :any :any] :any]]])
-
-(mr/def ::raisef
-  [:=>
-   [:cat (ms/InstanceOfClass Throwable) ::context]
-   :any])
-
-(mr/def ::runf
-  [:=>
-   [:cat ::query ::rff ::context]
-   :some])
-
-(mr/def ::respond
-  [:=>
-   [:cat ::metadata ::reducible-rows]
-   :some])
-
-(mr/def ::executef
-  [:=>
-   [:cat ::driver ::query ::context ::respond]
-   :some])
-
-(mr/def ::reducef
-  [:=>
-   [:cat ::rff ::context ::metadata ::reducible-rows]
-   ::reduced-rows])
-
-(mr/def ::reducedf
-  [:=>
-   [:cat ::reduced-rows ::context]
-   ::result])
-
-(mr/def ::timeoutf
-  [:=>
-   [:cat ::context]
-   :any])
-
-(mr/def ::resultf
-  [:=>
-   [:cat ::result ::context]
-   :some])
-
-;; Normal SYNC flow is something like:
-;;
-;;    [middleware] → runf → executef → reducef → reducedf -\
-;;        ↓                                                 ↦ resultf
-;;    [Exception]  → raisef -------------------------------/    ↑
-;;        ↑                                                     |
-;;     timeoutf                                                 |
-;;                                                              | ::cancel
-;;                                 canceled-chan ---------------/
-;;                                      ↑
-;;                       [message sent to canceled chan]
-;;
-;; 1. ::query normally runs thru middleware and then a series of context functions as described above; result is sent thru
-;;    [[resultf]]; this is the overall result of the QP
-;;
-;; 2. If an `Exception` is thrown, it is sent thru [[raisef]] and then to [[resultf]]
-;;
-;; 3. If the query is canceled (by sending [[canceled-chan]] a message), [[resultf]] is immediately called with the
-;;    value `::cancel`
-;;
-;; ASYNC contexts are largely similar with a few extra things going on:
-;;
-;; Normal ASYNC flow is something like:
-;;
-;;    [middleware] → runf → executef → reducef → reducedf -\
-;;        ↓                                                 ↦ resultf → out-chan
-;;    [Exception]  → raisef -------------------------------/     ↑
-;;        ↑                                                      |
-;;     timeoutf                                                  |
-;;        ↑                                                      |
-;;    [time out]              [out-chan closed early]            |
-;;                                      ↓                        | ::cancel
-;;                                 canceled-chan ----------------/
-;;                                      ↑
-;;                       [message sent to canceled chan]
-;;
-;; 1. Query returns a core.async promise channel, [[out-chan]], after query is preprocessed and compiled; query is
-;;    executed on a separate thread. You can poll [[out-chan]] for the query results.
-;;
-;; 2. If [[out-chan]] is closed before receiving a result, it will trigger query cancellation.
-;;
-;; 3. Query cancellation will cancel the query execution happening on the separate thread.
-;;
-;; 1. ::query normally runs thru middleware and then a series of context functions as described above; result is sent thru
-;;    [[resultf]] and finally to [[out-chan]]
-;;
-;; 2. If an `Exception` is thrown, it is sent thru [[raisef]], [[resultf]] and finally to [[out-chan]]
-;;
-;; 3. If the query times out, `timeoutf` throws an Exception
-;;
-;; 4. If the query is canceled (either by closing [[out-chan]] before it gets a result, or by sending [[canceled-chan]]
-;;    a message), the execution is canceled and [[out-chan]] is closed (if not already closed).
-
-(mu/defn raisef :- :any
-  "Raise an Exception."
-  [e       :- (ms/InstanceOfClass Throwable)
-   context :- ::context]
-  ((:raisef context) e context))
-
-(mu/defn runf :- :some
-  "Normally, this simply calls [[executef]], but you can override this for test purposes. The result of this function is
-  ignored."
-  [query   :- ::query
-   rff     :- ::rff
-   context :- ::context]
-  ((:runf context) query rff context))
-
-(mu/defn executef :- :some
-  "Called by [[runf]] to have driver run query. By default, [[metabase.driver/execute-reducible-query]]. `respond` is a
+  (executef [context driver query respond]
+    "Called by [[runf]] to have driver run query. By default, [[metabase.driver/execute-reducible-query]]. `respond` is a
   callback with the signature:
 
     (respond results-metadata reducible-rows)
 
   The implementation of [[executef]] should call `respond` with this information once it is available. The result of
-  this function is ignored."
-  [driver  :- ::driver
-   query   :- ::query
-   context :- ::context
-   respond :- ::respond]
-  ((:executef context) driver query context respond))
+  this function is ignored.")
 
-(mu/defn reducef :- ::reduced-rows
-  "Called by [[runf]] (inside the `respond` callback provided by it) to reduce results of query. [[reducedf]] is called
+  (reducef [context rff metadata reducible-rows]
+    "Called by [[runf]] (inside the `respond` callback provided by it) to reduce results of query. [[reducedf]] is called
   with the reduced results. The actual output of this function is ignored, but the entire result set must be reduced
-  and passed to [[reducedf]] before this function completes."
-  [rff            :- ::rff
-   context        :- ::context
-   metadata       :- ::metadata
+  and passed to [[reducedf]] before this function completes.")
+
+  (reducedf [context reduced-rows]
+    "Called in [[reducedf]] with fully reduced results. This result is passed to [[resultf]].")
+
+  (resultf [context result]
+    "Called exactly once with the final result, which is the result of either [[reducedf]] or [[raisef]].")
+
+  (timeout [context]
+    "Maximum amount of time query is allowed to run, in ms.")
+
+  ;; TODO -- consider whether this should be part of [[AsyncContext]].
+  (canceled-chan [context]
+    "Core.async promise channel that you can send a message to poll. Gets a message if a query is canceled."))
+
+(p/defprotocol+ AsyncContext
+  (out-chan [context]
+    "Core.async promise channel that gets a message with the final result. Final result may be a Throwable. Closing this
+    channel before it receives a result will cancel the query."))
+
+(mr/def ::timeout-ms
+  ::lib.schema.common/positive-int)
+
+(mr/def ::context
+  [:fn
+   {:error/message "Valid QP Context"}
+   #(satisfies? Context %)])
+
+(mr/def ::context.async
+  [:and
+   ::context
+   [:fn
+    {:error/message "Valid QP async context"}
+    #(satisfies? AsyncContext %)]])
+
+;;; these aliases are mostly to make the function signature schemas below a little clearer.
+(mr/def ::driver         :keyword)
+(mr/def ::reducible-rows :some)
+(mr/def ::reduced-rows   :some)
+(mr/def ::result         :some)
+
+(mr/def ::respond
+  [:=>
+   [:cat ::qp.schema/metadata ::reducible-rows]
+   :some])
+
+(mu/defn ^:private -raisef :- :any
+  [context :- ::context
+   e       :- (ms/InstanceOfClass Throwable)]
+  ((:raisef context) context e))
+
+(mu/defn ^:private -runf :- :some
+  [context :- ::context
+   query   :- ::qp.schema/query
+   rff     :- ::qp.schema/rff]
+  ((:runf context) context query rff))
+
+(mu/defn ^:private -executef :- :some
+  [context :- ::context
+   driver  :- ::driver
+   query   :- ::qp.schema/query
+   respond :- ::respond]
+  ((:executef context) context driver query respond))
+
+(mu/defn ^:private -reducef :- ::reduced-rows
+  [context        :- ::context
+   rff            :- ::qp.schema/rff
+   metadata       :- ::qp.schema/metadata
    reducible-rows :- ::reducible-rows]
-  ((:reducef context) rff context metadata reducible-rows))
+  ((:reducef context) context rff metadata reducible-rows))
 
-(mu/defn reducedf :- ::result
-  "Called in [[reducedf]] with fully reduced results. This result is passed to [[resultf]]."
-  [reduced-rows :- ::reduced-rows
-   context      :- ::context]
-  ((:reducedf context) reduced-rows context))
+(mu/defn ^:private -reducedf :- ::result
+  [context      :- ::context
+   reduced-rows :- ::reduced-rows]
+  ((:reducedf context) context reduced-rows))
 
-(mu/defn timeoutf :- :any
-  "Call this function when a query times out."
-  [context :- ::context]
-  ((:timeoutf context) context))
+(mu/defn ^:private -resultf :- :some
+  [context :- ::context
+   result  :- ::result]
+  ((:resultf context) context result))
 
-(mu/defn resultf :- :some
-  "Called exactly once with the final result, which is the result of either [[reducedf]] or [[raisef]]."
-  [result  :- ::result
-   context :- ::context]
-  ((:resultf context) result context))
-
-(mu/defn timeout :- ::timeout-ms
-  "Maximum amount of time query is allowed to run, in ms."
+(mu/defn ^:private -timeout :- ::timeout-ms
   [context :- ::context]
   (:timeout context))
 
-(mu/defn canceled-chan :- async.u/PromiseChan
-  "Gets a message if query is canceled."
+;;; TODO NOCOMMIT FIXME -- I think we need to defer wiring this up for even longer, maybe until the query actually
+;;; starts executing. It's a problem that it's capturing context this early. Either that or context needs to be mutable.
+(mu/defn ^:private make-canceled-chan :- async.u/PromiseChan
   [context :- ::context]
-  (:canceled-chan context))
+  (let [chan    (a/promise-chan)
+        context (assoc context :canceled-chan chan)]
+    ;; if canceled chan gets a message, close it and then pass a `::cancel` message to [[resultf]].
+    (a/go
+      (when (a/<! chan)
+        (a/close! chan)
+        (resultf context ::cancel)))
+    chan))
 
-(mu/defn out-chan :- async.u/PromiseChan
-  "Gets a message with the final result."
-  [context :- ::context.async]
-  (:out-chan context))
+(mu/defn ^:private -canceled-chan :- async.u/PromiseChan
+  "Wiring up of the canceled chan is deferred until the first time you access it, that way we can be sure we have a
+  finalized context."
+  [context            :- ::context
+   canceled-chan-atom :- (ms/InstanceOfClass clojure.lang.IAtom)]
+  (or @canceled-chan-atom
+      (locking canceled-chan-atom
+        (or @canceled-chan-atom
+            (let [chan (make-canceled-chan context)]
+              (reset! canceled-chan-atom chan)
+              chan)))))
+
+;;;
+;;; Sync Context
+;;;
+
+(p/defrecord+ SyncContextImpl [-deferred-canceled-chan]
+  Context
+  (raisef [this e]
+    (-raisef this e))
+  (runf [this query rff]
+    (-runf this query rff))
+  (executef [this driver query respond]
+    (-executef this driver query respond))
+  (reducef [this rff metadata reducible-rows]
+    (-reducef this rff metadata reducible-rows))
+  (reducedf [this reduced-rows]
+    (-reducedf this reduced-rows))
+  (resultf [this result]
+    (-resultf this result))
+  (timeout [this]
+    (-timeout this))
+  (canceled-chan [this]
+    (-canceled-chan this -deferred-canceled-chan)))
 
 (def query-timeout-ms
   "Maximum amount of time to wait for a running query to complete before throwing an Exception."
@@ -226,42 +224,42 @@
      20
      3)))
 
- (mu/defn ^:private default-raisef
-  [e       :- (ms/InstanceOfClass Throwable)
-   context :- ::context]
-  (resultf e context))
+(mu/defn ^:private default-raisef
+  [context :- ::context
+   e       :- (ms/InstanceOfClass Throwable)]
+  (resultf context e))
 
 (mu/defn ^:private canceled? [context :- ::context]
   (a/poll! (canceled-chan context)))
 
 (mu/defn ^:private sync-runf :- :some
-  [query   :- ::query
-   rff     :- ::rff
-   context :- ::context]
+  [context :- ::context
+   query   :- ::qp.schema/query
+   rff     :- ::qp.schema/rff]
   (assert driver/*driver* "driver/*driver* should be bound")
   (when-not (canceled? context)
     (letfn [(respond [metadata reducible-rows]
-              (reducef rff context metadata reducible-rows))]
+              (reducef context rff metadata reducible-rows))]
       (try
-        (executef driver/*driver* query context respond)
+        (executef context driver/*driver* query respond)
         (catch InterruptedException e
           (log/tracef e "Caught InterruptedException when executing query, this means the query was canceled. Ignoring exception.")
           ::cancel)
         (catch Throwable e
-          (raisef e context))))))
+          (raisef context e))))))
 
 (mu/defn ^:private default-executef :- :some
-  [driver  :- ::driver
-   query   :- ::query
-   context :- ::context
+  [context :- ::context
+   driver  :- ::driver
+   query   :- ::qp.schema/query
    respond :- ::respond]
   (when-not (canceled? context)
     (driver/execute-reducible-query driver query context respond)))
 
 (mu/defn ^:private default-reducef :- ::reduced-rows
-  [rff            :- ::rff
-   context        :- ::context
-   metadata       :- ::metadata
+  [context        :- ::context
+   rff            :- ::qp.schema/rff
+   metadata       :- ::qp.schema/metadata
    reducible-rows :- ::reducible-rows]
   (when-not (canceled? context)
     (let [rf              (try
@@ -279,53 +277,34 @@
                                                         e)
                                                context)]))]
       (case status
-        ::success (reducedf result context)
+        ::success (reducedf context result)
         ::error   result))))
 
 (mu/defn ^:private default-reducedf :- :some
-  [reduced-result :- :some
-   context        :- ::context]
-  (resultf reduced-result context))
-
-(mu/defn ^:private default-timeoutf :- :any
-  [context :- ::context]
-  (let [timeout (timeout context)]
-    (log/debugf "Query timed out after %s, raising timeout exception." (u/format-milliseconds timeout))
-    (raisef (ex-info (i18n/tru "Timed out after {0}." (u/format-milliseconds timeout))
-                     {:status :timed-out
-                      :type   qp.error-type/timed-out})
-            context)))
+  [context        :- ::context
+   reduced-result :- :some]
+  (resultf context reduced-result))
 
 (mu/defn ^:private sync-resultf :- :some
-  [result  :- :some
-   context :- ::context]
+  [context :- ::context
+   result  :- :some]
   (a/close! (canceled-chan context))
   (if (instance? Throwable result)
     (throw result)
     result))
 
-(def ^:private base-sync-context
-  {:timeout  query-timeout-ms
-   :raisef   #'default-raisef
-   :runf     #'sync-runf
-   :executef #'default-executef
-   :reducef  #'default-reducef
-   :reducedf #'default-reducedf
-   :timeoutf #'default-timeoutf
-   :resultf  #'sync-resultf
-   ::type    ::sync})
+(def ^:private base-sync-context-impl
+  {:timeout       query-timeout-ms
+   :raisef        #'default-raisef
+   :runf          #'sync-runf
+   :executef      #'default-executef
+   :reducef       #'default-reducef
+   :reducedf      #'default-reducedf
+   :resultf       #'sync-resultf})
 
-(mu/defn ^:private make-canceled-chan :- async.u/PromiseChan
-  [context]
-  (let [chan    (a/promise-chan)
-        context (assoc context :canceled-chan chan)]
-    (a/go
-      (when (a/<! chan)
-        (a/close! chan)
-        (resultf ::cancel context)))
-    chan))
-
-(mu/defn sync-context :- ::context
+(mu/defn sync-context :- [:and
+                          ::context
+                          (ms/InstanceOfClass SyncContextImpl)]
   "Create a new synchronous QP context. A synchronous context will execute the query on the current thread and block
   until it has been completed, and return its results directly.
 
@@ -334,46 +313,28 @@
    (sync-context nil))
 
   ([overrides :- [:maybe :map]]
-   (let [context (merge base-sync-context overrides)]
-     (cond-> context
-       (not (:canceled-chan context)) (assoc :canceled-chan (make-canceled-chan context))))))
+   (map->SyncContextImpl
+    (merge base-sync-context-impl
+           (dissoc overrides :canceled-chan)
+           {:-deferred-canceled-chan (atom (:canceled-chan overrides))}))))
 
-(mu/defn ^:private async-runf :- :some
-  [query   :- :map
-   rff     :- ::rff
-   context :- ::context.async]
-  (let [futur         (.submit clojure.lang.Agent/pooledExecutor
-                               ^Runnable (bound-fn*
-                                          (^:once fn* []
-                                           (sync-runf query rff context))))
-        canceled-chan (canceled-chan context)]
-    (a/go
-      (when (some? (a/<! canceled-chan))
-        (try
-          (future-cancel futur)
-          (catch Throwable e
-            (log/warnf e "Error canceling future in async QP context: %s" (ex-message e)))))))
-  (out-chan context))
+;;;
+;;; Async context
+;;;
 
-(mu/defn ^:private async-resultf :- async.u/PromiseChan
-  [result :- :some context :- ::context.async]
-  (log/tracef "Async context resultf got result\n%s" (pr-str result))
-  (a/close! (canceled-chan context))
-  (let [out-chan (out-chan context)]
-    (a/>!! out-chan result)
-    (a/close! out-chan)
-    out-chan))
-
-(def ^:private base-async-context
-  (merge base-sync-context
-         {:runf    #'async-runf
-          :resultf #'async-resultf
-          ::type   ::async}))
+(mu/defn ^:private handle-async-timeout :- :any
+  [context :- ::context]
+  (let [timeout (timeout context)]
+    (log/debugf "Query timed out after %s, raising timeout exception." (u/format-milliseconds timeout))
+    (raisef context
+            (ex-info (i18n/tru "Timed out after {0}." (u/format-milliseconds timeout))
+                     {:status :timed-out
+                      :type   qp.error-type/timed-out}))))
 
 (mu/defn ^:private make-async-out-chan :- async.u/PromiseChan
   "Wire up the core.async channels in a QP `context`:
 
-  1. If query doesn't complete by [[qp.context/timeout]], call [[qp.context/timeoutf]], which should raise an Exception.
+  1. If query doesn't complete by [[qp.context/timeout]], call [[handle-async-timeout]], which will raise an Exception.
 
   2. When [[qp.context/out-chan]] is closed prematurely, send a message to [[qp.context/canceled-chan]].
 
@@ -390,14 +351,84 @@
                     (if (= port out-chan) "out-chan" (format "timeout-chan (%s)" (u/format-milliseconds timeout)))
                     val)
         (cond
-          (= port timeout-chan) (timeoutf context)
+          (= port timeout-chan) (handle-async-timeout context)
           (nil? val)            (a/>!! canceled-chan ::cancel))
         (log/tracef "Closing out-chan.")
         (a/close! out-chan)
         (a/close! canceled-chan)))
     out-chan))
 
-(mu/defn async-context :- ::context.async
+(mu/defn ^:private -out-chan :- async.u/PromiseChan
+  "Wiring up of out-chan is deferred until the first time you access it, that way we can be sure we have a finalized
+  context."
+  [context       :- ::context
+   out-chan-atom :- (ms/InstanceOfClass clojure.lang.IAtom)]
+  (or @out-chan-atom
+      (locking out-chan-atom
+        (or @out-chan-atom
+            (let [chan (make-async-out-chan context)]
+              (reset! out-chan-atom chan)
+              chan)))))
+
+(p/defrecord+ AsyncContextImpl [-deferred-canceled-chan -deferred-out-chan]
+  Context
+  (raisef [this e]
+    (-raisef this e))
+  (runf [this query rff]
+    (-runf this query rff))
+  (executef [this driver query respond]
+    (-executef this driver query respond))
+  (reducef [this rff metadata reducible-rows]
+    (-reducef this rff metadata reducible-rows))
+  (reducedf [this reduced-rows]
+    (-reducedf this reduced-rows))
+  (resultf [this result]
+    (-resultf this result))
+  (timeout [this]
+    (-timeout this))
+  (canceled-chan [this]
+    (-canceled-chan this -deferred-canceled-chan))
+
+  AsyncContext
+  (out-chan [this]
+    (-out-chan this -deferred-out-chan)))
+
+(mu/defn ^:private async-runf :- async.u/PromiseChan
+  [context :- ::context.async
+   query   :- ::qp.schema/query
+   rff     :- ::qp.schema/rff]
+  (let [futur         (.submit clojure.lang.Agent/pooledExecutor
+                               ^Runnable (bound-fn*
+                                          (^:once fn* []
+                                           (sync-runf context query rff))))
+        canceled-chan (canceled-chan context)]
+    ;; if query is canceled, cancel the future executing the query in the background thread.
+    (a/go
+      (when (some? (a/<! canceled-chan))
+        (try
+          (future-cancel futur)
+          (catch Throwable e
+            (log/warnf e "Error canceling future in async QP context: %s" (ex-message e)))))))
+  (out-chan context))
+
+(mu/defn ^:private async-resultf :- async.u/PromiseChan
+  [context :- ::context.async
+   result  :- :some]
+  (log/tracef "Async context resultf got result\n%s" (pr-str result))
+  (a/close! (canceled-chan context))
+  (let [out-chan (out-chan context)]
+    (a/>!! out-chan result)
+    (a/close! out-chan)
+    out-chan))
+
+(def ^:private base-async-context-impl
+  (merge base-sync-context-impl
+         {:runf    #'async-runf
+          :resultf #'async-resultf}))
+
+(mu/defn async-context :- [:and
+                           ::context.async
+                           (ms/InstanceOfClass AsyncContextImpl)]
   "Create a new asynchronous context. Queries are preprocessed and compiled synchronously, but when we are ready to
   execute the query, a core.async promise channel is returned immediately. The query will be executed asynchronously on
   a background thread. The core.async channel will eventually receive the reduced results (or Exception, if one was
@@ -406,8 +437,8 @@
    (async-context nil))
 
   ([overrides :- [:maybe :map]]
-   (let [context (merge base-async-context overrides)
-         context (cond-> context
-                   (not (:canceled-chan context)) (assoc :canceled-chan (make-canceled-chan context)))]
-     (cond-> context
-       (not (:out-chan context)) (assoc :out-chan (make-async-out-chan context))))))
+   (map->AsyncContextImpl
+    (merge base-async-context-impl
+           (dissoc overrides :canceled-chan :out-chan)
+           {:-deferred-canceled-chan (atom (:canceled-chan overrides))
+            :-deferred-out-chan      (atom (:out-chan overrides))}))))

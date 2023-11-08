@@ -49,9 +49,11 @@
          rows     []
          context  (merge
                    (or context (qp.context/sync-context))
-                   {:executef (fn [_driver _query _context respond]
+                   {:executef (fn [_context _driver _query respond]
                                 (respond metadata rows))})
-         qp       (process-userland-query/process-userland-query-middleware qp.context/runf)]
+         qp       (process-userland-query/process-userland-query-middleware
+                   (fn [query rff context]
+                     (qp.context/runf context query rff)))]
      (binding [driver/*driver* :h2]
        (qp query qp.reducible/default-rff context)))))
 
@@ -96,9 +98,9 @@
            clojure.lang.ExceptionInfo
            #"Oops!"
            (process-userland-query query (qp.context/sync-context
-                                          {:runf (fn [_query _rff context]
-                                                   (qp.context/raisef (ex-info "Oops!" {:type qp.error-type/qp})
-                                                                      context))}))))
+                                          {:runf (fn [context _query _rff]
+                                                   (qp.context/raisef context
+                                                                      (ex-info "Oops!" {:type qp.error-type/qp})))}))))
       (is (=? {:hash         "d673f355de41679623bfcbda4923d29c1ca64aec6314d79de0369bea2ac246d1"
                :database_id  nil
                :error        "Oops!"
@@ -186,11 +188,11 @@
                           {}
                           (qp.context/async-context
                            {:canceled-chan canceled-chan
-                            :reducef       (fn [_rff context _metadata rows]
+                            :reducef       (fn [context _rff _metadata rows]
                                              (reset! status ::started)
                                              (Thread/sleep 1000)
                                              (reset! status ::done)
-                                             (qp.context/reducedf rows context))}))]
+                                             (qp.context/reducedf context rows))}))]
             (is (async.u/promise-chan? out-chan))
             (is (not= ::done
                       @status))

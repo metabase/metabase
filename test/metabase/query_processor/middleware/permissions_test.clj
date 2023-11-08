@@ -19,7 +19,7 @@
 
 (defn- check-perms [query]
   (let [qp (fn [query _rff context]
-             (qp.context/resultf query context))
+             (qp.context/resultf context query))
         qp (qp.perms/check-query-permissions qp)]
     (qp query (constantly conj) (qp.context/sync-context))))
 

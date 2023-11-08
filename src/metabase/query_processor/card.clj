@@ -21,6 +21,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
@@ -182,10 +183,10 @@
           ;; now make sure the type agrees as well
           (check-allowed-parameter-value-type parameter-name matching-widget-type (:type request-parameter)))))))
 
-(mu/defn ^:private process-query-for-card-default-qp
+(mu/defn ^:private process-query-for-card-default-qp :- :some
   "Default value of the `:qp` option for [[process-query-for-card]]."
-  [query   :- :map
-   rff     :- ::qp.context/rff
+  [query   :- ::qp.schema/query
+   rff     :- ::qp.schema/rff
    context :- ::qp.context/context]
   (qp/process-query (qp/userland-query query) rff context))
 

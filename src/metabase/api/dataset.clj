@@ -48,14 +48,9 @@
 
 (mu/defn ^:private run-streaming-query :- (ms/InstanceOfClass metabase.async.streaming_response.StreamingResponse)
   [{:keys [database], :as query}
-   & {:keys [context export-format qp]
+   & {:keys [context export-format]
       :or   {context       :ad-hoc
-             export-format :api
-             qp            (^:once fn* [query rff context]
-                             (qp/process-query
-                              (qp/userland-query-with-default-constraints query)
-                              rff
-                              context))}}]
+             export-format :api}}]
   (when (and (not= (:type query) "internal")
              (not= database lib.schema.id/saved-questions-virtual-database-id))
     (when-not database
@@ -77,13 +72,16 @@
                          (assoc :metadata/dataset-metadata (:result_metadata source-card)))]
     (binding [qp.perms/*card-id* source-card-id]
       (qp.streaming/streaming-response [{:keys [rff context]} export-format]
-        (qp (update query :info merge  info) rff context)))))
+        (qp/process-query (update query :info merge info) rff context)))))
 
 (api/defendpoint POST "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [:as {{:keys [database] :as query} :body}]
   {database [:maybe :int]}
-  (run-streaming-query (update-in query [:middleware :js-int-to-string?] (fnil identity true))))
+  (run-streaming-query
+   (-> query
+       (update-in [:middleware :js-int-to-string?] (fnil identity true))
+       qp/userland-query-with-default-constraints )))
 
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
@@ -140,11 +138,9 @@
                                                          :skip-results-metadata? true
                                                          :format-rows? false))))]
     (run-streaming-query
-     query
+     (qp/userland-query query)
      :export-format export-format
-     :context       (export-format->context export-format)
-     :qp            (^:once fn* [query rff context]
-                     (qp/process-query (qp/userland-query query) rff context)))))
+     :context       (export-format->context export-format))))
 
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------

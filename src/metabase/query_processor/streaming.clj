@@ -3,6 +3,7 @@
    [metabase.async.streaming-response :as streaming-response]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming.csv :as qp.csv]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.query-processor.streaming.json :as qp.json]
@@ -10,7 +11,11 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.log :as log]
+   [metabase.async.util :as async.u]
+   [clojure.core.async :as a]
+   [metabase.query-processor.error-type :as qp.error-type])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (java.io OutputStream)
@@ -106,7 +111,7 @@
                         deduped-cols)]
     [ordered-cols output-order]))
 
-(mu/defn ^:private streaming-rff :- ::qp.context/rff
+(mu/defn ^:private streaming-rff :- ::qp.schema/rff
   [results-writer :- (ms/InstanceOfClass metabase.query_processor.streaming.interface.StreamingResultsWriter)]
   (fn [{:keys [cols viz-settings] :as initial-metadata}]
     (let [[ordered-cols output-order] (order-cols cols viz-settings)
@@ -128,20 +133,18 @@
          (qp.si/write-row! results-writer row (dec (vswap! row-count inc)) ordered-cols viz-settings')
          metadata)))))
 
-(mu/defn ^:private streaming-reducedf :- ::qp.context/reducedf
+(mu/defn ^:private streaming-reducedf :- fn?
   [results-writer   :- (ms/InstanceOfClass metabase.query_processor.streaming.interface.StreamingResultsWriter)
    ^OutputStream os :- (ms/InstanceOfClass OutputStream)]
   (mu/fn :- :some
-    [final-metadata :- :some
-     context        :- ::qp.context/context]
+    [context        :- ::qp.context/context
+     final-metadata :- :some]
     (qp.si/finish! results-writer final-metadata)
     (u/ignore-exceptions
       (.flush os)
       (.close os))
-    (qp.context/resultf final-metadata context)))
+    (qp.context/resultf context final-metadata)))
 
-;;; TODO FIXME NOCOMMIT not sure about the QP context here being a sync context... make sure queries ACTUALLY get
-;;; canceled as expected when we kill a sync context before we are done writing
 (defn streaming-context-and-rff
   "Context to pass to the QP to streaming results as `export-format` to an output stream. Can be used independently of
   the normal `streaming-response` macro, which is geared toward Ring responses.
@@ -161,17 +164,27 @@
                    {:canceled-chan canceled-chan})))
       :rff     (streaming-rff results-writer)})))
 
-(defn streaming-response*
-  "Impl for `streaming-response`."
+(defn -streaming-response
+  "Impl for [[streaming-response]]."
   ^StreamingResponse [export-format filename-prefix f]
   (streaming-response/streaming-response (qp.si/stream-options export-format filename-prefix) [os canceled-chan]
     (let [{:keys [rff context]} (streaming-context-and-rff export-format os canceled-chan)
           result                (try
                                   (f {:rff rff, :context context})
                                   (catch Throwable e
-                                    e))]
-      (assert (not (instance? ManyToManyChannel result))
-              "streaming context should be a synchronous context")
+                                    e))
+          ;; NOCOMMIT FIXME
+          result (if-not (instance? ManyToManyChannel result)
+                   result
+                   (do
+                     (log/warn (u/colorize :red (format "WARNING: STREAMING CONTEXT SHOULD BE A SYNCHRONOUS CONTEXT! GOT %s" result)))
+                     (let [[port val] (a/alts!! [result (a/timeout (qp.context/timeout context))])]
+                       (if (= port result)
+                         val
+                         (do
+                           (a/close! result)
+                           (ex-info (format "TIMED OUT AFTER %s" (u/format-milliseconds (qp.context/timeout context)))
+                                    {:type qp.error-type/timed-out}))))))]
       (when (or (instance? Throwable result)
                 (= (:status result) :failed))
         (streaming-response/write-error! os result)))))
@@ -191,7 +204,7 @@
   cancelations properly."
   {:style/indent 1}
   [[map-binding export-format filename-prefix] & body]
-  `(streaming-response* ~export-format ~filename-prefix (bound-fn [~map-binding] ~@body)))
+  `(-streaming-response ~export-format ~filename-prefix (bound-fn [~map-binding] ~@body)))
 
 (defn export-formats
   "Set of valid streaming response formats. Currently, `:json`, `:csv`, `:xlsx`, and `:api` (normal JSON API results

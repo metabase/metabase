@@ -106,13 +106,13 @@
                          (xform (rff metadata)))]
     (assert (some? cols))
     (assert (instance? clojure.lang.IReduceInit reducible-rows))
-    (qp.context/reducef rff* context {:cols cols} reducible-rows)))
+    (qp.context/reducef context rff* {:cols cols} reducible-rows)))
 
 (defn- reduce-legacy-results [rff context results]
   (let [{:keys [cols rows]} (format-results results)]
     (assert (some? cols))
     (assert (some? rows))
-    (qp.context/reducef rff context {:cols cols} rows)))
+    (qp.context/reducef context rff {:cols cols} rows)))
 
 (defn- reduce-results [rff context {rows :results, :as results}]
   ((if (fn? rows)

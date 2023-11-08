@@ -238,5 +238,5 @@
                                             {:type :internal
                                              :fn   "metabase-enterprise.audit-app.pages.users/active-and-new-by-time"
                                              :args ["day"]})]
-          (is (not= 0
-                    (count (-> results :data :rows)))))))))
+          (is (=? {:data {:rows (every-pred sequential? seq)}}
+                  results)))))))

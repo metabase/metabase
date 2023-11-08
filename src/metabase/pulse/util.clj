@@ -22,22 +22,23 @@
   (let [card-id (u/the-id card-or-id)]
     (try
       (when-let [{query :dataset_query, :as card} (t2/select-one Card :id card-id, :archived false)]
-        (let [process-query (^:once fn* []
-                             (binding [qp.perms/*card-id* card-id]
-                               (qp/process-query
-                                (qp/userland-query-with-default-constraints
-                                 (assoc query :middleware {:process-viz-settings? true
-                                                           :js-int-to-string?     false})
-                                 (merge {:executed-by pulse-creator-id
-                                         :context     :pulse
-                                         :card-id     card-id}
-                                        options)))))
-              result        (if pulse-creator-id
-                              (mw.session/with-current-user pulse-creator-id
-                                (process-query))
-                              (process-query))]
-          {:card   card
-           :result result}))
+        (when (seq query)
+          (let [process-query (^:once fn* []
+                               (binding [qp.perms/*card-id* card-id]
+                                 (qp/process-query
+                                  (qp/userland-query-with-default-constraints
+                                   (assoc query :middleware {:process-viz-settings? true
+                                                             :js-int-to-string?     false})
+                                   (merge {:executed-by pulse-creator-id
+                                           :context     :pulse
+                                           :card-id     card-id}
+                                          options)))))
+                result        (if pulse-creator-id
+                                (mw.session/with-current-user pulse-creator-id
+                                  (process-query))
+                                (process-query))]
+            {:card   card
+             :result result})))
       (catch Throwable e
         (log/warn e (trs "Error running query for Card {0}" card-id))))))
 

@@ -6,38 +6,48 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.models.setting :as setting]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
-(defn- get-normalized [m k]
-  (u/or-with some?
-    (get m k)
-    (get m (u/qualified-name k))))
+(mu/defn ^:private query-type :- [:enum :query :native :internal :mbql/query]
+  [query :- ::qp.schema/query]
+  (or (some-> ((some-fn :lib/type :type) query) keyword)
+      (throw (ex-info (i18n/tru "Invalid query: missing or invalid query type (:lib/type or :type)")
+                      {:query query, :type qp.error-type/invalid-query}))))
 
 (mu/defn ^:private source-card-id-for-pmbql-query :- [:maybe ::lib.schema.id/card]
-  [query :- :map]
-  (let [[first-stage] (get-normalized query :stages)]
-    (get-normalized first-stage :source-card)))
+  [query :- ::qp.schema/query]
+  (-> query :stages first :source-card))
 
 (mu/defn ^:private source-card-id-for-legacy-query :- [:maybe ::lib.schema.id/card]
-  [query :- :map]
-  (let [inner-query         (get-normalized query :query)
+  [query :- ::qp.schema/query]
+  (let [inner-query         (:query query)
         deepest-inner-query (loop [inner-query inner-query]
-                              (let [source-query (get-normalized inner-query :source-query)]
+                              (let [source-query (:source-query inner-query)]
                                 (if source-query
                                   (recur source-query)
                                   inner-query)))
-        source-table        (get-normalized deepest-inner-query :source-table)]
+        source-table        (:source-table deepest-inner-query)]
     (lib.util/legacy-string-table-id->card-id source-table)))
 
-(defn- bootstrap-metadata-provider []
+(mu/defn ^:private bootstrap-metadata-provider :- ::lib.schema.metadata/metadata-provider
+  "A super-basic metadata provider used only for resolving the database ID associated with a source Card, only for
+  queries that use the [[lib.schema.id/saved-questions-virtual-database-id]] e.g.
+
+    {:database -1337, :type :query, :query {:source-table \"card__1\"}}
+
+  Once the *actual* Database ID is resolved, we will create a
+  real [[metabase.lib.metadata.jvm/application-database-metadata-provider]]. (The App DB provider needs to be
+  initialized with an actual Database ID)."
+  []
   (if (qp.store/initialized?)
     (qp.store/metadata-provider)
     (reify lib.metadata.protocols/MetadataProvider
@@ -57,51 +67,52 @@
     (:database-id card)))
 
 (mu/defn ^:private source-card-id :- ::lib.schema.id/card
-  [query :- :map]
-  (let [query-type (some (fn [k]
-                           (keyword (get-normalized query k)))
-                         [:lib/type :type])]
-    (when-not query-type
-      (throw (ex-info (i18n/tru "Invalid query: missing or invalid query type (:lib/type or :type)")
-                      {:query query, :type qp.error-type/invalid-query})))
-    (or (case query-type
-          :mbql/query
-          (source-card-id-for-pmbql-query query)
+  [query :- ::qp.schema/query]
+  (case (query-type query)
+    :mbql/query
+    (source-card-id-for-pmbql-query query)
 
-          (:query :native)
-          (source-card-id-for-legacy-query query))
-        (throw (ex-info (i18n/tru "Invalid query: cannot use the Saved Questions Virtual Database ID unless query has a source Card")
-                        {:query query, :type qp.error-type/invalid-query})))))
+    (:query :native)
+    (source-card-id-for-legacy-query query)
 
-(mu/defn ^:private resolve-database-id :- ::lib.schema.id/database
-  [query :- :map]
-  (let [database-id (get-normalized query :database)]
-    (cond
-      (pos-int? database-id)
-      database-id
+    #_else
+    (throw (ex-info (i18n/tru "Invalid query: cannot use the Saved Questions Virtual Database ID unless query has a source Card")
+                    {:query query, :type qp.error-type/invalid-query}))))
 
-      (= database-id lib.schema.id/saved-questions-virtual-database-id)
-      (resolve-database-id-for-source-card (source-card-id query))
+(mu/defn ^:private resolve-database-id :- [:maybe ::lib.schema.id/database]
+  [query :- ::qp.schema/query]
+  (when-not (= (query-type query) :internal)
+    (let [database-id (:database query)]
+      (cond
+        (pos-int? database-id)
+        database-id
 
-      :else
-      (throw (ex-info (i18n/tru "Invalid query: missing or invalid Database ID (:database)")
-                      {:query query, :type qp.error-type/invalid-query})))))
+        (= database-id lib.schema.id/saved-questions-virtual-database-id)
+        (resolve-database-id-for-source-card (source-card-id query))
 
-(defn- do-with-resolved-database [f]
+        :else
+        (throw (ex-info (i18n/tru "Invalid query: missing or invalid Database ID (:database)")
+                        {:query query, :type qp.error-type/invalid-query}))))))
+
+(mu/defn ^:private do-with-resolved-database
+  [f :- [:=> [:cat ::qp.schema/query] :any]]
   (mu/fn
-    [query :- :map]
+    [query :- ::qp.schema/query]
     (let [query       (set/rename-keys query {"database" :database})
           database-id (resolve-database-id query)
-          query       (assoc query :database database-id)]
+          query       (cond-> query
+                        database-id (assoc :database database-id))]
       (f query))))
 
-(defn- maybe-attach-metadata-provider-to-query [query]
+(mu/defn ^:private maybe-attach-metadata-provider-to-query :- ::qp.schema/query
+  [query :- ::qp.schema/query]
   (if (= (:lib/type query) :mbql/query)
     (assoc query :lib/metadata (qp.store/metadata-provider))
     query))
 
-(defn- do-with-metadata-provider [f]
-  (fn [query]
+(mu/defn ^:private do-with-metadata-provider
+  [f :- [:=> [:cat ::qp.schema/query] :any]]
+  (mu/fn [query :- ::qp.schema/query]
     (cond
       (qp.store/initialized?)
       (f (maybe-attach-metadata-provider-to-query query))
@@ -110,21 +121,38 @@
       (qp.store/with-metadata-provider (:lib/metadata query)
         (f query))
 
+      (= (query-type query) :internal)
+      (f query)
+
       :else
       (qp.store/with-metadata-provider (:database query)
         (f (maybe-attach-metadata-provider-to-query query))))))
 
-(defn- do-with-driver [f]
-  (fn [query]
-    (if driver/*driver*
+(mu/defn ^:private do-with-driver
+  [f :- [:=> [:cat ::qp.schema/query] :any]]
+  (mu/fn [query :- ::qp.schema/query]
+    (cond
+      driver/*driver*
       (f query)
+
+      (= (query-type query) :internal)
+      (f query)
+
+      :else
       (driver/with-driver (driver.u/database->driver (:database query))
         (f query)))))
 
-(defn- do-with-database-local-settings [f]
-  (fn [query]
-    (if setting/*database-local-values*
+(mu/defn ^:private do-with-database-local-settings
+  [f :- [:=> [:cat ::qp.schema/query] :any]]
+  (mu/fn [query :- ::qp.schema/query]
+    (cond
+      setting/*database-local-values*
       (f query)
+
+      (= (query-type query) :internal)
+      (f query)
+
+      :else
       (let [{:keys [settings]} (lib.metadata/database (qp.store/metadata-provider))]
         (binding [setting/*database-local-values* (or settings {})]
           (f query))))))
@@ -147,9 +175,10 @@
    #'do-with-resolved-database])
 ;;; ↑↑↑ SETUP MIDDLEWARE ↑↑↑ happens from BOTTOM to TOP e.g. [[do-with-resolved-database]] is the first to do its thing
 
-(defn do-with-qp-setup
+(mu/defn do-with-qp-setup
   "Impl for [[with-qp-setup]]."
-  [query f]
+  [query :- ::qp.schema/query
+   f     :- [:=> [:cat ::qp.schema/query] :any]]
   ;; TODO -- think about whether we should pre-compile this middleware
   (let [f (reduce
            (fn [f middleware]

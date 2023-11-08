@@ -4,6 +4,7 @@
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -146,12 +147,12 @@
     (catch Throwable e
       e)))
 
-(defn catch-exceptions
+(mu/defn catch-exceptions :- ::qp.schema/qp
   "Middleware for catching exceptions thrown by the query processor and returning them in a 'normal' format. Forwards
   exceptions to the `result-chan`."
-  [qp]
-  (mu/fn [query   :- :map
-          rff     :- ::qp.context/rff
+  [qp :- ::qp.schema/qp]
+  (mu/fn [query   :- ::qp.schema/query
+          rff     :- ::qp.schema/rff
           context :- ::qp.context/context]
     (if-not (get-in query [:middleware :userland-query?])
       (qp query rff context)
@@ -160,7 +161,7 @@
                                           ((requiring-resolve 'metabase.query-processor.compile/compile) query))
                           :preprocessed (u/ignore-exceptions
                                           ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query))})]
-        (letfn [(raisef* [e context]
+        (letfn [(raisef* [context e]
                   ;; format the Exception and return it
                   (let [formatted-exception (format-exception* query e @extra-info)]
                     (log/error (str (trs "Error processing query: {0}"
@@ -169,10 +170,10 @@
                                              (trs "Error running query")))
                                     "\n" (u/pprint-to-str formatted-exception)))
                     ;; ensure always a message on the error otherwise FE thinks query was successful. (#23258, #23281)
-                    (qp.context/resultf (update formatted-exception
-                                                :error (fnil identity (trs "Error running query")))
-                                        context)))]
+                    (qp.context/resultf context
+                                        (update formatted-exception
+                                                :error (fnil identity (trs "Error running query"))))))]
           (try
             (qp query rff (assoc context :raisef raisef*))
             (catch Throwable e
-              (raisef* e context))))))))
+              (raisef* context e))))))))

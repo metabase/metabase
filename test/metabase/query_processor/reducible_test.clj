@@ -44,10 +44,10 @@
              output)))))
 
 (defn- print-rows-to-writer-rff-and-context [filename]
-  (letfn [(reducef* [rff context metadata reducible-rows]
+  (letfn [(reducef* [context rff metadata reducible-rows]
             (with-open [w (io/writer filename)]
               (binding [*out* w]
-                (#'qp.context/default-reducef rff context metadata reducible-rows))))]
+                (#'qp.context/default-reducef context rff metadata reducible-rows))))]
     {:rff     print-rows-rff
      :context (qp.context/sync-context {:reducef reducef*})}))
 

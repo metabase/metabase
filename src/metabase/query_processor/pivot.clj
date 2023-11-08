@@ -182,25 +182,25 @@
                               ;; connections in the reducing part reducef. The default runf is what orchestrates this
                               ;; together and we just pass the original executef to the reducing part so we can control
                               ;; our multiple connections.
-                              (fn multiple-executef [driver query _context respond]
+                              (fn multiple-executef [_context driver query respond]
                                 (respond [orig driver] query))))
                     (assoc :reducef
                            ;; signature usually has metadata in place of driver but we are hijacking
-                           (fn multiple-reducing [rff context [orig-executef driver] query]
+                           (fn multiple-reducing [context rff [orig-executef driver] query]
                              (let [respond (fn [metadata reducible-rows]
                                              (let [rf (rff metadata)]
                                                (assert (fn? rf))
                                                (try
                                                  (transduce identity (completing rf) reducible-rows)
                                                  (catch Throwable e
-                                                   (qp.context/raisef (ex-info (tru "Error reducing result rows")
+                                                   (qp.context/raisef context
+                                                                      (ex-info (tru "Error reducing result rows")
                                                                                {:type qp.error-type/qp}
-                                                                               e)
-                                                                      context)))))
-                                   acc     (-> (orig-executef driver query context respond)
+                                                                               e))))))
+                                   acc     (-> (orig-executef context driver query respond)
                                                (process-queries-append-results more-queries @vrf info context))]
                                ;; completion arity can't be threaded because the value is derefed too early
-                               (qp.context/reducedf (@vrf acc) context))))))}))
+                               (qp.context/reducedf context (@vrf acc)))))))}))
 
 (defn process-multiple-queries
   "Allows the query processor to handle multiple queries, stitched together to appear as one"

@@ -19,6 +19,7 @@
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -169,7 +170,7 @@
                 (when (and (= (:cache-version metadata) cache-version)
                            reducible-rows)
                   (log/tracef "Reducing cached rows...")
-                  (let [result (qp.context/reducef (cached-results-rff rff) context metadata reducible-rows)]
+                  (let [result (qp.context/reducef context (cached-results-rff rff) metadata reducible-rows)]
                     (log/tracef "All cached rows reduced")
                     [::ok result]))))))
         [::miss nil])
@@ -185,8 +186,8 @@
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
 
 (mu/defn ^:private run-query-with-cache :- :some
-  [qp {:keys [cache-ttl middleware], :as query} :- :map
-   rff                                          :- ::qp.context/rff
+  [qp {:keys [cache-ttl middleware], :as query} :- ::qp.schema/query
+   rff                                          :- ::qp.schema/rff
    {:keys [reducef], :as context}               :- ::qp.context/context]
   ;; TODO - Query will already have `info.hash` if it's a userland query. I'm not 100% sure it will be the same hash,
   ;; because this is calculated after normalization, instead of before
@@ -203,13 +204,13 @@
       (let [start-time-ms (System/currentTimeMillis)]
         (log/trace "Running query and saving cached results (if eligible)...")
         (let [reducef' (fn reduce'
-                         [rff context metadata rows]
+                         [context rff metadata rows]
                          {:post [(some? %)]}
                          (impl/do-with-serialization
                           (fn [in-fn result-fn]
                             (binding [*in-fn*     in-fn
                                       *result-fn* result-fn]
-                              (reducef rff context metadata rows)))))]
+                              (reducef context rff metadata rows)))))]
           (qp query
               (fn [metadata]
                 (save-results-xform start-time-ms metadata query-hash (rff metadata)))

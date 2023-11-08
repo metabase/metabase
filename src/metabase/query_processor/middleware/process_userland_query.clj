@@ -13,6 +13,7 @@
     :as query-execution
     :refer [QueryExecution]]
    [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -139,7 +140,7 @@
    :result_rows       0
    :start_time_millis (System/currentTimeMillis)})
 
-(mu/defn process-userland-query-middleware :- fn?
+(mu/defn process-userland-query-middleware :- ::qp.schema/qp
   "Around middleware.
 
   Userland queries only:
@@ -149,9 +150,9 @@
   2. Record a ViewLog entry when running a query for a Card
 
   3. Add extra info like `running_time` and `started_at` to the results"
-  [qp :- fn?]
-  (mu/fn [query                         :- :map
-          rff                           :- ::qp.context/rff
+  [qp :- ::qp.schema/qp]
+  (mu/fn [query                         :- ::qp.schema/query
+          rff                           :- ::qp.schema/rff
           {:keys [raisef], :as context} :- ::qp.context/context]
     (if-not (get-in query [:middleware :userland-query?])
       (qp query rff context)
@@ -159,17 +160,17 @@
             execution-info (query-execution-info query)]
         (letfn [(rff* [metadata]
                   (add-and-save-execution-info-xform! execution-info (rff metadata)))
-                (raisef* [^Throwable e context]
+                (raisef* [context ^Throwable e]
                   (save-failed-query-execution!
                    execution-info
                    (or
                     (some-> e (.getCause) ex-message)
                     (ex-message e)))
-                  (raisef (ex-info (ex-message e)
+                  (raisef context
+                          (ex-info (ex-message e)
                                    {:query-execution execution-info}
-                                   e)
-                          context))]
+                                   e)))]
           (try
             (qp query rff* (assoc context :raisef raisef*))
             (catch Throwable e
-              (raisef* e context))))))))
+              (raisef* context e))))))))

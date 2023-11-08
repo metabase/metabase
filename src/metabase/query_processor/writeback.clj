@@ -3,9 +3,11 @@
   (:require
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.setup :as qp.setup]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
@@ -42,7 +44,8 @@
   (when-not (= query-type :native)
     (throw (ex-info (tru "Only native queries can be executed as write queries.")
                     {:type qp.error-type/invalid-query, :status-code 400, :query query})))
-  ((writeback-qp) query nil nil))
+  (qp.setup/with-qp-setup [query query]
+    ((writeback-qp) query (constantly conj) (qp.context/sync-context))))
 
 (defn execute-write-sql!
   "Execute a write query in SQL against a database given by `db-id`."

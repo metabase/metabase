@@ -67,11 +67,11 @@
          rows     []
          context  (merge
                    (or context (qp.context/sync-context))
-                   {:executef (fn [_driver _query _context respond]
+                   {:executef (fn [_context _driver _query respond]
                                 (respond metadata rows))})
          qp       (fn [_query rff context]
                     (run)
-                    (qp.context/runf query rff context))
+                    (qp.context/runf context query rff))
          qp       (catch-exceptions/catch-exceptions qp)
          result   (driver/with-driver :h2
                     (qp (qp/userland-query query) qp.reducible/default-rff context))]
@@ -110,9 +110,9 @@
     (let [out-chan (catch-exceptions (fn run [])
                                      {}
                                      (qp.context/async-context
-                                      {:runf (fn [_query _rff context]
+                                      {:runf (fn [context _query _rff]
                                                (future
-                                                 (qp.context/raisef (Exception. "Something went wrong") context))
+                                                 (qp.context/raisef context (Exception. "Something went wrong")))
                                                (qp.context/out-chan context))}))]
       (is (async.u/promise-chan? out-chan))
       (is (=? {:status     :failed
@@ -140,8 +140,9 @@
               (catch-exceptions (fn run [])
                                 {}
                                 (qp.context/sync-context
-                                 {:runf (fn [_query _rff context]
-                                          (qp.context/raisef (ex-info "Something went wrong."
+                                 {:runf (fn [context _query _rff]
+                                          (qp.context/raisef context
+                                                             (ex-info "Something went wrong."
                                                                       {:query-execution {:a            100
                                                                                          :b            200
                                                                                          :card_id      300
@@ -152,8 +153,7 @@
                                                                                          :dashboard_id 700
                                                                                          :pulse_id     800
                                                                                          :native       900}}
-                                                                      (Exception. "Something went wrong"))
-                                                             context))})))))))
+                                                                      (Exception. "Something went wrong"))))})))))))
 
 (deftest ^:parallel catch-exceptions-test-2
   (testing "Should always include :error (#23258, #23281)"

@@ -120,7 +120,9 @@
   ;; clear out stale values in save/purge channels
   (while (a/poll! *save-chan*))
   (while (a/poll! *purge-chan*))
-  (let [qp       (cache/maybe-return-cached-results qp.context/runf)
+  (let [qp       (cache/maybe-return-cached-results
+                  (fn [query rff context]
+                    (qp.context/runf context query rff)))
         metadata {}
         rows     [[:toucan      71]
                   [:bald-eagle  92]
@@ -133,7 +135,7 @@
         query    (test-query query-kvs)
         context  (qp.context/sync-context
                   {:timeout  2000
-                   :executef (fn [_driver _query _context respond]
+                   :executef (fn [_context _driver _query respond]
                                (Thread/sleep *query-execution-delay-ms*)
                                (respond metadata rows))})]
     (driver/with-driver :h2

@@ -17,12 +17,14 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    #_{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.urls :as urls]))
 
 (set! *warn-on-reflection* true)
@@ -111,7 +113,12 @@
                       {:driver driver, :honeysql-query honeysql-query}
                       e)))))
 
-(defn- reduce-results* [honeysql-query context rff init]
+(mu/defn ^:private reduce-results* :- :some
+  [honeysql-query :- ::qp.schema/query
+   context        :- ::qp.context/context
+
+   rff            :- ::qp.schema/rff
+   init]
   (let [driver         (mdb/db-type)
         [sql & params] (compile-honeysql driver honeysql-query)
         canceled-chan  (qp.context/canceled-chan context)]
@@ -157,7 +164,7 @@
   directly as a series of maps (the 'legacy results' format as described in
   `metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries.internal-queries`)"
   [honeysql-query]
-  (let [context {:canceled-chan (a/promise-chan)}
+  (let [context (qp.context/sync-context)
         rff     (fn [{:keys [cols]}]
                   (let [col-names (mapv (comp keyword :name) cols)]
                     ((map (partial zipmap col-names)) conj)))]

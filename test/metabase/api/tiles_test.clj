@@ -109,7 +109,7 @@
              :rasta :get 400 (format "tiles/1/1/1/%d/%d"
                                      (mt/id :venues :latitude)
                                      (mt/id :venues :longitude))
-             :query "{}")))))
+             :query (json/encode (mt/mbql-query venues {:filter [:= $users.id 1]})))))))
 
 (deftest ^:parallel field-ref-test
   (testing "Field refs can be constructed from strings representing integer field IDs or field names"

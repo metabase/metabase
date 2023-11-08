@@ -6,50 +6,17 @@
    [metabase.async.util :as async.u]
    [metabase.query-processor :as qp]
    [metabase.query-processor.context :as qp.context]
-   [metabase.query-processor.reducible :as qp.reducible]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
-;; (deftest ^:parallel async-cancelation-test
-;;   (mt/with-open-channels [canceled-chan (a/promise-chan)]
-;;     (future
-;;       (let [status   (atom ::not-started)
-;;             query    {}
-;;             metadata {}
-;;             rows     []
-;;             context  (qp.context/async-context)
-;;             qp       (qp.context/runf)
-;;             out-chan (process-userland-query
-;;                       {}
-;;                       (qp.context/async-context
-;;                        {:canceled-chan canceled-chan
-;;                         :reducef       (fn [_rff context _metadata rows]
-;;                                          (reset! status ::started)
-;;                                          (Thread/sleep 1000)
-;;                                          (reset! status ::done)
-;;                                          (qp.context/reducedf rows context))}))]
-;;         (is (async.u/promise-chan? out-chan))
-;;         (is (not= ::done
-;;                   @status))
-;;         (Thread/sleep 100)
-;;         (a/close! out-chan)))
-;;     (testing "canceled-chan should get get a :cancel message"
-;;       (let [[val port] (a/alts!! [canceled-chan (a/timeout 500)])]
-;;         (is (= 'canceled-chan
-;;                (if (= port canceled-chan) 'canceled-chan 'timeout))
-;;             "port")
-;;         (is (= ::qp.context/cancel
-;;                val)
-;;             "val")))))
-
 (defn- process-query* [context]
-  (qp.context/runf {} (constantly conj) context))
+  (qp.context/runf context {} (constantly conj)))
 
 (defn- async-context-with-timeout [timeout]
   (qp.context/async-context
    {:timeout  timeout
-    :executef (fn [_driver _query _context respond]
+    :executef (fn [_context _driver _query respond]
                 (Thread/sleep 500)
                 (respond {} [[1]]))}))
 
@@ -80,6 +47,39 @@
       (is (instance? clojure.lang.ExceptionInfo result))
       (is (=? #"Timed out after 1000\.0 µs\."
               (ex-message result))))))
+
+(deftest ^:parallel async-cancelation-test-3
+  (testing "Make sure the future running on another thread gets canceled"
+    (let [status   (atom ::not-started)
+          context  (qp.context/async-context
+                    {:timeout  1000
+                     :executef (fn [_context _driver _query respond]
+                                 (try
+                                   (reset! status ::started)
+                                   (Thread/sleep 500)
+                                   (reset! status ::finished)
+                                   (respond {} [[1]])
+                                   (catch InterruptedException e
+                                     (reset! status ::canceled)
+                                     (throw e))))})
+          out-chan (qp/process-query
+                    (mt/mbql-query venues)
+                    context)]
+      (is (async.u/promise-chan? out-chan))
+      (letfn [(await-status [expected-status]
+                (loop [remaining-ms 200]
+                  (if (or (= @status expected-status)
+                          (not (pos? remaining-ms)))
+                    @status
+                    (do
+                      (Thread/sleep 5)
+                      (recur (- remaining-ms 5))))))]
+
+        (is (= ::started
+               (await-status ::started)))
+        (a/close! out-chan)
+        (is (= ::canceled
+               (await-status ::canceled)))))))
 
 (deftest ^:parallel exceptions-test
   (testing "Test a query that throws an Exception."

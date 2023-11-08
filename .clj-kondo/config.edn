@@ -479,6 +479,7 @@
   metabase.public-settings.premium-features/define-premium-feature                     clojure.core/def
   metabase.pulse-test/with-pulse-for-card                                              clojure.core/let
   metabase.query-processor.error-type/deferror                                         clojure.core/def
+  metabase.query-processor.setup/with-qp-setup                                         clojure.core/let
   metabase.query-processor.middleware.cache.impl/with-reducible-deserialized-results   clojure.core/let
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution clojure.core/let
   metabase.query-processor-test.pipeline-queries-test/pmbql-query                      clojure.core/->

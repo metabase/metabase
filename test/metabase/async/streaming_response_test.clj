@@ -66,7 +66,7 @@
          (reset! start-execution-chan nil)))))
 
 (defmethod driver/execute-reducible-query ::test-driver
-  [_ {{{:keys [sleep]} :query} :native, database-id :database} context respond]
+  [_driver {{{:keys [sleep]} :query} :native, database-id :database} context respond]
   {:pre [(integer? sleep) (integer? database-id)]}
   (let [futur (future
                 (try

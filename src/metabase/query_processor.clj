@@ -19,6 +19,7 @@
    [metabase.query-processor.postprocess :as qp.postprocess]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -101,8 +102,8 @@
   ([query context]
    (process-query query nil context))
 
-  ([query   :- :map
-    rff     :- [:maybe ::qp.context/rff]
+  ([query   :- ::qp.schema/query
+    rff     :- [:maybe ::qp.schema/rff]
     context :- [:maybe ::qp.context/context]]
    (when (contains? query :async?)
      (log/warn ":async? as an query option is deprecated and ignored; pass an explicit async context."))
@@ -112,9 +113,9 @@
        (try
          (process-query* query rff context)
          (catch Throwable e
-           (qp.context/raisef e context)))))))
+           (qp.context/raisef context e)))))))
 
-(mu/defn userland-query :- :map
+(mu/defn userland-query :- ::qp.schema/query
   "Add middleware options and `:info` to a `query` so it is ran as a 'userland' query, which slightly changes the QP
   behavior:
 
@@ -128,13 +129,13 @@
   ([query]
    (userland-query query nil))
 
-  ([query :- :map
+  ([query :- ::qp.schema/query
     info  :- [:maybe mbql.s/Info]]
    (-> query
        (assoc-in [:middleware :userland-query?] true)
        (update :info merge info))))
 
-(mu/defn userland-query-with-default-constraints :- :map
+(mu/defn userland-query-with-default-constraints :- ::qp.schema/query
   "Add middleware options and `:info` to a `query` so it is ran as a 'userland' query. QP behavior changes are the same
   as those for [[userland-query]], *plus* the default userland constraints (limits) are applied --
   see [[qp.constraints/add-default-userland-constraints]].
@@ -143,7 +144,7 @@
   ([query]
    (userland-query-with-default-constraints query nil))
 
-  ([query :- :map
+  ([query :- ::qp.schema/query
     info  :- [:maybe mbql.s/Info]]
    (-> query
        (userland-query info)

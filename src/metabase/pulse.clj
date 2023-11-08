@@ -424,7 +424,7 @@
                                                          (some? (:id recipient)))) recipients)
         non-user-recipients (filter (fn [recipient] (and (u/email? (:email recipient))
                                                          (nil? (:id recipient)))) recipients)
-        timezone            (->> parts (some :card) defaulted-timezone)
+        timezone            (some-> (some :card parts) defaulted-timezone)
         dashboard           (update (t2/select-one Dashboard :id dashboard-id) :description markdown/process-markdown :html)
         email-to-users      (when (> (count user-recipients) 0)
                               (construct-pulse-email (subject pulse) (mapv :email user-recipients) (messages/render-pulse-email timezone pulse dashboard parts nil)))

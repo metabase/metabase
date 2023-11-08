@@ -128,8 +128,8 @@
 (defn public-reducedf
   "Reducer function for public data"
   [orig-reducedf]
-  (fn [final-metadata context]
-    (orig-reducedf (transform-results final-metadata) context)))
+  (fn reducedf* [context final-metadata]
+    (orig-reducedf context (transform-results final-metadata))))
 
 (defn- process-query-for-card-with-id-run-fn
   "Create the `:run` function used for [[process-query-for-card-with-id]] and [[process-query-for-dashcard]]."
