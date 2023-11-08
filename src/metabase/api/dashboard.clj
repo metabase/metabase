@@ -557,7 +557,8 @@
   [id {:keys [dashcards tabs] :as dash-updates}]
   (let [current-dash               (api/write-check Dashboard id)
         changes-stats              (atom nil)
-        ;; tabs are sent in production as well, but there are lots of tests that exclude it. so this only checks for dashcards
+        ;; tabs are always sent in production as well when dashcards are updated, but there are lots of
+        ;; tests that exclude it. so this only checks for dashcards
         update-dashcards-and-tabs? (contains? dash-updates :dashcards)]
     (collection/check-allowed-to-change-collection current-dash dash-updates)
     (check-allowed-to-change-embedding current-dash dash-updates)
@@ -607,9 +608,7 @@
        true))
     (let [dashboard (t2/select-one :model/Dashboard id)]
       (events/publish-event! :event/dashboard-update {:object dashboard :user-id api/*current-user-id*})
-      (when update-dashcards-and-tabs?
-        ;; execute these events for old PUT /api/dashboard/:id/cards calls and new PUT /api/dashboard/:id calls, and not for old PUT /api/dashboard/:id calls
-        (track-dashcard-and-tab-events! dashboard @changes-stats))
+      (track-dashcard-and-tab-events! dashboard @changes-stats)
       (-> (t2/hydrate dashboard [:collection :is_personal] [:dashcards :series] :tabs)
           (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))))
 
