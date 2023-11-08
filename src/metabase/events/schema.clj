@@ -11,20 +11,14 @@
                        [:user-id pos-int?]
                        [:object [:fn #(t2/instance-of? :model/Dashboard %)]]])
       with-dashcards (mut/assoc default-schema
-                                :dashcards [:sequential [:map [:id pos-int?]]])
-      with-tab-ids   (mut/assoc default-schema
-                                :tab-ids [:sequential pos-int?])]
+                                :dashcards [:sequential [:map [:id pos-int?]]])]
   (def ^:private dashboard-events-schemas
     {:event/dashboard-read             default-schema
      :event/dashboard-create           default-schema
      :event/dashboard-update           default-schema
      :event/dashboard-delete           default-schema
-     :event/dashboard-reposition-cards with-dashcards
      :event/dashboard-remove-cards     with-dashcards
-     :event/dashboard-add-cards        with-dashcards
-     :event/dashboard-add-tabs         with-tab-ids
-     :event/dashboard-update-tabs      with-tab-ids
-     :event/dashboard-remove-tabs      with-tab-ids}))
+     :event/dashboard-add-cards        with-dashcards}))
 
 ;; card events
 

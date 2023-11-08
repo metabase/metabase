@@ -346,7 +346,7 @@
   ^Double [^Integer decimal-place, ^Number number]
   {:pre [(integer? decimal-place) (number? number)]}
   #?(:clj  (double (.setScale (bigdec number) decimal-place BigDecimal/ROUND_HALF_UP))
-     :cljs (double (.toPrecision number decimal-place))))
+     :cljs (parse-double (.toFixed number decimal-place))))
 
 (defn real-number?
   "Is `x` a real number (i.e. not a `NaN` or an `Infinity`)?"

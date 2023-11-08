@@ -38,12 +38,6 @@
 (derive ::dashboard-event ::event)
 (derive :event/dashboard-create ::dashboard-event)
 (derive :event/dashboard-update ::dashboard-event)
-(derive :event/dashboard-add-cards ::dashboard-event)
-(derive :event/dashboard-remove-cards ::dashboard-event)
-(derive :event/dashboard-reposition-cards ::dashboard-event)
-(derive :event/dashboard-add-tabs ::dashboard-event)
-(derive :event/dashboard-remove-tabs ::dashboard-event)
-(derive :event/dashboard-update-tabs ::dashboard-event)
 
 (methodical/defmethod events/publish-event! ::dashboard-event
   [topic event]

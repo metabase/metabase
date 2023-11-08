@@ -50,7 +50,8 @@ function QuestionPicker({ onSelect, collectionsById, getCollectionIcon }) {
   const handleSearchTextChange = e => setSearchText(e.target.value);
 
   const allCollections = (collection && collection.children) || [];
-  const collections = isPublicCollection(dashboardCollection)
+  const showOnlyPublicCollections = isPublicCollection(dashboardCollection);
+  const collections = showOnlyPublicCollections
     ? allCollections.filter(isPublicCollection)
     : allCollections;
 
@@ -107,6 +108,7 @@ function QuestionPicker({ onSelect, collectionsById, getCollectionIcon }) {
         searchText={debouncedSearchText}
         collectionId={currentCollectionId}
         onSelect={onSelect}
+        showOnlyPublicCollections={showOnlyPublicCollections}
       />
     </QuestionPickerRoot>
   );
