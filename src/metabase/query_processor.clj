@@ -381,10 +381,10 @@
 
     (f (f query rff context)) -> (f query rff context)"
   (concat
-   default-middleware
    [#'qp.constraints/add-default-userland-constraints
-    #'process-userland-query/process-userland-query
-    #'catch-exceptions/catch-exceptions]))
+    #'process-userland-query/process-userland-query]
+   default-middleware
+   [#'catch-exceptions/catch-exceptions]))
 
 (def ^{:arglists '([query] [query context] [query rff context])} ^:private process-userland-query-async
   "Like [[process-query-async]], but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."

@@ -129,7 +129,8 @@
    :started_at        (t/zoned-date-time)
    :running_time      0
    :result_rows       0
-   :start_time_millis (System/currentTimeMillis)})
+   :start_time_millis (System/currentTimeMillis)
+   :is_sandboxed      (or (get-in query [:query :source-query :metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/gtap?]) false)})
 
 (defn process-userland-query
   "Do extra handling 'userland' queries (i.e. ones ran as a result of a user action, e.g. an API call, scheduled Pulse,
