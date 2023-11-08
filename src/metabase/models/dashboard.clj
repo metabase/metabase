@@ -689,4 +689,6 @@
                              (for [{:keys [id card_id]} dashcards]
                                   (-> (t2/select-one [Card :name :description], :id card_id)
                                       (assoc :id id)
-                                      (assoc :card_id card_id))))))))
+                                      (assoc :card_id card_id))))))
+
+    {}))
