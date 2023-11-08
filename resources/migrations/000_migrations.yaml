@@ -15966,8 +15966,8 @@ databaseChangeLog:
                   user_id,
                   model,
                   model_id,
-                  JSON_MERGE_PATCH(
-                      JSON_UNQUOTE(details),
+                  JSON_MERGE_PRESERVE(
+                      details,
                       JSON_OBJECT('database_id', database_id, 'table_id', table_id)
                   )
               FROM activity;
