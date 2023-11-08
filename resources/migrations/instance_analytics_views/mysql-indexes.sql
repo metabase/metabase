@@ -25,7 +25,7 @@ create index if not exists idx_user_full_name
 
 -- view_log
 drop index if exists idx_view_log_timestamp on view_log;
-create index if not exists idx_view_model_id
+create index if not exists idx_view_log_model_id
     on view_log (model_id);
 create index if not exists
     idx_view_log_timestamp on view_log (timestamp);
