@@ -42,7 +42,7 @@ import ModelCachingScheduleWidget from "./components/widgets/ModelCachingSchedul
 import SectionDivider from "./components/widgets/SectionDivider";
 
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
-import SettingsEmailForm from "./components/Email/SettingsEmailForm";
+import { SettingsEmailForm } from "./components/Email/SettingsEmailForm";
 import SetupCheckList from "./setup/components/SetupCheckList";
 import SlackSettings from "./slack/containers/SlackSettings";
 import {

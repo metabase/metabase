@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -114,9 +114,11 @@ export const SMTPConnectionForm = ({
     [dispatch],
   );
 
-  if (isHosted) {
-    dispatch(push("/admin/settings/email"));
-  }
+  useEffect(() => {
+    if (isHosted) {
+      dispatch(push("/admin/settings/email"));
+    }
+  }, [dispatch, isHosted]);
 
   return (
     <Stack spacing="sm">
