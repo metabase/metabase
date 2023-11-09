@@ -27,32 +27,34 @@
 
 (def ^:private serialization-order
   (delay (-> (edn/read-string (slurp (io/resource "serialization-order.edn")))
-             (update-keys name)
              (update-vals (fn [order]
                             (into {} (map vector order (range))))))))
 
-(def ^:private serialization-sorted-map
-  (memoize
-   (fn [t]
-     (if-let [order (get @serialization-order t)]
-       ;; known columns are sorted by their order, then unknown are sorted alphabetically
-       (let [getter #(if (contains? order %)
-                       [0 (get order %)]
-                       [1 %])]
-         (sorted-map-by (fn [k1 k2]
-                          (compare (getter k1) (getter k2)))))
-       (sorted-map)))))
+(defn- serialization-sorted-map* [order-key]
+  (if-let [order (or (get @serialization-order order-key)
+                     (get @serialization-order (last order-key)))]
+    ;; known columns are sorted by their order, then unknown are sorted alphabetically
+    (let [getter #(if (contains? order %)
+                    [0 (get order %)]
+                    [1 %])]
+      (sorted-map-by (fn [k1 k2]
+                       (compare (getter k1) (getter k2)))))
+    (sorted-map)))
 
-(defn- serialization-deep-sort [m]
-  (let [t    (-> (:serdes/meta m) last :model)
-        smap (serialization-sorted-map t)]
-    (into smap
-          (update-vals m (fn [val]
-                           (cond
-                             (map? val)               (serialization-deep-sort val)
-                             (and (sequential? val)
-                                  (map? (first val))) (mapv serialization-deep-sort val)
-                             :else                    val))))))
+(def ^:private serialization-sorted-map (memoize serialization-sorted-map*))
+
+(defn- serialization-deep-sort
+  ([m]
+   (let [model (-> (:serdes/meta m) last :model)]
+     (serialization-deep-sort m [(keyword model)])))
+  ([m path]
+   (into (serialization-sorted-map path)
+         (for [[k v] m]
+           [k (cond
+                (map? v)               (serialization-deep-sort v (conj path k))
+                (and (sequential? v)
+                     (map? (first v))) (mapv #(serialization-deep-sort % (conj path k)) v)
+                :else                  v)]))))
 
 (defn spit-yaml
   "Writes obj to filename and creates parent directories if necessary.
