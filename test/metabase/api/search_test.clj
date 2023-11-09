@@ -12,7 +12,6 @@
             DashboardCard Database Metric PermissionsGroup
             PermissionsGroupMembership Pulse PulseCard QueryAction Segment Table]]
    [metabase.models.collection :as collection]
-   [metabase.models.interface :as mi]
    [metabase.models.model-index :as model-index]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
