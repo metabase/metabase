@@ -95,7 +95,7 @@ e2e_all:
   - *e2e_specs
 
 snowplow:
-  - *ci
+  - ".github/workflows/snowplow.yml"
   - "snowplow/**"
 
 documentation:
