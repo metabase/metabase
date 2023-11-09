@@ -3,10 +3,10 @@
   `optimize-temporal-filters` for more details."
   (:require
    [clojure.walk :as walk]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.mbql.util :as mbql.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
@@ -14,54 +14,93 @@
 (def ^:private optimizable-units
   #{:second :minute :hour :day :week :month :quarter :year})
 
-(defn- temporal-unit [field]
-  (mbql.u/match-one field [:field _ (opts :guard :temporal-unit)] (:temporal-unit opts)))
+(defmulti ^:private temporal-unit
+  {:arglists '([expression])}
+  mbql.u/dispatch-by-clause-name-or-class
+  :hierarchy lib.hierarchy/hierarchy)
 
-(defn- optimizable-field? [field]
-  (mbql.u/match-one field
-    [:field _ (_ :guard (comp optimizable-units :temporal-unit))]))
+(defmethod temporal-unit :default
+  [_expr]
+  nil)
 
-(defmulti ^:private can-optimize-filter?
-  mbql.u/dispatch-by-clause-name-or-class)
+(defmethod temporal-unit :field
+  [[_field _id-or-name opts]]
+  (:temporal-unit opts))
 
-(defn- optimizable-temporal-value?
-  "Can `temporal-value` clause can be optimized?"
-  [temporal-value]
-  (mbql.u/match-one temporal-value
-    [:relative-datetime (_ :guard #{0 :current})]
-    true
+(defmethod temporal-unit :relative-datetime
+  [[_relative-datetime _n unit]]
+  unit)
 
-    [(_ :guard #{:absolute-datetime :relative-datetime}) _ (unit :guard optimizable-units)]
-    true))
+(defmethod temporal-unit :absolute-datetime
+  [[_absolute-datetime _t unit]]
+  unit)
 
-(defn- field-and-temporal-value-have-compatible-units?
-  "Do datetime `field` clause and `temporal-value` clause have 'compatible' units that mean we'll be able to optimize
-  the filter clause they're in?"
-  [field temporal-value]
-  (mbql.u/match-one temporal-value
-    [:relative-datetime (_ :guard #{0 :current})]
-    true
+(doseq [tag [:+ :-]]
+  (lib.hierarchy/derive tag ::arithmetic-expr))
 
-    [(_ :guard #{:absolute-datetime :relative-datetime}) _ (unit :guard optimizable-units)]
-    (= (temporal-unit field) unit)))
+(defmethod temporal-unit ::arithmetic-expr
+  [[_tag & args]]
+  (some temporal-unit args))
 
-(defmethod can-optimize-filter? :default
-  [filter-clause]
-  (mbql.u/match-one filter-clause
-    [_
-     (field :guard optimizable-field?)
-     (temporal-value :guard optimizable-temporal-value?)]
-    (field-and-temporal-value-have-compatible-units? field temporal-value)))
+(defmethod temporal-unit :+
+  [[_+ & args]]
+  (some temporal-unit args))
 
-(defmethod can-optimize-filter? :between
-  [filter-clause]
-  (mbql.u/match-one filter-clause
-    [_
-     (field :guard optimizable-field?)
-     (temporal-value-1 :guard optimizable-temporal-value?)
-     (temporal-value-2 :guard optimizable-temporal-value?)]
-    (and (field-and-temporal-value-have-compatible-units? field temporal-value-1)
-         (field-and-temporal-value-have-compatible-units? field temporal-value-2))))
+(defmulti ^:private optimizable?
+  {:arglists '([expression])}
+  mbql.u/dispatch-by-clause-name-or-class
+  :hierarchy lib.hierarchy/hierarchy)
+
+(defmethod optimizable? :default
+  [_expr]
+  false)
+
+(defmethod optimizable? :field
+  [[_field _id-or-name opts]]
+  (contains? optimizable-units (:temporal-unit opts)))
+
+(defmethod optimizable? :expression
+  [[_expression _name opts]]
+  (let [expression-type ((some-fn :effective-type :base-type) opts)]
+    (isa? expression-type :type/Temporal)))
+
+(defmethod optimizable? :relative-datetime
+  [[_relative-datetime n unit]]
+  (if unit
+    (contains? optimizable-units unit)
+    (#{0 :current} n)))
+
+(defmethod optimizable? :absolute-datetime
+  [[_absolute-datetime _t unit]]
+  (contains? optimizable-units unit))
+
+(defmethod optimizable? ::arithmetic-expr
+  [[_tag & args]]
+  (some optimizable? args))
+
+(doseq [tag [:= :!= :< :<= :> :>=]]
+  (lib.hierarchy/derive tag ::binary-filter))
+
+(defn- compatible-units? [lhs-unit rhs-unit]
+  (case [(boolean lhs-unit) (boolean rhs-unit)]
+    [true true]   (= lhs-unit rhs-unit)
+    [true false]  true
+    [false true]  true
+    [false false] false))
+
+(defmethod optimizable? ::binary-filter
+  [[_tag lhs rhs]]
+  (and (optimizable? lhs)
+       (optimizable? rhs)
+       (compatible-units? (temporal-unit lhs) (temporal-unit rhs))))
+
+(defmethod optimizable? :between
+  [[_between expr lower-bound upper-bound]]
+  (and (optimizable? expr)
+       (optimizable? lower-bound)
+       (optimizable? upper-bound)
+       (compatible-units? (temporal-unit expr) (temporal-unit lower-bound))
+       (compatible-units? (temporal-unit expr) (temporal-unit upper-bound))))
 
 (mu/defn ^:private temporal-literal-lower-bound
   [unit t :- (ms/InstanceOfClass java.time.temporal.Temporal)]
@@ -71,9 +110,9 @@
   [unit t :- (ms/InstanceOfClass java.time.temporal.Temporal)]
   (:end (u.date/range t unit)))
 
-(defn- change-temporal-unit-to-default [field]
-  (mbql.u/replace field
-    [:field _ (_ :guard (comp optimizable-units :temporal-unit))]
+(defn- change-temporal-unit-to-default [expression]
+  (mbql.u/replace expression
+    [:field _id-or-name (_opts :guard (comp optimizable-units :temporal-unit))]
     (mbql.u/update-field-options &match assoc :temporal-unit :default)))
 
 (defmulti ^:private temporal-value-lower-bound
@@ -108,26 +147,25 @@
   "Optimize a filter clause against a temporal-bucketed `:field` clause and `:absolute-datetime` or `:relative-datetime`
   value by converting to an unbucketed range."
   {:arglists '([clause])}
-  mbql.u/dispatch-by-clause-name-or-class)
+  mbql.u/dispatch-by-clause-name-or-class
+  :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod optimize-filter :=
-  [[_tag field temporal-value]]
-  (let [temporal-unit (mbql.u/match-one field [:field _ (opts :guard :temporal-unit)] (:temporal-unit opts))]
-    (when (field-and-temporal-value-have-compatible-units? field temporal-value)
-      (let [field' (change-temporal-unit-to-default field)]
-        [:and
-         [:>= field' (temporal-value-lower-bound temporal-value temporal-unit)]
-         [:< field'  (temporal-value-upper-bound temporal-value temporal-unit)]]))))
+  [[_tag lhs rhs]]
+  (let [lhs' (change-temporal-unit-to-default lhs)]
+    [:and
+     [:>= lhs' (temporal-value-lower-bound rhs (temporal-unit lhs))]
+     [:< lhs'  (temporal-value-upper-bound rhs (temporal-unit lhs))]]))
 
 (defmethod optimize-filter :!=
   [filter-clause]
   (mbql.u/negate-filter-clause ((get-method optimize-filter :=) filter-clause)))
 
 (defn- optimize-comparison-filter
-  [optimize-temporal-value-fn [_filter-type field temporal-value] new-filter-type]
+  [optimize-temporal-value-fn [_tag lhs rhs] new-filter-type]
   [new-filter-type
-   (change-temporal-unit-to-default field)
-   (optimize-temporal-value-fn temporal-value (temporal-unit field))])
+   (change-temporal-unit-to-default lhs)
+   (optimize-temporal-value-fn rhs (temporal-unit lhs))])
 
 (defmethod optimize-filter :<
   [filter-clause]
@@ -146,16 +184,16 @@
   (optimize-comparison-filter temporal-value-lower-bound filter-clause :>=))
 
 (defmethod optimize-filter :between
-  [[_ field lower-bound upper-bound]]
-  (let [field' (change-temporal-unit-to-default field)]
+  [[_between expr lower-bound upper-bound]]
+  (let [expr' (change-temporal-unit-to-default expr)]
     [:and
-     [:>= field' (temporal-value-lower-bound lower-bound (temporal-unit field))]
-     [:<  field' (temporal-value-upper-bound upper-bound (temporal-unit field))]]))
+     [:>= expr' (temporal-value-lower-bound lower-bound (temporal-unit expr))]
+     [:<  expr' (temporal-value-upper-bound upper-bound (temporal-unit expr))]]))
 
 (defn- optimize-temporal-filters* [query]
   (mbql.u/replace query
     (_ :guard (partial mbql.u/is-clause? (set (keys (methods optimize-filter)))))
-    (or (when (can-optimize-filter? &match)
+    (or (when (optimizable? &match)
           (u/prog1 (optimize-filter &match)
             (if <>
               (when-not (= &match <>)
@@ -163,7 +201,8 @@
               ;; if for some reason `optimize-filter` doesn't return an optimized filter clause, log and error and use
               ;; the original. `can-optimize-filter?` shouldn't have said we could optimize this filter in the first
               ;; place
-              (log/error (trs "Error optimizing temporal filter clause") (pr-str &match)))))
+              (log/error "Error optimizing temporal filter clause: optimize-filter returned nil"
+                         (pr-str &match)))))
         &match)))
 
 (defn optimize-temporal-filters
@@ -194,13 +233,16 @@
   (if (not= query-type :query)
     query
     ;; walk query, looking for inner-query forms that have a `:filter` key
-    (walk/postwalk
-     (fn [form]
-       (if-not (and (map? form) (seq (:filter form)))
-         form
-         ;; optimize the filters in this inner-query form.
-         (let [optimized (optimize-temporal-filters* form)]
-           ;; if we did some optimizations, we should flatten/deduplicate the filter clauses afterwards.
-           (cond-> optimized
-             (not= optimized form) (update :filter mbql.u/combine-filter-clauses)))))
-     query)))
+    (let [query' (walk/postwalk
+                  (fn [form]
+                    (if-not (and (map? form) (seq (:filter form)))
+                      form
+                      ;; optimize the filters in this inner-query form.
+                      (let [optimized (optimize-temporal-filters* form)]
+                        ;; if we did some optimizations, we should flatten/deduplicate the filter clauses afterwards.
+                        (cond-> optimized
+                          (not= optimized form) (update :filter mbql.u/combine-filter-clauses)))))
+                  query)]
+      (when-not (= query query')
+        (log/debugf "Optimized temporal filters:\n%s" (u/pprint-to-str query)))
+      query')))

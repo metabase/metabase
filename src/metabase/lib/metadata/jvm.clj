@@ -336,6 +336,11 @@
   (bulk-metadata [_this metadata-type ids]
     (bulk-instances metadata-type database-id ids))
 
+  Object
+  (equals [_this another]
+    (and (instance? UncachedApplicationDatabaseMetadataProvider another)
+         (= database-id (.database-id ^UncachedApplicationDatabaseMetadataProvider another))))
+
   pretty/PrettyPrintable
   (pretty [_this]
     (list `->UncachedApplicationDatabaseMetadataProvider database-id)))
