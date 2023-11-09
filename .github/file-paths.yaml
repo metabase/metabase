@@ -112,7 +112,9 @@ codeql:
 
 i18n:
   - *default
-  - *ci
+  - ".github/actions/prepare-frontend/**"
+  - ".github/actions/prepare-backend/**"
+  - ".github/workflows/i18n.yml"
   - *sources
 
 visualizations:
