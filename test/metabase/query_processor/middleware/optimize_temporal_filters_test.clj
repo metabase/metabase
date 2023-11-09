@@ -425,3 +425,21 @@
              [:expression "CC Created At" {:base-type :type/DateTimeWithLocalTZ}]
              [:absolute-datetime #t "2017-10-07" :day]
              [:absolute-datetime #t "2017-10-08" :day]])))))
+
+(deftest ^:parallel optimize-relative-datetimes-test
+  (is (= {:type  :query
+          :query {:filter
+                  [:and
+                   [:>=
+                    [:field 1 {:base-type :type/DateTime}]
+                    [:relative-datetime -3 :month]]
+                   [:<
+                    [:field 1 {:base-type :type/DateTime}]
+                    [:relative-datetime -1 :month]]]}}
+         (#'optimize-temporal-filters/optimize-temporal-filters
+          {:type  :query
+           :query {:filter
+                   [:between
+                    [:+ [:field 1 {:base-type :type/DateTime}] [:interval -2 :month]]
+                    [:relative-datetime -1 :month]
+                    [:relative-datetime 0 :month]]}}))))

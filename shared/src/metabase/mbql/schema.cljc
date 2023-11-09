@@ -180,6 +180,7 @@
   "Schema for a valid date or datetime literal."
   [:or
    {:error/message "date or datetime literal"}
+   relative-datetime
    absolute-datetime
    ;; literal datetime strings and Java types will get transformed to [[absolute-datetime]] clauses automatically by
    ;; middleware so drivers don't need to deal with these directly. You only need to worry about handling
@@ -554,14 +555,15 @@
 (def ^:private ExpressionArg
   [:ref ::ExpressionArg])
 
-(mr/def ::NumericExpressionArgOrInterval
+(mr/def ::Addable
   [:or
-   {:error/message "numeric expression arg or interval"}
+   {:error/message "something addable: a temporal expression, numeric expression, or an interval"}
+   DateTimeExpressionArg
    interval
    NumericExpressionArg])
 
-(def ^:private NumericExpressionArgOrInterval
-  [:ref ::NumericExpressionArgOrInterval])
+(def ^:private Addable
+  [:ref ::Addable])
 
 (mr/def ::IntGreaterThanZeroOrNumericExpression
   [:multi
@@ -610,10 +612,10 @@
   s StringExpressionArg, pattern :string)
 
 (defclause ^{:requires-features #{:expressions}} +
-  x NumericExpressionArgOrInterval, y NumericExpressionArgOrInterval, more (rest NumericExpressionArgOrInterval))
+  x Addable, y Addable, more (rest Addable))
 
 (defclause ^{:requires-features #{:expressions}} -
-  x NumericExpressionArg, y NumericExpressionArgOrInterval, more (rest NumericExpressionArgOrInterval))
+  x NumericExpressionArg, y Addable, more (rest Addable))
 
 (defclause ^{:requires-features #{:expressions}} /, x NumericExpressionArg, y NumericExpressionArg, more (rest NumericExpressionArg))
 

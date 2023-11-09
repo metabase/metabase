@@ -281,6 +281,14 @@
   (check-action-commands-allowed query)
   ((get-method driver/execute-write-query! :sql-jdbc) driver query))
 
+(defn- dateadd [unit amount expr]
+  [:dateadd
+   (h2x/literal unit)
+   (if (number? amount)
+     (sql.qp/inline-num (long amount))
+     (h2x/cast :long amount))
+   (h2x/cast-unless-type-in "datetime" #{"datetime" "timestamp" "timestamp with time zone"} expr)])
+
 (defmethod sql.qp/add-interval-honeysql-form :h2
   [driver hsql-form amount unit]
   (cond
@@ -294,12 +302,7 @@
     (recur driver hsql-form (* amount 1000.0) :millisecond)
 
     :else
-    [:dateadd
-     (h2x/literal unit)
-     (h2x/cast :long (if (number? amount)
-                       (sql.qp/inline-num amount)
-                       amount))
-     (h2x/cast :datetime hsql-form)]))
+    (dateadd unit amount hsql-form)))
 
 (defmethod driver/humanize-connection-error-message :h2
   [_ message]

@@ -4,7 +4,10 @@
   (:require
    [clojure.walk :as walk]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
@@ -35,6 +38,10 @@
   [[_absolute-datetime _t unit]]
   unit)
 
+(defmethod temporal-unit :interval
+  [[_interval _n unit]]
+  unit)
+
 (doseq [tag [:+ :-]]
   (lib.hierarchy/derive tag ::arithmetic-expr))
 
@@ -52,13 +59,15 @@
   false)
 
 (defmethod optimizable? :field
-  [[_field _id-or-name opts]]
-  (contains? optimizable-units (:temporal-unit opts)))
+  [[_field id-or-name opts]]
+  (or (:unit opts)
+      (isa? ((some-fn :effective-type :base-type) opts) :type/Temporal)
+      (when (integer? id-or-name)
+        (lib.types.isa/temporal? (lib.metadata/field (qp.store/metadata-provider) id-or-name)))))
 
 (defmethod optimizable? :expression
   [[_expression _name opts]]
-  (let [expression-type ((some-fn :effective-type :base-type) opts)]
-    (isa? expression-type :type/Temporal)))
+  (isa? ((some-fn :effective-type :base-type) opts) :type/Temporal))
 
 (defmethod optimizable? :relative-datetime
   [[_relative-datetime n unit]]
@@ -83,10 +92,20 @@
   a. They both have units, and those units are the same
 
   b. One of them has a unit, but the other does not."
-  [x-unit y-unit]
-  (if (and x-unit y-unit)
-    (= x-unit y-unit)
-    (or x-unit y-unit)))
+  ([x-unit y-unit]
+   (letfn [(non-default-unit [unit]
+             (when-not (= unit :default)
+               unit))]
+     (let [x-unit (non-default-unit x-unit)
+           y-unit (non-default-unit y-unit)]
+       (if (and x-unit y-unit)
+         (= x-unit y-unit)
+         (or x-unit y-unit)))))
+
+  ([x-unit y-unit & more]
+   (and (compatible-units? x-unit y-unit)
+        (apply compatible-units? x-unit more)
+        (apply compatible-units? y-unit more))))
 
 (defmethod optimizable? ::binary-filter
   [[_tag lhs rhs]]
@@ -116,16 +135,24 @@
     (mbql.u/update-field-options &match assoc :temporal-unit :default)))
 
 (defmulti ^:private temporal-value-lower-bound
-  "Get a clause representing the *lower* bound that should be used when converting a `temporal-value-clause` (e.g.
+  "Get a clause representing the *lower* bound that should be used when converting a `expression` (e.g.
   `:absolute-datetime` or `:relative-datetime`) to an optimized range."
-  {:arglists '([temporal-value-clause temporal-unit])}
+  {:arglists '([expression temporal-unit])}
   mbql.u/dispatch-by-clause-name-or-class)
 
 (defmulti ^:private temporal-value-upper-bound
-  "Get a clause representing the *upper* bound that should be used when converting a `temporal-value-clause` (e.g.
+  "Get a clause representing the *upper* bound that should be used when converting a `expression` (e.g.
   `:absolute-datetime` or `:relative-datetime`) to an optimized range."
-  {:arglists '([temporal-value-clause temporal-unit])}
+  {:arglists '([expression temporal-unit])}
   mbql.u/dispatch-by-clause-name-or-class)
+
+(defmethod temporal-value-lower-bound :default
+  [_expression _temporal-unit]
+  nil)
+
+(defmethod temporal-value-upper-bound :default
+  [_expression _temporal-unit]
+  nil)
 
 (defmethod temporal-value-lower-bound :absolute-datetime
   [[_ t unit] _]
@@ -150,22 +177,74 @@
   mbql.u/dispatch-by-clause-name-or-class
   :hierarchy lib.hierarchy/hierarchy)
 
+(defn- combine-relative-datetimes-and-intervals [args]
+  (into []
+        (mapcat (fn [[unit args]]
+                  (if (< (count args) 2)
+                    args
+                    [(reduce
+                      (fn [[x-tag x-n _unit] [y-tag y-n _unit]]
+                        [(if (= x-tag y-tag :interval)
+                           :interval
+                           :relative-datetime)
+                         (+ x-n y-n)
+                         unit])
+                      (first args)
+                      (rest args))])))
+        (group-by temporal-unit args)))
+
+(defn- combine-temporal-arithmetic-args
+  [args]
+  (let [combineable?  #(mbql.u/is-clause? #{:relative-datetime :interval} %)
+        uncombineable (remove combineable? args)
+        combineable   (filter combineable? args)]
+    (concat uncombineable
+            (combine-relative-datetimes-and-intervals combineable))))
+
+(defn- simplify-temporal-arithmetic [[tag & args]]
+  (let [args' (combine-temporal-arithmetic-args args)]
+    (if (= (count args') 1)
+      (if (= tag :+)
+        (first args')
+        (let [[tag n unit] (first args')]
+          [tag (- n) unit]))
+      (into [tag] args'))))
+
+(defn ^:private extract-temporal-arithmetic
+  "If `expr` is a temporal arithmetic expression e.g.
+
+    [:+ <t> <interval>]
+
+  return a pair of `[expr-without-arithmetic f]`, where `f` is a a function that can be used to apply that arithmetic
+  to a different expression, e.g.
+
+    [<t> (f expr) => [+ expr internal]]"
+  [expr]
+  (when (#{:+ :-} (mbql.u/dispatch-by-clause-name-or-class expr))
+    (let [[tag t & args] expr]
+      [t (fn [expr]
+           (simplify-temporal-arithmetic (into [tag expr] args)))])))
+
 (defmethod optimize-filter :=
   [[_tag lhs rhs]]
-  (let [lhs' (change-temporal-unit-to-default lhs)]
-    [:and
-     [:>= lhs' (temporal-value-lower-bound rhs (temporal-unit lhs))]
-     [:< lhs'  (temporal-value-upper-bound rhs (temporal-unit lhs))]]))
+  (if-let [[lhs' f] (extract-temporal-arithmetic lhs)]
+    (recur [:= lhs' (f rhs)])
+    (let [lhs' (change-temporal-unit-to-default lhs)]
+      [:and
+       [:>= lhs' (temporal-value-lower-bound rhs (temporal-unit lhs))]
+       [:< lhs'  (temporal-value-upper-bound rhs (temporal-unit lhs))]])))
 
 (defmethod optimize-filter :!=
   [filter-clause]
   (mbql.u/negate-filter-clause ((get-method optimize-filter :=) filter-clause)))
 
 (defn- optimize-comparison-filter
-  [optimize-temporal-value-fn [_tag lhs rhs] new-filter-type]
-  [new-filter-type
-   (change-temporal-unit-to-default lhs)
-   (optimize-temporal-value-fn rhs (temporal-unit lhs))])
+  [optimize-temporal-value-fn [tag lhs rhs] new-filter-type]
+  (if-let [[lhs' f] (extract-temporal-arithmetic lhs)]
+    (recur optimize-temporal-value-fn [tag lhs' (f rhs)] new-filter-type)
+    [new-filter-type
+     (change-temporal-unit-to-default lhs)
+     (optimize-temporal-value-fn rhs (temporal-unit lhs))]))
 
 (defmethod optimize-filter :<
   [filter-clause]
@@ -184,11 +263,16 @@
   (optimize-comparison-filter temporal-value-lower-bound filter-clause :>=))
 
 (defmethod optimize-filter :between
-  [[_between expr lower-bound upper-bound]]
-  (let [expr' (change-temporal-unit-to-default expr)]
-    [:and
-     [:>= expr' (temporal-value-lower-bound lower-bound (temporal-unit expr))]
-     [:<  expr' (temporal-value-upper-bound upper-bound (temporal-unit expr))]]))
+  [[_between expr lower-bound upper-bound :as original]]
+  (if-let [[expr' f] (extract-temporal-arithmetic expr)]
+    (recur [:between expr' (f lower-bound) (f upper-bound)])
+    (or (when-let [lower-bound-expr (temporal-value-lower-bound lower-bound (temporal-unit expr))]
+          (when-let [upper-bound-expr (temporal-value-upper-bound upper-bound (temporal-unit expr))]
+            (let [expr' (change-temporal-unit-to-default expr)]
+              [:and
+               [:>= expr' lower-bound-expr]
+               [:<  expr' upper-bound-expr]])))
+        original)))
 
 (defn- optimize-temporal-filters* [query]
   (mbql.u/replace query

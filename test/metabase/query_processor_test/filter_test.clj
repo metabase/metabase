@@ -2,10 +2,14 @@
   "Tests for the `:filter` clause."
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.timezones-test :as timezones-test]
    [metabase.query-processor.store :as qp.store]
@@ -677,3 +681,37 @@
             (mt/with-native-query-testing-context query
               (is (= [[2]]
                      (mt/rows (qp/process-query query)))))))))))
+
+(deftest ^:parallel relative-date-filter-test
+  (testing "#34573"
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (driver/with-driver :h2
+        (let [query (lib.tu.macros/mbql-query orders
+                      {:filter [:between
+                                [:+ $created-at [:interval -2 :month]]
+                                [:relative-datetime -1 :month]
+                                [:relative-datetime 0 :month]]})]
+          (is (= {:query  ["SELECT"
+                           "  \"PUBLIC\".\"ORDERS\".\"ID\" AS \"ID\","
+                           "  \"PUBLIC\".\"ORDERS\".\"USER_ID\" AS \"USER_ID\","
+                           "  \"PUBLIC\".\"ORDERS\".\"PRODUCT_ID\" AS \"PRODUCT_ID\","
+                           "  \"PUBLIC\".\"ORDERS\".\"SUBTOTAL\" AS \"SUBTOTAL\","
+                           "  \"PUBLIC\".\"ORDERS\".\"TAX\" AS \"TAX\","
+                           "  \"PUBLIC\".\"ORDERS\".\"TOTAL\" AS \"TOTAL\","
+                           "  \"PUBLIC\".\"ORDERS\".\"DISCOUNT\" AS \"DISCOUNT\","
+                           "  \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" AS \"CREATED_AT\","
+                           "  \"PUBLIC\".\"ORDERS\".\"QUANTITY\" AS \"QUANTITY\""
+                           "FROM"
+                           "  \"PUBLIC\".\"ORDERS\""
+                           "WHERE"
+                           "  ("
+                           "    \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= DATE_TRUNC('month', DATEADD('month', -3, NOW()))"
+                           "  )"
+                           "  AND ("
+                           "    \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < DATE_TRUNC('month', DATEADD('month', -1, NOW()))"
+                           "  )"
+                           "LIMIT"
+                           "  1048575"]
+                  :params nil}
+                 (-> (qp/compile query)
+                     (m/update-existing :query #(str/split-lines (driver/prettify-native-form :h2 %)))))))))))
