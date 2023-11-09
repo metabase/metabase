@@ -1299,7 +1299,7 @@
                            :table_id 6}}
                 (t2/select-one :model/AuditLog)))))))))
 
-(deftest activity-data-migration-test
+(deftest inactive-fields-fk-migration-test
   (testing "Migration v48.00-051"
     (impl/test-migrations ["v48.00-051"] [migrate!]
       (let [database-id (first (t2/insert-returning-pks! (t2/table-name Database) {:details   "{}"
