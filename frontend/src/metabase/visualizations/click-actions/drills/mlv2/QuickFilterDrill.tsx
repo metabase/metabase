@@ -7,9 +7,9 @@ import type {
 } from "metabase/visualizations/types/click-actions";
 import type * as Lib from "metabase-lib";
 import { isBoolean, isDate, isNumeric } from "metabase-lib/types/utils/isa";
-import { TextIcon } from "../QuickFilterDrill/QuickFilterDrill.styled";
+import { TextIcon } from "../components/QuickFilterDrill.styled";
 
-type FilterOperator = "=" | "≠" | "<" | ">";
+type FilterOperator = "=" | "≠" | "<" | ">" | "contains" | "does-not-contain";
 type DateQuickFilterOperatorType = "<" | ">" | "=" | "≠";
 type FilterValueType = "null" | "numeric" | "date" | "boolean" | "text";
 
@@ -60,25 +60,25 @@ const getOperatorOverrides = (
         buttonType: "horizontal",
       };
     }
-    // if (operator === "contains") {
-    //   return {
-    //     title: t`Contains…`,
-    //     icon: "filter",
-    //     buttonType: "horizontal",
-    //   };
-    // }
-    // if (operator === "does-not-contain") {
-    //   return {
-    //     title: t`Does not contain…`,
-    //     icon: <TextIcon>≠</TextIcon>,
-    //     buttonType: "horizontal",
-    //   };
-    // }
+    if (operator === "contains") {
+      return {
+        title: t`Contains…`,
+        icon: "filter",
+        buttonType: "horizontal",
+      };
+    }
+    if (operator === "does-not-contain") {
+      return {
+        title: t`Does not contain…`,
+        icon: <TextIcon>≠</TextIcon>,
+        buttonType: "horizontal",
+      };
+    }
   }
 
   if (valueType === "date") {
     return {
-      title: DateButtonTitleMap[operator],
+      title: DateButtonTitleMap[operator as DateQuickFilterOperatorType],
       buttonType: "horizontal",
     };
   }

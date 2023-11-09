@@ -25,6 +25,16 @@ export const createMockColumn = (
   };
 };
 
+export const createMockCustomColumn = (
+  data: Partial<DatasetColumn> = {},
+): DatasetColumn => {
+  return createMockColumn({
+    id: undefined,
+    table_id: undefined,
+    ...data,
+  });
+};
+
 export const createMockDatasetData = ({
   cols = [
     createMockColumn({

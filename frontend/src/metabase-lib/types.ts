@@ -269,7 +269,7 @@ export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
 export type QuickFilterDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/quick-filter"> & {
-    operators: Array<"=" | "≠" | "<" | ">">;
+    operators: Array<"=" | "≠" | "<" | ">" | "contains" | "does-not-contain">;
   };
 
 type ObjectDetailsDrillThruInfo<Type extends DrillThruType> =
