@@ -7,7 +7,7 @@ import {
   setupFieldsValuesEndpoints,
 } from "__support__/server-mocks";
 
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import {

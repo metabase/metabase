@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.db.metadata-queries :as metadata-queries]
-   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
@@ -515,7 +514,7 @@
   (mt/test-driver :bigquery-cloud-sdk
      (testing "native queries are compiled and formatted without whitespace errors (#30676)"
        (is (= (str (format "SELECT\n  count(*) AS `count`\nFROM\n  `%s.venues`" test-db-name))
-              (-> (mt/mbql-query venues {:aggregation [:count]})
-                  qp/compile-and-splice-parameters
-                  :query
-                  (mdb.query/format-sql :bigquery-cloud-sdk)))))))
+              (->> (mt/mbql-query venues {:aggregation [:count]})
+                   qp/compile-and-splice-parameters
+                   :query
+                   (driver/prettify-native-form :bigquery-cloud-sdk)))))))

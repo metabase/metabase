@@ -222,27 +222,23 @@
   [before after]
   (.toDays (t/duration before after)))
 
-(defn- matches-time? [input]
-  (re-matches #"\d\d:\d\d(?::\d\d(?:\.\d+)?)?" input))
-
-(defn- matches-date? [input]
-  (re-matches #"\d\d\d\d-\d\d-\d\d" input))
-
-(defn- matches-date-time? [input]
-  (re-matches #"\d\d\d\d-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d+)?)?" input))
+(defn- coerce-local-date-time [input]
+  (cond-> input
+    (re-find #"(?:Z|[+-]\d\d(?::?\d\d)?)$" input) (t/offset-date-time)
+    :always (localize)))
 
 (defn format-unit
   "Formats a temporal-value (iso date/time string, int for hour/minute) given the temporal-bucketing unit.
    If unit is nil, formats the full date/time"
   [input unit]
   (if (string? input)
-    (let [time? (matches-time? input)
-          date? (matches-date? input)
-          date-time? (matches-date-time? input)
+    (let [time? (common/matches-time? input)
+          date? (common/matches-date? input)
+          date-time? (common/matches-date-time? input)
           t (cond
               time? (t/local-time input)
               date? (t/local-date input)
-              date-time? (t/local-date-time input))]
+              date-time? (coerce-local-date-time input))]
       (if t
         (case unit
           :day-of-week (t/format "EEEE" t)
@@ -276,14 +272,14 @@
       (= temporal-value-1 temporal-value-2)
       (format-unit temporal-value-1 nil)
 
-      (and (matches-time? temporal-value-1)
-           (matches-time? temporal-value-2))
+      (and (common/matches-time? temporal-value-1)
+           (common/matches-time? temporal-value-2))
       (default-format)
 
-      (and (matches-date-time? temporal-value-1)
-           (matches-date-time? temporal-value-2))
-      (let [lhs (t/local-date-time temporal-value-1)
-            rhs (t/local-date-time temporal-value-2)
+      (and (common/matches-date-time? temporal-value-1)
+           (common/matches-date-time? temporal-value-2))
+      (let [lhs (coerce-local-date-time temporal-value-1)
+            rhs (coerce-local-date-time temporal-value-2)
             year-matches? (= (t/year lhs) (t/year rhs))
             month-matches? (= (t/month lhs) (t/month rhs))
             day-matches? (= (t/day-of-month lhs) (t/day-of-month rhs))
@@ -302,8 +298,8 @@
           (str (t/format lhs-fmt lhs) "–" (t/format rhs-fmt rhs))
           (default-format)))
 
-      (and (matches-date? temporal-value-1)
-           (matches-date? temporal-value-2))
+      (and (common/matches-date? temporal-value-1)
+           (common/matches-date? temporal-value-2))
       (let [lhs (t/local-date temporal-value-1)
             rhs (t/local-date temporal-value-2)
             year-matches? (= (t/year lhs) (t/year rhs))
@@ -325,19 +321,21 @@
   "Given a `n` `unit` time interval and the current date, return a string representing the date-time range.
    Provide an `offset-n` and `offset-unit` time interval to change the date used relative to the current date.
    `options` is a map and supports `:include-current` to include the current given unit of time in the range."
-  [n unit offset-n offset-unit {:keys [include-current]}]
-  (let [offset-now (cond-> (now)
-                     (neg? n) (apply-offset n unit)
-                     (and (pos? n) (not include-current)) (apply-offset 1 unit)
-                     (and offset-n offset-unit) (apply-offset offset-n offset-unit))
-        pos-n (cond-> (abs n)
-                include-current inc)
-        date-ranges (map (if (#{:hour :minute} unit)
-                           #(t/format "yyyy-MM-dd'T'HH:mm" (t/local-date-time %))
-                           #(str (t/local-date %)))
-                         (common/to-range offset-now
-                                          {:unit unit
-                                           :n pos-n
-                                           :offset-n offset-n
-                                           :offset-unit offset-unit}))]
-    (apply format-diff date-ranges)))
+  ([n unit offset-n offset-unit opts]
+   (format-relative-date-range (now) n unit offset-n offset-unit opts))
+  ([t n unit offset-n offset-unit {:keys [include-current]}]
+   (let [offset-now (cond-> t
+                      (neg? n) (apply-offset n unit)
+                      (and (pos? n) (not include-current)) (apply-offset 1 unit)
+                      (and offset-n offset-unit) (apply-offset offset-n offset-unit))
+         pos-n (cond-> (abs n)
+                 include-current inc)
+         date-ranges (map (if (#{:hour :minute} unit)
+                            #(t/format "yyyy-MM-dd'T'HH:mm" (t/local-date-time %))
+                            #(str (t/local-date %)))
+                          (common/to-range offset-now
+                                           {:unit unit
+                                            :n pos-n
+                                            :offset-n offset-n
+                                            :offset-unit offset-unit}))]
+     (apply format-diff date-ranges))))

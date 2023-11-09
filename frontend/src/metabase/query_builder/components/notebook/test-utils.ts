@@ -1,7 +1,7 @@
 /* istanbul ignore file */
 
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import {
   createSampleDatabase,
   createSavedStructuredCard,

@@ -1116,6 +1116,55 @@
         (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}", :permission_id perm-id}]
                (mdb.query/query {:select [:*] :from [:sandboxes]})))))))
 
+(deftest add-revision-most-recent-test
+  (testing "Migrations v48.00-008-v48.00-009: add `revision.most_recent`"
+    (impl/test-migrations ["v48.00-007" "v48.00-009"] [migrate!]
+      (let [user-id          (:id (create-raw-user! (tu.random/random-email)))
+            old              (t/minus (t/local-date-time) (t/hours 1))
+            rev-dash-1-old (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                            {:model       "dashboard"
+                                                             :model_id    1
+                                                             :user_id     user-id
+                                                             :object      "{}"
+                                                             :is_creation true
+                                                             :timestamp   old}))
+            rev-dash-1-new (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                            {:model       "dashboard"
+                                                             :model_id    1
+                                                             :user_id     user-id
+                                                             :object      "{}"
+                                                             :timestamp   :%now}))
+            rev-dash-2-old (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                            {:model       "dashboard"
+                                                             :model_id    2
+                                                             :user_id     user-id
+                                                             :object      "{}"
+                                                             :is_creation true
+                                                             :timestamp   old}))
+            rev-dash-2-new (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                            {:model       "dashboard"
+                                                             :model_id    2
+                                                             :user_id     user-id
+                                                             :object      "{}"
+                                                             :timestamp   :%now}))
+            rev-card-1-old (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                            {:model       "card"
+                                                             :model_id    1
+                                                             :user_id     user-id
+                                                             :object      "{}"
+                                                             :is_creation true
+                                                             :timestamp   old}))
+            rev-card-1-new (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                            {:model       "card"
+                                                             :model_id    1
+                                                             :user_id     user-id
+                                                             :object      "{}"
+                                                             :timestamp   :%now}))]
+        (migrate!)
+        (is (= #{false} (t2/select-fn-set :most_recent (t2/table-name :model/Revision)
+                                          :id [:in [rev-dash-1-old rev-dash-2-old rev-card-1-old]])))
+        (is (= #{true} (t2/select-fn-set :most_recent (t2/table-name :model/Revision)
+                                         :id [:in [rev-dash-1-new rev-dash-2-new rev-card-1-new]])))))))
 (deftest fks-are-indexed-test
   (mt/test-driver :postgres
     (testing "all FKs should be indexed"
@@ -1156,3 +1205,96 @@
         (db.setup/migrate! db-type data-source :down 47)
         (testing "Rollback to the previous version should restore the column column, and set the default color value"
           (is (= "#31698A" (:color (t2/select-one :model/Collection :id collection-id)))))))))
+
+(deftest audit-v2-views-test
+  (testing "Migrations v48.00-029 - v48.00-040"
+    (impl/test-migrations ["v48.00-029" "v48.00-040"] [migrate!]
+      (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
+            new-view-names ["v_audit_log"
+                            "v_content"
+                            "v_dashboardcard"
+                            "v_group_members"
+                            "v_subscriptions"
+                            "v_alerts"
+                            "v_users"
+                            "v_databases"
+                            "v_fields"
+                            "v_query_log"
+                            "v_tables"
+                            "v_view_log"]]
+        (migrate!)
+        (doseq [view-name new-view-names]
+          (testing (str "View " view-name " should be created")
+            (is (= [] (t2/query (str "SELECT 1 FROM " view-name))))))
+
+        (db.setup/migrate! db-type data-source :down 47)
+        (testing "Views should be removed when downgrading"
+          (doseq [view-name new-view-names]
+            (is (thrown?
+                 clojure.lang.ExceptionInfo
+                 (t2/query (str "SELECT 1 FROM " view-name))))))))))
+
+(deftest activity-data-migration-test
+  (testing "Migration v48.00-034"
+    (mt/test-drivers [:postgres :mysql]
+     (impl/test-migrations ["v48.00-034"] [migrate!]
+       (create-raw-user! "noah@metabase.com")
+       (let [_activity-1 (t2/insert-returning-pks! (t2/table-name :model/Activity)
+                                                   {:topic       "card-create"
+                                                    :user_id     1
+                                                    :timestamp   :%now
+                                                    :model       "Card"
+                                                    :model_id    2
+                                                    :database_id 1
+                                                    :table_id    6
+                                                    :details     "{\"arbitrary_key\": \"arbitrary_value\"}"})]
+         (testing "activity rows are copied into audit_log"
+           (is (= 0 (t2/count :model/AuditLog)))
+           (is (= 1 (t2/count :model/Activity)))
+           (migrate!)
+           (is (= 1 (t2/count :model/AuditLog)))
+           (is (= 1 (t2/count :model/Activity))))
+
+         (testing "`database_id` and `table_id` are merged into `details`"
+           (is (partial=
+                {:id 1
+                 :topic :card-create
+                 :end_timestamp nil
+                 :user_id 1
+                 :model "Card"
+                 :model_id 2
+                 :details {:database_id 1
+                           :table_id 6}}
+                (t2/select-one :model/AuditLog)))))))
+
+    (mt/test-drivers [:h2]
+     (impl/test-migrations ["v48.00-034"] [migrate!]
+       (create-raw-user! "noah@metabase.com")
+       (let [_activity-1 (t2/insert-returning-pks! (t2/table-name :model/Activity)
+                                                   {:topic       "card-create"
+                                                    :user_id     1
+                                                    :timestamp   :%now
+                                                    :model       "Card"
+                                                    :model_id    2
+                                                    :database_id 1
+                                                    :table_id    6
+                                                    :details     "{\"arbitrary_key\": \"arbitrary_value\"}"})]
+         (testing "activity rows are copied into audit_log"
+           (is (= 0 (t2/count :model/AuditLog)))
+           (is (= 1 (t2/count :model/Activity)))
+           (migrate!)
+           (is (= 1 (t2/count :model/AuditLog)))
+           (is (= 1 (t2/count :model/Activity))))
+
+         (testing "`database_id` and `table_id` are inserted into `details`, but not merged with the previous value
+                   (H2 limitation)"
+           (is (partial=
+                {:id 1
+                 :topic :card-create
+                 :end_timestamp nil
+                 :user_id 1
+                 :model "Card"
+                 :model_id 2
+                 :details {:database_id 1
+                           :table_id 6}}
+                (t2/select-one :model/AuditLog)))))))))

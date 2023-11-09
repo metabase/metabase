@@ -2,6 +2,7 @@
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 
 import { color } from "metabase/lib/colors";

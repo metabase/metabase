@@ -219,6 +219,22 @@
                   (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "sum"] 1))
                   (lib/remove-clause 0 (first aggregations))))))))
 
+(deftest ^:parallel remove-clause-aggregation-with-ref-test
+  (testing "removing an aggregation removes references in order-by (#12625)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/aggregate (lib/count))
+                    (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
+                    (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
+                    (as-> $q (lib/order-by $q (lib/aggregation-ref $q 2))))
+          aggregations (lib/aggregations query)]
+      (is (=? {:stages [(complement :order-by)]}
+              (lib/remove-clause query (last aggregations))))
+      (let [query (lib/append-stage query)
+            sum-col (m/find-first (comp #{"sum_2"} :lib/desired-column-alias) (lib/visible-columns query))
+            query (lib/order-by query sum-col)]
+        (is (=? {:stages [(complement :order-by) (complement :order-by)]}
+                (lib/remove-clause query 0 (last aggregations))))))))
+
 (deftest ^:parallel remove-clause-expression-test
   (let [query (-> lib.tu/venues-query
                   (lib/expression "a" (meta/field-metadata :venues :id))
@@ -938,3 +954,26 @@
                     first
                     :joins
                     (map :alias))))))))
+
+(deftest ^:parallel remove-first-in-long-series-of-join-test
+  (testing "Recursive join removal (#35049)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :reviews))
+                    (lib/join (meta/table-metadata :products))
+                    (lib/join (lib/join-clause (meta/table-metadata :orders) [(lib/= (lib/with-join-alias (meta/field-metadata :products :id) "Products")
+                                                                                     (lib/with-join-alias (meta/field-metadata :orders :product-id) "Orders"))]))
+                    (lib/join (meta/table-metadata :people)))]
+      (is (=?
+            {:stages [(complement :joins)]}
+            (lib/remove-clause query -1 (first (lib/joins query))))))))
+
+(deftest ^:parallel removing-aggregation-leaves-breakouts
+  (testing "Removing aggregation leaves breakouts (#28609)"
+    (let [query (-> lib.tu/venues-query
+                    (lib/aggregate (lib/count)))
+          query (reduce lib/breakout
+                        query
+                        (lib/breakoutable-columns query))
+          result (lib/remove-clause query (first (lib/aggregations query)))]
+      (is (seq (lib/breakouts result)))
+      (is (empty? (lib/aggregations result)))
+      (is (= (lib/breakouts query) (lib/breakouts result))))))

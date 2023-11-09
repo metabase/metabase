@@ -405,13 +405,11 @@
                 {:row 0  :col 0  :size_x 24 :size_y 2}
                 {:row 36 :col 0  :size_x 23 :size_y 1}
                 {:row 36 :col 23 :size_x 1  :size_y 1}]
-               (-> (t2/select-one (t2/table-name :model/Revision) :id revision-id)
-                  :object (json/parse-string true) :cards))))
-     (migrate-down! 46)
-     (testing "downgrade works correctly"
-       (is (= cards
-              (-> (t2/select-one (t2/table-name :model/Revision) :id revision-id)
-                  :object (json/parse-string true) :cards)))))))
+               (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id))))
+      (migrate-down! 46)
+      (testing "downgrade works correctly"
+        (is (= cards (-> (t2/select-one (t2/table-name :model/Revision) :id revision-id)
+                         :object (json/parse-string true) :cards)))))))
 
 (deftest migrate-dashboard-revision-grid-from-18-to-24-handle-faliure-test
   (impl/test-migrations ["v47.00-032" "v47.00-033"] [migrate!]
@@ -799,22 +797,22 @@
                                                                          :size_y       4
                                                                          :col          1
                                                                          :row          1})]
-        (migrate!)
-        (testing "After the migration, column_settings field refs are updated to include join-alias"
-          (is (= expected
-                 (-> (t2/query-one {:select [:visualization_settings]
-                                    :from   [:report_dashboardcard]
-                                    :where  [:= :id dashcard-id]})
-                     :visualization_settings
-                     json/parse-string))))
-        (db.setup/migrate! db-type data-source :down 46)
-        (testing "After reversing the migration, column_settings field refs are updated to remove join-alias"
-          (is (= visualization-settings
-                 (-> (t2/query-one {:select [:visualization_settings]
-                                    :from   [:report_dashboardcard]
-                                    :where  [:= :id dashcard-id]})
-                     :visualization_settings
-                     json/parse-string))))))))
+       (migrate!)
+       (testing "After the migration, column_settings field refs are updated to include join-alias"
+         (is (= expected
+                (-> (t2/query-one {:select [:visualization_settings]
+                                   :from   [:report_dashboardcard]
+                                   :where  [:= :id dashcard-id]})
+                    :visualization_settings
+                    json/parse-string))))
+       (db.setup/migrate! db-type data-source :down 46)
+       (testing "After reversing the migration, column_settings field refs are updated to remove join-alias"
+         (is (= visualization-settings
+                (-> (t2/query-one {:select [:visualization_settings]
+                                   :from   [:report_dashboardcard]
+                                   :where  [:= :id dashcard-id]})
+                    :visualization_settings
+                    json/parse-string))))))))
 
 (deftest revision-migrate-legacy-dashboard-card-column-settings-field-refs-test
   (testing "Migrations v47.00-045: update dashboard cards' visualization_settings.column_settings legacy field refs"
@@ -939,25 +937,25 @@
                                                    :user_id   user-id
                                                    :object    (json/generate-string dashboard)
                                                    :timestamp :%now})]
-        (migrate!)
-        (testing "column_settings field refs are updated"
-          (is (= expected
-                 (-> (t2/query-one {:select [:object]
-                                    :from   [:revision]
-                                    :where  [:= :id revision-id]})
-                     :object
-                     json/parse-string
-                     (get-in ["cards" 0 "visualization_settings"])))))
-        (db.setup/migrate! db-type data-source :down 46)
-        (testing "down migration restores original visualization_settings, except it's okay if join-alias are missing"
-          (is (= (m/dissoc-in visualization-settings
-                              ["column_settings" (json/generate-string ["ref" ["field" 1 {"join-alias" "Joined table"}]])])
-                 (-> (t2/query-one {:select [:object]
-                                    :from   [:revision]
-                                    :where  [:= :id revision-id]})
-                     :object
-                     json/parse-string
-                     (get-in ["cards" 0 "visualization_settings"])))))))))
+       (migrate!)
+       (testing "column_settings field refs are updated"
+         (is (= expected
+                (-> (t2/query-one {:select [:object]
+                                   :from   [:revision]
+                                   :where  [:= :id revision-id]})
+                    :object
+                    json/parse-string
+                    (get-in ["cards" 0 "visualization_settings"])))))
+       (db.setup/migrate! db-type data-source :down 46)
+       (testing "down migration restores original visualization_settings, except it's okay if join-alias are missing"
+         (is (= (m/dissoc-in visualization-settings
+                             ["column_settings" (json/generate-string ["ref" ["field" 1 {"join-alias" "Joined table"}]])])
+                (-> (t2/query-one {:select [:object]
+                                   :from   [:revision]
+                                   :where  [:= :id revision-id]})
+                    :object
+                    json/parse-string
+                    (get-in ["cards" 0 "visualization_settings"])))))))))
 
 (deftest migrate-database-options-to-database-settings-test
   (let [do-test
@@ -1453,7 +1451,9 @@
           (is (= ldap-group-mappings (get-json-setting :ldap-group-mappings))))))))
 
 (deftest check-data-migrations-rollback
-  (impl/test-migrations ["v48.00-024"] [migrate!]
+  ;; We're actually testing `v48.00-024`, but we want the `migrate!` function to run all the migrations in 48
+  ;; after rolling back to 47, so we're using `v48.00-000` as the start of the migration range in `test-migrations`
+  (impl/test-migrations ["v48.00-000"] [migrate!]
     (let [{:keys [db-type ^javax.sql.DataSource
                   data-source]} mdb.connection/*application-db*
           migrate-all!          (partial db.setup/migrate! db-type data-source)

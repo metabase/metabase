@@ -111,11 +111,13 @@
 
   Some of the scorers can be tweaked with configuration in [[metabase.search.config]]."
   (:require
+   [cheshire.core :as json]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.public-settings.premium-features :refer [defenterprise]]
-   [metabase.search.config :as search-config]
-   [metabase.search.util :as search-util]
+   [metabase.search.config :as search.config]
+   [metabase.search.util :as search.util]
    [metabase.util :as u]))
 
 (defn- matches?
@@ -129,7 +131,7 @@
 (defn- tokens->string
   [tokens abbreviate?]
   (let [->string (partial str/join " ")
-        context  search-config/surrounding-match-context]
+        context  search.config/surrounding-match-context]
     (if (or (not abbreviate?)
             (<= (count tokens) (* 2 context)))
       (->string tokens)
@@ -158,13 +160,13 @@
   the text match, if there is one. If there is no match, the score is 0."
   [weighted-scorers query-tokens search-result]
   ;; TODO is pmap over search-result worth it?
-  (let [scores (for [column      (search-config/searchable-columns-for-model (:model search-result))
+  (let [scores (for [column      (search.config/searchable-columns-for-model (:model search-result))
                      {:keys [scorer name weight]
                       :as   _ws} weighted-scorers
                      :let        [matched-text (-> search-result
                                                    (get column)
-                                                   (search-config/column->string (:model search-result) column))
-                                  match-tokens (some-> matched-text search-util/normalize search-util/tokenize)
+                                                   (search.config/column->string (:model search-result) column))
+                                  match-tokens (some-> matched-text search.util/normalize search.util/tokenize)
                                   raw-score (scorer query-tokens match-tokens)]
                      :when       (and matched-text (pos? raw-score))]
                  {:score               raw-score
@@ -179,7 +181,7 @@
 
 (defn- consecutivity-scorer
   [query-tokens match-tokens]
-  (/ (search-util/largest-common-subseq-length
+  (/ (search.util/largest-common-subseq-length
       matches?
       ;; See comment on largest-common-subseq-length re. its cache. This is a little conservative, but better to under- than over-estimate
       (take 30 query-tokens)
@@ -248,7 +250,7 @@
    {:scorer prefix-scorer :name "prefix" :weight 1}])
 
 (def ^:private model->sort-position
-  (zipmap (reverse search-config/all-models) (range)))
+  (zipmap (reverse search.config/models-search-order) (range)))
 
 (defn- model-score
   [{:keys [model]}]
@@ -259,7 +261,7 @@
   [raw-search-string result]
   (if (seq raw-search-string)
     (text-scores-with match-based-scorers
-                      (search-util/tokenize (search-util/normalize raw-search-string))
+                      (search.util/tokenize (search.util/normalize raw-search-string))
                       result)
     [{:score 0 :weight 0}]))
 
@@ -283,13 +285,13 @@
   [{:keys [model dashboardcard_count]}]
   (if (= model "card")
     (min (/ dashboardcard_count
-            search-config/dashboard-count-ceiling)
+            search.config/dashboard-count-ceiling)
          1)
     0))
 
 (defn- recency-score
   [{:keys [updated_at]}]
-  (let [stale-time search-config/stale-time-in-days
+  (let [stale-time search.config/stale-time-in-days
         days-ago (if updated_at
                    (t/time-between updated_at
                                    (t/offset-date-time)
@@ -302,7 +304,7 @@
 (defn- serialize
   "Massage the raw result from the DB and match data into something more useful for the client"
   [result all-scores relevant-scores]
-  (let [{:keys [name display_name collection_id collection_name collection_authority_level]} result
+  (let [{:keys [name display_name collection_id collection_name collection_authority_level collection_type]} result
         matching-columns            (into #{} (remove nil? (map :column relevant-scores)))
         match-context-thunk         (first (keep :match-context-thunk relevant-scores))]
     (-> result
@@ -312,15 +314,18 @@
                            name)
          :context        (when (and match-context-thunk
                                     (empty?
-                                     (remove matching-columns search-config/displayed-columns)))
+                                     (remove matching-columns search.config/displayed-columns)))
                            (match-context-thunk))
          :collection     {:id              collection_id
                           :name            collection_name
-                          :authority_level collection_authority_level}
+                          :authority_level collection_authority_level
+                          :type            collection_type}
          :scores          all-scores)
+        (update :dataset_query #(some-> % json/parse-string mbql.normalize/normalize))
         (dissoc
          :collection_id
          :collection_name
+         :collection_type
          :display_name))))
 
 (defn weights-and-scores

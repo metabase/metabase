@@ -18,8 +18,7 @@
 
 (doto :model/ParameterCard
   (derive :metabase/model)
-  (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/timestamped?))
 
 (t2/deftransforms :model/ParameterCard
  {:parameterized_object_type mi/transform-keyword})

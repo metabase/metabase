@@ -8,7 +8,7 @@ import {
   PEOPLE,
   PEOPLE_ID,
 } from "metabase-types/api/mocks/presets";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import type { ClickActionProps } from "metabase/visualizations/types";
 import { AutomaticInsightsDrill } from "./AutomaticInsightsDrill";
 

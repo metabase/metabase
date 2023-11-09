@@ -34,7 +34,7 @@ export default class CollectionOptionsButton extends Component {
               className="text-brand"
               sections={[{ items }]}
               onChange={item => {
-                item.onClick();
+                item.onClick(item);
                 closePopover();
               }}
             />

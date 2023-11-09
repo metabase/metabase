@@ -52,7 +52,7 @@
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              ;; (editable? query stage-number)
              column
-             (some? value)
+             (some? value) ; Deliberately allows value :null, only a missing value should fail this test.
              (not (lib.types.isa/primary-key? column))
              (not (lib.types.isa/foreign-key? column)))
     ;; for aggregate columns, we want to introduce a new stage when applying the drill-thru, `:new-stage?` is used to

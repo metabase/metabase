@@ -13,7 +13,7 @@ import FormTextArea from "metabase/core/components/FormTextArea";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 
-import * as Errors from "metabase/core/utils/errors";
+import * as Errors from "metabase/lib/errors";
 
 import { color } from "metabase/lib/colors";
 
@@ -52,6 +52,7 @@ export interface CreateCollectionFormOwnProps {
   collectionId?: Collection["id"]; // can be used by `getInitialCollectionId`
   onCreate?: (collection: Collection) => void;
   onCancel?: () => void;
+  showOnlyPersonalCollections?: boolean;
 }
 
 interface CreateCollectionFormStateProps {
@@ -89,6 +90,7 @@ function CreateCollectionForm({
   handleCreateCollection,
   onCreate,
   onCancel,
+  showOnlyPersonalCollections,
 }: Props) {
   const initialValues = useMemo(
     () => ({
@@ -131,6 +133,7 @@ function CreateCollectionForm({
           <FormCollectionPicker
             name="parent_id"
             title={t`Collection it's saved in`}
+            showOnlyPersonalCollections={showOnlyPersonalCollections}
           />
           <FormAuthorityLevelFieldContainer
             collectionParentId={values.parent_id}

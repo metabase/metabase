@@ -41,9 +41,9 @@
       (api.card/check-data-permissions-for-query (get-in revision [:object :dataset_query])))
     ;; ok, we're g2g
     (revision/revert!
-     :entity      model
-     :id          id
-     :user-id     api/*current-user-id*
-     :revision-id revision_id)))
+     {:entity      model
+      :id          id
+      :user-id     api/*current-user-id*
+      :revision-id revision_id})))
 
 (api/define-routes)

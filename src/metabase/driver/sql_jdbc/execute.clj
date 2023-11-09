@@ -9,7 +9,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute.diagnostic
@@ -358,15 +357,18 @@
         (.setReadOnly conn read-only?)
         (catch Throwable e
           (log/debugf e "Error setting connection readOnly to %s" (pr-str read-only?)))))
-    ;; if this is (supposedly) a read-only connection, enable auto-commit so this IS NOT ran inside of a transaction.
+    ;; If this is (supposedly) a read-only connection, we would prefer enable auto-commit
+    ;; so this IS NOT ran inside of a transaction, but without transaction the read-only
+    ;; flag has no effect for most of the drivers.
+    ;; TODO Enable auto-commit after having communicated this change in behvaior to our users.
     ;;
     ;; TODO -- for `write?` connections, we should probably disable autoCommit and then manually call `.commit` at after
     ;; `f`... we need to check and make sure that won't mess anything up, since some existing code is already doing it
     ;; manually.
     (when-not write?
       (try
-        (log/trace (pr-str '(.setAutoCommit conn true)))
-        (.setAutoCommit conn true)
+        (log/trace (pr-str '(.setAutoCommit conn false)))
+        (.setAutoCommit conn false)
         (catch Throwable e
           (log/debug e "Error enabling connection autoCommit"))))
     (try
@@ -530,7 +532,7 @@
             (throw (ex-info (tru "Error preparing statement: {0}" (ex-message e))
                             {:driver driver
                              :type   qp.error-type/driver
-                             :sql    (str/split-lines (mdb.query/format-sql sql driver))
+                             :sql    (str/split-lines (driver/prettify-native-form driver sql))
                              :params params}
                             e))))
     (wire-up-canceled-chan-to-cancel-Statement! canceled-chan)))
@@ -682,7 +684,7 @@
                                   (catch Throwable e
                                     (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
                                                     {:driver driver
-                                                     :sql    (str/split-lines (mdb.query/format-sql sql driver))
+                                                     :sql    (str/split-lines (driver/prettify-native-form driver sql))
                                                      :params params
                                                      :type   qp.error-type/invalid-query}
                                                     e))))]
@@ -702,7 +704,8 @@
     (do-with-connection-with-options
      driver
      (lib.metadata/database (qp.store/metadata-provider))
-     {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (lib.metadata/database (qp.store/metadata-provider)))}
+     {:write? true
+      :session-timezone (qp.timezone/report-timezone-id-if-supported driver (lib.metadata/database (qp.store/metadata-provider)))}
      (fn [^Connection conn]
        (with-open [stmt (statement-or-prepared-statement driver conn sql params nil)]
          {:rows-affected (if (instance? PreparedStatement stmt)

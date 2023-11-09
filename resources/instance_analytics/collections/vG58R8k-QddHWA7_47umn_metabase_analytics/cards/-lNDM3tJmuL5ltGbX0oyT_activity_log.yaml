@@ -1,0 +1,305 @@
+description: Things that happened in your Metabase.
+archived: false
+collection_position: 9
+table_id:
+- Internal Metabase Database
+- public
+- v_audit_log
+result_metadata:
+- description: null
+  semantic_type: type/PK
+  coercion_strategy: null
+  name: id
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_audit_log
+    - id
+  - base-type: type/Integer
+  effective_type: type/Integer
+  id:
+  - Internal Metabase Database
+  - public
+  - v_audit_log
+  - id
+  visibility_type: normal
+  display_name: ID
+  base_type: type/Integer
+- description: null
+  semantic_type: type/Category
+  coercion_strategy: null
+  name: topic
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_audit_log
+    - topic
+  - base-type: type/Text
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_audit_log
+  - topic
+  visibility_type: normal
+  display_name: Topic
+  base_type: type/Text
+- description: null
+  semantic_type: type/CreationTimestamp
+  coercion_strategy: null
+  unit: default
+  name: timestamp
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_audit_log
+    - timestamp
+  - base-type: type/DateTimeWithLocalTZ
+    temporal-unit: default
+  effective_type: type/DateTimeWithLocalTZ
+  id:
+  - Internal Metabase Database
+  - public
+  - v_audit_log
+  - timestamp
+  visibility_type: normal
+  display_name: Timestamp
+  base_type: type/DateTimeWithLocalTZ
+- description: null
+  semantic_type: null
+  coercion_strategy: null
+  name: end_timestamp
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_audit_log
+    - end_timestamp
+  - base-type: type/Text
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_audit_log
+  - end_timestamp
+  visibility_type: normal
+  display_name: End Timestamp
+  base_type: type/Text
+- description: null
+  semantic_type: null
+  coercion_strategy: null
+  name: user_id
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_audit_log
+    - user_id
+  - base-type: type/Integer
+  effective_type: type/Integer
+  id:
+  - Internal Metabase Database
+  - public
+  - v_audit_log
+  - user_id
+  visibility_type: normal
+  display_name: User ID
+  base_type: type/Integer
+- description: null
+  semantic_type: type/Category
+  coercion_strategy: null
+  name: entity_type
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_audit_log
+    - entity_type
+  - base-type: type/Text
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_audit_log
+  - entity_type
+  visibility_type: normal
+  display_name: Entity Type
+  base_type: type/Text
+- description: null
+  semantic_type: type/Category
+  coercion_strategy: null
+  name: entity_id
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_audit_log
+    - entity_id
+  - base-type: type/Integer
+  effective_type: type/Integer
+  id:
+  - Internal Metabase Database
+  - public
+  - v_audit_log
+  - entity_id
+  visibility_type: normal
+  display_name: Entity ID
+  base_type: type/Integer
+- description: null
+  semantic_type: type/Category
+  coercion_strategy: null
+  name: entity_qualified_id
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_audit_log
+    - entity_qualified_id
+  - base-type: type/Text
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_audit_log
+  - entity_qualified_id
+  visibility_type: normal
+  display_name: Entity Qualified ID
+  base_type: type/Text
+- description: null
+  semantic_type: type/Category
+  coercion_strategy: null
+  name: details
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_audit_log
+    - details
+  - base-type: type/Text
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_audit_log
+  - details
+  visibility_type: normal
+  display_name: Details
+  base_type: type/Text
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Activity log
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  database: Internal Metabase Database
+  type: query
+  query:
+    source-table:
+    - Internal Metabase Database
+    - public
+    - v_audit_log
+    fields:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - id
+      - base-type: type/Integer
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - topic
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - end_timestamp
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - user_id
+      - base-type: type/Integer
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - entity_type
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - entity_id
+      - base-type: type/Integer
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - entity_qualified_id
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - details
+      - base-type: type/Text
+    order-by:
+    - - desc
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_audit_log
+          - timestamp
+        - base-type: type/DateTimeWithLocalTZ
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: -lNDM3tJmuL5ltGbX0oyT
+  label: activity_log
+display: table
+entity_id: -lNDM3tJmuL5ltGbX0oyT
+collection_preview: true
+visualization_settings:
+  table.pivot_column: end_timestamp
+  table.cell_column: model_id
+  column_settings: null
+metabase_version: null
+parameters: []
+dataset: true
+created_at: '2023-06-14T18:39:19.328399Z'
+public_uuid: null

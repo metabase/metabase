@@ -23,7 +23,7 @@ import type {
 } from "metabase/visualizations/types";
 import { isQuestionChangeClickAction } from "metabase/visualizations/types";
 import { renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import Question from "metabase-lib/Question";
 import { QuickFilterDrill } from "./QuickFilterDrill";
 

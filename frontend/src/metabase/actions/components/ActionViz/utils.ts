@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { isNotNull } from "metabase/core/utils/types";
+import { isNotNull } from "metabase/lib/types";
 import { isEmpty } from "metabase/lib/validate";
 
 import type {

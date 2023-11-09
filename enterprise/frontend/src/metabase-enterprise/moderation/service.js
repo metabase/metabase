@@ -24,9 +24,14 @@ export function removeReview({ itemId, itemType }) {
 }
 
 const noIcon = {};
-export function getStatusIcon(status) {
+
+export function getStatusIcon(status, filled = false) {
   if (isRemovedReviewStatus(status)) {
     return noIcon;
+  }
+
+  if (status === "verified" && filled) {
+    return MODERATION_STATUS_ICONS[`${status}_filled`];
   }
 
   return MODERATION_STATUS_ICONS[status] || noIcon;

@@ -702,8 +702,16 @@
           (ts/with-source-db
             (reset! user1s    (ts/create! User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             (reset! user2s    (ts/create! User :first_name "Neil"  :last_name "Peart"   :email "neil@rush.yyz"))
-            (reset! metric1s  (ts/create! Metric :name "Large Users"       :creator_id (:id @user1s) :definition {:aggregation [[:count]]}))
-            (reset! metric2s  (ts/create! Metric :name "Support Headaches" :creator_id (:id @user2s) :definition {:aggregation [[:count]]}))
+            (reset! metric1s  (ts/create! Metric
+                                          :name "Large Users"
+                                          :table_id   (mt/id :venues)
+                                          :creator_id (:id @user1s)
+                                          :definition {:aggregation [[:count]]}))
+            (reset! metric2s  (ts/create! Metric
+                                          :name "Support Headaches"
+                                          :table_id   (mt/id :venues)
+                                          :creator_id (:id @user2s)
+                                          :definition {:aggregation [[:count]]}))
             (reset! serialized (into [] (serdes.extract/extract {})))))
 
         (testing "exported form is properly converted"
@@ -718,9 +726,9 @@
             ;; Create another random user to change the user IDs.
             (ts/create! User   :first_name "Gideon" :last_name "Nav" :email "griddle@ninth.tomb")
             ;; Likewise, create some other metrics.
-            (ts/create! Metric :name "Other metric A")
-            (ts/create! Metric :name "Other metric B")
-            (ts/create! Metric :name "Other metric C")
+            (ts/create! Metric :name "Other metric A" :table_id (mt/id :venues))
+            (ts/create! Metric :name "Other metric B" :table_id (mt/id :venues))
+            (ts/create! Metric :name "Other metric C" :table_id (mt/id :venues))
             (reset! user1d  (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
 
             ;; Load the serialized content.

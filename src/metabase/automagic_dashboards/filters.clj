@@ -1,26 +1,12 @@
 (ns metabase.automagic-dashboards.filters
   (:require
+   [metabase.automagic-dashboards.util :as magic.util]
    [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.field :as field :refer [Field]]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
    [toucan2.core :as t2]))
-
-(s/defn field-reference->id :- (s/maybe (s/cond-pre su/NonBlankString su/IntGreaterThanZero))
-  "Extract field ID from a given field reference form."
-  [clause]
-  (mbql.u/match-one clause [:field id _] id))
-
-(mu/defn collect-field-references :- [:maybe [:sequential mbql.s/field]]
-  "Collect all `:field` references from a given form."
-  [form]
-  (mbql.u/match form :field &match))
 
 (defn- temporal?
   "Does `field` represent a temporal value, i.e. a date, time, or datetime?"
@@ -70,8 +56,8 @@
 (defn- candidates-for-filtering
   [fieldset cards]
   (->> cards
-       (mapcat collect-field-references)
-       (map field-reference->id)
+       (mapcat magic.util/collect-field-references)
+       (map magic.util/field-reference->id)
        distinct
        (map fieldset)
        interesting-fields))
@@ -191,11 +177,11 @@
   (ie. no `:and`s inside `:or` or `:not`)."
   [filter-clause refinement]
   (let [in-refinement?   (into #{}
-                               (map collect-field-references)
+                               (map magic.util/collect-field-references)
                                (flatten-filter-clause refinement))
         existing-filters (->> filter-clause
                               flatten-filter-clause
-                              (remove (comp in-refinement? collect-field-references)))]
+                              (remove (comp in-refinement? magic.util/collect-field-references)))]
     (if (seq existing-filters)
       ;; since the filters are programatically generated they won't have passed thru normalization, so make sure we
       ;; normalize them before passing them to `combine-filter-clauses`, which validates its input

@@ -23,6 +23,8 @@ export const ColumnItemRoot = styled.div<ColumnItemRootProps>`
     pointer-events: auto !important;
   }
 
+  color: ${color("text-medium")};
+
   ${props =>
     props.isDraggable &&
     `
@@ -44,7 +46,8 @@ export const ColumnItemSpan = styled.span`
   font-size: 0.875rem;
   line-height: 1rem;
   flex: auto;
-  color: ${color("text-dark")};
+  display: inline-flex;
+  gap: 0.25rem;
 `;
 
 export const ColumnItemContent = styled.div`
@@ -73,7 +76,6 @@ export const ColumnItemIcon = styled(Button)`
 `;
 
 export const ColumnItemDragHandle = styled(Icon)`
-  color: ${color("text-medium")};
   flex-shrink: 0;
 `;
 

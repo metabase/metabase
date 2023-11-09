@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import { has24HourModeSetting } from "metabase/lib/time";
 import NumericInput from "metabase/components/NumericInput";

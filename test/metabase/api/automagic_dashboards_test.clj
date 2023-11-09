@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.automagic-dashboards :as api.magic]
-   [metabase.automagic-dashboards.core :as magic]
+   [metabase.automagic-dashboards.util :as magic.util]
    [metabase.models :refer [Card Collection Dashboard Metric ModelIndex
                             ModelIndexValue Segment]]
    [metabase.models.model-index :as model-index]
@@ -65,7 +65,6 @@
                         (perms/grant-permissions! (perms-group/all-users) (perms/data-perms-path (mt/id))))))
            result))))))
 
-
 ;;; ------------------- X-ray  -------------------
 
 (deftest table-xray-test
@@ -116,7 +115,7 @@
 
 (deftest question-xray-test
   (mt/with-non-admin-groups-no-root-collection-perms
-    (let [cell-query (#'magic/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])]
+    (let [cell-query (magic.util/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])]
       (doseq [test-fn
               [(fn [collection-id card-id]
                  (testing "GET /api/automagic-dashboards/question/:id"
@@ -146,7 +145,7 @@
   (testing "The API surface of a model (dataset = true) is very much like that of a question,
   even though the underlying API will assert that dataset is true and the returned dashboard will be different."
     (mt/with-non-admin-groups-no-root-collection-perms
-      (let [cell-query (#'magic/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])]
+      (let [cell-query (magic.util/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])]
         (doseq [test-fn
                 [(fn [collection-id card-id]
                    (testing "GET /api/automagic-dashboards/model/:id"
@@ -173,10 +172,10 @@
             (test-fn collection-id card-id)))))))
 
 (deftest adhoc-query-xray-test
-  (let [query (#'magic/encode-base64-json
+  (let [query (magic.util/encode-base64-json
                (mt/mbql-query venues
                  {:filter [:> $price 10]}))
-        cell-query (#'magic/encode-base64-json
+        cell-query (magic.util/encode-base64-json
                     [:> [:field (mt/id :venues :price) nil] 5])]
     (testing "GET /api/automagic-dashboards/adhoc/:query"
       (is (some? (api-call "adhoc/%s" [query]))))
@@ -212,9 +211,9 @@
            (api-call "adhoc/%s/cell/%s/compare/segment/%s"
                      [(->> (mt/mbql-query venues
                              {:filter [:> $price 10]})
-                           (#'magic/encode-base64-json))
+                           (magic.util/encode-base64-json))
                       (->> [:= [:field (mt/id :venues :price) nil] 15]
-                           (#'magic/encode-base64-json))
+                           (magic.util/encode-base64-json))
                       segment-id]))))))
 
 (deftest compare-nested-query-test
@@ -235,12 +234,12 @@
                 cell-query [:= [:field "SOURCE" {:base-type :type/Text}] "Affiliate"]]
             (testing "X-Ray"
               (is (some? (api-call "adhoc/%s/cell/%s"
-                                   (map #'magic/encode-base64-json [query cell-query])
+                                   (map magic.util/encode-base64-json [query cell-query])
                                    #(revoke-collection-permissions! collection-id)))))
             (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
             (testing "Compare"
               (is (some? (api-call "adhoc/%s/cell/%s/compare/table/%s"
-                                   (concat (map #'magic/encode-base64-json [query cell-query])
+                                   (concat (map magic.util/encode-base64-json [query cell-query])
                                            [(format "card__%d" card-id)])
                                    #(revoke-collection-permissions! collection-id)))))))))))
 
@@ -481,3 +480,87 @@
                                                 :model-index       model-index
                                                 :model-index-value model-index-value})]
               (cards-have-filters? (:dashcards dash) pk-filters))))))))
+
+;; ------------------------------------------------ `show` limit test  -------------------------------------------------
+;; Historically, the used params are `nil` and "all", so this tests the integer case.
+
+(defn- card-count-check
+  "Create a dashboard via API twice, once with a limit and once without, and return the results."
+  [limit template args]
+  (mt/with-test-user :rasta
+    (with-dashboard-cleanup
+      (let [api-endpoint  (apply format (str "automagic-dashboards/" template) args)
+            resp          (mt/user-http-request :rasta :get 200 api-endpoint)
+            slimmed       (mt/user-http-request :rasta :get 200 api-endpoint :show limit)
+            card-count-fn (fn [dashboard] (count (keep :card (:dashcards dashboard))))]
+        {:base-count (card-count-fn resp)
+         :show-count (card-count-fn slimmed)}))))
+
+(deftest table-show-param-test
+  (testing "x-ray of a table with show set reduces the number of returned cards"
+    (let [show-limit 1
+          {:keys [base-count show-count]} (card-count-check show-limit "table/%s" [(mt/id :venues)])]
+      (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
+        (is (< show-count base-count)))
+      (testing "Only \"limit\" cards are produced"
+        (is (= show-limit show-count))))))
+
+(deftest metric-xray-show-param-test
+  (testing "x-ray of a metric with show set reduces the number of returned cards"
+    (t2.with-temp/with-temp [Metric {metric-id :id} {:table_id   (mt/id :venues)
+                                                     :definition {:query {:aggregation ["count"]}}}]
+      (let [show-limit 1
+            {:keys [base-count show-count]} (card-count-check show-limit "metric/%s" [metric-id])]
+        (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
+          (is (< show-count base-count)))
+        (testing "Only \"limit\" cards are produced"
+          (is (= show-limit show-count)))))))
+
+(deftest segment-xray-show-param-test
+  (testing "x-ray of a segment with show set reduces the number of returned cards"
+    (t2.with-temp/with-temp [Segment {segment-id :id} {:table_id   (mt/id :venues)
+                                                       :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
+      (let [show-limit 1
+            {:keys [base-count show-count]} (card-count-check show-limit "segment/%s" [segment-id])]
+        (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
+          (is (< show-count base-count)))
+        (testing "Only \"limit\" cards are produced"
+          (is (= show-limit show-count)))))))
+
+(deftest field-xray-show-param-test
+  (testing "x-ray of a field with show set reduces the number of returned cards"
+    (let [show-limit 1
+          {:keys [base-count show-count]} (card-count-check show-limit "field/%s" [(mt/id :venues :price)])]
+      (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
+        (is (< show-count base-count)))
+      (testing "Only \"limit\" cards are produced"
+        (is (= show-limit show-count))))))
+
+(deftest cell-query-xray-show-param-test
+  (testing "x-ray of a cell-query with show set reduces the number of returned cards"
+    (t2.with-temp/with-temp [Card {card-id :id} {:table_id      (mt/id :venues)
+                                                 :dataset_query (mt/mbql-query venues
+                                                                  {:filter [:> $price 10]})}]
+      (let [cell-query (magic.util/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])
+            show-limit 2
+            {:keys [base-count show-count]} (card-count-check show-limit "question/%s/cell/%s" [card-id cell-query])]
+        (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
+          (is (< show-count base-count)))
+        (testing "Only \"limit\" cards are produced"
+          (is (= show-limit show-count)))))))
+
+(deftest comparison-xray-show-param-test
+  (testing "x-ray of a comparison with show set reduces the number of returned cards"
+    (t2.with-temp/with-temp [Segment {segment-id :id} @segment]
+      (let [show-limit 1
+            {:keys [base-count show-count]} (card-count-check show-limit
+                                                              "adhoc/%s/cell/%s/compare/segment/%s"
+                                                              [(->> (mt/mbql-query venues
+                                                                      {:filter [:> $price 10]})
+                                                                    (magic.util/encode-base64-json))
+                                                               (->> [:= [:field (mt/id :venues :price) nil] 15]
+                                                                    (magic.util/encode-base64-json))
+                                                               segment-id])]
+        (testing "The slimmed dashboard produces less than the base dashboard"
+          ;;NOTE - Comparisons produce multiple dashboards and merge the results, so you don't get exactly `show-limit` cards
+          (is (< show-count base-count)))))))

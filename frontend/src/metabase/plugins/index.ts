@@ -14,6 +14,7 @@ import type {
   Bookmark,
   Collection,
   CollectionAuthorityLevelConfig,
+  CollectionInstanceAnaltyicsConfig,
   Dataset,
   Group,
   GroupPermissions,
@@ -22,8 +23,12 @@ import type {
   User,
   UserListResult,
 } from "metabase-types/api";
+
+import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
+
 import type { AdminPathKey, State } from "metabase-types/store";
 import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
+import type { SearchFilterComponent } from "metabase/search/types";
 import type Question from "metabase-lib/Question";
 
 import type Database from "metabase-lib/metadata/Database";
@@ -151,19 +156,41 @@ export const PLUGIN_COLLECTIONS = {
   AUTHORITY_LEVEL: {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
+  COLLECTION_TYPES: {
+    [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
+  },
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
   isRegularCollection: (_: Partial<Collection> | Bookmark) => true,
+  getCollectionType: (
+    _: Partial<Collection>,
+  ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
+    AUTHORITY_LEVEL_REGULAR,
+  getInstanceAnalyticsCustomCollection: (
+    collections: Collection[],
+  ): Collection | null => null,
+  CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: "",
+  INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE: UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
   getAuthorityLevelMenuItems: (
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
   ): AuthorityLevelMenuItem[] => [],
 };
 
-type CollectionAuthorityLevelIcon = ComponentType<
-  Omit<IconProps, "name" | "tooltip"> & { collection: Collection }
+export type CollectionAuthorityLevelIcon = ComponentType<
+  Omit<IconProps, "name" | "tooltip"> & {
+    collection: Pick<Collection, "authority_level">;
+    tooltip?: "default" | "belonging";
+  }
 >;
 
-type FormCollectionAuthorityLevelPicker = ComponentType<
+type CollectionInstanceAnalyticsIcon = React.ComponentType<
+  Omit<IconProps, "name"> & {
+    collection: Collection;
+    entity: "collection" | "question" | "model" | "dashboard";
+  }
+>;
+
+type FormCollectionAuthorityLevelPicker = React.ComponentType<
   HTMLAttributes<HTMLDivElement> & { name: string; title?: string }
 >;
 
@@ -172,6 +199,8 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
     PluginPlaceholder as CollectionAuthorityLevelIcon,
   FormCollectionAuthorityLevelPicker:
     PluginPlaceholder as FormCollectionAuthorityLevelPicker,
+  CollectionInstanceAnalyticsIcon:
+    PluginPlaceholder as CollectionInstanceAnalyticsIcon,
 };
 
 export type RevisionOrModerationEvent = {
@@ -285,4 +314,8 @@ export const PLUGIN_MODEL_PERSISTENCE = {
 
 export const PLUGIN_EMBEDDING = {
   isEnabled: () => false,
+};
+
+export const PLUGIN_CONTENT_VERIFICATION = {
+  VerifiedFilter: {} as SearchFilterComponent<"verified">,
 };

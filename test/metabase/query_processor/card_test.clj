@@ -1,6 +1,7 @@
 (ns metabase.query-processor.card-test
   "There are more e2e tests in [[metabase.api.card-test]]."
   (:require
+   [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.models :refer [Card Dashboard Database]]
@@ -22,7 +23,7 @@
     (qp.card/run-query-for-card-async
      card-id :api
      :run (fn [query info]
-            (qp/process-query (assoc query :async? false) info)))))
+            (qp/process-query (assoc query :async? false, :info info))))))
 
 (deftest query-cache-ttl-hierarchy-test
   (mt/discard-setting-changes [enable-query-caching]
@@ -165,3 +166,14 @@
                                                                 :name  "date"
                                                                 :type  :date/single
                                                                 :value "2016-01-01"}]})))))))
+
+(deftest bad-viz-settings-should-still-work-test
+  (testing "We should still be able to run a query that has Card bad viz settings referencing a column not in the query (#34950)"
+    (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query          (mt/mbql-query venues
+                                                                                  {:aggregation [[:count]]})
+                                                        :visualization_settings {:column_settings {(json/generate-string
+                                                                                                    [:ref [:field Integer/MAX_VALUE {:base-type :type/DateTime, :temporal-unit :month}]])
+                                                                                                   {:date_abbreviate true
+                                                                                                    :some_other_key [:ref [:field Integer/MAX_VALUE {:base-type :type/DateTime, :temporal-unit :month}]]}}}}]
+      (is (= [[100]]
+             (mt/rows (run-query-for-card card-id)))))))

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { jt, t } from "ttag";
 import { connect } from "react-redux";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import AdminLayout from "metabase/components/AdminLayout";
 import ExternalLink from "metabase/core/components/ExternalLink";

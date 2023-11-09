@@ -1,6 +1,5 @@
 import _ from "underscore";
 import {
-  createLinkCard,
   editDashboard,
   getDashboardCard,
   popover,
@@ -239,8 +238,8 @@ describe("scenarios > dashboard card resizing", () => {
       });
     });
     cy.createDashboard().then(({ body: { id: dashId } }) => {
-      cy.request("PUT", `/api/dashboard/${dashId}/cards`, {
-        cards: cardIds.map((cardId, index) => ({
+      cy.request("PUT", `/api/dashboard/${dashId}`, {
+        dashcards: cardIds.map((cardId, index) => ({
           id: index,
           card_id: cardId,
           row: index * 2,
@@ -344,8 +343,8 @@ const createLinkDashboard = () => {
   });
 
   editDashboard();
-  createLinkCard();
-  createLinkCard();
+  cy.icon("link").click();
+  cy.icon("link").click();
 
   const entityCard = getDashboardCard(0);
   const customCard = getDashboardCard(1);

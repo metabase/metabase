@@ -188,7 +188,6 @@ export const ModelIndexApi = {
 };
 
 export const DashboardApi = {
-  list: GET("/api/dashboard"),
   // creates a new empty dashboard
   create: POST("/api/dashboard"),
   // saves a complete transient dashboard
@@ -196,7 +195,6 @@ export const DashboardApi = {
   get: GET("/api/dashboard/:dashId"),
   update: PUT("/api/dashboard/:id"),
   delete: DELETE("/api/dashboard/:dashId"),
-  updateCardsAndTabs: PUT("/api/dashboard/:dashId/cards"),
   favorite: POST("/api/dashboard/:dashId/favorite"),
   unfavorite: DELETE("/api/dashboard/:dashId/favorite"),
   parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),

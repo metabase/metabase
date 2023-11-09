@@ -1,4 +1,6 @@
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import type { Moment } from "moment-timezone";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 
 import { parseTimestamp } from "metabase/lib/time";
@@ -528,7 +530,10 @@ export function getDateFormatFromStyle(
   return format;
 }
 
-export function formatDateTimeForParameter(value: string, unit: DatetimeUnit) {
+export function formatDateTimeForParameter(
+  value: string,
+  unit: DatetimeUnit | null,
+) {
   const m = parseTimestamp(value, unit);
   if (!m.isValid()) {
     return String(value);
@@ -549,7 +554,7 @@ export function formatDateTimeForParameter(value: string, unit: DatetimeUnit) {
 
 export function formatDateToRangeForParameter(
   value: string,
-  unit: DatetimeUnit,
+  unit: DatetimeUnit | null,
 ) {
   const m = parseTimestamp(value, unit);
   if (!m.isValid()) {
@@ -704,16 +709,18 @@ function replaceDateFormatNames(format: string, options: OptionsType) {
 }
 
 function formatDateTimeWithFormats(
-  value: number,
+  value: number | Moment,
   dateFormat: string,
   timeFormat: string,
   options: OptionsType,
 ) {
-  const m = parseTimestamp(
-    value,
-    options.column && options.column.unit,
-    options.local,
-  );
+  const m = moment.isMoment(value)
+    ? value
+    : parseTimestamp(
+        value,
+        options.column && options.column.unit,
+        options.local,
+      );
   if (!m.isValid()) {
     return String(value);
   }

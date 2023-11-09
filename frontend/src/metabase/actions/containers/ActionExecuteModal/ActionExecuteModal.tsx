@@ -8,7 +8,7 @@ import type {
 import { useActionQuery } from "metabase/common/hooks/use-action-query";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { useDispatch } from "metabase/lib/redux";
 
 import { executeAction } from "../../actions";

@@ -20,7 +20,7 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { ActionsApi } from "metabase/services";
 
 import Actions from "metabase/entities/actions";

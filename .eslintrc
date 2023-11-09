@@ -13,6 +13,21 @@
       }
     ],
     "no-empty": [1, { "allowEmptyCatch": true }],
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "moment",
+            "message": "Moment is deprecated, please use dayjs"
+          },
+          {
+            "name": "moment-timezone",
+            "message": "Moment is deprecated, please use dayjs"
+          }
+        ]
+      }
+    ],
     "curly": [1, "all"],
     "eqeqeq": [1, "smart"],
     "import/no-default-export": 2,

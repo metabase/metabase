@@ -1,10 +1,13 @@
 (ns ^:mb/once metabase.util.malli.fn-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
    [metabase.util.malli.registry :as mr]))
+
+(set! *warn-on-reflection* true)
 
 (deftest ^:parallel add-default-schemas-test
   (are [input expected] (= expected
@@ -68,43 +71,44 @@
   (are [form expected] (= expected
                           (walk/macroexpand-all (mu.fn/instrumented-fn-form {} (mu.fn/parse-fn-tail form))))
     '([x :- :int y])
-    '(let* [&f (fn* ([x y]))]
-       (fn* ([a b]
-             (metabase.util.malli.fn/validate-input {} :int a)
-             (&f a b))))
+    '(fn* ([a b]
+           (metabase.util.malli.fn/validate-input {} :int a)
+           ((fn* ([x y])) a b)))
 
     '(:- :int [x :- :int y])
-    '(let* [&f (fn* ([x y]))]
-       (fn* ([a b]
-             (metabase.util.malli.fn/validate-input {} :int a)
-             (metabase.util.malli.fn/validate-output {} :int (&f a b)))))
+    '(fn* ([a b]
+           (metabase.util.malli.fn/validate-input {} :int a)
+           (metabase.util.malli.fn/validate-output {} :int ((fn* ([x y])) a b))))
 
     '(:- :int [x :- :int y] (+ x y))
-    '(let* [&f (fn* ([x y] (+ x y)))]
-       (fn* ([a b]
-             (metabase.util.malli.fn/validate-input {} :int a)
-             (metabase.util.malli.fn/validate-output {} :int (&f a b)))))
+    '(fn* ([a b]
+           (metabase.util.malli.fn/validate-input {} :int a)
+           (metabase.util.malli.fn/validate-output {} :int ((fn* ([x y] (+ x y))) a b))))
 
     '([x :- :int y] {:pre [(int? x)]})
-    '(let* [&f (fn* ([x y]
-                     {:pre [(int? x)]}))]
-       (fn* ([a b]
-             (metabase.util.malli.fn/validate-input {} :int a)
-             (&f a b))))
+    '(fn* ([a b]
+           (metabase.util.malli.fn/validate-input {} :int a)
+           ((fn* ([x y]
+                  {:pre [(int? x)]}))
+            a b)))
 
     '(:- :int
          ([x] (inc x))
          ([x :- :int y] (+ x y)))
-    '(let* [&f (fn* ([x]
-                     (inc x))
-                    ([x y]
-                     (+ x y)))]
-       (fn*
-        ([a]
-         (metabase.util.malli.fn/validate-output {} :int (&f a)))
-        ([a b]
-         (metabase.util.malli.fn/validate-input {} :int a)
-         (metabase.util.malli.fn/validate-output {} :int (&f a b)))))))
+    '(fn*
+      ([a]
+       (metabase.util.malli.fn/validate-output {} :int ((fn* ([x]
+                                                              (inc x))
+                                                             ([x y]
+                                                              (+ x y)))
+                                                        a)))
+      ([a b]
+       (metabase.util.malli.fn/validate-input {} :int a)
+       (metabase.util.malli.fn/validate-output {} :int ((fn* ([x]
+                                                              (inc x))
+                                                             ([x y]
+                                                              (+ x y)))
+                                                        a b))))))
 
 (deftest ^:parallel fn-test
   (let [f (mu.fn/fn :- :int [y] y)]
@@ -115,7 +119,11 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid output:.*should be an integer"
-         (f nil)))))
+         (f nil)))
+    (testing "the stacktrace does not begin in the validation function"
+      (let [e ^Exception (is (thrown? clojure.lang.ExceptionInfo (f nil)))]
+        (is (not (str/starts-with? (.getClassName (first (.getStackTrace e)))
+                                   "metabase.util.malli.fn")))))))
 
 (deftest ^:parallel registry-test
   (mr/def ::number :int)
@@ -141,13 +149,13 @@
                  & {:keys [token-check?]
                     :or   {token-check? true}}]
                 (merge {:path path, :token-check? token-check?} opts))]
-    (is (= '(let* [&f (clojure.core/fn
-                        [path opts & {:keys [token-check?], :or {token-check? true}}]
-                        (merge {:path path, :token-check? token-check?} opts))]
-              (clojure.core/fn
-                ([a b & more]
-                 (metabase.util.malli.fn/validate-input {:fn-name 'my-fn} :map b)
-                 (clojure.core/apply &f a b more))))
+    (is (= '(fn*
+              ([a b & more]
+               (metabase.util.malli.fn/validate-input {:fn-name 'my-fn} :map b)
+               (clojure.core/apply (clojure.core/fn
+                                     [path opts & {:keys [token-check?], :or {token-check? true}}]
+                                     (merge {:path path, :token-check? token-check?} opts))
+                                   a b more)))
            (macroexpand form)))
     (is (= [:=>
             [:cat :any :map [:* :any]]

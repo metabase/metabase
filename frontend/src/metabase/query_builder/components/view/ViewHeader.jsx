@@ -526,6 +526,7 @@ function ViewTitleHeaderRightSide(props) {
       )}
       {hasSaveButton && (
         <SaveButton
+          role="button"
           disabled={!question.canRun() || !canEditQuery}
           tooltip={{
             tooltip: t`You don't have permission to save this question.`,

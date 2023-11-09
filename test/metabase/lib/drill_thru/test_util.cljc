@@ -85,9 +85,9 @@
    row       :- Row
    {:keys [column-name click-type query-type], :as _test-case} :- TestCase]
   (let [cols       (lib/returned-columns query -1 (lib.util/query-stage query -1))
-        col        (m/find-first (fn [col]
-                                   (= (:name col) column-name))
-                                 cols)
+        by-name    (m/index-by :name cols)
+        col        (get by-name column-name)
+        refs       (update-vals by-name lib/ref)
         _          (assert col (lib.util/format "No column found named %s; found: %s"
                                                 (pr-str column-name)
                                                 (pr-str (map :name cols))))
@@ -98,14 +98,24 @@
                      (for [col   cols
                            :when (and (= (:lib/source col) :source/breakouts)
                                       (not= (:name col) column-name))]
-                       {:column-name (:name col), :value (get row (:name col))}))]
+                       {:column     col
+                        :column-ref (get refs (:name col))
+                        :value      (get row (:name col))}))]
     (merge
-     {:column col
-      :value  nil}
+     {:column     col
+      :column-ref (get refs column-name)
+      :value      nil}
      (when (= click-type :cell)
        {:value      value
-        :row        (for [[column-name value] row]
-                      {:column-name column-name, :value value})
+        :row        (for [[column-name value] row
+                          :let [column (or (by-name column-name)
+                                           (throw (ex-info
+                                                   (lib.util/format "Invalid row: no column named %s in query returned-columns"
+                                                                    (pr-str column-name))
+                                                   {:column-name column-name, :returned-columns (keys by-name)})))]]
+                      {:column     column
+                       :column-ref (get refs column-name)
+                       :value      value})
         :dimensions dimensions}))))
 
 (def ^:private AvailableDrillsTestCase
@@ -141,7 +151,7 @@
     [:expected [:map
                 [:type ::lib.schema.drill-thru/drill-thru.type]]]]])
 
-(mu/defn test-returns-drill :- ::lib.schema.drill-thru/drill-thru
+(mu/defn test-returns-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
   "Test that a certain drill gets returned. Returns the drill."
   [{:keys [drill-type query-table column-name click-type query-type expected]
     :or   {query-table "ORDERS"}
@@ -197,12 +207,11 @@
 (mu/defn test-drill-application
   "Test that a certain drill gets returned, AND when applied to a query returns the expected query."
   [{:keys [expected-query drill-args], :as test-case} :- DrillApplicationTestCase]
-  (let [{:keys [query]} (query-and-row-for-test-case test-case)
-        drill           (test-returns-drill test-case)]
-
-    (testing (str "Should return expected query when applying the drill"
-                  "\nQuery = \n" (u/pprint-to-str query)
-                  "\nDrill = \n" (u/pprint-to-str drill))
-      (let [query' (apply lib/drill-thru query -1 drill drill-args)]
-        (is (=? expected-query
-                query'))))))
+  (let [{:keys [query]} (query-and-row-for-test-case test-case)]
+    (when-let [drill (test-returns-drill test-case)]
+      (testing (str "Should return expected query when applying the drill"
+                    "\nQuery = \n" (u/pprint-to-str query)
+                    "\nDrill = \n" (u/pprint-to-str drill))
+        (let [query' (apply lib/drill-thru query -1 drill drill-args)]
+          (is (=? expected-query
+                  query')))))))

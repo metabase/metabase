@@ -2823,23 +2823,23 @@ msgstr ""
 msgid "Remove time"
 msgstr ""
 
-#: frontend/src/metabase/core/utils/errors/validation.ts:4
+#: frontend/src/metabase/lib/errors/validation.ts:4
 #: frontend/src/metabase/lib/validate.js:10
 msgid "required"
 msgstr ""
 
-#: frontend/src/metabase/core/utils/errors/validation.ts:6
+#: frontend/src/metabase/lib/errors/validation.ts:6
 #: frontend/src/metabase/lib/validate.js:12
 msgid "must be a valid email address"
 msgstr ""
 
-#: frontend/src/metabase/core/utils/errors/validation.ts:9
+#: frontend/src/metabase/lib/errors/validation.ts:9
 #: frontend/src/metabase/lib/validate.js:14
 #, javascript-format
 msgid "must be {0} characters or less"
 msgstr ""
 
-#: frontend/src/metabase/core/utils/errors/validation.ts:11
+#: frontend/src/metabase/lib/errors/validation.ts:11
 msgid "must be a positive integer value"
 msgstr ""
 

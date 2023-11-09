@@ -1,4 +1,5 @@
 import { assocIn } from "icepick";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import { createMockMetadata } from "__support__/metadata";
 import {

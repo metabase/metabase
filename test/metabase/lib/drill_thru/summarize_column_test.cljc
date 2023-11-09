@@ -1,7 +1,9 @@
 (ns metabase.lib.drill-thru.summarize-column-test
   (:require
-   [clojure.test :refer [deftest]]
-   [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]))
+   [clojure.test :refer [deftest testing]]
+   [metabase.lib.core :as lib]
+   [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
+   [metabase.lib.test-metadata :as meta]))
 
 (deftest ^:parallel returns-summarize-column-test-1
   (lib.drill-thru.tu/test-returns-drill
@@ -42,3 +44,24 @@
     :query-type  :unaggregated
     :column-name "QUANTITY"
     :expected    {:type :drill-thru/summarize-column, :aggregations [:distinct :sum :avg]}}))
+
+(deftest ^:parallel custom-column-test
+  (testing "#34957"
+    (lib.drill-thru.tu/test-drill-application
+     {:drill-type     :drill-thru/summarize-column
+      :click-type     :header
+      :query-type     :unaggregated
+      :custom-query   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                          (lib/expression "CustomColumn" (lib/+ 1 1)))
+      :custom-row     (assoc (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row])
+                             "CustomColumn" 2)
+      :column-name    "CustomColumn"
+      :expected       {:type         :drill-thru/summarize-column
+                       :column       {:name "CustomColumn"}
+                       :aggregations [:distinct :sum :avg]}
+      :drill-args     ["sum"]
+      :expected-query {:stages
+                       [{:lib/type     :mbql.stage/mbql,
+                         :source-table (meta/id :orders)
+                         :expressions  [[:+ {:lib/expression-name "CustomColumn"} 1 1]]
+                         :aggregation  [[:sum {} [:expression {} "CustomColumn"]]]}]}})))

@@ -5,7 +5,7 @@ import {
   createMockCard,
   createMockNativeDatasetQuery,
 } from "metabase-types/api/mocks";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { serializeCardForUrl } from "metabase/lib/card";
 import type Question from "metabase-lib/Question";
 
@@ -99,8 +99,18 @@ const runModelLocation = createMockLocation({
   hash: `#${serializeCardForUrl(nativeModelCard)}`,
 });
 
+const runModelEditNotebookLocation = createMockLocation({
+  pathname: "/model/notebook",
+  hash: `#${serializeCardForUrl(nativeModelCard)}`,
+});
+
 const runQuestionLocation = createMockLocation({
   pathname: "/question",
+  hash: `#${serializeCardForUrl(nativeCard)}`,
+});
+
+const runQuestionEditNotebookLocation = createMockLocation({
+  pathname: "/question/notebook",
   hash: `#${serializeCardForUrl(nativeCard)}`,
 });
 
@@ -143,7 +153,9 @@ describe("isNavigationAllowed", () => {
       newModelQueryTabLocation,
       newModelMetadataTabLocation,
       runModelLocation,
+      runModelEditNotebookLocation,
       runQuestionLocation,
+      runQuestionEditNotebookLocation,
     ])("allows navigating away to `$pathname`", destination => {
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion: true }),
@@ -168,7 +180,9 @@ describe("isNavigationAllowed", () => {
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
         runModelLocation,
+        runModelEditNotebookLocation,
         runQuestionLocation,
+        runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
@@ -199,6 +213,8 @@ describe("isNavigationAllowed", () => {
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
         runModelLocation,
+        runModelEditNotebookLocation,
+        runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
@@ -213,6 +229,14 @@ describe("isNavigationAllowed", () => {
 
     it("allows to run the question", () => {
       const destination = runQuestionLocation;
+
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion }),
+      ).toBe(true);
+    });
+
+    it("allows to run the question and then edit it again", () => {
+      const destination = runQuestionEditNotebookLocation;
 
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion }),
@@ -276,6 +300,8 @@ describe("isNavigationAllowed", () => {
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
         runModelLocation,
+        runModelEditNotebookLocation,
+        runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
@@ -307,6 +333,14 @@ describe("isNavigationAllowed", () => {
       ).toBe(true);
     });
 
+    it("allows to run the model and then edit it again", () => {
+      const destination = runModelEditNotebookLocation;
+
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion }),
+      ).toBe(true);
+    });
+
     describe("disallows all other navigation", () => {
       it.each([
         anyLocation,
@@ -315,6 +349,7 @@ describe("isNavigationAllowed", () => {
         ...getStructuredQuestionLocations(structuredQuestion),
         ...getNativeQuestionLocations(nativeQuestion),
         runQuestionLocation,
+        runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
@@ -343,6 +378,14 @@ describe("isNavigationAllowed", () => {
       ).toBe(true);
     });
 
+    it("allows to run the model and then edit it again", () => {
+      const destination = runModelEditNotebookLocation;
+
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion }),
+      ).toBe(true);
+    });
+
     describe("disallows all other navigation", () => {
       it.each([
         anyLocation,
@@ -351,6 +394,7 @@ describe("isNavigationAllowed", () => {
         ...getNativeQuestionLocations(nativeQuestion),
         newModelMetadataTabLocation,
         newModelQueryTabLocation,
+        runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
@@ -387,6 +431,8 @@ describe("isNavigationAllowed", () => {
         ...getNativeQuestionLocations(nativeQuestion),
         newModelMetadataTabLocation,
         newModelQueryTabLocation,
+        runModelEditNotebookLocation,
+        runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
