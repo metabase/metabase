@@ -29,6 +29,7 @@
     [:field {:binning {:strategy :num-bins :num-bins 4}} 1]
 
   Pass `nil` `binning` to remove any binning."
+  {:style/indent [:form]}
   [x binning :- [:maybe [:or ::lib.schema.binning/binning ::lib.schema.binning/binning-option]]]
   (with-binning-method x (if (contains? binning :mbql)
                            (:mbql binning)

@@ -17,6 +17,7 @@ embedding_params: null
 cache_ttl: null
 dataset_query:
   database: Internal Metabase Database
+  type: query
   query:
     fields:
     - - field
@@ -25,19 +26,16 @@ dataset_query:
     - - field
       - timestamp
       - base-type: type/DateTimeWithLocalTZ
-    filter:
-    - =
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_audit_log
-        - topic
-      - base-type: type/Text
-    - card-create
-    - card-delete
-    - card-update
     joins:
     - alias: Question 1
+      fields:
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
+          - full_name
+        - base-type: type/Text
+          join-alias: Question 1
       condition:
       - =
       - - field
@@ -53,16 +51,9 @@ dataset_query:
           - user_id
         - base-type: type/Integer
           join-alias: Question 1
-      fields:
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_users
-          - full_name
-        - base-type: type/Text
-          join-alias: Question 1
       source-table: 0wVIfjBJWclD0lKeABYYl
     - alias: Question 35
+      fields: none
       condition:
       - =
       - - field
@@ -78,26 +69,7 @@ dataset_query:
           - entity_qualified_id
         - base-type: type/Text
           join-alias: Question 35
-      fields: none
       source-table: AxSackBiyXVRUzM_TyyQY
-    - alias: Question 34
-      condition:
-      - =
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_audit_log
-          - user_id
-        - base-type: type/Integer
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_group_members
-          - user_id
-        - base-type: type/Integer
-          join-alias: Question 34
-      fields: none
-      source-table: lTp-ATFsCUFEr9I0fMEaO
     order-by:
     - - desc
       - - field
@@ -107,7 +79,17 @@ dataset_query:
           - timestamp
         - base-type: type/DateTimeWithLocalTZ
     source-table: -lNDM3tJmuL5ltGbX0oyT
-  type: query
+    filter:
+    - =
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - topic
+      - base-type: type/Text
+    - card-create
+    - card-delete
+    - card-update
 parameter_mappings: []
 serdes/meta:
 - model: Card

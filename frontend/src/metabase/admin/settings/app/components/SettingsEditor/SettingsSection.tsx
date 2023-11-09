@@ -17,7 +17,7 @@ export function SettingsSection({
     settingElement: SettingElement,
     newValue: SettingValue,
   ) => void;
-  onChangeSetting: (key: SettingKey, value: SettingValue) => void;
+  onChangeSetting?: (key: SettingKey, value: SettingValue) => void;
   reloadSettings: VoidFunction;
 }) {
   return (
