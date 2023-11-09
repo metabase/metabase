@@ -214,6 +214,33 @@ function LinkedEntityPicker({
     [clickBehavior, defaultDashboardTabId, isDashboard, updateSettings],
   );
 
+  useEffect(
+    // If the target dashboard tab has been deleted, and there are no other tabs
+    // to choose from (we don't render <Select/> when there is only 1 tab)
+    // automatically pick the correct target dashboard tab for the user.
+    // Otherwise, make user manually pick a new dashboard tab.
+    function migrateDeletedTab() {
+      if (
+        isDashboard &&
+        !dashboardTabExists &&
+        dashboard?.tabs &&
+        dashboard.tabs.length < 2 &&
+        typeof dashboardTabId !== "undefined"
+      ) {
+        updateSettings({ ...clickBehavior, tabId: defaultDashboardTabId });
+      }
+    },
+    [
+      clickBehavior,
+      dashboard,
+      dashboardTabId,
+      dashboardTabExists,
+      defaultDashboardTabId,
+      isDashboard,
+      updateSettings,
+    ],
+  );
+
   return (
     <div>
       <div className="pb1">

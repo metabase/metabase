@@ -360,12 +360,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           cards: [],
           tabs: [FIRST_TAB, SECOND_TAB, THIRD_TAB],
         });
+        const inexistingTabId = 999;
         const cardDetails = {
           visualization_settings: {
             click_behavior: {
               parameterMapping: {},
               targetId: targetDashboardId,
-              tabId: "this-tab-does-not-exist-so-it-must-have-been-removed",
+              tabId: inexistingTabId,
               linkType: "dashboard",
               type: "link",
             },
@@ -405,6 +406,49 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
           expect(search).to.equal(`?tab=${SECOND_TAB_SLUG}`);
+        });
+      });
+    });
+
+    it("should fall back to the first tab after target dashboard tab has been removed and there only 1 tab left", () => {
+      cy.createDashboard(TARGET_DASHBOARD, {
+        wrapId: true,
+        idAlias: "targetDashboardId",
+      });
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        const inexistingTabId = 999;
+        const cardDetails = {
+          visualization_settings: {
+            click_behavior: {
+              parameterMapping: {},
+              targetId: targetDashboardId,
+              tabId: inexistingTabId,
+              linkType: "dashboard",
+              type: "link",
+            },
+          },
+        };
+        cy.createQuestionAndDashboard({
+          questionDetails,
+          cardDetails,
+        }).then(({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+        });
+      });
+
+      editDashboard();
+      getDashboardCard().realHover().icon("click").click();
+      cy.get("aside")
+        .findByLabelText("Select a dashboard tab")
+        .should("not.exist");
+      cy.button("Done").should("be.enabled").click();
+      saveDashboard();
+
+      clickLineChartPoint();
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        cy.location().should(({ pathname, search }) => {
+          expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+          expect(search).to.equal("");
         });
       });
     });
