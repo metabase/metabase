@@ -4,8 +4,8 @@ import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import {
   createQuery,
-  findNumericColumn,
   createQueryWithNumberFilter,
+  findNumericColumn,
   storeInitialState,
 } from "../test-utils";
 import { NumberFilterPicker } from "./NumberFilterPicker";
@@ -139,14 +139,17 @@ describe("NumberFilterPicker", () => {
       );
 
       it("should add a filter with one value via keyboard", async () => {
-        const { getNextFilterParts, getNextFilterColumnName } = setup();
+        const { onChange, getNextFilterParts, getNextFilterColumnName } =
+          setup();
 
         await setOperator("Greater than");
         const input = screen.getByPlaceholderText("Enter a number");
-        userEvent.type(input, "15{enter}");
+        userEvent.type(input, "{enter}");
+        expect(onChange).not.toHaveBeenCalled();
 
-        const filterParts = getNextFilterParts();
-        expect(filterParts).toMatchObject({
+        userEvent.type(input, "15{enter}");
+        expect(onChange).toHaveBeenCalled();
+        expect(getNextFilterParts()).toMatchObject({
           operator: ">",
           column: expect.anything(),
           values: [15],
@@ -185,16 +188,21 @@ describe("NumberFilterPicker", () => {
       );
 
       it("should add a filter with two values via keyboard", async () => {
-        const { getNextFilterParts, getNextFilterColumnName } = setup();
-        await setOperator("Between");
+        const { onChange, getNextFilterParts, getNextFilterColumnName } =
+          setup();
 
+        await setOperator("Between");
         const [leftInput, rightInput] =
           screen.getAllByPlaceholderText("Enter a number");
-        userEvent.type(leftInput, "-10");
-        userEvent.type(rightInput, "20{enter}");
+        userEvent.type(leftInput, "{enter}");
+        expect(onChange).not.toHaveBeenCalled();
 
-        const filterParts = getNextFilterParts();
-        expect(filterParts).toMatchObject({
+        userEvent.type(leftInput, "-10{enter}");
+        expect(onChange).not.toHaveBeenCalled();
+
+        userEvent.type(rightInput, "20{enter}");
+        expect(onChange).toHaveBeenCalled();
+        expect(getNextFilterParts()).toMatchObject({
           operator: "between",
           column: expect.anything(),
           values: [-10, 20],
