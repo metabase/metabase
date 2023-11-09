@@ -193,6 +193,7 @@ export interface Settings {
   "application-name": string;
   "available-fonts": string[];
   "available-locales": LocaleData[] | null;
+  "bcc-enabled?": boolean;
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
   "custom-homepage": boolean;
