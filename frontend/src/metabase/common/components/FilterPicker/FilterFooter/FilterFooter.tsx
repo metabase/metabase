@@ -1,16 +1,20 @@
-import type { ReactNode } from "react";
 import { isValidElement } from "react";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 import { Box, Button } from "metabase/ui";
-import { FilterFooterRoot } from "./FilterPicker.styled";
+import { FilterFooterRoot } from "./FilterFooter.styled";
 
-interface FooterProps {
+interface FilterFooterProps {
   isNew: boolean;
   canSubmit: boolean;
   children?: ReactNode;
 }
 
-export function Footer({ isNew, canSubmit, children }: FooterProps) {
+export function FilterFooter({
+  isNew,
+  canSubmit,
+  children,
+}: FilterFooterProps) {
   return (
     <FilterFooterRoot>
       {isValidElement(children) ? children : <Box />}

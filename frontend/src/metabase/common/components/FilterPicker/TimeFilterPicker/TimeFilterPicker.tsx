@@ -9,8 +9,8 @@ import { MAX_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
-import { Header } from "../Header";
-import { Footer } from "../Footer";
+import { FilterHeader } from "../FilterHeader";
+import { FilterFooter } from "../FilterFooter";
 
 import { OPERATOR_OPTIONS } from "./constants";
 import {
@@ -87,13 +87,13 @@ export function TimeFilterPicker({
       data-testid="time-filter-picker"
       onSubmit={handleSubmit}
     >
-      <Header columnName={columnName} onBack={onBack}>
+      <FilterHeader columnName={columnName} onBack={onBack}>
         <FilterOperatorPicker
           value={operatorName}
           options={availableOperators}
           onChange={handleOperatorChange}
         />
-      </Header>
+      </FilterHeader>
       <Box>
         {valueCount > 0 && (
           <Flex p="md">
@@ -104,7 +104,7 @@ export function TimeFilterPicker({
             />
           </Flex>
         )}
-        <Footer isNew={isNew} canSubmit={isValid} />
+        <FilterFooter isNew={isNew} canSubmit={isValid} />
       </Box>
     </Box>
   );
