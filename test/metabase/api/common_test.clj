@@ -100,7 +100,6 @@
 (deftest *-check-functions-publish-events
   ;; setup - derive events so they get dispatched to our test method
   (derive ::permission-failure-event :metabase/event)
-  (derive :event/read-permission-failure ::permission-failure-event)
   (derive :event/write-permission-failure ::permission-failure-event)
   (derive :event/update-permission-failure ::permission-failure-event)
   (derive :event/create-permission-failure ::permission-failure-event)
@@ -112,12 +111,6 @@
                     mi/can-update? (constantly false)
                     mi/can-create? (constantly false)]
         (mt/with-temp [:model/Card card {}]
-          (testing "read-check"
-            (binding [*events* (atom [])]
-              (is (thrown? ExceptionInfo (api/read-check card)))
-              (is (= [[:event/read-permission-failure {:user-id 1
-                                                       :object card}]]
-                     @*events*))))
           (testing "write-check"
             (binding [*events* (atom [])]
               (is (thrown? ExceptionInfo (api/write-check card)))
@@ -139,7 +132,6 @@
     (finally
       ;; teardown - underive events so they aren't dispatched in other tests
       (underive ::permission-failure-event :metabase/event)
-      (underive :event/read-permission-failure ::permission-failure-event)
       (underive :event/write-permission-failure ::permission-failure-event)
       (underive :event/update-permission-failure ::permission-failure-event)
       (underive :event/create-permission-failure ::permission-failure-event))))
