@@ -7,8 +7,8 @@ import {
   within,
 } from "__support__/ui";
 import {
-  setupFieldsValuesEndpoints,
   setupFieldSearchValuesEndpoints,
+  setupFieldsValuesEndpoints,
 } from "__support__/server-mocks";
 import { checkNotNull } from "metabase/lib/types";
 import {
@@ -196,14 +196,16 @@ describe("StringFilterPicker", () => {
     });
 
     it("should add a filter with one value via keyboard", async () => {
-      const { getNextFilterParts, getNextFilterColumnName } = setup();
+      const { onChange, getNextFilterParts, getNextFilterColumnName } = setup();
 
       await setOperator("Contains");
       const input = screen.getByPlaceholderText("Enter some text");
-      userEvent.type(input, "green{enter}");
+      userEvent.type(input, "{enter}");
+      expect(onChange).not.toHaveBeenCalled();
 
-      const filterParts = getNextFilterParts();
-      expect(filterParts).toMatchObject({
+      userEvent.type(input, "green{enter}");
+      expect(onChange).toHaveBeenCalled();
+      expect(getNextFilterParts()).toMatchObject({
         operator: "contains",
         column: expect.anything(),
         values: ["green"],
@@ -256,18 +258,21 @@ describe("StringFilterPicker", () => {
     it("should add a filter with many values via keyboard", async () => {
       const query = createQuery();
       const column = findStringColumn(query, { fieldValues: "list" });
-      const { getNextFilterParts, getNextFilterColumnName } = setup({
+      const { onChange, getNextFilterParts, getNextFilterColumnName } = setup({
         query,
         column,
       });
       await waitForLoaderToBeRemoved();
 
+      const input = screen.getByPlaceholderText("Search the list");
+      userEvent.type(input, "{enter}");
+      expect(onChange).not.toHaveBeenCalled();
+
       userEvent.click(screen.getByLabelText("Doohickey"));
       userEvent.click(screen.getByLabelText("Widget"));
-      userEvent.type(screen.getByPlaceholderText("Search the list"), "{enter}");
-
-      const filterParts = getNextFilterParts();
-      expect(filterParts).toMatchObject({
+      userEvent.type(input, "{enter}");
+      expect(onChange).toHaveBeenCalled();
+      expect(getNextFilterParts()).toMatchObject({
         operator: "=",
         column: expect.anything(),
         values: ["Doohickey", "Widget"],
