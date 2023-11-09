@@ -23,16 +23,11 @@
                        ;; create table & load data
                        "DROP TABLE IF EXISTS \"birds\";"
                        "CREATE TABLE \"birds\" (\"species\" VARCHAR PRIMARY KEY, \"example_name\" VARCHAR);"
-                       "CREATE TABLE \"flocks\" (\"id\" INTEGER PRIMARY KEY, \"example_bird_name\" VARCHAR);"
                        "GRANT ALL ON \"birds\" TO GUEST;"
                        (str "INSERT INTO \"birds\" (\"species\", \"example_name\") VALUES "
                             "('House Finch', 'Marshawn Finch'),  "
                             "('California Gull', 'Steven Seagull'), "
-                            "('Chicken', 'Colin Fowl');")
-                       (str "INSERT INTO \"flocks\" (\"id\", \"example_bird_name\") VALUES "
-                            "(1, 'Marshawn Finch'),  "
-                            "(2, 'Steven Seagull'), "
-                            "(3, 'Colin Fowl');")]]
+                            "('Chicken', 'Colin Fowl');")]]
       (jdbc/execute! one-off-dbs/*conn* [statement]))
     (thunk)))
 
@@ -55,14 +50,11 @@
    5.  Executes `(f database)` a second time
    6.  Returns a map containing results from both calls to `f` for comparison."
   {:style/indent [:fn]}
-  [alter-sql f & {:keys [do-something-before]}]
+  [alter-sql f]
   ;; first, create a new in-memory test DB and add some data to it
   (with-test-db
     ;; now sync
     (sync/sync-database! (mt/db))
-    ;; optionally do something
-    (when do-something-before
-      (do-something-before (mt/db)))
     ;; ok, let's see what (f) gives us
     (let [f-before (f (mt/db))]
       ;; ok cool! now delete one of those columns...
@@ -96,10 +88,10 @@
 
 (deftest mark-inactive-test
   (testing "make sure sync correctly marks a Field as active = false when it gets dropped from the DB"
-    (is (=? {:before-sync {"species"           {:active true}
-                           "example_name"      {:active true}}
-             :after-sync  {"species"           {:active true}
-                           "example_name"      {:active false}}}
+    (is (=? {:before-sync {"species"      {:active true}
+                           "example_name" {:active true}}
+             :after-sync  {"species"      {:active true}
+                           "example_name" {:active false}}}
             (with-test-db-before-and-after-altering
               "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
               (fn [database]
@@ -108,35 +100,47 @@
 
 (deftest mark-inactive-remove-fks-test
   (testing "when a column is dropped from the DB, sync should wipe foreign key targets and their semantic type"
-    (is (=? {:before-sync {:semantic_type      :type/FK
-                           :fk_target_field_id int?}
-             :after-sync  {:semantic_type      nil
-                           :fk_target_field_id nil}}
-            (with-test-db-before-and-after-altering
-              "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
-              (fn [database]
-                (t2/select-one
-                 :model/Field
-                 :name "example_bird_name"
-                 :table_id [:in (t2/select-pks-set Table :db_id (u/the-id database) :name "flocks")]))
-              {:do-something-before
-               (fn [database]
-                 ;; update the example_bird_name field to have the example_name column as its foreign key target
-                 (let [tables          (t2/select-pks-set Table :db_id (u/the-id database))
-                       field-to-drop   (t2/select-one Field :name "example_name" :table_id [:in tables])
-                       field-to-update (t2/select-one Field :name "example_bird_name" :table_id [:in tables])]
-                   (t2/update! :model/Field (u/the-id field-to-update) {:semantic_type      :type/FK
-                                                                        :fk_target_field_id (u/the-id field-to-drop)})))})))))
+    (with-test-db
+      (doseq [statement ["CREATE TABLE \"flocks\" (\"id\" INTEGER PRIMARY KEY, \"example_bird_name\" VARCHAR);"
+                         (str "INSERT INTO \"flocks\" (\"id\", \"example_bird_name\") VALUES "
+                              "(1, 'Marshawn Finch'),  "
+                              "(2, 'Steven Seagull'), "
+                              "(3, 'Colin Fowl');")]]
+        (jdbc/execute! one-off-dbs/*conn* [statement]))
+      (sync/sync-database! (mt/db))
+      (let [tables          (t2/select-pks-set Table :db_id (u/the-id (mt/db)))
+            get-field-to-update (fn []
+                                  (t2/select-one
+                                   :model/Field
+                                   :name "example_bird_name"
+                                   :table_id [:in tables]))
+            field-to-drop   (t2/select-one Field :name "example_name" :table_id [:in tables])
+            field-to-update (get-field-to-update)]
+        (t2/update! :model/Field (u/the-id field-to-update) {:semantic_type      :type/FK
+                                                             :fk_target_field_id (u/the-id field-to-drop)})
+        ;; get the field before sync
+        (let [field-before-sync (get-field-to-update)]
+          ;; ok cool! now delete one of those columns...
+          (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"])
+          ;; ...and re-sync...
+          (sync/sync-database! (mt/db))
+          ;; ...now let's see how the field may have changed! Compare to original.
+          (is (=? {:before-sync {:semantic_type      :type/FK
+                                 :fk_target_field_id int?}
+                   :after-sync  {:semantic_type      nil
+                                 :fk_target_field_id nil}}
+                  {:before-sync field-before-sync
+                   :after-sync  (get-field-to-update)})))))))
 
 (deftest dont-show-deleted-fields-test
   (testing "make sure deleted fields doesn't show up in `:fields` of a table"
     (is (= {:before-sync #{"species" "example_name"}
             :after-sync  #{"species"}}
            (with-test-db-before-and-after-altering
-            "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
-            (fn [database]
-              (let [table (t2/hydrate (t2/select-one Table :db_id (u/the-id database)) :fields)]
-                (set (map :name (:fields table))))))))))
+             "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
+             (fn [database]
+               (let [table (t2/hydrate (t2/select-one Table :db_id (u/the-id database)) :fields)]
+                 (set (map :name (:fields table))))))))))
 
 (deftest dont-splice-inactive-columns-into-queries-test
   (testing (str "make sure that inactive columns don't end up getting spliced into queries! This test arguably "
@@ -158,7 +162,7 @@
                (-> (qp/process-query {:database (u/the-id database)
                                       :type     :query
                                       :query    {:source-table (t2/select-one-pk Table
-                                                                 :db_id (u/the-id database), :name "birds")}})
+                                                                                 :db_id (u/the-id database), :name "birds")}})
                    :data
                    :native_form
                    :query)))))))
