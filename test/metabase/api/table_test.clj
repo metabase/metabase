@@ -8,15 +8,22 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.http-client :as client]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Card Database Field FieldValues Table]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.table :as table]
+   [metabase.query-processor :as qp]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
+   [metabase.util.malli.fn :as mu.fn]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -26,7 +33,7 @@
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
-(deftest unauthenticated-test
+(deftest ^:parallel unauthenticated-test
   (is (= (get mw.util/response-unauthentic :body)
          (client/client :get 401 "table")))
   (is (= (get mw.util/response-unauthentic :body)
@@ -487,15 +494,14 @@
 (defn- with-field-literal-id [{field-name :name, base-type :base_type :as field}]
   (assoc field :id ["field" field-name {:base-type base-type}]))
 
-(defn- default-card-field-for-venues [table-id]
-  {:table_id                 table-id
-   :semantic_type            nil
+(def ^:private default-card-field-for-venues
+  {:semantic_type            nil
    :default_dimension_option nil
    :dimension_options        []})
 
 (defn- with-numeric-dimension-options [field]
   (assoc field
-    :default_dimension_option (var-get #'api.table/numeric-default-index)
+    :default_dimension_option (var-get @#'api.table/numeric-default-index)
     :dimension_options (var-get #'api.table/numeric-dimension-indexes)))
 
 (defn- with-coordinate-dimension-options [field]
@@ -523,7 +529,7 @@
                   :moderated_status  nil
                   :description       nil
                   :dimension_options (default-dimension-options)
-                  :fields            (map (comp #(merge (default-card-field-for-venues card-virtual-table-id) %)
+                  :fields            (map (comp #(merge default-card-field-for-venues %)
                                                 with-field-literal-id)
                                           (let [id->fingerprint   (t2/select-pk->fn :fingerprint Field :table_id (mt/id :venues))
                                                 name->fingerprint (comp id->fingerprint (partial mt/id :venues))]
@@ -586,7 +592,6 @@
                                          :display_name             "NAME"
                                          :base_type                "type/Text"
                                          :effective_type           "type/Text"
-                                         :table_id                 card-virtual-table-id
                                          :id                       ["field" "NAME" {:base-type "type/Text"}]
                                          :semantic_type            "type/Name"
                                          :default_dimension_option nil
@@ -597,7 +602,6 @@
                                          :display_name             "LAST_LOGIN"
                                          :base_type                "type/DateTime"
                                          :effective_type           "type/DateTime"
-                                         :table_id                 card-virtual-table-id
                                          :id                       ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]
                                          :semantic_type            nil
                                          :default_dimension_option (var-get #'api.table/datetime-default-index)
@@ -839,7 +843,7 @@
       (is (= "Not found."
              (mt/user-http-request :crowberto :post 404 (format "table/%d/discard_values" Integer/MAX_VALUE)))))))
 
-(deftest field-ordering-test
+(deftest ^:parallel field-ordering-test
   (let [original-field-order (t2/select-one-fn :field_order Table :id (mt/id :venues))]
     (try
       (testing "Cane we set alphabetical field ordering?"
@@ -870,3 +874,55 @@
                       (map u/the-id))))))
       (finally (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
                                      {:field_order original-field-order})))))
+
+(deftest card->virtual-table-metadata-test
+  (testing "Metadata returned by GET /api/table/card__:id/query_metadata should not result in duplicate cols in MLv2 (#33565)"
+    (mt/dataset sample-dataset
+      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            card-query        (-> (lib/query metadata-provider (lib.metadata/table metadata-provider (mt/id :orders)))
+                                  (lib/join (lib.metadata/table metadata-provider (mt/id :products)))
+                                  (lib/limit 10))]
+        (mt/with-temp [Card {card-id :id, :as card} {:dataset_query   (lib.convert/->legacy-MBQL card-query)
+                                                     :result_metadata (mt/cols (qp/process-query card-query))}]
+          (binding [mu.fn/*enforce* false]
+            (let [virtual-table      (api.table/card->virtual-table card :include-fields? true)
+                  virtual-fields     (:fields virtual-table)
+                  metadata-provider' (lib.tu/mock-metadata-provider
+                                      metadata-provider
+                                      {:cards [(assoc (lib.metadata.jvm/instance->metadata card :metadata/card)
+                                                      :result-metadata virtual-fields)]})
+                  query              (lib/query metadata-provider' (lib.metadata/card metadata-provider card-id))]
+              (is (= [["ID"                                    "ID"]
+                      ["USER_ID"                               "User ID"]
+                      ["PRODUCT_ID"                            "Product ID"]
+                      ["SUBTOTAL"                              "Subtotal"]
+                      ["TAX"                                   "Tax"]
+                      ["TOTAL"                                 "Total"]
+                      ["DISCOUNT"                              "Discount"]
+                      ["CREATED_AT"                            "Created At"]
+                      ["QUANTITY"                              "Quantity"]
+                      ;; explicitly joined
+                      ["ID_2"                                  "Products → ID"]
+                      ["EAN"                                   "Products → Ean"]
+                      ["TITLE"                                 "Products → Title"]
+                      ["CATEGORY"                              "Products → Category"]
+                      ["VENDOR"                                "Products → Vendor"]
+                      ["PRICE"                                 "Products → Price"]
+                      ["RATING"                                "Products → Rating"]
+                      ["CREATED_AT_2"                          "Products → Created At"]
+                      ;; implicitly joinable
+                      ["PEOPLE__via__USER_ID__ID"              "ID"]
+                      ["PEOPLE__via__USER_ID__ADDRESS"         "Address"]
+                      ["PEOPLE__via__USER_ID__EMAIL"           "Email"]
+                      ["PEOPLE__via__USER_ID__PASSWORD"        "Password"]
+                      ["PEOPLE__via__USER_ID__NAME"            "Name"]
+                      ["PEOPLE__via__USER_ID__CITY"            "City"]
+                      ["PEOPLE__via__USER_ID__LONGITUDE"       "Longitude"]
+                      ["PEOPLE__via__USER_ID__STATE"           "State"]
+                      ["PEOPLE__via__USER_ID__SOURCE"          "Source"]
+                      ["PEOPLE__via__USER_ID__BIRTH_DATE"      "Birth Date"]
+                      ["PEOPLE__via__USER_ID__ZIP"             "Zip"]
+                      ["PEOPLE__via__USER_ID__LATITUDE"        "Latitude"]
+                      ["PEOPLE__via__USER_ID__CREATED_AT"      "Created At"]]
+                     (map (juxt :lib/desired-column-alias :display-name)
+                          (lib/visible-columns query)))))))))))

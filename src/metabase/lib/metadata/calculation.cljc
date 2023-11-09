@@ -468,6 +468,7 @@
     [:include-joined?                              {:optional true} :boolean]
     [:include-expressions?                         {:optional true} :boolean]
     [:include-implicitly-joinable?                 {:optional true} :boolean]
+    ;; if the query stage in question has a `:source-card`, should we include implicitly joinable columns?
     [:include-implicitly-joinable-for-source-card? {:optional true} :boolean]]])
 
 (mu/defn ^:private default-visible-columns-options :- VisibleColumnsOptions

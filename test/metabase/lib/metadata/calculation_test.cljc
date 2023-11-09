@@ -1,7 +1,7 @@
 (ns metabase.lib.metadata.calculation-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -184,3 +184,73 @@
                                (for [field (meta/fields :products)]
                                  (meta/field-metadata :products field))))
               (lib/visible-columns query -1 (lib.util/query-stage query -1)))))))
+
+(deftest ^:parallel visible-columns-include-implicitly-joinable-for-source-card-option-test
+  (testing "visible-columns should respect the :include-implicitly-joinable-for-source-card? option"
+    (let [card-query        (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          metadata-provider (lib.tu/metadata-provider-with-cards-for-queries meta/metadata-provider [card-query])
+          query             (lib/query metadata-provider (lib.metadata/card metadata-provider 1))]
+      (is (=? {:stages [{:source-card 1}]}
+              query))
+      (are [options expected] (= expected
+                                 (map :lib/desired-column-alias
+                                      (lib/visible-columns query -1 (lib.util/query-stage query -1) options)))
+        nil
+        ["ID"
+         "NAME"
+         "CATEGORY_ID"
+         "LATITUDE"
+         "LONGITUDE"
+         "PRICE"
+         "CATEGORIES__via__CATEGORY_ID__ID"
+         "CATEGORIES__via__CATEGORY_ID__NAME"]
+
+        {:include-implicitly-joinable-for-source-card? false}
+        ["ID"
+         "NAME"
+         "CATEGORY_ID"
+         "LATITUDE"
+         "LONGITUDE"
+         "PRICE"]))))
+
+(deftest ^:parallel orderable-columns-do-not-include-implicitly-joinable-columns-for-source-card-test
+  (testing "visible-columns should not include implicitly joinable columns if there is already an explicit join for their Table (#33565)"
+    (let [card-query        (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                (lib/join (meta/table-metadata :products)))
+          metadata-provider (lib.tu/metadata-provider-with-cards-for-queries meta/metadata-provider [card-query])
+          query             (lib/query metadata-provider (lib.metadata/card metadata-provider 1))]
+      (is (=? {:stages [{:source-card 1}]}
+              query))
+      (is (= ["ID"
+              "USER_ID"
+              "PRODUCT_ID"
+              "SUBTOTAL"
+              "TAX"
+              "TOTAL"
+              "DISCOUNT"
+              "CREATED_AT"
+              "QUANTITY"
+              ;; from explicit join
+              "Products__ID"
+              "Products__EAN"
+              "Products__TITLE"
+              "Products__CATEGORY"
+              "Products__VENDOR"
+              "Products__PRICE"
+              "Products__RATING"
+              "Products__CREATED_AT"
+              ;; implicitly joinable
+              "PEOPLE__via__USER_ID__ID"
+              "PEOPLE__via__USER_ID__ADDRESS"
+              "PEOPLE__via__USER_ID__EMAIL"
+              "PEOPLE__via__USER_ID__PASSWORD"
+              "PEOPLE__via__USER_ID__NAME"
+              "PEOPLE__via__USER_ID__CITY"
+              "PEOPLE__via__USER_ID__LONGITUDE"
+              "PEOPLE__via__USER_ID__STATE"
+              "PEOPLE__via__USER_ID__SOURCE"
+              "PEOPLE__via__USER_ID__BIRTH_DATE"
+              "PEOPLE__via__USER_ID__ZIP"
+              "PEOPLE__via__USER_ID__LATITUDE"
+              "PEOPLE__via__USER_ID__CREATED_AT"]
+             (map :lib/desired-column-alias (lib/visible-columns query)))))))
