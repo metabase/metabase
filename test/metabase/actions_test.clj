@@ -302,7 +302,7 @@
                                  ;; Newer versions of MySQL check for not null fields without default values
                                  ;; before checking the type of the parameter.
                                  ;; MySQL 5.7 checks the type of the parameter first.
-                                 :mysql    #"(?s).*Field 'name' doesn't have a default value|Incorrect integer value: 'STRING' for column 'id'.*")}]
+                                 :mysql    #"(?s)(?:.*Field 'name' doesn't have a default value.*)|(?:.*Incorrect integer value: 'STRING' for column 'id'.*)")}]
               :status-code 400}
              (actions/perform-action! :bulk/create
                                       {:database (mt/id)
