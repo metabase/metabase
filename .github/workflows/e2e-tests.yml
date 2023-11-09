@@ -1,3 +1,4 @@
+# Expect snowplow not to run
 name: E2E Tests
 
 on:
