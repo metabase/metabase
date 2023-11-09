@@ -1,3 +1,4 @@
+;; Expect i18n workflow to run
 (ns i18n.create-artifacts.backend
   (:require
    [clojure.java.io :as io]
