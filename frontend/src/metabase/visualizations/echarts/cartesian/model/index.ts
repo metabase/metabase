@@ -120,5 +120,6 @@ export const getCartesianChartModel = (
     leftAxisColumn,
     rightAxisColumn,
     yAxisExtents,
+    insights: rawSeries[0].data.insights, // TODO merge insights between cards
   };
 };

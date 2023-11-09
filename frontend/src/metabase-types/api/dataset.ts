@@ -6,6 +6,7 @@ import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import type { DownloadPermission } from "./permissions";
 import type { ParameterOptions } from "./parameters";
 import type { TableId } from "./table";
+import type { Insight } from "./insight";
 
 export type RowValue = string | number | null | boolean;
 export type RowValues = RowValue[];
@@ -51,6 +52,7 @@ export interface DatasetData {
   results_timezone?: string;
   download_perms?: DownloadPermission;
   results_metadata: ResultsMetadata;
+  insights?: Insight[];
 }
 
 export type JsonQuery = DatasetQuery & {
