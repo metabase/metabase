@@ -236,15 +236,15 @@
                 :dashcards (fn [cards] (add-source-model-link model cards)))))
     {:name      (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
      :dashcards (add-source-model-link
-                 model
-                 [{:row                    0
-                   :col                    0
-                   :size_x                 18
-                   :size_y                 2
-                   :visualization_settings {:text                "# Unfortunately, there's not much else to show right now..."
-                                            :virtual_card        {:display :text}
-                                            :dashcard.background false
-                                            :text.align_vertical :bottom}}])}))
+                     model
+                     [{:row                    0
+                       :col                    0
+                       :size_x                 18
+                       :size_y                 2
+                       :visualization_settings {:text                "# Unfortunately, there's not much else to show right now..."
+                                                :virtual_card        {:display :text}
+                                                :dashcard.background false
+                                                :text.align_vertical :bottom}}])}))
 
 (api/defendpoint GET "/model_index/:model-index-id/primary_key/:pk-id"
   "Return an automagic dashboard for an entity detail specified by `entity`
