@@ -117,7 +117,7 @@
 (let [default-schema (mc/schema
                       [:map {:closed true}
                        [:user-id [:maybe pos-int?]]
-                       [:object [:fn #(t2/instance-of? :metabase/model %)]]])]
+                       [:object [:fn #(boolean (t2/model %))]]])]
   (def ^:private permission-failure-events
     {:event/read-permission-failure default-schema
      :event/write-permission-failure default-schema
