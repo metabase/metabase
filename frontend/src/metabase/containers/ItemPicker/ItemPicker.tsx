@@ -150,6 +150,9 @@ function ItemPicker<TId>({
 
     if (searchString) {
       query.q = searchString;
+      if (showOnlyPersonalCollections) {
+        query.filter_items_in_personal_collection = "only";
+      }
     } else {
       query.collection = openCollectionId;
     }
@@ -159,7 +162,7 @@ function ItemPicker<TId>({
     }
 
     return query;
-  }, [models, searchString, openCollectionId]);
+  }, [searchString, models, showOnlyPersonalCollections, openCollectionId]);
 
   const checkIsItemSelected = useCallback(
     (item: PickerItem<TId>) => {

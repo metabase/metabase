@@ -11,8 +11,11 @@
 (mr/def ::strategy
   [:enum :bin-width :default :num-bins])
 
+(mr/def ::num-bins
+  ::lib.schema.common/positive-int)
+
 (mr/def ::bin-width
-  pos?)
+  ::lib.schema.common/positive-number)
 
 (mr/def ::binning
   [:merge
@@ -25,7 +28,7 @@
     [:bin-width [:map
                  [:bin-width [:ref ::bin-width]]]]
     [:num-bins  [:map
-                 [:num-bins ::lib.schema.common/positive-int]]]]])
+                 [:num-bins [:ref ::num-bins]]]]]])
 
 (mr/def ::binning-option
   [:map

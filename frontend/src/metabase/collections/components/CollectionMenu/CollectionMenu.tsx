@@ -5,6 +5,7 @@ import * as Urls from "metabase/lib/urls";
 import EntityMenu from "metabase/components/EntityMenu";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
+  isInstanceAnalyticsCustomCollection,
   isPersonalCollection,
   isRootCollection,
 } from "metabase/collections/utils";
@@ -27,9 +28,17 @@ export const CollectionMenu = ({
   const url = Urls.collection(collection);
   const isRoot = isRootCollection(collection);
   const isPersonal = isPersonalCollection(collection);
+  const isInstanceAnalyticsCustom =
+    isInstanceAnalyticsCustomCollection(collection);
   const canWrite = collection.can_write;
 
-  if (isAdmin && !isRoot && !isPersonal && !isPersonalCollectionChild) {
+  if (
+    isAdmin &&
+    !isRoot &&
+    !isPersonal &&
+    !isPersonalCollectionChild &&
+    canWrite
+  ) {
     items.push(
       ...PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems(
         collection,
@@ -47,7 +56,7 @@ export const CollectionMenu = ({
     });
   }
 
-  if (!isRoot && !isPersonal && canWrite) {
+  if (!isRoot && !isPersonal && canWrite && !isInstanceAnalyticsCustom) {
     items.push({
       title: t`Move`,
       icon: "move",
