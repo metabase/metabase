@@ -72,6 +72,10 @@ const defaultConfig = {
      **                           TASKS                                **
      ********************************************************************/
     on("task", {
+      log(...messages) {
+        console.log(...messages);
+        return null; // tasks must have a return value
+      },
       ...dbTasks,
       ...verifyDownloadTasks,
       removeDirectory,

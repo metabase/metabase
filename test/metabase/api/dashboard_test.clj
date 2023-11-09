@@ -1533,7 +1533,9 @@
        DashboardCardSeries _                   {:dashboardcard_id dashcard-id-1, :card_id series-id-1
                                                 :position         0}]
       ;; send a request that update and create and delete some cards at the same time
-      (let [cards (:dashcards (mt/user-http-request
+      (let [get-revision-count (fn [] (t2/count :model/Revision :model_id dashboard-id :model "Dashboard"))
+            revisions-before   (get-revision-count)
+            cards (:dashcards (mt/user-http-request
                                :crowberto :put 200 (format "dashboard/%d" dashboard-id)
                                {:dashcards [{:id      dashcard-id-1
                                              :size_x  4
@@ -1582,15 +1584,16 @@
                             :action_id    nil
                             :row          3
                             :col          3
-                            :series       [{:name "Series Card 1"}]}]
+                            :series       [{:name "Series Card 1"}]}
+            revisions-after (get-revision-count)]
         (is (=? [updated-card-1
                  updated-card-2
                  new-card]
                 cards))
         ;; dashcard 3 is deleted
         (is (nil? (t2/select-one DashboardCard :id dashcard-id-3)))
-        (testing "only one revision is created"
-          (is (= 1 (t2/count :model/Revision :model_id dashboard-id))))))))
+        (testing "only one revision is created from the request"
+          (is (= 1 (- revisions-after revisions-before))))))))
 
 (deftest e2e-update-tabs-only-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete tabs in a single req"
