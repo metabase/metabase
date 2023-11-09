@@ -62,8 +62,7 @@
         "null"
       ],
       "maxLength": 128
-    },
-
+    }
   },
   "required": [
     "event"
