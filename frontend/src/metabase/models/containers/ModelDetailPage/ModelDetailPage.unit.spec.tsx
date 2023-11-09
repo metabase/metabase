@@ -129,6 +129,13 @@ const TEST_DATABASE = createMockDatabase({
   tables: [TEST_TABLE, TEST_FK_TABLE_1],
 });
 
+const TEST_DATABASE_WITHOUT_NESTED_QUERIES = createMockDatabase({
+  ...TEST_DATABASE,
+  features: TEST_DATABASE.features.filter(
+    feature => feature !== "nested-queries",
+  ),
+});
+
 const TEST_DATABASE_WITH_ACTIONS = createMockDatabase({
   ...TEST_DATABASE,
   settings: { "database-enable-actions": true },
@@ -404,6 +411,17 @@ describe("ModelDetailPage", () => {
         expect(
           screen.getByText(/This model is not used by any questions yet/i),
         ).toBeInTheDocument();
+      });
+
+      it("does not offer creating new questions if database does not support nested queries", async () => {
+        await setup({
+          model: getModel(),
+          databases: [TEST_DATABASE_WITHOUT_NESTED_QUERIES],
+        });
+
+        expect(
+          screen.queryByRole("link", { name: /Create a new question/i }),
+        ).not.toBeInTheDocument();
       });
 
       it("does not offer creating new questions if nested queries are disabled", async () => {
