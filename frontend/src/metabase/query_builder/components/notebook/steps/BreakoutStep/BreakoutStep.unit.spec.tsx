@@ -35,14 +35,14 @@ function createQueryWithBinning(bucketName = "10 bins") {
   return { query, columnInfo: Lib.displayInfo(query, 0, columnWithBinning) };
 }
 
-function createQueryWithTemporalBreakout() {
+function createQueryWithTemporalBreakout(bucketName = "Quarter") {
   const initialQuery = createQuery();
   const findColumn = columnFinder(
     initialQuery,
     Lib.breakoutableColumns(initialQuery, 0),
   );
   const column = findColumn("ORDERS", "CREATED_AT");
-  const bucket = findTemporalBucket(initialQuery, column, "Quarter");
+  const bucket = findTemporalBucket(initialQuery, column, bucketName);
   const columnWithTemporalBucket = Lib.withTemporalBucket(column, bucket);
   const query = Lib.breakout(initialQuery, 0, columnWithTemporalBucket);
   return {
@@ -217,7 +217,7 @@ describe("BreakoutStep", () => {
       expect(updateQuery).not.toHaveBeenCalled();
     });
 
-    it("should highlight the 'Do not bin' option when a column is not binned", async () => {
+    it("should highlight the `Don't bin` option when a column is not binned", async () => {
       const { query, columnInfo } = createQueryWithBinning("Don't bin");
       setup(createMockNotebookStep({ topLevelQuery: query }));
 
@@ -270,6 +270,25 @@ describe("BreakoutStep", () => {
       expect(
         await screen.findByRole("menuitem", { name: "Quarter" }),
       ).toHaveAttribute("aria-selected", "true");
+    });
+
+    it("should handle `Don't bin` option for temporal bucket (metabase#19684)", async () => {
+      const { query, columnInfo } =
+        createQueryWithTemporalBreakout("Don't bin");
+      setup(createMockNotebookStep({ topLevelQuery: query }));
+
+      userEvent.click(screen.getByText(columnInfo.displayName));
+      const option = screen.getByRole("option", {
+        name: columnInfo.displayName,
+      });
+
+      expect(within(option).getByText("Unbinned")).toBeInTheDocument();
+
+      // verifies Created At is rendered without binning
+      const step = screen.getByTestId("breakout-step");
+      expect(
+        within(step).getByText(columnInfo.displayName),
+      ).toBeInTheDocument();
     });
 
     it("shouldn't update a query when clicking a selected column with temporal bucketing", async () => {

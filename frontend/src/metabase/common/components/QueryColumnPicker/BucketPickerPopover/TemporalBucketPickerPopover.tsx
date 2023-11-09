@@ -23,7 +23,10 @@ export function TemporalBucketPickerPopover({
   const selectedBucket = useMemo(() => Lib.temporalBucket(column), [column]);
 
   const items = useMemo(
-    () => buckets.map(bucket => getBucketListItem(query, stageIndex, bucket)),
+    () => [
+      ...buckets.map(bucket => getBucketListItem(query, stageIndex, bucket)),
+      { displayName: t`Don't bin`, bucket: null },
+    ],
     [query, stageIndex, buckets],
   );
 
@@ -50,5 +53,5 @@ export function TemporalBucketPickerPopover({
 }
 
 function renderTriggerContent(bucket?: Lib.BucketDisplayInfo) {
-  return bucket ? t`by ${bucket.displayName.toLowerCase()}` : null;
+  return bucket ? t`by ${bucket.displayName.toLowerCase()}` : t`Unbinned`;
 }
