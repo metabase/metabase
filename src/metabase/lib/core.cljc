@@ -209,7 +209,7 @@
   joinable-columns
   joins
   raw-join-strategy
-  suggested-join-condition
+  suggested-join-conditions
   with-join-alias
   with-join-fields
   with-join-strategy

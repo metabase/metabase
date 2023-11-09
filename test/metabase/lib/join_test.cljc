@@ -837,13 +837,13 @@
                                                  (meta/field-metadata :checkins :user-id))])))
                 :stages first :joins)))))
 
-(deftest ^:parallel suggested-join-condition-test
+(deftest ^:parallel suggested-join-conditions-test
   (testing "DO suggest a join condition for an FK -> PK relationship"
-    (are [query] (=? [:=
-                      {}
-                      [:field {} (meta/id :venues :category-id)]
-                      [:field {} (meta/id :categories :id)]]
-                     (lib/suggested-join-condition
+    (are [query] (=? [[:=
+                       {}
+                       [:field {} (meta/id :venues :category-id)]
+                       [:field {} (meta/id :categories :id)]]]
+                     (lib/suggested-join-conditions
                       query
                       (meta/table-metadata :categories)))
       ;; plain query
@@ -853,26 +853,26 @@
       (-> lib.tu/venues-query
           (lib/aggregate (lib/count))))))
 
-(deftest ^:parallel suggested-join-condition-pk->fk-test
+(deftest ^:parallel suggested-join-conditions-pk->fk-test
   ;; this is to preserve the existing behavior from MLv1, it doesn't necessarily make sense, but we don't want to have
   ;; to update a million tests, right? Once v1-compatible joins lands then maybe we can go in and make this work,
   ;; since it seems like it SHOULD work.
   (testing "DO suggest join conditions for a PK -> FK relationship"
-    (is (=? [:=
-             {}
-             [:field {} (meta/id :categories :id)]
-             [:field {} (meta/id :venues :category-id)]]
-            (lib/suggested-join-condition
+    (is (=? [[:=
+              {}
+              [:field {} (meta/id :categories :id)]
+              [:field {} (meta/id :venues :category-id)]]]
+            (lib/suggested-join-conditions
              (lib/query meta/metadata-provider (meta/table-metadata :categories))
              (meta/table-metadata :venues))))))
 
-(deftest ^:parallel suggested-join-condition-fk-from-join-test
+(deftest ^:parallel suggested-join-conditions-fk-from-join-test
   (testing "DO suggest join conditions for a FK -> PK relationship if the FK comes from a join"
-    (is (=? [:=
-             {}
-             [:field {:join-alias "Venues"} (meta/id :venues :category-id)]
-             [:field {} (meta/id :categories :id)]]
-            (lib/suggested-join-condition
+    (is (=? [[:=
+              {}
+              [:field {:join-alias "Venues"} (meta/id :venues :category-id)]
+              [:field {} (meta/id :categories :id)]]]
+            (lib/suggested-join-conditions
              (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
                  (lib/join (-> (lib/join-clause
                                 (meta/table-metadata :venues)
@@ -882,7 +882,7 @@
                                (lib/with-join-alias "Venues"))))
              (meta/table-metadata :categories))))))
 
-(deftest ^:parallel suggested-join-condition-fk-from-implicitly-joinable-test
+(deftest ^:parallel suggested-join-conditions-fk-from-implicitly-joinable-test
   (testing "DON'T suggest join conditions for a FK -> implicitly joinable PK relationship (#34526)"
     (let [orders (meta/table-metadata :orders)
           card-query (as-> (lib/query meta/metadata-provider orders) q
@@ -898,7 +898,153 @@
                                        :fields        (lib/returned-columns card-query)}]})
           card (lib.metadata/card metadata-provider 1)
           query (lib/query metadata-provider orders)]
-      (is (nil? (lib/suggested-join-condition query card))))))
+      (is (nil? (lib/suggested-join-conditions query card))))))
+
+(deftest ^:parallel suggested-join-condition-for-fks-pointing-to-non-pk-columns
+  (testing (str "We should be able to suggest a join condition if any column in the current table is an FK pointing "
+                "to the target, regardless of whether that column is marked as a PK or not")
+    (let [id-user           1
+          id-order          2
+          id-user-id        10
+          id-order-user-id  20
+          metadata-provider (lib.tu/mock-metadata-provider
+                             {:database meta/database
+                              :tables   [{:id   id-user
+                                          :name "user"}
+                                         {:id   id-order
+                                          :name "order"}]
+                              :fields   [{:id        id-user-id
+                                          :table-id  id-user
+                                          :name      "id"
+                                          :base-type :type/Integer}
+                                         {:id                 id-order-user-id
+                                          :table-id           id-order
+                                          :name               "user_id"
+                                          :base-type          :type/Integer
+                                          :semantic-type      :type/FK
+                                          :fk-target-field-id id-user-id}]})
+          order             (lib.metadata/table metadata-provider id-order)
+          user              (lib.metadata/table metadata-provider id-user)]
+      (testing "ORDER joining USER (we have an FK to the joined thing)"
+        (let [query (lib/query metadata-provider order)]
+          (is (=? [[:= {}
+                    [:field {} id-order-user-id]
+                    [:field {} id-user-id]]]
+                  (lib/suggested-join-conditions query user)))))
+      (testing "USER joining ORDER (joined thing has an FK to us)"
+        (let [query (lib/query metadata-provider user)]
+          (is (=? [[:= {}
+                    [:field {} id-user-id]
+                    [:field {} id-order-user-id]]]
+                  (lib/suggested-join-conditions query order))))))))
+
+(deftest ^:parallel suggested-join-conditions-multiple-fks-to-same-column-test
+  (testing "when there are multiple FKs to a table, but they point to the same column, only suggest one or the other"
+    (let [id-user                 1
+          id-message              2
+          id-user-id              10
+          id-message-sender-id    20
+          id-message-recipient-id 21
+          metadata-provider       (lib.tu/mock-metadata-provider
+                                   {:database meta/database
+                                    :tables   [{:id   id-user
+                                                :name "user"}
+                                               {:id   id-message
+                                                :name "message"}]
+                                    :fields   [{:id            id-user-id
+                                                :table-id      id-user
+                                                :name          "id"
+                                                :base-type     :type/Integer
+                                                :semantic-type :type/PK}
+                                               {:id                 id-message-sender-id
+                                                :table-id           id-message
+                                                :name               "sender_id"
+                                                :base-type          :type/Integer
+                                                :semantic-type      :type/FK
+                                                :fk-target-field-id id-user-id}
+                                               {:id                 id-message-recipient-id
+                                                :table-id           id-message
+                                                :name               "recipient_id"
+                                                :base-type          :type/Integer
+                                                :semantic-type      :type/FK
+                                                :fk-target-field-id id-user-id}]})
+          message                 (lib.metadata/table metadata-provider id-message)
+          user                    (lib.metadata/table metadata-provider id-user)]
+      (testing "MESSAGE joining USER (we have 2 FKs to the joined thing)"
+        (let [query (lib/query metadata-provider message)]
+          (is (=? [[:= {}
+                    ;; doesn't particularly matter which one gets picked, and order is not necessarily determinate
+                    [:field {} #(contains? #{id-message-sender-id id-message-recipient-id} %)]
+                    [:field {} id-user-id]]]
+                  (lib/suggested-join-conditions query user)))))
+      (testing "USER joining MESSAGE (joined thing has 2 FKs to us)"
+        (let [query (lib/query metadata-provider user)]
+          (is (=? [[:= {}
+                    [:field {} id-user-id]
+                    [:field {} #(contains? #{id-message-sender-id id-message-recipient-id} %)]]]
+                  (lib/suggested-join-conditions query message))))))))
+
+(deftest ^:parallel suggested-join-conditions-multiple-fks-to-different-columns-test
+  (testing "when there are multiple FKs to a table, and they point to different columns, suggest multiple join conditions (#34184)"
+    ;; let's pretend we live in crazy land and the PK for USER is ID + EMAIL (a composite PK) and ORDER has USER_ID
+    ;; and USER_EMAIL
+    (let [id-user             1
+          id-order            2
+          id-user-id          10
+          id-user-email       11
+          id-order-user-id    20
+          id-order-user-email 21
+          metadata-provider   (lib.tu/mock-metadata-provider
+                               {:database meta/database
+                                :tables   [{:id   id-user
+                                            :name "user"}
+                                           {:id   id-order
+                                            :name "order"}]
+                                :fields   [{:id        id-user-id
+                                            :table-id  id-user
+                                            :name      "id"
+                                            :base-type :type/Integer}
+                                           {:id        id-user-email
+                                            :table-id  id-user
+                                            :name      "email"
+                                            :base-type :type/Text}
+                                           {:id                 id-order-user-id
+                                            :table-id           id-order
+                                            :name               "user_id"
+                                            :base-type          :type/Integer
+                                            :semantic-type      :type/FK
+                                            :fk-target-field-id id-user-id}
+                                           {:id                 id-order-user-email
+                                            :table-id           id-order
+                                            :name               "user_email"
+                                            :base-type          :type/Text
+                                            :semantic-type      :type/FK
+                                            :fk-target-field-id id-user-email}]})
+          order               (lib.metadata/table metadata-provider id-order)
+          user                (lib.metadata/table metadata-provider id-user)
+          ;; the order the conditions get returned in is indeterminate, so for convenience let's just sort them by
+          ;; Field IDs so we get consistent results in the test assertions.
+          sort-conditions     #(sort-by (fn [[_= _opts [_field _opts lhs-id, :as _lhs] [_field _opts rhs-id, :as _rhs]]]
+                                          [lhs-id rhs-id])
+                                        %)]
+      (testing "ORDER joining USER (we have a composite FK to the joined thing)"
+        (let [query (lib/query metadata-provider order)]
+          (is (=? [[:= {}
+                    [:field {} id-order-user-id]
+                    [:field {} id-user-id]]
+                   [:= {}
+                    [:field {} id-order-user-email]
+                    [:field {} id-user-email]]]
+                  (sort-conditions (lib/suggested-join-conditions query user))))))
+      (testing "USER joining ORDER (joined thing has a composite FK to us)"
+        (let [query (lib/query metadata-provider user)]
+          (is (=? [[:= {}
+                    [:field {} id-user-id]
+                    [:field {} id-order-user-id]]
+                   [:= {}
+                    [:field {} id-user-email]
+                    [:field {} id-order-user-email]]]
+                  (sort-conditions (lib/suggested-join-conditions query order)))))))))
 
 (deftest ^:parallel join-conditions-test
   (let [joins (lib/joins lib.tu/query-with-join)]
