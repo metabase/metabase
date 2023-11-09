@@ -163,14 +163,7 @@ export class Api extends EventEmitter {
   }
 
   _makeRequest(...args) {
-    const options = args[5];
-    // this is temporary to not deal with failed cypress tests
-    // we should switch to using fetch in all cases (metabase#28489)
-    if (isTest || options.fetch) {
-      return this._makeRequestWithFetch(...args);
-    } else {
-      return this._makeRequestWithXhr(...args);
-    }
+    return this._makeRequestWithFetch(...args);
   }
 
   _makeRequestWithXhr(method, url, headers, body, data, options) {
