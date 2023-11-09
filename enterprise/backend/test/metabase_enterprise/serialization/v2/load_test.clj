@@ -977,3 +977,37 @@
             (is (some? action))
             (testing ":type should be a keyword again"
               (is (keyword? (:type action))))))))))
+
+(deftest remove-dashcards-test
+  (let [serialized (atom nil)
+        dash1s     (atom nil)
+        dash1d     (atom nil)
+        dashcard1s (atom nil)
+        dashcard2d (atom nil)]
+    (ts/with-source-and-dest-dbs
+      (testing "Serializing the original database"
+        (ts/with-source-db
+          (reset! dash1s (ts/create! Dashboard :name "My Dashboard"))
+          (reset! dashcard1s (ts/create! DashboardCard :dashboard_id (:id @dash1s)))
+
+          (reset! serialized (into [] (serdes.extract/extract {})))))
+
+      (testing "New dashcard will be removed on load"
+        (ts/with-dest-db
+          (reset! dash1d (ts/create! Dashboard :name "Weird Name" :entity_id (:entity_id @dash1s)))
+          ;; A dashcard to be removed since it does not exist in serialized data
+          (reset! dashcard2d (ts/create! DashboardCard :dashboard_id (:id @dash1d)))
+
+          ;; Load the serialized content.
+          (serdes.load/load-metabase (ingestion-in-memory @serialized))
+
+          (reset! dash1d (-> (t2/select-one Dashboard :name "My Dashboard")
+                             (t2/hydrate :dashcards)))
+
+          (testing "Dashboard has correct number of dashcards"
+            (is (= 1
+                   (count (:dashcards @dash1d))))
+            (is (= (:entity_id @dashcard1s)
+                   (get-in @dash1d [:dashcards 0 :entity_id])))
+            (is (not= (:entity_id @dashcard1s)
+                      (:entity_id @dashcard2d)))))))))

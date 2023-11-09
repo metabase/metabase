@@ -617,13 +617,18 @@
 
 ;; Call the default load-one! for the Dashboard, then for each DashboardCard.
 (defmethod serdes/load-one! "Dashboard" [ingested maybe-local]
-  (let [dashboard ((get-method serdes/load-one! :default) (dissoc ingested :dashcards :tabs) maybe-local)]
+  (let [dashboard        ((get-method serdes/load-one! :default) (dissoc ingested :dashcards :tabs) maybe-local)
+        known-dashcards  (t2/select-fn-set :entity_id :model/DashboardCard :dashboard_id (:id dashboard))
+        remove-dashcards (set/difference known-dashcards (set (map :entity_id (:dashcards ingested))))]
     (doseq [tab (:tabs ingested)]
       (serdes/load-one! (dashtab-for tab dashboard)
                         (t2/select-one :model/DashboardTab :entity_id (:entity_id tab))))
+    ;; delete dashcards which are not in import, but leave cards in DB
+    (when (seq remove-dashcards)
+      (t2/delete! :model/DashboardCard :entity_id [:in remove-dashcards]))
     (doseq [dashcard (:dashcards ingested)]
       (serdes/load-one! (dashcard-for dashcard dashboard)
-                        (t2/select-one 'DashboardCard :entity_id (:entity_id dashcard))))))
+                        (t2/select-one :model/DashboardCard :entity_id (:entity_id dashcard))))))
 
 (defn- serdes-deps-dashcard
   [{:keys [action_id card_id parameter_mappings visualization_settings]}]
