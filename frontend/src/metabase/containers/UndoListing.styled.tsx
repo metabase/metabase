@@ -27,7 +27,7 @@ export const ToastCard = styled(Card)<{
   padding: 10px ${space(2)};
   margin-top: ${space(1)};
   min-width: 310px;
-  max-width: calc(100vw - ${LIST_H_MARGINS} - ${LIST_H_MARGINS});
+  max-width: calc(100vw - 2 * ${LIST_H_MARGINS});
   transform: ${props => `translateY(${props.translateY}px)`};
   ${props => (props.color ? `background-color: ${color(props.color)}` : "")}
 `;
