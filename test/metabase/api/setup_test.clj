@@ -183,9 +183,9 @@
                 (is (= (if (some? v) v default)
                        (t2/select-one-fn k Database :name db-name)))))
             (is (=? {"database"     "h2"
-                     "database_id"  #hawk/malli :int
+                     "database_id"  int?
                      "source"       "setup"
-                     "dbms_version" #hawk/malli [:fn some?]
+                     "dbms_version" string?
                      "event"        "database_connection_successful"}
                  (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))))))
 

@@ -238,9 +238,7 @@
                                                                :engine  (u/qualified-name ::test-driver)
                                                                :details {:db "my_db"}}
                                                               m)))]
-       (is (malli= [:and
-                    [:map-of :keyword :any]
-                    [:map [:id pos-int?]]]
+       (is (malli= [:map [:id pos-int?]]
                    response))
        (t2/select-one Database :id db-id))
      (finally (t2/delete! Database :name db-name)))))
@@ -347,9 +345,9 @@
                                  :engine  driver/*driver*
                                  :details (tx/dbdef->connection-details driver/*driver* nil dataset-def)}))
         (is (=? {"database"     (name driver/*driver*)
-                 "database_id"  #hawk/malli :int
+                 "database_id"  int?
                  "source"       "admin"
-                 "dbms_version" #hawk/malli [:fn some?]
+                 "dbms_version" string?
                  "event"        "database_connection_successful"}
                 (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))))
 

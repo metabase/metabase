@@ -789,8 +789,10 @@
         (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})
         (snowplow/track-event! ::snowplow/database-connection-successful
                                api/*current-user-id*
-                               {:database engine :database-id (u/the-id <>)
-                                :source :admin :dbms-version (:version (driver/dbms-version (keyword engine) <>))}))
+                               {:database     engine
+                                :database-id  (u/the-id <>)
+                                :source       :admin
+                                :dbms-version (:version (driver/dbms-version (keyword engine) <>))}))
       ;; failed to connect, return error
       (do
         (snowplow/track-event! ::snowplow/database-connection-failed
