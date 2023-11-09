@@ -238,8 +238,8 @@ describe("scenarios > dashboard card resizing", () => {
       });
     });
     cy.createDashboard().then(({ body: { id: dashId } }) => {
-      cy.request("PUT", `/api/dashboard/${dashId}/cards`, {
-        cards: cardIds.map((cardId, index) => ({
+      cy.request("PUT", `/api/dashboard/${dashId}`, {
+        dashcards: cardIds.map((cardId, index) => ({
           id: index,
           card_id: cardId,
           row: index * 2,

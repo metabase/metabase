@@ -3,6 +3,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.email.messages :as messages]
+   [metabase.events :as events]
    [metabase.integrations.common :as integrations.common]
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
@@ -34,6 +35,8 @@
   [user :- UserAttributes]
   (u/prog1 (first (t2/insert-returning-instances! User (merge user {:password (str (random-uuid))})))
     (log/info (trs "New SSO user created: {0} ({1})" (:common_name <>) (:email <>)))
+    ;; publish user-invited event for audit logging
+    (events/publish-event! :event/user-invited {:object (assoc <> :sso_source (:sso_source user))})
     ;; send an email to everyone including the site admin if that's set
     (when (integrations.common/send-new-sso-user-admin-email?)
       (messages/send-user-joined-admin-notification-email! <>, :google-auth? true))))

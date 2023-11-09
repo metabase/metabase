@@ -1,0 +1,39 @@
+description: null
+database_type: varchar
+semantic_type: null
+table_id:
+- Internal Metabase Database
+- public
+- v_tables
+coercion_strategy: null
+name: display_name
+has_field_values: null
+settings: null
+caveats: null
+fk_target_field_id: null
+dimensions: []
+custom_position: 0
+effective_type: type/Text
+active: true
+nfc_path: null
+parent_id: null
+serdes/meta:
+- model: Database
+  id: Internal Metabase Database
+- model: Schema
+  id: public
+- model: Table
+  id: v_tables
+- model: Field
+  id: display_name
+database_is_auto_increment: false
+json_unfolding: false
+position: 5
+visibility_type: normal
+preview_display: true
+display_name: Display Name
+database_position: 5
+database_required: false
+created_at: '2023-10-31T21:26:32.847751Z'
+base_type: type/Text
+points_of_interest: null
