@@ -59,7 +59,7 @@
     (update graph :groups (fn [groups]
                             (m/map-vals #(select-keys % ids) groups)))))
 
-(defn- graph
+(defn graph
   "Fetch collection graph.
 
   * `:clear-revisions?` = delete any previously existing collection revision entries so we get revision = 0
@@ -92,6 +92,16 @@
                 :groups   {(u/the-id (perms-group/all-users)) {:root :none,  :COLLECTION :none}
                            (u/the-id (perms-group/admin))     {:root :write, :COLLECTION :write}}}
                (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection]))))))))
+
+(deftest audit-collections-graph-test
+  (testing "Check that the audit collection has :read for admins."
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (t2.with-temp/with-temp [Collection collection {}]
+        (with-redefs [perms/default-audit-collection (constantly collection)]
+          (is (= {:revision 0
+                  :groups   {(u/the-id (perms-group/all-users)) {:root :none,  :COLLECTION :none}
+                             (u/the-id (perms-group/admin))     {:root :write, :COLLECTION :read}}}
+                 (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection])))))))))
 
 (deftest read-perms-test
   (testing "make sure read perms show up correctly"
@@ -406,12 +416,14 @@
 (defn- do-with-n-temp-users-with-personal-collections! [num-users thunk]
   (mt/with-model-cleanup [User Collection]
     ;; insert all the users
-    (t2/query {:insert-into (t2/table-name User)
-               :values      (repeatedly num-users #(assoc (t2.with-temp/with-temp-defaults User) :date_joined :%now))})
-    (let [max-id   (:max-id (t2/select-one [User [:%max.id :max-id]]))
-          ;; determine the range of IDs we inserted -- MySQL doesn't support INSERT INTO ... RETURNING like Postgres
-          ;; so this is the fastest way to do this
-          user-ids (range (inc (- max-id num-users)) (inc max-id))]
+    (let [max-id (:max-id (t2/select-one [User [:%max.id :max-id]]))
+          user-ids (range (inc max-id) (inc (+ num-users max-id)))
+          values (map #(assoc (t2.with-temp/with-temp-defaults User)
+                              :date_joined :%now
+                              :id %)
+                      user-ids)]
+      (t2/query {:insert-into (t2/table-name User)
+                 :values      values})
       (assert (= (count user-ids) num-users))
       ;; insert the Collections
       (t2/query {:insert-into (t2/table-name Collection)

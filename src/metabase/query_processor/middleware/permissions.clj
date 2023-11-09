@@ -11,6 +11,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.query.permissions :as query-perms]
    [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.fetch-source-query
     :as fetch-source-query]
@@ -100,11 +101,20 @@
   "Used to allow users looking at a dashboard to view (possibly chained) filters."
   false)
 
+(defenterprise check-audit-db-permissions
+  "OSS implementation always throws an exception since queries over the audit DB are not permitted."
+  metabase-enterprise.audit-app.permissions
+  [query]
+  (throw (ex-info (tru "Querying this database requires the audit-app feature flag")
+                  query)))
+
 (mu/defn ^:private check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
   [{database-id :database, :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
+    (when (= perms/audit-db-id database-id)
+      (check-audit-db-permissions outer-query))
     (let [card-id (or *card-id* (::fetch-source-query/source-card-id outer-query))]
       (cond
         card-id

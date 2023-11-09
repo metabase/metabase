@@ -13,20 +13,26 @@ redirect_from:
 
 Interactive embedding is the only type of embedding that integrates with your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](https://www.metabase.com/glossary/query_builder) and [drill-down](https://www.metabase.com/learn/questions/drill-through) into your data.
 
-## Interactive embedding demo
+### Interactive embedding demo
 
 To get a feel for what you can do with interactive embedding, check out our [interactive embedding demo](https://www.metabase.com/embedding-demo).
 
 To see the query builder in action, click on **Reports** > **+ New** > **Question**.
+
+### Quick start
+
+Check out the [Interactive embedding quick start](https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start).
 
 ## Prerequisites for interactive embedding
 
 1. Make sure you have a [license token](../paid-features/activating-the-enterprise-edition.md) for a [paid plan](https://store.metabase.com/checkout/login-details).
 2. Organize people into Metabase [groups](../people-and-groups/start.md).
 3. Set up [permissions](../permissions/introduction.md) for each group.
-4. Set up [SSO](../people-and-groups/start.md#authentication) to automatically apply permissions and show people the right data upon sign-in.
+4. Set up [SSO](../people-and-groups/start.md#authentication) to automatically apply permissions and show people the right data upon sign-in. In general, **we recommend using [SSO with JWT](../people-and-groups/authenticating-with-jwt.md)**.
 
 If you're dealing with a [multi-tenant](https://www.metabase.com/learn/customer-facing-analytics/multi-tenant-self-service-analytics) situation, check out our recommendations for [Configuring permissions for different customer schemas](https://www.metabase.com/learn/permissions/multi-tenant-permissions).
+
+If you have your app running locally, and you're using the Pro Cloud version, or hosting Metabase and your app in different domains, you'll need to set your Metabase environment's session cookie samesite option to "none".
 
 ## Enabling interactive embedding in Metabase
 
@@ -57,11 +63,15 @@ Go to your Metabase instance and find the page that you want to embed.
 
 For example, to embed your Metabase home page, set the `src` attribute to your [site URL](../configuring-metabase/settings.md#site-url), such as:
 
-`http://metabase.yourcompany.com/`
+```
+http://metabase.yourcompany.com/
+```
 
 To embed a specific Metabase dashboard, use the dashboard's URL, such as:
 
-`http://metabase.yourcompany.com/dashboard/1`
+```
+http://metabase.yourcompany.com/dashboard/1
+```
 
 ### Pointing an iframe to an authentication endpoint
 
@@ -97,7 +107,9 @@ Note that your interactive embed must be compatible with Safari to run on _any_ 
 
 If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you can set the following [environment variable](../configuring-metabase/environment-variables.md):
 
-`MB_SESSION_COOKIE_SAMESITE=None`
+```sh
+MB_SESSION_COOKIE_SAMESITE=None
+```
 
 If you set this environment variable to "None", you must use HTTPS in Metabase to prevent browsers from rejecting the request. For more information, see MDN's documentation on [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
 
@@ -111,15 +123,21 @@ To limit the amount of time that a person stays logged in, set [`MAX_SESSION_AGE
 
 For example, to keep people signed in for 24 hours at most:
 
-`MAX_SESSION_AGE=1440`
+```sh
+MAX_SESSION_AGE=1440
+```
 
 To automatically clear a person's login cookies when they end a browser session:
 
-`MB_SESSION_COOKIES=true`
+```sh
+MB_SESSION_COOKIES=true
+```
 
 To manually log someone out of Metabase, load the following URL (for example, in a hidden iframe on the logout page of your application):
 
-`https://metabase.yourcompany.com/auth/logout`
+```sh
+https://metabase.yourcompany.com/auth/logout
+```
 
 If you're using [JWT](../people-and-groups/authenticating-with-jwt.md) for SSO, we recommend setting the `exp` (expiration time) property to a short duration (e.g., 1 minute).
 
@@ -127,29 +145,62 @@ If you're using [JWT](../people-and-groups/authenticating-with-jwt.md) for SSO, 
 
 To keep up with changes to an embedded Metabase URL (for example, when a filter is applied), set up your app to listen for "location" messages from the embedded Metabase. If you want to use this message for deep-linking, note that "location" mirrors "window.location".
 
-```
-{ "metabase": { "type": "location", "location": LOCATION_OBJECT_OR_URL }}
+```json
+{
+  "metabase": {
+    "type": "location",
+    "location": LOCATION_OBJECT_OR_URL
+  }
+}
 ```
 
 To make an embedded Metabase page (like a question) fill up the entire iframe in your app, set up your app to listen for a "frame" message with "normal" mode from Metabase:
 
-```
-{ "metabase": { "type": "frame", "frame": { "mode": "normal" }}}
+```json
+{
+  "metabase": {
+    "type": "frame",
+    "frame": {
+      "mode": "normal"
+    }
+  }
+}
 ```
 
 To specify the size of an iframe in your app so that it matches an embedded Metabase page (such as a dashboard), set up your app to listen for a "frame" message with "fit" mode from Metabase:
 
-```
-{ "metabase": { "type": "frame", "frame": { "mode": "fit", height: HEIGHT_IN_PIXELS }}}
+```json
+{
+  "metabase": {
+    "type": "frame",
+    "frame": {
+      "mode": "fit",
+      "height": HEIGHT_IN_PIXELS
+    }
+  }
+}
 ```
 
 ## Supported postMessage messages _to_ embedded Metabase
 
 To change an embedding URL, send a "location" message from your app to Metabase:
 
+```json
+{
+  "metabase": {
+    "type": "location",
+    "location": LOCATION_OBJECT_OR_URL
+  }
+}
 ```
-{ "metabase": { "type": "location", "location": LOCATION_OBJECT_OR_URL }}
-```
+
+## Group strategies with sandboxing
+
+If you want multiple people from a single customer account to collaborate on questions and dashboards, you'll need to set up one [group](../people-and-groups/managing.md#groups) per customer account.
+
+You can handle [data sandboxing](../permissions/data-sandboxes.md) with a single, separate group that just sandboxes your data. For example, each person could be part of a customer group that sets up data permissions with sandboxing via a certain attribute that applies to everyone across all your customer accounts.
+
+Additionally, each person within a single customer account could also be a member of a group specific to that customer account. That way they can collaborate on collections with other people in their organization, without seeing stuff created by people from other customers' accounts.
 
 ## Showing or hiding Metabase UI components
 
@@ -157,21 +208,38 @@ To change the interface of your interactive embed, you can add parameters to the
 
 For example, you can disable Metabase's [top nav bar](#top_nav) and [side nav menu](#side_nav) like this:
 
-`your_embedding_url?top_nav=false&side_nav=false`
+```
+your_embedding_url?top_nav=false&side_nav=false
+```
 
 ![Top nav and side nav disabled](./images/no-top-no-side.png)
 
-### action_buttons
+Options include:
+
+- [Action buttons](#action_buttons)
+- [Additional info](#additional_info)
+- [Breadcrumbs](#breadcrumbs)
+- [Header](#header)
+- [Locale](#locale)
+- [Logo](#logo)
+- [New button](#new_button)
+- [Search](#search)
+- [Side nav](#side_nav)
+- [Top nav](#top_nav)
+
+### `action_buttons`
 
 Visible by default on question pages when the [header](#header) is enabled.
 
 To hide the action buttons such as **Filter**, **Summarize**, the query builder button, and so on:
 
-`header=false&action_buttons=false`
+```
+header=false&action_buttons=false
+```
 
 ![Action buttons](./images/action-buttons.png)
 
-### additional_info
+### `additional_info`
 
 Visible by default on question and dashboard pages, when the [header](#header) is enabled.
 
@@ -181,13 +249,15 @@ To hide the gray text "Edited X days ago by FirstName LastName", as well as the 
 
 ![Additional info](./images/additional-info.png)
 
-### breadcrumbs
+### `breadcrumbs`
 
 Shown by default in the top nav bar. Collection breadcrumbs show the path to the item (i.e., the collection(s) the item is in). To hide the breadcrumbs:
 
-`breadcrumbs=false`
+```
+breadcrumbs=false
+```
 
-### header
+### `header`
 
 Visible by default on question and dashboard pages.
 
@@ -195,7 +265,17 @@ To hide a question or dashboard's title, [additional info](#additional_info), an
 
 `header=false`
 
-### logo
+### `locale`
+
+You can localize the user interface via a parameter. For example, to set the locale to Spanish:
+
+```
+locale=es-ES
+```
+
+Check out the [locales Metabase supports](https://github.com/metabase/metabase/tree/master/locales). And read more about [localization](../configuring-metabase/localization.md).
+
+### `logo`
 
 Whether to show the logo that opens and closes the sidebar nav. Default is true. How Metabase displays the logo depends on the `side_nav` setting. Here's a rough breakdown of how these two parameters interact:
 
@@ -209,33 +289,41 @@ If `logo=false` and:
 - `side_nav=true`: Metabase shows the generic sidebar icon, with a gray color in normal state, and a brand color on hover.
 - `side_nav=false`: There is no side nav nor logo, so the breadcrumbs move all the way to the left of the screen.
 
-### new_button
+### `new_button`
 
 Hidden by default. To show the **+ New** button used to create queries or dashboards:
 
-`top_nav=true&new_button=true`
+```
+top_nav=true&new_button=true
+```
 
-### search
+### `search`
 
 Hidden by default. To show the search box in the top nav:
 
-`top_nav=true&search=true`
+```
+top_nav=true&search=true
+```
 
-### side_nav
+### `side_nav`
 
 The navigation sidebar is shown on `/collection` and home page routes, and hidden everywhere else by default.
 
 To allow people to minimize the sidebar:
 
-`top_nav=true&side_nav=true`
+```
+top_nav=true&side_nav=true
+```
 
 ![Side nav](./images/side-nav.png)
 
-### top_nav
+### `top_nav`
 
 Shown by default. To hide the top navigation bar:
 
-`top_nav=false`
+```
+top_nav=false
+```
 
 ![Top nav bar](./images/top-nav.png)
 

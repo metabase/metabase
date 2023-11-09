@@ -10,7 +10,6 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
-   [metabase.models.table :refer [Table]]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
@@ -81,7 +80,7 @@
             (map (fn [table-id]
                    ((juxt :id :schema) (lib.metadata/table (qp.store/metadata-provider) table-id))))
             table-ids)
-      (t2/select-pk->fn :schema Table :id [:in table-ids]))))
+      (t2/select-pk->fn :schema :model/Table :id [:in table-ids]))))
 
 (mu/defn tables->permissions-path-set :- [:set perms/PathSchema]
   "Given a sequence of `tables-or-ids` referenced by a query, return a set of required permissions. A truthy value for

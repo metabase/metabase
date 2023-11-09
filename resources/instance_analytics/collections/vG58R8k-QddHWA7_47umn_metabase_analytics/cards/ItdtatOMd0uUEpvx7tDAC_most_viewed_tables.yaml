@@ -1,0 +1,173 @@
+description: null
+archived: false
+collection_position: null
+table_id:
+- Internal Metabase Database
+- public
+- v_view_log
+result_metadata: null
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Most viewed tables
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  database: Internal Metabase Database
+  type: query
+  query:
+    limit: 100
+    joins:
+    - alias: Group Members - User
+      strategy: left-join
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_view_log
+          - user_id
+        - base-type: type/Integer
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_group_members
+          - user_id
+        - base-type: type/Integer
+          join-alias: Group Members - User
+      source-table: lTp-ATFsCUFEr9I0fMEaO
+    - fields: all
+      strategy: left-join
+      alias: Tables - Entity Qualified
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_view_log
+          - entity_qualified_id
+        - base-type: type/Text
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_tables
+          - entity_qualified_id
+        - base-type: type/Text
+          join-alias: Tables - Entity Qualified
+      source-table: x7GwgNdjfzrpQkKTraaqo
+    - fields: all
+      strategy: left-join
+      alias: People - User
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_group_members
+          - user_id
+        - base-type: type/Integer
+          join-alias: Group Members - User
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
+          - user_id
+        - base-type: type/Integer
+          join-alias: People - User
+      source-table: 0wVIfjBJWclD0lKeABYYl
+    - fields: all
+      strategy: left-join
+      alias: Databases
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_tables
+          - database_id
+        - base-type: type/Integer
+          join-alias: Tables - Entity Qualified
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_databases
+          - entity_id
+        - base-type: type/Integer
+          join-alias: Databases
+      source-table: -19557ZnrWiDgG4h4cKxF
+    breakout:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_tables
+        - name
+      - base-type: type/Text
+        join-alias: Tables - Entity Qualified
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_databases
+        - name
+      - base-type: type/Text
+        join-alias: Databases
+    order-by:
+    - - desc
+      - - aggregation
+        - 0
+    aggregation:
+    - - count
+    source-table: P6Ityjj7igswKh4NgZZjz
+    filter:
+    - and
+    - - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_view_log
+          - entity_type
+        - base-type: type/Text
+      - table
+    - - not-null
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_tables
+          - name
+        - base-type: type/Text
+          join-alias: Tables - Entity Qualified
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: ItdtatOMd0uUEpvx7tDAC
+  label: most_viewed_tables
+display: table
+entity_id: ItdtatOMd0uUEpvx7tDAC
+collection_preview: true
+visualization_settings:
+  graph.dimensions:
+  - name
+  graph.show_values: true
+  table.cell_column: count
+  table.pivot: false
+  table.pivot_column: name_2
+  column_settings:
+    '["name","count"]':
+      show_mini_bar: true
+    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
+    : column_title: Dashboard name
+    ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Entity Qualified"}]]'
+    : column_title: Dashboard ID
+    ? '["ref",["field",["Internal Metabase Database","public","v_tables","name"],{"base-type":"type/Text","join-alias":"Tables - Entity Qualified"}]]'
+    : column_title: Table name
+    ? '["ref",["field",["Internal Metabase Database","public","v_databases","name"],{"base-type":"type/Text","join-alias":"Databases"}]]'
+    : column_title: Database
+  graph.metrics:
+  - count
+metabase_version: vUNKNOWN (901f705)
+parameters: []
+dataset: false
+created_at: '2023-11-01T12:01:42.296181Z'
+public_uuid: null

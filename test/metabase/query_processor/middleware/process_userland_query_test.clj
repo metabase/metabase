@@ -139,43 +139,39 @@
 (deftest record-view-log-when-process-userland-query-test
   (testing "record a view log with only card id"
     (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query users)}]
-      (mt/with-model-cleanup [:model/ViewLog]
-        (qp/process-query (qp/userland-query (assoc
-                                              (:dataset_query card)
-                                              :info {:card-id (:id card)})))
+      (qp/process-query (qp/userland-query (assoc
+                                            (:dataset_query card)
+                                            :info {:card-id (:id card)})))
 
-        (is (true? (t2/exists? :model/ViewLog :model "card" :model_id (:id card) :user_id nil)))))))
+      (is (true? (t2/exists? :model/ViewLog :model "card" :model_id (:id card) :user_id nil))))))
 
 (deftest record-view-log-when-process-userland-query-test-2
   (testing "record a view log with card id and executed by"
     (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query users)}]
-      (mt/with-model-cleanup [:model/ViewLog]
-        (is (=? {:status :completed}
-                (qp/process-query (qp/userland-query (assoc
-                                                      (:dataset_query card)
-                                                      :info {:card-id     (:id card)
-                                                             :executed-by (mt/user->id :rasta)})))))
-        (is (true? (t2/exists? :model/ViewLog :model "card" :model_id (:id card) :user_id (mt/user->id :rasta))))))))
+      (is (=? {:status :completed}
+              (qp/process-query (qp/userland-query (assoc
+                                                    (:dataset_query card)
+                                                    :info {:card-id     (:id card)
+                                                           :executed-by (mt/user->id :rasta)})))))
+      (is (t2/exists? :model/ViewLog :model "card" :model_id (:id card) :user_id (mt/user->id :rasta))))))
 
 (deftest record-view-log-when-process-userland-query-test-3
   (testing "skip if context is"
     (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query users)}]
       (testing :collection
-        (mt/with-model-cleanup [:model/ViewLog]
-          (is (=? {:status :completed}
-                  (qp/process-query (qp/userland-query (assoc
-                                                        (:dataset_query card)
-                                                        :info {:card-id (:id card)
-                                                               :context "collection"})))))
-          (is (not (t2/exists? :model/ViewLog :model "card" :model_id (:id card))))))
+        (is (=? {:status :completed}
+                (qp/process-query (qp/userland-query (assoc
+                                                      (:dataset_query card)
+                                                      :info {:card-id (:id card)
+                                                             :context "collection"})))))
+        (is (not (t2/exists? :model/ViewLog :model "card" :model_id (:id card)))))
       (testing :dashboard
-        (mt/with-model-cleanup [:model/ViewLog]
-          (is (=? {:status :completed}
-                  (qp/process-query (qp/userland-query (assoc
-                                                        (:dataset_query card)
-                                                        :info {:card-id (:id card)
-                                                               :context "dashboard"})))))
-          (is (not (t2/exists? :model/ViewLog :model "card" :model_id (:id card)))))))))
+        (is (=? {:status :completed}
+                (qp/process-query (qp/userland-query (assoc
+                                                      (:dataset_query card)
+                                                      :info {:card-id (:id card)
+                                                             :context "dashboard"})))))
+        (is (not (t2/exists? :model/ViewLog :model "card" :model_id (:id card))))))))
 
 (deftest cancel-test
   (let [saved-query-execution? (atom false)]

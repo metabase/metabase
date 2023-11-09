@@ -338,8 +338,9 @@
   (cond->> options
     (some #(= (:unit %) unit) options)
     (mapv (fn [option]
-            (cond-> (dissoc option option-key)
-              (= (:unit option) unit) (assoc option-key true))))))
+            (cond-> option
+              (contains? option option-key) (dissoc option option-key)
+              (= (:unit option) unit)       (assoc option-key true))))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/column
   [_query _stage-number field-metadata]
