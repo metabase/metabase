@@ -145,14 +145,16 @@ describe("CoordinateFilterPicker", () => {
       );
 
       it("should add a filter with one value via keyboard", async () => {
-        const { getNextFilterParts, getNextFilterColumnNames } = setup();
+        const { onChange, getNextFilterParts, getNextFilterColumnNames } =
+          setup();
 
         await setOperator("Less than");
         const input = screen.getByPlaceholderText("Enter a number");
-        userEvent.type(input, "90{enter}");
+        userEvent.type(input, "{enter}");
+        expect(onChange).not.toHaveBeenCalled();
 
-        const filterParts = getNextFilterParts();
-        expect(filterParts).toMatchObject({
+        userEvent.type(input, "90{enter}");
+        expect(getNextFilterParts()).toMatchObject({
           operator: "<",
           values: [90],
           column: expect.anything(),
@@ -191,16 +193,21 @@ describe("CoordinateFilterPicker", () => {
       );
 
       it("should add a filter with two values via keyboard", async () => {
-        const { getNextFilterParts, getNextFilterColumnNames } = setup();
+        const { onChange, getNextFilterParts, getNextFilterColumnNames } =
+          setup();
 
         await setOperator("Between");
         const [leftInput, rightInput] =
           screen.getAllByPlaceholderText("Enter a number");
-        userEvent.type(leftInput, "-70");
-        userEvent.type(rightInput, "90{enter}");
+        userEvent.type(leftInput, "{enter}");
+        expect(onChange).not.toHaveBeenCalled();
 
-        const filterParts = getNextFilterParts();
-        expect(filterParts).toMatchObject({
+        userEvent.type(leftInput, "-70{enter}");
+        expect(onChange).not.toHaveBeenCalled();
+
+        userEvent.type(rightInput, "90{enter}");
+        expect(onChange).toHaveBeenCalled();
+        expect(getNextFilterParts()).toMatchObject({
           operator: "between",
           values: [-70, 90],
           column: expect.anything(),
@@ -237,16 +244,22 @@ describe("CoordinateFilterPicker", () => {
       });
 
       it("should add a filter with four values via keyboard", async () => {
-        const { getNextFilterParts, getNextFilterColumnNames } = setup();
+        const { onChange, getNextFilterParts, getNextFilterColumnNames } =
+          setup();
 
         await setOperator("Inside");
-        userEvent.type(screen.getByLabelText("Upper latitude"), "42");
-        userEvent.type(screen.getByLabelText("Lower latitude"), "-42");
-        userEvent.type(screen.getByLabelText("Left longitude"), "-24");
-        userEvent.type(screen.getByLabelText("Right longitude"), "24{enter}");
+        userEvent.type(screen.getByLabelText("Upper latitude"), "42{enter}");
+        expect(onChange).not.toHaveBeenCalled();
 
-        const filterParts = getNextFilterParts();
-        expect(filterParts).toMatchObject({
+        userEvent.type(screen.getByLabelText("Lower latitude"), "-42{enter}");
+        expect(onChange).not.toHaveBeenCalled();
+
+        userEvent.type(screen.getByLabelText("Left longitude"), "-24{enter}");
+        expect(onChange).not.toHaveBeenCalled();
+
+        userEvent.type(screen.getByLabelText("Right longitude"), "24{enter}");
+        expect(onChange).toHaveBeenCalled();
+        expect(getNextFilterParts()).toMatchObject({
           operator: "inside",
           values: [42, -24, -42, 24],
           column: expect.anything(),
