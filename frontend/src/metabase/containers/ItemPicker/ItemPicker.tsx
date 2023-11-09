@@ -154,9 +154,7 @@ function ItemPicker<TId>({
       query.collection = openCollectionId;
     }
 
-    if (models.length === 1) {
-      query.models = models;
-    }
+    query.models = models;
 
     return query;
   }, [searchString, models, filterPersonalCollections, openCollectionId]);
