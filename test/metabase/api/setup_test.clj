@@ -6,10 +6,12 @@
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.setup :as api.setup]
+   [metabase.config :as config]
    [metabase.driver.h2 :as h2]
    [metabase.events :as events]
+   [metabase.events.audit-log-test :as audit-log-test]
    [metabase.http-client :as client]
-   [metabase.models :refer [Activity Database Table User]]
+   [metabase.models :refer [Database Table User]]
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache-test :as setting.cache-test]
    [metabase.public-settings :as public-settings]
@@ -86,15 +88,15 @@
           (testing "new User should be created"
             (is (t2/exists? User :email email)))
           (testing "Creating a new admin user should set the `admin-email` Setting"
-            (is (= email
-                   (public-settings/admin-email))))
-          (testing "Should record :user-joined Activity (#12933)"
-            (let [user-id (u/the-id (t2/select-one-pk User :email email))]
-              (is (=? {:topic         :user-joined
-                       :model_id      user-id
-                       :user_id       user-id
-                       :model         "user"}
-                      (t2/select-one Activity :topic "user-joined", :user_id user-id))))))))))
+            (is (= email (public-settings/admin-email))))
+          (testing "Should record :user-joined in the Audit Log (#12933)"
+            (let [user-id (u/the-id (t2/select-one User :email email))]
+              (is (= {:topic    :user-joined
+                      :model_id user-id
+                      :user_id  user-id
+                      :model    "User"
+                      :details  {}}
+                     (audit-log-test/latest-event :user-joined user-id))))))))))
 
 (deftest invite-user-test
   (testing "POST /api/setup"
@@ -102,13 +104,13 @@
              a Snowplow analytics event is sent"
       (mt/with-fake-inbox
         (snowplow-test/with-fake-snowplow-collector
-          (let [email (mt/random-email)
-                first-name (mt/random-name)
-                last-name (mt/random-name)
+          (let [email              (mt/random-email)
+                first-name         (mt/random-name)
+                last-name          (mt/random-name)
                 invitor-first-name (mt/random-name)]
             (with-setup! {:invite {:email email, :first_name first-name, :last_name last-name}
-                          :user {:first_name invitor-first-name}
-                          :site_name "Metabase"}
+                          :user   {:first_name invitor-first-name}
+                          :prefs  {:site_name "Metabase"}}
               (let [invited-user (t2/select-one User :email email)]
                 (is (= (:first_name invited-user) first-name))
                 (is (= (:last_name invited-user) last-name))
@@ -120,7 +122,20 @@
                                       (snowplow-test/pop-event-data-and-user-id!))))
                 (is (mt/received-email-body?
                      email
-                     (re-pattern (str invitor-first-name " could use your help setting up Metabase.*"))))))))))))
+                     (re-pattern (str invitor-first-name " could use your help setting up Metabase.*"))))
+                (testing "The audit-log :user-invited event is recorded"
+                  (let [logged-event (audit-log-test/latest-event :user-invited (u/the-id invited-user))]
+                    (is (partial=
+                         {:topic    :user-invited
+                          :user_id  nil
+                          :model    "User"
+                          :model_id (u/the-id (t2/select-one User :email email))
+                          :details  {:invite_method          "email"
+                                     :first_name             first-name
+                                     :last_name              last-name
+                                     :email                  email
+                                     :user_group_memberships [{:id 1} {:id 2}]}}
+                         logged-event))))))))))))
 
 (deftest invite-user-test-2
   (testing "POST /api/setup"
@@ -325,7 +340,7 @@
 
 (deftest has-user-setup-setting-test
   (testing "has-user-setup is true iff there are 1 or more users"
-    (let [user-count (t2/count User)]
+    (let [user-count (t2/count User {:where [:not= :id config/internal-mb-user-id]})]
       (if (zero? user-count)
         (is (not (setup/has-user-setup)))
         (is (setup/has-user-setup))))))
