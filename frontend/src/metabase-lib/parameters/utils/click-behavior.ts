@@ -245,7 +245,6 @@ function baseTypeFilterForParameterType(parameterType: string) {
 
 export function clickBehaviorIsValid(
   clickBehavior: ClickBehavior | undefined | null,
-  targetDashboard: Dashboard | undefined,
 ): boolean {
   // opens drill-through menu
   if (clickBehavior == null) {
@@ -267,21 +266,35 @@ export function clickBehaviorIsValid(
       return (clickBehavior.linkTemplate || "").length > 0;
     }
 
-    if (linkType === "dashboard") {
-      const tabs = targetDashboard?.tabs || [];
-      const dashboardTabExists = tabs.some(
-        tab => tab.id === clickBehavior.tabId,
-      );
-      return clickBehavior.targetId != null && dashboardTabExists;
-    }
-
-    if (linkType === "question") {
+    if (linkType === "dashboard" || linkType === "question") {
       return clickBehavior.targetId != null;
     }
   }
 
   // we've picked "link" without picking a link type
   return false;
+}
+
+export function canSaveClickBehavior(
+  clickBehavior: ClickBehavior | undefined | null,
+  targetDashboard: Dashboard | undefined,
+): boolean {
+  if (
+    clickBehavior?.type === "link" &&
+    clickBehavior.linkType === "dashboard"
+  ) {
+    const tabs = targetDashboard?.tabs || [];
+    const dashboardTabExists = tabs.some(tab => tab.id === clickBehavior.tabId);
+
+    if (tabs.length > 1 && !dashboardTabExists) {
+      // If the target dashboard tab has been deleted, and there are other tabs
+      // to choose from (we don't render <Select/> when there is only 1 tab)
+      // make user manually pick a new dashboard tab.
+      return false;
+    }
+  }
+
+  return clickBehaviorIsValid(clickBehavior);
 }
 
 export function formatSourceForTarget(

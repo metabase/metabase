@@ -17,7 +17,10 @@ import type {
 } from "metabase-types/api";
 import { isTableDisplay } from "metabase/lib/click-behavior";
 import type { UiParameter } from "metabase-lib/parameters/types";
-import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavior";
+import {
+  canSaveClickBehavior,
+  clickBehaviorIsValid,
+} from "metabase-lib/parameters/utils/click-behavior";
 
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { getClickBehaviorForColumn } from "./utils";
@@ -99,7 +102,12 @@ function ClickBehaviorSidebar({
   });
 
   const isValidClickBehavior = useMemo(
-    () => clickBehaviorIsValid(clickBehavior, targetDashboard),
+    () => clickBehaviorIsValid(clickBehavior),
+    [clickBehavior],
+  );
+
+  const closeIsDisabled = useMemo(
+    () => !canSaveClickBehavior(clickBehavior, targetDashboard),
     [clickBehavior, targetDashboard],
   );
 
@@ -193,7 +201,7 @@ function ClickBehaviorSidebar({
     <Sidebar
       onClose={hideClickBehaviorSidebar}
       onCancel={handleCancel}
-      closeIsDisabled={!isValidClickBehavior}
+      closeIsDisabled={closeIsDisabled}
     >
       <ClickBehaviorSidebarHeader
         dashcard={dashcard}
