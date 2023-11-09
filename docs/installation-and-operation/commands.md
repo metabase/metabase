@@ -30,13 +30,17 @@ Drop entity IDs for instances of serializable models. Useful for migrating from 
 
 > This command is deprecated. Use `export` instead.
 
-Serializes Metabase instance into directory `path`. Options:
+Serializes Metabase instance into directory `path`.
+
+Options:
+
 -u, --user EMAIL Export collections owned by the specified user
 -s, --state (active|all) all When set to `active`, do not dump archived entities. Default behavior is `all`.
 
 ## `dump-to-h2 h2-filename & opts`
 
 Transfer data from existing database to newly created H2 DB with specified filename. Target H2 file is deleted before dump, unless the --keep-existing flag is given.
+
 Options:
 
 -k, --keep-existing Do not delete target H2 file if it exists.
@@ -53,6 +57,7 @@ Generates a markdown file containing documentation for environment variables rel
 Serialize Metabase instance into directory at `path`.
 
 Options:
+
 -c, --collection ID Export only specified ID(s). Use commas to separate multiple IDs.
 -C, --no-collections Do not export any content in collections.
 -S, --no-settings Do not export settings.yaml
@@ -77,7 +82,9 @@ Load serialized Metabase instance as created by the export command from director
 > This command is deprecated. Use `import` instead.
 
 Load serialized Metabase instance as created by [[dump]] command from directory `path`.
+
 Options:
+
 -m, --mode (skip|update) skip Update or skip on conflicts.
 -e, --on-error (continue|abort) continue Abort or continue on error.
 
@@ -103,8 +110,7 @@ Reset the password for a user with `email-address`.
 
 ## `rotate-encryption-key new-key`
 
-Rotate the encryption key of a metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to
-the current key, and the parameter `new-key` has to be the new key. `new-key` has to be at least 16 chars.
+Rotate the encryption key of a metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to the current key, and the parameter `new-key` has to be the new key. `new-key` has to be at least 16 chars.
 
 ## `seed-entity-ids`
 
