@@ -42,10 +42,6 @@
   [[_tag & args]]
   (some temporal-unit args))
 
-(defmethod temporal-unit :+
-  [[_+ & args]]
-  (some temporal-unit args))
-
 (defmulti ^:private optimizable?
   {:arglists '([expression])}
   mbql.u/dispatch-by-clause-name-or-class
@@ -81,12 +77,16 @@
 (doseq [tag [:= :!= :< :<= :> :>=]]
   (lib.hierarchy/derive tag ::binary-filter))
 
-(defn- compatible-units? [lhs-unit rhs-unit]
-  (case [(boolean lhs-unit) (boolean rhs-unit)]
-    [true true]   (= lhs-unit rhs-unit)
-    [true false]  true
-    [false true]  true
-    [false false] false))
+(defn- compatible-units?
+  "The temporal units for two expressions *x* and *y* are compatible for optimization purposes if
+
+  a. They both have units, and those units are the same
+
+  b. One of them has a unit, but the other does not."
+  [x-unit y-unit]
+  (if (and x-unit y-unit)
+    (= x-unit y-unit)
+    (or x-unit y-unit)))
 
 (defmethod optimizable? ::binary-filter
   [[_tag lhs rhs]]
