@@ -33,25 +33,27 @@ describe("SingleDatePicker", () => {
   });
 
   it("should be able to set the date via the calendar", () => {
-    const { onChange } = setup();
+    const { onChange, onSubmit } = setup();
 
     userEvent.click(screen.getByText("12"));
 
     expect(onChange).toHaveBeenCalledWith(new Date(2020, 0, 12));
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("should be able to set the date via the calendar when there is time", () => {
-    const { onChange } = setup({
+    const { onChange, onSubmit } = setup({
       value: DATE_TIME,
     });
 
     userEvent.click(screen.getByText("12"));
 
     expect(onChange).toHaveBeenCalledWith(new Date(2020, 0, 12, 10, 20));
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("should be able to set the date via the input", () => {
-    const { onChange } = setup();
+    const { onChange, onSubmit } = setup();
 
     const input = screen.getByLabelText("Date");
     userEvent.clear(input);
@@ -59,10 +61,11 @@ describe("SingleDatePicker", () => {
 
     expect(screen.getByText("February 2020")).toBeInTheDocument();
     expect(onChange).toHaveBeenLastCalledWith(new Date(2020, 1, 15));
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("should be able to set the date via the input when there is time", () => {
-    const { onChange } = setup({
+    const { onChange, onSubmit } = setup({
       value: DATE_TIME,
     });
 
@@ -72,10 +75,11 @@ describe("SingleDatePicker", () => {
 
     expect(screen.getByText("February 2020")).toBeInTheDocument();
     expect(onChange).toHaveBeenLastCalledWith(new Date(2020, 1, 15, 10, 20));
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("should be able to add time", () => {
-    const { onChange } = setup();
+    const { onChange, onSubmit } = setup();
 
     userEvent.click(screen.getByText("Add time"));
     const input = screen.getByLabelText("Time");
@@ -83,10 +87,11 @@ describe("SingleDatePicker", () => {
     userEvent.type(input, "10:20");
 
     expect(onChange).toHaveBeenLastCalledWith(new Date(2020, 0, 10, 10, 20));
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("should be able to update the time", () => {
-    const { onChange } = setup({
+    const { onChange, onSubmit } = setup({
       value: DATE_TIME,
     });
 
@@ -95,10 +100,11 @@ describe("SingleDatePicker", () => {
     userEvent.type(input, "20:30");
 
     expect(onChange).toHaveBeenLastCalledWith(new Date(2020, 0, 10, 20, 30));
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("should be able to remove time", () => {
-    const { onChange } = setup({
+    const { onChange, onSubmit } = setup({
       value: DATE_TIME,
     });
 
@@ -106,5 +112,18 @@ describe("SingleDatePicker", () => {
 
     expect(screen.queryByLabelText("Time")).not.toBeInTheDocument();
     expect(onChange).toHaveBeenLastCalledWith(new Date(2020, 0, 10));
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("should be able to submit on enter", () => {
+    const { onChange, onSubmit } = setup();
+
+    const input = screen.getByLabelText("Date");
+    userEvent.clear(input);
+    userEvent.type(input, "Feb 15, 2020");
+    userEvent.type(input, "{enter}");
+
+    expect(onChange).toHaveBeenLastCalledWith(new Date(2020, 1, 15));
+    expect(onSubmit).toHaveBeenCalled();
   });
 });
