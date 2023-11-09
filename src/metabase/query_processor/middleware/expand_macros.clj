@@ -144,6 +144,7 @@
    [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
+   [metabase.mbql.predicates :as mbql.preds]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.schema.helpers :as helpers]
    [metabase.mbql.util :as mbql.u]
@@ -155,6 +156,7 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    ;;;;tmp
    [toucan2.core :as t2]
@@ -424,12 +426,14 @@
   (case type
     :field clause
     :expression (let [expr-name (second clause)
+                      expr-opts (case (count clause) 3 (nth clause 2) nil)
                       [expr-type :as expr-val] (get-in query [:expressions expr-name])]
+                  ;;;; TODO: hack it here, expression stuff should get it's metric it is coming from
                   (case expr-type
                     ;;;; Field stored in expression could contain precious field opts as eg. id of a metric
                     ;;;; it represents.
                     :field [:field expr-name (assoc (get expr-val 2) :base-type base-type)]
-                    [:field expr-name {:base-type base-type}]))
+                    [:field expr-name (merge expr-opts {:base-type base-type})]))
     :aggregation-options [:field name (assoc (get clause 2) :base-type base-type)]
     [:field name {:base-type base-type}]))
 
@@ -546,6 +550,7 @@
     (swap-ag-for-field ag (::metric-id->field query))
     (mbql.u/replace ag [:metric id] (get-in query [::metric-id->field id]))))
 
+;;;; TODO: desired name for-form
 ;;;; OK
 (defn- desired-name-for-field
   "Choose name for a field being renamed during metric aggregation to field transformation. Field can become renamed,
@@ -554,15 +559,19 @@
    in its field options:
    - ::display-name from ag
    - ::name from ag
-   - ::metric-name from metric."
+   - ::metric-name from metric.
+   - special case, unnamed ag containing expression using metrics aka no aggregation is left"
   [[_ _ field-opts]]
   (tap> ["desired-name-for-field" field-opts])
+
+  
+
   (or (::display-name field-opts)
       (::name field-opts)
       (::metric-name field-opts)))
 
 ;;;; OK
-(defn- name-for-renamed-field
+(defn- name-for-transformed-ag
   "Return name for a field that was result of metrics aggregation transformation."
   [used-names desired-name]
   (if-not (contains? used-names desired-name)
@@ -574,6 +583,7 @@
           new-index (inc (apply max 0 similar-names-indices))]
       (str desired-name " (" new-index ")"))))
 
+;;;; This will have to be made into smaller chunks, more digestable
 ;;;; OK
 (defn- fields->renaming-map+order
   [used-names fields]
@@ -584,12 +594,55 @@
     (if (nil? field-opts)
       result
       (let [desired-name (desired-name-for-field field)
-            new-name (name-for-renamed-field used-names desired-name)]
+            new-name (name-for-transformed-ag used-names desired-name)]
         (recur rest-fields
                (conj used-names new-name)
                (-> result
                    (update :ordered-names conj new-name)
                    (assoc-in [:name->field new-name] field)))))))
+
+(def ^{:arglists '([ag-clause])} AggregationFn?
+  "Is this a valid Aggregation clause?"
+  (mr/validator mbql.s/AggregationFn))
+
+(comment
+  (contains-aggregate?-walk-wrong [:count])
+  (contains-aggregate?-walk-wrong [:aggregation-options [:/ [:sum [:field 10 nil]] 1]])
+  (contains-aggregate?-walk-wrong [:aggregation-options [:/ [:field 10 nil] 1]])
+  (contains-aggregate?-walk-wrong [:aggregation-options [:/ 1]])
+
+  (tree-seq vector? identity [:aggregation-options [:/ [:sum [:field 10 nil]] 1]])
+  )
+
+(comment
+  (reduce (fn [acc x] (or acc (AggregationFn? x)))
+          false
+          (tree-seq vector? identity [:aggregation-options [:/ [:sum [:field 10 nil]] 1]]))
+  
+  (contains-aggregate? [:aggregation-options [:/ [:sum [:field 10 nil]] 1]])
+  ;;; why this does not work?
+  (contains-aggregate? [:aggregation-options [:sum [:field 10 nil]] {:name "x"}])
+  ;;;;
+  (contains-aggregate? [:aggregation-options [:/ [:field 10 nil] [:field 10 nil]] {:name "x"}])
+  (contains-aggregate? [:aggregation-options [:/ [:field 10 nil] [:avg [:field 10 nil]]] {:name "x"}])
+  
+  )
+
+(comment
+            ;;;; for some reason this is valid aggregation (numeric functions!)
+  (mbql.preds/Aggregation? [:/ [:field 10 nil] [:field 10 nil]])
+            ;;;; but this isn't
+  (mbql.preds/Aggregation? [:/ [:field 10 nil]])
+            ;;;; but following is!!!
+  (mbql.preds/Aggregation? [:distinct [:field 10 nil]])
+  (mbql.preds/Aggregation? [:distinct [:field 10 nil]])
+  (mbql.preds/Aggregation? [:distinct [:/ [:field 10 nil] [:field 10 nil]]]))
+
+(defn- contains-aggregate? [form]
+  #_(reduce (fn [acc x] (or acc (AggregationFn? x)))
+          false
+          (tree-seq vector? identity form))
+  (boolean (some AggregationFn? (tree-seq vector? seq form))))
 
 ;;;; OK
 (defn- swap-metric-clauses
@@ -601,8 +654,21 @@
   (tap> ["swap-metric-clauses args" query])
   (let [swapped-ags (doto (map (partial swap-metric-clauses-in-aggregation query) aggregation)
                       (as-> $ (tap> ["xixix" $])))
+        #_#_original-names @(def nnn (mapv (partial annotate/aggregation-name query) aggregation))
+        ;;;; TODO: this should be modified! Ensure that breakout is added also for aggregation containing just metrics
+        ;;;;       when there is no breakout in place! aka we need breakout for joined fields
+        
+        ;;;; bind the names to aggregations -- or rather will hardcode the expression name...
+        _ nil
+
         {:keys [remaining-ags fields-from-ags]}
         (group-by (fn [[type]] (case type :field :fields-from-ags :remaining-ags)) swapped-ags)
+        
+        ;;; tmp
+        #_#_{:keys [still-valid-ags becoming-expressions]}
+        @(def ggg (group-by #(if contains-aggregate? :still-valid-ags :becoming-expressions) swapped-ags))
+
+        ;;;; CONTINUE HERE!
         {:keys [ordered-names name->field]}
         (fields->renaming-map+order (keys expressions) fields-from-ags)
         ordered-expression-references (mapv (partial vector :expression) ordered-names)]
@@ -611,6 +677,101 @@
         (m/assoc-some :expressions (not-empty (merge expressions name->field)))
         (m/assoc-some :breakout (not-empty (into (vec breakout) ordered-expression-references))))))
 
+(defn- swap-metric-clauses-in-aggregation-info
+  [query {:keys [desired-name-source aggregation] :as aggregation-info}]
+  ;;; haaaack here! if just field stays, check the metrics name and if default, swap for default
+  ;;; this must be refac when working
+  (tap> ["swap-metric-clauses-in-aggrgation-info" query aggregation-info])
+  (let [[type :as transformed-aggregation] (swap-metric-clauses-in-aggregation query aggregation)
+        new-desired-name (when (and (= :field type) (= :default desired-name-source))
+                           (get-in transformed-aggregation [2 ::metric-name]))]
+    (cond-> (assoc aggregation-info :transformed-aggregation transformed-aggregation)
+      (some? new-desired-name) (assoc :desired-name new-desired-name
+                                      :desired-name-source :metric-name))
+    ))
+
+(defn- aggregation->aggregation-info [query original-index ag]
+  (tap> ["aggregation->aggregation-info args" query original-index ag])
+  (let [name (mbql.u/match-one ag
+               [:aggregation-options _ opts]
+               (:display-name opts))]
+    (cond-> {:desired-name (annotate/aggregation-name query ag)
+             :desired-name-source :default
+             :original-index original-index
+             :aggregation ag}
+      (some? name) (assoc :desired-name name
+                          :desired-name-source :aggregation-options))))
+
+;;;; currently ignoring if names for aggregation and to be expression are equal
+;;;; solves only if transformed names would be same... aka no 2 same key expressions!
+(defn- add-new-name-to-aggregation-info-reducer
+  [{:keys [used-names] :as acc} {:keys [transformed-aggregation desired-name] :as aggregation-info}]
+  (if (contains-aggregate? transformed-aggregation)
+    (update acc :results conj aggregation-info)
+    (let [final-name (name-for-transformed-ag used-names desired-name)
+          agi-with-final-name (assoc aggregation-info :final-name final-name)]
+      (-> acc
+          (update :used-names conj final-name)
+          (update :results conj agi-with-final-name)))))
+
+(defn- add-final-names-to-aggregation-infos
+  [{:keys [expressions]} agis]
+  (:results (reduce add-new-name-to-aggregation-info-reducer
+                     {:used-names (set (keys expressions))
+                      :results []}
+                     agis)))
+
+(defn- maybe-add-expression-to-aggregation-info
+  [{:keys [final-name transformed-aggregation] :as aggregation-info}]
+  (if-not (some? final-name)
+    aggregation-info
+    (let [expr-opts (not-empty (mbql.u/match-one transformed-aggregation [:aggregation-options ag opts] opts))
+          expression (mbql.u/match-one transformed-aggregation
+                       [:aggregation-options ag _]
+                       ag
+
+                       _
+                       &match)]
+      (-> aggregation-info
+          (assoc :expression expression)
+          (m/assoc-some :expression-options expr-opts)))))
+
+(defn- aggregation-info->breakout-element???
+  [{:keys [aggregation transformed-aggregation] :as _aggregation-info}]
+  (not (contains-aggregate? transformed-aggregation)))
+
+(defn- swap-metric-clauses--incl-exprs
+  "Swap metric clauses in query originally containing them. Metrics columns were computed in [[metrics-query]] and
+   joined into query being transformed by [[join-metrics-query]]. Aggregation that contains only one metric and nothing
+   else becomes a field, that is moved to breakout. Fields like that are wrapped in expressions. This way their name
+   can be changed to reflect name in aggregation options."
+  [{:keys [aggregation expressions breakout] :as query}]
+  #_(tap> ["swap-metric-clauses args" query])
+  (let [aggregation-infos (map-indexed (partial aggregation->aggregation-info query) aggregation)
+        agis-transformed (map (partial swap-metric-clauses-in-aggregation-info query) aggregation-infos)
+        agis-names-added (add-final-names-to-aggregation-infos query agis-transformed)
+        agis-exprs-added (map maybe-add-expression-to-aggregation-info agis-names-added)
+
+        {:keys [remaining-ags-infos new-breakout-elements-infos]}
+        ;; (group-by #(if (aggregation-info->breakout-element??? %) :remaining-ags-infos :new-breakout-elements-infos)
+        (group-by #(if (aggregation-info->breakout-element??? %) :new-breakout-elements-infos :remaining-ags-infos)
+                  agis-exprs-added)
+
+        name->field (into {} (map (juxt :final-name :expression)) new-breakout-elements-infos)
+
+        ;;;; TODO: expression references should contain the name of original aggregation or metric whatever!!!
+        ordered-expression-references (map #(filterv some? [:expression (:final-name %) (:expression-options %)]) 
+                                           new-breakout-elements-infos)
+        ]
+    (def aaaaa [query aggregation-infos agis-transformed agis-names-added agis-exprs-added])
+    (def bbbbb [remaining-ags-infos new-breakout-elements-infos])
+    (def ccccc [name->field ordered-expression-references])
+    (-> query
+        (u/assoc-dissoc :aggregation (not-empty (mapv :transformed-aggregation remaining-ags-infos)))
+        (m/assoc-some :expressions (not-empty (merge expressions name->field)))
+        (m/assoc-some :breakout (not-empty (into (vec breakout) ordered-expression-references))))))
+
+;;;; TODO: this has to be modified also!!!
 (defn- ordered-clause-refs-for-fields
   "When query is transformed using [[swap-metric-clauses]], some aggregation elements could become breakout elements.
    That could change the order of columns in the result. This function records original order in a following way:
@@ -621,11 +782,31 @@
   (cond (nil? ag)
         acc
 
-        (one-and-only-metric? ag)
+        #_(one-and-only-metric? ag)
+        ;;; hack now, remove metrics and check if contains
+        (not (contains-aggregate? (mbql.u/replace ag
+                                                  [:metric _]
+                                                  #_"TMP HACK"
+                                                  [:field "dummy" {:base-type :type/Number}])))
         (recur (inc breakout-idx) ag-idx ags (conj acc [:breakout breakout-idx]))
 
         :else
         (recur breakout-idx (inc ag-idx) ags (conj acc [:aggregation ag-idx]))))
+
+(comment
+  (ordered-clause-refs-for-fields
+   0 0
+   [[:aggregation-options [:sum [:+ [:metric 426] [:metric 426]]] {:name "m+m", :display-name "M + M"}]] [])
+  (def aaaggg [:aggregation-options [:sum [:+ [:metric 426] [:metric 426]]] {:name "m+m", :display-name "M + M"}])
+  (contains-aggregate? (mbql.u/replace aaaggg
+                                       [:metric _]
+                                       [:field "dummy" {:base-type :type/Number}]))
+
+  ;; following does not work
+  (mbql.preds/Aggregation? [:sum [:+ "TMP HACK" "TMP HACK"]])
+  ;; 
+  (mbql.preds/Aggregation? [:sum [:+ [:field 111111 nil] [:field 100000 nil]]])
+  )
 
 ;;;; OK
 (defn- infer-ordered-clause-refs-for-fields
@@ -700,7 +881,8 @@
                                            (reduce join-metrics-query query))]
       (-> with-joined-metrics-queries
           preprocess-query
-          swap-metric-clauses
+          #_swap-metric-clauses
+          swap-metric-clauses--incl-exprs
           update-order-by-ag-refs))
     query))
 
@@ -723,6 +905,7 @@
   "Transform clause reference from :ordered-clause-refs-for-fields of format [type index] to field usable
    in wrapping query."
   [query metadatas clause-ref]
+  (def wwwww [query metadatas clause-ref])
   (let [column-index (clause-ref->column-index query clause-ref)
         metadata (metadatas column-index)
         clause (clause-ref->clause query clause-ref)]

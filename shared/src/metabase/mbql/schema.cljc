@@ -1011,6 +1011,15 @@
                   ;; SUGAR clauses
                   cum-count count)]])
 
+(mr/def ::AggregationFn
+  (one-of avg cum-sum distinct stddev sum min max metric share count-where
+          sum-where case median percentile ag:var
+          ;; SUGAR clauses
+          cum-count count))
+
+(def AggregationFn
+  [:ref ::AggregationFn])
+
 (def ^:private UnnamedAggregation
   ::UnnamedAggregation)
 

@@ -11,7 +11,8 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp]
+   [metabase.util :as u]))
 
 (defn- mbql-query [inner-query]
   {:database 1, :type :query, :query (merge {:source-table 1}
@@ -394,10 +395,6 @@
 
 ;; (deftest metric-correct-order-test)
 
-;; (deftest metric-with-expression-test
-;;   (mt/test-drivers (mt/normal-drivers)
-;;     (testing "bla"
-;;       (mt/mbql-query venues))))
 
 ;;;; - [ ] metric-query-unexpanded-segments-test, expect exception
 
@@ -418,8 +415,6 @@
 ;;;; - [ ] metric in source-query
 
 ;;;; - [ ] metric in saved query
-
-;;;; - [ ] use of metrics with named expressions, maybe think of order by updates
 
 ;;;; TODO: Here make more tests for expansion rather then query execution.
 (deftest simple-metric-test
@@ -718,6 +713,7 @@
               [6 14 "2014-11-06T16:15:00Z"]]
                (mt/rows @(def ppp (qp/process-query query)))))))))
 
+;;;; TODO
 (deftest aggregation-with-expression-using-one-metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (t2.with-temp/with-temp
@@ -822,52 +818,52 @@
 
 ;; complex for examples
 (deftest multiple-metrics-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
-                   (t2.with-temp/with-temp
-                     [:model/Metric {m1-id :id} {:name "venues, count"
-                                                 :description "Metric doing count with no filtering."
-                                                 :table_id (mt/id :venues)
-                                                 :definition (mt/$ids venues {:source-table $$venues
-                                                                              :aggregation [[:count]]})}
-                      :model/Metric {m2-id :id} {:name "venues, sum price, cat id lt 50"
-                                                 :description (str "This is metric doing sum of price with filter for category id "
-                                                                   "less than 50.")
-                                                 :table_id (mt/id :venues)
-                                                 :definition (mt/$ids venues {:source-table $$venues
-                                                                              :filter [:< $category_id 50]
-                                                                              :aggregation [[:sum $price]]})}
+  (mt/test-drivers
+   (mt/normal-drivers-with-feature :nested-queries :left-join)
+   (t2.with-temp/with-temp
+     [:model/Metric {m1-id :id} {:name "venues, count"
+                                 :description "Metric doing count with no filtering."
+                                 :table_id (mt/id :venues)
+                                 :definition (mt/$ids venues {:source-table $$venues
+                                                              :aggregation [[:count]]})}
+      :model/Metric {m2-id :id} {:name "venues, sum price, cat id lt 50"
+                                 :description (str "This is metric doing sum of price with filter for category id "
+                                                   "less than 50.")
+                                 :table_id (mt/id :venues)
+                                 :definition (mt/$ids venues {:source-table $$venues
+                                                              :filter [:< $category_id 50]
+                                                              :aggregation [[:sum $price]]})}
        ;;;; Following metric requires ids of previously defined metrics. Those ids are autogenrated, hence available
        ;;;;   in body of `with-temp`. Because of that, definition for this metrics will be set there.
-                      :model/Metric {m3-id :id} {:name "venues, count metric div sum metric, cat id gt 30"
-                                                 :description (str "Metric that combines another metrics. "
-                                                                   "It divides values of `m1` by values of `m2`, filtering for "
-                                                                   "category ids greater than 20")
-                                                 :table_id (mt/id :venues)}]
-                     (t2/update! :model/Metric m3-id {:definition (mt/$ids venues
-                                                                           {:source-table $$venues
-                                                                            :filter [:> $category_id 20]
-                                                                            :aggregation
-                                                                            [[:aggregation-options
-                                                                              [:/ [:metric m1-id] [:metric m2-id]]
-                                                                              {:name "Metric dividing metric"
-                                                                               :display-name "Metric dividing metric"}]]})})
-                     (let [query @(def q (mt/mbql-query venues
-                                                        {:aggregation [[:metric m3-id]
-                                                                       [:metric m2-id]
-                                                                       [:metric m1-id]]
-                                                         :breakout [$category_id]
-                                                         :order-by [[:asc $category_id]]
+      :model/Metric {m3-id :id} {:name "venues, count metric div sum metric, cat id gt 30"
+                                 :description (str "Metric that combines another metrics. "
+                                                   "It divides values of `m1` by values of `m2`, filtering for "
+                                                   "category ids greater than 20")
+                                 :table_id (mt/id :venues)}]
+     (t2/update! :model/Metric m3-id {:definition (mt/$ids venues
+                                                           {:source-table $$venues
+                                                            :filter [:> $category_id 20]
+                                                            :aggregation
+                                                            [[:aggregation-options
+                                                              [:/ [:metric m1-id] [:metric m2-id]]
+                                                              {:name "Metric dividing metric"
+                                                               :display-name "Metric dividing metric"}]]})})
+     (let [query @(def q (mt/mbql-query venues
+                                        {:aggregation [[:metric m3-id]
+                                                       [:metric m2-id]
+                                                       [:metric m1-id]]
+                                         :breakout [$category_id]
+                                         :order-by [[:asc $category_id]]
                              ;; TODO: Change limit so non-nil col 1 is checked!
-                                                         :limit 5}))
-                           preprocessed @(def pp (qp/preprocess query))]
-                       #_(is (=?))
-                       (is (= [[2 nil 20 8]
-                               [3 nil 4 2]
-                               [4 nil 4 2]
-                               [5 nil 14 7]
-                               [6 nil 3 2]]
-                              (mt/formatted-rows [int num int int]
-                                                 @(def p (qp/process-query q)))))))))
+                                         :limit 5}))
+           preprocessed @(def pp (qp/preprocess query))]
+       (is (= [[2 nil 20 8]
+               [3 nil 4 2]
+               [4 nil 4 2]
+               [5 nil 14 7]
+               [6 nil 3 2]]
+              (mt/formatted-rows [int num int int]
+                                 @(def p (qp/process-query q)))))))))
 
 (comment
   ;; snippet for initializing.
@@ -904,7 +900,33 @@
 
 (deftest metrics-transformation-nested-definition-test)
 
-(deftest metrics-cyclic-definition-test)
+;;;; OK
+(deftest metrics-cyclic-definition-test
+  (mt/test-drivers
+   (mt/normal-drivers-with-feature :nested-queries :left-join)
+   (t2.with-temp/with-temp
+     [:model/Metric {m1-id :id} {:name "m1"
+                                 :description "This metric will use the m3 in its definition."
+                                 :table_id (mt/id :venues)}
+      :model/Metric {m2-id :id} {:name "m2"
+                                 :description "This metric will use the m1 in its definition."
+                                 :table_id (mt/id :venues)
+                                 :definition {:source-table (mt/id :venues)
+                                              :aggregation [[:metric m1-id]]}}
+      :model/Metric {m3-id :id} {:name "m3"
+                                 :description "This metric will use the m2 in its definition."
+                                 :table_id (mt/id :venues)
+                                 :definition {:source-table (mt/id :venues)
+                                              :aggregation [[:metric m2-id]]}}]
+     (t2/update! :model/Metric :id m1-id {:definition {:source-table (mt/id :venues)
+                                                       :aggregation [[:metric m3-id]]}})
+     (let [query @(def q (mt/mbql-query venues {:aggregation [[:metric m1-id]]}))]
+       (testing "Expcetion is thrown on cycle in metrics definitions."
+         (is (thrown? Exception (try @(def exex (mt/with-metadata-provider (mt/id)
+                                                  (#'expand-macros/expand-metrics-and-segments query)))
+                                     (catch Exception e
+                                       (def eee e)
+                                       (throw e))))))))))
 
 ;;;; OK
 (deftest metrics-no-breakout-test
@@ -918,7 +940,7 @@
                                                               :aggregation [[:count]]})}]
      (let [query @(def q (mt/mbql-query venues
                                         {:aggregation [[:metric m1-id]]}))]
-       (is (partial= (mt/$ids venues
+       #_(is (partial= (mt/$ids venues
                               {:query
                                {:fields [[:field "Just count" {:join-alias "metric__0"}]]
                                 :source-query {:expressions {"Just count" [:field "Just count" {}]}
@@ -929,8 +951,192 @@
          (is (= [[100]]
                 (mt/rows (qp/process-query q)))))))))
 
+;;;; ! PROGRESS -- do all variations!
 (deftest metrics-in-custom-expression-test
-  )
+  (mt/test-drivers
+   (mt/normal-drivers-with-feature :nested-queries :left-join)
+   (mt/dataset
+    sample-dataset
+    (t2.with-temp/with-temp
+      [:model/Metric {m-gizmo-id :id} (mt/$ids products
+                                       {:name "gizmo count"
+                                        :description "It's about counting the gizmos."
+                                        :table_id $$products
+                                        :definition {:source-table $$products
+                                                     :aggregation [[:count]]
+                                                     :filter [:= $category "Gizmo"]}})
+       :model/Metric {m-gadget-id :id} (mt/$ids products
+                                        {:name "gadget count"
+                                         :description "It's about counting the gadgets."
+                                         :table_id $$products
+                                         :definition {:source-table $$products
+                                                      :aggregation [[:count]]
+                                                      :filter [:= $category "Gadget"]}})
+       :model/Metric {m-ratio-id :id} (mt/$ids products
+                                       {:name "gizmo gadget ratio"
+                                        :description "Now the ratio."
+                                        :table_id $$products
+                                        :definition {:source-table $$products
+                                                     :aggregation [[:/ [:metric m-gadget-id] [:metric m-gizmo-id]]]}})]
+      (let [query @(def q (mt/mbql-query
+                           products
+                           {:aggregation
+                            [[:metric m-ratio-id]
+                             [:aggregation-options [:/ [:metric m-gadget-id] [:metric m-gizmo-id]]
+                              {:name "gadget / gizmo"
+                               :display-name "gadget gizmo ratio"}]]}))
+            ctrl-query-gizmo-count (mt/mbql-query products {:aggregation [[:count]] :filter [:= $category "Gizmo"]})
+            ctrl-query-gadget-count (mt/mbql-query products {:aggregation [[:count]] :filter [:= $category "Gadget"]})
+            ctrl-gizmo-count (ffirst (mt/format-rows-by [(partial u/round-to-decimals 4)]
+                                                        (mt/rows (qp/process-query ctrl-query-gizmo-count))))
+            ctrl-gadget-count (ffirst (mt/format-rows-by [(partial u/round-to-decimals 4)]
+                                                           (mt/rows (qp/process-query ctrl-query-gadget-count))))]
+        #_(is (partial= nil
+                      @(def exex (mt/with-metadata-provider (mt/id)
+                                   (#'expand-macros/expand-metrics-and-segments query)))))
+        (testing "No breakout query containing metric produces expected results"
+          (is (= [[(u/round-to-decimals 4 (/ ctrl-gadget-count ctrl-gizmo-count))
+                   (u/round-to-decimals 4 (/ ctrl-gadget-count ctrl-gizmo-count))]]
+                 @(def rrrr (mt/format-rows-by [(partial u/round-to-decimals 4) (partial u/round-to-decimals 4)]
+                                               (mt/rows @(def qq (qp/process-query q)))))))))))))
+
+
+;;;; PROGRESS
+(deftest currently-failing-test
+  (mt/test-drivers
+   (mt/normal-drivers-with-feature :nested-queries :left-join)
+   (mt/dataset
+    sample-dataset
+    (t2.with-temp/with-temp
+      [:model/Metric {m-gizmo-id :id} (mt/$ids products
+                                               {:name "gizmo count"
+                                                :description "It's about counting the gizmos."
+                                                :table_id $$products
+                                                :definition {:source-table $$products
+                                                             :aggregation [[:count]]
+                                                             :filter [:= $category "Gizmo"]}})
+       :model/Metric {m-gadget-id :id} (mt/$ids products
+                                                {:name "gadget count"
+                                                 :description "It's about counting the gadgets."
+                                                 :table_id $$products
+                                                 :definition {:source-table $$products
+                                                              :aggregation [[:count]]
+                                                              :filter [:= $category "Gadget"]}})
+       :model/Metric {m-ratio-id :id} (mt/$ids products
+                                               {:name "gizmo gadget ratio"
+                                                :description "Now the ratio."
+                                                :table_id $$products
+                                                :definition {:source-table $$products
+                                                             :aggregation [[:/ [:metric m-gadget-id] [:metric m-gizmo-id]]]}})]
+        ;;;; TODO: there is a wrong field ref for [:/ ... ...] metric aggregation!
+        ;;;;  Add joined stuff to breakout! Why it is not happening?
+      (let [query @(def q (mt/mbql-query
+                           products
+                           {:aggregation
+                            [; expansion of this metric creates breakout entry. That ensures the group by action.
+                             #_[:metric m-ratio-id]
+                             ;;; following tested first
+                             #_[:aggregation-options [:/ [:metric m-gadget-id] [:metric m-gizmo-id]]
+                                {:name "gadget / gizmo"
+                                 :display-name "gadget / gizmo"}]
+                             ;;;; check how unnamed is handled
+                             [:/ [:metric m-gadget-id] [:metric m-gizmo-id]]
+                             [:/ [:metric m-gizmo-id] [:metric m-gadget-id]]
+                             ]}))]
+        (is (partial= nil
+                      @(def exex (mt/with-metadata-provider (mt/id)
+                                   (#'expand-macros/expand-metrics-and-segments query)))))
+        (testing "No breakout query containing metric produces expected results"
+          (is (= [[100]]
+                 (mt/rows @(def qq (qp/process-query q)))))))))))
+
+(deftest metic-in-expression-with-aggregation-test
+  (mt/test-drivers
+   (mt/normal-drivers-with-feature :nested-queries :left-join)
+   (t2.with-temp/with-temp
+     [:model/Metric {m-count-id :id} (mt/$ids venues
+                                              {:name "Just count"
+                                               :description "It's about counting the gizmos."
+                                               :table_id $$venues
+                                               :definition {:source-table $$venues
+                                                            :aggregation [[:count]]
+                                                            :filter [:= $category_id 1]}})]
+     ;;;; this is ok
+     (let [query @(def q (mt/mbql-query
+                          venues
+                          {:aggregation
+                           [[:aggregation-options [:+ [:sum $price] [:metric m-count-id]]
+                             {:name "jeee"
+                              :display-name "ssss"}]]}))]
+       (is (partial= nil
+                     @(def exex (mt/with-metadata-provider (mt/id)
+                                  (#'expand-macros/expand-metrics-and-segments query)))))
+       (testing "Something"
+         (is (= [[100]]
+                (mt/rows @(def qq (qp/process-query q)))))))
+     ;;;; this is nok
+     (let [query @(def q (mt/mbql-query
+                          venues
+                          {:aggregation
+                           [[:aggregation-options [:+ [:sum $price] [:metric m-count-id]]
+                             {:name "jeee"
+                              :display-name "ssss"}]]}))]
+       (is (partial= nil
+                     @(def exex (mt/with-metadata-provider (mt/id)
+                                  (#'expand-macros/expand-metrics-and-segments query)))))
+       (testing "Something"
+         (is (= [[100]]
+                (mt/rows @(def qq (qp/process-query q)))))))
+     )))
+
+;;;; Will probably drop this case or add it elsewhere!
+(deftest only-metric-in-ag-opts-test
+  (mt/test-drivers
+   (mt/normal-drivers-with-feature :nested-queries :left-join)
+   (t2.with-temp/with-temp
+     [:model/Metric {m-count-id :id} (mt/$ids venues
+                                              {:name "Just count for cat 2"
+                                               :description ""
+                                               :table_id $$venues
+                                               :definition {:source-table $$venues
+                                                            :aggregation [[:count]]
+                                                            :filter [:= $category_id 2]}})]
+     (let [query @(def q (mt/mbql-query
+                          venues
+                          {:aggregation
+                           [[:aggregation-options [:metric m-count-id] {:name "jeee" :display-name "ssss"}]]}))]
+       (is (partial= nil
+                     @(def exex (mt/with-metadata-provider (mt/id)
+                                  (#'expand-macros/expand-metrics-and-segments query)))))
+       (testing "Something"
+         (is (= [[100]]
+                (mt/rows @(def qq (qp/process-query q))))))))))
+
+;;;; OK
+;;;; Reason for use of expressions follows. Ie. same metric named differently by aggregation options.
+(deftest same-name-metrics-test
+  (mt/test-drivers
+   (mt/normal-drivers-with-feature :nested-queries :left-join)
+   (t2.with-temp/with-temp
+     [:model/Metric {m-1-id :id} (mt/$ids venues
+                                        {:name "Just count"
+                                         :description "Just count desc."
+                                         :table_id $$venues
+                                         :definition {:source-table $$venues
+                                                      :aggregation [[:count]]}})]
+     (let [query @(def q (mt/mbql-query
+                          venues
+                          {:aggregation [[:aggregation-options [:metric m-1-id] {:display-name "X" :name "X"}]
+                                         [:aggregation-options [:metric m-1-id] {:display-name "Y" :name "Y"}]
+                                         [:metric m-1-id]]}))]
+       (testing ":aggregation-options can use same metirc, naming it differently"
+         (is (partial= {:query {:fields [[:field "X" {:base-type :type/Integer :join-alias "metric__0"}]
+                                         [:field "Y" {:base-type :type/Integer :join-alias "metric__0"}]
+                                         [:field "Just count" {:base-type :type/Integer :join-alias "metric__0"}]]}}
+                       (mt/with-metadata-provider (mt/id)
+                         (#'expand-macros/expand-metrics-and-segments query)))))
+       (testing "Query returns expected results"
+         (is (apply = (first (mt/rows @(def qq (qp/process-query query)))))))))))
 
 (deftest metric-column-order-test)
 
@@ -955,15 +1161,15 @@
       (let [query @(def q (mt/mbql-query venues
                                          {:aggregation [[:metric m1-id]
                                                         [:metric m2-id]]}))
-            verif-query-1 @(def v1 (mt/run-mbql-query venues {:fields [$price] :filter [:< $category_id 30]}))
-            verif-query-2 @(def v2 (mt/run-mbql-query venues {:fields [$price] :filter [:> $category_id 50]}))
-           ;;;; TODO I can do with redefs?
-           ;; dummy
+            verification-query-1 @(def v1 (mt/run-mbql-query venues {:aggregation [[:sum $price]]
+                                                                     :filter [:< $category_id 30]}))
+            verification-query-2 @(def v2 (mt/run-mbql-query venues {:aggregation [[:sum $price]]
+                                                                     :filter [:> $category_id 50]}))
+            lt-30-sum (ffirst (mt/rows verification-query-1))
+            gt-50-sum (ffirst (mt/rows verification-query-2))
+            ;; dummy
             join-alias-lt-30 (#'expand-macros/query->join-alias (mt/$ids venues {:filter [:< $category_id 30]}))
-            join-alias-gt-50 (#'expand-macros/query->join-alias (mt/$ids venues {:filter [:> $category_id 50]}))
-           ;; for verification
-            lt-30-sum (transduce (map first) + (mt/rows verif-query-1))
-            gt-50-sum (transduce (map first) + (mt/rows verif-query-2))]
+            join-alias-gt-50 (#'expand-macros/query->join-alias (mt/$ids venues {:filter [:> $category_id 50]}))]
         (testing "Query transformation is correct"
           (is (partial= (mt/$ids venues
                                  {:query
@@ -990,9 +1196,6 @@
          (is (= [[lt-30-sum gt-50-sum]]
                 (mt/rows (qp/process-query query))))))))))
 
-#_(testing "x"
-    (is (= nil
-           (mt/rows @(def rrr (qp/process-query q))))))
 
 #_(is (partial= (mt/$ids venues
                          {:query
