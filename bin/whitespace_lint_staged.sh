@@ -1,13 +1,11 @@
 #! /usr/bin/env bash
 
-# Do whitespace linting on staged files OR all files if --all is passed.
-# If neither of the above are true, will report what needs to happen and do nothing else.
-# Returns an error when a file is not properly formatted, which will prevent a git commit if a hook is used.
+# Do whitespace linting on passed in files.
+# This is intended to be called from a commit hook (see package.json > lint-staged) that passes in staged changes
 
 set -euo pipefail
 
-# List only new and modified files (not deleted)
-STAGED_FILES=$(git diff --name-status --cached -- "*.clj" "*.cljc" "*.cljs" "*.edn" | grep -E '[AM]' | cut -f2 || true)
+STAGED_FILES="$@"
 
 if [ "${#STAGED_FILES}" -gt 0 ]; then
   args=()

@@ -3,12 +3,6 @@
 
 yarn precommit
 
-# Run the linter
-./bin/quick_lint.bb
-
-# Run the whitespace linter
-./bin/whitespace_lint_staged.sh
-
 # Run the formatter
 # Note that this is stubbed in for now until we can gobally resolve some formatting issues such as what is described
 # here: https://github.com/metabase/metabase/pull/35511#pullrequestreview-1721758128
