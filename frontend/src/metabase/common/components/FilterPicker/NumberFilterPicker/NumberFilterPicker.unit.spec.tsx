@@ -187,6 +187,24 @@ describe("NumberFilterPicker", () => {
         });
         expect(getNextFilterColumnName()).toBe("Total");
       });
+
+      it("should add a filter with many values via keyboard", async () => {
+        const { getNextFilterParts, getNextFilterColumnName } = setup();
+
+        const input = screen.getByPlaceholderText("Enter a number");
+        userEvent.type(input, "-5{enter}");
+        userEvent.type(input, "0{enter}");
+        userEvent.type(input, "10{enter}");
+        userEvent.type(input, "{enter}");
+
+        const filterParts = getNextFilterParts();
+        expect(filterParts).toMatchObject({
+          operator: "=",
+          column: expect.anything(),
+          values: [-5, 0, 10],
+        });
+        expect(getNextFilterColumnName()).toBe("Total");
+      });
     });
 
     describe("with no values", () => {
