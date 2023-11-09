@@ -35,13 +35,17 @@
   [_entity _event-type]
   {})
 
+(def ^:private model-name->audit-logged-name
+  {"RootCollection" "Collection"})
+
 (defn model-name
   "Given an instance of a model or a keyword model identifier, returns the name to store in the database as a string, or `nil` if it cannot be computed."
   [instance-or-model]
-  (let [model (or (t2/model instance-or-model) instance-or-model)]
-    (cond
-      (keyword? model) (name model)
-      (class? model) (.getSimpleName ^java.lang.Class model))))
+  (let [model (or (t2/model instance-or-model) instance-or-model)
+        raw-model-name (cond
+                         (keyword? model) (name model)
+                         (class? model) (.getSimpleName ^java.lang.Class model))]
+    (model-name->audit-logged-name raw-model-name raw-model-name)))
 
 (defn- prepare-update-event-data
   "Returns a map with previous and new versions of the objects, _keeping only fields that are present in both
