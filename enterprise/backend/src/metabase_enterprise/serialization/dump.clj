@@ -25,7 +25,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn spit-yaml
+(defn spit-yaml!
   "Writes obj to filename and creates parent directories if necessary.
 
   Writes (even nested) yaml keys in a deterministic fashion."
@@ -40,7 +40,7 @@
           (mi/instance-of? model instance))
         [Pulse Dashboard Metric Segment Field User]))
 
-(defn- spit-entity
+(defn- spit-entity!
   [path entity]
   (let [filename (if (as-file? entity)
                    (format "%s%s.yaml" path (fully-qualified-name entity))
@@ -49,35 +49,35 @@
       (log/warn (str filename " is about to be overwritten."))
       (log/debug (str "With object: " (pr-str entity))))
 
-    (spit-yaml filename (serialize/serialize entity))))
+    (spit-yaml! filename (serialize/serialize entity))))
 
-(defn dump
+(defn dump!
   "Serialize entities into a directory structure of YAMLs at `path`."
   [path & entities]
   (doseq [entity (flatten entities)]
     (try
-      (spit-entity path entity)
+      (spit-entity! path entity)
       (catch Throwable e
         (log/error e (trs "Error dumping {0}" (name-for-logging entity))))))
-  (spit-yaml (str path "/manifest.yaml")
+  (spit-yaml! (str path "/manifest.yaml")
              {:serialization-version serialize/serialization-protocol-version
               :metabase-version      config/mb-version-info}))
 
-(defn dump-settings
+(defn dump-settings!
   "Combine all settings into a map and dump it into YAML at `path`."
   [path]
-  (spit-yaml (str path "/settings.yaml")
+  (spit-yaml! (str path "/settings.yaml")
              (into {} (for [{:keys [key value]} (setting/admin-writable-site-wide-settings
                                                  :getter (partial setting/get-value-of-type :string))]
                         [key value]))))
 
-(defn dump-dimensions
+(defn dump-dimensions!
   "Combine all dimensions into a vector and dump it into YAML at in the directory for the
    corresponding schema starting at `path`."
   [path]
   (doseq [[table-id dimensions] (group-by (comp :table_id Field :field_id) (t2/select Dimension))
           :let [table (t2/select-one Table :id table-id)]]
-    (spit-yaml (if (:schema table)
+    (spit-yaml! (if (:schema table)
                  (format "%s%s/schemas/%s/dimensions.yaml"
                          path
                          (->> table :db_id (fully-qualified-name Database))
