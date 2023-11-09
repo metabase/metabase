@@ -1,0 +1,358 @@
+description: Which subscriptions are active, who created them, who's subscribed to them, when they're sent, and more.
+archived: false
+collection_position: 13
+table_id:
+- Internal Metabase Database
+- public
+- v_subscriptions
+result_metadata:
+- description: null
+  semantic_type: type/PK
+  coercion_strategy: null
+  name: entity_id
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_subscriptions
+    - entity_id
+  - null
+  effective_type: type/Integer
+  id:
+  - Internal Metabase Database
+  - public
+  - v_subscriptions
+  - entity_id
+  visibility_type: normal
+  display_name: Entity ID
+  base_type: type/Integer
+- description: null
+  semantic_type: type/PK
+  coercion_strategy: null
+  name: entity_qualified_id
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_subscriptions
+    - entity_qualified_id
+  - null
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_subscriptions
+  - entity_qualified_id
+  visibility_type: normal
+  display_name: Entity Qualified ID
+  base_type: type/Text
+- description: null
+  semantic_type: type/CreationTimestamp
+  coercion_strategy: null
+  unit: default
+  name: created_at
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_subscriptions
+    - created_at
+  - temporal-unit: default
+  effective_type: type/DateTimeWithLocalTZ
+  id:
+  - Internal Metabase Database
+  - public
+  - v_subscriptions
+  - created_at
+  visibility_type: normal
+  display_name: Created At
+  base_type: type/DateTimeWithLocalTZ
+- description: null
+  semantic_type: type/UpdatedTimestamp
+  coercion_strategy: null
+  unit: default
+  name: updated_at
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_subscriptions
+    - updated_at
+  - temporal-unit: default
+  effective_type: type/DateTimeWithLocalTZ
+  id:
+  - Internal Metabase Database
+  - public
+  - v_subscriptions
+  - updated_at
+  visibility_type: normal
+  display_name: Updated At
+  base_type: type/DateTimeWithLocalTZ
+- description: null
+  semantic_type: type/FK
+  coercion_strategy: null
+  name: creator_id
+  settings: null
+  fk_target_field_id: 739
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_subscriptions
+    - creator_id
+  - null
+  effective_type: type/Integer
+  id:
+  - Internal Metabase Database
+  - public
+  - v_subscriptions
+  - creator_id
+  visibility_type: normal
+  display_name: Creator ID
+  base_type: type/Integer
+- description: null
+  semantic_type: type/Category
+  coercion_strategy: null
+  name: archived
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_subscriptions
+    - archived
+  - null
+  effective_type: type/Boolean
+  id:
+  - Internal Metabase Database
+  - public
+  - v_subscriptions
+  - archived
+  visibility_type: normal
+  display_name: Archived
+  base_type: type/Boolean
+- description: null
+  semantic_type: type/FK
+  coercion_strategy: null
+  name: dashboard_qualified_id
+  settings: null
+  fk_target_field_id: 1484
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_subscriptions
+    - dashboard_qualified_id
+  - null
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_subscriptions
+  - dashboard_qualified_id
+  visibility_type: normal
+  display_name: Dashboard Qualified ID
+  base_type: type/Text
+- description: null
+  semantic_type: type/Category
+  coercion_strategy: null
+  name: schedule_type
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_subscriptions
+    - schedule_type
+  - null
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_subscriptions
+  - schedule_type
+  visibility_type: normal
+  display_name: Schedule Type
+  base_type: type/Text
+- description: null
+  semantic_type: type/Category
+  coercion_strategy: null
+  name: schedule_day
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_subscriptions
+    - schedule_day
+  - null
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_subscriptions
+  - schedule_day
+  visibility_type: normal
+  display_name: Schedule Day
+  base_type: type/Text
+- description: null
+  semantic_type: type/Category
+  coercion_strategy: null
+  name: schedule_hour
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_subscriptions
+    - schedule_hour
+  - null
+  effective_type: type/Integer
+  id:
+  - Internal Metabase Database
+  - public
+  - v_subscriptions
+  - schedule_hour
+  visibility_type: normal
+  display_name: Schedule Hour
+  base_type: type/Integer
+- description: null
+  semantic_type: type/Category
+  coercion_strategy: null
+  name: recipient_type
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_subscriptions
+    - recipient_type
+  - null
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_subscriptions
+  - recipient_type
+  visibility_type: normal
+  display_name: Recipient Type
+  base_type: type/Text
+- description: null
+  semantic_type: type/Category
+  coercion_strategy: null
+  name: recipients
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_subscriptions
+    - recipients
+  - null
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_subscriptions
+  - recipients
+  visibility_type: normal
+  display_name: Recipients
+  base_type: type/Text
+- description: null
+  semantic_type: null
+  coercion_strategy: null
+  name: recipient_external
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_subscriptions
+    - recipient_external
+  - null
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_subscriptions
+  - recipient_external
+  visibility_type: normal
+  display_name: Recipient External
+  base_type: type/Text
+- description: null
+  semantic_type: type/SerializedJSON
+  coercion_strategy: null
+  name: parameters
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_subscriptions
+    - parameters
+  - null
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_subscriptions
+  - parameters
+  visibility_type: normal
+  display_name: Parameters
+  base_type: type/Text
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Dashboard subscriptions
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  database: Internal Metabase Database
+  type: query
+  query:
+    source-table:
+    - Internal Metabase Database
+    - public
+    - v_subscriptions
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: 5ojUtU9iE-DCggHdFPIll
+  label: dashboard_subscriptions
+display: table
+entity_id: 5ojUtU9iE-DCggHdFPIll
+collection_preview: true
+visualization_settings:
+  table.pivot_column: name
+  table.cell_column: recipient_external
+  table.column_widths:
+  - null
+  - null
+  - null
+  - null
+  - 136
+  column_settings: null
+metabase_version: null
+parameters: []
+dataset: true
+created_at: '2023-06-08T14:36:00.472585Z'
+public_uuid: null

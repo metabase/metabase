@@ -1438,7 +1438,9 @@
           (is (= ldap-group-mappings (get-json-setting :ldap-group-mappings))))))))
 
 (deftest check-data-migrations-rollback
-  (impl/test-migrations ["v48.00-024"] [migrate!]
+  ;; We're actually testing `v48.00-024`, but we want the `migrate!` function to run all the migrations in 48
+  ;; after rolling back to 47, so we're using `v48.00-000` as the start of the migration range in `test-migrations`
+  (impl/test-migrations ["v48.00-000"] [migrate!]
     (let [throw-err             (fn [& _args]
                                   (throw (ex-info "This shouldn't be called ever" {})))]
       (testing "we can migrate even if data_migrations is empty"

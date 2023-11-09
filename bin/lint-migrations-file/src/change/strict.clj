@@ -43,7 +43,6 @@
 (s/def ::change
   (s/keys :opt-un [::addColumn ::createTable ::createIndex ::customChange]))
 
-
 (s/def :change.strict.dbms-qualified-sql-change.sqlfile/dbms
   string?)
 

@@ -15,8 +15,8 @@ export function getDashboardCard(index = 0) {
   return getDashboardCards().eq(index);
 }
 
-function getDashCardApiUrl(dashId) {
-  return `/api/dashboard/${dashId}/cards`;
+function getDashboardApiUrl(dashId) {
+  return `/api/dashboard/${dashId}`;
 }
 
 const DEFAULT_CARD = {
@@ -31,8 +31,8 @@ const DEFAULT_CARD = {
 
 export function addOrUpdateDashboardCard({ card_id, dashboard_id, card }) {
   return cy
-    .request("PUT", getDashCardApiUrl(dashboard_id), {
-      cards: [
+    .request("PUT", getDashboardApiUrl(dashboard_id), {
+      dashcards: [
         {
           ...DEFAULT_CARD,
           card_id,
@@ -42,7 +42,7 @@ export function addOrUpdateDashboardCard({ card_id, dashboard_id, card }) {
     })
     .then(response => ({
       ...response,
-      body: response.body.cards[0],
+      body: response.body.dashcards[0],
     }));
 }
 
@@ -52,8 +52,8 @@ export function addOrUpdateDashboardCard({ card_id, dashboard_id, card }) {
  */
 export function updateDashboardCards({ dashboard_id, cards }) {
   let id = -1;
-  return cy.request("PUT", getDashCardApiUrl(dashboard_id), {
-    cards: cards.map(card => ({ ...DEFAULT_CARD, id: id--, ...card })),
+  return cy.request("PUT", getDashboardApiUrl(dashboard_id), {
+    dashcards: cards.map(card => ({ ...DEFAULT_CARD, id: id--, ...card })),
   });
 }
 
@@ -172,7 +172,7 @@ export function goToTab(tabName) {
 }
 
 export function moveDashCardToTab({ dashcardIndex = 0, tabName }) {
-  getDashboardCard(dashcardIndex).realHover().icon("move_card").click();
+  getDashboardCard(dashcardIndex).realHover().icon("move_card").realHover();
   menu().findByText(tabName).click();
 }
 

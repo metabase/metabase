@@ -122,28 +122,37 @@
   [column :- ::lib.schema.metadata/column]
   ((some-fn :metabase.lib.join/join-alias :source-alias) column))
 
+(mu/defn ^:private matching-join? :- :boolean
+  [[_ref-kind {:keys [join-alias source-field]} _ref-id] :- ::lib.schema.ref/ref
+   column                                                :- ::lib.schema.metadata/column]
+  ;; If the ref has a source-field, and it matches the column's :fk-field-id then this is an implicitly joined field.
+  ;; Implicitly joined columns have :source-alias ("PRODUCTS__via__PRODUCT_ID") but the refs don't have any join alias.
+  (or (and source-field
+           (clojure.core/= source-field (:fk-field-id column)))
+      ;; If it's not an implicit join, then either the join aliases must match for an explicit join, or both be nil for
+      ;; an own column.
+      (clojure.core/= (column-join-alias column) join-alias)))
+
 (mu/defn ^:private plausible-matches-for-name :- [:sequential ::lib.schema.metadata/column]
-  [ref-name   :- :string
-   join-alias :- [:maybe :string]
-   columns    :- [:sequential ::lib.schema.metadata/column]]
+  [[_ref-kind _opts ref-name :as a-ref] :- ::lib.schema.ref/ref
+   columns                              :- [:sequential ::lib.schema.metadata/column]]
   (or (not-empty (filter #(and (clojure.core/= (:lib/desired-column-alias %) ref-name)
-                               (clojure.core/= (column-join-alias %) join-alias))
+                               (matching-join? a-ref %))
                          columns))
       (filter #(and (clojure.core/= (:name %) ref-name)
-                    (clojure.core/= (column-join-alias %) join-alias))
+                    (matching-join? a-ref %))
               columns)))
 
 (mu/defn ^:private plausible-matches-for-id :- [:sequential ::lib.schema.metadata/column]
-  [ref-id     :- :int
-   join-alias :- [:maybe :string]
-   columns    :- [:sequential ::lib.schema.metadata/column]
-   generous?  :- [:maybe :boolean]]
+  [[_ref-kind opts ref-id :as a-ref] :- ::lib.schema.ref/ref
+   columns                           :- [:sequential ::lib.schema.metadata/column]
+   generous?                         :- [:maybe :boolean]]
   (or (not-empty (filter #(and (clojure.core/= (:id %) ref-id)
                                ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the join
                                ;; alias on the column can be ignored. QP can set it when it shouldn't. See #33972.
-                               (or (and (not join-alias)
+                               (or (and (not (:join-alias opts))
                                         (#{:source/fields :source/card} (:lib/source %)))
-                                   (clojure.core/= (column-join-alias %) join-alias)))
+                                   (matching-join? a-ref %)))
                          columns))
       (when generous?
         (not-empty (filter #(clojure.core/= (:id %) ref-id) columns)))
@@ -222,9 +231,9 @@
   ([a-ref columns]
    (find-matching-column a-ref columns {}))
 
-  ([[ref-kind opts ref-id :as a-ref] :- ::lib.schema.ref/ref
-    columns                          :- [:sequential ::lib.schema.metadata/column]
-    {:keys [generous?]}              :- FindMatchingColumnOptions]
+  ([[ref-kind _opts ref-id :as a-ref] :- ::lib.schema.ref/ref
+    columns                           :- [:sequential ::lib.schema.metadata/column]
+    {:keys [generous?]}               :- FindMatchingColumnOptions]
    (case ref-kind
      ;; Aggregations are referenced by the UUID of the column being aggregated.
      :aggregation  (m/find-first #(and (clojure.core/= (:lib/source %) :source/aggregations)
@@ -232,13 +241,13 @@
                                  columns)
      ;; Expressions are referenced by name; fields by ID or name.
      (:expression
-      :field)     (let [plausible (if (string? ref-id)
-                                    (plausible-matches-for-name ref-id (:join-alias opts) columns)
-                                    (plausible-matches-for-id   ref-id (:join-alias opts) columns generous?))]
-                    (case (count plausible)
-                      0 nil
-                      1 (first plausible)
-                      (disambiguate-matches a-ref plausible)))
+       :field)     (let [plausible (if (string? ref-id)
+                                     (plausible-matches-for-name a-ref columns)
+                                     (plausible-matches-for-id   a-ref columns generous?))]
+                     (case (count plausible)
+                       0 nil
+                       1 (first plausible)
+                       (disambiguate-matches a-ref plausible)))
      (throw (ex-info "Unknown type of ref" {:ref a-ref}))))
 
   ([query stage-number a-ref columns]

@@ -8,6 +8,8 @@
    [clojure.string :as str]
    [clojure.walk :as walk]))
 
+(set! *warn-on-reflection* true)
+
 (comment change-set.strict/keep-me)
 
 ;; just print ordered maps like normal maps.
@@ -26,7 +28,7 @@
         :when id]
     id))
 
-(defn distinct-change-set-ids? [change-log]
+(defn- distinct-change-set-ids? [change-log]
   ;; there are actually two migration 32s, so that's the only exception we're allowing.
   (let [ids (change-set-ids change-log)]
     ;; can't apply distinct? with so many IDs
@@ -74,8 +76,8 @@
             x)
         x)
 
-      :else ; some other kind of change; continue walking
-      x)
+      ;; some other kind of change; continue walking
+      :else x)
     x))
 
 (defn no-bare-blob-or-text-types?
@@ -107,7 +109,7 @@
                      :objectQuotingStrategy (s/keys :req-un [::objectQuotingStrategy])
                      :changeSet             (s/keys :req-un [::changeSet])))))
 
-(defn validate-migrations [migrations]
+(defn ^:private validate-migrations [migrations]
   (when (= (s/conform ::migrations migrations) ::s/invalid)
     (let [data (s/explain-data ::migrations migrations)]
       (throw (ex-info (str "Validation failed:\n" (with-out-str (pprint/pprint (mapv #(dissoc % :val)
@@ -115,10 +117,10 @@
                       (or (dissoc data ::s/value) {})))))
   :ok)
 
-(def filename
+(def ^:private filename
   "../../resources/migrations/001_update_migrations.yaml")
 
-(defn migrations []
+(defn- migrations []
   (let [file (io/file filename)]
     (assert (.exists file) (format "%s does not exist" filename))
     (letfn [(fix-vals [x]
@@ -131,7 +133,11 @@
 (defn- validate-all []
   (validate-migrations (migrations)))
 
-(defn -main []
+(defn -main
+  "Entry point for Clojure CLI task `lint-migrations-file`. Run it with
+
+    ./bin/lint-migrations-file.sh"
+  []
   (println "Check Liquibase migrations file...")
   (try
     (validate-all)

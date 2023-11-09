@@ -34,6 +34,9 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
           },
         },
       },
+      body: {
+        alignItems: "center",
+      },
       inner: {
         width: getSize({ size, sizes: SIZES }),
         height: getSize({ size, sizes: SIZES }),

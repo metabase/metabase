@@ -10,7 +10,7 @@ AddCardSidebar.propTypes = {
 
 export function AddCardSidebar(props) {
   return (
-    <Sidebar>
+    <Sidebar data-testid="add-card-sidebar">
       <QuestionPicker {...props} />
     </Sidebar>
   );
