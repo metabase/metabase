@@ -15995,15 +15995,6 @@ databaseChangeLog:
       comment: Migrate metabase_field when the fk target field is inactive
       changes:
         - sql:
-            dbms: postgres
-            sql: >-
-              UPDATE metabase_field AS a
-              SET fk_target_field_id = NULL,
-                  semantic_type = NULL
-              FROM metabase_field AS b
-              WHERE b.id = a.fk_target_field_id
-              AND b.active = FALSE;
-        - sql:
             dbms: mariadb,mysql
             sql: >-
               UPDATE metabase_field AS a
@@ -16012,7 +16003,7 @@ databaseChangeLog:
                   a.semantic_type = NULL
               WHERE b.active = FALSE;
         - sql:
-            dbms: h2
+            dbms: postgresql,h2
             sql: >-
               UPDATE metabase_field
               SET fk_target_field_id = NULL,
