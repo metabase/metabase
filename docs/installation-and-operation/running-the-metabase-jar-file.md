@@ -2,6 +2,7 @@
 title: Running the Metabase JAR file
 redirect_from:
   - /docs/latest/operations-guide/running-the-metabase-jar-file
+  - /docs/installation-and-operation/java-versions
 ---
 
 # Running the Metabase OSS JAR file
@@ -39,7 +40,7 @@ You may already have Java installed. To check the version, open a terminal and r
 java -version
 ```
 
-If Java isn't installed, you'll need to install it before you can run Metabase. We recommend the latest LTS version of JRE from [Eclipse Temurin](https://adoptium.net/) with HotSpot JVM and x64 architecture, but other [Java versions](./java-versions.md) are supported too.
+If Java isn't installed, you'll need to install Java before you can run Metabase. We recommend version 11 of JRE from [Eclipse Temurin](https://adoptium.net/) with HotSpot JVM. You can run Metabase wherever Java 11 runs. The particular processor architecture shouldn't matter (although we only test Metabase for x86 and ARM).
 
 ### 2. Download Metabase
 
