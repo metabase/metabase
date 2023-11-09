@@ -7,9 +7,9 @@ yarn precommit
 ./bin/quick_lint.bb
 
 # Run the whitespace linter
-./bin/whitespace_lint.sh
+./bin/whitespace_lint_staged.sh
 
 # Run the formatter
-./bin/cljfmt.sh
+./bin/cljfmt_staged.sh
 
 ./hooks/pre-commit.nocommit
