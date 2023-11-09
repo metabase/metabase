@@ -1,3 +1,4 @@
+# Expect i18n workflow to not run
 name: E2E Tests
 
 on:
