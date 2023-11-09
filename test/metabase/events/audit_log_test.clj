@@ -9,7 +9,7 @@
    [metabase.events.audit-log :as events.audit-log]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
-    :refer [Card Dashboard DashboardCard Table Metric Pulse Segment]]
+    :refer [Card Dashboard DashboardCard Metric Pulse Segment]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
