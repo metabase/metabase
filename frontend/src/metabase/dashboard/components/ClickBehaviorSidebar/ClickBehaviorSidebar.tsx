@@ -3,6 +3,7 @@ import { getIn } from "icepick";
 
 import { useMount, usePrevious } from "react-use";
 
+import { useDashboardQuery } from "metabase/common/hooks";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 
 import type {
@@ -90,9 +91,16 @@ function ClickBehaviorSidebar({
     }
   }, [dashcard, selectedColumn, hasSelectedColumn]);
 
+  const isDashboardLink =
+    clickBehavior?.type === "link" && clickBehavior.linkType === "dashboard";
+  const { data: targetDashboard } = useDashboardQuery({
+    enabled: isDashboardLink,
+    id: isDashboardLink ? clickBehavior.targetId : undefined,
+  });
+
   const isValidClickBehavior = useMemo(
-    () => clickBehaviorIsValid(clickBehavior),
-    [clickBehavior],
+    () => clickBehaviorIsValid(clickBehavior, targetDashboard),
+    [clickBehavior, targetDashboard],
   );
 
   const handleChangeSettings = useCallback(

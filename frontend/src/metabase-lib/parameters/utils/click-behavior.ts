@@ -245,6 +245,7 @@ function baseTypeFilterForParameterType(parameterType: string) {
 
 export function clickBehaviorIsValid(
   clickBehavior: ClickBehavior | undefined | null,
+  targetDashboard: Dashboard | undefined,
 ): boolean {
   // opens drill-through menu
   if (clickBehavior == null) {
@@ -262,13 +263,19 @@ export function clickBehaviorIsValid(
   if (clickBehavior.type === "link") {
     const { linkType } = clickBehavior;
 
-    // if it's not a crossfilter/action, it's a link
     if (linkType === "url") {
       return (clickBehavior.linkTemplate || "").length > 0;
     }
 
-    // if we're linking to a Metabase entity we just need a targetId
-    if (linkType === "dashboard" || linkType === "question") {
+    if (linkType === "dashboard") {
+      const tabs = targetDashboard?.tabs || [];
+      const dashboardTabExists = tabs.some(
+        tab => tab.id === clickBehavior.tabId,
+      );
+      return clickBehavior.targetId != null && dashboardTabExists;
+    }
+
+    if (linkType === "question") {
       return clickBehavior.targetId != null;
     }
   }
