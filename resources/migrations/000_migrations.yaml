@@ -16053,6 +16053,20 @@ databaseChangeLog:
               );
       rollback: # no change
 
+  - changeSet:
+      id: v48.00-053
+      author: johnswanson
+      comment: Increase length of `activity.model` to fit longer model names
+      changes:
+        - modifyDataType:
+            tableName: activity
+            columnName: model
+            newDataType: VARCHAR(32)
+      rollback:
+        - modifyDataType:
+            tableName: activity
+            columnName: model
+            newDataType: VARCHAR(16)
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
