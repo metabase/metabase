@@ -390,25 +390,33 @@
     [(into [:case] case-clauses)]))
 
 (defmulti ^:private check-permissions-for-model
-  {:arglists '([search-result])}
-  (comp keyword :model))
+  {:arglists '([archived? search-result])}
+  (fn [_ search-result] ((comp keyword :model) search-result)))
 
 (defmethod check-permissions-for-model :default
-  [_]
-  ;; We filter what we can (ie. everything that is in a collection) out already when querying
-  true)
+  [archived? instance]
+  (if archived?
+    (mi/can-write? instance)
+    ;; We filter what we can (ie. everything that is in a collection) out already when querying
+    true))
 
 (defmethod check-permissions-for-model :metric
-  [instance]
-  (mi/can-read? instance))
+  [archived? instance]
+  (if archived?
+    (mi/can-write? instance)
+    (mi/can-read? instance)))
 
 (defmethod check-permissions-for-model :segment
-  [instance]
-  (mi/can-read? instance))
+  [archived? instance]
+  (if archived?
+    (mi/can-write? instance)
+    (mi/can-read? instance)))
 
 (defmethod check-permissions-for-model :database
-  [instance]
-  (mi/can-read? instance))
+  [archived? instance]
+  (if archived?
+    (mi/can-write? instance)
+    (mi/can-read? instance)))
 
 (mu/defn query-model-set
   "Queries all models with respect to query for one result to see if we get a result or not"
@@ -455,8 +463,7 @@
         xf                 (comp
                             (map t2.realize/realize)
                             (map to-toucan-instance)
-                            (filter check-permissions-for-model)
-                            (map #(assoc % :can_write (mi/can-write? %)))
+                            (filter (partial check-permissions-for-model (:archived? search-ctx)))
                             ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as
                             ;; needed
                             (map #(update % :bookmark api/bit->boolean))
