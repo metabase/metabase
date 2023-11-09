@@ -26,42 +26,39 @@
                            [:asc $id]]
                 :limit    10}))))))
 
-(deftest ^:parallel order-by-aggregate-fields-test
+(deftest ^:parallel order-by-aggregate-fields-test-1
   (mt/test-drivers (mt/normal-drivers)
     (testing :count
-      (is (= [[4  6]
-              [3 13]
-              [1 22]
-              [2 59]]
+      (is (= [[4 6] [3 13] [1 22] [2 59]]
              (mt/formatted-rows [int int]
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]
                   :breakout    [$price]
-                  :order-by    [[:asc [:aggregation 0]]]})))))
+                  :order-by    [[:asc [:aggregation 0]]]})))))))
 
+(deftest ^:parallel order-by-aggregate-fields-test-2
+  (mt/test-drivers (mt/normal-drivers)
     (testing :sum
-      (is (= [[2 2855]
-              [1 1211]
-              [3  615]
-              [4  369]]
+      (is (= [[2 2855] [1 1211] [3 615] [4 369]]
              (mt/formatted-rows [int int]
                (mt/run-mbql-query venues
                  {:aggregation [[:sum $id]]
                   :breakout    [$price]
-                  :order-by    [[:desc [:aggregation 0]]]})))))
+                  :order-by    [[:desc [:aggregation 0]]]})))))))
 
-
+(deftest ^:parallel order-by-aggregate-fields-test-3
+  (mt/test-drivers (mt/normal-drivers)
     (testing :distinct
-      (is (= [[4  6]
-              [3 13]
-              [1 22]
-              [2 59]]
+      (is (= [[4 6] [3 13] [1 22] [2 59]]
              (mt/formatted-rows [int int]
                (mt/run-mbql-query venues
                  {:aggregation [[:distinct $id]]
                   :breakout    [$price]
-                  :order-by    [[:asc [:aggregation 0]]]})))))
+                  :order-by    [[:asc [:aggregation 0]]]})))))))
 
+
+(deftest ^:parallel order-by-aggregate-fields-test-4
+  (mt/test-drivers (mt/normal-drivers)
     (testing :avg
       (let [driver-floors-average? (#{:redshift :sqlserver} driver/*driver*)]
         (is (= [[3 22.0]
@@ -72,10 +69,11 @@
                  (mt/run-mbql-query venues
                    {:aggregation [[:avg $category_id]]
                     :breakout    [$price]
-                    :order-by    [[:asc [:aggregation 0]]]})))))))
+                    :order-by    [[:asc [:aggregation 0]]]}))))))))
 
-  (testing :stddev
-    (mt/test-drivers (mt/normal-drivers-with-feature :standard-deviation-aggregations)
+(deftest ^:parallel order-by-aggregate-fields-test-5
+  (mt/test-drivers (mt/normal-drivers-with-feature :standard-deviation-aggregations)
+    (testing :stddev
       ;; standard deviation calculations are always NOT EXACT (normal behavior) so just test that the results are in a
       ;; certain RANGE.
       (letfn [(row-schema [price lower-bound upper-bound]
