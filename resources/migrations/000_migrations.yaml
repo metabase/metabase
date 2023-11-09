@@ -15906,6 +15906,34 @@ databaseChangeLog:
             sql: drop view if exists v_view_log;
 
   - changeSet:
+      id: v48.00-046
+      author: noahmoss
+      comment: Added 0.48.0 - new indexes to optimize audit v2 queries
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/indexes/v1/postgres-indexes.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql
+            path: instance_analytics_views/indexes/v1/mysql-indexes.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mariadb
+            path: instance_analytics_views/indexes/v1/mariadb-indexes.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/indexes/v1/h2-indexes.sql
+            relativeToChangelogFile: true
+      rollback:
+        # Only MySQL needes a rollback because all the other DBs support "CREATE INDEX IF NOT EXISTS"
+        - sqlFile:
+            dbms: mysql
+            path: instance_analytics_views/indexes/v1/mysql-rollback.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
       id: v48.00-045
       author: qwef
       comment: Added 0.48.0 - add is_sandboxed to query_execution
