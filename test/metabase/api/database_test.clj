@@ -341,6 +341,8 @@
     (mt/with-model-cleanup [:model/Database]
       (snowplow-test/with-fake-snowplow-collector
         (let [dataset-def (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'avian-singles))]
+          ;; trigger this to make sure the database exists before we add them
+          (data.impl/get-or-create-database! driver/*driver* dataset-def)
           (mt/user-http-request :crowberto :post 200 "database"
                                 {:name    (mt/random-name)
                                  :engine  driver/*driver*
