@@ -1,5 +1,3 @@
-/* eslint-disable no-console */
-
 /**
  * Note: This is a backup and failsafe if you cannot use the release github actions in CI for some reason.
  * The environment consistency and observability of the release process is very important, so
@@ -61,6 +59,10 @@ if (!isValidCommitHash(commit)) {
   error("You must provide a valid commit hash as the second argument");
 }
 
+if (!step) {
+  error("You must provide a step argument like --build or --publish");
+}
+
 /**************************************************
           HELPERS
  **************************************************/
@@ -108,15 +110,19 @@ async function checkJar() {
     await $`jar xf ${JAR_PATH}/metabase.jar version.properties && cat version.properties`
   ).toString();
 
-  console.log(chalk.green(`\n${versionProperties}\n`));
+  log(versionProperties, "green");
 
   if (!versionProperties.includes(`tag=${version}`)) {
     error(`This jar does not match the input version: ${version}`);
   }
 }
 
+// eslint-disable-next-line no-console
+const log = (message, color = "blue") =>
+  console.log(chalk[color](`\n${message}\n`));
+
 function error(message) {
-  console.error(chalk.red(`\n⚠️   ${message}\n`));
+  log(`⚠️   ${message}`, "red");
   process.exit(1);
 }
 
@@ -124,6 +130,8 @@ function error(message) {
           BUILD STEP
  **************************************************/
 async function build() {
+  log(`🚀 Building ${edition} jar for ${version} from commit ${commit}`);
+
   // check build environment
   const majorVersion = Number(getMajorVersion(version));
   const nodeVersion = (await $`node --version`).toString();
@@ -147,17 +155,11 @@ async function build() {
 
   const currentBranch = (await $`git branch --show-current`).toString().trim();
 
-  console.log(
-    chalk.blue(
-      `\n🚀 Building ${edition} jar for ${version} from commit ${commit}...\n`,
-    ),
-  );
-
   try {
     await $`git fetch --all`;
     await $`git stash && git checkout ${commit}`;
 
-    // build jar
+    // actually build jar
     await $`../bin/build.sh :edition :${edition} :version ${version}`.pipe(
       process.stdout,
     );
@@ -166,9 +168,7 @@ async function build() {
     await $`echo ${commit} > ${JAR_PATH}/COMMIT-ID`;
     await $`shasum -a 256 ${JAR_PATH}/metabase.jar > ${JAR_PATH}/SHA256.sum`;
 
-    console.log(
-      chalk.blue(`\n✅ Built ${edition} jar for ${version} in ${JAR_PATH}`),
-    );
+    log(`✅ Built ${edition} jar for ${version} in ${JAR_PATH}`, "green");
   } catch (error) {
     console.error(error);
   } finally {
@@ -181,6 +181,8 @@ async function build() {
 ***************************************************/
 
 async function s3() {
+  log(`⏳ Publishing ${version} to s3`);
+
   const { GITHUB_OWNER, GITHUB_REPO } = getGithubCredentials();
 
   await checkJar();
@@ -204,11 +206,7 @@ async function s3() {
   process.env.AWS_ACCESS_KEY_ID = AWS_S3_RELEASE_ACCESS_KEY_ID;
   process.env.AWS_SECRET_ACCESS_KEY = AWS_S3_RELEASE_SECRET_ACCESS_KEY;
 
-  // upload to s3
-
   const versionPath = edition === "ee" ? `enterprise/${version}` : version;
-
-  console.log(chalk.blue(`\n⏳ Publishing ${version} to s3\n`));
 
   await $`aws s3 cp ${JAR_PATH}/metabase.jar s3://${AWS_S3_DOWNLOADS_BUCKET}/${versionPath}/metabase.jar`.pipe(
     process.stdout,
@@ -226,10 +224,12 @@ async function s3() {
       --paths /${versionPath}/metabase.jar`.pipe(process.stdout);
   }
 
-  console.log(chalk.blue(`\n✅ Published ${version} to s3\n`));
+  log(`✅ Published ${version} to s3`);
 }
 
 async function docker() {
+  log(`⏳ Building docker image for ${version}`);
+
   const { GITHUB_OWNER, GITHUB_REPO } = getGithubCredentials();
 
   if (
@@ -242,20 +242,17 @@ async function docker() {
 
   await checkJar();
 
-  console.log(chalk.blue(`\n⏳ Building docker image for ${version}\n`));
-
   await $`cp -r ${JAR_PATH}/metabase.jar ../bin/docker/`;
-
   const dockerRepo = edition === "ee" ? "metabase-enterprise" : "metabase";
-
   const dockerTag = `${DOCKERHUB_OWNER}/${dockerRepo}:${version}`;
-
   await $`docker build --tag ${dockerTag} ../bin/docker/.`.pipe(process.stdout);
+
+  log(`⏳ Pushing docker image to dockerhub for ${version}`);
 
   await $`docker login --username ${DOCKERHUB_RELEASE_USERNAME} -p ${DOCKERHUB_RELEASE_TOKEN}`;
   await $`docker push ${dockerTag}`.pipe(process.stdout);
 
-  console.log(chalk.blue(`\n✅ Published ${dockerTag} to DockerHub\n`));
+  log(`✅ Published ${dockerTag} to DockerHub`);
 
   const isLatest = await isLatestRelease({
     github,
@@ -269,14 +266,14 @@ async function docker() {
     await $`docker tag ${dockerTag} ${latestTag}`.pipe(process.stdout);
     await $`docker push ${latestTag}`.pipe(process.stdout);
 
-    console.log(chalk.blue(`\n✅ Published ${latestTag} to DockerHub\n`));
+    log(`✅ Published ${latestTag} to DockerHub`);
   }
 }
 
 async function versionInfo() {
-  const { GITHUB_OWNER, GITHUB_REPO } = getGithubCredentials();
+  log(`⏳ Building version-info.json`);
 
-  console.log(chalk.blue(`\n⏳ Building version-info\n`));
+  const { GITHUB_OWNER, GITHUB_REPO } = getGithubCredentials();
 
   const newVersionInfo = await getVersionInfo({
     github,
@@ -300,7 +297,7 @@ async function versionInfo() {
       --paths /${versionInfoName}`.pipe(process.stdout);
   }
 
-  console.log(chalk.blue(`\n✅ Published ${versionInfoName} to s3\n`));
+  log(`✅ Published ${versionInfoName} to s3`);
 }
 
 async function tag() {
@@ -308,13 +305,13 @@ async function tag() {
   await $`git tag ${version} ${commit}`;
   await $`git push origin ${version}`.pipe(process.stdout);
 
-  console.log(chalk.blue(`\n✅ Tagged ${version}\n`));
+  log(`✅ Tagged ${version}`);
 }
 
 async function releaseNotes() {
   const { GITHUB_OWNER, GITHUB_REPO } = getGithubCredentials();
 
-  console.log(chalk.blue(`\n⏳ Building Release Notes for ${version}\n`));
+  log(`⏳ Building Release Notes for ${version}`);
 
   const checksum = (await $`shasum -a 256 ${JAR_PATH}/metabase.jar`)
     .toString()
@@ -328,9 +325,7 @@ async function releaseNotes() {
     checksum,
   });
 
-  console.log(
-    chalk.blue(`\n✅ Published release notes for ${version} to github\n`),
-  );
+  log(`✅ Published release notes for ${version} to github\n`);
 }
 
 async function updateMilestones() {
@@ -356,19 +351,13 @@ async function updateMilestones() {
  **************************************************/
 
 (async () => {
-  if (!step) {
-    console.log(
-      chalk.red("You must provide a step argument like --build or --publish"),
-    );
-  }
-
   if (step === "build") {
     await checkReleased();
     await build();
   }
 
   if (step === "publish") {
-    console.log(chalk.blue(`\n🚀 Publishing ${edition} ${version}🚀\n`));
+    log(`🚀 Publishing ${edition} ${version}🚀`);
 
     await checkReleased();
     await s3();
@@ -378,24 +367,17 @@ async function updateMilestones() {
     await releaseNotes();
     await updateMilestones();
 
-    console.log(chalk.blue(`\n✅ Published ${edition} ${version}`));
+    log(`✅ Published ${edition} ${version}`);
 
     const remainingSteps = [
       "Publish the release notes",
-      "Close and create a new milestone",
       "Reorder commits to make sure OSS is first",
-      "Submit a Pull request to build the docker image for cloud",
+      "Submit a pull request to build the docker image for cloud",
       "Create an issue to update cloud instances",
       "Update documentation on the website to reflect the newly released versions",
-    ];
+    ].join("\n ✔️  ");
 
-    console.log(
-      chalk.blue(
-        `\nDon't forget, you still need to:\n ✔️ ${remainingSteps.join(
-          "\n ✔️ ",
-        )}\n)}`,
-      ),
-    );
+    log(`Don't forget, you still need to:\n ✔️  ${remainingSteps}`);
   }
 
   if (step === "check-jar") {
