@@ -7,8 +7,8 @@ import type { FilterPickerWidgetProps } from "../types";
 import { MAX_WIDTH } from "../constants";
 import { getAvailableOperatorOptions } from "../utils";
 import { ColumnValuesWidget } from "../ColumnValuesWidget";
-import { Header } from "../Header";
-import { Footer } from "../Footer";
+import { FilterHeader } from "../FilterHeader";
+import { FilterFooter } from "../FilterFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
 
@@ -69,13 +69,13 @@ export function NumberFilterPicker({
 
   return (
     <Box maw={MAX_WIDTH} data-testid="number-filter-picker">
-      <Header columnName={columnName} onBack={onBack}>
+      <FilterHeader columnName={columnName} onBack={onBack}>
         <FilterOperatorPicker
           value={operatorName}
           options={availableOperators}
           onChange={handleOperatorChange}
         />
-      </Header>
+      </FilterHeader>
       <Box>
         <NumberValueInput
           values={values}
@@ -83,7 +83,7 @@ export function NumberFilterPicker({
           column={column}
           onChange={setValues}
         />
-        <Footer
+        <FilterFooter
           isNew={isNew}
           canSubmit={isValid}
           onSubmit={handleFilterChange}

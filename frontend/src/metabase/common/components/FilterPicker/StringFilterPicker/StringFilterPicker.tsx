@@ -7,8 +7,8 @@ import { MAX_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
 import { ColumnValuesWidget } from "../ColumnValuesWidget";
-import { Header } from "../Header";
-import { Footer } from "../Footer";
+import { FilterHeader } from "../FilterHeader";
+import { FilterFooter } from "../FilterFooter";
 
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
@@ -81,13 +81,13 @@ export function StringFilterPicker({
 
   return (
     <Box maw={MAX_WIDTH} data-testid="string-filter-picker">
-      <Header columnName={columnName} onBack={onBack}>
+      <FilterHeader columnName={columnName} onBack={onBack}>
         <FilterOperatorPicker
           value={operatorName}
           options={availableOperators}
           onChange={handleOperatorChange}
         />
-      </Header>
+      </FilterHeader>
       <Box>
         {valueCount > 0 && (
           <FlexWithScroll p="md" mah={MAX_HEIGHT}>
@@ -99,14 +99,18 @@ export function StringFilterPicker({
             />
           </FlexWithScroll>
         )}
-        <Footer isNew={isNew} canSubmit={isValid} onSubmit={handleFilterChange}>
+        <FilterFooter
+          isNew={isNew}
+          canSubmit={isValid}
+          onSubmit={handleFilterChange}
+        >
           {hasCaseSensitiveOption && (
             <CaseSensitiveOption
               value={options["case-sensitive"] ?? false}
               onChange={newValue => setOptions({ "case-sensitive": newValue })}
             />
           )}
-        </Footer>
+        </FilterFooter>
       </Box>
     </Box>
   );
