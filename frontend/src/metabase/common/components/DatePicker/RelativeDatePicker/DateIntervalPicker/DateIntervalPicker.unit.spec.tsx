@@ -61,6 +61,9 @@ describe("DateIntervalPicker", () => {
         value: direction === "last" ? -20 : 20,
       });
       expect(onSubmit).not.toHaveBeenCalled();
+
+      userEvent.type(input, "{enter}");
+      expect(onSubmit).toHaveBeenCalled();
     });
 
     it("should change the interval with a negative value", () => {
@@ -206,23 +209,6 @@ describe("DateIntervalPicker", () => {
       const rangeText =
         direction === "last" ? "Dec 2, 2019 – Jan 1, 2020" : "Jan 1–31, 2020";
       expect(screen.getByText(rangeText)).toBeInTheDocument();
-    });
-
-    it("should submit values on enter", () => {
-      const { onChange, onSubmit } = setup({
-        value: defaultValue,
-      });
-
-      const input = screen.getByLabelText("Interval");
-      userEvent.clear(input);
-      userEvent.type(input, "20");
-      userEvent.type(input, "{enter}");
-
-      expect(onChange).toHaveBeenLastCalledWith({
-        ...defaultValue,
-        value: direction === "last" ? -20 : 20,
-      });
-      expect(onSubmit).toHaveBeenCalled();
     });
   });
 });

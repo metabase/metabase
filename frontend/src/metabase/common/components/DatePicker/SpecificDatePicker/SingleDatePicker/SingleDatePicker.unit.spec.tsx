@@ -58,10 +58,12 @@ describe("SingleDatePicker", () => {
     const input = screen.getByLabelText("Date");
     userEvent.clear(input);
     userEvent.type(input, "Feb 15, 2020");
-
     expect(screen.getByText("February 2020")).toBeInTheDocument();
     expect(onChange).toHaveBeenLastCalledWith(new Date(2020, 1, 15));
     expect(onSubmit).not.toHaveBeenCalled();
+
+    userEvent.type(input, "{enter}");
+    expect(onSubmit).toHaveBeenCalled();
   });
 
   it("should be able to set the date via the input when there is time", () => {
@@ -113,17 +115,5 @@ describe("SingleDatePicker", () => {
     expect(screen.queryByLabelText("Time")).not.toBeInTheDocument();
     expect(onChange).toHaveBeenLastCalledWith(new Date(2020, 0, 10));
     expect(onSubmit).not.toHaveBeenCalled();
-  });
-
-  it("should be able to submit on enter", () => {
-    const { onChange, onSubmit } = setup();
-
-    const input = screen.getByLabelText("Date");
-    userEvent.clear(input);
-    userEvent.type(input, "Feb 15, 2020");
-    userEvent.type(input, "{enter}");
-
-    expect(onChange).toHaveBeenLastCalledWith(new Date(2020, 1, 15));
-    expect(onSubmit).toHaveBeenCalled();
   });
 });

@@ -74,12 +74,14 @@ describe("SingleDatePicker", () => {
     const input = screen.getByLabelText("Start date");
     userEvent.clear(input);
     userEvent.type(input, "Feb 15, 2020");
-
     expect(onChange).toHaveBeenLastCalledWith([
       new Date(2020, 1, 15),
       END_DATE,
     ]);
     expect(onSubmit).not.toHaveBeenCalled();
+
+    userEvent.type(input, "{enter}");
+    expect(onSubmit).toHaveBeenCalled();
   });
 
   it("should be able to set the date range start via the input when there is time", () => {
@@ -90,12 +92,14 @@ describe("SingleDatePicker", () => {
     const input = screen.getByLabelText("Start date");
     userEvent.clear(input);
     userEvent.type(input, "Feb 15, 2020");
-
     expect(onChange).toHaveBeenLastCalledWith([
       new Date(2020, 1, 15, 5, 20),
       END_DATE,
     ]);
     expect(onSubmit).not.toHaveBeenCalled();
+
+    userEvent.type(input, "{enter}");
+    expect(onSubmit).toHaveBeenCalled();
   });
 
   it("should be able to set the date range end via the input", () => {
@@ -186,22 +190,5 @@ describe("SingleDatePicker", () => {
     expect(screen.queryByLabelText("End time")).not.toBeInTheDocument();
     expect(onChange).toHaveBeenLastCalledWith([START_DATE, END_DATE]);
     expect(onSubmit).not.toHaveBeenCalled();
-  });
-
-  it("should be able to submit on enter", () => {
-    const { onChange, onSubmit } = setup({
-      value: [START_DATE_TIME, END_DATE],
-    });
-
-    const input = screen.getByLabelText("Start date");
-    userEvent.clear(input);
-    userEvent.type(input, "Feb 15, 2020");
-    userEvent.type(input, "{enter}");
-
-    expect(onChange).toHaveBeenLastCalledWith([
-      new Date(2020, 1, 15, 5, 20),
-      END_DATE,
-    ]);
-    expect(onSubmit).toHaveBeenCalled();
   });
 });
