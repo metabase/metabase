@@ -83,8 +83,8 @@ describeEE("issue 24966", () => {
       cy.wrap(dashboard_id).as("dashboardId");
 
       // Connect the filter to the card
-      cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-        cards: [
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        dashcards: [
           {
             id,
             card_id,

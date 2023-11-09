@@ -82,6 +82,7 @@
       (log/error (trs "Could not invite user because email is not configured."))
       (u/prog1 (user/create-and-invite-user! user invitor true)
         (user/set-permissions-groups! <> [(perms-group/all-users) (perms-group/admin)])
+        (events/publish-event! :event/user-invited {:object (assoc <> :invite_method "email")})
         (snowplow/track-event! ::snowplow/invite-sent api/*current-user-id* {:invited-user-id (u/the-id <>)
                                                                              :source          "setup"})))))
 
@@ -164,12 +165,13 @@
                 (setting.cache/restore-cache!)
                 (snowplow/track-event! ::snowplow/database-connection-failed nil {:database engine, :source :setup})
                 (throw e))))]
-    (let [{:keys [user-id session-id database session]} (create!)]
+    (let [{:keys [user-id session-id database session]} (create!)
+          superuser (t2/select-one :model/User :id user-id)]
       (when database
         (events/publish-event! :event/database-create {:object database :user-id user-id}))
-      (->> {:user-id user-id}
-           (events/publish-event! :event/user-login)
-           (events/publish-event! :event/user-joined))
+      (events/publish-event! :event/user-login {:user-id user-id})
+      (when-not (:last_login superuser)
+        (events/publish-event! :event/user-joined {:user-id user-id}))
       (snowplow/track-event! ::snowplow/new-user-created user-id)
       (when database (snowplow/track-event! ::snowplow/database-connection-successful
                                             user-id

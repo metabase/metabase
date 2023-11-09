@@ -15416,6 +15416,50 @@ databaseChangeLog:
             newDataType: varchar(254)
 
   - changeSet:
+      id: v48.00-018
+      author: noahmoss
+      comment: Add new recent_views table
+      changes:
+        - createTable:
+            tableName: recent_views
+            remarks: Used to store recently viewed objects for each user
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: The user associated with this view
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_recent_views_ref_user_id
+              - column:
+                  name: model
+                  type: varchar(16)
+                  remarks: The name of the model that was viewed
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  remarks: The ID of the model that was viewed
+                  constraints:
+                    nullable: false
+              - column:
+                  name: timestamp
+                  type: DATETIME
+                  remarks: The time a view was recorded
+                  constraints:
+                    nullable: false
+
+  - changeSet:
       id: v48.00-019
       author: nemanjaglumac
       comment: 'Collection color is removed in 0.48.0'
@@ -15434,6 +15478,18 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                   defaultValue: '#31698A'
+  - changeSet:
+      id: v48.00-020
+      author: noahmoss
+      comment: Added 0.48.0 - Create recent_views.user_id index
+      changes:
+        - createIndex:
+            indexName: idx_recent_views_user_id
+            tableName: recent_views
+            columns:
+              - column:
+                  name: user_id
+      rollback: # not needed, it will be removed with the table
 
   - changeSet:
       id: v48.00-021
@@ -15564,6 +15620,375 @@ databaseChangeLog:
         - sql:
           sql: SELECT 1;
       rollback:
+
+  - changeSet:
+      id: v48.00-028
+      author: noahmoss
+      comment: Add new audit_log table
+      changes:
+        - createTable:
+            tableName: audit_log
+            remarks: Used to store application events for auditing use cases
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: topic
+                  type: varchar(32)
+                  remarks: The topic of a given audit event
+                  constraints:
+                    nullable: false
+              - column:
+                  name: timestamp
+                  type: ${timestamp_type}
+                  remarks: The time an event was recorded
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_timestamp
+                  type: ${timestamp_type}
+                  remarks: The time an event ended, if applicable
+                  constraints:
+                    nullable: true
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: The user who performed an action or triggered an event
+                  constraints:
+                    nullable: true
+              - column:
+                  name: model
+                  type: varchar(32)
+                  remarks: The name of the model this event applies to (e.g. Card, Dashboard), if applicable
+                  constraints:
+                    nullable: true
+              - column:
+                  name: model_id
+                  type: int
+                  remarks: The ID of the model this event applies to, if applicable
+                  constraints:
+                    nullable: true
+              - column:
+                  name: details
+                  type: ${text.type}
+                  remarks: A JSON map with metadata about the event
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v48.00-029
+      author: noahmoss
+      comment: Added 0.48.0 - new view v_audit_log
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/audit_log/v1/postgres-audit_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/audit_log/v1/mysql-audit_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/audit_log/v1/h2-audit_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: drop view if exists v_audit_log;
+
+  - changeSet:
+      id: v48.00-030
+      author: noahmoss
+      comment: Added 0.48.0 - new view v_content
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v1/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v1/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v1/h2-content.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: drop view if exists v_content;
+
+  - changeSet:
+      id: v48.00-031
+      author: noahmoss
+      comment: Added 0.48.0 - new view v_dashboardcard
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/dashboardcard/v1/dashboardcard.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: drop view if exists v_dashboardcard;
+
+  - changeSet:
+      id: v48.00-032
+      author: noahmoss
+      comment: Added 0.48.0 - new view v_group_members
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/group_members/v1/group_members.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: drop view if exists v_group_members;
+
+  - changeSet:
+      id: v48.00-033
+      author: noahmoss
+      comment: Added 0.48.0 - new view v_subscriptions for postgres
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/subscriptions/v1/postgres-subscriptions.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/subscriptions/v1/mysql-subscriptions.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/subscriptions/v1/h2-subscriptions.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: drop view if exists v_subscriptions;
+
+  - changeSet:
+      id: v48.00-034
+      author: noahmoss
+      comment: Added 0.48.0 - new view v_users
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/users/v1/postgres-users.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/users/v1/mysql-users.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/users/v1/h2-users.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: drop view if exists v_users;
+
+  - changeSet:
+      id: v48.00-035
+      author: noahmoss
+      comment: Added 0.48.0 - new view v_alerts
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/alerts/v1/postgres-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/alerts/v1/mysql-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/alerts/v1/h2-alerts.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: drop view if exists v_alerts;
+
+  - changeSet:
+      id: v48.00-036
+      author: noahmoss
+      comment: Added 0.48.0 - new view v_databases
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/databases/v1/databases.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: drop view if exists v_databases;
+
+  - changeSet:
+      id: v48.00-037
+      author: noahmoss
+      comment: Added 0.48.0 - new view v_fields
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/fields/v1/postgres-fields.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/fields/v1/mysql-fields.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/fields/v1/h2-fields.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: drop view if exists v_fields;
+
+  - changeSet:
+      id: v48.00-038
+      author: noahmoss
+      comment: Added 0.48.0 - new view v_query_log
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/query_log/v1/postgres-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/query_log/v1/mysql-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/query_log/v1/h2-query_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: drop view if exists v_query_log;
+
+  - changeSet:
+      id: v48.00-039
+      author: noahmoss
+      comment: Added 0.48.0 - new view v_tables
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/tables/v1/postgres-tables.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/tables/v1/mysql-tables.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/tables/v1/h2-tables.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: drop view if exists v_tables;
+
+  - changeSet:
+      id: v48.00-040
+      author: noahmoss
+      comment: Added 0.48.0 - new view v_view_log
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/view_log/v1/postgres-view_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/view_log/v1/mysql-view_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/view_log/v1/h2-view_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: drop view if exists v_view_log;
+
+  - changeSet:
+      id: v48.00-047
+      author: noahmoss
+      comment: Drop foreign key on recent_views so that it can be recreated with onDelete policy
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: recent_views
+            constraintName: fk_recent_views_ref_user_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: recent_views
+            constraintName: fk_recent_views_ref_user_id
+            referencedTableName: core_user
+            baseColumnNames: user_id
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v48.00-048
+      author: noahmoss
+      comment: Add foreign key on recent_views with onDelete CASCADE
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: recent_views
+            constraintName: fk_recent_views_ref_user_id
+            referencedTableName: core_user
+            baseColumnNames: user_id
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: recent_views
+            constraintName: fk_recent_views_ref_user_id
+
+  - changeSet:
+      id: v48.00-049
+      author: noahmoss
+      comment: Migrate data from activity to audit_log
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO audit_log (topic, timestamp, user_id, model, model_id, details)
+              SELECT
+                topic,
+                timestamp,
+                user_id,
+                model,
+                model_id,
+                details::jsonb || json_strip_nulls(json_build_object('database_id', database_id, 'table_id', table_id))::jsonb
+              FROM activity;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT INTO audit_log (topic, timestamp, user_id, model, model_id, details)
+              SELECT
+                  topic,
+                  timestamp,
+                  user_id,
+                  model,
+                  model_id,
+                  JSON_MERGE(
+                      details,
+                      JSON_OBJECT('database_id', database_id, 'table_id', table_id)
+                  )
+              FROM activity;
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO audit_log (topic, timestamp, user_id, model, model_id, details)
+              SELECT
+                  topic,
+                  timestamp,
+                  user_id,
+                  model,
+                  model_id,
+                  JSON_OBJECT(
+                    'database_id': database_id,
+                    'table_id': table_id
+                    ABSENT ON NULL
+                  )
+              FROM activity;
+      rollback: # not necessary
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

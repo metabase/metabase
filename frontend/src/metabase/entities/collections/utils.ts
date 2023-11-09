@@ -1,5 +1,4 @@
 import type { IconName, IconProps } from "metabase/core/components/Icon";
-
 import { color } from "metabase/lib/colors";
 
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
@@ -33,14 +32,14 @@ export function getCollectionIcon(
   if (isPersonalCollection(collection)) {
     return { name: "person" };
   }
-  const authorityLevel =
-    PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[collection.authority_level as string];
 
-  return authorityLevel
+  const type = PLUGIN_COLLECTIONS.getCollectionType(collection);
+
+  return type
     ? {
-        name: authorityLevel.icon as unknown as IconName,
-        color: authorityLevel.color ? color(authorityLevel.color) : undefined,
-        tooltip: authorityLevel.tooltips?.[tooltip],
+        name: type.icon as unknown as IconName,
+        color: type.color ? color(type.color) : undefined,
+        tooltip: type.tooltips?.[tooltip],
       }
     : { name: "folder" };
 }

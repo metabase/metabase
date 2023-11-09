@@ -37,6 +37,10 @@ const tableQuestionWithJoinOnQuestion = card => ({
   display: "table",
   query: {
     "source-table": ORDERS_ID,
+    fields: [
+      ["field", ORDERS.ID, null],
+      ["field", ORDERS.TAX, null],
+    ],
     joins: [
       {
         fields: "all",
@@ -104,6 +108,10 @@ const tableQuestionWithExpression = {
   display: "table",
   query: {
     "source-table": ORDERS_ID,
+    fields: [
+      ["field", ORDERS.ID, null],
+      ["expression", "Math"],
+    ],
     expressions: {
       Math: ["+", 1, 1],
     },
@@ -485,7 +493,7 @@ describe("scenarios > visualizations > table column settings", () => {
         column: "Math",
         columnName: "Math",
         table: "orders",
-        scrollTimes: 2,
+        needsScroll: false,
       };
 
       _hideColumn(testData);
@@ -689,7 +697,7 @@ describe("scenarios > visualizations > table column settings", () => {
         column: "Math",
         columnName: "Math",
         table: "test question",
-        scrollTimes: 2,
+        needsScroll: false,
       };
 
       _hideColumn(mathColumn);
@@ -757,7 +765,7 @@ describe("scenarios > visualizations > table column settings", () => {
           column: "Math",
           columnName: `Question ${card.id} → Math`,
           table: `test question`,
-          scrollTimes: 2,
+          needsScroll: false,
         };
 
         _hideColumn(mathColumn);
