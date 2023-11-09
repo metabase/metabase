@@ -1,14 +1,19 @@
 name: Release 2 - Pre-release testing
-run-name: Pre-release Testing of ${{ github.event.workflow_run.name }}
+run-name: Pre-release testing of ${{ inputs.version }}
 
 on:
-  workflow_run:
-    workflows: [Release 1 - Build Release Artifact]
-    types: [completed]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Metabase version (e.g. v0.46.3)'
+        type: string
+        required: true
+      commit:
+        description: 'A full-length commit SHA-1 hash'
+        required: true
 
 jobs:
   release-artifact:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     strategy:
@@ -18,36 +23,33 @@ jobs:
       ee_version: ${{ steps.version-properties.outputs.ee_version }}
       oss_version: ${{ steps.version-properties.outputs.oss_version }}
       commit: ${{ steps.version-properties.outputs.commit }}
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-      - name: 'Download artifact'
+      - name: find_release_artifact
+        id: find_release_artifact
         uses: actions/github-script@v6
         with:
-          script: |
+          result-encoding: string
+          script: | # js
             const fs = require('fs');
 
-            const allArtifacts = await github.rest.actions.listWorkflowRunArtifacts({
-               owner: context.repo.owner,
-               repo: context.repo.repo,
-               run_id: context.payload.workflow_run.id,
+            const artifacts = await github.rest.actions.listArtifactsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: `metabase-${{ matrix.edition }}-${{ inputs.commit }}-uberjar`,
+              per_page: 1,
             });
 
-            const matchArtifact = allArtifacts.data.artifacts.find((artifact) => {
-              return artifact.name.includes('-${{ matrix.edition }}-');
-            });
-
-            if (!matchArtifact) {
-              throw new Error('No artifact found');
+            if (!artifacts.data?.artifacts?.[0]?.id) {
+              throw new Error(`No artifacts found for ${{ inputs.commit }}`);
             }
 
+            const artifact_id = artifacts.data.artifacts[0].id;
+
             const download = await github.rest.actions.downloadArtifact({
-               owner: context.repo.owner,
-               repo: context.repo.repo,
-               artifact_id: matchArtifact.id,
-               archive_format: 'zip',
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              artifact_id: artifact_id,
+              archive_format: 'zip',
             });
 
             fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/mb.zip`, Buffer.from(download.data));
@@ -56,14 +58,13 @@ jobs:
       - name: Extract the version.properties file from the JAR
         run: |
           jar xf metabase.jar version.properties
-          mv version.properties resources/
       - name: Reveal Metabase ${{ matrix.edition }} properties
         id: version-properties
         run: |
-          cat ./resources/version.properties
+          cat version.properties
           echo "commit=$(cat ./COMMIT-ID)" >> $GITHUB_OUTPUT
 
-          version=$(grep -o '^tag=.*' ./resources/version.properties | cut -d'=' -f2)
+          version=$(grep -o '^tag=.*' version.properties | cut -d'=' -f2)
 
           if [[ "${{ matrix.edition }}" == "ee" ]]; then
             echo "ee_version=$version" >> $GITHUB_OUTPUT
