@@ -214,25 +214,6 @@ function LinkedEntityPicker({
     [clickBehavior, defaultDashboardTabId, isDashboard, updateSettings],
   );
 
-  useEffect(
-    function migrateDeletedTab() {
-      if (
-        isDashboard &&
-        !dashboardTabExists &&
-        typeof defaultDashboardTabId !== "undefined"
-      ) {
-        updateSettings({ ...clickBehavior, tabId: defaultDashboardTabId });
-      }
-    },
-    [
-      clickBehavior,
-      dashboardTabExists,
-      defaultDashboardTabId,
-      isDashboard,
-      updateSettings,
-    ],
-  );
-
   return (
     <div>
       <div className="pb1">
@@ -266,6 +247,11 @@ function LinkedEntityPicker({
 
       {isDashboard && dashboardTabs.length > 1 && (
         <Select
+          error={
+            dashboardTabExists
+              ? undefined
+              : t`The selected tab is no longer available`
+          }
           data={dashboardTabs.map(tab => ({
             label: tab.name,
             value: String(tab.id),
