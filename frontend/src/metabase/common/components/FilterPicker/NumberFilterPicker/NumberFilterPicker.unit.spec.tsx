@@ -137,11 +137,27 @@ describe("NumberFilterPicker", () => {
           expect(getNextFilterColumnName()).toBe("Total");
         },
       );
+
+      it("should add a filter with one value via keyboard", async () => {
+        const { getNextFilterParts, getNextFilterColumnName } = setup();
+
+        await setOperator("Greater than");
+        const input = screen.getByPlaceholderText("Enter a number");
+        userEvent.type(input, "15{enter}");
+
+        const filterParts = getNextFilterParts();
+        expect(filterParts).toMatchObject({
+          operator: ">",
+          column: expect.anything(),
+          values: [15],
+        });
+        expect(getNextFilterColumnName()).toBe("Total");
+      });
     });
 
     describe("with two values", () => {
       it.each(BETWEEN_TEST_CASES)(
-        "should add a filter with with %i to %i values",
+        "should add a filter with %i to %i values",
         async (leftValue, rightValue) => {
           const { getNextFilterParts, getNextFilterColumnName } = setup();
           const addFilterButton = screen.getByRole("button", {
@@ -167,6 +183,24 @@ describe("NumberFilterPicker", () => {
           expect(getNextFilterColumnName()).toBe("Total");
         },
       );
+
+      it("should add a filter with two values via keyboard", async () => {
+        const { getNextFilterParts, getNextFilterColumnName } = setup();
+        await setOperator("Between");
+
+        const [leftInput, rightInput] =
+          screen.getAllByPlaceholderText("Enter a number");
+        userEvent.type(leftInput, "-10");
+        userEvent.type(rightInput, "20{enter}");
+
+        const filterParts = getNextFilterParts();
+        expect(filterParts).toMatchObject({
+          operator: "between",
+          column: expect.anything(),
+          values: [-10, 20],
+        });
+        expect(getNextFilterColumnName()).toBe("Total");
+      });
     });
 
     describe("with many values", () => {
