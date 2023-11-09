@@ -350,7 +350,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
     });
 
-    it("should show error and disable form after target dashboard tab has been removed and there is more than 1 tab", () => {
+    it("should show error and disable the form after target dashboard tab has been removed and there is more than 1 tab left", () => {
       cy.createDashboard(TARGET_DASHBOARD, {
         wrapId: true,
         idAlias: "targetDashboardId",
@@ -410,7 +410,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
     });
 
-    it("should fall back to the first tab after target dashboard tab has been removed and there only 1 tab left", () => {
+    it("should fall back to the first tab after target dashboard tab has been removed and there is only 1 tab left", () => {
       cy.createDashboard(TARGET_DASHBOARD, {
         wrapId: true,
         idAlias: "targetDashboardId",
