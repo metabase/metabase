@@ -1,3 +1,5 @@
+import fetchMock from "fetch-mock";
+import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockDashboardState,
@@ -7,6 +9,7 @@ import {
   createMockCollection,
   createMockCollectionItem,
   createMockDashboard,
+  createMockSearchResult,
   createMockUser,
 } from "metabase-types/api/mocks";
 import {
@@ -118,151 +121,276 @@ describe("AddCardSideBar", () => {
     expect(screen.getByText("Nothing here")).toBeInTheDocument();
   });
 
-  it("should hide all personal collections when adding questions to dashboards in the root collection (public collection)", async () => {
-    const dashboardInPublicCollection = createMockDashboard({
-      collection: ROOT_COLLECTION,
-    });
-    await setup({
-      collections: COLLECTIONS,
-      dashboard: dashboardInPublicCollection,
-    });
-
-    assertBreadcrumbs([ROOT_COLLECTION]);
-
-    expect(
-      screen.getByRole("menuitem", {
-        name: COLLECTION.name,
-      }),
-    ).toBeInTheDocument();
-
-    expect(
-      screen.queryByRole("menuitem", {
-        name: PERSONAL_COLLECTION.name,
-      }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("should show all questions when adding questions to dashboards in the root collection (public collection)", async () => {
+  describe("dashboards in the root collection (public collection)", () => {
     const dashboardInRootCollection = createMockDashboard({
       collection: ROOT_COLLECTION,
     });
 
-    const collectionItems = [
-      createMockCollectionItem({
-        id: getNextId(),
-        model: "card",
-        name: "question 1",
-      }),
-      createMockCollectionItem({
-        id: getNextId(),
-        model: "card",
-        name: "question 2",
-      }),
-    ];
-    await setup({
-      collections: COLLECTIONS,
-      dashboard: dashboardInRootCollection,
-      collectionItems,
-    });
+    it("should hide all personal collections", async () => {
+      await setup({
+        collections: COLLECTIONS,
+        dashboard: dashboardInRootCollection,
+      });
 
-    assertBreadcrumbs([ROOT_COLLECTION]);
+      assertBreadcrumbs([ROOT_COLLECTION]);
 
-    collectionItems.forEach(collectionItem => {
       expect(
         screen.getByRole("menuitem", {
-          name: collectionItem.name,
+          name: COLLECTION.name,
         }),
+      ).toBeInTheDocument();
+
+      expect(
+        screen.queryByRole("menuitem", {
+          name: PERSONAL_COLLECTION.name,
+        }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should show all questions", async () => {
+      const collectionItems = [
+        createMockCollectionItem({
+          id: getNextId(),
+          model: "card",
+          name: "question 1",
+        }),
+        createMockCollectionItem({
+          id: getNextId(),
+          model: "card",
+          name: "question 2",
+        }),
+      ];
+      await setup({
+        collections: COLLECTIONS,
+        dashboard: dashboardInRootCollection,
+        collectionItems,
+      });
+
+      assertBreadcrumbs([ROOT_COLLECTION]);
+
+      collectionItems.forEach(collectionItem => {
+        expect(
+          screen.getByRole("menuitem", {
+            name: collectionItem.name,
+          }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("should search questions only in public collections", async () => {
+      await setup({
+        collections: COLLECTIONS,
+        dashboard: dashboardInRootCollection,
+      });
+
+      const typedText = "dashboard";
+      userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
+      const baseQuery = {
+        models: ["card", "dataset"],
+        offset: 0,
+        limit: 50,
+      };
+      const questionInPublicCollection = createMockSearchResult({
+        name: "question in public collection",
+        model: "card",
+      });
+      fetchMock.get(
+        {
+          url: "path:/api/search",
+          query: {
+            ...baseQuery,
+            q: typedText,
+            filter_items_in_personal_collection: "exclude",
+          },
+        },
+        {
+          data: [questionInPublicCollection],
+        },
+      );
+
+      expect(
+        await screen.findByText(questionInPublicCollection.name),
       ).toBeInTheDocument();
     });
   });
 
-  it("should show all questions when adding questions to dashboards in public collections", async () => {
+  describe("dashboards in public collections", () => {
     const dashboardInPublicSubcollection = createMockDashboard({
       collection: SUBCOLLECTION,
     });
 
-    const collectionItems = [
-      createMockCollectionItem({
-        id: getNextId(),
-        model: "card",
-        name: "question 1",
-      }),
-      createMockCollectionItem({
-        id: getNextId(),
-        model: "card",
-        name: "question 2",
-      }),
-    ];
-    await setup({
-      collections: COLLECTIONS,
-      dashboard: dashboardInPublicSubcollection,
-      collectionItems,
+    it("should show all questions", async () => {
+      const collectionItems = [
+        createMockCollectionItem({
+          id: getNextId(),
+          model: "card",
+          name: "question 1",
+        }),
+        createMockCollectionItem({
+          id: getNextId(),
+          model: "card",
+          name: "question 2",
+        }),
+      ];
+      await setup({
+        collections: COLLECTIONS,
+        dashboard: dashboardInPublicSubcollection,
+        collectionItems,
+      });
+
+      assertBreadcrumbs([ROOT_COLLECTION, COLLECTION, SUBCOLLECTION]);
+
+      collectionItems.forEach(collectionItem => {
+        expect(
+          screen.getByRole("menuitem", {
+            name: collectionItem.name,
+          }),
+        ).toBeInTheDocument();
+      });
     });
 
-    assertBreadcrumbs([ROOT_COLLECTION, COLLECTION, SUBCOLLECTION]);
+    it("should search questions only in public collections", async () => {
+      await setup({
+        collections: COLLECTIONS,
+        dashboard: dashboardInPublicSubcollection,
+      });
 
-    collectionItems.forEach(collectionItem => {
+      const typedText = "dashboard";
+      userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
+      const baseQuery = {
+        models: ["card", "dataset"],
+        offset: 0,
+        limit: 50,
+      };
+      const questionInPublicCollection = createMockSearchResult({
+        name: "question in public collection",
+        model: "card",
+      });
+      fetchMock.get(
+        {
+          url: "path:/api/search",
+          query: {
+            ...baseQuery,
+            q: typedText,
+            filter_items_in_personal_collection: "exclude",
+          },
+        },
+        {
+          data: [questionInPublicCollection],
+        },
+      );
+
       expect(
-        screen.getByRole("menuitem", {
-          name: collectionItem.name,
-        }),
+        await screen.findByText(questionInPublicCollection.name),
       ).toBeInTheDocument();
     });
   });
 
-  it("should show all collections when adding questions to dashboards in personal subcollections", async () => {
-    const dashboardInPersonalSubcollection = createMockDashboard({
-      collection: PERSONAL_SUBCOLLECTION,
-    });
-    await setup({
-      collections: COLLECTIONS,
-      dashboard: dashboardInPersonalSubcollection,
-    });
-
-    assertBreadcrumbs([
-      ROOT_COLLECTION,
-      PERSONAL_COLLECTION,
-      PERSONAL_SUBCOLLECTION,
-    ]);
-
-    expect(screen.getByText("Nothing here")).toBeInTheDocument();
-  });
-
-  it("should show all questions when adding questions to dashboards in personal subcollections", async () => {
+  describe("dashboards in personal collections", () => {
     const dashboardInPersonalSubcollection = createMockDashboard({
       collection: PERSONAL_SUBCOLLECTION,
     });
 
-    const collectionItems = [
-      createMockCollectionItem({
-        id: getNextId(),
-        model: "card",
-        name: "private question 1",
-      }),
-      createMockCollectionItem({
-        id: getNextId(),
-        model: "card",
-        name: "private question 2",
-      }),
-    ];
-    await setup({
-      collections: COLLECTIONS,
-      dashboard: dashboardInPersonalSubcollection,
-      collectionItems,
+    it("should show all collections", async () => {
+      await setup({
+        collections: COLLECTIONS,
+        dashboard: dashboardInPersonalSubcollection,
+      });
+
+      assertBreadcrumbs([
+        ROOT_COLLECTION,
+        PERSONAL_COLLECTION,
+        PERSONAL_SUBCOLLECTION,
+      ]);
+
+      expect(screen.getByText("Nothing here")).toBeInTheDocument();
     });
 
-    assertBreadcrumbs([
-      ROOT_COLLECTION,
-      PERSONAL_COLLECTION,
-      PERSONAL_SUBCOLLECTION,
-    ]);
-
-    collectionItems.forEach(collectionItem => {
-      expect(
-        screen.getByRole("menuitem", {
-          name: collectionItem.name,
+    it("should show all questions", async () => {
+      const collectionItems = [
+        createMockCollectionItem({
+          id: getNextId(),
+          model: "card",
+          name: "private question 1",
         }),
+        createMockCollectionItem({
+          id: getNextId(),
+          model: "card",
+          name: "private question 2",
+        }),
+      ];
+      await setup({
+        collections: COLLECTIONS,
+        dashboard: dashboardInPersonalSubcollection,
+        collectionItems,
+      });
+
+      assertBreadcrumbs([
+        ROOT_COLLECTION,
+        PERSONAL_COLLECTION,
+        PERSONAL_SUBCOLLECTION,
+      ]);
+
+      collectionItems.forEach(collectionItem => {
+        expect(
+          screen.getByRole("menuitem", {
+            name: collectionItem.name,
+          }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("should search all questions", async () => {
+      await setup({
+        collections: COLLECTIONS,
+        dashboard: dashboardInPersonalSubcollection,
+      });
+
+      const typedText = "dashboard";
+      userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
+      const baseQuery = {
+        models: ["card", "dataset"],
+        offset: 0,
+        limit: 50,
+      };
+      const questionInPublicCollection = createMockSearchResult({
+        id: 1,
+        name: "question in public collection",
+        model: "card",
+      });
+      const questionInPersonalCollection = createMockSearchResult({
+        id: 2,
+        name: "question in personal collection",
+        model: "card",
+      });
+      fetchMock.get(
+        {
+          url: "path:/api/search",
+          query: {
+            ...baseQuery,
+            q: typedText,
+          },
+        },
+        {
+          data: [questionInPublicCollection, questionInPersonalCollection],
+        },
+      );
+
+      expect(
+        await screen.findByText(questionInPublicCollection.name),
       ).toBeInTheDocument();
+      expect(
+        screen.getByText(questionInPersonalCollection.name),
+      ).toBeInTheDocument();
+
+      // There's no way to math a URL that a query param is not present
+      // with fetch-mock, so we have to assert it manually.
+      const call = fetchMock.lastCall("path:/api/search");
+      const urlObject = new URL(checkNotNull(call?.request?.url));
+      expect(urlObject.pathname).toEqual("/api/search");
+      expect(
+        urlObject.searchParams.get("filter_items_in_personal_collection"),
+      ).toEqual(null);
     });
   });
 });

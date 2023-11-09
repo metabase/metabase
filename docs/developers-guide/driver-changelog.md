@@ -70,6 +70,11 @@ title: Driver interface changelog
   removed in 0.51.0 or later. You can easily implement `metabase.driver/db-default-timezone` directly, and use
   `metabase.driver.sql-jdbc.execute/do-with-connection-with-options` to get a `java.sql.Connection` for a Database.
 
+- Added a new multimethod `metabase.driver.sql.parameters.substitution/align-temporal-unit-with-param-type`, which returns
+  a suitable temporal unit conversion keyword for `field`, `param-type` and the given driver. The resulting keyword
+  will be used to call the corresponding `metabase.driver.sql.query-processor/date` implementation to convert the `field`.
+  Returns `nil` if the conversion is not necessary for this `field` and `param-type` combination.
+
 ## Metabase 0.47.0
 
 - A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in

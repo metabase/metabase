@@ -28,6 +28,7 @@
 (defsetting google-auth-client-id
   (deferred-tru "Client ID for Google Sign-In.")
   :visibility :public
+  :audit      :getter
   :setter     (fn [client-id]
                 (if (seq client-id)
                   (let [trimmed-client-id (str/trim client-id)]
@@ -49,6 +50,7 @@
   (deferred-tru "Is Google Sign-in currently enabled?")
   :visibility :public
   :type       :boolean
+  :audit      :getter
   :getter     (fn []
                 (if-some [value (setting/get-value-of-type :boolean :google-auth-enabled)]
                   value

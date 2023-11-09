@@ -3,18 +3,10 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.events.audit-log-test :as audit-log-test]
    [metabase.models
-    :refer [Card
-            Collection
-            Dashboard
-            DashboardCard
-            Database
-            Pulse
-            PulseCard
-            PulseChannel
-            PulseChannelRecipient
-            Table
-            User]]
+    :refer [Card Collection Dashboard DashboardCard Database Pulse PulseCard
+            PulseChannel PulseChannelRecipient Table User]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :as pulse]
@@ -191,6 +183,32 @@
                  :recipients    [{:email "foo@bar.com"}]}]
                false)))))))
 
+(deftest create-pulse-event-test
+  (testing "Creating pulse also logs event."
+    (t2.with-temp/with-temp [Card card {:name "Test Card"}]
+      (mt/with-model-cleanup [Pulse]
+        (let [pulse (pulse/create-pulse! [(pulse/card->ref card)]
+                                         [{:channel_type  :email
+                                           :schedule_type :daily
+                                           :schedule_hour 18
+                                           :enabled       true
+                                           :recipients    [{:email "foo@bar.com"}]}]
+                                         {:name          "pulse-name"
+                                          :creator_id    (mt/user->id :rasta)
+                                          :skip_if_empty false})]
+          (is (= {:topic    :subscription-create
+                  :user_id  nil
+                  :model    "Pulse"
+                  :model_id (u/the-id pulse)
+                  :details  {:archived     false
+                             :name         "pulse-name",
+                             :dashboard_id nil,
+                             :parameters   [],
+                             :channel      ["email"],
+                             :schedule     ["daily"],
+                             :recipients   [[{:email "foo@bar.com"}]]}}
+                 (audit-log-test/latest-event :subscription-create (u/the-id pulse)))))))))
+
 (deftest create-dashboard-subscription-test
   (testing "Make sure that the dashboard_id is set correctly when creating a Dashboard Subscription pulse"
     (mt/with-model-cleanup [Pulse]
@@ -226,10 +244,11 @@
 ;;  4. ability to save individual user recipients
 ;;  5. ability to create new channels
 ;;  6. ability to update cards and ensure proper ordering
+;;  7. subscription-update event is called
 (deftest update-pulse-test
-  (mt/with-temp [Pulse pulse {}
-                 Card  card-1 {:name "Test Card"}
-                 Card  card-2 {:name "Bar Card" :display :bar}]
+  (t2.with-temp/with-temp [Pulse pulse  {}
+                           Card  card-1 {:name "Test Card"}
+                           Card  card-2 {:name "Bar Card" :display :bar}]
     (is (= (merge pulse-defaults
                   {:creator_id (mt/user->id :rasta)
                    :name       "We like to party"
@@ -268,7 +287,24 @@
                                                          :enabled       true
                                                          :recipients    [{:email "foo@bar.com"}
                                                                          {:id (mt/user->id :crowberto)}]}]
-                                        :skip_if_empty false}))))))
+                                        :skip_if_empty false}))))
+    (is (= {:topic    :subscription-update
+            :user_id  nil
+            :model    "Pulse"
+            :model_id (u/the-id pulse)
+            :details  {:archived     false
+                       :name         "We like to party",
+                       :dashboard_id nil,
+                       :parameters   [],
+                       :channel      ["email"],
+                       :schedule     ["daily"],
+                       :recipients   [[{:email       "foo@bar.com"}
+                                       {:first_name  "Crowberto"
+                                        :last_name   "Corv"
+                                        :email       "crowberto@metabase.com"
+                                        :common_name "Crowberto Corv"
+                                        :id          (mt/user->id :crowberto)}]]}}
+           (audit-log-test/latest-event :subscription-update (u/the-id pulse))))))
 
 (deftest dashboard-subscription-update-test
   (testing "collection_id and dashboard_id of a dashboard subscription cannot be directly modified"

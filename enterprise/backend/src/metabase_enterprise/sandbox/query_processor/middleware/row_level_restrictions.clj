@@ -21,6 +21,7 @@
     :refer [PermissionsGroupMembership]]
    [metabase.models.query.permissions :as query-perms]
    [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.fetch-source-query
     :as fetch-source-query]
@@ -336,9 +337,10 @@
 (def ^:private default-recursion-limit 20)
 (def ^:private ^:dynamic *recursion-limit* default-recursion-limit)
 
-(defn apply-sandboxing
+(defenterprise apply-sandboxing
   "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
   restrict the rows returned, based on presence of sandboxes."
+  :feature :sandboxes
   [query]
   (if-not api/*is-superuser?*
     (or (when-let [table-id->gtap (when *current-user-id*
@@ -372,8 +374,9 @@
                  (get col-name->expected-col (:name col))))))]
     (update metadata :cols merge-cols)))
 
-(defn merge-sandboxing-metadata
+(defenterprise merge-sandboxing-metadata
   "Post-processing middleware. Merges in column metadata from the original, unsandboxed version of the query."
+  :feature :sandboxes
   [{::keys [original-metadata]} rff]
   (if original-metadata
     (fn merge-sandboxing-metadata-rff* [metadata]
