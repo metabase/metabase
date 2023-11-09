@@ -48,7 +48,7 @@ describe("DateIntervalPicker", () => {
     const defaultValue = getDefaultValue(direction);
 
     it("should change the interval", () => {
-      const { onChange } = setup({
+      const { onChange, onSubmit } = setup({
         value: defaultValue,
       });
 
@@ -60,10 +60,11 @@ describe("DateIntervalPicker", () => {
         ...defaultValue,
         value: direction === "last" ? -20 : 20,
       });
+      expect(onSubmit).not.toHaveBeenCalled();
     });
 
     it("should change the interval with a negative value", () => {
-      const { onChange } = setup({
+      const { onChange, onSubmit } = setup({
         value: defaultValue,
       });
 
@@ -75,10 +76,11 @@ describe("DateIntervalPicker", () => {
         ...defaultValue,
         value: direction === "last" ? -10 : 10,
       });
+      expect(onSubmit).not.toHaveBeenCalled();
     });
 
     it("should coerce zero", () => {
-      const { onChange } = setup({
+      const { onChange, onSubmit } = setup({
         value: defaultValue,
       });
 
@@ -91,10 +93,11 @@ describe("DateIntervalPicker", () => {
         ...defaultValue,
         value: direction === "last" ? -1 : 1,
       });
+      expect(onSubmit).not.toHaveBeenCalled();
     });
 
     it("should ignore empty values", () => {
-      const { onChange } = setup({
+      const { onChange, onSubmit } = setup({
         value: defaultValue,
       });
 
@@ -104,10 +107,11 @@ describe("DateIntervalPicker", () => {
 
       expect(input).toHaveValue("30");
       expect(onChange).not.toHaveBeenCalled();
+      expect(onSubmit).not.toHaveBeenCalled();
     });
 
     it("should ignore invalid values", () => {
-      const { onChange } = setup({
+      const { onChange, onSubmit } = setup({
         value: defaultValue,
       });
 
@@ -118,10 +122,11 @@ describe("DateIntervalPicker", () => {
 
       expect(input).toHaveValue("30");
       expect(onChange).not.toHaveBeenCalled();
+      expect(onSubmit).not.toHaveBeenCalled();
     });
 
     it("should allow to change the unit", () => {
-      const { onChange } = setup({
+      const { onChange, onSubmit } = setup({
         value: defaultValue,
       });
 
@@ -132,10 +137,11 @@ describe("DateIntervalPicker", () => {
         ...defaultValue,
         unit: "year",
       });
+      expect(onSubmit).not.toHaveBeenCalled();
     });
 
     it("should allow to include the current unit", async () => {
-      const { onChange } = setup({
+      const { onChange, onSubmit } = setup({
         value: defaultValue,
       });
 
@@ -148,6 +154,7 @@ describe("DateIntervalPicker", () => {
           "include-current": true,
         },
       });
+      expect(onSubmit).not.toHaveBeenCalled();
     });
 
     it("should not allow to add relative offsets by default", async () => {
@@ -161,7 +168,7 @@ describe("DateIntervalPicker", () => {
     });
 
     it("should allow to a relative offset if enabled", async () => {
-      const { onChange } = setup({
+      const { onChange, onSubmit } = setup({
         value: defaultValue,
         canUseRelativeOffsets: true,
       });
@@ -175,6 +182,7 @@ describe("DateIntervalPicker", () => {
         offsetValue: direction === "last" ? -7 : 7,
         options: undefined,
       });
+      expect(onSubmit).not.toHaveBeenCalled();
     });
 
     it("should display the actual date range", () => {
@@ -198,6 +206,23 @@ describe("DateIntervalPicker", () => {
       const rangeText =
         direction === "last" ? "Dec 2, 2019 – Jan 1, 2020" : "Jan 1–31, 2020";
       expect(screen.getByText(rangeText)).toBeInTheDocument();
+    });
+
+    it("should submit values on enter", () => {
+      const { onChange, onSubmit } = setup({
+        value: defaultValue,
+      });
+
+      const input = screen.getByLabelText("Interval");
+      userEvent.clear(input);
+      userEvent.type(input, "20");
+      userEvent.type(input, "{enter}");
+
+      expect(onChange).toHaveBeenLastCalledWith({
+        ...defaultValue,
+        value: direction === "last" ? -20 : 20,
+      });
+      expect(onSubmit).toHaveBeenCalled();
     });
   });
 });
