@@ -237,65 +237,30 @@
             nil)))))
 
 (deftest ^:parallel expression-test
-  (mt/dataset sample-dataset
-    (qp.store/with-metadata-provider (mt/id)
-      (let [people     (lib.metadata/table (qp.store/metadata-provider) (mt/id :people))
-            created-at (lib.metadata/field (qp.store/metadata-provider) (mt/id :people :created_at))
-            query      (as-> (lib/query (qp.store/metadata-provider) people) query
-                         (lib/expression query "CC Created At" created-at)
-                         (lib/filter query (lib/=
-                                            (lib/expression-ref query "CC Created At")
-                                            "2017-10-07"))
-                         (lib/aggregate query (lib/count)))]
-        (is (=? {:lib/type :mbql/query,
-                 :lib/metadata
-                 (metabase.lib.metadata.cached-provider/cached-metadata-provider
-                  (metabase.lib.metadata.jvm/->UncachedApplicationDatabaseMetadataProvider 6792)),
-                 :database 6792,
-                 :stages
-                 [{:lib/type :mbql.stage/mbql,
-                   :source-table 50784,
-                   :expressions
-                   [[:field
-                     {:lib/uuid "aaa20ba4-752c-4794-8566-4c524a508f5c",
-                      :base-type :type/DateTimeWithLocalTZ,
-                      :effective-type :type/DateTimeWithLocalTZ,
-                      :lib/expression-name "CC Created At"}
-                     215766]],
-                   :filters
-                   [[:=
-                     #:lib{:uuid "f06434e4-fa65-4167-b5a6-e03f1a722c36"}
-                     [:expression
-                      {:lib/uuid "a7f4f910-7466-446f-97df-1139d2d2696d",
-                       :base-type :type/DateTimeWithLocalTZ,
-                       :effective-type :type/DateTimeWithLocalTZ}
-                      "CC Created At"]
-                     "2017-10-07"]],
-                   :aggregation [[:count #:lib{:uuid "e782ee32-6eca-4efd-b32e-625a71b267a9"}]]}]}
-                query))
-        (is (=? {:lib/type :mbql/query,
-                 :lib/metadata
-                 (metabase.lib.metadata.cached-provider/cached-metadata-provider
-                  (metabase.lib.metadata.jvm/->UncachedApplicationDatabaseMetadataProvider 6792)),
-                 :database 6792,
-                 :stages
-                 [{:lib/type :mbql.stage/mbql,
-                   :source-table 50784,
-                   :expressions
-                   [[:field
-                     {:base-type :type/DateTimeWithLocalTZ,
-                      :lib/uuid "dc7ae3c0-0faa-45e4-8949-2e7afe8889ef",
-                      :lib/expression-name "CC Created At"}
-                     215766]],
-                   :aggregation [[:count #:lib{:uuid "b2b8a47e-2570-4480-a126-d47cc3c138c0"}]],
-                   :filters
-                   [[:=
-                     #:lib{:uuid "52f3f31b-b32b-4ceb-82fe-a8e23c90ca4f"}
-                     [:expression
-                      {:base-type :type/DateTimeWithLocalTZ, :lib/uuid "802cc76d-a4f0-4bd2-bc92-d1b50c4e5b80"}
-                      "CC Created At"]
-                     [:absolute-datetime #:lib{:uuid "8e106bb3-0f83-4c00-a1bc-0e0eee4c8a52"} #t "2017-10-07T00:00Z[UTC]" :day]]]}]}
-                (->> query
-                     lib.convert/->legacy-MBQL
-                     wrap-value-literals
-                     (lib/query query))))))))
+  (testing "Value literals compared to :expression refs should get wrapped"
+    (mt/dataset sample-dataset
+      (qp.store/with-metadata-provider (mt/id)
+        (let [people     (lib.metadata/table (qp.store/metadata-provider) (mt/id :people))
+              created-at (lib.metadata/field (qp.store/metadata-provider) (mt/id :people :created_at))
+              query      (as-> (lib/query (qp.store/metadata-provider) people) query
+                           (lib/expression query "CC Created At" created-at)
+                           (lib/filter query (lib/=
+                                              (lib/expression-ref query "CC Created At")
+                                              "2017-10-07"))
+                           (lib/aggregate query (lib/count)))]
+
+          (is (=? {:stages [{:filters
+                             [[:=
+                               {}
+                               [:expression {:base-type :type/DateTimeWithLocalTZ} "CC Created At"]
+                               "2017-10-07"]]}]}
+                  query))
+          (is (=? {:stages [{:lib/type :mbql.stage/mbql,
+                             :filters  [[:=
+                                         {}
+                                         [:expression {:base-type :type/DateTimeWithLocalTZ} "CC Created At"]
+                                         [:absolute-datetime {} #t "2017-10-07T00:00Z[UTC]" :day]]]}]}
+                  (->> query
+                       lib.convert/->legacy-MBQL
+                       wrap-value-literals
+                       (lib/query query)))))))))
