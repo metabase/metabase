@@ -658,7 +658,7 @@
    ;; e2e tests curerntly doesn't include it
    tabs [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
   (log/warn
-   (trs "DELETE /api/dashboard/:id/cards is deprecated. Use PUT /api/dashboard/:id instead."))
+   "DELETE /api/dashboard/:id/cards is deprecated. Use PUT /api/dashboard/:id instead.")
   (let [dashboard (update-dashboard id {:dashcards cards :tabs tabs})]
     {:cards (:dashcards dashboard)
      :tabs  (:tabs dashboard)}))
