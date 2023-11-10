@@ -16062,11 +16062,7 @@ databaseChangeLog:
             tableName: activity
             columnName: model
             newDataType: VARCHAR(32)
-      rollback:
-        - modifyDataType:
-            tableName: activity
-            columnName: model
-            newDataType: VARCHAR(16)
+      rollback: # not necessary
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
