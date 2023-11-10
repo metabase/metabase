@@ -204,26 +204,29 @@
     (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
       (adjust-audit-db-to-host! audit-db))))
 
+(defn- maybe-install-audit-db
+  []
+  (let [audit-db (t2/select-one :model/Database :is_audit true)]
+    (cond
+      (nil? audit-db)
+      (u/prog1 ::installed
+       (log/info "Installing Audit DB...")
+       (install-database! mdb.env/db-type))
+
+      (not= mdb.env/db-type (:engine audit-db))
+      (u/prog1 ::updated
+       (log/infof "App DB change detected. Changing Audit DB source to match: %s." (name mdb.env/db-type))
+       (adjust-audit-db-to-host! audit-db))
+
+      :else
+      ::no-op)))
+
 (defenterprise ensure-audit-db-installed!
   "EE implementation of `ensure-db-installed!`. Installs audit db if it does not already exist, and loads audit
   content if it is available."
   :feature :none
   []
-  (let [audit-db (t2/select-one :model/Database :is_audit true)
-        result   (cond
-                   (nil? audit-db)
-                   (u/prog1 ::installed
-                     (log/info "Installing Audit DB...")
-                     (install-database! mdb.env/db-type))
-
-                   (not= mdb.env/db-type (:engine audit-db))
-                   (u/prog1 ::updated
-                     (log/infof "App DB change detected. Changing Audit DB source to match: %s." (name mdb.env/db-type))
-                     (adjust-audit-db-to-host! audit-db))
-
-                   :else
-                   ::no-op)]
-    (let [audit-db (t2/select-one :model/Database :is_audit true)]
-        ;; prevent sync while loading
-      ((sync-util/with-duplicate-ops-prevented :sync-database audit-db (partial maybe-load-analytics-content! audit-db)))
-      result)))
+  (u/prog1 (maybe-install-audit-db)
+   (let [audit-db (t2/select-one :model/Database :is_audit true)]
+       ;; prevent sync while loading
+     ((sync-util/with-duplicate-ops-prevented :sync-database audit-db (partial maybe-load-analytics-content! audit-db))))))
