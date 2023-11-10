@@ -263,16 +263,16 @@ function uploadFile(testFile, valid = true) {
     );
   });
 
-  cy.findAllByRole("status").within(() => {
-    cy.findByText(/Uploading/i);
-    cy.findByText(testFile.fileName);
-  });
+  // After #35498 has been merged, we now sometimes encounter two elements with the "status" role in UI.
+  // The first (older) one is related to the sync that didn't finish, and the second one is related to CSV upload.
+  // This is the reason we have to start using `findAllByRole` rather than `findByRole`.
+  cy.findAllByRole("status")
+    .should("contain", "Uploading data to")
+    .and("contain", testFile.fileName);
 
   if (valid) {
-    cy.findAllByRole("status").within(() => {
-      cy.findByText("Data added to Uploads Collection", {
-        timeout: 10 * 1000,
-      });
+    cy.findAllByRole("status").findByText("Data added to Uploads Collection", {
+      timeout: 10 * 1000,
     });
 
     cy.get("main").within(() => cy.findByText("Uploads Collection"));
@@ -281,16 +281,12 @@ function uploadFile(testFile, valid = true) {
       cy.findByText(testFile.humanName);
     });
 
-    cy.findAllByRole("status").within(() => {
-      cy.findByText("Start exploring").click();
-    });
+    cy.findAllByRole("status").findByText("Start exploring").click();
 
     cy.url().should("include", `/model/`);
     cy.findByTestId("TableInteractive-root");
   } else {
-    cy.findAllByRole("status").within(() => {
-      cy.findByText("Error uploading your File");
-    });
+    cy.findAllByRole("status").findByText("Error uploading your File");
   }
 }
 
