@@ -412,9 +412,8 @@ function getParameter(
     (clickBehavior.linkType === "dashboard" ||
       clickBehavior.linkType === "question")
   ) {
-    const dashboard = (extraData.dashboards || {})[
-      clickBehavior.targetId as DashboardId
-    ];
+    const dashboard =
+      extraData.dashboards?.[clickBehavior.targetId as DashboardId];
     const parameters = dashboard?.parameters || [];
     return parameters.find(parameter => parameter.id === target.id);
   }
