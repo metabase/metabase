@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is]]
    [metabase-enterprise.audit-db :as audit-db]
+   [metabase.task.sync-databases :as task.sync-databases]
    [metabase.core :as mbc]
    [metabase.models.database :refer [Database]]
    [metabase.models.permissions :as perms]
@@ -73,3 +74,21 @@
   (is (= #{"plugins/instance_analytics/collections"
            "plugins/instance_analytics/databases"}
          (set (map str (fs/list-dir "plugins/instance_analytics"))))))
+
+(defn- get-audit-db-triggers []
+  (t2/query
+   (str "select trigger_name from qrtz_triggers where trigger_name like '%"
+        perms/audit-db-id
+        "%';")))
+
+(deftest no-sync-tasks-for-audit-db
+  (with-audit-db-restoration
+    (is (= :metabase-enterprise.audit-db/installed (audit-db/ensure-audit-db-installed!)))
+    (is (= 0 (count (get-audit-db-triggers))) "no sync scheduled after installation")
+
+    (with-redefs [task.sync-databases/job-context->database-id (constantly perms/audit-db-id)]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Cannot sync Database: It is the audit db."
+           (#'task.sync-databases/sync-and-analyze-database! "job-context"))))
+    (is (= 0 (count (get-audit-db-triggers))) "no sync occured even when called directly for audit db.")))

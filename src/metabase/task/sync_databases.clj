@@ -79,10 +79,11 @@
     (if (= perms/audit-db-id database-id)
       (do
         (log/warn (trs "Cannot sync Database: It is the audit db."))
-        (when-not (config/is-prod?)
-          (throw (ex-info "Cannot sync App DB!" {:database-id database-id
-                                                 :raw-job-context job-context
-                                                 :job-context (pr-str job-context)}))))
+        (when-not config/is-prod?
+          (throw (ex-info "Cannot sync Database: It is the audit db."
+                          {:database-id database-id
+                           :raw-job-context job-context
+                           :job-context (pr-str job-context)}))))
       (do
         (log/info (trs "Starting sync task for Database {0}." database-id))
         (when-let [database (or (t2/select-one Database :id database-id)
