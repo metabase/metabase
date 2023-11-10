@@ -66,10 +66,9 @@ describe("ClickActionsPopover", function () {
         expect(props.onUpdateVisualizationSettings).toHaveBeenCalledTimes(1);
         expect(props.onUpdateVisualizationSettings).toHaveBeenLastCalledWith({
           column_settings: {
-            [`["ref",["field",${ORDERS.ID},{\"base-type\":\"type/Integer\"}]]`]:
-              {
-                column_title: "ID NEW NAME",
-              },
+            [`["ref",["field",${ORDERS.ID},{"base-type":"type/Integer"}]]`]: {
+              column_title: "ID NEW NAME",
+            },
           },
         });
       });
