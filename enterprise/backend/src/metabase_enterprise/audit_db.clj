@@ -205,7 +205,8 @@
       (adjust-audit-db-to-host! audit-db))))
 
 (defenterprise ensure-audit-db-installed!
-  "EE implementation of `ensure-db-installed!`. Installs audit db if it does not already exist."
+  "EE implementation of `ensure-db-installed!`. Installs audit db if it does not already exist, and loads audit
+  content if it is available."
   :feature :none
   []
   (let [audit-db (t2/select-one :model/Database :is_audit true)
