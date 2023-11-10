@@ -43,7 +43,7 @@ export function getAvailableColumns(
   });
 }
 
-export function getDefaultColumn(
+export function getDefaultSecondColumn(
   columns: Lib.ColumnMetadata[],
   longitudeColumn?: Lib.ColumnMetadata,
 ) {
@@ -60,7 +60,7 @@ export function canPickColumns(
 export function getFilterClause(
   operator: Lib.CoordinateFilterOperatorName,
   column: Lib.ColumnMetadata,
-  anotherColumn: Lib.ColumnMetadata | undefined,
+  secondColumn: Lib.ColumnMetadata | undefined,
   values: number[],
 ) {
   if (operator !== "inside") {
@@ -72,9 +72,9 @@ export function getFilterClause(
   }
 
   const latitudeColumn =
-    anotherColumn && Lib.isLatitude(anotherColumn) ? anotherColumn : column;
+    secondColumn && Lib.isLatitude(secondColumn) ? secondColumn : column;
   const longitudeColumn =
-    anotherColumn && Lib.isLongitude(anotherColumn) ? anotherColumn : column;
+    secondColumn && Lib.isLongitude(secondColumn) ? secondColumn : column;
 
   return Lib.coordinateFilterClause({
     operator,

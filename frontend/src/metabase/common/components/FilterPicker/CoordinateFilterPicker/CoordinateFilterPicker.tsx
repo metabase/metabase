@@ -16,7 +16,7 @@ import { OPERATOR_OPTIONS } from "./constants";
 import {
   canPickColumns,
   getAvailableColumns,
-  getDefaultColumn,
+  getDefaultSecondColumn,
   getDefaultValues,
   getFilterClause,
   hasValidValues,
@@ -60,8 +60,8 @@ export function CoordinateFilterPicker({
   const [values, setValues] = useState(
     getDefaultValues(operator, filterParts?.values),
   );
-  const [anotherColumn, setAnotherColumn] = useState(
-    getDefaultColumn(availableColumns, filterParts?.longitudeColumn),
+  const [secondColumn, setSecondColumn] = useState(
+    getDefaultSecondColumn(availableColumns, filterParts?.longitudeColumn),
   );
 
   const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
@@ -74,7 +74,7 @@ export function CoordinateFilterPicker({
 
   const handleSubmit = () => {
     if (isValid) {
-      onChange(getFilterClause(operator, column, anotherColumn, values));
+      onChange(getFilterClause(operator, column, secondColumn, values));
     }
   };
 
@@ -94,7 +94,7 @@ export function CoordinateFilterPicker({
             stageIndex={stageIndex}
             column={column}
             availableColumns={availableColumns}
-            onChange={setAnotherColumn}
+            onChange={setSecondColumn}
           />
         )}
         <CoordinateValueInput

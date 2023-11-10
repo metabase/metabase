@@ -8,7 +8,7 @@ interface CoordinateColumnPickerProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   availableColumns: Lib.ColumnMetadata[];
-  onChange: (anotherColumn: Lib.ColumnMetadata) => void;
+  onChange: (secondColumn: Lib.ColumnMetadata) => void;
 }
 
 export function CoordinateColumnPicker({
