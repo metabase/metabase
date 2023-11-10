@@ -51,23 +51,6 @@ function createQueryWithTemporalBreakout() {
   };
 }
 
-function applyAggregation(
-  query: Lib.Query,
-  operatorShortName: string,
-  stageIndex = 0,
-): Lib.Query {
-  const operator = findAggregationOperator(query, operatorShortName);
-
-  const findColumn = columnFinder(
-    query,
-    Lib.aggregationOperatorColumns(operator),
-  );
-  const column = findColumn("ORDERS", "TOTAL");
-  const clause = Lib.aggregationClause(operator, column);
-
-  return Lib.aggregate(query, stageIndex, clause);
-}
-
 function setup(step = createMockNotebookStep()) {
   const updateQuery = jest.fn();
 

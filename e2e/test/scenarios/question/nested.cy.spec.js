@@ -1,7 +1,6 @@
 import {
   restore,
   popover,
-  openOrdersTable,
   remapDisplayValueToFK,
   visitQuestion,
   visitQuestionAdhoc,
