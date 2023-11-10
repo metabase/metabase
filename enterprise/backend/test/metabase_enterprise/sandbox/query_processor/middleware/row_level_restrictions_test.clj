@@ -16,8 +16,7 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Card Collection Field Table]]
    [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group :refer [PermissionsGroup]]
-   [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache-test :as cache-test]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -30,6 +29,7 @@
    [metabase.test.data.env :as tx.env]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [schema.core :as s]
