@@ -615,17 +615,25 @@
          :serdes/meta  [{:model "Dashboard"    :id (:entity_id dashboard)}
                         {:model "DashboardTab" :id (:entity_id tab)}]))
 
+
+(defn- drop-excessive-nested!
+  "Remove nested entities which are not present in incoming serialization load"
+  [entities model field value]
+  (let [known     (t2/select-fn-set :entity_id model field value)
+        to-remove (set/difference known (set (map :entity_id entities)))]
+    (when (seq to-remove)
+      (t2/delete! model :entity_id [:in to-remove]))))
+
 ;; Call the default load-one! for the Dashboard, then for each DashboardCard.
 (defmethod serdes/load-one! "Dashboard" [ingested maybe-local]
-  (let [dashboard        ((get-method serdes/load-one! :default) (dissoc ingested :dashcards :tabs) maybe-local)
-        known-dashcards  (t2/select-fn-set :entity_id :model/DashboardCard :dashboard_id (:id dashboard))
-        remove-dashcards (set/difference known-dashcards (set (map :entity_id (:dashcards ingested))))]
+  (let [dashboard ((get-method serdes/load-one! :default) (dissoc ingested :dashcards :tabs) maybe-local)]
+
+    (drop-excessive-nested! (:tabs ingested) :model/DashboardTab :dashboard_id (:id dashboard))
     (doseq [tab (:tabs ingested)]
       (serdes/load-one! (dashtab-for tab dashboard)
                         (t2/select-one :model/DashboardTab :entity_id (:entity_id tab))))
-    ;; delete dashcards which are not in import, but leave cards in DB
-    (when (seq remove-dashcards)
-      (t2/delete! :model/DashboardCard :entity_id [:in remove-dashcards]))
+
+    (drop-excessive-nested! (:dashcards ingested) :model/DashboardCard :dashboard_id (:id dashboard))
     (doseq [dashcard (:dashcards ingested)]
       (serdes/load-one! (dashcard-for dashcard dashboard)
                         (t2/select-one :model/DashboardCard :entity_id (:entity_id dashcard))))))
