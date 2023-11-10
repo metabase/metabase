@@ -72,14 +72,6 @@ if (!step) {
   error("You must provide a step argument like --build or --publish");
 }
 
-const unstagedChanges = (await $`git status --porcelain`).toString().trim();
-
-if (unstagedChanges) {
-  error(
-    `You have unstaged changes:\n\n ${unstagedChanges}\n\nPlease commit or stash them and try again`,
-  );
-}
-
 /**************************************************
           HELPERS
  **************************************************/
@@ -178,6 +170,14 @@ async function checkJar() {
 async function build() {
   log(`🚀 Building ${edition} jar for ${version} from commit ${commitHash}`);
 
+  const unstagedChanges = (await $`git status --porcelain`).toString().trim();
+
+  if (unstagedChanges) {
+    error(
+      `You have unstaged changes:\n\n ${unstagedChanges}\n\nPlease commit or stash them and try again`,
+    );
+  }
+
   // check build environment
   const majorVersion = Number(getMajorVersion(version));
   const nodeVersion = (await $`node --version`).toString();
@@ -247,7 +247,7 @@ async function s3() {
     process.stdout,
   );
 
-  if (isLatest) {
+  if (isLatest === 'true') {
     await $`aws s3 cp ${JAR_PATH}/metabase.jar s3://${AWS_S3_DOWNLOADS_BUCKET}/latest/metabase.jar`.pipe(
       process.stdout,
     );
@@ -291,7 +291,7 @@ async function docker() {
     version,
   });
 
-  if (isLatest) {
+  if (isLatest === 'true') {
     const latestTag = `${DOCKERHUB_OWNER}/${dockerRepo}:latest`;
     await $`docker tag ${dockerTag} ${latestTag}`.pipe(process.stdout);
     await $`docker push ${latestTag}`.pipe(process.stdout);
@@ -387,7 +387,7 @@ async function updateMilestones() {
   }
 
   if (step === "publish") {
-    log(`🚀 Publishing ${edition} ${version}🚀`);
+    log(`🚀 Publishing ${edition} ${version} 🚀`);
 
     await checkReleased();
     await s3();
