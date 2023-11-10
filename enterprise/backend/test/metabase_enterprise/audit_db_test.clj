@@ -83,7 +83,7 @@
 
 (deftest no-sync-tasks-for-audit-db
   (with-audit-db-restoration
-    (is (= :metabase-enterprise.audit-db/installed (audit-db/ensure-audit-db-installed!)))
+    (is (= :metabase-enterprise.audit-db/no-op (audit-db/ensure-audit-db-installed!)))
     (is (= 0 (count (get-audit-db-triggers))) "no sync scheduled after installation")
 
     (with-redefs [task.sync-databases/job-context->database-id (constantly perms/audit-db-id)]
