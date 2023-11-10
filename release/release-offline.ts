@@ -33,8 +33,8 @@ const {
   AWS_S3_STATIC_BUCKET,
   AWS_CLOUDFRONT_DOWNLOADS_ID,
   AWS_CLOUDFRONT_STATIC_ID,
-  AWS_S3_RELEASE_SECRET_ACCESS_KEY,
-  AWS_S3_RELEASE_ACCESS_KEY_ID,
+  AWS_SECRET_ACCESS_KEY,
+  AWS_ACCESS_KEY_ID,
   DOCKERHUB_OWNER,
   DOCKERHUB_RELEASE_USERNAME,
   DOCKERHUB_RELEASE_TOKEN,
@@ -45,22 +45,39 @@ const github = new Octokit({ auth: GITHUB_TOKEN });
 const JAR_PATH = "../target/uberjar";
 
 const version = process.argv?.[2]?.trim();
-const commit = process.argv?.[3]?.trim();
+const commitHash = process.argv?.[3]?.trim();
 const step = process.argv?.[4]?.trim().replace("--", "");
 const edition = isEnterpriseVersion(version) ? "ee" : "oss";
 
+const log = (message, color = "blue") =>
+  // eslint-disable-next-line no-console
+  console.log(chalk[color](`\n${message}\n`));
+
+function error(message) {
+  log(`⚠️   ${message}`, "red");
+  process.exit(1);
+}
+
 if (!isValidVersionString(version)) {
   error(
-    "You must provide a valid version string as the first argument (e.g v0.45.6",
+    "You must provide a valid version string as the first argument (e.g v0.45.6)",
   );
 }
 
-if (!isValidCommitHash(commit)) {
+if (!isValidCommitHash(commitHash)) {
   error("You must provide a valid commit hash as the second argument");
 }
 
 if (!step) {
   error("You must provide a step argument like --build or --publish");
+}
+
+const unstagedChanges = (await $`git status --porcelain`).toString().trim();
+
+if (unstagedChanges) {
+  error(
+    `You have unstaged changes:\n\n ${unstagedChanges}\n\nPlease commit or stash them and try again`,
+  );
 }
 
 /**************************************************
@@ -75,6 +92,44 @@ function getGithubCredentials() {
   }
 
   return { GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO };
+}
+
+function getAWSCredentials() {
+  if (
+    !AWS_S3_DOWNLOADS_BUCKET ||
+    !AWS_S3_STATIC_BUCKET ||
+    !AWS_CLOUDFRONT_STATIC_ID ||
+    !AWS_CLOUDFRONT_DOWNLOADS_ID ||
+    !AWS_SECRET_ACCESS_KEY ||
+    !AWS_ACCESS_KEY_ID
+  ) {
+    error("You must provide all AWS environment variables in .env-template");
+    process.exit(1);
+  }
+
+  return {
+    AWS_S3_DOWNLOADS_BUCKET,
+    AWS_S3_STATIC_BUCKET,
+    AWS_CLOUDFRONT_DOWNLOADS_ID,
+    AWS_CLOUDFRONT_STATIC_ID,
+  };
+}
+
+function getDockerCredentials() {
+  if (
+    !DOCKERHUB_RELEASE_USERNAME ||
+    !DOCKERHUB_RELEASE_TOKEN ||
+    !DOCKERHUB_OWNER
+  ) {
+    error("You must provide all docker environment variables in .env-template");
+    process.exit(1);
+  }
+
+  return {
+    DOCKERHUB_RELEASE_USERNAME,
+    DOCKERHUB_RELEASE_TOKEN,
+    DOCKERHUB_OWNER,
+  };
 }
 
 async function checkReleased() {
@@ -117,20 +172,11 @@ async function checkJar() {
   }
 }
 
-// eslint-disable-next-line no-console
-const log = (message, color = "blue") =>
-  console.log(chalk[color](`\n${message}\n`));
-
-function error(message) {
-  log(`⚠️   ${message}`, "red");
-  process.exit(1);
-}
-
 /**************************************************
           BUILD STEP
  **************************************************/
 async function build() {
-  log(`🚀 Building ${edition} jar for ${version} from commit ${commit}`);
+  log(`🚀 Building ${edition} jar for ${version} from commit ${commitHash}`);
 
   // check build environment
   const majorVersion = Number(getMajorVersion(version));
@@ -157,7 +203,7 @@ async function build() {
 
   try {
     await $`git fetch --all`;
-    await $`git stash && git checkout ${commit}`;
+    await $`git stash && git checkout ${commitHash}`;
 
     // actually build jar
     await $`../bin/build.sh :edition :${edition} :version ${version}`.pipe(
@@ -165,7 +211,7 @@ async function build() {
     );
 
     await $`git checkout -`;
-    await $`echo ${commit} > ${JAR_PATH}/COMMIT-ID`;
+    await $`echo ${commitHash} > ${JAR_PATH}/COMMIT-ID`;
     await $`shasum -a 256 ${JAR_PATH}/metabase.jar > ${JAR_PATH}/SHA256.sum`;
 
     log(`✅ Built ${edition} jar for ${version} in ${JAR_PATH}`, "green");
@@ -184,6 +230,7 @@ async function s3() {
   log(`⏳ Publishing ${version} to s3`);
 
   const { GITHUB_OWNER, GITHUB_REPO } = getGithubCredentials();
+  const { AWS_S3_DOWNLOADS_BUCKET } = getAWSCredentials();
 
   await checkJar();
 
@@ -193,18 +240,6 @@ async function s3() {
     repo: GITHUB_REPO,
     version,
   });
-
-  if (
-    !AWS_S3_DOWNLOADS_BUCKET ||
-    !AWS_S3_STATIC_BUCKET ||
-    !AWS_S3_RELEASE_SECRET_ACCESS_KEY ||
-    !AWS_S3_RELEASE_ACCESS_KEY_ID
-  ) {
-    error("You must provide all AWS environment variables in .env-template");
-  }
-
-  process.env.AWS_ACCESS_KEY_ID = AWS_S3_RELEASE_ACCESS_KEY_ID;
-  process.env.AWS_SECRET_ACCESS_KEY = AWS_S3_RELEASE_SECRET_ACCESS_KEY;
 
   const versionPath = edition === "ee" ? `enterprise/${version}` : version;
 
@@ -218,11 +253,9 @@ async function s3() {
     );
   }
 
-  if (!process.env.SKIP_CLOUDFRONT) {
-    await $`aws cloudfront create-invalidation \
-      --distribution-id ${AWS_CLOUDFRONT_DOWNLOADS_ID} \
-      --paths /${versionPath}/metabase.jar`.pipe(process.stdout);
-  }
+  await $`aws cloudfront create-invalidation \
+    --distribution-id ${AWS_CLOUDFRONT_DOWNLOADS_ID} \
+    --paths /${versionPath}/metabase.jar`.pipe(process.stdout);
 
   log(`✅ Published ${version} to s3`);
 }
@@ -231,14 +264,11 @@ async function docker() {
   log(`⏳ Building docker image for ${version}`);
 
   const { GITHUB_OWNER, GITHUB_REPO } = getGithubCredentials();
-
-  if (
-    !DOCKERHUB_RELEASE_USERNAME ||
-    !DOCKERHUB_RELEASE_TOKEN ||
-    !DOCKERHUB_OWNER
-  ) {
-    error("You must provide all docker environment variables in .env-template");
-  }
+  const {
+    DOCKERHUB_RELEASE_USERNAME,
+    DOCKERHUB_RELEASE_TOKEN,
+    DOCKERHUB_OWNER,
+  } = getDockerCredentials();
 
   await checkJar();
 
@@ -274,6 +304,8 @@ async function versionInfo() {
   log(`⏳ Building version-info.json`);
 
   const { GITHUB_OWNER, GITHUB_REPO } = getGithubCredentials();
+  const { AWS_S3_STATIC_BUCKET, AWS_CLOUDFRONT_STATIC_ID } =
+    getAWSCredentials();
 
   const newVersionInfo = await getVersionInfo({
     github,
@@ -291,18 +323,16 @@ async function versionInfo() {
     process.stdout,
   );
 
-  if (!process.env.SKIP_CLOUDFRONT) {
-    await $`aws cloudfront create-invalidation \
-      --distribution-id ${AWS_CLOUDFRONT_STATIC_ID} \
-      --paths /${versionInfoName}`.pipe(process.stdout);
-  }
+  await $`aws cloudfront create-invalidation \
+    --distribution-id ${AWS_CLOUDFRONT_STATIC_ID} \
+    --paths /${versionInfoName}`.pipe(process.stdout);
 
   log(`✅ Published ${versionInfoName} to s3`);
 }
 
 async function tag() {
   // tag commit
-  await $`git tag ${version} ${commit}`;
+  await $`git tag ${version} ${commitHash}`;
   await $`git push origin ${version}`.pipe(process.stdout);
 
   log(`✅ Tagged ${version}`);
