@@ -31,3 +31,17 @@ export function hasValidValues(
 
   return hasMultipleValues ? values.length > 0 : values.length === valueCount;
 }
+
+export function getCoercedValues(
+  operator: Lib.NumberFilterOperatorName,
+  values: number[],
+) {
+  if (operator === "between") {
+    const [startValue, endValue] = values;
+    return endValue < startValue
+      ? [endValue, startValue]
+      : [startValue, endValue];
+  }
+
+  return values;
+}

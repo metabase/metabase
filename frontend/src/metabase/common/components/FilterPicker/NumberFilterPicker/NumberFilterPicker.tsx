@@ -11,7 +11,7 @@ import { FilterFooter } from "../FilterFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
 import { OPERATOR_OPTIONS } from "./constants";
-import { getDefaultValues, hasValidValues } from "./utils";
+import { getCoercedValues, getDefaultValues, hasValidValues } from "./utils";
 import type { NumberValue } from "./types";
 
 export function NumberFilterPicker({
@@ -59,9 +59,9 @@ export function NumberFilterPicker({
     if (isValid) {
       onChange(
         Lib.numberFilterClause({
-          operator: operator,
+          operator,
           column,
-          values,
+          values: getCoercedValues(operator, values),
         }),
       );
     }

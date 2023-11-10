@@ -23,7 +23,6 @@ export function getCoercedValues(
 ) {
   if (operator === "between") {
     const [startTime, endTime] = values;
-
     return dayjs(endTime).isBefore(startTime)
       ? [endTime, startTime]
       : [startTime, endTime];
