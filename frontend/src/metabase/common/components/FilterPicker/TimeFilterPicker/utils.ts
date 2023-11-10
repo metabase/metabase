@@ -1,5 +1,5 @@
 import dayjs from "dayjs";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 import { OPERATOR_OPTIONS } from "./constants";
 
 function getDefaultValue() {
@@ -17,7 +17,19 @@ export function getDefaultValues(
     .map((value, index) => values[index] ?? value);
 }
 
-export function getCoercedValues(
+export function getFilterClause(
+  operator: Lib.TimeFilterOperatorName,
+  column: Lib.ColumnMetadata,
+  values: Date[],
+) {
+  return Lib.timeFilterClause({
+    operator,
+    column,
+    values: getCoercedValues(operator, values),
+  });
+}
+
+function getCoercedValues(
   operator: Lib.TimeFilterOperatorName,
   values: Date[],
 ) {

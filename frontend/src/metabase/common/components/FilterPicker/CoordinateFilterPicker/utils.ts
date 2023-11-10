@@ -63,23 +63,34 @@ export function getFilterClause(
   secondColumn: Lib.ColumnMetadata | undefined,
   values: number[],
 ) {
-  if (operator !== "inside") {
-    return Lib.coordinateFilterClause({
-      operator,
-      column,
-      values,
-    });
-  }
-
-  const latitudeColumn =
-    secondColumn && Lib.isLatitude(secondColumn) ? secondColumn : column;
-  const longitudeColumn =
-    secondColumn && Lib.isLongitude(secondColumn) ? secondColumn : column;
-
   return Lib.coordinateFilterClause({
     operator,
-    column: latitudeColumn,
-    longitudeColumn,
+    column: getCoercedColumn(operator, column, secondColumn),
+    longitudeColumn: getCoercedLongitudeColumn(operator, column, secondColumn),
     values,
   });
+}
+
+function getCoercedColumn(
+  operator: Lib.CoordinateFilterOperatorName,
+  column: Lib.ColumnMetadata,
+  secondColumn: Lib.ColumnMetadata | undefined,
+) {
+  return operator === "inside" &&
+    secondColumn != null &&
+    Lib.isLatitude(secondColumn)
+    ? secondColumn
+    : column;
+}
+
+function getCoercedLongitudeColumn(
+  operator: Lib.CoordinateFilterOperatorName,
+  column: Lib.ColumnMetadata,
+  secondColumn: Lib.ColumnMetadata | undefined,
+) {
+  return operator === "inside" &&
+    secondColumn != null &&
+    Lib.isLongitude(secondColumn)
+    ? secondColumn
+    : column;
 }
