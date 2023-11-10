@@ -12,7 +12,6 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -153,10 +152,9 @@
               new-graph     (assoc-in current-graph
                                       [:groups group-id (mt/id) :data]
                                       {:schemas :block, :native :write})]
-          (is (schema= {:message  #".*Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas.*"
-                        s/Keyword s/Any}
-                       (premium-features-test/with-premium-features #{:advanced-permissions}
-                         (mt/user-http-request :crowberto :put 500 "permissions/graph" new-graph)))))))))
+          (is (=? {:message  #".*Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas.*"}
+                  (premium-features-test/with-premium-features #{:advanced-permissions}
+                    (mt/user-http-request :crowberto :put 500 "permissions/graph" new-graph)))))))))
 
 (deftest delete-database-delete-block-perms-test
   (testing "If a Database gets DELETED, any block permissions for it should get deleted too."
