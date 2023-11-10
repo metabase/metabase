@@ -5,10 +5,8 @@
   (:require
    [java-time.api :as t]
    [metabase-enterprise.sandbox.api.util :as mt.api.u]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
    [metabase.events :as events]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
    [metabase.models.query :as query]
    [metabase.models.query-execution
     :as query-execution
@@ -120,9 +118,9 @@
 (defn- is-sandboxed? [query]
   (let [user-id   (get-in query [:info :executed-by])
         table-ids (all-table-ids query)
-        group-ids (t2/select-fn-set :group_id PermissionsGroupMembership :user_id user-id)
+        group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)
         sandboxes (when (seq group-ids)
-                    (t2/select GroupTableAccessPolicy :group_id [:in group-ids]
+                    (t2/select :model/GroupTableAccessPolicy :group_id [:in group-ids]
                                :table_id [:in table-ids]))
         enforced-sandboxes (mt.api.u/enforced-sandboxes sandboxes group-ids)]
     (boolean (seq enforced-sandboxes))))
