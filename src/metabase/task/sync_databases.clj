@@ -259,17 +259,17 @@
           existing-fv-trigger   (some (fn [trigger] (when (= (:key trigger) (.. fv-trigger getKey getName))
                                                       trigger))
                                       (:triggers fv-job))
-          job-data [{:existing-trigger  existing-sync-trigger
-                     :existing-schedule (:metadata_sync_schedule database)
-                     :ti                sync-analyze-task-info
-                     :trigger           sync-trigger
-                     :description       "sync/analyze"}
-                    {:existing-trigger  existing-fv-trigger
-                     :existing-schedule (:cache_field_values_schedule database)
-                     :ti                field-values-task-info
-                     :trigger           fv-trigger
-                     :description       "field-values"}]]
-      (doseq [{:keys [existing-trigger existing-schedule ti trigger description]} job-data
+          jobs-to-create [{:existing-trigger  existing-sync-trigger
+                           :existing-schedule (:metadata_sync_schedule database)
+                           :ti                sync-analyze-task-info
+                           :trigger           sync-trigger
+                           :description       "sync/analyze"}
+                          {:existing-trigger  existing-fv-trigger
+                           :existing-schedule (:cache_field_values_schedule database)
+                           :ti                field-values-task-info
+                           :trigger           fv-trigger
+                           :description       "field-values"}]]
+      (doseq [{:keys [existing-trigger existing-schedule ti trigger description]} jobs-to-create
               :when (or (not existing-trigger)
                         (not= (:schedule existing-trigger) existing-schedule))]
         (delete-task! database ti)
