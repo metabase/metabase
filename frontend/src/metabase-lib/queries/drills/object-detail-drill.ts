@@ -12,7 +12,6 @@ import type {
 } from "metabase-lib/queries/drills/types";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Field from "metabase-lib/metadata/Field";
-import type Metadata from "metabase-lib/metadata/Metadata";
 import { isSameField } from "metabase-lib/queries/utils";
 
 export type ObjectDetailDrillType = "pk" | "fk" | "zoom" | "dashboard";
@@ -38,39 +37,6 @@ export function objectDetailDrill({ question, clicked }: DrillProps) {
     ...drillValues,
     hasManyPKColumns: hasManyPKColumns(question),
   };
-}
-
-export function objectDetailPKDrillQuestion({
-  question,
-  column,
-  objectId,
-}: {
-  question: Question;
-  column: DatasetColumn;
-  objectId: RowValue;
-}) {
-  return question.filter("=", column, objectId);
-}
-
-export function objectDetailFKDrillQuestion({
-  question,
-  column,
-  objectId,
-}: {
-  question: Question;
-  column: DatasetColumn;
-  objectId: RowValue;
-}) {
-  const targetField = getFKTargetField(column, question.metadata());
-  if (targetField) {
-    const newQuestion = question.drillPK(targetField, objectId);
-
-    if (newQuestion) {
-      return newQuestion;
-    }
-  }
-
-  return question;
 }
 
 function objectDetailDrillType({
@@ -137,19 +103,6 @@ function objectDetailDrillType({
 
     return null;
   }
-}
-
-function getFKTargetField(column: DatasetColumn, metadata: Metadata) {
-  const fkField = metadata.field(column.id);
-  if (fkField?.target) {
-    return fkField.target;
-  }
-
-  if (column.fk_target_field_id) {
-    return metadata.field(column.fk_target_field_id);
-  }
-
-  return null;
 }
 
 function hasManyPKColumns(question: Question): boolean {

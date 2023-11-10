@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import { zoomInRow } from "metabase/query_builder/actions";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 import type {
   ClickActionProps,
@@ -8,11 +7,7 @@ import type {
 
 import type Question from "metabase-lib/Question";
 import type { ObjectDetailDrillType } from "metabase-lib/queries/drills/object-detail-drill";
-import {
-  objectDetailDrill,
-  objectDetailFKDrillQuestion,
-  objectDetailPKDrillQuestion,
-} from "metabase-lib/queries/drills/object-detail-drill";
+import { objectDetailDrill } from "metabase-lib/queries/drills/object-detail-drill";
 
 function getAction({
   question,
@@ -26,23 +21,8 @@ function getAction({
   objectId: RowValue;
 }) {
   switch (type) {
-    case "pk":
-      return {
-        question: () =>
-          objectDetailPKDrillQuestion({ question, column, objectId }),
-      };
-
-    case "fk":
-      return {
-        question: () =>
-          objectDetailFKDrillQuestion({ question, column, objectId }),
-      };
-
     case "dashboard":
       return { question: () => question };
-
-    case "zoom":
-      return { action: () => zoomInRow({ objectId }) };
   }
 }
 
@@ -71,6 +51,12 @@ export const ObjectDetailDrill = ({
 
   const { type, column, objectId, hasManyPKColumns } = drill;
 
+  const actionData = getAction({ question, type, column, objectId });
+
+  if (!actionData) {
+    return [];
+  }
+
   return [
     {
       name: "object-detail",
@@ -79,7 +65,7 @@ export const ObjectDetailDrill = ({
       buttonType: "horizontal",
       icon: "expand",
       default: true,
-      ...getAction({ question, type, column, objectId }),
+      ...actionData,
       ...getActionExtraData({ objectId, hasManyPKColumns }),
     },
   ];
