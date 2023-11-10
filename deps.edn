@@ -205,26 +205,27 @@
   ;;    (dev/start!)
   :dev
   {:extra-deps
-   {clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
-                                  :exclusions  [slingshot/slingshot]}
-    clj-kondo/clj-kondo          {:mvn/version "2023.09.07"}                ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
-    cloverage/cloverage          {:mvn/version "1.2.4"}
-    com.gfredericks/test.chuck   {:mvn/version "0.2.14"}                    ; generating strings from regexes (useful with malli)
-    djblue/portal                {:mvn/version "0.46.0"}                    ; ui for inspecting values
-    io.github.camsaul/humane-are {:mvn/version "1.0.2"}
-    io.github.metabase/hawk      {:sha "9c97bcb6d4de116325e651b40973fd0a75b7ae21"}
-    jonase/eastwood              {:mvn/version "1.4.0"                      ; inspects namespaces and reports possible problems using tools.analyzer
-                                  :exclusions
-                                  [org.ow2.asm/asm-all]}
-    lambdaisland/deep-diff2      {:mvn/version "2.10.211"}                  ; way better diffs
-    methodical/methodical        {:mvn/version "0.15.1"}                    ; drop-in replacements for Clojure multimethods and adds several advanced features
-    org.clojure/algo.generic     {:mvn/version "0.1.3"}
-    pjstadig/humane-test-output  {:mvn/version "0.11.0"}
-    reifyhealth/specmonstah      {:mvn/version "2.1.0"
-                                  :exclusions  [org.clojure/clojure
-                                                org.clojure/clojurescript]} ; lets you write test fixtures that are clear, concise, and easy to maintain (clojure.spec)
-    ring/ring-mock               {:mvn/version "0.4.0"}                     ; creating Ring request maps for testing purposes
-    talltale/talltale            {:mvn/version "0.5.13"}}                   ; generates fake data, useful for prototyping or load testing
+   {com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.1.1"}
+    clj-http-fake/clj-http-fake              {:mvn/version "1.0.4"
+                                              :exclusions  [slingshot/slingshot]}
+    clj-kondo/clj-kondo                      {:mvn/version "2023.09.07"} ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
+    cloverage/cloverage                      {:mvn/version "1.2.4"}
+    com.gfredericks/test.chuck               {:mvn/version "0.2.14"} ; generating strings from regexes (useful with malli)
+    djblue/portal                            {:mvn/version "0.46.0"} ; ui for inspecting values
+    io.github.camsaul/humane-are             {:mvn/version "1.0.2"}
+    io.github.metabase/hawk                  {:sha "9c97bcb6d4de116325e651b40973fd0a75b7ae21"}
+    jonase/eastwood                          {:mvn/version "1.4.0" ; inspects namespaces and reports possible problems using tools.analyzer
+                                              :exclusions
+                                              [org.ow2.asm/asm-all]}
+    lambdaisland/deep-diff2                  {:mvn/version "2.10.211"} ; way better diffs
+    methodical/methodical                    {:mvn/version "0.15.1"} ; drop-in replacements for Clojure multimethods and adds several advanced features
+    org.clojure/algo.generic                 {:mvn/version "0.1.3"}
+    pjstadig/humane-test-output              {:mvn/version "0.11.0"}
+    reifyhealth/specmonstah                  {:mvn/version "2.1.0"
+                                              :exclusions  [org.clojure/clojure
+                                                            org.clojure/clojurescript]} ; lets you write test fixtures that are clear, concise, and easy to maintain (clojure.spec)
+    ring/ring-mock                           {:mvn/version "0.4.0"}                     ; creating Ring request maps for testing purposes
+    talltale/talltale                        {:mvn/version "0.5.13"}}                   ; generates fake data, useful for prototyping or load testing
 
    :extra-paths ["dev/src" "local/src" "test" "shared/test" "test_resources"]
    :jvm-opts    ["-Dmb.run.mode=dev"
@@ -232,6 +233,8 @@
                  "-Dmb.test.env.setting=ABCDEFG"
                  "-Duser.timezone=UTC"
                  "-Dfile.encoding=UTF-8"
+                 ;; Allow clojure goes fast tooling to work
+                 "-Djdk.attach.allowAttachSelf"
                  "-Duser.language=en"
                  "-Duser.country=US"
                  ;; set the logging properties set in metabase.bootstrap. calling (dev) will load it but putting here to be sure
@@ -317,7 +320,7 @@
 
   ;; Find outdated versions of dependencies. Run with `clojure -M:outdated`
   :outdated {;; Note that it is `:deps`, not `:extra-deps`
-             :deps {com.github.liquidz/antq {:mvn/version "RELEASE"}}
+             :deps      {com.github.liquidz/antq {:mvn/version "RELEASE"}}
              :main-opts ["-m" "antq.core"]}
 
   :cljs
@@ -364,7 +367,7 @@
     "modules/drivers/sqlserver/test"
     "modules/drivers/vertica/test"]}
 
-;;; Linters
+  ;;; Linters
 
   ;; clojure -M:ee:drivers:check
   ;;
@@ -397,32 +400,32 @@
   {:exec-fn   metabase.linters.eastwood/eastwood
    :exec-args {;; manually specify the source paths for the time being (exclude test paths) until we fix Eastwood
                ;; errors in the test paths (once PR #17193 is merged)
-               :source-paths    ["src"
-                                 "shared/src"
-                                 "enterprise/backend/src"
-                                 "modules/drivers/athena/src"
-                                 "modules/drivers/bigquery-cloud-sdk/src"
-                                 "modules/drivers/druid/src"
-                                 "modules/drivers/googleanalytics/src"
-                                 "modules/drivers/mongo/src"
-                                 "modules/drivers/oracle/src"
-                                 "modules/drivers/presto-jdbc/src"
-                                 "modules/drivers/redshift/src"
-                                 "modules/drivers/snowflake/src"
-                                 "modules/drivers/sparksql/src"
-                                 "modules/drivers/sqlite/src"
-                                 "modules/drivers/sqlserver/src"
-                                 "modules/drivers/vertica/src"]
-               :exclude-linters [ ;; Turn this off temporarily until we finish removing
-                                 ;; self-deprecated functions & macros
-                                 :deprecations
-                                 ;; this has a fit in libs that use Potemkin `import-vars` such
-                                 ;; as `java-time`
-                                 :implicit-dependencies
-                                 ;; too many false positives for now
-                                 :unused-ret-vals
-                                 ;; Kondo lints this for us anyway, and this isn't as easy to configure.
-                                 :wrong-arity]
+               :source-paths       ["src"
+                                    "shared/src"
+                                    "enterprise/backend/src"
+                                    "modules/drivers/athena/src"
+                                    "modules/drivers/bigquery-cloud-sdk/src"
+                                    "modules/drivers/druid/src"
+                                    "modules/drivers/googleanalytics/src"
+                                    "modules/drivers/mongo/src"
+                                    "modules/drivers/oracle/src"
+                                    "modules/drivers/presto-jdbc/src"
+                                    "modules/drivers/redshift/src"
+                                    "modules/drivers/snowflake/src"
+                                    "modules/drivers/sparksql/src"
+                                    "modules/drivers/sqlite/src"
+                                    "modules/drivers/sqlserver/src"
+                                    "modules/drivers/vertica/src"]
+               :exclude-linters    [;; Turn this off temporarily until we finish removing
+                                    ;; self-deprecated functions & macros
+                                    :deprecations
+                                    ;; this has a fit in libs that use Potemkin `import-vars` such
+                                    ;; as `java-time`
+                                    :implicit-dependencies
+                                    ;; too many false positives for now
+                                    :unused-ret-vals
+                                    ;; Kondo lints this for us anyway, and this isn't as easy to configure.
+                                    :wrong-arity]
                ;; Snowplow has a dynamic dependency on okhttp3.CookieJar that we
                ;; don't use but eastwood detects. This is discussed in Slack here
                ;; https://clojurians.slack.com/archives/C03S1KBA2/p1667925853699669
@@ -500,9 +503,9 @@
                ["metabase\\.driver\\.mysql.*"
                 "metabase\\.driver\\.postgres.*"]}
    ;; different port from `:test` so you can run it at the same time as `:test`.
-   :jvm-opts ["-Dmb.jetty.port=3002"
-              ;; default heap size is 1GB, we were getting OOM on CI so we need to bump this
-              "-Xmx4g"]}
+   :jvm-opts  ["-Dmb.jetty.port=3002"
+               ;; default heap size is 1GB, we were getting OOM on CI so we need to bump this
+               "-Xmx4g"]}
 
   ;; clj -T:cljfmt fix '{:paths ["src/metabase/events/view_log.clj"]}'
   :cljfmt
@@ -615,7 +618,7 @@
    :exec-args {:only ["bin/build/test"]}}
 
 
-;;; Other misc convenience aliases
+  ;;; Other misc convenience aliases
 
   ;; Profile Metabase start time with clojure -M:profile
   :profile
@@ -640,7 +643,7 @@
    :main-opts  ["-m" "nrepl.cmdline" "-p" "50605"]}
 
   ;; - start a Socket REPL on port 50505 that you can connect your editor to:
-  :socket {:jvm-opts ["-Dclojure.server.repl={:address,\"0.0.0.0\",:port,50505,:accept,clojure.core.server/repl}"]}
+  :socket   {:jvm-opts ["-Dclojure.server.repl={:address,\"0.0.0.0\",:port,50505,:accept,clojure.core.server/repl}"]}
 
   ;; Liquibase CLI:
   ;;
@@ -686,5 +689,5 @@
 
 
 
-  ;; TODO -- consider creating an alias that includes the `./bin` build-drivers & release code as well so we can work
-  ;; on them all from a single REPL process.
+;; TODO -- consider creating an alias that includes the `./bin` build-drivers & release code as well so we can work
+;; on them all from a single REPL process.
