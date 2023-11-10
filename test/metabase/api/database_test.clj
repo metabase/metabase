@@ -29,7 +29,6 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -232,9 +231,9 @@
                                                                 :engine  (u/qualified-name ::test-driver)
                                                                 :details {:db "my_db"}}
                                                                m)))]
-        (is (schema= {:id       s/Int
-                      s/Keyword s/Any}
-                     response))
+        (is (malli= [:map
+                     [:id ::lib.schema.id/database]]
+                    response))
         (when (integer? db-id)
           (t2/select-one Database :id db-id)))
       (finally (t2/delete! Database :name db-name)))))
@@ -1384,13 +1383,15 @@
           (let [response (mt/user-http-request :lucky :get 200
                                                (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id
                                                        (api.table/root-collection-schema-name)))]
-            (is (schema= [{:id               #"^card__\d+$"
-                           :db_id            s/Int
-                           :display_name     s/Str
-                           :moderated_status (s/enum nil "verified")
-                           :schema           (s/eq (api.table/root-collection-schema-name))
-                           :description      (s/maybe s/Str)}]
-                         response))
+            (is (malli= [:sequential
+                         [:map
+                          [:id               #"^card__\d+$"]
+                          [:db_id            ::lib.schema.id/database]
+                          [:display_name     :string]
+                          [:moderated_status [:maybe [:= "verified"]]]
+                          [:schema           [:= (api.table/root-collection-schema-name)]]
+                          [:description      [:maybe :string]]]]
+                        response))
             (is (not (contains? (set (map :display_name response)) "Card 3")))
             (is (contains? (set response)
                            {:id               (format "card__%d" (:id card-2))
@@ -1432,13 +1433,15 @@
           (let [response (mt/user-http-request :lucky :get 200
                                                (format "database/%d/datasets/%s" lib.schema.id/saved-questions-virtual-database-id
                                                        (api.table/root-collection-schema-name)))]
-            (is (schema= [{:id               #"^card__\d+$"
-                           :db_id            s/Int
-                           :display_name     s/Str
-                           :moderated_status (s/enum nil "verified")
-                           :schema           (s/eq (api.table/root-collection-schema-name))
-                           :description      (s/maybe s/Str)}]
-                         response))
+            (is (malli= [:sequential
+                         [:map
+                          [:id               [:re #"^card__\d+$"]]
+                          [:db_id            ::lib.schema.id/database]
+                          [:display_name     :string]
+                          [:moderated_status [:maybe [:= :verified]]]
+                          [:schema           [:= (api.table/root-collection-schema-name)]]
+                          [:description      [:maybe :string]]]]
+                        response))
             (is (contains? (set response)
                            {:id               (format "card__%d" (:id card-2))
                             :db_id            (mt/id)
@@ -1520,9 +1523,8 @@
                           "\nGET /api/database/:id/schema/:schema")
               (let [url (format "database/%d/schema/%s" db-id (codec/url-encode schema-name))]
                 (testing (str "\nGET /api/" url)
-                  (is (schema= [{:schema (s/eq schema-name)
-                                 s/Keyword s/Any}]
-                               (mt/user-http-request :rasta :get 200 url))))))))))))
+                  (is (=? [{:schema schema-name}]
+                          (mt/user-http-request :rasta :get 200 url))))))))))))
 
 (deftest ^:parallel upsert-sensitive-fields-no-changes-test
   (testing "empty maps are okay"
