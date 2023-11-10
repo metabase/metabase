@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import type * as Lib from "metabase-lib";
 import { OPERATOR_OPTIONS } from "./constants";
 
@@ -14,4 +15,19 @@ export function getDefaultValues(
   return Array(valueCount)
     .fill(getDefaultValue())
     .map((value, index) => values[index] ?? value);
+}
+
+export function getCoercedValues(
+  operator: Lib.TimeFilterOperatorName,
+  values: Date[],
+) {
+  if (operator === "between") {
+    const [startTime, endTime] = values;
+
+    return dayjs(endTime).isBefore(startTime)
+      ? [endTime, startTime]
+      : [startTime, endTime];
+  }
+
+  return values;
 }
