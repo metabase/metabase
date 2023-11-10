@@ -607,7 +607,10 @@
                       (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards]))))))
        true))
     (let [dashboard (t2/select-one :model/Dashboard id)]
-      (events/publish-event! :event/dashboard-update {:object dashboard :user-id api/*current-user-id*})
+      ;; skip publishing the event if it's just a change in its collection position
+      (when-not (= #{:collection_position}
+                   (set (keys dash-updates)))
+        (events/publish-event! :event/dashboard-update {:object dashboard :user-id api/*current-user-id*}))
       (track-dashcard-and-tab-events! dashboard @changes-stats)
       (-> (t2/hydrate dashboard [:collection :is_personal] [:dashcards :series] :tabs)
           (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))))
