@@ -200,7 +200,7 @@ export function suggestedJoinConditions(
   query: Query,
   stageIndex: number,
   joinable: Joinable,
-): JoinCondition[] | null {
+): JoinCondition[] {
   return ML.suggested_join_conditions(query, stageIndex, joinable);
 }
 

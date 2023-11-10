@@ -100,7 +100,7 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
         nextTable,
       );
 
-      if (suggestedConditions && suggestedConditions.length > 0) {
+      if (suggestedConditions.length > 0) {
         _setConditions(suggestedConditions);
 
         let nextJoin = Lib.joinClause(nextTable, suggestedConditions);

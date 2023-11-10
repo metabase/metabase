@@ -704,7 +704,7 @@
   primary key of the thing we're joining (see #31175 for more info); otherwise this will return `nil` if no default
   conditions are suggested."
   [a-query stage-number joinable]
-  (lib.core/suggested-join-conditions a-query stage-number joinable))
+  (to-array (lib.core/suggested-join-conditions a-query stage-number joinable)))
 
 (defn ^:export join-fields
   "Get the `:fields` associated with a join."
