@@ -9,6 +9,7 @@
    [metabase.db.env :as mdb.env]
    [metabase.models.database :refer [Database]]
    [metabase.models.permissions :as perms]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.plugins :as plugins]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.sync.util :as sync-util]
@@ -110,7 +111,7 @@
                              :name             "Internal Metabase Database"
                              :description      "Internal Audit DB used to power metabase analytics."
                              :engine           engine
-                             :is_full_sync true
+                             :is_full_sync     true
                              :is_on_demand     false
                              :creator_id       nil
                              :auto_run_queries true})))))
@@ -151,26 +152,6 @@
                   {:name [:upper :name]}))
     (log/infof "Adjusted Audit DB to match host engine: %s" (name mdb.env/db-type))))
 
-(defn ensure-db-installed!
-  "Called on app startup to ensure the existance of the audit db in enterprise apps.
-
-  The return values indicate what action was taken."
-  []
-  (let [audit-db (t2/select-one Database :is_audit true)]
-    (cond
-      (nil? audit-db)
-      (u/prog1 ::installed
-        (log/info "Installing Audit DB...")
-        (install-database! mdb.env/db-type))
-
-      (not= mdb.env/db-type (:engine audit-db))
-      (u/prog1 ::updated
-        (log/infof "App DB change detected. Changing Audit DB source to match: %s." (name mdb.env/db-type))
-        (adjust-audit-db-to-host! audit-db))
-
-      :else
-      ::no-op)))
-
 (def analytics-dir-resource
   "A resource dir containing analytics content created by Metabase to load into the app instance on startup."
   (io/resource "instance_analytics"))
@@ -196,28 +177,56 @@
                     {:replace-existing true})
       (log/info "Copying complete."))))
 
+(defsetting load-analytics-content
+  "Whether or not we should load Metabase analytics content on startup. Defaults to true, but can be disabled via environment variable."
+  :type       :boolean
+  :default    true
+  :visibility :internal
+  :setter     :none
+  :audit      :never)
+
+(defn- maybe-load-analytics-content!
+  [audit-db]
+  (when (and analytics-dir-resource (load-analytics-content))
+    (ee.internal-user/ensure-internal-user-exists!)
+    (adjust-audit-db-to-source! audit-db)
+    (log/info "Loading Analytics Content...")
+    (ia-content->plugins)
+    (log/info (str "Loading Analytics Content from: plugins/instance_analytics"))
+    ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
+    (let [report (log/with-no-logs
+                   (serialization.cmd/v2-load-internal! "plugins/instance_analytics"
+                                                       {}
+                                                       :token-check? false))]
+      (if (not-empty (:errors report))
+        (log/info (str "Error Loading Analytics Content: " (pr-str report)))
+        (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))))
+    (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
+      (adjust-audit-db-to-host! audit-db))))
+
+(defn- maybe-install-audit-db
+  []
+  (let [audit-db (t2/select-one :model/Database :is_audit true)]
+    (cond
+      (nil? audit-db)
+      (u/prog1 ::installed
+       (log/info "Installing Audit DB...")
+       (install-database! mdb.env/db-type))
+
+      (not= mdb.env/db-type (:engine audit-db))
+      (u/prog1 ::updated
+       (log/infof "App DB change detected. Changing Audit DB source to match: %s." (name mdb.env/db-type))
+       (adjust-audit-db-to-host! audit-db))
+
+      :else
+      ::no-op)))
+
 (defenterprise ensure-audit-db-installed!
-  "EE implementation of `ensure-db-installed!`. Also forces an immediate sync on audit-db."
+  "EE implementation of `ensure-db-installed!`. Installs audit db if it does not already exist, and loads audit
+  content if it is available."
   :feature :none
   []
-  (u/prog1 (ensure-db-installed!)
-    (let [audit-db (t2/select-one :model/Database :is_audit true)]
-      (when analytics-dir-resource
-        ;; prevent sync while loading
-        ((sync-util/with-duplicate-ops-prevented :sync-database audit-db
-           (fn []
-             (ee.internal-user/ensure-internal-user-exists!)
-             (adjust-audit-db-to-source! audit-db)
-             (log/info "Loading Analytics Content...")
-             (ia-content->plugins)
-             (log/info (str "Loading Analytics Content from: plugins/instance_analytics"))
-             ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
-             (let [report (log/with-no-logs
-                            (serialization.cmd/v2-load-internal! "plugins/instance_analytics"
-                                                                {}
-                                                                :token-check? false))]
-               (if (not-empty (:errors report))
-                 (log/info (str "Error Loading Analytics Content: " (pr-str report)))
-                 (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))))
-             (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
-               (adjust-audit-db-to-host! audit-db)))))))))
+  (u/prog1 (maybe-install-audit-db)
+   (let [audit-db (t2/select-one :model/Database :is_audit true)]
+       ;; prevent sync while loading
+     ((sync-util/with-duplicate-ops-prevented :sync-database audit-db (partial maybe-load-analytics-content! audit-db))))))
