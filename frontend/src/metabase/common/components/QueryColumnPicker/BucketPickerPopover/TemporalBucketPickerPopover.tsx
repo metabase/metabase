@@ -8,6 +8,10 @@ import {
   getBucketListItem,
 } from "./BaseBucketPickerPopover";
 
+function checkBucketIsSelected(item: BucketListItem) {
+  return !!item.selected;
+}
+
 export function TemporalBucketPickerPopover({
   query,
   stageIndex,
@@ -22,9 +26,13 @@ export function TemporalBucketPickerPopover({
   const items = useMemo(
     () => [
       ...buckets.map(bucket => getBucketListItem(query, stageIndex, bucket)),
-      { displayName: t`Don't bin`, bucket: null },
+      {
+        displayName: t`Don't bin`,
+        bucket: null,
+        selected: !selectedBucket && isEditing,
+      },
     ],
-    [query, stageIndex, buckets],
+    [buckets, selectedBucket, isEditing, query, stageIndex],
   );
 
   const handleBucketSelect = useCallback(
@@ -32,19 +40,6 @@ export function TemporalBucketPickerPopover({
       onSelect(Lib.withTemporalBucket(column, bucket));
     },
     [column, onSelect],
-  );
-
-  const checkBucketIsSelected = useCallback(
-    (item: BucketListItem) => {
-      // `bucket: null` represents the "Don't bin" option
-      // It's considered selected when editing an existing clause without a binning strategy
-      if (item.bucket === null) {
-        return !selectedBucket && isEditing;
-      }
-
-      return !!item.selected;
-    },
-    [selectedBucket, isEditing],
   );
 
   return (
