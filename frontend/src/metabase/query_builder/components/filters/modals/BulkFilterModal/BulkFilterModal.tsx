@@ -51,7 +51,7 @@ const BulkFilterModal = ({
   const [query, setQuery] = useState(getQuery(question));
   const [isChanged, setIsChanged] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
-
+  const [sortIconState, setSortIconState] = useState("default");
   const [searchQuery, setSearchQuery] = useState("");
 
   const filters = useMemo(() => {
@@ -143,6 +143,8 @@ const BulkFilterModal = ({
             onChangeFilter={handleChangeFilter}
             onRemoveFilter={handleRemoveFilter}
             onClearSegments={handleClearSegments}
+            sortIconState={sortIconState}
+            setSortIconState={setSortIconState}
           />
         ) : (
           <BulkFilterModalSectionList
@@ -153,6 +155,8 @@ const BulkFilterModal = ({
             onChangeFilter={handleChangeFilter}
             onRemoveFilter={handleRemoveFilter}
             onClearSegments={handleClearSegments}
+            sortIconState={sortIconState}
+            setSortIconState={setSortIconState}
           />
         )}
       </ModalMain>
@@ -170,7 +174,9 @@ const BulkFilterModal = ({
           data-testid="apply-filters"
           disabled={!isChanged}
           onClick={handleApplyQuery}
-        >{t`Apply Filters`}</Button>
+        >
+          {t`Apply Filters`}
+        </Button>
       </ModalFooter>
     </ModalRoot>
   );
@@ -185,6 +191,8 @@ interface BulkFilterModalSectionProps {
   onChangeFilter: (filter: Filter, newFilter: Filter) => void;
   onRemoveFilter: (filter: Filter) => void;
   onClearSegments: () => void;
+  sortIconState: string;
+  setSortIconState: (state: string) => void;
 }
 
 const BulkFilterModalSection = ({
@@ -196,6 +204,8 @@ const BulkFilterModalSection = ({
   onChangeFilter,
   onRemoveFilter,
   onClearSegments,
+  sortIconState,
+  setSortIconState,
 }: BulkFilterModalSectionProps): JSX.Element => {
   return (
     <ModalBody>
@@ -208,6 +218,8 @@ const BulkFilterModalSection = ({
         onChangeFilter={onChangeFilter}
         onRemoveFilter={onRemoveFilter}
         onClearSegments={onClearSegments}
+        sortIconState={sortIconState}
+        setSortIconState={setSortIconState}
       />
     </ModalBody>
   );
@@ -221,6 +233,8 @@ interface BulkFilterModalSectionListProps {
   onChangeFilter: (filter: Filter, newFilter: Filter) => void;
   onRemoveFilter: (filter: Filter) => void;
   onClearSegments: () => void;
+  sortIconState: string;
+  setSortIconState: (state: string) => void;
 }
 
 const BulkFilterModalSectionList = ({
@@ -231,6 +245,8 @@ const BulkFilterModalSectionList = ({
   onChangeFilter,
   onRemoveFilter,
   onClearSegments,
+  sortIconState,
+  setSortIconState,
 }: BulkFilterModalSectionListProps): JSX.Element => {
   const [tab, setTab] = useState(0);
 
@@ -242,6 +258,8 @@ const BulkFilterModalSectionList = ({
             key={index}
             value={index}
             icon={section.icon as unknown as IconName}
+            sortIconState={sortIconState}
+            setSortIconState={value => setSortIconState(value)}
           >
             {section.name}
           </Tab>
@@ -258,6 +276,8 @@ const BulkFilterModalSectionList = ({
             onChangeFilter={onChangeFilter}
             onRemoveFilter={onRemoveFilter}
             onClearSegments={onClearSegments}
+            sortIconState={sortIconState}
+            setSortIconState={setSortIconState}
           />
         </ModalTabPanel>
       ))}

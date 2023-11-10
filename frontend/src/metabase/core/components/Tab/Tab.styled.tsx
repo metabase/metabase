@@ -44,3 +44,7 @@ export const TabLabel = styled.div`
   overflow: hidden;
   text-overflow: ellipsis;
 `;
+
+export const TabSortIcon = styled.div`
+  text-align: right;
+`;
