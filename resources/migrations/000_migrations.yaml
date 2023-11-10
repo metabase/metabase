@@ -16027,6 +16027,33 @@ databaseChangeLog:
         - sql: DELETE FROM metabase_database WHERE is_audit = TRUE;
         - sql: DELETE FROM collection WHERE type = 'instance_analytics';
 
+  - changeSet:
+      id: v48.00-051
+      author: calherries
+      comment: Migrate metabase_field when the fk target field is inactive
+      changes:
+        - sql:
+            dbms: mariadb,mysql
+            sql: >-
+              UPDATE metabase_field AS a
+              JOIN metabase_field AS b ON b.id = a.fk_target_field_id
+              SET a.fk_target_field_id = NULL,
+                  a.semantic_type = NULL
+              WHERE b.active = FALSE;
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE metabase_field
+              SET fk_target_field_id = NULL,
+                  semantic_type = NULL
+              WHERE fk_target_field_id IN (
+                  SELECT id
+                  FROM metabase_field
+                  WHERE active = FALSE
+              );
+      rollback: # no change
+
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
