@@ -65,8 +65,8 @@
 
 (defn- available-locale-names*
   []
-  (log/info "Reading available locales from locales.clj...")
-  (some-> (io/resource "locales.clj") slurp edn/read-string :locales (->> (apply sorted-set))))
+  (log/info "Reading available locales from locales.edn...")
+  (some-> (io/resource "locales.edn") slurp edn/read-string :locales (->> (apply sorted-set))))
 
 (def ^{:arglists '([])} available-locale-names
   "Return sorted set of available locales, as Strings.

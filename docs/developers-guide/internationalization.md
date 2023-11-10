@@ -30,7 +30,7 @@ If you see incorrect or missing strings for your language, please visit our [POE
 
 # Backend Translation Guide
 
-Metabase allows for translations into many languages. An authoritative list can be found in `resources/locales.clj`.
+Metabase allows for translations into many languages. An authoritative list is generated at `resources/locales.edn` by the `build-translation-resources` build script.
 
 ## The Metabase Side
 
@@ -56,7 +56,7 @@ The functions `trs` and `tru` create instances of two records, `SiteLocalizedStr
 
 ### The maps from source to translated string
 
-One step in our build process creates an edn file of source to translated string for each locale we support. These are located in `resources/i18n`. If you do not have these files, you can run `bin/build-translation-resources` to generate them.
+One step in our build process creates an edn file of source to translated string for each locale we support. These are located in `resources/i18n`. If you do not have these files, you can run `bin/i18n/build-translation-resources` to generate them.
 
 We have lots of contributors who help us keep a corpus of translated strings into many different languages. We use [POEditor](https://poeditor.com/join/project/ynjQmwSsGh) to keep an authoritative list. We export `.po` files from this, which is essentially a dictionary from source to translated string. As part of our build process we format these files as edn files, maps from the source to translated string, for each locale.
 

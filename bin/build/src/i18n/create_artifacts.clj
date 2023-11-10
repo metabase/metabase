@@ -12,8 +12,8 @@
    :bundle   "metabase.Messages"})
 
 (defn- generate-locales-dot-edn! []
-  (u/step "Create resources/locales.clj"
-    (let [file (u/filename u/project-root-directory "resources" "locales.clj")]
+  (u/step "Create resources/locales.edn"
+    (let [file (u/filename u/project-root-directory "resources" "locales.edn")]
       (u/delete-file-if-exists! file)
       (spit file (with-out-str (pprint/pprint (locales-dot-edn))))
       (u/assert-file-exists file))))
