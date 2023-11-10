@@ -51,7 +51,7 @@
                                         db-id))]
         (is (not (db-has-sync-job-trigger? perms/audit-db-id)))))
 
-    (testing "Audit DB doesn't get re-installed unless details change"
+    (testing "Audit DB doesn't get re-installed unless the engine changes"
       (with-redefs [audit-db/load-analytics-content (constantly nil)]
         (is (= ::audit-db/no-op (audit-db/ensure-audit-db-installed!)))
         (t2/update! Database :is_audit true {:engine "datomic"})
