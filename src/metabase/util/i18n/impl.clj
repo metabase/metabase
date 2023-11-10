@@ -70,7 +70,7 @@
   (memoize/memo
    (fn []
     (log/info "Reading available locales from resources/i18n/...")
-    (into #{"en"}
+    (into (sorted-set "en")
      (map
       (fn [^Path path]
         (-> path
