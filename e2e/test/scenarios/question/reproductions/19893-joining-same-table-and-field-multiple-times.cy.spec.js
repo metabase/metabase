@@ -1,5 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore } from "e2e/support/helpers";
+import { getNotebookStep, restore } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -99,12 +99,12 @@ const createQ1PlusQ2Question = (questionId1, questionId2) => {
 };
 
 const assertQ1PlusQ2Joins = () => {
-  cy.findAllByTestId("notebook-cell-item").then(items => {
-    cy.wrap(items[0]).should("contain", QUESTION_1.name);
-    cy.wrap(items[1]).should("contain", QUESTION_2.name);
-  });
+  getNotebookStep("join").within(() => {
+    cy.findAllByTestId("notebook-cell-item").then(items => {
+      cy.wrap(items[0]).should("contain", QUESTION_1.name);
+      cy.wrap(items[1]).should("contain", QUESTION_2.name);
+    });
 
-  cy.findByTestId("join-condition-0").within(() => {
     cy.findByLabelText("Left column").within(() => {
       cy.findByText(QUESTION_1.name).should("exist");
       cy.findByText("Category").should("exist");
