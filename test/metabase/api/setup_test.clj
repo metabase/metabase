@@ -21,7 +21,6 @@
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [schema.core :as schema]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -403,8 +402,8 @@
                                                          (fn [& args]
                                                            (apply orig args)
                                                            (throw (ex-info "Oops!" {}))))]
-             (is (schema= {:message (schema/eq "Oops!"), schema/Keyword schema/Any}
-                          (client/client :post 500 "setup" body))))
+             (is (=? {:message "Oops!"}
+                     (client/client :post 500 "setup" body))))
            (testing "New user shouldn't exist"
              (is (= false
                     (t2/exists? User :email user-email))))
