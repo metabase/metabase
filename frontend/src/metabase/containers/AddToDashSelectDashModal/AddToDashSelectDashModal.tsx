@@ -92,7 +92,9 @@ const AddToDashSelectDashModal = ({
   if (shouldCreateDashboard) {
     return (
       <CreateDashboardModal
-        showOnlyPersonalCollections={isQuestionInPersonalCollection}
+        filterPersonalCollections={
+          isQuestionInPersonalCollection ? "only" : undefined
+        }
         collectionId={card.collection_id}
         onCreate={navigateToDashboard}
         onClose={() => setShouldCreateDashboard(false)}
@@ -120,7 +122,9 @@ const AddToDashSelectDashModal = ({
     >
       <DashboardPicker
         onOpenCollectionChange={setOpenCollectionId}
-        showOnlyPersonalCollections={isQuestionInPersonalCollection}
+        filterPersonalCollections={
+          isQuestionInPersonalCollection ? "only" : undefined
+        }
         onChange={onDashboardSelected}
         collectionId={initialOpenCollectionId}
         value={mostRecentlyViewedDashboardQuery.data?.id}

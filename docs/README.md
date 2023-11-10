@@ -43,7 +43,6 @@ Metabase's reference documentation.
 - [Configuring the Metabase application database](./installation-and-operation/configuring-application-database.md)
 - [Backing up Metabase](./installation-and-operation/backing-up-metabase-application-data.md)
 - [Migrating to a production application database](./installation-and-operation/migrating-from-h2.md)
-- [Java versions](./installation-and-operation/java-versions.md)
 - [Monitoring your Metabase](./installation-and-operation/monitoring-metabase.md)
 - [Serialization](./installation-and-operation/serialization.md)
 - [Supported browsers](./installation-and-operation/supported-browsers.md)

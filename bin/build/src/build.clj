@@ -85,6 +85,7 @@
     (u/announce "Uberjar built successfully.")))
 
 (def ^:private all-steps
+  "These build steps are run in order during the build process."
   (ordered-map/ordered-map
    :version      (fn [{:keys [edition version]}]
                    (version-properties/generate-version-properties-file! edition version))

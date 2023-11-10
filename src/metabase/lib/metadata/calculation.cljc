@@ -1,6 +1,7 @@
 (ns metabase.lib.metadata.calculation
   (:require
    [clojure.string :as str]
+   [metabase.lib.cache :as lib.cache]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join.util :as lib.join.util]
@@ -264,7 +265,11 @@
 
 (defmulti display-info-method
   "Implementation for [[display-info]]. Implementations that call [[display-name]] should use the `:default` display
-  name style."
+  name style.
+
+  Do not call this recursively from its own `defmethod`s, aside from calling the `:default`. Prefer calling
+  [[display-info]] directly, so that its caching can encourage reuse. (Eg. column-groups recursively call `display-info`
+  on their columns.)"
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
     (lib.dispatch/dispatch-value x))
@@ -318,14 +323,20 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     x]
-   (try
-     (display-info-method query stage-number x)
-     (catch #?(:clj Throwable :cljs js/Error) e
-       (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}"
-                                 (lib.dispatch/dispatch-value x)
-                                 (ex-message e))
-                       {:query query, :stage-number stage-number, :x x}
-                       e))))))
+   (lib.cache/side-channel-cache
+     ;; TODO: Caching by stage here is probably unnecessary - it's already a mistake to have an `x` from a different
+     ;; stage than `stage-number`. But it also doesn't hurt much, since a given `x` will only ever have `display-info`
+     ;; called with one `stage-number` anyway.
+     (keyword "display-info" (str "stage-" stage-number)) x
+     (fn [x]
+       (try
+         (display-info-method query stage-number x)
+         (catch #?(:clj Throwable :cljs js/Error) e
+           (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}"
+                                     (lib.dispatch/dispatch-value x)
+                                     (ex-message e))
+                           {:query query, :stage-number stage-number, :x x}
+                           e))))))))
 
 (defn default-display-info
   "Default implementation of [[display-info-method]], available in case you want to use this in a different

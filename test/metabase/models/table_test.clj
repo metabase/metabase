@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.models.database :refer [Database]]
+   [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
    [metabase.models.table :as table :refer [Table]]
    [metabase.sync :as sync]
@@ -79,3 +80,17 @@
         (is (= "0395fe49"
                (serdes/raw-hash ["PUBLIC" "widget" db-hash])
                (serdes/identity-hash table)))))))
+
+(deftest cleanup-permissions-after-delete-table-test
+  (mt/with-temp
+    [:model/Database         {db-id :id}    {}
+     :model/PermissionsGroup {group-id :id} {}
+     :model/Table            table          {:db_id  db-id
+                                             :active true}]
+    (let [read-perm-id     (:id (first (perms/grant-permissions! group-id (perms/table-read-path table))))
+          download-perm-id (:id (first (perms/grant-permissions!
+                                        group-id (perms/feature-perms-path :download :limited (:db_id table) (:schema table) (:id table)))))]
+      (t2/delete! :model/Table (:id table))
+      (testing "table specific permissions are deleted when we delete the table"
+        (is (false? (t2/exists? :model/permissions read-perm-id)))
+        (is (false? (t2/exists? :model/permissions download-perm-id)))))))

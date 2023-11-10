@@ -16,6 +16,8 @@ import {
   setupSubscriptionWithRecipient,
   openPulseSubscription,
   sendEmailAndVisitIt,
+  clickSend,
+  viewEmailPage,
 } from "e2e/support/helpers";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { USERS } from "e2e/support/cypress_data";
@@ -150,6 +152,46 @@ describe("scenarios > dashboard > subscriptions", () => {
 
           cy.findByLabelText("add icon").click();
           cy.findByText("Email this dashboard").should("exist");
+        });
+      });
+
+      it("should send as BCC by default", () => {
+        const ORDERS_DASHBOARD_NAME = "Orders in a dashboard";
+
+        assignRecipients();
+        sidebar().within(() => {
+          clickSend();
+        });
+
+        viewEmailPage(ORDERS_DASHBOARD_NAME);
+
+        cy.get(".main-container").within(() => {
+          cy.findByText("Bcc:").should("exist");
+          cy.findByText(`${admin.email}`).should("exist");
+          cy.findByText(`${normal.email}`).should("exist");
+        });
+      });
+
+      it("should send as CC when opted-in", () => {
+        // opt-in to CC
+        cy.visit("/admin/settings/email");
+        cy.findByTestId("bcc-enabled?-setting")
+          .findByLabelText("CC - Disclose recipients")
+          .click();
+
+        const ORDERS_DASHBOARD_NAME = "Orders in a dashboard";
+
+        assignRecipients();
+        sidebar().within(() => {
+          clickSend();
+        });
+
+        viewEmailPage(ORDERS_DASHBOARD_NAME);
+
+        cy.get(".main-container").within(() => {
+          cy.findByText("Bcc:").should("not.exist");
+          cy.findByText(`${admin.email}`).should("exist");
+          cy.findByText(`${normal.email}`).should("exist");
         });
       });
     });
@@ -549,7 +591,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         });
 
         // change default text to sallie
-        cy.visit(`/dashboard/1`);
+        cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
         cy.icon("pencil").click();
         cy.findByTestId("edit-dashboard-parameters-widget-container")
           .findByText("Text")
@@ -636,6 +678,23 @@ function assignRecipient({
   cy.findByPlaceholderText("Enter user names or email addresses")
     .click()
     .type(`${user.first_name} ${user.last_name}{enter}`)
+    .blur(); // blur is needed to close the popover
+}
+
+function assignRecipients({
+  users = [admin, normal],
+  dashboard_id = ORDERS_DASHBOARD_ID,
+} = {}) {
+  openDashboardSubscriptions(dashboard_id);
+  cy.findByText("Email it").click();
+
+  const userInput = users
+    .map(user => `${user.first_name} ${user.last_name}{enter}`)
+    .join("");
+
+  cy.findByPlaceholderText("Enter user names or email addresses")
+    .click()
+    .type(userInput)
     .blur(); // blur is needed to close the popover
 }
 

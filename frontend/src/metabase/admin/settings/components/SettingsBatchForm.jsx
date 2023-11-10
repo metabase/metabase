@@ -12,7 +12,6 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Button from "metabase/core/components/Button";
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 import { isEmail, isEmpty } from "metabase/lib/utils";
-import { updateSettings as defaultUpdateSettings } from "../settings";
 import SettingsSetting from "./SettingsSetting";
 import { CollapsibleSectionContent } from "./SettingsBatchForm.styled";
 
@@ -50,11 +49,14 @@ class SettingsBatchForm extends Component {
   }
 
   static propTypes = {
+    breadcrumbs: PropTypes.array,
     elements: PropTypes.array.isRequired,
-    formErrors: PropTypes.object,
-    updateSettings: PropTypes.func.isRequired,
+    layout: PropTypes.array,
     renderSubmitButton: PropTypes.func,
     renderExtraButtons: PropTypes.func,
+    ref: PropTypes.forwardRef,
+    settingValues: PropTypes.object,
+    updateSettings: PropTypes.func.isRequired,
   };
 
   componentDidMount() {
@@ -336,10 +338,7 @@ class SettingsBatchForm extends Component {
 
 export default connect(
   null,
-  (dispatch, { updateSettings }) => ({
-    updateSettings:
-      updateSettings || (settings => dispatch(defaultUpdateSettings(settings))),
-  }),
+  null,
   null,
   { forwardRef: true }, // HACK: needed so consuming components can call methods on the component :-/
 )(SettingsBatchForm);
