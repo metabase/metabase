@@ -262,12 +262,10 @@ export function clickBehaviorIsValid(
   if (clickBehavior.type === "link") {
     const { linkType } = clickBehavior;
 
-    // if it's not a crossfilter/action, it's a link
     if (linkType === "url") {
       return (clickBehavior.linkTemplate || "").length > 0;
     }
 
-    // if we're linking to a Metabase entity we just need a targetId
     if (linkType === "dashboard" || linkType === "question") {
       return clickBehavior.targetId != null;
     }
@@ -275,6 +273,28 @@ export function clickBehaviorIsValid(
 
   // we've picked "link" without picking a link type
   return false;
+}
+
+export function canSaveClickBehavior(
+  clickBehavior: ClickBehavior | undefined | null,
+  targetDashboard: Dashboard | undefined,
+): boolean {
+  if (
+    clickBehavior?.type === "link" &&
+    clickBehavior.linkType === "dashboard"
+  ) {
+    const tabs = targetDashboard?.tabs || [];
+    const dashboardTabExists = tabs.some(tab => tab.id === clickBehavior.tabId);
+
+    if (tabs.length > 1 && !dashboardTabExists) {
+      // If the target dashboard tab has been deleted, and there are other tabs
+      // to choose from (we don't render <Select/> when there is only 1 tab)
+      // make user manually pick a new dashboard tab.
+      return false;
+    }
+  }
+
+  return clickBehaviorIsValid(clickBehavior);
 }
 
 export function formatSourceForTarget(

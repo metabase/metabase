@@ -215,17 +215,25 @@ function LinkedEntityPicker({
   );
 
   useEffect(
+    // If the target dashboard tab has been deleted, and there are no other tabs
+    // to choose from (we don't render <Select/> when there is only 1 tab)
+    // automatically pick the correct target dashboard tab for the user.
+    // Otherwise, make user manually pick a new dashboard tab.
     function migrateDeletedTab() {
       if (
         isDashboard &&
         !dashboardTabExists &&
-        typeof defaultDashboardTabId !== "undefined"
+        dashboard?.tabs &&
+        dashboard.tabs.length < 2 &&
+        typeof dashboardTabId !== "undefined"
       ) {
         updateSettings({ ...clickBehavior, tabId: defaultDashboardTabId });
       }
     },
     [
       clickBehavior,
+      dashboard,
+      dashboardTabId,
       dashboardTabExists,
       defaultDashboardTabId,
       isDashboard,
@@ -266,6 +274,11 @@ function LinkedEntityPicker({
 
       {isDashboard && dashboardTabs.length > 1 && (
         <Select
+          error={
+            dashboardTabExists
+              ? undefined
+              : t`The selected tab is no longer available`
+          }
           data={dashboardTabs.map(tab => ({
             label: tab.name,
             value: String(tab.id),
