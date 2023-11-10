@@ -17,6 +17,7 @@
    [metabase.models :refer [Card Collection Field Table]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache-test :as cache-test]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -226,11 +227,12 @@
 
 (deftest is-sandboxed-test
   (testing (str "Adding a GTAP to the all users group to a table makes it such that is-sandboxed? returns true.")
-    (t2.with-temp/with-temp [Table                  {table-id :id} {}
-                             GroupTableAccessPolicy _              {:table_id table-id
-                                                                    :group_id 1}]
-      (is (row-level-restrictions/is-sandboxed? {:info {:executed-by (mt/user->id :rasta)}
-                                                 :source-table table-id})))))
+    (premium-features-test/with-premium-features #{:sandboxes}
+      (t2.with-temp/with-temp [Table                  {table-id :id} {}
+                               GroupTableAccessPolicy _              {:table_id table-id
+                                                                      :group_id (u/the-id (perms-group/all-users))}]
+        (is (row-level-restrictions/is-sandboxed? {:info {:executed-by (mt/user->id :rasta)}
+                                                   :source-table table-id}))))))
 
 (deftest middleware-native-query-test
   (testing "Make sure the middleware does the correct transformation given the GTAPs we have"
