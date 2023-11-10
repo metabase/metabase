@@ -65,13 +65,13 @@ export function getFilterClause(
 ) {
   return Lib.coordinateFilterClause({
     operator,
-    column: getCoercedColumn(operator, column, secondColumn),
+    column: getCoercedLatitudeColumn(operator, column, secondColumn),
     longitudeColumn: getCoercedLongitudeColumn(operator, column, secondColumn),
     values: getCoercedValues(operator, values),
   });
 }
 
-function getCoercedColumn(
+function getCoercedLatitudeColumn(
   operator: Lib.CoordinateFilterOperatorName,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
