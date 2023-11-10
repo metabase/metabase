@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.core :as mbc]
    [metabase.db :as mdb]
+   [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.setup :as setup]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
