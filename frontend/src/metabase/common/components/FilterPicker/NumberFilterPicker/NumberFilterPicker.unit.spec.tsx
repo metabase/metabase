@@ -141,7 +141,7 @@ describe("NumberFilterPicker", () => {
 
     describe("with two values", () => {
       it.each(BETWEEN_TEST_CASES)(
-        "should add a filter with with %i to %i values",
+        "should add a filter with %i to %i values",
         async (leftValue, rightValue) => {
           const { getNextFilterParts, getNextFilterColumnName } = setup();
           const addFilterButton = screen.getByRole("button", {
@@ -167,6 +167,31 @@ describe("NumberFilterPicker", () => {
           expect(getNextFilterColumnName()).toBe("Total");
         },
       );
+
+      it("should swap between values when min > max", async () => {
+        const { getNextFilterParts, getNextFilterColumnName } = setup();
+        const addFilterButton = screen.getByRole("button", {
+          name: "Add filter",
+        });
+
+        await setOperator("Between");
+
+        const [leftInput, rightInput] =
+          screen.getAllByPlaceholderText("Enter a number");
+        userEvent.type(leftInput, "5");
+        expect(addFilterButton).toBeDisabled();
+
+        userEvent.type(rightInput, "-10.5");
+        userEvent.click(addFilterButton);
+
+        const filterParts = getNextFilterParts();
+        expect(filterParts).toMatchObject({
+          operator: "between",
+          column: expect.anything(),
+          values: [-10.5, 5],
+        });
+        expect(getNextFilterColumnName()).toBe("Total");
+      });
     });
 
     describe("with many values", () => {
