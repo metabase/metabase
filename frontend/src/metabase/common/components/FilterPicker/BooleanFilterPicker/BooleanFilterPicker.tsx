@@ -9,7 +9,6 @@ import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
 import { OPTIONS } from "./constants";
 import { getFilterClause, getOptionType } from "./utils";
-import type { OptionType } from "./types";
 
 export function BooleanFilterPicker({
   query,
@@ -40,7 +39,10 @@ export function BooleanFilterPicker({
   }, [options, isExpanded]);
 
   const handleOptionChange = (type: string) => {
-    setOptionType(type as OptionType);
+    const option = options.find(option => option.type === type);
+    if (option) {
+      setOptionType(option.type);
+    }
   };
 
   const handleSubmit = () => {
