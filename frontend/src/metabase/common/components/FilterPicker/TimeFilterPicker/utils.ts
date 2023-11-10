@@ -1,42 +1,17 @@
-import dayjs from "dayjs";
 import type { TimeFilterOperatorName } from "metabase-lib";
 import { OPERATOR_OPTIONS } from "./constants";
 
-export function getDefaultValue() {
-  return dayjs().startOf("day").toDate(); // 00:00:00
+function getDefaultValue() {
+  return new Date(2020);
 }
 
-export function getDefaultValuesForOperator(
-  operatorName: TimeFilterOperatorName,
+export function getDefaultValues(
+  operator: TimeFilterOperatorName,
+  values: Date[] = [],
 ): Date[] {
-  const option = OPERATOR_OPTIONS[operatorName];
-  const valueCount = option?.valueCount ?? 0;
+  const { valueCount } = OPERATOR_OPTIONS[operator];
+
   return Array(valueCount)
-    .fill(null)
-    .map(() => getDefaultValue());
-}
-
-export function getNextValues(values: Date[], valueCount: number): Date[] {
-  const nextValues = values.slice(0, valueCount);
-  while (nextValues.length < valueCount) {
-    nextValues.push(getDefaultValue());
-  }
-  return nextValues;
-}
-
-export function isFilterValid(
-  operatorName: TimeFilterOperatorName,
-  values: (Date | null)[],
-) {
-  const option = OPERATOR_OPTIONS[operatorName];
-  if (!option) {
-    return false;
-  }
-
-  const { valueCount } = option;
-  const filledValues = values.filter(value => value instanceof Date);
-
-  return Number.isFinite(valueCount)
-    ? filledValues.length === valueCount
-    : filledValues.length >= 1;
+    .fill(getDefaultValue())
+    .map((value, index) => values[index] ?? value);
 }
