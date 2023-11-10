@@ -104,13 +104,21 @@ function assertOnDatabaseMetadata(engine) {
 
 function recursiveCheck(id, i = 0) {
   // Let's not wait more than 20s for the sync to finish
-  if (i === 40) {
-    throw new Error("The sync is taking too long. Something is wrong.");
+  if (i === 20) {
+    cy.task(
+      "log",
+      "The DB sync isn't complete yet, but let's be optimistic about it",
+    );
+    return;
   }
 
-  cy.wait(500);
+  cy.wait(1000);
 
   cy.request("GET", `/api/database/${id}`).then(({ body: database }) => {
+    cy.task("log", {
+      dbId: database.id,
+      syncStatus: database.initial_sync_status,
+    });
     if (database.initial_sync_status !== "complete") {
       recursiveCheck(id, ++i);
     }

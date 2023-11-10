@@ -4,10 +4,14 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.timezones-test :as timezones-test]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest ^:parallel and-test
   (mt/test-drivers (mt/normal-drivers)
@@ -656,3 +660,20 @@
                 (mt/run-mbql-query bird-count
                   {:order-by [[:asc $count] [:asc $id]]
                    :limit    3}))))))))
+
+(deftest ^:parallel date-filter-on-datetime-column-test
+  (testing "Filtering a DATETIME expression by a DATE literal string should do something sane (#17807)"
+    (mt/dataset sample-dataset
+      (qp.store/with-metadata-provider (mt/id)
+        (let [people     (lib.metadata/table (qp.store/metadata-provider) (mt/id :people))
+              created-at (lib.metadata/field (qp.store/metadata-provider) (mt/id :people :created_at))
+              query      (as-> (lib/query (qp.store/metadata-provider) people) query
+                           (lib/expression query "CC Created At" created-at)
+                           (lib/filter query (lib/=
+                                              (lib/expression-ref query "CC Created At")
+                                              "2017-10-07"))
+                           (lib/aggregate query (lib/count)))]
+          (testing (str "\nquery =\n" (u/pprint-to-str query))
+            (mt/with-native-query-testing-context query
+              (is (= [[2]]
+                     (mt/rows (qp/process-query query)))))))))))

@@ -70,7 +70,8 @@ dashcards:
         - public
         - v_view_log
         - timestamp
-      - temporal-unit: default
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: default
   card_id: kd1-A_wWOvlSuLDTFUpyb
   entity_id: eMu8T8shqP6OiB_orPQb8
   visualization_settings:
@@ -83,16 +84,6 @@ dashcards:
   action_id: null
   col: 0
   parameter_mappings:
-  - parameter_id: 9112df7d
-    card_id: p8ZML2ebd3ItzCyWsKXLa
-    target:
-    - dimension
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_view_log
-        - timestamp
-      - temporal-unit: default
   - parameter_id: ab0252fc
     card_id: p8ZML2ebd3ItzCyWsKXLa
     target:
@@ -103,6 +94,17 @@ dashcards:
         - v_group_members
         - group_name
       - join-alias: Group Members - User
+  - parameter_id: 9112df7d
+    card_id: p8ZML2ebd3ItzCyWsKXLa
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: default
   card_id: p8ZML2ebd3ItzCyWsKXLa
   entity_id: vIa5qU52qmci1wnR4rYWm
   visualization_settings:
@@ -181,16 +183,6 @@ dashcards:
   action_id: null
   col: 0
   parameter_mappings:
-  - parameter_id: 9112df7d
-    card_id: fBr2cU-86t14YWbaS3r6-
-    target:
-    - dimension
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_view_log
-        - timestamp
-      - temporal-unit: default
   - parameter_id: ab0252fc
     card_id: fBr2cU-86t14YWbaS3r6-
     target:
@@ -201,6 +193,17 @@ dashcards:
         - v_group_members
         - group_name
       - join-alias: Group Members - User
+  - parameter_id: 9112df7d
+    card_id: fBr2cU-86t14YWbaS3r6-
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: default
   card_id: fBr2cU-86t14YWbaS3r6-
   entity_id: GlI9CJywLBzdGgNkmhVWn
   visualization_settings:
@@ -213,16 +216,6 @@ dashcards:
   action_id: null
   col: 12
   parameter_mappings:
-  - parameter_id: 9112df7d
-    card_id: T1vsVJUAfg30Fqiw4Dywa
-    target:
-    - dimension
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_view_log
-        - timestamp
-      - temporal-unit: default
   - parameter_id: ab0252fc
     card_id: T1vsVJUAfg30Fqiw4Dywa
     target:
@@ -233,6 +226,17 @@ dashcards:
         - v_group_members
         - group_name
       - join-alias: Group Members - User
+  - parameter_id: 9112df7d
+    card_id: T1vsVJUAfg30Fqiw4Dywa
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: default
   card_id: T1vsVJUAfg30Fqiw4Dywa
   entity_id: 9QohNXoERBN4aKd--9LS7
   visualization_settings:
@@ -245,16 +249,6 @@ dashcards:
   action_id: null
   col: 0
   parameter_mappings:
-  - parameter_id: 9112df7d
-    card_id: FUuJSuFo7wM6EoddmNsHf
-    target:
-    - dimension
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_view_log
-        - timestamp
-      - temporal-unit: default
   - parameter_id: ab0252fc
     card_id: FUuJSuFo7wM6EoddmNsHf
     target:
@@ -265,6 +259,17 @@ dashcards:
         - v_group_members
         - group_name
       - join-alias: Group Members - User
+  - parameter_id: 9112df7d
+    card_id: FUuJSuFo7wM6EoddmNsHf
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: default
   card_id: FUuJSuFo7wM6EoddmNsHf
   entity_id: Z4dzLFWHFKEEymbqcM2PA
   visualization_settings:

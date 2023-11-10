@@ -1235,9 +1235,9 @@
                  (t2/query (str "SELECT 1 FROM " view-name))))))))))
 
 (deftest activity-data-migration-test
-  (testing "Migration v48.00-034"
+  (testing "Migration v48.00-049"
     (mt/test-drivers [:postgres :mysql]
-     (impl/test-migrations ["v48.00-034"] [migrate!]
+     (impl/test-migrations "v48.00-049" [migrate!]
        (create-raw-user! "noah@metabase.com")
        (let [_activity-1 (t2/insert-returning-pks! (t2/table-name :model/Activity)
                                                    {:topic       "card-create"
@@ -1268,7 +1268,7 @@
                 (t2/select-one :model/AuditLog)))))))
 
     (mt/test-drivers [:h2]
-     (impl/test-migrations ["v48.00-034"] [migrate!]
+     (impl/test-migrations "v48.00-049" [migrate!]
        (create-raw-user! "noah@metabase.com")
        (let [_activity-1 (t2/insert-returning-pks! (t2/table-name :model/Activity)
                                                    {:topic       "card-create"
@@ -1336,3 +1336,47 @@
         (is (=? {:fk_target_field_id nil
                  :semantic_type      nil}
                 (t2/select-one (t2/table-name :model/Field) :id field-2-id)))))))
+
+(deftest audit-v2-downgrade-test
+  (testing "Migration v48.00-050"
+    (impl/test-migrations "v48.00-050" [migrate!]
+      (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
+            _db-audit-id (first (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                          {:name       "Audit DB"
+                                                           :is_audit   true
+                                                           :details    "{}"
+                                                           :engine     "postgres"}))
+            _db-normal-id (first (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                           {:name       "Normal DB"
+                                                            :is_audit   false
+                                                            :details    "{}"
+                                                            :engine     "postgres"}))
+            _coll-analytics-id (first (t2/insert-returning-pks! (t2/table-name :model/Collection)
+                                                                {:name       "Metabase Analytics"
+                                                                 :type       "instance_analytics"
+                                                                 :slug       "metabase_analytics"}))
+            _coll-normal-id (first (t2/insert-returning-pks! (t2/table-name :model/Collection)
+                                                             {:name       "Normal Collection"
+                                                              :type       nil
+                                                              :slug       "normal_collection"}))
+            original-db (t2/query {:datasource data-source} "SELECT * FROM metabase_database")
+            original-collections (t2/query {:datasource data-source}    "SELECT * FROM collection")]
+        ;; Verify that data is inserted correctly
+        (is (= 2 (count original-db)))
+        (is (= 2 (count original-collections)))
+
+        (migrate!) ;; no-op forward migration
+
+        ;; Verify that forward migration did not change data
+        (is (partial= (set (map :name original-db))
+                      (set (map :name (t2/query {:datasource data-source} "SELECT name FROM metabase_database")))))
+        (is (partial= (set (map :name original-collections))
+                      (set (map :name (t2/query {:datasource data-source} "SELECT name FROM collection")))))
+
+        (db.setup/migrate! db-type data-source :down 47)
+
+        ;; Verify that rollback deleted the correct rows
+        (is (= 1 (count (t2/query "SELECT * FROM metabase_database"))))
+        (is (= 1 (count (t2/query "SELECT * FROM collection"))))
+        (is (= 0 (count (t2/query "SELECT * FROM metabase_database WHERE is_audit = TRUE"))))
+        (is (= 0 (count (t2/query "SELECT * FROM collection WHERE type = 'instance_analytics'"))))))))
