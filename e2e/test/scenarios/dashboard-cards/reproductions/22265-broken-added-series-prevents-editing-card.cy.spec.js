@@ -31,8 +31,8 @@ describe("issue 22265", () => {
     });
     cy.createNativeQuestionAndDashboard({ questionDetails: baseQuestion }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
-        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-          cards: [
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
             {
               id,
               card_id,

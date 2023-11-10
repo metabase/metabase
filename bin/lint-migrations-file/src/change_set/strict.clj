@@ -24,10 +24,17 @@
    ;; different DBMSes
    :sql-changes-for-different-
    (s/and
-    (s/+ :change.strict/dbms-qualified-sql-change)
+    (s/+ (s/alt :sql-change :change.strict/dbms-qualified-sql-change
+                :sqlFile-change :change.strict/dbms-qualified-sqlFile-change))
     (fn [changes]
-      (apply distinct? (mapcat #(str/split (-> % :sql :dbms) #",")
-                               changes))))))
+      (apply distinct?
+             (mapcat (fn [change]
+                       (let [dbms-val (or (-> change val :sql :dbms)
+                                          (-> change val :sqlFile :dbms))]
+                         (if dbms-val
+                           (str/split dbms-val #",")
+                           []))) ; provide an empty list if dbms-val is nil
+                     changes))))))
 
 (def change-types-supporting-rollback
   "This set was generated with a little grep and awk from the docs here:
