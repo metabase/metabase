@@ -266,11 +266,31 @@
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
                                [:convert_from expr (h2x/literal "UTF8")]))
 
-(defn- date-trunc [unit expr]
-  [:date_trunc (h2x/literal unit) (->timestamp expr)])
-
 (defn- extract [unit expr]
   [::h2x/extract unit expr])
+
+(defn- date-trunc [unit expr]
+  (letfn [(time-trunc [expr]
+            (let [hour   [::pg-conversion (extract :hour expr) :integer]
+                  minute (if (#{:minute :second} unit)
+                           [::pg-conversion (extract :minute expr) :integer]
+                           [:inline 0])
+                  second [:inline 0.0]]
+              (-> [:make_time hour minute second]
+                  (h2x/with-database-type-info "time"))))]
+    (condp = (h2x/database-type expr)
+      ;; apparently there is no convenient way to truncate a TIME column in Postgres, you can try to use `date_trunc`
+      ;; but it returns an interval (??) and other insane things. This seems to be slightly less insane.
+      "time"
+      (time-trunc expr)
+
+      "timetz"
+      (h2x/cast "timetz" (time-trunc expr))
+
+      #_else
+      (let [expr' (->timestamp expr)]
+        (-> [:date_trunc (h2x/literal unit) expr']
+            (h2x/with-database-type-info (h2x/database-type expr')))))))
 
 (defn- extract-from-timestamp [unit expr]
   (extract unit (->timestamp expr)))
@@ -718,9 +738,9 @@
     (fn []
       (try
         (parent-thunk)
-        (catch Throwable _
+        (catch Throwable e
           (let [s (.getString rs i)]
-            (log/tracef "Error in Postgres JDBC driver reading TIME value, fetching as string '%s'" s)
+            (log/tracef e "Error in Postgres JDBC driver reading TIME value, fetching as string '%s'" s)
             (u.date/parse s)))))))
 
 ;; The postgres JDBC driver cannot properly read MONEY columns — see https://github.com/pgjdbc/pgjdbc/issues/425. Work

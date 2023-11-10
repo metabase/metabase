@@ -2,6 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]))
 
@@ -73,3 +77,82 @@
              (apply time-query :between (if (qp.test-util/supports-report-timezone? driver/*driver*)
                                           ["08:00:00"       "09:00:00"]
                                           ["08:00:00-00:00" "09:00:00-00:00"])))))))
+
+;;; FIXME: `:second` and `:millisecond` are theoretically allowed in MBQL but don't seem to be implemented for most if
+;;; not all of our drivers.
+
+(defn- test-time-bucketing [time-column unit f]
+  (testing "#21269"
+    (mt/test-drivers (normal-drivers-that-support-time-type)
+      (mt/dataset attempted-murders
+        (qp.store/with-metadata-provider (mt/id)
+          (testing (format "\ntime column = %s unit = %s" time-column unit)
+            (let [attempts (lib.metadata/table (qp.store/metadata-provider) (mt/id :attempts))
+                  time     (lib.metadata/field (qp.store/metadata-provider) (mt/id :attempts time-column))
+                  query    (-> (lib/query (qp.store/metadata-provider) attempts)
+                               (lib/aggregate (lib/count))
+                               (lib/breakout (lib/with-temporal-bucket time unit))
+                               (lib/limit 4))]
+              (mt/with-native-query-testing-context query
+                (f (mt/formatted-rows [str long]
+                     (qp/process-query query)))))))))))
+
+(deftest ^:parallel bucket-time-column-hour-test
+  (test-time-bucketing
+   :time :hour
+   (fn [results]
+     (is (= [["00:00:00Z" 3]
+             ["01:00:00Z" 1]
+             ["02:00:00Z" 1]
+             ["04:00:00Z" 1]]
+            results)))))
+
+(deftest ^:parallel bucket-time-column-minute-test
+  (test-time-bucketing
+   :time :minute
+   (fn [results]
+     (is (= [["00:14:00Z" 1]
+             ["00:23:00Z" 1]
+             ["00:35:00Z" 1]
+             ["01:04:00Z" 1]]
+            results)))))
+
+(deftest ^:parallel bucket-time-with-time-zone-hour-test
+  (test-time-bucketing
+   :time_tz :hour
+   (fn [results]
+     (is (= [["00:00:00Z" 1]
+             ["02:00:00Z" 1]
+             ["03:00:00Z" 1]
+             ["04:00:00Z" 2]]
+            results)))))
+
+(deftest ^:parallel bucket-time-with-time-zone-minute-test
+  (test-time-bucketing
+   :time_tz :minute
+   (fn [results]
+     (is (= [["00:07:00Z" 1]
+             ["02:51:00Z" 1]
+             ["03:51:00Z" 1]
+             ["04:09:00Z" 1]]
+            results)))))
+
+(deftest ^:parallel bucket-time-with-local-time-zone-hour-test
+  (test-time-bucketing
+   :time_ltz :hour
+   (fn [results]
+     (is (= [["00:00:00Z" 1]
+             ["02:00:00Z" 1]
+             ["03:00:00Z" 1]
+             ["04:00:00Z" 2]]
+            results)))))
+
+(deftest ^:parallel bucket-time-with-local-time-zone-minute-test
+  (test-time-bucketing
+   :time_ltz :minute
+   (fn [results]
+     (is (= [["00:07:00Z" 1]
+             ["02:51:00Z" 1]
+             ["03:51:00Z" 1]
+             ["04:09:00Z" 1]]
+            results)))))
