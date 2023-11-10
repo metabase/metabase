@@ -1,7 +1,7 @@
 (ns metabase-enterprise.serialization.v2.extract
   "Extraction is the first step in serializing a Metabase appdb so it can be eg. written to disk.
 
-  See the detailed descriptions of the (de)serialization processes in [[metabase.models.serialization.base]]."
+  See the detailed descriptions of the (de)serialization processes in [[metabase.models.serialization]]."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]

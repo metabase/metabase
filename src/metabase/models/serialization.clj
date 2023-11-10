@@ -417,7 +417,7 @@
 ;;; Then for each ingested entity:
 ;;;
 ;;; - `(ingest-one serdes-path opts)` is called to read the value into memory, then
-;;; - `(serdes-dependencies ingested)` gets a list of other `:serdes/meta` paths need to be loaded first.
+;;; - `(dependencies ingested)` gets a list of other `:serdes/meta` paths need to be loaded first.
 ;;;     - See below on depenencies.
 ;;; - Dependencies are loaded recursively in postorder; that is an entity is loaded after all its deps.
 ;;;     - Circular dependencies will make the load process throw.
@@ -696,7 +696,7 @@
 
   The identifier can be a single entity ID string, a single identity-hash string, or a vector of entity ID and hash
   strings. If the ID is compound, then the last ID is the one that corresponds to the model. This allows for the
-  compound IDs needed for nested entities like `DashboardCard`s to get their [[serdes/serdes-dependencies]].
+  compound IDs needed for nested entities like `DashboardCard`s to get their [[dependencies]].
 
   Throws if the corresponding entity cannot be found.
 
@@ -711,7 +711,7 @@
           entity     (lookup-by-id model eid)]
       (if entity
         (get entity (first (t2/primary-keys model)))
-        (throw (ex-info "Could not find foreign key target - bad serdes-dependencies or other serialization error"
+        (throw (ex-info "Could not find foreign key target - bad serdes dependencies or other serialization error"
                         {:entity_id eid :model (name model)}))))))
 
 (defn ^:dynamic ^::cache *export-fk-keyed*
@@ -775,7 +775,7 @@
 
 (defn table->path
   "Given a `table_id` as exported by [[export-table-fk]], turn it into a `[{:model ...}]` path for the Table.
-  This is useful for writing [[metabase.models.serialization.base/serdes-dependencies]] implementations."
+  This is useful for writing [[dependencies]] implementations."
   [[db-name schema table-name]]
   (filterv some? [{:model "Database" :id db-name}
                   (when schema {:model "Schema" :id schema})
@@ -819,7 +819,7 @@
 
 (defn field->path
   "Given a `field_id` as exported by [[export-field-fk]], turn it into a `[{:model ...}]` path for the Field.
-  This is useful for writing [[metabase.models.serialization.base/serdes-dependencies]] implementations."
+  This is useful for writing [[dependencies]] implementations."
   [[db-name schema table-name field-name]]
   (filterv some? [{:model "Database" :id db-name}
                   (when schema {:model "Schema" :id schema})
@@ -1039,7 +1039,7 @@
 
 (defn mbql-deps
   "Given an MBQL expression as exported, with qualified names like `[\"some-db\" \"schema\" \"table_name\"]` instead of
-  raw IDs, return the corresponding set of serdes-dependencies. The query can't be imported until all the referenced
+  raw IDs, return the corresponding set of serdes dependencies. The query can't be imported until all the referenced
   databases, tables and fields are loaded."
   [entity]
   (cond
