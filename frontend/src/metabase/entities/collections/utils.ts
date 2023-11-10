@@ -4,7 +4,7 @@ import { color } from "metabase/lib/colors";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import {
   isRootCollection,
-  isPersonalCollection,
+  isRootPersonalCollection,
 } from "metabase/collections/utils";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -29,7 +29,7 @@ export function getCollectionIcon(
   if (collection.id === PERSONAL_COLLECTIONS.id) {
     return { name: "group" };
   }
-  if (isPersonalCollection(collection)) {
+  if (isRootPersonalCollection(collection)) {
     return { name: "person" };
   }
 

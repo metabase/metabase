@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import {
-  isPersonalCollection,
+  isRootPersonalCollection,
   isRootCollection,
 } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
@@ -25,7 +25,7 @@ export const CollectionCaption = ({
   onUpdateCollection,
 }: CollectionCaptionProps): JSX.Element => {
   const isRoot = isRootCollection(collection);
-  const isPersonal = isPersonalCollection(collection);
+  const isPersonal = isRootPersonalCollection(collection);
   const isEditable = !isRoot && !isPersonal && collection.can_write;
   const hasDescription = Boolean(collection.description);
 

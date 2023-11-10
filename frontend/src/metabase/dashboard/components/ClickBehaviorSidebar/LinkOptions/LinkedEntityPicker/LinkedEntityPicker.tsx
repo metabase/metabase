@@ -26,15 +26,19 @@ import type {
   EntityCustomDestinationClickBehavior,
   DashboardTab,
 } from "metabase-types/api";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { getDashboard } from "metabase/dashboard/selectors";
+import { useSelector } from "metabase/lib/redux";
+import { isPublicCollection } from "metabase/collections/utils";
 import type Question from "metabase-lib/Question";
 
-import { SidebarItem } from "../SidebarItem";
-import { Heading } from "../ClickBehaviorSidebar.styled";
+import { SidebarItem } from "../../SidebarItem";
+import { Heading } from "../../ClickBehaviorSidebar.styled";
 import {
   LinkTargetEntityPickerContent,
   SelectedEntityPickerIcon,
   SelectedEntityPickerContent,
-} from "./LinkOptions.styled";
+} from "../LinkOptions.styled";
 
 const LINK_TARGETS = {
   question: {
@@ -178,11 +182,11 @@ function LinkedEntityPicker({
     });
   }, [clickBehavior, updateSettings]);
 
-  const { data: dashboard } = useDashboardQuery({
+  const { data: targetDashboard } = useDashboardQuery({
     enabled: isDashboard,
     id: targetId,
   });
-  const dashboardTabs = dashboard?.tabs ?? NO_DASHBOARD_TABS;
+  const dashboardTabs = targetDashboard?.tabs ?? NO_DASHBOARD_TABS;
   const defaultDashboardTabId: number | undefined = dashboardTabs[0]?.id;
   const dashboardTabId = isDashboard
     ? clickBehavior.tabId ?? defaultDashboardTabId
@@ -223,8 +227,8 @@ function LinkedEntityPicker({
       if (
         isDashboard &&
         !dashboardTabExists &&
-        dashboard?.tabs &&
-        dashboard.tabs.length < 2 &&
+        targetDashboard?.tabs &&
+        targetDashboard.tabs.length < 2 &&
         typeof dashboardTabId !== "undefined"
       ) {
         updateSettings({ ...clickBehavior, tabId: defaultDashboardTabId });
@@ -232,7 +236,7 @@ function LinkedEntityPicker({
     },
     [
       clickBehavior,
-      dashboard,
+      targetDashboard,
       dashboardTabId,
       dashboardTabExists,
       defaultDashboardTabId,
@@ -240,6 +244,12 @@ function LinkedEntityPicker({
       updateSettings,
     ],
   );
+
+  const dashboard = useSelector(getDashboard);
+  const dashboardCollection = dashboard.collection ?? ROOT_COLLECTION;
+  const filterPersonalCollections = isPublicCollection(dashboardCollection)
+    ? "exclude"
+    : undefined;
 
   return (
     <div>
@@ -261,6 +271,7 @@ function LinkedEntityPicker({
               {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
               {/* @ts-ignore */}
               <PickerComponent
+                filterPersonalCollections={filterPersonalCollections}
                 value={clickBehavior.targetId}
                 onChange={(targetId: CardId | DashboardId) => {
                   handleSelectLinkTargetEntityId(targetId);
@@ -302,5 +313,4 @@ function LinkedEntityPicker({
   );
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default LinkedEntityPicker;
+export { LinkedEntityPicker };
