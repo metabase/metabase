@@ -354,6 +354,8 @@ export function xValueForWaterfallTotal({ settings, series }) {
 }
 
 const uniqueCards = series => _.uniq(series.map(({ card }) => card.id)).length;
+const isNativeCard = series =>
+  series.some(({ card }) => card.query_type === "native");
 
 const aggregateColumns = series => {
   return _.uniq(
@@ -375,7 +377,9 @@ export function shouldSplitYAxis(
     isScalarSeries ||
     chartType === "scatter" ||
     settings["graph.y_axis.auto_split"] === false ||
-    (uniqueCards(series) < 2 && aggregateColumns(series) < 2) ||
+    (uniqueCards(series) < 2 &&
+      aggregateColumns(series) < 2 &&
+      !isNativeCard(series)) ||
     isStacked(settings, datas)
   ) {
     return false;
