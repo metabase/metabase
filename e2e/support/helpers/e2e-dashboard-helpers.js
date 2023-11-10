@@ -67,7 +67,7 @@ export function showDashboardCardActions(index = 0) {
 
 export function removeDashboardCard(index = 0) {
   getDashboardCard(index)
-    .realHover()
+    .realHover({ scrollBehavior: "bottom" })
     .findByTestId("dashboardcard-actions-panel")
     .should("be.visible")
     .icon("close")
