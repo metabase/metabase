@@ -65,7 +65,6 @@ export function CoordinateColumnSelect({
         data={options}
         value={getColumnIdentifier(query, stageIndex, value)}
         onChange={handleChange}
-        withinPortal={false}
       />
     </Stack>
   );

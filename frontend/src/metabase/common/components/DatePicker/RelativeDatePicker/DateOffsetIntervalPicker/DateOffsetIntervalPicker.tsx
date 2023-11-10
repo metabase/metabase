@@ -89,7 +89,6 @@ export function DateOffsetIntervalPicker({
           data={unitOptions}
           value={value.unit}
           aria-label={t`Unit`}
-          withinPortal={false}
           onChange={handleUnitChange}
         />
         <div />
@@ -104,7 +103,6 @@ export function DateOffsetIntervalPicker({
           data={offsetUnitOptions}
           value={value.offsetUnit}
           aria-label={t`Starting from unit`}
-          withinPortal={false}
           onChange={handleOffsetUnitChange}
         />
         <Button

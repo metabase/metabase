@@ -85,11 +85,10 @@ export function DateIntervalPicker({
           data={unitOptions}
           value={value.unit}
           aria-label={t`Unit`}
-          withinPortal={false}
           ml="md"
           onChange={handleUnitChange}
         />
-        <Menu withinPortal={false}>
+        <Menu>
           <Menu.Target>
             <Button
               c="text.2"
