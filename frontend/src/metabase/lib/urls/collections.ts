@@ -1,6 +1,7 @@
 import slugg from "slugg";
 
 import type { Collection as BaseCollection } from "metabase-types/api";
+import { isRootPersonalCollection } from "metabase/collections/utils";
 
 import { appendSlug, extractEntityId } from "./utils";
 
@@ -40,9 +41,7 @@ export function collection(collection?: Collection) {
     return `/collection/${id}`;
   }
 
-  const isRootPersonalCollection =
-    typeof collection.personal_owner_id === "number";
-  const slug = isRootPersonalCollection
+  const slug = isRootPersonalCollection(collection)
     ? slugifyPersonalCollection(collection)
     : slugg(collection.name);
 
