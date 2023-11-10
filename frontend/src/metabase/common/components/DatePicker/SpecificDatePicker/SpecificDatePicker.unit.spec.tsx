@@ -95,7 +95,7 @@ describe("SpecificDatePicker", () => {
     });
   });
 
-  it('should swap values for the "between" filter when min > max', () => {
+  it('should swap values for "between" filter when min > max', () => {
     const { onChange } = setup({ isNew: true });
 
     const startDateInput = screen.getByLabelText("Start date");
