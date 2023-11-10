@@ -19,30 +19,6 @@
      20
      3)))
 
-(defn default-rff
-  "Default function returning a reducing function. Results are returned in the 'standard' map format e.g.
-
-    {:data {:cols [...], :rows [...]}, :row_count ...}"
-  [metadata]
-  (let [row-count (volatile! 0)
-        rows      (volatile! [])]
-    (fn default-rf
-      ([]
-       {:data metadata})
-
-      ([result]
-       {:pre [(map? (unreduced result))]}
-       ;; if the result is a clojure.lang.Reduced, unwrap it so we always get back the standard-format map
-       (-> (unreduced result)
-           (assoc :row_count @row-count
-                  :status :completed)
-           (assoc-in [:data :rows] @rows)))
-
-      ([result row]
-       (vswap! row-count inc)
-       (vswap! rows conj row)
-       result))))
-
 (defn- default-reducedf [reduced-result context]
   (qp.context/resultf reduced-result context))
 
@@ -97,7 +73,6 @@
   []
   {::complete?    true
    :timeout       query-timeout-ms
-   :rff           default-rff
    :raisef        default-raisef
    :runf          default-runf
    :executef      driver/execute-reducible-query

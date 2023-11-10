@@ -32,11 +32,13 @@
                       api/*current-user-permissions-set* (atom #{"/"})]
               (is (= {:values          [["Artisan"]]
                       :has_more_values false}
-                     (mt/$ids (chain-filter/chain-filter %categories.name {%categories.id 3})))))
+                     (mt/$ids (chain-filter/chain-filter %categories.name
+                                                         [{:field-id %categories.id :op := :value 3}])))))
             (is (= 1 (t2/count FieldValues :field_id (mt/id :categories :name) :type :linked-filter))))
 
           (testing "creates another linked-filter FieldValues if  sandboxed"
             (is (= {:values          []
                     :has_more_values false}
-                   (mt/$ids (chain-filter/chain-filter %categories.name {%categories.id 3}))))
+                   (mt/$ids (chain-filter/chain-filter %categories.name
+                                                       [{:field-id %categories.id :op := :value 3}]))))
             (is (= 2 (t2/count FieldValues :field_id (mt/id :categories :name) :type :linked-filter)))))))))

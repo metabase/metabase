@@ -77,18 +77,17 @@
   "Returns the :lib/expression-name of `clause`. Returns nil if `clause` is not a clause."
   [clause]
   (when (clause? clause)
-    (get-in clause [1 :lib/expression-name])))
+    (:lib/expression-name (lib.options/options clause))))
 
 (defn named-expression-clause
   "Top level expressions must be clauses with :lib/expression-name, so if we get a literal, wrap it in :value."
   [clause a-name]
-  (assoc-in
-    (if (clause? clause)
-      clause
-      [:value {:lib/uuid (str (random-uuid))
-               :effective-type (lib.schema.expression/type-of clause)}
-       clause])
-    [1 :lib/expression-name] a-name))
+  (-> (if (clause? clause)
+        clause
+        [:value {:lib/uuid (str (random-uuid))
+                 :effective-type (lib.schema.expression/type-of clause)}
+         clause])
+      (lib.options/update-options assoc :lib/expression-name a-name)))
 
 (defn replace-clause
   "Replace the `target-clause` in `stage` `location` with `new-clause`.

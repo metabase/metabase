@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.automagic-dashboards.util :as magic.util]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.date-2 :as u.date]
@@ -88,10 +89,34 @@
                                 :year            (deferred-tru "year")}
                                qp.util/normalize-token))
 
-(defn field-name
-  "Determine the right field name to display from a field or field reference."
-  ([root field-reference]
-   (->> field-reference (magic.util/field-reference->field root) field-name))
+(defn item-reference->field
+  "Turn a field reference into a field."
+  [root [item-type :as item-reference]]
+  (case item-type
+    (:field "field") (let [normalized-field-reference (mbql.normalize/normalize item-reference)
+                           temporal-unit              (mbql.u/match-one normalized-field-reference
+                                                                        [:field _ (opts :guard :temporal-unit)]
+                                                                        (:temporal-unit opts))
+                           {:keys [display_name] :as field-record} (cond-> (->> normalized-field-reference
+                                                                                magic.util/collect-field-references
+                                                                                first
+                                                                                (magic.util/->field root))
+                                                                     temporal-unit
+                                                                     (assoc :unit temporal-unit))
+                           item-name                  (cond->> display_name
+                                                               (some-> temporal-unit u.date/extract-units)
+                                                               (tru "{0} of {1}" (unit-name temporal-unit)))]
+                       (assoc field-record :item-name item-name))
+    (:expression "expression") {:item-name (second item-reference)}
+    {:item-name "item"}))
+
+(defn item-name
+  "Determine the right name to display from an individual humanized item."
+  ([root [field-type potential-name :as field-reference]]
+   (case field-type
+     (:field "field") (->> field-reference (item-reference->field root) item-name)
+     (:expression "expression") potential-name
+     "item"))
   ([{:keys [display_name unit] :as _field}]
    (cond->> display_name
      (some-> unit u.date/extract-units) (tru "{0} of {1}" (unit-name unit)))))
@@ -134,53 +159,48 @@
 
 (defmethod humanize-filter-value :=
   [root [_ field-reference value]]
-  (let [field      (magic.util/field-reference->field root field-reference)
-        field-name (field-name field)]
-    (if (isa? ((some-fn :effective_type :base_type) field) :type/Temporal)
-      (tru "{0} is {1}" field-name (humanize-datetime value (:unit field)))
-      (tru "{0} is {1}" field-name value))))
+  (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
+    (if (isa? (or effective_type base_type) :type/Temporal)
+      (tru "{0} is {1}" item-name (humanize-datetime value unit))
+      (tru "{0} is {1}" item-name value))))
 
 (defmethod humanize-filter-value :>=
   [root [_ field-reference value]]
-  (let [field      (magic.util/field-reference->field root field-reference)
-        field-name (field-name field)]
-    (if (isa? ((some-fn :effective_type :base_type) field) :type/Temporal)
-      (tru "{0} is not before {1}" field-name (humanize-datetime value (:unit field)))
-      (tru "{0} is at least {1}" field-name value))))
+  (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
+    (if (isa? (or effective_type base_type) :type/Temporal)
+      (tru "{0} is not before {1}" item-name (humanize-datetime value unit))
+      (tru "{0} is at least {1}" item-name value))))
 
 (defmethod humanize-filter-value :>
   [root [_ field-reference value]]
-  (let [field      (magic.util/field-reference->field root field-reference)
-        field-name (field-name field)]
-    (if (isa? ((some-fn :effective_type :base_type) field) :type/Temporal)
-      (tru "{0} is after {1}" field-name (humanize-datetime value (:unit field)))
-      (tru "{0} is greater than {1}" field-name value))))
+  (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
+    (if (isa? (or effective_type base_type) :type/Temporal)
+      (tru "{0} is after {1}" item-name (humanize-datetime value unit))
+      (tru "{0} is greater than {1}" item-name value))))
 
 (defmethod humanize-filter-value :<=
   [root [_ field-reference value]]
-  (let [field      (magic.util/field-reference->field root field-reference)
-        field-name (field-name field)]
-    (if (isa? ((some-fn :effective_type :base_type) field) :type/Temporal)
-      (tru "{0} is not after {1}" field-name (humanize-datetime value (:unit field)))
-      (tru "{0} is no more than {1}" field-name value))))
+  (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
+    (if (isa? (or effective_type base_type) :type/Temporal)
+      (tru "{0} is not after {1}" item-name (humanize-datetime value unit))
+      (tru "{0} is no more than {1}" item-name value))))
 
 (defmethod humanize-filter-value :<
   [root [_ field-reference value]]
-  (let [field      (magic.util/field-reference->field root field-reference)
-        field-name (field-name field)]
-    (if (isa? ((some-fn :effective_type :base_type) field) :type/Temporal)
-      (tru "{0} is before {1}" field-name (humanize-datetime value (:unit field)))
-      (tru "{0} is less than {1}" field-name value))))
+  (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
+    (if (isa? (or effective_type base_type) :type/Temporal)
+      (tru "{0} is before {1}" item-name (humanize-datetime value unit))
+      (tru "{0} is less than {1}" item-name value))))
 
 (defmethod humanize-filter-value :between
   [root [_ field-reference min-value max-value]]
-  (tru "{0} is between {1} and {2}" (field-name root field-reference) min-value max-value))
+  (tru "{0} is between {1} and {2}" (item-name root field-reference) min-value max-value))
 
 (defmethod humanize-filter-value :inside
   [root [_ lat-reference lon-reference lat-max lon-min lat-min lon-max]]
   (tru "{0} is between {1} and {2}; and {3} is between {4} and {5}"
-       (field-name root lon-reference) lon-min lon-max
-       (field-name root lat-reference) lat-min lat-max))
+       (item-name root lon-reference) lon-min lon-max
+       (item-name root lat-reference) lat-min lat-max))
 
 (defmethod humanize-filter-value :and
   [root [_ & clauses]]
@@ -190,11 +210,10 @@
 
 (defmethod humanize-filter-value :default
   [root [_ field-reference value]]
-  (let [field      (magic.util/field-reference->field root field-reference)
-        field-name (field-name field)]
-    (if (isa? ((some-fn :effective_type :base_type) field) :type/Temporal)
-      (tru "{0} relates to {1}" field-name (humanize-datetime value (:unit field)))
-      (tru "{0} relates to {1}" field-name value))))
+  (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
+    (if (isa? (or effective_type base_type) :type/Temporal)
+      (tru "{0} relates to {1}" item-name (humanize-datetime value unit))
+      (tru "{0} relates to {1}" item-name value))))
 
 (defn cell-title
   "Return a cell title given a root object and a cell query."

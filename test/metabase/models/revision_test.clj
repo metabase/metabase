@@ -49,11 +49,11 @@
 
 (defn- push-fake-revision! [card-id & {:keys [message] :as object}]
   (revision/push-revision!
-    :entity   ::FakedCard
+   {:entity   ::FakedCard
     :id       card-id
     :user-id  (mt/user->id :rasta)
     :object   (dissoc object :message)
-    :message  message))
+    :message  message}))
 
 (deftest ^:parallel post-select-test
   (testing (str "make sure we call the appropriate post-select methods on `:object` when a revision comes out of the "
@@ -98,6 +98,18 @@
               Card
               {:name "Tips by State", :private false, :dataset false}
               {:name "Spots by State", :private true, :dataset true}))))))
+
+(deftest ^:parallel revision-contains-changes-that-has-havent-been-specced-test
+  (testing "When revision object contains key that we don't know how to generate diff-string
+           The identifier should be 'This', not 'it' "
+    ;; metabase.models.revision.diff/diff-string does not know how to generate diff string for :collection_unknown_field
+    ;; and it'll return nil. in that case the identifier should not be changed to "made it card public"
+    (is (= (str "made this Card public.")
+           (u/build-sentence
+            ((get-method revision/diff-strings :default)
+             Card
+             {:private true :collection_unknown_field nil}
+             {:private false :collection_unknown_field 1}))))))
 
 ;;; # REVISIONS + PUSH-REVISION!
 
@@ -204,35 +216,35 @@
 
             (testing "push a revision with different object should create new revision"
               (new-revision 2)
-              (is (= 2 (count (revision/revisions ::FakedCard card-id))))))))
+              (is (= 2 (count (revision/revisions ::FakedCard card-id)))))))))
 
-      (testing "Check that we don't record revision on dashboard if it has a filter"
-        (t2.with-temp/with-temp
-          [:model/Dashboard     {dash-id :id} {:parameters [{:name "Category Name"
-                                                             :slug "category_name"
-                                                             :id   "_CATEGORY_NAME_"
-                                                             :type "category"}]}
-           :model/Card          {card-id :id} {}
-           :model/DashboardCard {}            {:dashboard_id       dash-id
-                                               :card_id            card-id
-                                               :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
-                                                                     :card_id      card-id
-                                                                     :target       [:dimension (mt/$ids $categories.name)]}]}]
-          (let [push-revision (fn [] (revision/push-revision!
-                                      :entity :model/Dashboard
-                                      :id     dash-id
-                                      :user-id (mt/user->id :rasta)
-                                      :object (t2/select-one :model/Dashboard dash-id)))]
-            (testing "first revision should be recorded"
-              (push-revision)
-              (is (= 1 (count (revision/revisions :model/Dashboard dash-id)))))
-            (testing "push again without changes shouldn't record new revision"
-              (push-revision)
-              (is (= 1 (count (revision/revisions :model/Dashboard dash-id)))))
-            (testing "now do some updates and new revision should be reocrded"
-              (t2/update! :model/Dashboard :id dash-id {:name "New name"})
-              (push-revision)
-              (is (= 2 (count (revision/revisions :model/Dashboard dash-id)))))))))))
+    (testing "Check that we don't record revision on dashboard if it has a filter"
+      (t2.with-temp/with-temp
+        [:model/Dashboard     {dash-id :id} {:parameters [{:name "Category Name"
+                                                           :slug "category_name"
+                                                           :id   "_CATEGORY_NAME_"
+                                                           :type "category"}]}
+         :model/Card          {card-id :id} {}
+         :model/DashboardCard {}            {:dashboard_id       dash-id
+                                             :card_id            card-id
+                                             :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                                                                   :card_id      card-id
+                                                                   :target       [:dimension (mt/$ids $categories.name)]}]}]
+        (let [push-revision (fn [] (revision/push-revision!
+                                    {:entity :model/Dashboard
+                                     :id     dash-id
+                                     :user-id (mt/user->id :rasta)
+                                     :object (t2/select-one :model/Dashboard dash-id)}))]
+          (testing "first revision should be recorded"
+            (push-revision)
+            (is (= 1 (count (revision/revisions :model/Dashboard dash-id)))))
+          (testing "push again without changes shouldn't record new revision"
+            (push-revision)
+            (is (= 1 (count (revision/revisions :model/Dashboard dash-id)))))
+          (testing "now do some updates and new revision should be reocrded"
+            (t2/update! :model/Dashboard :id dash-id {:name "New name"})
+            (push-revision)
+            (is (= 2 (count (revision/revisions :model/Dashboard dash-id))))))))))
 
 ;;; # REVISIONS+DETAILS
 
@@ -322,7 +334,7 @@
       (t2.with-temp/with-temp [Card {card-id :id}]
         (push-fake-revision! card-id, :name "Tips Created by Day")
         (let [[{revision-id :id}] (revision/revisions ::FakedCard card-id)]
-          (revision/revert! :entity ::FakedCard, :id card-id, :user-id (mt/user->id :rasta), :revision-id revision-id)
+          (revision/revert! {:entity ::FakedCard, :id card-id, :user-id (mt/user->id :rasta), :revision-id revision-id})
           (is (= {:name "Tips Created by Day"}
                  @reverted-to)))))))
 
@@ -330,12 +342,12 @@
   (mt/with-model-cleanup [:model/Revision]
     (testing "Check default impl of revert-to-revision! just does mapply upd"
       (t2.with-temp/with-temp [Card {card-id :id} {:name "Spots Created By Day"}]
-        (revision/push-revision! :entity Card, :id card-id, :user-id (mt/user->id :rasta), :object {:name "Tips Created by Day"})
-        (revision/push-revision! :entity Card, :id card-id, :user-id (mt/user->id :rasta), :object {:name "Spots Created by Day"})
+        (revision/push-revision! {:entity Card, :id card-id, :user-id (mt/user->id :rasta), :object {:name "Tips Created by Day"}})
+        (revision/push-revision! {:entity Card, :id card-id, :user-id (mt/user->id :rasta), :object {:name "Spots Created by Day"}})
         (is (= "Spots Created By Day"
                (:name (t2/select-one Card :id card-id))))
         (let [[_ {old-revision-id :id}] (revision/revisions Card card-id)]
-          (revision/revert! :entity Card, :id card-id, :user-id (mt/user->id :rasta), :revision-id old-revision-id)
+          (revision/revert! {:entity Card, :id card-id, :user-id (mt/user->id :rasta), :revision-id old-revision-id})
           (is (= "Tips Created by Day"
                  (:name (t2/select-one Card :id card-id)))))))))
 
@@ -346,7 +358,7 @@
         (push-fake-revision! card-id, :name "Tips Created by Day")
         (push-fake-revision! card-id, :name "Spots Created by Day")
         (let [[_ {old-revision-id :id}] (revision/revisions ::FakedCard card-id)]
-          (revision/revert! :entity ::FakedCard, :id card-id, :user-id (mt/user->id :rasta), :revision-id old-revision-id)
+          (revision/revert! {:entity ::FakedCard, :id card-id, :user-id (mt/user->id :rasta), :revision-id old-revision-id})
           (is (partial=
                [(mi/instance
                  Revision

@@ -26,6 +26,7 @@ import FormCollectionPicker from "metabase/collections/containers/FormCollection
 import type { Collection } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
 import FormAuthorityLevelFieldContainer from "../../containers/FormAuthorityLevelFieldContainer";
 
 const COLLECTION_SCHEMA = Yup.object({
@@ -52,6 +53,7 @@ export interface CreateCollectionFormOwnProps {
   collectionId?: Collection["id"]; // can be used by `getInitialCollectionId`
   onCreate?: (collection: Collection) => void;
   onCancel?: () => void;
+  filterPersonalCollections?: FilterItemsInPersonalCollection;
 }
 
 interface CreateCollectionFormStateProps {
@@ -89,6 +91,7 @@ function CreateCollectionForm({
   handleCreateCollection,
   onCreate,
   onCancel,
+  filterPersonalCollections,
 }: Props) {
   const initialValues = useMemo(
     () => ({
@@ -131,6 +134,7 @@ function CreateCollectionForm({
           <FormCollectionPicker
             name="parent_id"
             title={t`Collection it's saved in`}
+            filterPersonalCollections={filterPersonalCollections}
           />
           <FormAuthorityLevelFieldContainer
             collectionParentId={values.parent_id}

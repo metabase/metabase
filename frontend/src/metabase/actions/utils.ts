@@ -72,7 +72,10 @@ const AUTOMATIC_DATE_TIME_FIELDS = [
 ];
 
 const isAutomaticDateTimeField = (field: Field) => {
-  return AUTOMATIC_DATE_TIME_FIELDS.includes(field.semantic_type);
+  return (
+    field.semantic_type !== null &&
+    AUTOMATIC_DATE_TIME_FIELDS.includes(field.semantic_type)
+  );
 };
 
 const isEditableField = (field: Field, parameter: Parameter) => {

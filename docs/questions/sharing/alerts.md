@@ -103,7 +103,7 @@ See [Notification permissions](../../permissions/notifications.md).
 
 ### Sending alerts to private Slack channels
 
-See [Sending alerts and subscriptions to private Slack channels](../../configuring-metabase/slack.md#sending-alerts-and-subscriptions-to-private-channels).
+See [Sending alerts and subscriptions to private Slack channels](../../configuring-metabase/slack.md#sending-alerts-and-subscriptions-to-private-slack-channels).
 
 ## Further reading
 

@@ -7,6 +7,7 @@ export const ROOT_COLLECTION = {
   name: t`Our analytics`,
   location: "",
   path: [],
+  is_personal: false,
 };
 
 export const PERSONAL_COLLECTION = {
@@ -15,6 +16,7 @@ export const PERSONAL_COLLECTION = {
   location: "/",
   path: [ROOT_COLLECTION.id],
   can_write: true,
+  is_personal: true,
 };
 
 // fake collection for admins that contains all other user's collections
@@ -24,4 +26,5 @@ export const PERSONAL_COLLECTIONS = {
   location: "/",
   path: [ROOT_COLLECTION.id],
   can_write: false,
+  is_personal: true,
 };

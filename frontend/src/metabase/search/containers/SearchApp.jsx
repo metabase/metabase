@@ -18,7 +18,10 @@ import {
   getSearchTextFromLocation,
 } from "metabase/search/utils";
 import { PAGE_SIZE } from "metabase/search/containers/constants";
-import { SearchFilterKeys } from "metabase/search/constants";
+import {
+  SearchContextTypes,
+  SearchFilterKeys,
+} from "metabase/search/constants";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import { useDispatch } from "metabase/lib/redux";
 import {
@@ -50,6 +53,7 @@ function SearchApp({ location }) {
     models: searchFilters[SearchFilterKeys.Type] ?? undefined,
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
+    context: SearchContextTypes.SEARCH_APP,
   };
 
   const onChangeLocation = useCallback(

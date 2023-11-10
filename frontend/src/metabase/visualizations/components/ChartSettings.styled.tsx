@@ -56,7 +56,7 @@ export const ChartSettingsMenu = styled.div`
 
 export const ChartSettingsListContainer = styled.div`
   position: relative;
-  padding: 2rem 0;
+  padding: 1.5rem 0;
 `;
 
 export const ChartSettingsPreview = styled.div`

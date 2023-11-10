@@ -1,8 +1,9 @@
-import { restore, popover } from "e2e/support/helpers";
+import { restore, popover, describeOSS } from "e2e/support/helpers";
 
 const modelName = "Orders Model";
 
-describe("issue 19776", () => {
+// this is only testable in OSS because EE always has models from auditv2
+describeOSS("issue 19776", { tags: "@OSS" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

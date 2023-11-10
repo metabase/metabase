@@ -5,8 +5,8 @@ Cypress.Commands.add(
       ({ body: { id: questionId } }) => {
         cy.createDashboard(dashboardDetails).then(
           ({ body: { id: dashboardId } }) => {
-            cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-              cards: [
+            cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+              dashcards: [
                 {
                   id: -1,
                   card_id: questionId,
@@ -20,7 +20,7 @@ Cypress.Commands.add(
             }).then(response => ({
               ...response,
               dashboardId,
-              body: response.body.cards[0],
+              body: response.body.dashcards[0],
               questionId,
             }));
           },

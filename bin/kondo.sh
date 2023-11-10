@@ -18,4 +18,4 @@ find modules/drivers shared enterprise/backend \
      -name src -or -name test \
     | xargs clj-kondo \
             --parallel \
-            --lint src test
+            --lint bin src test

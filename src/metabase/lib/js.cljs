@@ -11,6 +11,7 @@
    [clojure.walk :as walk]
    [goog.object :as gobject]
    [medley.core :as m]
+   [metabase.lib.cache :as lib.cache]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib.core]
    [metabase.lib.equality :as lib.equality]
@@ -25,7 +26,8 @@
    [metabase.mbql.js :as mbql.js]
    [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.memoize :as memoize]))
 
 ;;; this is mostly to ensure all the relevant namespaces with multimethods impls get loaded.
 (comment lib.core/keep-me)
@@ -117,33 +119,92 @@
   [a-query stage-number]
   (to-array (lib.order-by/orderable-columns a-query stage-number)))
 
-(defn- display-info-js
-  "Converts the [[metabase.lib.metadata.calculation/display-info]] maps into a JS-friendly form - `camelCase` keys,
-  namespaced keyword values as `\"foo/bar\"` strings, etc.
-  Recurses into nested sequences and maps."
+;; Display-info =====================================================================================================
+;; This is a complicated stack of caches and inner functions, so some guidance is in order.
+;;
+;; The outer surface is `lib.js/display-info` in this file. It has a [[lib.cache/side-channel-cache]], so if
+;; `display-info` is called multiple times on the same opaque CLJS value, it will be cached.
+;;
+;; [[display-info*]] is the inner implementation. It calls [[lib.core/display-info]] to get the CLJS form, then
+;; [[display-info->js]] to convert it to JS.
+;;
+;; JS conversion in the tricky cases (maps and seqs) are handled by separate, LRU-cached functions
+;; [[display-info-map->js]] and [[display-info-seq->js]]. Keywords are converted with [[u/qualified-name]].
+;;
+;; [[display-info-map->js]] converts CLJS maps to JS objects. Keys are converted from `:kebab-case-keywords` to
+;; `"camelCaseStrings"`. Values are recursively converted by [[display-info->js]]. (Note that this passes through the
+;; LRU caches for nested maps and seqs - this is important since many inner pieces are reused across eg. columns.)
+
+;; [[display-info-seq->js]] converts CLJS `sequential?` things to JS arrays, recursively calling [[display-info->js]] on
+;; each element. (This is cached just like map values above.)
+
+;; **Note:** there's an important property here that's worth calling out explicitly. It's possible for `visible-columns`
+;; on two different queries to return columns which are `=`. Since the different queries might cause different display
+;; names or other values to be generated for those `=` columns, it's vital that the caching of `display-info` is
+;; per-query. These side-channel caches attached to individual column instances are implicitly per-query (since
+;; `visible-columns` always generates new ones even for the same query) so they work here.
+;; In contrast, the CLJS -> JS conversion doesn't know about queries, so it can use `=`-based LRU caches.
+(declare ^:private display-info->js)
+
+(defn- display-info-map->js* [x]
+  (reduce (fn [obj [cljs-key cljs-val]]
+            (let [js-key (-> cljs-key u/qualified-name u/->camelCaseEn)
+                  js-val (display-info->js cljs-val)] ;; Recursing through the cache
+              (gobject/set obj js-key js-val)
+              obj))
+          #js {}
+          x))
+
+(def ^:private display-info-map->js
+  (memoize/lru display-info-map->js* :lru/threshold 256))
+
+(defn- display-info-seq->js* [x]
+  (to-array (map display-info->js x)))
+
+(def ^:private display-info-seq->js
+  (memoize/lru display-info-seq->js* :lru/threshold 256))
+
+(defn- display-info->js
+  "Converts CLJS [[lib.core/display-info]] results into JS objects for the FE to consume.
+  Recursively converts CLJS maps and `sequential?` things likewise."
   [x]
   (cond
-    (map? x)        (-> x
-                        (update-keys u/->camelCaseEn)
-                        (update-vals display-info-js))
-    (sequential? x) (map display-info-js x)
+    ;; Note that map? is only true for CLJS maps, not JS objects.
+    (map? x)        (display-info-map->js x)
+    ;; Likewise, JS arrays are not sequential? while CLJS vectors, seqs and sets are.
+    (sequential? x) (display-info-seq->js x)
+    (keyword? x)    (u/qualified-name x)
     :else           x))
 
-(defn ^:export display-info
-  "Given an opaque Cljs object, return a plain JS object with info you'd need to implement UI for it.
-  See `:metabase.lib.metadata.calculation/display-info` for the keys this might contain. Note that the JS versions of
-  the keys are converted to the equivalent `camelCase` strings from the original `:kebab-case`."
-  [a-query stage-number x]
+(defn- display-info* [a-query stage-number x]
   (-> a-query
       (lib.stage/ensure-previous-stages-have-metadata stage-number)
       (lib.core/display-info stage-number x)
-      display-info-js
-      (clj->js :keyword-fn u/qualified-name)))
+      display-info->js))
+
+(defn ^:export display-info
+  "Given an opaque CLJS object, return a plain JS object with info you'd need to implement UI for it.
+  See `:metabase.lib.metadata.calculation/display-info` for the keys this might contain. Note that the JS versions of
+  the keys are converted to the equivalent `camelCase` strings from the original `:kebab-case`."
+  ;; See the big comment above about how `display-info` fits together.
+  [a-query stage-number x]
+  ;; Attaches a cached display-info blob to `x`, in case it gets called again for the same object.
+  ;; TODO: Keying by stage is probably unnecessary - if we eg. fetched a column from different stages, it would be a
+  ;; different object. Test that idea and remove the stage from the cache key.
+  (lib.cache/side-channel-cache
+    (keyword "display-info-outer" (str "stage-" stage-number)) x
+    #(display-info* a-query stage-number %)))
 
 (defn ^:export field-id
   "Find the field id for something or nil."
   [field-metadata]
   (lib.core/field-id field-metadata))
+
+(defn ^:export legacy-card-or-table-id
+  "Find the legacy card id or table id for a given ColumnMetadata or nil.
+   Returns a either `\"card__<id>\"` or integer table id."
+  [field-metadata]
+  (lib.core/legacy-card-or-table-id field-metadata))
 
 (defn ^:export order-by-clause
   "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
@@ -326,7 +387,7 @@
   [n unit]
   (let [n    (if (string? n) (keyword n) n)
         unit (if (string? unit) (keyword unit) unit)]
-      (lib.core/describe-relative-datetime n unit)))
+    (lib.core/describe-relative-datetime n unit)))
 
 (defn ^:export aggregate
   "Adds an aggregation to query."
@@ -398,14 +459,14 @@
   [a-query stage-number an-expression-clause]
   (let [parts (lib.core/expression-parts a-query stage-number an-expression-clause)]
     (walk/postwalk
-      (fn [node]
-        (if (and (map? node) (= :mbql/expression-parts (:lib/type node)))
-          (let [{:keys [operator options args]} node]
-            #js {:operator (name operator)
-                 :options (clj->js (select-keys options [:case-sensitive :include-current]))
-                 :args (to-array (map #(if (keyword? %) (u/qualified-name %) %) args))})
-          node))
-      parts)))
+     (fn [node]
+       (if (and (map? node) (= :mbql/expression-parts (:lib/type node)))
+         (let [{:keys [operator options args]} node]
+           #js {:operator (name operator)
+                :options (clj->js (select-keys options [:case-sensitive :include-current]))
+                :args (to-array (map #(if (keyword? %) (u/qualified-name %) %) args))})
+         node))
+     parts)))
 
 (defn ^:export is-column-metadata
   "Returns true if arg is a a ColumnMetadata"
@@ -505,6 +566,14 @@
         vis-columns    (lib.metadata.calculation/visible-columns a-query stage-number stage)
         ret-columns    (lib.metadata.calculation/returned-columns a-query stage-number stage)]
     (to-array (lib.equality/mark-selected-columns a-query stage-number vis-columns ret-columns))))
+
+(defn ^:export returned-columns
+  "Return a sequence of column metadatas for columns returned by the query."
+  [a-query stage-number]
+  (let [stage (lib.util/query-stage a-query stage-number)]
+    (->> (lib.metadata.calculation/returned-columns a-query stage-number stage)
+         (map #(assoc % :selected? true))
+         to-array)))
 
 (defn ^:export legacy-field-ref
   "Given a column metadata from eg. [[fieldable-columns]], return it as a legacy JSON field ref."

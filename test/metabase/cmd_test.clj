@@ -19,36 +19,36 @@
   (do-with-captured-call-enterprise-calls!
    (fn []
      (testing "with no options"
-       (is (= '(metabase-enterprise.serialization.cmd/v1-load "/path/" {:mode :skip, :on-error :continue})
+       (is (= '(metabase-enterprise.serialization.cmd/v1-load! "/path/" {:mode :skip, :on-error :continue})
               (cmd/load "/path/"))))
      (testing "with options"
-       (is (= '(metabase-enterprise.serialization.cmd/v1-load "/path/" {:mode :skip, :on-error :abort})
+       (is (= '(metabase-enterprise.serialization.cmd/v1-load! "/path/" {:mode :skip, :on-error :abort})
               (cmd/load "/path/" "--on-error" "abort")))))))
 
 (deftest import-command-test
   (do-with-captured-call-enterprise-calls!
    (fn []
      (testing "with no options"
-       (is (= '(metabase-enterprise.serialization.cmd/v2-load "/path/" {})
+       (is (= '(metabase-enterprise.serialization.cmd/v2-load! "/path/" {})
               (cmd/import "/path/"))))
      (testing "with options"
-       (is (= '(metabase-enterprise.serialization.cmd/v2-load "/path/" {:abort-on-error true})
+       (is (= '(metabase-enterprise.serialization.cmd/v2-load! "/path/" {:abort-on-error true})
               (cmd/import "/path/" "--abort-on-error")))))))
 
 (deftest dump-command-test
   (do-with-captured-call-enterprise-calls!
    (fn []
      (testing "with no options"
-       (is (= '(metabase-enterprise.serialization.cmd/v1-dump "/path/" {:state :all})
+       (is (= '(metabase-enterprise.serialization.cmd/v1-dump! "/path/" {:state :all})
               (cmd/dump "/path/"))))
      (testing "with options"
-       (is (= '(metabase-enterprise.serialization.cmd/v1-dump "/path/" {:state :active})
+       (is (= '(metabase-enterprise.serialization.cmd/v1-dump! "/path/" {:state :active})
               (cmd/dump "/path/" "--state" "active")))))))
 
 (deftest export-command-arg-parsing-test
   (do-with-captured-call-enterprise-calls!
    (fn []
-     (are [cmd-args v2-dump-args] (= '(metabase-enterprise.serialization.cmd/v2-dump "/path/" v2-dump-args)
+     (are [cmd-args v2-dump-args] (= '(metabase-enterprise.serialization.cmd/v2-dump! "/path/" v2-dump-args)
                                      (apply cmd/export "/path/" cmd-args))
        nil
        {}

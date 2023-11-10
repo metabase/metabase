@@ -1,14 +1,14 @@
-import { isSmallScreen, getMainElement } from "metabase/lib/dom";
+import { isSmallScreen } from "metabase/lib/dom";
 
 export const MAXIMUM_PARAMETERS_FOR_STICKINESS = 5;
 
+// Dashboard Filters should always be sticky, except the case with small screen:
+// if more than MAXIMUM_PARAMETERS_FOR_STICKINESS parameters exist, we do not stick them to avoid
+// taking to much space on the screen
 export const updateParametersWidgetStickiness = dashboard => {
   const shouldBeSticky = checkIfParametersWidgetShouldBeSticky(dashboard);
-
-  const shouldToggleStickiness = checkIfShouldToggleStickiness(
-    dashboard,
-    shouldBeSticky,
-  );
+  const shouldToggleStickiness =
+    dashboard.state.isParametersWidgetSticky !== shouldBeSticky;
 
   if (shouldToggleStickiness) {
     dashboard.setState({
@@ -17,33 +17,8 @@ export const updateParametersWidgetStickiness = dashboard => {
   }
 };
 
-const checkIfShouldToggleStickiness = (dashboard, shouldBeSticky) => {
-  const { isParametersWidgetSticky } = dashboard.state;
-
-  return shouldBeSticky !== isParametersWidgetSticky;
-};
-
-const checkIfDeviceShouldDisplayStickyFilters = dashboard =>
+const checkIfParametersWidgetShouldBeSticky = dashboard =>
   !(
     dashboard.state.parametersListLength > MAXIMUM_PARAMETERS_FOR_STICKINESS &&
     isSmallScreen()
   );
-
-const checkIfParametersWidgetShouldBeSticky = dashboard => {
-  const deviceShouldDisplayStickyFilters =
-    checkIfDeviceShouldDisplayStickyFilters(dashboard);
-
-  if (!deviceShouldDisplayStickyFilters) {
-    return false;
-  }
-
-  const offsetTop = getOffsetTop(dashboard);
-
-  return getMainElement().scrollTop > offsetTop;
-};
-
-const getOffsetTop = dashboard => {
-  const parametersWidget = dashboard.parametersWidgetRef.current;
-
-  return parametersWidget?.offsetTop ?? 0;
-};

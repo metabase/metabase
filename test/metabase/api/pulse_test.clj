@@ -25,7 +25,6 @@
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -524,9 +523,8 @@
           ;; grant Permissions for only the *old* collection
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           ;; now make an API call to move collections. Should fail
-          (is (schema= {:message (s/eq "You do not have curate permissions for this Collection.")
-                        s/Keyword s/Any}
-                       (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse)) {:collection_id (u/the-id new-collection)}))))))))
+          (is (=? {:message "You do not have curate permissions for this Collection."}
+                  (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse)) {:collection_id (u/the-id new-collection)}))))))))
 
 (deftest update-collection-position-test
   (testing "Can we change the Collection position of a Pulse?"
@@ -1091,17 +1089,17 @@
 
         (testing "If rendering a Pulse fails (e.g. because font registration failed) the endpoint should return the error message"
           (with-redefs [style/register-fonts-if-needed! (fn []
-                                                         (throw (ex-info "Can't register fonts!"
-                                                                         {}
-                                                                         (NullPointerException.))))]
+                                                          (throw (ex-info "Can't register fonts!"
+                                                                          {}
+                                                                          (NullPointerException.))))]
             (let [{{:strs [Content-Type]} :headers, :keys [body]} (preview 500)]
               (is (= "application/json; charset=utf-8"
                      Content-Type))
-              (is (schema= {:message  (s/eq "Can't register fonts!")
-                            :trace    s/Any
-                            :via      s/Any
-                            s/Keyword s/Any}
-                     body)))))))))
+              (is (malli= [:map
+                           [:message  [:= "Can't register fonts!"]]
+                           [:trace    :any]
+                           [:via      :any]]
+                          body)))))))))
 
 (deftest delete-subscription-test
   (testing "DELETE /api/pulse/:id/subscription"
