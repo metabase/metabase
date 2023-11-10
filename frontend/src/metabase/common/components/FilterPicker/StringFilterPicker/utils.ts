@@ -1,21 +1,32 @@
-import type { StringFilterOperatorName } from "metabase-lib/types";
+import type * as Lib from "metabase-lib";
 import { OPERATOR_OPTIONS } from "./constants";
 
-export function isFilterValid(
-  operatorName: StringFilterOperatorName,
-  values: string[],
+function isNotEmpty(value: string) {
+  return value.length > 0;
+}
+
+export function getDefaultValues(
+  operator: Lib.StringFilterOperatorName,
+  values: string[] = [],
+): string[] {
+  const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
+  if (hasMultipleValues) {
+    return values.filter(isNotEmpty);
+  }
+
+  return Array(valueCount)
+    .fill("")
+    .map((value, index) => values[index] ?? value);
+}
+
+export function hasValidValues(
+  operator: Lib.StringFilterOperatorName,
+  values: string[] = [],
 ) {
-  const option = OPERATOR_OPTIONS[operatorName];
-  if (!option) {
+  const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
+  if (!values.every(isNotEmpty)) {
     return false;
   }
 
-  const { valueCount } = option;
-  const filledValues = values.filter(
-    value => typeof value === "string" && value.length > 0,
-  );
-
-  return Number.isFinite(valueCount)
-    ? filledValues.length === valueCount
-    : filledValues.length >= 1;
+  return hasMultipleValues ? values.length > 0 : values.length === valueCount;
 }

@@ -35,7 +35,7 @@ export function TimeFilterPicker({
     [query, stageIndex, column],
   );
 
-  const [operator, setOperator] = useState(() =>
+  const [operator, setOperator] = useState(
     filterParts ? filterParts.operator : "<",
   );
 

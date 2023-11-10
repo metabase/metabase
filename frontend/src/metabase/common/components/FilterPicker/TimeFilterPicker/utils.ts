@@ -1,4 +1,4 @@
-import type { TimeFilterOperatorName } from "metabase-lib";
+import type * as Lib from "metabase-lib";
 import { OPERATOR_OPTIONS } from "./constants";
 
 function getDefaultValue() {
@@ -6,7 +6,7 @@ function getDefaultValue() {
 }
 
 export function getDefaultValues(
-  operator: TimeFilterOperatorName,
+  operator: Lib.TimeFilterOperatorName,
   values: Date[] = [],
 ): Date[] {
   const { valueCount } = OPERATOR_OPTIONS[operator];
