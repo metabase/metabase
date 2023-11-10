@@ -1,9 +1,6 @@
 default: &default
   - "locales/**"
-  - "bin/**"
-
-ci: &ci
-  - ".github/**/!(*.md|team.json)"
+  - "bin/**/!(*.md)"
 
 shared_sources: &shared_sources
   - "shared/src/**"
