@@ -14,6 +14,7 @@
    [toucan2.core :as t2]))
 
 ;; TODO - this should be done async
+;; TODO - this and `execute-multi-card` should be made more efficient: eg. we query for the card several times
 (defn execute-card
   "Execute the query for a single Card. `options` are passed along to the Query Processor."
   [{pulse-creator-id :creator_id} card-or-id & {:as options}]
@@ -59,5 +60,4 @@
     (let [card-id     (u/the-id card-or-id)
           ;; NOTE/TODO - dashcard-or-id is nil with multiple time series
           card        (t2/select-one Card :id card-id, :archived false)]
-      (for [multi-card [card]]
-        (execute-card {:creator_id (:creator_id card)} (:id multi-card))))))
+      [(execute-card {:creator_id (:creator_id card)} (:id card))])))
