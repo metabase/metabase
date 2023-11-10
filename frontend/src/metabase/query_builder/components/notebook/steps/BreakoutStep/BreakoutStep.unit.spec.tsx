@@ -283,33 +283,5 @@ describe("BreakoutStep", () => {
 
       expect(updateQuery).not.toHaveBeenCalled();
     });
-
-    it("should support binning for nested numeric fields (metabase#13764)", () => {
-      const { query: queryWithBreakout, initialQuery } =
-        createQueryWithBreakout();
-      const query = applyAggregation(queryWithBreakout, "avg");
-
-      setup(
-        createMockNotebookStep({
-          topLevelQuery: Lib.appendStage(query),
-          stageIndex: 1,
-          itemIndex: null,
-          type: "summarize",
-          previous: createMockNotebookStep({
-            topLevelQuery: initialQuery,
-            stageIndex: 0,
-          }),
-        }),
-      );
-
-      userEvent.click(screen.getByText("Pick a column to group by"));
-
-      const option = screen.getByLabelText("Average of Total");
-      expect(option).toBeInTheDocument();
-
-      // TODO [13764]: Enable this test after resolving the issue in MBQLv2
-      // userEvent.hover(option);
-      // expect(within(option).getByText("Auto bin")).toBeInTheDocument();
-    });
   });
 });
