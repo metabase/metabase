@@ -35,7 +35,7 @@ function createQueryWithBinning(bucketName = "10 bins") {
   return { query, columnInfo: Lib.displayInfo(query, 0, columnWithBinning) };
 }
 
-function createQueryWithTemporalBreakout(bucketName = "Quarter") {
+function createQueryWithTemporalBreakout(bucketName: string) {
   const initialQuery = createQuery();
   const findColumn = columnFinder(
     initialQuery,
@@ -260,7 +260,7 @@ describe("BreakoutStep", () => {
     });
 
     it("should highlight selected temporal bucket", async () => {
-      const { query } = createQueryWithTemporalBreakout();
+      const { query } = createQueryWithTemporalBreakout("Quarter");
       setup(createMockNotebookStep({ topLevelQuery: query }));
 
       userEvent.click(screen.getByText("Created At: Quarter"));
@@ -273,26 +273,29 @@ describe("BreakoutStep", () => {
     });
 
     it("should handle `Don't bin` option for temporal bucket (metabase#19684)", async () => {
-      const { query, columnInfo } =
-        createQueryWithTemporalBreakout("Don't bin");
+      const { query } = createQueryWithTemporalBreakout("Don't bin");
       setup(createMockNotebookStep({ topLevelQuery: query }));
 
-      userEvent.click(screen.getByText(columnInfo.displayName));
+      userEvent.click(screen.getByText("Created At"));
       const option = screen.getByRole("option", {
-        name: columnInfo.displayName,
+        name: "Created At",
       });
 
       expect(within(option).getByText("Unbinned")).toBeInTheDocument();
 
-      // verifies Created At is rendered without binning
-      const step = screen.getByTestId("breakout-step");
+      userEvent.click(within(option).getByLabelText("Temporal bucket"));
+
+      // click on More... item as Don't bin is hidden
+      // userEvent.click closes popup
+      fireEvent.click(await screen.findByText("More…"));
+
       expect(
-        within(step).getByText(columnInfo.displayName),
-      ).toBeInTheDocument();
+        await screen.findByRole("menuitem", { name: "Don't bin" }),
+      ).toHaveAttribute("aria-selected", "true");
     });
 
     it("shouldn't update a query when clicking a selected column with temporal bucketing", async () => {
-      const { query } = createQueryWithTemporalBreakout();
+      const { query } = createQueryWithTemporalBreakout("Quarter");
       const { updateQuery } = setup(
         createMockNotebookStep({ topLevelQuery: query }),
       );
