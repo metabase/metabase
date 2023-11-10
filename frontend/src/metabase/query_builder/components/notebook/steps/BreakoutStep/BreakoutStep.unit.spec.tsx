@@ -4,7 +4,6 @@ import * as Lib from "metabase-lib";
 import {
   columnFinder,
   createQuery,
-  findAggregationOperator,
   findBinningStrategy,
   findTemporalBucket,
 } from "metabase-lib/test-helpers";
