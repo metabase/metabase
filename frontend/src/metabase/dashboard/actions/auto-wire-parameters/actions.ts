@@ -1,7 +1,10 @@
 import { t } from "ttag";
+import _ from "underscore";
+import { createAction } from "metabase/lib/redux";
 import type {
   Card,
   DashboardCard,
+  DashboardId,
   DashCardId,
   ParameterId,
   ParameterTarget,
@@ -17,12 +20,23 @@ import {
 } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
-import { getDashCardById } from "metabase/dashboard/selectors";
+import {
+  getAutoWireParameterToast,
+  getDashCardById,
+  getIsCardAutoWiringDisabled,
+} from "metabase/dashboard/selectors";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
-import { addUndo } from "metabase/redux/undo";
+import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Dispatch, GetState } from "metabase-types/store";
 import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
+
+export const DISABLE_AUTO_WIRE_FOR_PARAMETER_TARGET =
+  "metabase/dashboard/DISABLE_AUTO_WIRE_FOR_PARAMETER_TARGET";
+
+export const disableAutoWireForParameterTarget = createAction(
+  DISABLE_AUTO_WIRE_FOR_PARAMETER_TARGET,
+);
 
 export function autoWireDashcardsWithMatchingParameters(
   parameter_id: ParameterId,
@@ -37,15 +51,22 @@ export function autoWireDashcardsWithMatchingParameters(
       return;
     }
 
-    const dashcardsToAutoApply = getAllDashboardCardsWithUnmappedParameters(
-      dashboard_state,
+    const isDisabled = getIsCardAutoWiringDisabled(
+      getState(),
       dashboard_state.dashboardId,
-      parameter_id,
+      dashcard.id,
     );
 
-    if (dashcardsToAutoApply.length === 0) {
+    if (isDisabled) {
       return;
     }
+
+    const dashcardsToAutoApply = getAllDashboardCardsWithUnmappedParameters({
+      dashboardState: dashboard_state,
+      dashboardId: dashboard_state.dashboardId,
+      parameter_id: parameter_id,
+      excludeDashcardIds: [dashcard.id],
+    });
 
     const dashcardAttributes = getAutoWiredMappingsForDashcards(
       dashcard,
@@ -55,6 +76,10 @@ export function autoWireDashcardsWithMatchingParameters(
       metadata,
     );
 
+    if (dashcardAttributes.length === 0) {
+      return;
+    }
+
     dispatch(
       setMultipleDashCardAttributes({
         dashcards: dashcardAttributes,
@@ -62,27 +87,11 @@ export function autoWireDashcardsWithMatchingParameters(
     );
 
     dispatch(
-      addUndo({
-        message: t`This filter has been auto-connected with questions with the same field.`,
-        actionLabel: t`Undo auto-connection`,
-        undo: true,
-        action: () => {
-          dispatch(
-            setMultipleDashCardAttributes({
-              dashcards: dashcardsToAutoApply.map(dc => ({
-                id: dc.id,
-                attributes: {
-                  parameter_mappings: getParameterMappings(
-                    dc,
-                    parameter_id,
-                    dc.card.id,
-                    null,
-                  ),
-                },
-              })),
-            }),
-          );
-        },
+      showAutoApplyFiltersToast({
+        dashboardId: dashboard_state.dashboardId,
+        parameter_id,
+        sourceDashcardId: dashcard.id,
+        modifiedDashcards: dashcardsToAutoApply,
       }),
     );
   };
@@ -162,3 +171,63 @@ export function autoWireParametersToNewCard({
     }
   };
 }
+
+export const showAutoApplyFiltersToast =
+  ({
+    dashboardId,
+    parameter_id,
+    sourceDashcardId,
+    modifiedDashcards,
+  }: {
+    dashboardId: DashboardId;
+    parameter_id: ParameterId;
+    sourceDashcardId: DashCardId;
+    modifiedDashcards: DashboardCard[];
+  }) =>
+  (dispatch: Dispatch, getState: GetState) => {
+    dispatch(closeAutoApplyFiltersToast());
+
+    const toastId = _.uniqueId();
+
+    dispatch(
+      addUndo({
+        message: t`This filter has been auto-connected with questions with the same field.`,
+        actionLabel: t`Undo auto-connection`,
+        undo: true,
+        action: () => {
+          dispatch(
+            disableAutoWireForParameterTarget({
+              sourceDashcardId,
+              dashboardId,
+            }),
+          );
+
+          dispatch(
+            setMultipleDashCardAttributes({
+              dashcards: modifiedDashcards.map(dc => ({
+                id: dc.id,
+                attributes: {
+                  parameter_mappings: getParameterMappings(
+                    dc,
+                    parameter_id,
+                    dc.card.id,
+                    null,
+                  ),
+                },
+              })),
+            }),
+          );
+        },
+      }),
+    );
+
+    return { toastId, dashboardId };
+  };
+
+export const closeAutoApplyFiltersToast =
+  () => (dispatch: Dispatch, getState: GetState) => {
+    const { id } = getAutoWireParameterToast(getState());
+    if (id) {
+      dispatch(dismissUndo(id, false));
+    }
+  };

@@ -16,12 +16,17 @@ import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-op
 import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
-export function getAllDashboardCardsWithUnmappedParameters(
-  dashboardState: DashboardState,
-  dashboardId: DashboardId,
-  parameter_id: ParameterId,
-  excludeDashcardIds: DashCardId[] = [],
-) {
+export function getAllDashboardCardsWithUnmappedParameters({
+  dashboardState,
+  dashboardId,
+  parameter_id,
+  excludeDashcardIds = [],
+}: {
+  dashboardState: DashboardState;
+  dashboardId: DashboardId;
+  parameter_id: ParameterId;
+  excludeDashcardIds?: DashCardId[];
+}) {
   const cards = getExistingDashCards(
     dashboardState.dashboards,
     dashboardState.dashcards,
@@ -83,6 +88,10 @@ export function getAutoWiredMappingsForDashcards(
   target: ParameterTarget,
   metadata: Metadata,
 ): DashCardAttribute[] {
+  if (targetDashcards.length === 0) {
+    return [];
+  }
+
   const targetDashcardMappings: DashCardAttribute[] = [];
 
   for (const targetDashcard of targetDashcards) {

@@ -1,3 +1,4 @@
+import type { DashboardId, DashCardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 export function getDashboardId(state: State) {
@@ -16,3 +17,17 @@ export function getTabs(state: State) {
 export function getSelectedTabId(state: State) {
   return state.dashboard.selectedTabId;
 }
+
+export const getAutoWireParameterToast = (state: State) =>
+  state.dashboard.autoWireParameters.toast;
+
+export const getIsCardAutoWiringDisabled = (
+  state: State,
+  dashboardId: DashboardId,
+  dashcardId: DashCardId,
+) => {
+  const disabledDashcardIds =
+    state.dashboard.autoWireParameters.disabledDashcards[dashboardId];
+
+  return disabledDashcardIds && disabledDashcardIds.includes(dashcardId);
+};

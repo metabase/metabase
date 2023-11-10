@@ -907,6 +907,67 @@ describe("scenarios > dashboard > parameters", () => {
           .should("be.visible");
       });
     });
+
+    describe("when undoing a parameter wiring", () => {
+      it("should not auto-wire a card if the user undoes the wiring", () => {
+        createDashboardWithCards([
+          {
+            card_id: ORDERS_BY_YEAR_QUESTION_ID,
+            row: 0,
+            col: 0,
+            size_x: 5,
+            size_y: 4,
+          },
+          {
+            card_id: ORDERS_COUNT_QUESTION_ID,
+            row: 0,
+            col: 4,
+            size_x: 5,
+            size_y: 4,
+          },
+        ]).then(dashboardId => {
+          visitDashboard(dashboardId);
+          cy.wait("@dashboard");
+        });
+        cy.icon("pencil").click();
+
+        cy.findByTestId("dashboard-header").icon("filter").click();
+        popover().within(() => {
+          cy.contains("Text or Category").click();
+          cy.findByText("Is").click();
+        });
+
+        selectDashboardFilter(getDashboardCard(0), "Name");
+
+        getDashboardCard(0).within(() => {
+          cy.findByText("User.Name").should("exist");
+        });
+
+        getDashboardCard(1).within(() => {
+          cy.findByText("User.Name").should("exist");
+        });
+
+        undoToast().findByText("Undo auto-connection").click();
+
+        getDashboardCard(1).within(() => {
+          cy.findByText("User.Name").should("not.exist");
+        });
+
+        getDashboardCard(0).within(() => {
+          cy.findByLabelText("close icon").click();
+        });
+
+        selectDashboardFilter(getDashboardCard(0), "Address");
+
+        getDashboardCard(0).within(() => {
+          cy.findByText("User.Address").should("exist");
+        });
+
+        getDashboardCard(1).within(() => {
+          cy.findByText("Select…").should("exist");
+        });
+      });
+    });
   });
 });
 
