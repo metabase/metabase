@@ -578,7 +578,7 @@
           (testing (str "View " view-name " should be created")
             (is (= [] (t2/query (str "SELECT 1 FROM " view-name))))))
 
-        (db.setup/migrate! db-type data-source :down 47)
+        (migrate! :down 47)
         (testing "Views should be removed when downgrading"
           (doseq [view-name new-view-names]
             (is (thrown?
