@@ -158,9 +158,7 @@ describe("LinkedEntityPicker", () => {
           const call = fetchMock.lastCall("path:/api/search");
           const urlObject = new URL(checkNotNull(call?.request?.url));
           expect(urlObject.pathname).toEqual("/api/search");
-          expect(
-            fromEntriesWithMultipleValues(urlObject.searchParams.entries()),
-          ).toEqual({
+          expect(urlSearchParamsToObject(urlObject.searchParams)).toEqual({
             models: "dashboard",
             q: typedText,
             filter_items_in_personal_collection: "exclude",
@@ -215,9 +213,7 @@ describe("LinkedEntityPicker", () => {
           const call = fetchMock.lastCall("path:/api/search");
           const urlObject = new URL(checkNotNull(call?.request?.url));
           expect(urlObject.pathname).toEqual("/api/search");
-          expect(
-            fromEntriesWithMultipleValues(urlObject.searchParams.entries()),
-          ).toEqual({
+          expect(urlSearchParamsToObject(urlObject.searchParams)).toEqual({
             models: "dashboard",
             q: typedText,
           });
@@ -293,9 +289,7 @@ describe("LinkedEntityPicker", () => {
             "card",
             "dataset",
           ]);
-          expect(
-            fromEntriesWithMultipleValues(urlObject.searchParams.entries()),
-          ).toEqual({
+          expect(urlSearchParamsToObject(urlObject.searchParams)).toEqual({
             models: ["card", "dataset"],
             q: typedText,
             filter_items_in_personal_collection: "exclude",
@@ -350,9 +344,7 @@ describe("LinkedEntityPicker", () => {
           const call = fetchMock.lastCall("path:/api/search");
           const urlObject = new URL(checkNotNull(call?.request?.url));
           expect(urlObject.pathname).toEqual("/api/search");
-          expect(
-            fromEntriesWithMultipleValues(urlObject.searchParams.entries()),
-          ).toEqual({
+          expect(urlSearchParamsToObject(urlObject.searchParams)).toEqual({
             models: ["card", "dataset"],
             q: typedText,
           });
@@ -362,21 +354,13 @@ describe("LinkedEntityPicker", () => {
   });
 });
 
-function fromEntriesWithMultipleValues(
-  entries: IterableIterator<[string, string]>,
+function urlSearchParamsToObject(
+  searchParams: URLSearchParams,
 ): Record<string, string | string[]> {
   const object: Record<string, string | string[]> = {};
-
-  for (const [key, value] of entries) {
-    if (object[key]) {
-      const existingValue = object[key];
-      object[key] = Array.isArray(existingValue)
-        ? [...existingValue, value]
-        : [existingValue, value];
-    } else {
-      object[key] = value;
-    }
+  for (const [key] of Array.from(searchParams)) {
+    const value = searchParams.getAll(key);
+    object[key] = value.length > 1 ? value : value[0];
   }
-
   return object;
 }
