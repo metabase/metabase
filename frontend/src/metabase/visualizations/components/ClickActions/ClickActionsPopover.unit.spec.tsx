@@ -11,6 +11,8 @@ import {
   ORDERS_ID,
   PEOPLE,
   PEOPLE_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import { ClickActionsPopover } from "metabase/visualizations/components/ClickActions/ClickActionsPopover";
@@ -443,6 +445,32 @@ describe("ClickActionsPopover", function () {
                   ORDERS_ROW_VALUES.USER_ID,
                 ],
                 "source-table": PEOPLE_ID,
+              },
+              type: "query",
+            },
+            display: "table",
+          },
+        },
+        {
+          column: createOrdersProductIdDatasetColumn(),
+          columnName: createOrdersProductIdDatasetColumn().name,
+          cellValue: ORDERS_ROW_VALUES.PRODUCT_ID,
+          expectedCard: {
+            dataset_query: {
+              database: SAMPLE_DB_ID,
+              query: {
+                filter: [
+                  "=",
+                  [
+                    "field",
+                    PRODUCTS.ID,
+                    {
+                      "base-type": "type/BigInteger",
+                    },
+                  ],
+                  ORDERS_ROW_VALUES.PRODUCT_ID,
+                ],
+                "source-table": PRODUCTS_ID,
               },
               type: "query",
             },
