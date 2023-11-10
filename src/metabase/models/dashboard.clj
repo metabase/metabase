@@ -615,12 +615,14 @@
          :serdes/meta  [{:model "Dashboard"    :id (:entity_id dashboard)}
                         {:model "DashboardTab" :id (:entity_id tab)}]))
 
-
 (defn- drop-excessive-nested!
   "Remove nested entities which are not present in incoming serialization load"
-  [entities model field value]
-  (let [known     (t2/select-fn-set :entity_id model field value)
-        to-remove (set/difference known (set (map :entity_id entities)))]
+  [hydration-key ingested local]
+  (let [local-nested    (get (t2/hydrate local hydration-key) hydration-key)
+        ingested-nested (get ingested hydration-key)
+        to-remove       (set/difference (set (map :entity_id local-nested))
+                                        (set (map :entity_id ingested-nested)))
+        model           (t2/model (first local-nested))]
     (when (seq to-remove)
       (t2/delete! model :entity_id [:in to-remove]))))
 
@@ -628,12 +630,12 @@
 (defmethod serdes/load-one! "Dashboard" [ingested maybe-local]
   (let [dashboard ((get-method serdes/load-one! :default) (dissoc ingested :dashcards :tabs) maybe-local)]
 
-    (drop-excessive-nested! (:tabs ingested) :model/DashboardTab :dashboard_id (:id dashboard))
+    (drop-excessive-nested! :tabs ingested dashboard)
     (doseq [tab (:tabs ingested)]
       (serdes/load-one! (dashtab-for tab dashboard)
                         (t2/select-one :model/DashboardTab :entity_id (:entity_id tab))))
 
-    (drop-excessive-nested! (:dashcards ingested) :model/DashboardCard :dashboard_id (:id dashboard))
+    (drop-excessive-nested! :dashcards ingested dashboard)
     (doseq [dashcard (:dashcards ingested)]
       (serdes/load-one! (dashcard-for dashcard dashboard)
                         (t2/select-one :model/DashboardCard :entity_id (:entity_id dashcard))))))
