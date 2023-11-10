@@ -58,7 +58,6 @@
               :database_id            nil
               :started_at             #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
               :json_query             query
-              :is_sandboxed           false
               :average_execution_time nil
               :context                nil
               :running_time           true}
