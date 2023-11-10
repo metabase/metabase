@@ -1,4 +1,4 @@
-import type { Card, DashboardCard, ParameterTarget } from "metabase-types/api";
+import type { Card, ParameterTarget } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
 import Dimension from "metabase-lib/Dimension";
 import type Metadata from "metabase-lib/metadata/Metadata";
@@ -60,16 +60,16 @@ export function getTargetFieldFromCard(
 export function compareMappingOptionTargets(
   target1: ParameterTarget,
   target2: ParameterTarget,
-  card1: DashboardCard,
-  card2: DashboardCard,
+  card1: Card,
+  card2: Card,
   metadata: Metadata,
 ) {
   if (!isDimensionTarget(target1) || !isDimensionTarget(target2)) {
     return false;
   }
 
-  const fieldReference1 = getTargetFieldFromCard(target1, card1.card, metadata);
-  const fieldReference2 = getTargetFieldFromCard(target2, card2.card, metadata);
+  const fieldReference1 = getTargetFieldFromCard(target1, card1, metadata);
+  const fieldReference2 = getTargetFieldFromCard(target2, card2, metadata);
 
   return fieldReference1?.id === fieldReference2?.id;
 }

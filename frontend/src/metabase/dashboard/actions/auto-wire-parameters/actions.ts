@@ -1,24 +1,26 @@
 import type {
+  Card,
   DashboardCard,
   DashCardId,
   ParameterId,
   ParameterTarget,
 } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
 import {
   setDashCardAttributes,
   setMultipleDashCardAttributes,
 } from "metabase/dashboard/actions";
-import { getExistingDashCards } from "metabase/dashboard/actions/utils";
-import { getDashCardById } from "metabase/dashboard/selectors";
-import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
-import { getMetadata } from "metabase/selectors/metadata";
-import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
 import {
   getAllDashboardCardsWithUnmappedParameters,
   getAutoWiredMappingsForDashcards,
   getParameterMappings,
-} from "./utils";
+} from "metabase/dashboard/actions/auto-wire-parameters/utils";
+
+import { getExistingDashCards } from "metabase/dashboard/actions/utils";
+import { getDashCardById } from "metabase/dashboard/selectors";
+import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
+import { getMetadata } from "metabase/selectors/metadata";
+import type { Dispatch, GetState } from "metabase-types/store";
+import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
 
 export function autoWireDashcardsWithMatchingParameters(
   parameter_id: ParameterId,
@@ -33,22 +35,23 @@ export function autoWireDashcardsWithMatchingParameters(
       return;
     }
 
-    const dashcardsToAutoApply: DashboardCard[] =
-      getAllDashboardCardsWithUnmappedParameters(
-        dashboard_state,
-        dashboard_state.dashboardId,
-        parameter_id,
-      );
+    const dashcardsToAutoApply = getAllDashboardCardsWithUnmappedParameters(
+      dashboard_state,
+      dashboard_state.dashboardId,
+      parameter_id,
+    );
+
+    const dashcardAttributes = getAutoWiredMappingsForDashcards(
+      dashcard,
+      dashcardsToAutoApply,
+      parameter_id,
+      target,
+      metadata,
+    );
 
     dispatch(
       setMultipleDashCardAttributes({
-        dashcards: getAutoWiredMappingsForDashcards(
-          dashcard,
-          dashcardsToAutoApply,
-          parameter_id,
-          target,
-          metadata,
-        ),
+        dashcards: dashcardAttributes,
       }),
     );
   };
@@ -68,12 +71,13 @@ export function autoWireParametersToNewCard({
       return;
     }
 
-    const dashcards = getExistingDashCards(dashboardState, dashboardId);
-
-    const targetDashcard: DashboardCard = getDashCardById(
-      getState(),
-      dashcard_id,
+    const dashcards = getExistingDashCards(
+      dashboardState.dashboards,
+      dashboardState.dashcards,
+      dashboardId,
     );
+
+    const targetDashcard = getDashCardById(getState(), dashcard_id);
 
     if (!targetDashcard) {
       return;
@@ -95,8 +99,8 @@ export function autoWireParametersToNewCard({
           compareMappingOptionTargets(
             mapping.target,
             opt.target,
-            dashcard,
-            targetDashcard,
+            dashcard.card as Card,
+            targetDashcard.card as Card,
             metadata,
           ),
         );

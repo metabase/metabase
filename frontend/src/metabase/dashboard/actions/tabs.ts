@@ -2,6 +2,7 @@ import { createAction, createReducer } from "@reduxjs/toolkit";
 import type { Draft } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import { arrayMove } from "@dnd-kit/sortable";
+import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 
 import type {
   DashCardId,
@@ -25,9 +26,10 @@ import { addUndo } from "metabase/redux/undo";
 import { INITIAL_DASHBOARD_STATE } from "../constants";
 import { getDashCardById } from "../selectors";
 import { trackCardMoved } from "../analytics";
-import { getExistingDashCards } from "./utils";
 
-type CreateNewTabPayload = { tabId: DashboardTabId };
+type CreateNewTabPayload = {
+  tabId: DashboardTabId;
+};
 type DeleteTabPayload = {
   tabId: DashboardTabId | null;
   tabDeletionId: TabDeletionId;
@@ -35,12 +37,17 @@ type DeleteTabPayload = {
 type UndoDeleteTabPayload = {
   tabDeletionId: TabDeletionId;
 };
-type RenameTabPayload = { tabId: DashboardTabId | null; name: string };
+type RenameTabPayload = {
+  tabId: DashboardTabId | null;
+  name: string;
+};
 type MoveTabPayload = {
   sourceTabId: DashboardTabId;
   destinationTabId: DashboardTabId;
 };
-type SelectTabPayload = { tabId: DashboardTabId | null };
+type SelectTabPayload = {
+  tabId: DashboardTabId | null;
+};
 type MoveDashCardToTabPayload = {
   dashCardId: DashCardId;
   destinationTabId: DashboardTabId;
@@ -55,7 +62,9 @@ type SaveCardsAndTabsPayload = {
   cards: DashboardCard[];
   tabs: DashboardTab[];
 };
-type InitTabsPayload = { slug: string | undefined };
+type InitTabsPayload = {
+  slug: string | undefined;
+};
 
 const CREATE_NEW_TAB = "metabase/dashboard/CREATE_NEW_TAB";
 const DELETE_TAB = "metabase/dashboard/DELETE_TAB";
@@ -352,15 +361,20 @@ export const tabsReducer = createReducer<DashboardState>(
 
     builder.addCase(
       _moveDashCardToTab,
-      (
-        state: DashboardState,
-        { payload: { dashCardId, destinationTabId } },
-      ) => {
-        const dashCard = state.dashcards[dashCardId];
-        const dashboardId = checkNotNull(state.dashboardId);
+      (state, { payload: { dashCardId, destinationTabId } }) => {
+        const dashboardState = { ...state } as unknown as DashboardState;
+        const dashCard = dashboardState.dashcards[dashCardId];
+        const dashboardId = checkNotNull(dashboardState.dashboardId);
+        const dashcards = dashboardState.dashcards;
+        const dashboards = dashboardState.dashboards;
 
         const { row, col } = getPositionForNewDashCard(
-          getExistingDashCards(state, dashboardId, destinationTabId),
+          getExistingDashCards(
+            dashboards,
+            dashcards,
+            dashboardId,
+            destinationTabId,
+          ),
           dashCard.size_x,
           dashCard.size_y,
         );
@@ -423,7 +437,12 @@ export const tabsReducer = createReducer<DashboardState>(
 
     builder.addCase<
       string,
-      { type: string; payload?: { clearCache: boolean } }
+      {
+        type: string;
+        payload?: {
+          clearCache: boolean;
+        };
+      }
     >(INITIALIZE, (state, { payload: { clearCache = true } = {} }) => {
       if (clearCache) {
         state.selectedTabId = INITIAL_DASHBOARD_STATE.selectedTabId;

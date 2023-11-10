@@ -3,6 +3,7 @@ import type {
   CardId,
   DashboardCard,
   DashboardId,
+  DashboardParameterMapping,
   DashCardId,
   ParameterId,
   ParameterTarget,
@@ -16,12 +17,17 @@ import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targe
 import type Metadata from "metabase-lib/metadata/Metadata";
 
 export function getAllDashboardCardsWithUnmappedParameters(
-  dashboard: DashboardState,
+  dashboardState: DashboardState,
   dashboardId: DashboardId,
   parameter_id: ParameterId,
   excludeDashcardIds: DashCardId[] = [],
 ) {
-  return getExistingDashCards(dashboard, dashboardId).filter(dashcard => {
+  const cards = getExistingDashCards(
+    dashboardState.dashboards,
+    dashboardState.dashcards,
+    dashboardId,
+  );
+  return cards.filter(dashcard => {
     return (
       !excludeDashcardIds.includes(dashcard.id) &&
       !dashcard.parameter_mappings?.some(
@@ -36,30 +42,39 @@ export function getMatchingParameterOption(
   targetDimension: ParameterTarget,
   targetDashcard: DashboardCard,
   metadata: Metadata,
-) {
+): { target: ParameterTarget } | null {
   if (!dashcardToCheck) {
-    return [];
+    return null;
   }
 
-  return getParameterMappingOptions(
-    metadata,
-    null,
-    dashcardToCheck.card,
-    // TODO: mapping-options.js/getParameterMappingOptions needs to be converted to typescript as the TS
-    // checker thinks that this parameter should be (null | undefined), not (DashboardCard | null | undefined)
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    dashcardToCheck,
-  ).find((param: { target: ParameterTarget }) =>
-    compareMappingOptionTargets(
-      targetDimension,
-      param.target,
-      targetDashcard,
-      dashcardToCheck,
+  return (
+    getParameterMappingOptions(
       metadata,
-    ),
+      null,
+      dashcardToCheck.card,
+      // TODO: mapping-options.js/getParameterMappingOptions needs to be converted to typescript as the TS
+      // checker thinks that this parameter should be (null | undefined), not (DashboardCard | null | undefined)
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      dashcardToCheck,
+    ).find((param: { target: ParameterTarget }) =>
+      compareMappingOptionTargets(
+        targetDimension,
+        param.target,
+        targetDashcard.card,
+        dashcardToCheck.card,
+        metadata,
+      ),
+    ) ?? null
   );
 }
+
+export type DashCardAttribute = {
+  id: DashCardId;
+  attributes: {
+    parameter_mappings: DashboardParameterMapping[];
+  };
+};
 
 export function getAutoWiredMappingsForDashcards(
   sourceDashcard: DashboardCard,
@@ -67,16 +82,17 @@ export function getAutoWiredMappingsForDashcards(
   parameter_id: ParameterId,
   target: ParameterTarget,
   metadata: Metadata,
-) {
-  const targetDashcardMappings = [];
+): DashCardAttribute[] {
+  const targetDashcardMappings: DashCardAttribute[] = [];
 
   for (const targetDashcard of targetDashcards) {
-    const selectedMappingOption = getMatchingParameterOption(
-      targetDashcard,
-      target,
-      sourceDashcard,
-      metadata,
-    );
+    const selectedMappingOption: { target: ParameterTarget } | null =
+      getMatchingParameterOption(
+        targetDashcard,
+        target,
+        sourceDashcard,
+        metadata,
+      );
 
     if (selectedMappingOption && targetDashcard.card_id) {
       targetDashcardMappings.push({

@@ -42,6 +42,8 @@ export const addCardToDashboard =
     const visualization = getVisualizationRaw([{ card }]);
     const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
 
+    const dashboardState = getState().dashboard;
+
     const dashcardId = generateTemporaryDashcardId();
     const dashcard = {
       id: dashcardId,
@@ -51,7 +53,12 @@ export const addCardToDashboard =
       card: card,
       series: [],
       ...getPositionForNewDashCard(
-        getExistingDashCards(getState().dashboard, dashId, tabId),
+        getExistingDashCards(
+          dashboardState.dashboards,
+          dashboardState.dashcards,
+          dashId,
+          tabId,
+        ),
         createdCardSize.width,
         createdCardSize.height,
       ),
@@ -102,6 +109,8 @@ export const addDashCardToDashboard = function ({
     const visualization = getVisualizationRaw([dashcardOverrides]);
     const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
 
+    const dashboardState = getState().dashboard;
+
     const dashcard = {
       id: generateTemporaryDashcardId(),
       card_id: null,
@@ -110,7 +119,12 @@ export const addDashCardToDashboard = function ({
       dashboard_tab_id: tabId ?? null,
       series: [],
       ...getPositionForNewDashCard(
-        getExistingDashCards(getState().dashboard, dashId, tabId),
+        getExistingDashCards(
+          dashboardState.dashboards,
+          dashboardState.dashcards,
+          dashId,
+          tabId,
+        ),
         createdCardSize.width,
         createdCardSize.height,
       ),
