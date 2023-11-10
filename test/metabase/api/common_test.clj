@@ -97,7 +97,7 @@
   [topic event]
   (swap! *events* conj [topic event]))
 
-(deftest *-check-functions-publish-events
+(deftest check-functions-publish-events
   ;; setup - derive events so they get dispatched to our test method
   (derive ::permission-failure-event :metabase/event)
   (derive :event/write-permission-failure ::permission-failure-event)
