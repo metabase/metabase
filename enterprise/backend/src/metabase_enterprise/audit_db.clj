@@ -9,14 +9,14 @@
    [metabase.db.env :as mdb.env]
    [metabase.models.database :refer [Database]]
    [metabase.models.permissions :as perms]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.plugins :as plugins]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]
-   [metabase.models.setting :refer [defsetting]])
+   [toucan2.core :as t2])
   (:import
    (java.util.jar JarEntry JarFile)))
 
