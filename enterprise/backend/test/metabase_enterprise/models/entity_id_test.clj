@@ -37,6 +37,7 @@
     :model/QueryAction
     :model/Activity
     :model/ApplicationPermissionsRevision
+    :model/AuditLog
     :model/BookmarkOrdering
     :model/CardBookmark
     :model/CollectionBookmark
@@ -61,6 +62,7 @@
     :model/Query
     :model/QueryCache
     :model/QueryExecution
+    :model/RecentViews
     :model/Revision
     :model/Secret
     :model/Session

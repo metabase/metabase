@@ -537,7 +537,7 @@
           :when             (pos-int? card_id)]
       (snowplow/track-event! ::snowplow/question-added-to-dashboard
                              api/*current-user-id*
-                             {:dashboard-id dashboard-id :question-id card_id})))
+                             {:dashboard-id dashboard-id :question-id card_id :user-id api/*current-user-id*})))
   ;; Tabs events
   (when (seq deleted-tab-ids)
     (snowplow/track-event! ::snowplow/dashboard-tab-deleted
@@ -557,7 +557,8 @@
   [id {:keys [dashcards tabs] :as dash-updates}]
   (let [current-dash               (api/write-check Dashboard id)
         changes-stats              (atom nil)
-        ;; tabs are sent in production as well, but there are lots of tests that exclude it. so this only checks for dashcards
+        ;; tabs are always sent in production as well when dashcards are updated, but there are lots of
+        ;; tests that exclude it. so this only checks for dashcards
         update-dashcards-and-tabs? (contains? dash-updates :dashcards)]
     (collection/check-allowed-to-change-collection current-dash dash-updates)
     (check-allowed-to-change-embedding current-dash dash-updates)
@@ -607,9 +608,7 @@
        true))
     (let [dashboard (t2/select-one :model/Dashboard id)]
       (events/publish-event! :event/dashboard-update {:object dashboard :user-id api/*current-user-id*})
-      (when update-dashcards-and-tabs?
-        ;; execute these events for old PUT /api/dashboard/:id/cards calls and new PUT /api/dashboard/:id calls, and not for old PUT /api/dashboard/:id calls
-        (track-dashcard-and-tab-events! dashboard @changes-stats))
+      (track-dashcard-and-tab-events! dashboard @changes-stats)
       (-> (t2/hydrate dashboard [:collection :is_personal] [:dashcards :series] :tabs)
           (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))))
 
@@ -638,7 +637,8 @@
   (update-dashboard id dash-updates))
 
 (api/defendpoint PUT "/:id/cards"
-  "Update `Cards` and `Tabs` on a Dashboard. Request body should have the form:
+  "(DEPRECATED -- Use the `PUT /api/dashboard/:id` endpoint instead.)
+   Update `Cards` and `Tabs` on a Dashboard. Request body should have the form:
 
     {:cards        [{:id                 ... ; DashboardCard ID
                      :size_x             ...
@@ -657,6 +657,8 @@
    ;; tabs should be required in production, making it optional because lots of
    ;; e2e tests curerntly doesn't include it
    tabs [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
+  (log/warn
+   "DELETE /api/dashboard/:id/cards is deprecated. Use PUT /api/dashboard/:id instead.")
   (let [dashboard (update-dashboard id {:dashcards cards :tabs tabs})]
     {:cards (:dashcards dashboard)
      :tabs  (:tabs dashboard)}))
@@ -805,6 +807,26 @@
              field             (param->fields param)]
          (assoc field :value value))))
 
+(defn filter-values-from-field-refs
+  "Get filter values when only field-refs (e.g. `[:field \"SOURCE\" {:base-type :type/Text}]`)
+  are provided (rather than field-ids). This is a common case for nested queries."
+  [dashboard param-key]
+  (let [dashboard       (t2/hydrate dashboard :resolved-params)
+        param           (get-in dashboard [:resolved-params param-key])
+        results         (for [{:keys [target] {:keys [card]} :dashcard} (:mappings param)
+                              :let [[_ dimension] (->> (mbql.normalize/normalize-tokens target :ignore-path)
+                                                       (mbql.u/check-clause :dimension))]
+                              :when dimension]
+                          (custom-values/values-from-card card dimension))]
+    (when-some [values (seq (distinct (mapcat :values results)))]
+      (let [has_more_values (boolean (some true? (map :has_more_values results)))]
+        {:values          (cond->> values
+                                   (seq values)
+                                   (sort-by (case (count (first values))
+                                              2 second
+                                              1 first)))
+         :has_more_values has_more_values}))))
+
 (mu/defn chain-filter :- ms/FieldValuesResult
   "C H A I N filters!
 
@@ -820,30 +842,29 @@
          constraints (chain-filter-constraints dashboard constraint-param-key->value)
          param       (get-in dashboard [:resolved-params param-key])
          field-ids   (map :field-id (param->fields param))]
-     (when (empty? field-ids)
-       (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
-                       {:param       (get (:resolved-params dashboard) param-key)
-                        :status-code 400})))
-     ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
-     ;; separate query for each Field (for parameters that are mapped to more than one Field)
-     (try
-       (let [results         (map (if (seq query)
-                                    #(chain-filter/chain-filter-search % constraints query :limit result-limit)
-                                    #(chain-filter/chain-filter % constraints :limit result-limit))
-                                  field-ids)
-             values          (distinct (mapcat :values results))
-             has_more_values (boolean (some true? (map :has_more_values results)))]
-         ;; results can come back as [[v] ...] *or* as [[orig remapped] ...]. Sort by remapped value if it's there
-         {:values          (cond->> values
-                             (seq values)
-                             (sort-by (case (count (first values))
-                                        2 second
-                                        1 first)))
-          :has_more_values has_more_values})
-       (catch clojure.lang.ExceptionInfo e
-         (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
-           (api/throw-403 e)
-           (throw e)))))))
+     (if (empty? field-ids)
+       (or (filter-values-from-field-refs dashboard param-key)
+           (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
+                           {:param       (get (:resolved-params dashboard) param-key)
+                            :status-code 400})))
+       (try
+         (let [results         (map (if (seq query)
+                                      #(chain-filter/chain-filter-search % constraints query :limit result-limit)
+                                      #(chain-filter/chain-filter % constraints :limit result-limit))
+                                    field-ids)
+               values          (distinct (mapcat :values results))
+               has_more_values (boolean (some true? (map :has_more_values results)))]
+           ;; results can come back as [[v] ...] *or* as [[orig remapped] ...]. Sort by remapped value if it's there
+           {:values          (cond->> values
+                                      (seq values)
+                                      (sort-by (case (count (first values))
+                                                 2 second
+                                                 1 first)))
+            :has_more_values has_more_values})
+         (catch clojure.lang.ExceptionInfo e
+           (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+             (api/throw-403 e)
+             (throw e))))))))
 
 (mu/defn param-values
   "Fetch values for a parameter.
@@ -865,7 +886,10 @@
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
                        {:resolved-params (keys (:resolved-params dashboard))
                         :status-code     400})))
-     (custom-values/parameter->values param query (fn [] (chain-filter dashboard param-key constraint-param-key->value query))))))
+     (custom-values/parameter->values
+       param
+       query
+       (fn [] (chain-filter dashboard param-key constraint-param-key->value query))))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`. If the values come directly from a query, optionally

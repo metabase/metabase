@@ -70,7 +70,7 @@ const QuestionActions = ({
   const isMetabotEnabled = useSelector(state =>
     getSetting(state, "is-metabot-enabled"),
   );
-  const isModerator = useSelector(getUserIsAdmin);
+  const isModerator = useSelector(getUserIsAdmin) && question.canWrite?.();
 
   const dispatch = useDispatch();
 
