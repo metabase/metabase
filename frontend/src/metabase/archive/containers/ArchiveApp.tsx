@@ -53,23 +53,23 @@ export function ArchiveApp() {
   const { clear, getIsSelected, selected, selectOnlyTheseItems, toggleItem } =
     useListSelect<CollectionItem>(item => `${item.model}:${item.id}`);
 
-  const writableList = useMemo(() => {
+  const list = useMemo(() => {
     clear(); // clear selected items if data is ever refreshed
 
     if (!Array.isArray(data)) {
       return [];
     }
 
-    return data.filter(item => item?.can_write);
+    return data;
   }, [clear, data]);
 
   const selectAllItems = useCallback(() => {
-    selectOnlyTheseItems(writableList);
-  }, [writableList, selectOnlyTheseItems]);
+    selectOnlyTheseItems(list);
+  }, [list, selectOnlyTheseItems]);
 
   const allSelected = useMemo(
-    () => selected.length === writableList.length,
-    [selected, writableList],
+    () => selected.length === list.length,
+    [selected, list],
   );
 
   if (isLoading || error) {
@@ -84,16 +84,13 @@ export function ArchiveApp() {
       <ArchiveBody data-testid="archived-list">
         <Card
           style={{
-            height:
-              writableList.length > 0
-                ? ROW_HEIGHT * writableList.length
-                : "auto",
+            height: list.length > 0 ? ROW_HEIGHT * list.length : "auto",
           }}
         >
-          {writableList.length > 0 ? (
+          {list.length > 0 ? (
             <VirtualizedList
               scrollElement={mainElement}
-              items={writableList}
+              items={list}
               rowHeight={ROW_HEIGHT}
               renderItem={({ item }: { item: CollectionItem }) => (
                 <ArchivedItem
