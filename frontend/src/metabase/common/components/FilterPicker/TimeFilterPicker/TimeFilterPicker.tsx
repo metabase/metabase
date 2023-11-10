@@ -66,7 +66,7 @@ export function TimeFilterPicker({
       <Box>
         {valueCount > 0 && (
           <Flex p="md">
-            <ValuesInput
+            <TimeValueInput
               values={values}
               valueCount={valueCount}
               onChange={setValues}
@@ -79,13 +79,13 @@ export function TimeFilterPicker({
   );
 }
 
-interface ValuesInputProps {
+interface TimeValueInputProps {
   values: Date[];
   valueCount: number;
   onChange: (values: Date[]) => void;
 }
 
-function ValuesInput({ values, valueCount, onChange }: ValuesInputProps) {
+function TimeValueInput({ values, valueCount, onChange }: TimeValueInputProps) {
   if (valueCount === 1) {
     const [value] = values;
     return (

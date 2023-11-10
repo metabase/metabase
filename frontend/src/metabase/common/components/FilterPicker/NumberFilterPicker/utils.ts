@@ -1,21 +1,33 @@
-import type { NumberFilterOperatorName } from "metabase-lib/types";
+import type * as Lib from "metabase-lib";
 import { OPERATOR_OPTIONS } from "./constants";
+import type { NumberValue } from "./types";
 
-export function isFilterValid(
-  operatorName: NumberFilterOperatorName,
-  values: number[],
-) {
-  const option = OPERATOR_OPTIONS[operatorName];
-  if (!option) {
+function isNotEmpty(value: NumberValue) {
+  return value !== "";
+}
+
+export function getDefaultValues(
+  operator: Lib.NumberFilterOperatorName,
+  values: NumberValue[] = [],
+): NumberValue[] {
+  const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
+  if (hasMultipleValues) {
+    return values.filter(isNotEmpty);
+  }
+
+  return Array(valueCount)
+    .fill("")
+    .map((value, index) => values[index] ?? value);
+}
+
+export function hasValidValues(
+  operator: Lib.NumberFilterOperatorName,
+  values: NumberValue[] = [],
+): values is number[] {
+  const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
+  if (!values.every(isNotEmpty)) {
     return false;
   }
 
-  const { valueCount } = option;
-  const filledValues = values.filter(
-    value => typeof value === "number" && Number.isFinite(value),
-  );
-
-  return Number.isFinite(valueCount)
-    ? filledValues.length === valueCount
-    : filledValues.length >= 1;
+  return hasMultipleValues ? values.length > 0 : values.length === valueCount;
 }
