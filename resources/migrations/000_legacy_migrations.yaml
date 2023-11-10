@@ -1,4 +1,3 @@
-#
 # *** IMPORTANT: new migrations should be placed in 001_update_migrations.yml ***
 #
 # This file contains the legacy migrations that used to bootstrap metabase, now this file should be

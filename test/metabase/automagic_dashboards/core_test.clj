@@ -27,7 +27,6 @@
    [metabase.test.automagic-dashboards :as automagic-dashboards.test]
    [metabase.util :as u]
    [ring.util.codec :as codec]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -905,11 +904,11 @@
   (testing "/candidates"
     (testing "should work with the normal test-data DB"
       (mt/with-test-user :rasta
-        (is (schema= [(s/one {:tables   (s/constrained [s/Any] #(= (count %) 4))
-                              s/Keyword s/Any}
-                             "first result")
-                      s/Any]
-                     (magic/candidate-tables (mt/db))))))
+        (is (malli= [:cat
+                     [:map
+                      [:tables [:sequential {:min 4, :max 4} :any]]]
+                     [:* :any]]
+                    (magic/candidate-tables (mt/db))))))
 
     (testing "should work with unanalyzed tables"
       (mt/with-test-user :rasta
@@ -918,13 +917,8 @@
                        Field    _ {:table_id table-id}
                        Field    _ {:table_id table-id}]
           (automagic-dashboards.test/with-dashboard-cleanup
-            (is (schema= [(s/one {:tables   [(s/one {:table    {:id       (s/eq table-id)
-                                                                s/Keyword s/Any}
-                                                     s/Keyword s/Any}
-                                                    "first Table")]
-                                  s/Keyword s/Any}
-                                 "first result")]
-                         (magic/candidate-tables (t2/select-one Database :id db-id))))))))))
+            (is (=? [{:tables [{:table {:id table-id}}]}]
+                    (magic/candidate-tables (t2/select-one Database :id db-id))))))))))
 
 (deftest call-count-test
   (mt/with-temp [Database {db-id :id} {}
@@ -1068,31 +1062,31 @@
   (testing "X-Ray should work if there's a filter in the question (#19241)"
     (mt/dataset sample-dataset
       (let [query (mi/instance
-                    Query
-                    {:database-id   (mt/id)
-                     :table-id      (mt/id :products)
-                     :dataset_query {:database (mt/id)
-                                     :type     :query
-                                     :query    {:source-table (mt/id :products)
-                                                :aggregation  [[:count]]
-                                                :breakout     [[:field (mt/id :products :created_at) {:temporal-unit :year}]]
-                                                :filter       [:=
-                                                               [:field (mt/id :products :category) nil]
-                                                               "Doohickey"]}}})]
+                   Query
+                   {:database-id   (mt/id)
+                    :table-id      (mt/id :products)
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :products)
+                                               :aggregation  [[:count]]
+                                               :breakout     [[:field (mt/id :products :created_at) {:temporal-unit :year}]]
+                                               :filter       [:=
+                                                              [:field (mt/id :products :category) nil]
+                                                              "Doohickey"]}}})]
         (testing `magic/filter-referenced-fields
           (is (= {(mt/id :products :category)   (field! :products :category)
                   (mt/id :products :created_at) (field! :products :created_at)}
                  (#'magic/filter-referenced-fields
-                   {:source   (t2/select-one Table :id (mt/id :products))
-                    :database (mt/id)
-                    :entity   query}
-                   [:and
-                    [:=
-                     [:field (mt/id :products :created_at) {:temporal-unit :year}]
-                     "2017-01-01T00:00:00Z"]
-                    [:=
-                     [:field (mt/id :products :category) nil]
-                     "Doohickey"]]))))
+                  {:source   (t2/select-one Table :id (mt/id :products))
+                   :database (mt/id)
+                   :entity   query}
+                  [:and
+                   [:=
+                    [:field (mt/id :products :created_at) {:temporal-unit :year}]
+                    "2017-01-01T00:00:00Z"]
+                   [:=
+                    [:field (mt/id :products :category) nil]
+                    "Doohickey"]]))))
 
         (testing "end-to-end"
           ;; VERY IMPORTANT! Make sure the Table is FULLY synced (so it gets classified correctly), otherwise the
@@ -1110,11 +1104,10 @@
                            "2017-01-01T00:00:00Z"]
                 ->base-64 (fn [x]
                             (codec/base64-encode (.getBytes (json/generate-string x) "UTF-8")))]
-            (is (schema= {:description (s/eq "A closer look at the metrics and dimensions used in this saved question.")
-                          s/Keyword    s/Any}
-                         (mt/user-http-request
-                           :crowberto :get 200
-                           (format "automagic-dashboards/adhoc/%s/cell/%s" (->base-64 query) (->base-64 cell)))))))))))
+            (is (=? {:description "A closer look at the metrics and dimensions used in this saved question."}
+                    (mt/user-http-request
+                     :crowberto :get 200
+                     (format "automagic-dashboards/adhoc/%s/cell/%s" (->base-64 query) (->base-64 cell)))))))))))
 
 
 (deftest most-specific-definition-inner-shape-test

@@ -2,6 +2,10 @@
   "Pivot table actions for the query processor"
   (:require
    [clojure.core.async :as a]
+   [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.query-processor :as qp]
    [metabase.query-processor.context :as qp.context]
@@ -12,10 +16,10 @@
     :as qp.resolve-database-and-driver]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -123,7 +127,8 @@
 
 (defn- generate-queries
   "Generate the additional queries to perform a generic pivot table"
-  [{{all-breakouts :breakout} :query, :keys [query], :as outer-query} {:keys [pivot-rows pivot-cols]}]
+  [{{all-breakouts :breakout} :query, :keys [query], :as outer-query}
+   {:keys [pivot-rows pivot-cols], :as _pivot-options}]
   (try
     (for [breakout-indices (u/prog1 (breakout-combinations (count all-breakouts) pivot-rows pivot-cols)
                              (log/tracef "Using breakout combinations: %s" (pr-str <>)))
@@ -204,7 +209,7 @@
                                ;; completion arity can't be threaded because the value is derefed too early
                                (qp.context/reducedf (@vrf acc) context))))))}))
 
-(defn process-multiple-queries
+(defn- process-multiple-queries
   "Allows the query processor to handle multiple queries, stitched together to appear as one"
   [[first-query & more-queries] info rff context]
   (let [{:keys [rff context]} (append-queries-rff-and-context info rff context more-queries)]
@@ -212,17 +217,41 @@
       (qp/process-query-and-save-with-max-results-constraints! first-query info rff context)
       (qp/process-query (dissoc first-query :info) rff context))))
 
-(defn pivot-options
+(mu/defn ^:private pivot-options :- [:map
+                                     [:pivot-rows [:maybe [:sequential [:int {:min 0}]]]]
+                                     [:pivot-cols [:maybe [:sequential [:int {:min 0}]]]]]
   "Given a pivot table query and a card ID, looks at the `pivot_table.column_split` key in the card's visualization
   settings and generates pivot-rows and pivot-cols to use for generating subqueries."
-  [query viz-settings]
-  (let [column-split      (:pivot_table.column_split viz-settings)
-        breakout          (mapv qp.util/field-ref->key
-                                (-> query :query :breakout))
-        index-in-breakout (fn [field-ref]
-                            (.indexOf ^clojure.lang.PersistentVector breakout (qp.util/field-ref->key field-ref)))
-        pivot-rows        (mapv index-in-breakout (:rows column-split))
-        pivot-cols        (mapv index-in-breakout (:columns column-split))]
+  [query        :- [:map
+                    [:database ::lib.schema.id/database]]
+   viz-settings :- [:maybe :map]]
+  (let [column-split         (:pivot_table.column_split viz-settings)
+        column-split-rows    (seq (:rows column-split))
+        column-split-columns (seq (:columns column-split))
+        index-in-breakouts   (when (or column-split-rows
+                                       column-split-columns)
+                               (let [metadata-provider (or (:lib/metadata query)
+                                                           (lib.metadata.jvm/application-database-metadata-provider (:database query)))
+                                     mlv2-query        (lib/query metadata-provider query)
+                                     breakouts         (into []
+                                                             (map-indexed (fn [i col]
+                                                                            (assoc col ::i i)))
+                                                             (lib/breakouts-metadata mlv2-query))]
+                                 (fn [legacy-ref]
+                                   (try
+                                     (::i (lib.equality/find-column-for-legacy-ref
+                                           mlv2-query
+                                           -1
+                                           legacy-ref
+                                           breakouts))
+                                     (catch Throwable e
+                                       (log/errorf e "Error finding matching column for ref %s" (pr-str legacy-ref))
+                                       nil)))))
+
+        pivot-rows (when column-split-rows
+                     (into [] (keep index-in-breakouts) column-split-rows))
+        pivot-cols (when column-split-columns
+                     (into [] (keep index-in-breakouts) column-split-columns))]
     {:pivot-rows pivot-rows
      :pivot-cols pivot-cols}))
 

@@ -693,8 +693,8 @@
   (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."
     (tu/with-temporary-setting-values [enable-public-sharing true]
       (t2.with-temp/with-temp [Dashboard dashboard {:public_uuid (str (random-uuid))}]
-        (is (schema= u/uuid-regex
-                     (:public_uuid dashboard)))))
+        (is (=? u/uuid-regex
+                (:public_uuid dashboard)))))
 
     (testing "...but if public sharing is *disabled* it should come back as `nil`"
       (tu/with-temporary-setting-values [enable-public-sharing false]

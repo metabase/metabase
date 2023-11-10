@@ -38,7 +38,6 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -1517,13 +1516,12 @@
     (testing "\nShould be able to create a Collection in a different namespace"
       (let [collection-name (mt/random-name)]
         (try
-          (is (schema= {:name      (s/eq collection-name)
-                        :namespace (s/eq "snippets")
-                        s/Keyword  s/Any}
-                       (mt/user-http-request :crowberto :post 200 "collection"
-                                             {:name       collection-name
-                                              :descrption "My SQL Snippets"
-                                              :namespace  "snippets"})))
+          (is (=? {:name      collection-name
+                   :namespace "snippets"}
+                  (mt/user-http-request :crowberto :post 200 "collection"
+                                        {:name       collection-name
+                                         :descrption "My SQL Snippets"
+                                         :namespace  "snippets"})))
           (finally
             (t2/delete! Collection :name collection-name)))))))
 
