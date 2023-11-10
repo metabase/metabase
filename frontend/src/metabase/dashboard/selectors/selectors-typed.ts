@@ -21,13 +21,21 @@ export function getSelectedTabId(state: State) {
 export const getAutoWireParameterToast = (state: State) =>
   state.dashboard.autoWireParameters.toast;
 
+export const getDisabledAutoWireCards = (
+  state: State,
+  dashboardId: DashboardId,
+) => {
+  return (
+    state.dashboard.autoWireParameters.disabledDashcards[dashboardId] || []
+  );
+};
+
 export const getIsCardAutoWiringDisabled = (
   state: State,
   dashboardId: DashboardId,
   dashcardId: DashCardId,
 ) => {
-  const disabledDashcardIds =
-    state.dashboard.autoWireParameters.disabledDashcards[dashboardId];
+  const disabledDashcardIds = getDisabledAutoWireCards(state, dashboardId);
 
   return disabledDashcardIds && disabledDashcardIds.includes(dashcardId);
 };

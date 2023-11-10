@@ -23,6 +23,7 @@ import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 import {
   getAutoWireParameterToast,
   getDashCardById,
+  getDisabledAutoWireCards,
   getIsCardAutoWiringDisabled,
 } from "metabase/dashboard/selectors";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
@@ -55,11 +56,11 @@ export function autoWireDashcardsWithMatchingParameters(
       return;
     }
 
-    const isDisabled = getIsCardAutoWiringDisabled(
+    const disabledDashcards = getDisabledAutoWireCards(
       getState(),
       dashboard_state.dashboardId,
-      dashcard.id,
     );
+    const isDisabled = disabledDashcards.includes(dashcard.id);
 
     if (isDisabled) {
       return;
@@ -69,7 +70,7 @@ export function autoWireDashcardsWithMatchingParameters(
       dashboardState: dashboard_state,
       dashboardId: dashboard_state.dashboardId,
       parameter_id: parameter_id,
-      excludeDashcardIds: [dashcard.id],
+      excludeDashcardIds: [dashcard.id, ...disabledDashcards],
     });
 
     const dashcardAttributes = getAutoWiredMappingsForDashcards(
@@ -117,11 +118,16 @@ export function autoWireParametersToNewCard({
       return;
     }
 
+    const disabledDashcards = [
+      dashcard_id,
+      ...getDisabledAutoWireCards(getState(), dashboardId),
+    ];
+
     const dashcards = getExistingDashCards(
       dashboardState.dashboards,
       dashboardState.dashcards,
       dashboardId,
-    );
+    ).filter(dc => !disabledDashcards.includes(dc.id));
 
     const targetDashcard = getDashCardById(getState(), dashcard_id);
 
