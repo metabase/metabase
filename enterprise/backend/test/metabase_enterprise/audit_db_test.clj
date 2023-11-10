@@ -4,11 +4,11 @@
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is]]
    [metabase-enterprise.audit-db :as audit-db]
-   [metabase.task.sync-databases :as task.sync-databases]
    [metabase.core :as mbc]
    [metabase.models.database :refer [Database]]
    [metabase.models.permissions :as perms]
    [metabase.task :as task]
+   [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
