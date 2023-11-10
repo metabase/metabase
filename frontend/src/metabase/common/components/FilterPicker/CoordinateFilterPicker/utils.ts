@@ -39,15 +39,11 @@ export function getAvailableColumns(
 ) {
   const isLatitude = Lib.isLatitude(column);
   const isLongitude = Lib.isLongitude(column);
-  return Lib.filterableColumns(query, stageIndex).filter(column => {
-    if (isLatitude) {
-      return Lib.isLongitude(column);
-    }
-    if (isLongitude) {
-      return Lib.isLatitude(column);
-    }
-    return false;
-  });
+  return Lib.filterableColumns(query, stageIndex).filter(
+    column =>
+      (isLatitude && Lib.isLongitude(column)) ||
+      (isLongitude && Lib.isLatitude(column)),
+  );
 }
 
 export function getDefaultSecondColumn(
