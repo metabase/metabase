@@ -12,6 +12,7 @@ import {
   visitDashboardAndCreateTab,
   goToTab,
   createNewTab,
+  undoToast,
 } from "e2e/support/helpers";
 import {
   ORDERS_DASHBOARD_ID,
@@ -645,6 +646,12 @@ describe("scenarios > dashboard > parameters", () => {
         getDashboardCard(1).within(() => {
           cy.findByText("User.Name").should("exist");
         });
+
+        undoToast()
+          .findByText(
+            "This filter has been auto-connected with questions with the same field.",
+          )
+          .should("be.visible");
       });
 
       it("should not automatically wire parameters to cards that already have a parameter, despite matching fields", () => {
@@ -695,6 +702,8 @@ describe("scenarios > dashboard > parameters", () => {
         getDashboardCard(1).within(() => {
           cy.findByText("User.Address").should("exist");
         });
+
+        undoToast().should("not.exist");
       });
 
       it("should not automatically wire parameters to cards that don't have a matching field", () => {
@@ -740,6 +749,8 @@ describe("scenarios > dashboard > parameters", () => {
         getDashboardCard(1).within(() => {
           cy.findByText("Select…").should("exist");
         });
+
+        undoToast().should("not.exist");
       });
 
       it("should autowire parameters to cards in different tabs", () => {
@@ -786,6 +797,12 @@ describe("scenarios > dashboard > parameters", () => {
         for (let i = 0; i < cards.length; i++) {
           getDashboardCard(i).findByText("User.Name").should("exist");
         }
+
+        undoToast()
+          .findByText(
+            "This filter has been auto-connected with questions with the same field.",
+          )
+          .should("be.visible");
       });
     });
 
@@ -833,6 +850,12 @@ describe("scenarios > dashboard > parameters", () => {
         for (let i = 0; i < cards.length + 1; i++) {
           getDashboardCard(i).findByText("User.Name").should("exist");
         }
+
+        undoToast()
+          .findByText(
+            "This filter has been auto-connected with questions with the same field.",
+          )
+          .should("be.visible");
       });
 
       it("should automatically wire parameters to cards that are added to the dashboard in a different tab", () => {
@@ -876,6 +899,12 @@ describe("scenarios > dashboard > parameters", () => {
         goToFilterMapping();
 
         getDashboardCard(0).findByText("User.Name").should("exist");
+
+        undoToast()
+          .findByText(
+            "This filter has been auto-connected with questions with the same field.",
+          )
+          .should("be.visible");
       });
     });
   });
