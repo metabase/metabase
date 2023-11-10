@@ -12,8 +12,9 @@ import {
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
-import { isActionDashCard } from "metabase/actions/utils";
 import { updateDashboard } from "metabase/dashboard/actions/save";
+import { autoWireDashcardsWithMatchingParameters } from "metabase/dashboard/actions/auto-wire-parameters/actions";
+import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 import {
   isParameterValueEmpty,
   PULSE_PARAM_EMPTY,
@@ -26,9 +27,9 @@ import {
   getParameters,
   getDashboardId,
   getAutoApplyFiltersToastId,
+  getDashCardById,
 } from "../selectors";
 
-import { isVirtualDashCard } from "../utils";
 import { trackAutoApplyFiltersDisabled } from "../analytics";
 
 import { setDashboardAttributes, setDashCardAttributes } from "./core";
@@ -110,43 +111,37 @@ export const removeParameter = createThunkAction(
 );
 
 export const SET_PARAMETER_MAPPING = "metabase/dashboard/SET_PARAMETER_MAPPING";
+
 export const setParameterMapping = createThunkAction(
   SET_PARAMETER_MAPPING,
-  (parameter_id, dashcard_id, card_id, target) => (dispatch, getState) => {
-    const dashcard = getState().dashboard.dashcards[dashcard_id];
-    const isVirtual = isVirtualDashCard(dashcard);
-    const isAction = isActionDashCard(dashcard);
+  (parameter_id, dashcard_id, card_id, target) => {
+    return (dispatch, getState) => {
+      const dashcard = getDashCardById(getState(), dashcard_id);
 
-    let parameter_mappings = dashcard.parameter_mappings || [];
-
-    // allow mapping the same parameter to multiple action targets
-    if (!isAction) {
-      parameter_mappings = parameter_mappings.filter(
-        m => m.card_id !== card_id || m.parameter_id !== parameter_id,
-      );
-    }
-
-    if (target) {
-      if (isVirtual) {
-        // If this is a virtual (text) card, remove any existing mappings for the target, since text card variables
-        // can only be mapped to a single parameter.
-        parameter_mappings = parameter_mappings.filter(
-          m => !_.isEqual(m.target, target),
+      if (target !== null) {
+        dispatch(
+          autoWireDashcardsWithMatchingParameters(
+            parameter_id,
+            dashcard,
+            target,
+          ),
         );
       }
-      parameter_mappings = parameter_mappings.concat({
-        parameter_id,
-        card_id,
-        target,
-      });
-    }
 
-    dispatch(
-      setDashCardAttributes({
-        id: dashcard_id,
-        attributes: { parameter_mappings },
-      }),
-    );
+      dispatch(
+        setDashCardAttributes({
+          id: dashcard_id,
+          attributes: {
+            parameter_mappings: getParameterMappings(
+              dashcard,
+              parameter_id,
+              card_id,
+              target,
+            ),
+          },
+        }),
+      );
+    };
   },
 );
 

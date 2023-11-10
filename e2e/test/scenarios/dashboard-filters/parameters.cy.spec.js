@@ -9,10 +9,14 @@ import {
   selectDashboardFilter,
   saveDashboard,
   updateDashboardCards,
+  visitDashboardAndCreateTab,
+  goToTab,
+  createNewTab,
 } from "e2e/support/helpers";
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_BY_YEAR_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -67,6 +71,10 @@ describe("scenarios > dashboard > parameters", () => {
     // connect it to people.name and product.category
     // (this doesn't make sense to do, but it illustrates the feature)
     selectDashboardFilter(getDashboardCard(0), "Name");
+
+    getDashboardCard(1).within(() => {
+      cy.findByLabelText("close icon").click();
+    });
     selectDashboardFilter(getDashboardCard(1), "Category");
 
     // finish editing filter and save dashboard
@@ -592,6 +600,285 @@ describe("scenarios > dashboard > parameters", () => {
       cy.findByText("Balistreri-Ankunding").should("not.exist");
     });
   });
+
+  describe("when auto-wiring parameters across cards with matching fields", () => {
+    beforeEach(() => {
+      cy.intercept("GET", "/api/dashboard/**").as("dashboard");
+    });
+
+    describe("when wiring parameter to all cards for a filter", () => {
+      it("should automatically wire parameters to cards with matching fields", () => {
+        createDashboardWithCards([
+          {
+            card_id: ORDERS_BY_YEAR_QUESTION_ID,
+            row: 0,
+            col: 0,
+            size_x: 5,
+            size_y: 4,
+          },
+          {
+            card_id: ORDERS_COUNT_QUESTION_ID,
+            row: 0,
+            col: 4,
+            size_x: 5,
+            size_y: 4,
+          },
+        ]).then(dashboardId => {
+          visitDashboard(dashboardId);
+          cy.wait("@dashboard");
+        });
+
+        cy.icon("pencil").click();
+
+        cy.findByTestId("dashboard-header").icon("filter").click();
+        popover().within(() => {
+          cy.contains("Text or Category").click();
+          cy.findByText("Is").click();
+        });
+
+        selectDashboardFilter(getDashboardCard(0), "Name");
+
+        getDashboardCard(0).within(() => {
+          cy.findByText("User.Name").should("exist");
+        });
+
+        getDashboardCard(1).within(() => {
+          cy.findByText("User.Name").should("exist");
+        });
+      });
+
+      it("should not automatically wire parameters to cards that already have a parameter, despite matching fields", () => {
+        createDashboardWithCards([
+          {
+            card_id: ORDERS_BY_YEAR_QUESTION_ID,
+            row: 0,
+            col: 0,
+            size_x: 5,
+            size_y: 4,
+          },
+          {
+            card_id: ORDERS_COUNT_QUESTION_ID,
+            row: 0,
+            col: 4,
+            size_x: 5,
+            size_y: 4,
+          },
+        ]).then(dashboardId => {
+          visitDashboard(dashboardId);
+          cy.wait("@dashboard");
+        });
+
+        cy.icon("pencil").click();
+
+        cy.findByTestId("dashboard-header").icon("filter").click();
+        popover().within(() => {
+          cy.contains("Text or Category").click();
+          cy.findByText("Is").click();
+        });
+
+        selectDashboardFilter(getDashboardCard(0), "Name");
+
+        getDashboardCard(0).within(() => {
+          cy.findByText("User.Name").should("exist");
+        });
+
+        getDashboardCard(1).within(() => {
+          cy.findByLabelText("close icon").click();
+        });
+
+        selectDashboardFilter(getDashboardCard(1), "Address");
+
+        getDashboardCard(0).within(() => {
+          cy.findByText("User.Name").should("exist");
+        });
+
+        getDashboardCard(1).within(() => {
+          cy.findByText("User.Address").should("exist");
+        });
+      });
+
+      it("should not automatically wire parameters to cards that don't have a matching field", () => {
+        cy.createQuestion({
+          name: "Products Table",
+          query: { "source-table": PRODUCTS_ID, limit: 1 },
+        }).then(({ body: { id: questionId } }) => {
+          createDashboardWithCards([
+            {
+              card_id: ORDERS_BY_YEAR_QUESTION_ID,
+              row: 0,
+              col: 0,
+              size_x: 5,
+              size_y: 4,
+            },
+            {
+              card_id: questionId,
+              row: 0,
+              col: 4,
+              size_x: 5,
+              size_y: 4,
+            },
+          ]).then(dashboardId => {
+            visitDashboard(dashboardId);
+            cy.wait("@dashboard");
+          });
+        });
+
+        cy.icon("pencil").click();
+
+        cy.findByTestId("dashboard-header").icon("filter").click();
+        popover().within(() => {
+          cy.contains("Text or Category").click();
+          cy.findByText("Is").click();
+        });
+
+        selectDashboardFilter(getDashboardCard(0), "Name");
+
+        getDashboardCard(0).within(() => {
+          cy.findByText("User.Name").should("exist");
+        });
+
+        getDashboardCard(1).within(() => {
+          cy.findByText("Select…").should("exist");
+        });
+      });
+
+      it("should autowire parameters to cards in different tabs", () => {
+        const cards = [
+          {
+            card_id: ORDERS_BY_YEAR_QUESTION_ID,
+            row: 0,
+            col: 0,
+            size_x: 5,
+            size_y: 4,
+          },
+          {
+            card_id: ORDERS_COUNT_QUESTION_ID,
+            row: 0,
+            col: 4,
+            size_x: 5,
+            size_y: 4,
+          },
+        ];
+
+        createDashboardWithCards(cards).then(dashboardId => {
+          visitDashboardAndCreateTab({
+            dashboardId,
+            save: false,
+          });
+          cy.wait("@dashboard");
+        });
+
+        cy.findByTestId("dashboard-header").icon("filter").click();
+        popover().within(() => {
+          cy.contains("Text or Category").click();
+          cy.findByText("Is").click();
+        });
+
+        addCardToDashboard();
+        goToFilterMapping();
+
+        selectDashboardFilter(getDashboardCard(0), "Name");
+
+        getDashboardCard(0).findByText("User.Name").should("exist");
+
+        goToTab("Tab 1");
+
+        for (let i = 0; i < cards.length; i++) {
+          getDashboardCard(i).findByText("User.Name").should("exist");
+        }
+      });
+    });
+
+    describe("wiring parameters when adding a card", () => {
+      it("should automatically wire a parameters to cards that are added to the dashboard", () => {
+        const cards = [
+          {
+            card_id: ORDERS_BY_YEAR_QUESTION_ID,
+            row: 0,
+            col: 0,
+            size_x: 5,
+            size_y: 4,
+          },
+          {
+            card_id: ORDERS_COUNT_QUESTION_ID,
+            row: 0,
+            col: 4,
+            size_x: 5,
+            size_y: 4,
+          },
+        ];
+
+        createDashboardWithCards(cards).then(dashboardId => {
+          visitDashboard(dashboardId);
+          cy.wait("@dashboard");
+        });
+
+        cy.icon("pencil").click();
+
+        cy.findByTestId("dashboard-header").icon("filter").click();
+        popover().within(() => {
+          cy.contains("Text or Category").click();
+          cy.findByText("Is").click();
+        });
+
+        selectDashboardFilter(getDashboardCard(0), "Name");
+
+        for (let i = 0; i < cards.length; i++) {
+          getDashboardCard(i).findByText("User.Name").should("exist");
+        }
+
+        addCardToDashboard();
+        goToFilterMapping();
+
+        for (let i = 0; i < cards.length + 1; i++) {
+          getDashboardCard(i).findByText("User.Name").should("exist");
+        }
+      });
+
+      it("should automatically wire parameters to cards that are added to the dashboard in a different tab", () => {
+        const cards = [
+          {
+            card_id: ORDERS_BY_YEAR_QUESTION_ID,
+            row: 0,
+            col: 0,
+            size_x: 5,
+            size_y: 4,
+          },
+          {
+            card_id: ORDERS_COUNT_QUESTION_ID,
+            row: 0,
+            col: 4,
+            size_x: 5,
+            size_y: 4,
+          },
+        ];
+
+        createDashboardWithCards(cards).then(dashboardId => {
+          visitDashboard(dashboardId);
+          cy.wait("@dashboard");
+        });
+
+        cy.icon("pencil").click();
+
+        cy.findByTestId("dashboard-header").icon("filter").click();
+        popover().within(() => {
+          cy.contains("Text or Category").click();
+          cy.findByText("Is").click();
+        });
+
+        selectDashboardFilter(getDashboardCard(0), "Name");
+        for (let i = 0; i < cards.length; i++) {
+          getDashboardCard(i).findByText("User.Name").should("exist");
+        }
+
+        createNewTab();
+        addCardToDashboard();
+        goToFilterMapping();
+
+        getDashboardCard(0).findByText("User.Name").should("exist");
+      });
+    });
+  });
 });
 
 function isFilterSelected(filter, bool) {
@@ -600,4 +887,26 @@ function isFilterSelected(filter, bool) {
       .findByRole("checkbox")
       .should(`${bool === false ? "not." : ""}be.checked`),
   );
+}
+
+function createDashboardWithCards(cards) {
+  return cy.createDashboard({ name: "my dash" }).then(({ body: { id } }) => {
+    updateDashboardCards({
+      dashboard_id: id,
+      cards,
+    });
+
+    cy.wrap(id).as("dashboardId");
+  });
+}
+
+function addCardToDashboard(name = "Orders Model") {
+  cy.findByTestId("dashboard-header").icon("add").click();
+  cy.findByTestId("add-card-sidebar").findByText("Orders Model").click();
+}
+
+function goToFilterMapping(name = "Text") {
+  cy.findByTestId("edit-dashboard-parameters-widget-container")
+    .findByText("Text")
+    .click();
 }

@@ -1,21 +1,21 @@
 import _ from "underscore";
-
-import type { Draft } from "@reduxjs/toolkit";
-import type { DashboardState } from "metabase-types/store";
 import type {
+  DashCardId,
   Dashboard,
-  DashboardId,
   DashboardCard,
+  DashboardId,
   DashboardTabId,
 } from "metabase-types/api";
+import type { StoreDashboard, StoreDashcard } from "metabase-types/store";
 
 export function getExistingDashCards(
-  dashboardState: Draft<DashboardState>,
+  dashboards: Record<DashboardId, StoreDashboard>,
+  dashcards: Record<DashCardId, StoreDashcard>,
   dashId: DashboardId,
-  tabId: DashboardTabId,
+  tabId: DashboardTabId | null = null,
 ) {
-  const { dashboards, dashcards } = dashboardState;
   const dashboard = dashboards[dashId];
+
   return dashboard.dashcards
     .map(id => dashcards[id])
     .filter(dc => {
