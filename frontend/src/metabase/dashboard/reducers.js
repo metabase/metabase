@@ -9,7 +9,11 @@ import Questions from "metabase/entities/questions";
 import Actions from "metabase/entities/actions";
 import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
 
-import { DISABLE_AUTO_WIRE_FOR_PARAMETER_TARGET } from "metabase/dashboard/actions/auto-wire-parameters/actions";
+import {
+  DISABLE_AUTO_WIRE_FOR_PARAMETER_TARGET,
+  HIDE_AUTO_WIRE_PARAMTER_TOAST,
+  SHOW_AUTO_WIRE_PARAMETER_TOAST,
+} from "metabase/dashboard/actions/auto-wire-parameters/actions";
 import {
   INITIALIZE,
   FETCH_DASHBOARD,
@@ -483,6 +487,24 @@ export const autoApplyFilters = handleActions(
 
 export const autoWireParameters = handleActions(
   {
+    [SHOW_AUTO_WIRE_PARAMETER_TOAST]: {
+      next: (state, { payload: { toastId, dashboardId } }) => ({
+        ...state,
+        toast: {
+          id: toastId,
+          dashboardId,
+        },
+      }),
+    },
+    [HIDE_AUTO_WIRE_PARAMTER_TOAST]: {
+      next: state => ({
+        ...state,
+        toast: {
+          id: null,
+          dashboardId: null,
+        },
+      }),
+    },
     [DISABLE_AUTO_WIRE_FOR_PARAMETER_TARGET]: {
       next: (state, { payload: { sourceDashcardId, dashboardId } }) => {
         const existingDisabledTargets =
