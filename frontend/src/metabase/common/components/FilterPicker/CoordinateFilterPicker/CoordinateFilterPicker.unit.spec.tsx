@@ -495,7 +495,7 @@ describe("CoordinateFilterPicker", () => {
 
       await setOperator("Inside");
 
-      expect(screen.queryByDisplayValue("-100")).not.toBeInTheDocument();
+      expect(screen.getByDisplayValue("-100")).toBeInTheDocument();
       expect(screen.queryByDisplayValue("200")).not.toBeInTheDocument();
       expect(screen.queryByText("100.00000000° S")).not.toBeInTheDocument();
       expect(screen.queryByText("200.00000000° N")).not.toBeInTheDocument();

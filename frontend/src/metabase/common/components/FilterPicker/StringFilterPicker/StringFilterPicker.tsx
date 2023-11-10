@@ -52,12 +52,13 @@ export function StringFilterPicker({
     filterParts ? filterParts.options : {},
   );
 
-  const { valueCount, hasCaseSensitiveOption } = OPERATOR_OPTIONS[operator];
+  const { valueCount, hasMultipleValues, hasCaseSensitiveOption } =
+    OPERATOR_OPTIONS[operator];
   const isValid = hasValidValues(operator, values);
 
   const handleOperatorChange = (operator: Lib.StringFilterOperatorName) => {
     setOperator(operator);
-    setValues(getDefaultValues(operator));
+    setValues(getDefaultValues(operator, values));
   };
 
   const handleSubmit = () => {
@@ -88,7 +89,7 @@ export function StringFilterPicker({
             <ColumnValuesWidget
               column={column}
               value={values}
-              canHaveManyValues={valueCount == null}
+              hasMultipleValues={hasMultipleValues}
               onChange={setValues}
             />
           </FlexWithScroll>

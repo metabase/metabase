@@ -117,7 +117,7 @@ function NumberValueInput({
         <ColumnValuesWidget
           value={values}
           column={column}
-          canHaveManyValues
+          hasMultipleValues
           onChange={onChange}
         />
       </FlexWithScroll>

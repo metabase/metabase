@@ -21,6 +21,7 @@ import {
   getFilterClause,
   hasValidValues,
 } from "./utils";
+import type { NumberValue } from "./types";
 
 export function CoordinateFilterPicker({
   query,
@@ -63,7 +64,7 @@ export function CoordinateFilterPicker({
     getDefaultColumn(availableColumns, filterParts?.longitudeColumn),
   );
 
-  const { valueCount } = OPERATOR_OPTIONS[operator];
+  const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
   const isValid = hasValidValues(operator, values);
 
   const handleOperatorChange = (operator: Lib.CoordinateFilterOperatorName) => {
@@ -78,7 +79,7 @@ export function CoordinateFilterPicker({
   };
 
   return (
-    <Box maw={MAX_WIDTH} data-testid="number-filter-picker">
+    <Box maw={MAX_WIDTH} data-testid="coordinate-filter-picker">
       <FilterHeader columnName={columnInfo.longDisplayName} onBack={onBack}>
         <FilterOperatorPicker
           value={operator}
@@ -97,9 +98,10 @@ export function CoordinateFilterPicker({
           />
         )}
         <CoordinateValueInput
+          column={column}
           values={values}
           valueCount={valueCount}
-          column={column}
+          hasMultipleValues={hasMultipleValues}
           onChange={setValues}
         />
         <FilterFooter
@@ -113,27 +115,29 @@ export function CoordinateFilterPicker({
 }
 
 interface CoordinateValueInputProps {
-  values: (number | "")[];
-  valueCount: number | undefined;
   column: Lib.ColumnMetadata;
-  onChange: (values: (number | "")[]) => void;
+  values: NumberValue[];
+  valueCount: number;
+  hasMultipleValues?: boolean;
+  onChange: (values: NumberValue[]) => void;
 }
 
 function CoordinateValueInput({
-  values,
-  onChange,
-  valueCount,
   column,
+  values,
+  valueCount,
+  hasMultipleValues,
+  onChange,
 }: CoordinateValueInputProps) {
   const placeholder = t`Enter a number`;
 
-  if (valueCount == null) {
+  if (hasMultipleValues) {
     return (
       <FlexWithScroll p="md" mah={300}>
         <ColumnValuesWidget
           value={values}
           column={column}
-          canHaveManyValues
+          hasMultipleValues
           onChange={onChange}
         />
       </FlexWithScroll>

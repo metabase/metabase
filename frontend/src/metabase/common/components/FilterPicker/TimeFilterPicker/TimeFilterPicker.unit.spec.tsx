@@ -8,7 +8,6 @@ import {
   createQueryWithTimeFilter,
   findTimeColumn,
 } from "../test-utils";
-import { getDefaultValue } from "./utils";
 import { TimeFilterPicker } from "./TimeFilterPicker";
 
 type SetupOpts = {
@@ -72,6 +71,11 @@ async function setOperator(operator: string) {
 }
 
 describe("TimeFilterPicker", () => {
+  beforeAll(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2020, 0, 1));
+  });
+
   describe("new filter", () => {
     it("should render a blank editor", () => {
       setup();
@@ -104,7 +108,7 @@ describe("TimeFilterPicker", () => {
       expect(filterParts).toMatchObject({
         operator: "<",
         column: expect.anything(),
-        values: [getDefaultValue()],
+        values: [new Date(2020, 0, 1, 0, 0)],
       });
       expect(getNextFilterColumnName()).toBe("Time");
     });
