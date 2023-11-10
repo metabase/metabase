@@ -184,6 +184,12 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           "Enter the origins for the websites or web apps where you want to allow embedding, separated by a space. Here are the exact specifications for what can be entered.",
         ).should("not.exist");
         cy.findByPlaceholderText("https://*.example.com").should("not.exist");
+
+        cy.findByTestId("session-cookie-samesite-setting").should("not.exist");
+        cy.contains(
+          "Determines whether or not cookies are allowed to be sent on cross-site requests. You’ll likely need to change this to None if your embedding application is hosted under a different domain than Metabase. Otherwise, leave it set to Lax, as it's more secure.",
+        ).should("not.exist");
+        cy.findByDisplayValue("Lax (default)").should("not.exist");
       });
     });
 

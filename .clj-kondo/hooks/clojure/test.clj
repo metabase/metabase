@@ -235,9 +235,18 @@
 
               nil)))))))
 
+(defn- warn-about-schema= [{[_is assertion-node] :children, :as _is-node}]
+  (let [{[assertion-symb-node] :children} assertion-node]
+    (when (and (hooks/token-node? assertion-symb-node)
+               (= (hooks/sexpr assertion-symb-node) 'schema=))
+      (hooks/reg-finding! (assoc (meta assertion-symb-node)
+                                 :message "Use =? or malli= instead of schema="
+                                 :type :metabase/warn-about-schema=)))))
+
 (defn is [{:keys [node lang]}]
   (when (= lang :cljs)
     (warn-about-missing-test-expr-requires-in-cljs node))
+  (warn-about-schema= node)
   {:node node})
 
 (defn use-fixtures [{:keys [node]}]

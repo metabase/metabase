@@ -26,7 +26,6 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -718,33 +717,29 @@
         (testing "Card in the Root Collection"
           (t2.with-temp/with-temp [Collection dest-card-collection]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-card-collection)
-            (is (schema= {:message  (s/eq "You cannot save this Question because you do not have permissions to run its query.")
-                          s/Keyword s/Any}
-                         (save-card-via-API-with-native-source-query! 403 (mt/db) nil dest-card-collection)))))
+            (is (=? {:message  "You cannot save this Question because you do not have permissions to run its query."}
+                    (save-card-via-API-with-native-source-query! 403 (mt/db) nil dest-card-collection)))))
 
         (testing "Card in a different Collection for which we do not have perms"
           (mt/with-temp [Collection source-card-collection {}
                          Collection dest-card-collection   {}]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-card-collection)
-            (is (schema= {:message  (s/eq "You cannot save this Question because you do not have permissions to run its query.")
-                          s/Keyword s/Any}
-                         (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection)))))
+            (is (=? {:message  "You cannot save this Question because you do not have permissions to run its query."}
+                    (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection)))))
 
         (testing "similarly, if we don't have *write* perms for the dest collection it should also fail"
           (testing "Try to save in the Root Collection"
             (t2.with-temp/with-temp [Collection source-card-collection]
               (perms/grant-collection-read-permissions! (perms-group/all-users) source-card-collection)
-              (is (schema= {:message (s/eq "You do not have curate permissions for this Collection.")
-                            s/Keyword s/Any}
-                           (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection nil)))))
+              (is (=? {:message "You do not have curate permissions for this Collection."}
+                      (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection nil)))))
 
           (testing "Try to save in a different Collection for which we do not have perms"
             (mt/with-temp [Collection source-card-collection {}
                            Collection dest-card-collection   {}]
               (perms/grant-collection-read-permissions! (perms-group/all-users) source-card-collection)
-              (is (schema= {:message (s/eq "You do not have curate permissions for this Collection.")
-                            s/Keyword s/Any}
-                           (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection))))))))))
+              (is (=? {:message "You do not have curate permissions for this Collection."}
+                      (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection))))))))))
 
 (deftest ^:parallel infer-source-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -900,9 +895,8 @@
             card-results-metadata (qp.store/with-metadata-provider provider
                                     (let [result (mt/run-mbql-query orders {:limit 10})]
                                       (testing "Sanity check: should be able to query Orders"
-                                        (is (schema= {:status   (s/eq :completed)
-                                                      s/Keyword s/Any}
-                                                     result)))
+                                        (is (=? {:status :completed}
+                                                result)))
                                       (get-in result [:data :results_metadata :columns])))
             expected-cols         (qp.store/with-metadata-provider provider
                                     (qp/query->expected-cols (mt/mbql-query orders)))]
@@ -939,10 +933,9 @@
                                                                 :condition    [:= $product_id &Products.products.id]
                                                                 :alias        "Products"}]}
                                  :limit        10})]
-                  (is (schema= {:status    (s/eq :completed)
-                                :row_count (s/eq 10)
-                                s/Keyword  s/Any}
-                               results))
+                  (is (=? {:status    :completed
+                           :row_count 10}
+                          results))
                   (f results)))]
         (do-test
          (fn [results]
@@ -1015,10 +1008,9 @@
                       (qp/process-query query)))]
             (testing "with no FK remappings"
               (let [result (run-query)]
-                (is (schema= {:status    (s/eq :completed)
-                              :row_count (s/eq 2)
-                              s/Keyword  s/Any}
-                             result))
+                (is (=? {:status    :completed
+                         :row_count 2}
+                        result))
                 (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
                         14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1 4.0
                         "2017-12-31T14:41:56.87Z"]
@@ -1028,10 +1020,9 @@
                                               (mt/id :orders :product_id)
                                               (mt/id :products :title))
               (let [result (run-query)]
-                (is (schema= {:status    (s/eq :completed)
-                              :row_count (s/eq 2)
-                              s/Keyword  s/Any}
-                             result))
+                (is (=? {:status    :completed
+                         :row_count 2}
+                        result))
                 (is (=  ["ORDERS.ID"
                          "ORDERS.USER_ID"
                          "ORDERS.PRODUCT_ID"
@@ -1078,12 +1069,10 @@
                                :aggregation  [[:count]]
                                :breakout     [&Products.products.id]
                                :limit        5})]
-        (is (schema= {:status   (s/eq :completed)
-                      s/Keyword s/Any}
-                     expected-result))
-        (is (schema= {:status   (s/eq :completed)
-                      s/Keyword s/Any}
-                     actual-result))
+        (is (=? {:status :completed}
+                expected-result))
+        (is (=? {:status :completed}
+                actual-result))
         (is (= (mt/rows expected-result)
                (mt/rows actual-result)))))))
 
@@ -1138,10 +1127,9 @@
                  (map :field_ref metadata))))
         (testing "\nShould be able to use the query as a source query"
           (letfn [(test-query [query]
-                    (is (schema= {:status    (s/eq :completed)
-                                  :row_count (s/eq 2)
-                                  s/Keyword  s/Any}
-                                 (qp/process-query query))))
+                    (is (=? {:status    :completed
+                             :row_count 2}
+                            (qp/process-query query))))
                   (test-source-query [metadata]
                     (test-query
                      (cond-> (mt/mbql-query nil
@@ -1170,42 +1158,39 @@
   (testing "We should handle legacy usage of field-literal inside filter clauses"
     (mt/dataset sample-dataset
       (testing "against joins (#14809)"
-        (is (schema= {:status   (s/eq :completed)
-                      s/Keyword s/Any}
-                     (mt/run-mbql-query orders
-                       {:source-query {:source-table $$orders
-                                       :joins        [{:fields       :all
-                                                       :source-table $$products
-                                                       :condition    [:= $product_id &Products.products.id]
-                                                       :alias        "Products"}]}
-                        :filter       [:= *CATEGORY/Text "Widget"]}))))
+        (is (=? {:status :completed}
+                (mt/run-mbql-query orders
+                  {:source-query {:source-table $$orders
+                                  :joins        [{:fields       :all
+                                                  :source-table $$products
+                                                  :condition    [:= $product_id &Products.products.id]
+                                                  :alias        "Products"}]}
+                   :filter       [:= *CATEGORY/Text "Widget"]}))))
       (testing "(#14811)"
-        (is (schema= {:status   (s/eq :completed)
-                      s/Keyword s/Any}
-                     (mt/run-mbql-query orders
-                       {:source-query {:source-table $$orders
-                                       :aggregation  [[:sum $product_id->products.price]]
-                                       :breakout     [$product_id->products.category]}
-                        ;; not sure why FE is using `field-literal` here... but it should work anyway.
-                        :filter       [:= *CATEGORY/Text "Widget"]})))))))
+        (is (=? {:status :completed}
+                (mt/run-mbql-query orders
+                  {:source-query {:source-table $$orders
+                                  :aggregation  [[:sum $product_id->products.price]]
+                                  :breakout     [$product_id->products.category]}
+                   ;; not sure why FE is using `field-literal` here... but it should work anyway.
+                   :filter       [:= *CATEGORY/Text "Widget"]})))))))
 
 (deftest ^:parallel support-legacy-dashboard-parameters-test
   (testing "We should handle legacy usage of field-literal inside (Dashboard) parameters (#14810)"
     (mt/dataset sample-dataset
-      (is (schema= {:status   (s/eq :completed)
-                    s/Keyword s/Any}
-                   (qp/process-query
-                    (mt/query orders
-                      {:type       :query
-                       :query      {:source-query {:source-table $$orders
-                                                   :joins        [{:fields       :all
-                                                                   :source-table $$products
-                                                                   :condition    [:= $product_id &Products.products.id]
-                                                                   :alias        "Products"}]}
-                                    :limit        2}
-                       :parameters [{:type   :category
-                                     :target [:dimension [:field "CATEGORY" {:base-type :type/Text}]]
-                                     :value  "Widget"}]})))))))
+      (is (=? {:status :completed}
+              (qp/process-query
+               (mt/query orders
+                 {:type       :query
+                  :query      {:source-query {:source-table $$orders
+                                              :joins        [{:fields       :all
+                                                              :source-table $$products
+                                                              :condition    [:= $product_id &Products.products.id]
+                                                              :alias        "Products"}]}
+                               :limit        2}
+                  :parameters [{:type   :category
+                                :target [:dimension [:field "CATEGORY" {:base-type :type/Text}]]
+                                :value  "Widget"}]})))))))
 
 (deftest ^:parallel nested-queries-with-expressions-and-joins-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join)

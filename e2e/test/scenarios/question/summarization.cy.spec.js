@@ -11,6 +11,8 @@ import {
   enterCustomColumnDetails,
   visualize,
   checkExpressionEditorHelperPopoverPosition,
+  rightSidebar,
+  interceptIfNotPreviouslyDefined,
 } from "e2e/support/helpers";
 
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -223,9 +225,7 @@ describe("scenarios > question > summarize sidebar", () => {
       });
   });
 
-  it.skip("should handle (removing) multiple metrics when one is sorted (metabase#12625)", () => {
-    cy.intercept("POST", `/api/dataset`).as("dataset");
-
+  it("should handle (removing) multiple metrics when one is sorted (metabase#12625)", () => {
     cy.createQuestion(
       {
         name: "12625",
@@ -245,27 +245,26 @@ describe("scenarios > question > summarize sidebar", () => {
 
     summarize();
 
-    // CSS class of a sorted header cell
-    cy.get("[class*=TableInteractive-headerCellData--sorted]").as("sortedCell");
+    cy.findAllByTestId("header-cell").should("have.length", 4);
+    cy.get(".TableInteractive-headerCellData--sorted").as("sortedCell");
 
-    // At this point only "Sum of Subtotal" should be sorted
+    cy.log('At this point only "Sum of Subtotal" should be sorted');
     cy.get("@sortedCell").its("length").should("eq", 1);
+
+    cy.log("Remove the sorted metric");
     removeMetricFromSidebar("Sum of Subtotal");
 
-    cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sum of Subtotal").should("not.exist");
+    cy.log('"Sum of Total" should not be sorted, nor any other header cell');
+    cy.get("@sortedCell").should("not.exist");
 
-    // "Sum of Total" should not be sorted, nor any other header cell
-    cy.get("@sortedCell").its("length").should("eq", 0);
+    cy.findAllByTestId("header-cell")
+      .should("have.length", 3)
+      .and("not.contain", "Sum of Subtotal");
 
     removeMetricFromSidebar("Sum of Total");
 
-    cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/No results!/i).should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("744"); // `Count` for year 2022
+    cy.findAllByTestId("header-cell").should("have.length", 2);
+    cy.get(".cellData").should("contain", 744); // `Count` for year 2022
   });
 
   // flaky test (#19454)
@@ -298,10 +297,19 @@ describe("scenarios > question > summarize sidebar", () => {
 });
 
 function removeMetricFromSidebar(metricName) {
-  cy.get("[class*=SummarizeSidebar__AggregationToken]")
-    .contains(metricName)
-    .parent()
-    .find(".Icon-close")
-    .should("be.visible")
-    .click();
+  interceptIfNotPreviouslyDefined({
+    method: "POST",
+    url: "/api/dataset",
+    alias: "dataset",
+  });
+
+  rightSidebar().within(() => {
+    cy.findByLabelText(metricName)
+      .find(".Icon-close")
+      .should("be.visible")
+      .click();
+    cy.wait("@dataset");
+
+    cy.findByLabelText(metricName).should("not.exist");
+  });
 }

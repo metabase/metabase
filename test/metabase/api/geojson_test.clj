@@ -8,8 +8,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [ring.adapter.jetty9 :as ring-jetty]
-   [schema.core :as s])
+   [ring.adapter.jetty9 :as ring-jetty])
   (:import
    (org.eclipse.jetty.server Server)))
 
@@ -96,10 +95,8 @@
     (mt/with-temporary-setting-values [custom-geojson nil]
       (let [built-in @#'api.geojson/builtin-geojson]
         (testing "Make sure the built-in entries still look like what we expect so our test still makes sense."
-          (is (schema= {:us_states {:name     (s/eq "United States")
-                                    s/Keyword s/Any}
-                        s/Keyword  s/Any}
-                       built-in))
+          (is (=? {:us_states {:name "United States"}}
+                  built-in))
           (is (= built-in
                  (api.geojson/custom-geojson))))
         (testing "Try to change one of the built-in entries..."
