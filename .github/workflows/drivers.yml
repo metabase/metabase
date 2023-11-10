@@ -410,7 +410,7 @@ jobs:
       MB_MYSQL_SSL_TEST_PASSWORD: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_PASSWORD }}
     services:
       mysql:
-        image: circleci/mysql:latest
+        image: mysql:latest
         ports:
         - "3306:3306"
     steps:
