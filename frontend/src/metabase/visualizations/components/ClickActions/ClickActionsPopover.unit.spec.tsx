@@ -7,6 +7,27 @@ import {
   screen,
 } from "__support__/ui";
 import {
+  createOrdersCreatedAtDatasetColumn,
+  createOrdersCreatedAtField,
+  createOrdersDiscountDatasetColumn,
+  createOrdersDiscountField,
+  createOrdersIdDatasetColumn,
+  createOrdersProductIdDatasetColumn,
+  createOrdersProductIdField,
+  createOrdersQuantityDatasetColumn,
+  createOrdersQuantityField,
+  createOrdersSubtotalDatasetColumn,
+  createOrdersSubtotalField,
+  createOrdersTable,
+  createOrdersTableDatasetColumns,
+  createOrdersTableDatasetColumnsMap,
+  createOrdersTaxDatasetColumn,
+  createOrdersTaxField,
+  createOrdersTotalDatasetColumn,
+  createOrdersTotalField,
+  createOrdersUserIdDatasetColumn,
+  createOrdersUserIdField,
+  createSampleDatabase,
   ORDERS,
   ORDERS_ID,
   PEOPLE,
@@ -25,11 +46,13 @@ import type {
   Filter,
   RowValue,
   Series,
+  Card,
 } from "metabase-types/api";
 import registerVisualizations from "metabase/visualizations/register";
 import { POPOVER_TEST_ID } from "metabase/visualizations/click-actions/actions/ColumnFormattingAction/ColumnFormattingAction";
 import { createMockSingleSeries } from "metabase-types/api/mocks";
 import { ZOOM_IN_ROW } from "metabase/query_builder/actions";
+import { createMockMetadata } from "__support__/metadata";
 import type { ClickObject } from "metabase-lib/queries/drills/types";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/Question";
@@ -43,6 +66,68 @@ import {
 } from "metabase-lib/tests/drills-common";
 
 registerVisualizations();
+
+const ORDERS_METADATA_WITH_MULTIPLE_PK = createMockMetadata({
+  databases: [
+    createSampleDatabase({
+      tables: [
+        createOrdersTable({
+          fields: [
+            createOrdersUserIdField({
+              semantic_type: "type/PK",
+            }),
+            createOrdersProductIdField({
+              semantic_type: "type/PK",
+            }),
+            createOrdersSubtotalField(),
+            createOrdersTaxField(),
+            createOrdersTotalField(),
+            createOrdersDiscountField(),
+            createOrdersCreatedAtField(),
+            createOrdersQuantityField(),
+          ],
+        }),
+      ],
+    }),
+  ],
+});
+const ORDERS_QUESTION_WITH_MULTIPLE_PK = Question.create({
+  metadata: ORDERS_METADATA_WITH_MULTIPLE_PK,
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DB_ID,
+    query: {
+      "source-table": ORDERS_ID,
+    },
+  },
+});
+const ORDERS_COLUMNS_WITH_MULTIPLE_PK = {
+  USER_ID: createOrdersUserIdDatasetColumn({
+    semantic_type: "type/PK",
+  }),
+  PRODUCT_ID: createOrdersProductIdDatasetColumn({
+    semantic_type: "type/PK",
+  }),
+  SUBTOTAL: createOrdersSubtotalDatasetColumn(),
+  TAX: createOrdersTaxDatasetColumn(),
+  TOTAL: createOrdersTotalDatasetColumn(),
+  DISCOUNT: createOrdersDiscountDatasetColumn(),
+  CREATED_AT: createOrdersCreatedAtDatasetColumn(),
+  QUANTITY: createOrdersQuantityDatasetColumn(),
+};
+const ORDERS_ROW_VALUES_WITH_MULTIPLE_PK: Record<
+  keyof typeof ORDERS_COLUMNS_WITH_MULTIPLE_PK,
+  RowValue
+> = {
+  USER_ID: "1",
+  PRODUCT_ID: "105",
+  SUBTOTAL: 52.723521442619514,
+  TAX: 2.9,
+  TOTAL: 49.206842233769756,
+  DISCOUNT: null,
+  CREATED_AT: "2025-12-06T22:22:48.544+02:00",
+  QUANTITY: 2,
+};
 
 describe("ClickActionsPopover", function () {
   describe("apply click actions", () => {
@@ -382,7 +467,7 @@ describe("ClickActionsPopover", function () {
       );
     });
 
-    describe("ObjectDetailZoomDrill", () => {
+    describe("ObjectDetailsZoomDrill", () => {
       it.each([
         {
           column: ORDERS_COLUMNS.TOTAL,
@@ -423,7 +508,7 @@ describe("ClickActionsPopover", function () {
       );
     });
 
-    describe("ObjectDetailFkDrill", () => {
+    describe("ObjectDetailsFkDrill", () => {
       it.each([
         {
           column: ORDERS_COLUMNS.USER_ID,
@@ -484,6 +569,61 @@ describe("ClickActionsPopover", function () {
             clicked: {
               column,
               value: cellValue,
+            },
+          });
+
+          const drill = screen.getByText("View details");
+          expect(drill).toBeInTheDocument();
+
+          userEvent.click(drill);
+
+          expect(props.onChangeCardAndRun).toHaveBeenCalledTimes(1);
+          expect(props.onChangeCardAndRun).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+              nextCard: expect.objectContaining(expectedCard),
+            }),
+          );
+        },
+      );
+    });
+
+    describe("ObjectDetailsPkDrill", () => {
+      it.each<{
+        columnName: keyof typeof ORDERS_COLUMNS_WITH_MULTIPLE_PK;
+        expectedCard: Partial<Card>;
+      }>([
+        {
+          columnName: "CREATED_AT",
+          expectedCard: {
+            dataset_query: {
+              database: SAMPLE_DB_ID,
+              query: {
+                filter: [
+                  "=",
+                  [
+                    "field",
+                    ORDERS.USER_ID,
+                    {
+                      "base-type": "type/Integer",
+                    },
+                  ],
+                  ORDERS_ROW_VALUES.USER_ID,
+                ],
+                "source-table": ORDERS_ID,
+              },
+              type: "query",
+            },
+            display: "table",
+          },
+        },
+      ])(
+        "should apply drill on $columnName cell click",
+        async ({ columnName, expectedCard }) => {
+          const { props } = await setup({
+            question: ORDERS_QUESTION_WITH_MULTIPLE_PK,
+            clicked: {
+              column: ORDERS_COLUMNS_WITH_MULTIPLE_PK[columnName],
+              value: ORDERS_ROW_VALUES_WITH_MULTIPLE_PK[columnName],
             },
           });
 

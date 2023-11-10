@@ -2,7 +2,7 @@ import { t } from "ttag";
 import type { Drill } from "metabase/visualizations/types/click-actions";
 import type * as Lib from "metabase-lib";
 
-export const ObjectDetailFkDrill: Drill<Lib.FKDetailsDrillThruInfo> = ({
+export const ObjectDetailsPkDrill: Drill<Lib.PKDrillThruInfo> = ({
   drill,
   drillDisplayInfo,
   applyDrill,

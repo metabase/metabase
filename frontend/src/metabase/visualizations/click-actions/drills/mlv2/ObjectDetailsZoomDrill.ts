@@ -3,7 +3,7 @@ import type { Drill } from "metabase/visualizations/types/click-actions";
 import type * as Lib from "metabase-lib";
 import { zoomInRow } from "metabase/query_builder/actions";
 
-export const ObjectDetailZoomDrill: Drill<Lib.ZoomDrillThruInfo> = ({
+export const ObjectDetailsZoomDrill: Drill<Lib.ZoomDrillThruInfo> = ({
   drill,
   drillDisplayInfo,
 }) => {
