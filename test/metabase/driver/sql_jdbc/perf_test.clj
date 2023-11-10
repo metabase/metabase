@@ -3,9 +3,9 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [criterium.core :as criterium]
-   [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt])
   (:import
@@ -25,20 +25,16 @@
       (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
         (mt/dataset sample-dataset
           (let [queries (mapv (fn [i]
-                                (-> {:from [[:orders :o1] [:orders :o2]]
-                                     :select [:o1.quantity [:%count.0]]
-                                     :where [:and
-                                             [:< :o1.id [:inline 21]]
-                                             [:< :o1.id :o2.id]
-                                             [:< :o1.total :o2.total]
-                                             [:> :o1.total [:inline 12]]
-                                             [:< :o2.quantity [:inline 3]]
-                                             [:< :o1.quantity [:inline i]]]
-                                     :group-by [:o1.quantity]
-                                     :order-by [[:o1.quantity :desc]]}
-                                    sql/format
-                                    first))
-                              (range 5 8))]
+                                (-> (mt/mbql-query orders
+                                      {:aggregation [[:count]]
+                                       :condition   [:and
+                                                     [:> $total 12]
+                                                     [:< $quantity i]]
+                                       :breakout    [!month.created_at]
+                                       :order-by    [[:desc $created_at]]})
+                                    qp/compile
+                                    :query))
+                              (range 1 16))]
             (run-query (first queries))
             #_{:clj-kondo/ignore [:discouraged-var]}
             (prn {:driver driver/*driver*, :auto-commit auto-commit})
@@ -61,7 +57,7 @@
                                                    (while (.next rs)
                                                      (dotimes [col 2]
                                                        (let [col (inc col)]
-                                                         (.getLong rs col)
+                                                         (.getObject rs col)
                                                          (when (.wasNull rs)
                                                            (throw (ex-info (str "column " col " null")
                                                                            {:column col}))))))))))))
