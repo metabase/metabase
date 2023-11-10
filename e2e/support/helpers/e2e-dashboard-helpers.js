@@ -66,10 +66,9 @@ export function showDashboardCardActions(index = 0) {
 }
 
 export function removeDashboardCard(index = 0) {
-  showDashboardCardActions(index);
   getDashboardCard(index)
-    .findAllByTestId("dashboardcard-actions-panel")
-    .eq(0)
+    .realHover()
+    .findByTestId("dashboardcard-actions-panel")
     .should("be.visible")
     .icon("close")
     .click();
