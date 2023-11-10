@@ -35,6 +35,7 @@ export interface BulkFilterListProps {
   onChangeFilter: (filter: Filter, newFilter: Filter) => void;
   onRemoveFilter: (filter: Filter) => void;
   onClearSegments: () => void;
+  sortIconState: string;
 }
 
 const BulkFilterList = ({
@@ -46,17 +47,40 @@ const BulkFilterList = ({
   onChangeFilter,
   onRemoveFilter,
   onClearSegments,
+  sortIconState,
 }: BulkFilterListProps): JSX.Element => {
-  const [dimensions, segments] = useMemo(
-    () => [
-      options
-        .filter(isDimensionOption)
-        .filter(isDimensionValid)
-        .sort(sortDimensions),
-      options.filter(isSegmentOption),
-    ],
-    [options],
-  );
+  const [dimensions, segments] = useMemo(() => {
+    const sortedDimensions =
+      sortIconState === "ascending"
+        ? options
+            .filter(isDimensionOption)
+            .filter(isDimensionValid)
+            .sort((a, b) =>
+              a.dimension
+                .displayName()
+                .localeCompare(b.dimension.displayName()),
+            )
+        : sortIconState === "descending"
+        ? options
+            .filter(isDimensionOption)
+            .filter(isDimensionValid)
+            .sort((a, b) =>
+              b.dimension
+                .displayName()
+                .localeCompare(a.dimension.displayName()),
+            )
+        : options
+            .filter(isDimensionOption)
+            .filter(isDimensionValid)
+            .sort(sortDimensions);
+
+    const sortedSegments =
+      sortIconState !== "ascending" && sortIconState !== "descending"
+        ? options.filter(isSegmentOption)
+        : [];
+
+    return [sortedDimensions, sortedSegments];
+  }, [options, sortIconState]);
 
   if (!dimensions.length && !segments.length) {
     return (
