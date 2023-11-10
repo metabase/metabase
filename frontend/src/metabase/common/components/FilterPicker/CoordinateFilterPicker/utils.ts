@@ -67,7 +67,7 @@ export function getFilterClause(
     operator,
     column: getCoercedColumn(operator, column, secondColumn),
     longitudeColumn: getCoercedLongitudeColumn(operator, column, secondColumn),
-    values,
+    values: getCoercedValues(operator, values),
   });
 }
 
@@ -93,4 +93,28 @@ function getCoercedLongitudeColumn(
     Lib.isLongitude(secondColumn)
     ? secondColumn
     : column;
+}
+
+function getCoercedValues(
+  operator: Lib.CoordinateFilterOperatorName,
+  values: number[],
+) {
+  if (operator === "inside") {
+    const [upperLatitude, leftLongitude, lowerLatitude, rightLongitude] =
+      values;
+
+    return [
+      Math.max(upperLatitude, lowerLatitude),
+      Math.min(leftLongitude, rightLongitude),
+      Math.min(lowerLatitude, upperLatitude),
+      Math.max(leftLongitude, rightLongitude),
+    ];
+  }
+
+  if (operator === "between") {
+    const [startValue, endValue] = values;
+    return [Math.min(startValue, endValue), Math.max(startValue, endValue)];
+  }
+
+  return values;
 }

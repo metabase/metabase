@@ -11,7 +11,7 @@ import { FilterFooter } from "../FilterFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
 import { OPERATOR_OPTIONS } from "./constants";
-import { getDefaultValues, hasValidValues } from "./utils";
+import { getDefaultValues, getFilterClause, hasValidValues } from "./utils";
 
 const MAX_HEIGHT = 300;
 
@@ -63,14 +63,7 @@ export function StringFilterPicker({
 
   const handleSubmit = () => {
     if (isValid) {
-      onChange(
-        Lib.stringFilterClause({
-          operator,
-          column,
-          values,
-          options,
-        }),
-      );
+      onChange(getFilterClause(operator, column, values, options));
     }
   };
 
