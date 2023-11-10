@@ -4,7 +4,11 @@
   These include things like saving QueryExecutions and adding query ViewLogs, storing exceptions and formatting the results."
   (:require
    [java-time.api :as t]
+   [metabase-enterprise.sandbox.api.util :as mt.api.u]
+   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
    [metabase.events :as events]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
    [metabase.models.query :as query]
    [metabase.models.query-execution
     :as query-execution
@@ -107,6 +111,22 @@
        (vswap! row-count inc)
        (rf result row)))))
 
+(defn- all-table-ids [m]
+  (into #{} cat (mbql.u/match m
+                  (_ :guard (every-pred map? :source-table (complement ::gtap?)))
+                  (let [recursive-ids (all-table-ids (dissoc &match :source-table))]
+                    (cons (:source-table &match) recursive-ids)))))
+
+(defn- is-sandboxed? [query]
+  (let [user-id   (get-in query [:info :executed-by])
+        table-ids (all-table-ids query)
+        group-ids (t2/select-fn-set :group_id PermissionsGroupMembership :user_id user-id)
+        sandboxes (when (seq group-ids)
+                    (t2/select GroupTableAccessPolicy :group_id [:in group-ids]
+                               :table_id [:in table-ids]))
+        enforced-sandboxes (mt.api.u/enforced-sandboxes sandboxes group-ids)]
+    (boolean (seq enforced-sandboxes))))
+
 (defn- query-execution-info
   "Return the info for the QueryExecution entry for this `query`."
   {:arglists '([query])}
@@ -130,7 +150,7 @@
    :running_time      0
    :result_rows       0
    :start_time_millis (System/currentTimeMillis)
-   :is_sandboxed      (or (get-in query [:query :source-query :metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/gtap?]) false)})
+   :is_sandboxed      (is-sandboxed? query)})
 
 (defn process-userland-query
   "Do extra handling 'userland' queries (i.e. ones ran as a result of a user action, e.g. an API call, scheduled Pulse,

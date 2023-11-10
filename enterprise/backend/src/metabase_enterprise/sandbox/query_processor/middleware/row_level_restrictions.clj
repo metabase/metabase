@@ -324,7 +324,7 @@
   (binding [*current-user-id* nil]
     ((requiring-resolve 'metabase.query-processor/query->expected-cols) query)))
 
-(defn- gtapped-query
+(defn gtapped-query
   "Apply GTAPs to `query` and return the updated version of `query`."
   [original-query table-id->gtap]
   (let [sandboxed-query (apply-gtaps original-query table-id->gtap)]
