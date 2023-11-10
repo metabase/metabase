@@ -265,9 +265,15 @@
        (when (and query (number? ref-id))
          (when-let [no-id-columns (not-empty (remove :id columns))]
            (when-let [resolved (resolve-field-id query stage-number ref-id)]
-             (find-matching-column (assoc a-ref 2 (or (:lib/desired-column-alias resolved)
-                                                      (:name resolved)))
-                                   no-id-columns opts)))))))
+             (find-matching-column (-> (assoc a-ref 2 (or (:lib/desired-column-alias resolved)
+                                                          (:name resolved)))
+                                       ;; make sure the :field ref has a `:base-type`, it's against the rules for a
+                                       ;; nominal :field ref not to have a base-type -- this can fail schema
+                                       ;; validation if it's missing in the Field ID ref we generate the nominal ref
+                                       ;; from.
+                                       (lib.options/update-options (partial merge {:base-type :type/*})))
+                                   no-id-columns
+                                   opts)))))))
 
 (defn- ref-id-or-name [[_ref-kind _opts id-or-name]]
   id-or-name)
@@ -321,7 +327,7 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    legacy-ref   :- some?
+    legacy-ref   :- :some
     metadatas    :- [:maybe [:sequential ::lib.schema.metadata/column]]]
    (find-matching-column query stage-number (lib.convert/legacy-ref->pMBQL query stage-number legacy-ref) metadatas)))
 
