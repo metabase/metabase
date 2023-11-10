@@ -227,8 +227,8 @@ function LinkedEntityPicker({
       if (
         isDashboard &&
         !dashboardTabExists &&
-        dashboard?.tabs &&
-        dashboard.tabs.length < 2 &&
+        targetDashboard?.tabs &&
+        targetDashboard.tabs.length < 2 &&
         typeof dashboardTabId !== "undefined"
       ) {
         updateSettings({ ...clickBehavior, tabId: defaultDashboardTabId });
@@ -236,7 +236,7 @@ function LinkedEntityPicker({
     },
     [
       clickBehavior,
-      dashboard,
+      targetDashboard,
       dashboardTabId,
       dashboardTabExists,
       defaultDashboardTabId,
