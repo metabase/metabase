@@ -11,10 +11,20 @@ export type CollectionContentModel = "card" | "dataset";
 
 export type CollectionAuthorityLevel = "official" | null;
 
+export type CollectionType = "instance-analytics" | null;
+
 export type CollectionAuthorityLevelConfig = {
   type: CollectionAuthorityLevel;
   name: string;
-  icon: string;
+  icon: IconName;
+  color?: string;
+  tooltips?: Record<string, string>;
+};
+
+export type CollectionInstanceAnaltyicsConfig = {
+  type: CollectionType;
+  name: string;
+  icon: IconName;
   color?: string;
   tooltips?: Record<string, string>;
 };
@@ -22,11 +32,14 @@ export type CollectionAuthorityLevelConfig = {
 export interface Collection {
   id: CollectionId;
   name: string;
+  slug?: string;
+  entity_id?: string;
   description: string | null;
   can_write: boolean;
   archived: boolean;
   children?: Collection[];
   authority_level?: "official" | null;
+  type?: "instance-analytics" | null;
 
   parent_id?: CollectionId;
   personal_owner_id?: UserId;

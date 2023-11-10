@@ -7,6 +7,7 @@ import { useFormikContext } from "formik";
 import type { Collection, CollectionId } from "metabase-types/api";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import { NewCollectionButton } from "./CreateCollectionOnTheGo.styled";
+import type { FilterItemsInPersonalCollection } from "./ItemPicker";
 
 interface Values extends FormikValues {
   collection_id: CollectionId;
@@ -16,6 +17,7 @@ interface State {
   enabled?: boolean;
   resumedValues?: Values;
   openCollectionId?: CollectionId;
+  filterPersonalCollections?: FilterItemsInPersonalCollection;
 }
 
 const Context = createContext<{
@@ -33,7 +35,12 @@ export function CreateCollectionOnTheGo({
     (newState: State) => setState({ ...state, ...newState }),
     [state, setState],
   );
-  const { enabled, resumedValues, openCollectionId } = state;
+  const {
+    enabled,
+    resumedValues,
+    openCollectionId,
+    filterPersonalCollections,
+  } = state;
   return enabled ? (
     <CreateCollectionModal
       collectionId={openCollectionId}
@@ -44,6 +51,7 @@ export function CreateCollectionOnTheGo({
           resumedValues: { ...resumedValues, collection_id: collection.id },
         });
       }}
+      filterPersonalCollections={filterPersonalCollections}
     />
   ) : (
     <Context.Provider value={{ canCreateNew: true, updateState }}>
@@ -52,11 +60,15 @@ export function CreateCollectionOnTheGo({
   );
 }
 
+interface CreateCollectionOnTheGoButtonProps {
+  openCollectionId?: CollectionId;
+  filterPersonalCollections?: FilterItemsInPersonalCollection;
+}
+
 export function CreateCollectionOnTheGoButton({
   openCollectionId,
-}: {
-  openCollectionId?: CollectionId;
-}) {
+  filterPersonalCollections,
+}: CreateCollectionOnTheGoButtonProps) {
   const { canCreateNew, updateState } = useContext(Context);
   const formik = useFormikContext<Values>();
   return canCreateNew && formik ? (
@@ -68,6 +80,7 @@ export function CreateCollectionOnTheGoButton({
           enabled: true,
           resumedValues: formik.values,
           openCollectionId,
+          filterPersonalCollections,
         })
       }
     >

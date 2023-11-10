@@ -33,6 +33,8 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 const { ORDERS_ID } = SAMPLE_DATABASE;
 const PG_DB_ID = 2;
 const PERMISSION_ERROR = "Sorry, you don't have permission to see this card.";
+const MAX_CARDS = 5;
+const MAX_XRAY_WAIT_TIMEOUT = 15000;
 
 describe("scenarios > dashboard > dashboard back navigation", () => {
   beforeEach(() => {
@@ -103,9 +105,9 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     "should display a back to the dashboard button in table x-ray dashboards",
     { tags: "@slow" },
     () => {
-      const cardTitle = "Sales per state";
-      cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
-      cy.wait("@dataset");
+      const cardTitle = "Total transactions";
+      cy.visit(`/auto/dashboard/table/${ORDERS_ID}?#show=${MAX_CARDS}`);
+      cy.wait("@dataset", { timeout: MAX_XRAY_WAIT_TIMEOUT });
 
       getDashboardCards()
         .filter(`:contains("${cardTitle}")`)
@@ -127,8 +129,10 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     () => {
       const cardTitle = "Orders by Subtotal";
       cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
-      cy.visit(`/auto/dashboard/model/${ORDERS_QUESTION_ID}`);
-      cy.wait("@dataset");
+      cy.visit(
+        `/auto/dashboard/model/${ORDERS_QUESTION_ID}?#show=${MAX_CARDS}`,
+      );
+      cy.wait("@dataset", { timeout: MAX_XRAY_WAIT_TIMEOUT });
 
       getDashboardCards()
         .filter(`:contains("${cardTitle}")`)
@@ -398,8 +402,8 @@ const createDashboardWithCards = () => {
       cy.createQuestion(modelDetails).then(({ body: { id: model_id } }) => {
         createAction({ ...actionDetails, model_id }).then(
           ({ body: { id: action_id } }) => {
-            cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-              cards: [
+            cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+              dashcards: [
                 { id: -1, card_id: question_id, ...questionDashcardDetails },
                 getTextCardDetails({ id: -2, size_y: 1 }),
                 getActionCardDetails({ id: -3, action_id }),
@@ -475,8 +479,8 @@ const createDashboardWithSlowCard = () => {
     questionDetails,
     dashboardDetails,
   }).then(({ body: { id, card_id, dashboard_id } }) => {
-    cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-      cards: [
+    cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+      dashcards: [
         {
           id,
           card_id,
@@ -524,8 +528,8 @@ const createDashboardWithPermissionError = () => {
     cy.createQuestion(question2Details).then(({ body: { id: card_id_2 } }) => {
       cy.createDashboard(dashboardDetails).then(
         ({ body: { id: dashboard_id } }) => {
-          cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-            cards: [
+          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+            dashcards: [
               { id: -1, card_id: card_id_1, ...dashcard1Details },
               { id: -2, card_id: card_id_2, ...dashcard2Details },
             ],
