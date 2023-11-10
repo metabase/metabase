@@ -2,6 +2,8 @@
   "Lower-level implementation functions for `metabase.util.i18n`. Most of this is not meant to be used directly; use the
   functions and macros in `metabase.util.i18n` instead."
   (:require
+   [babashka.fs :as fs]
+   [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.tools.reader.edn :as edn]
@@ -10,6 +12,7 @@
    [metabase.util.log :as log]
    [potemkin.types :as p.types])
   (:import
+   (java.nio.file Path)
    (java.text MessageFormat)
    (java.util Locale)
    (org.apache.commons.lang3 LocaleUtils)))
@@ -63,10 +66,18 @@
    (when-let [locale (locale locale-or-name)]
      (LocaleUtils/isAvailableLocale locale))))
 
-(defn- available-locale-names*
-  []
-  (log/info "Reading available locales from locales.edn...")
-  (some-> (io/resource "locales.edn") slurp edn/read-string :locales (->> (apply sorted-set))))
+(def ^:private available-locale-names*
+  (memoize/memo
+   (fn []
+    (log/info "Reading available locales from resources/i18n/...")
+    (into #{"en"}
+     (map
+      (fn [^Path path]
+        (-> path
+            fs/file-name
+            fs/split-ext
+            first))
+      (fs/list-dir (io/resource "i18n")))))))
 
 (def ^{:arglists '([])} available-locale-names
   "Return sorted set of available locales, as Strings.
