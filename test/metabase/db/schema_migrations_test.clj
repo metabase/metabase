@@ -686,7 +686,7 @@
         (is (partial= (set (map :name original-collections))
                       (set (map :name (t2/query {:datasource data-source} "SELECT name FROM collection")))))
 
-        (db.setup/migrate! db-type data-source :down 47)
+        (migrate! :down 47)
 
         ;; Verify that rollback deleted the correct rows
         (is (= 1 (count (t2/query "SELECT * FROM metabase_database"))))
