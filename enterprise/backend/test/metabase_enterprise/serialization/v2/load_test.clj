@@ -1003,7 +1003,7 @@
           (reset! tab2d (ts/create! :model/DashboardTab :name "Tab 2" :dashboard_id (:id @dash1d)))
 
           ;; Load the serialized content.
-          (serdes.load/load-metabase (ingestion-in-memory @serialized))
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
 
           (reset! dash1d (-> (t2/select-one Dashboard :name "My Dashboard")
                              (t2/hydrate :dashcards)
