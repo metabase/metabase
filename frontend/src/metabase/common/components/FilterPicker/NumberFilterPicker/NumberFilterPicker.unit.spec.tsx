@@ -168,7 +168,7 @@ describe("NumberFilterPicker", () => {
         },
       );
 
-      it("should swap between values when min > max", async () => {
+      it("should swap values when min > max", async () => {
         const { getNextFilterParts, getNextFilterColumnName } = setup();
         const addFilterButton = screen.getByRole("button", {
           name: "Add filter",

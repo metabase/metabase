@@ -151,7 +151,7 @@ describe("TimeFilterPicker", () => {
       expect(getNextFilterColumnName()).toBe("Time");
     });
 
-    it("should swap between values when min > max", async () => {
+    it("should swap values when min > max", async () => {
       const { getNextFilterParts, getNextFilterColumnName } = setup();
 
       await setOperator("Between");
