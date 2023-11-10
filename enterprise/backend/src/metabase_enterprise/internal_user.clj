@@ -18,10 +18,20 @@
 (defn- install-internal-user! []
   (t2/insert-returning-instances! User internal-mb-user))
 
+(defn- internal-user-exists? []
+  (if-let [internal-user (t2/select-one User :email (:email internal-mb-user))]
+    (if (not= (:id internal-user) config/internal-mb-user-id)
+      (do
+        (log/info "Internal user already exists with an incorrect ID. Deleting...")
+        (t2/delete! User :email (:email internal-mb-user))
+        false)
+      true)
+    false))
+
 (defn ensure-internal-user-exists!
   "Creates the internal user"
   []
-  (if-not (t2/exists? User :email (:email internal-mb-user))
+  (if-not (internal-user-exists?)
     (do (log/info "No internal user found, creating now...")
         (install-internal-user!)
         ::installed)
