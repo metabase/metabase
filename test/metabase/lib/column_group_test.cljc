@@ -353,7 +353,7 @@
              (implicit product-cols "PRODUCTS__via__PRODUCT_ID__" "_2")]
             (lib/group-columns marked)))))
 
-(deftest self-joined-cards-duplicate-implicit-columns-test
+(deftest ^:parallel self-joined-cards-duplicate-implicit-columns-test
   (testing "Duplicate columns from different foreign key paths should get grouped separately (#34742)"
     (let [card (:orders lib.tu/mock-cards)
           query (lib/query lib.tu/metadata-provider-with-mock-cards card)
