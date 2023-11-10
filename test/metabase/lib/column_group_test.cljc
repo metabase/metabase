@@ -298,7 +298,8 @@
                       (for [group groups]
                         (lib/display-info lib.tu/venues-query group)))))
             (testing "Card *is* present in MetadataProvider"
-              (let [query (assoc lib.tu/venues-query :lib/metadata metadata-provider)]
+              (let [query  (assoc lib.tu/venues-query :lib/metadata metadata-provider)
+                    groups (lib/group-columns (rhs-columns query card))]
                 (is (=? [{:name         "Mock categories card"
                           :display-name "Mock Categories Card"
                           :is-from-join true}]

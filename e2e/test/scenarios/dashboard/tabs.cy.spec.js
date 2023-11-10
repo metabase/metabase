@@ -40,7 +40,6 @@ import {
 
 describe("scenarios > dashboard > tabs", () => {
   beforeEach(() => {
-    cy.in;
     restore();
     cy.signInAsAdmin();
   });
@@ -131,6 +130,12 @@ describe("scenarios > dashboard > tabs", () => {
       cy.findAllByTestId("toast-undo").should("have.length", 2);
       getDashboardCards().should("have.length", 0);
 
+      cy.log("should show undo toast with the correct text");
+      cy.findByTestId("undo-list").within(() => {
+        cy.findByText("Text card moved").should("be.visible");
+        cy.findByText("Card moved: Orders").should("be.visible");
+      });
+
       cy.log("cards should be in second tab");
       goToTab("Tab 2");
       getDashboardCards().should("have.length", 2);
@@ -175,6 +180,9 @@ describe("scenarios > dashboard > tabs", () => {
       const cards = [
         getTextCardDetails({
           text: "Text card",
+          // small card aligned to the left so that move icon is out of the viewport
+          // unless the left alignment logic kicks in
+          size_x: 1,
         }),
         getHeadingCardDetails({
           text: "Heading card",
@@ -205,6 +213,14 @@ describe("scenarios > dashboard > tabs", () => {
       goToTab("Tab 2");
 
       getDashboardCards().should("have.length", cards.length);
+
+      cy.findAllByTestId("toast-undo").should("have.length", cards.length);
+
+      cy.log("'Undo' toasts should be dismissed when saving the dashboard");
+
+      saveDashboard();
+
+      cy.findAllByTestId("toast-undo").should("have.length", 0);
     },
   );
 
@@ -255,7 +271,7 @@ describe("scenarios > dashboard > tabs", () => {
   });
 
   it("should only fetch cards on the current tab", () => {
-    cy.intercept("PUT", "/api/dashboard/*/cards").as("saveDashboardCards");
+    cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
 
     visitDashboardAndCreateTab({
       dashboardId: ORDERS_DASHBOARD_ID,
@@ -271,7 +287,7 @@ describe("scenarios > dashboard > tabs", () => {
     saveDashboard();
 
     cy.wait("@saveDashboardCards").then(({ response }) => {
-      cy.wrap(response.body.cards[1].id).as("secondTabDashcardId");
+      cy.wrap(response.body.dashcards[1].id).as("secondTabDashcardId");
     });
 
     cy.intercept(

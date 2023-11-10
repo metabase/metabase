@@ -509,23 +509,16 @@ export const buildTableColumnSettings = ({
   //   { fieldRef: ["field", 2, {"source-field": 1}], enabled: true }
   "table.columns": {
     section: t`Columns`,
-    title: t`Columns`,
+    // title: t`Columns`,
     widget: ChartSettingTableColumns,
     getHidden: (series, vizSettings) => vizSettings["table.pivot"],
     isValid: ([{ card, data }]) => {
       const columns = card.visualization_settings["table.columns"];
       const enabledColumns = columns.filter(column => column.enabled);
-      // If "table.columns" happened to be an empty array,
-      // it will be treated as "all columns are hidden",
-      // This check ensures it's not empty,
-      // otherwise it will be overwritten by `getDefault` below
-      return (
-        card.visualization_settings["table.columns"].length !== 0 &&
-        _.all(
-          enabledColumns,
-          columnSetting =>
-            findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
-        )
+      return _.all(
+        enabledColumns,
+        columnSetting =>
+          findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
       );
     },
     getDefault: ([

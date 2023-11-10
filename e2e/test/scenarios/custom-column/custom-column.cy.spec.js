@@ -25,6 +25,33 @@ describe("scenarios > question > custom column", () => {
     cy.signInAsNormalUser();
   });
 
+  it("can see x-ray options when a custom column is present (#16680)", () => {
+    cy.createQuestion(
+      {
+        name: "16680",
+        display: "line",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["expression", "TestColumn"],
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+          expressions: { TestColumn: ["+", 1, 1] },
+        },
+      },
+      { visitQuestion: true },
+    );
+    cy.get(".dot").eq(5).click({ force: true });
+    popover()
+      .findByText(/Automatic Insights/i)
+      .click();
+    popover().findByText(/X-ray/i);
+    popover()
+      .findByText(/Compare to the rest/i)
+      .click();
+  });
+
   it("can create a custom column (metabase#13241)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.icon("add_data").click();
@@ -398,7 +425,7 @@ describe("scenarios > question > custom column", () => {
     cy.findByText("Gizmo2");
   });
 
-  it.skip("should drop custom column (based on a joined field) when a join is removed (metabase#14775)", () => {
+  it("should drop custom column (based on a joined field) when a join is removed (metabase#14775)", () => {
     const CE_NAME = "Rounded price";
 
     cy.createQuestion({
@@ -423,29 +450,26 @@ describe("scenarios > question > custom column", () => {
             ["joined-field", "Products", ["field-id", PRODUCTS.PRICE]],
           ],
         },
+        limit: 5,
       },
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}/notebook`);
+      cy.findByTestId("step-expression-0-0").contains(CE_NAME);
     });
 
     // Remove join
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Join data")
-      .parent()
-      .find(".Icon-close")
-      .click({ force: true }); // x is hidden and hover doesn't work so we have to force it
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Join data").should("not.exist");
+    cy.findByTestId("step-join-0-0").realHover().find(".Icon-close").click();
+    cy.findByTestId("step-join-0-0").should("not.exist");
 
     cy.log("Reported failing on 0.38.1-SNAPSHOT (6d77f099)");
-    cy.get("[class*=NotebookCellItem]").contains(CE_NAME).should("not.exist");
+    cy.findByTestId("step-expression-0-0").should("not.exist");
 
     visualize(response => {
       expect(response.body.error).to.not.exist;
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("37.65");
+    cy.get(".cellData").should("contain", "37.65");
+    cy.findAllByTestId("header-cell").should("not.contain", CE_NAME);
   });
 
   it("should handle using `case()` when referencing the same column names (metabase#14854)", () => {

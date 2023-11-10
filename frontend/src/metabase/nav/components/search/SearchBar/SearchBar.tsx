@@ -201,6 +201,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
               searchText={searchText}
               onSearchItemSelect={onSearchItemSelect}
               goToSearchApp={goToSearchApp}
+              isSearchBar={true}
             />
           ) : (
             <RecentsList />

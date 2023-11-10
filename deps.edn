@@ -8,6 +8,7 @@
                                              :exclusions  [org.clojure/clojure
                                                            org.clojure/clojurescript]}
   amalloy/ring-gzip-middleware              {:mvn/version "0.1.4"}              ; Ring middleware to GZIP responses if client can handle it
+  babashka/fs                               {:mvn/version "0.4.19"}             ; Portable filesystem operations
   bigml/histogram                           {:mvn/version "4.1.4"}              ; Histogram data structure
   buddy/buddy-core                          {:mvn/version "1.11.423"            ; various cryptographic functions
                                              :exclusions  [commons-codec/commons-codec
@@ -82,7 +83,7 @@
                                              :exclusions  [org.clojure/data.avl]}
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
-  metabase/saml20-clj                       {:mvn/version "2.2.2"}              ; EE SAML integration.
+  metabase/saml20-clj                       {:mvn/version "2.2.4"}              ; EE SAML integration.
   metabase/throttle                         {:mvn/version "1.0.2"}              ; Tools for throttling access to API endpoints and other code pathways
   metosin/malli                             {:mvn/version "0.11.0"}             ; Data-driven Schemas for Clojure/Script and babashka
   nano-id/nano-id                           {:mvn/version "1.0.0"}              ; NanoID generator for generating entity_ids
@@ -160,7 +161,8 @@
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure
   user-agent/user-agent                     {:mvn/version "0.1.1"}              ; User-Agent string parser, for Login History page & elsewhere
-  weavejester/dependency                    {:mvn/version "0.2.1"}}             ; Dependency graphs and topological sorting
+  weavejester/dependency                    {:mvn/version "0.2.1"}              ; Dependency graphs and topological sorting
+  }
 
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  ;; !!         PLEASE KEEP NEW DEPENDENCIES ABOVE ALPHABETICALLY ORGANIZED AND ADD COMMENTS EXPLAINING THEM.         !!
@@ -303,6 +305,15 @@
    :main-opts ["-m" "marginalia.main" "-n" "Metabase" "-d" "backend-docs" "-D"
                "The simplest, fastest way to get business intelligence and analytics to everyone in your company 😋"
                "dev" "src" "shared/src" "enterprise/backend/src"]}
+
+  ;; Generate a single file's docs with
+  ;;   clojure -M:marginalia/one src/metabase/some/namespace.clj
+  ;; which creates `backend-docs/metabase.some.namespace.html`
+  :marginalia/one
+  {:extra-deps
+   {com.github.tsmacdonald/marginalia {:mvn/version "0.9.2"}}
+   :main-opts ["-m" "marginalia.main" "-m" "-n" "Metabase" "-d" "backend-docs" "-D"
+               "The simplest, fastest way to get business intelligence and analytics to everyone in your company 😋"]}
 
   ;; Find outdated versions of dependencies. Run with `clojure -M:outdated`
   :outdated {;; Note that it is `:deps`, not `:extra-deps`
@@ -653,6 +664,7 @@
   {:exec-args {:only ["test/metadata/driver"
                       "test/metabase/query_processor"
                       "test/metabase/query_processor_test"
+                      metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
                       metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}
 
   ;; test all MBQL related stuff: MLv2, the legacy shared `metabase.mbql` code, and the QP
@@ -664,6 +676,7 @@
                       "test/metadata/driver"
                       "test/metabase/query_processor"
                       "test/metabase/query_processor_test"
+                      metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
                       metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}}}
 
 

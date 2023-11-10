@@ -4,7 +4,7 @@ import { createMockUser } from "metabase-types/api/mocks";
 import type { User, UserId } from "metabase-types/api";
 import { screen, renderWithProviders, waitFor, within } from "__support__/ui";
 import type { CreatedByFilterProps } from "metabase/search/types";
-import { setupUsersEndpoints } from "__support__/server-mocks";
+import { setupUserRecipientsEndpoint } from "__support__/server-mocks";
 import { SearchUserPicker } from "metabase/search/components/SearchUserPicker";
 
 const TEST_USERS: User[] = [
@@ -31,7 +31,7 @@ const TestSearchUserPicker = ({
 const setup = async ({
   initialSelectedUsers = [],
 }: { initialSelectedUsers?: UserId[] } = {}) => {
-  setupUsersEndpoints(TEST_USERS);
+  setupUserRecipientsEndpoint({ users: TEST_USERS });
 
   const mockOnChange = jest.fn();
   renderWithProviders(

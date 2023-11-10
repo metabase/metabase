@@ -236,6 +236,15 @@
     [:drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon
      ::drill-thru.zoom-in.geographic.binned-lat-lon->binned-lat-lon]]])
 
+(mr/def ::drill-thru.zoom-in.binning
+  [:merge
+   ::drill-thru.common.with-column
+   [:map
+    [:type        [:= :drill-thru/zoom-in.binning]]
+    [:min-value   number?]
+    [:max-value   number?]
+    [:new-binning ::lib.schema.binning/binning]]])
+
 (mr/def ::drill-thru
   [:and
    ::drill-thru.common
@@ -256,7 +265,8 @@
     [:drill-thru/underlying-records       ::drill-thru.underlying-records]
     [:drill-thru/automatic-insights       ::drill-thru.automatic-insights]
     [:drill-thru/zoom-in.timeseries       ::drill-thru.zoom-in.timeseries]
-    [:drill-thru/zoom-in.geographic       ::drill-thru.zoom-in.geographic]]])
+    [:drill-thru/zoom-in.geographic       ::drill-thru.zoom-in.geographic]
+    [:drill-thru/zoom-in.binning          ::drill-thru.zoom-in.binning]]])
 
 (mr/def ::context.row.value
   [:map

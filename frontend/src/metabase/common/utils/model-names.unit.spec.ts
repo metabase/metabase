@@ -10,6 +10,6 @@ describe("common/utils/model-names", () => {
     expect(getTranslatedEntityName("dashboard")).toBe("Dashboard");
     expect(getTranslatedEntityName("card")).toBe("Question");
     expect(getTranslatedEntityName("dataset")).toBe("Model");
-    expect(getTranslatedEntityName("indexed-entity")).toBe("Indexed Entity");
+    expect(getTranslatedEntityName("indexed-entity")).toBe("Indexed record");
   });
 });

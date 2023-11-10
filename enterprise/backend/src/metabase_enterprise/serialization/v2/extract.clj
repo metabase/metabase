@@ -192,7 +192,7 @@ Eg. if Dashboard B includes a Card A that is derived from a
 (defn extract
   "Returns a reducible stream of entities to serialize"
   [{:keys [targets] :as opts}]
-  (serdes.backfill/backfill-ids)
+  (serdes.backfill/backfill-ids!)
   (if (seq targets)
     (extract-subtrees opts)
     (extract-metabase opts)))

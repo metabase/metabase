@@ -54,6 +54,7 @@
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
   :visibility :settings-manager
+  :audit      :getter
   :setter
   (fn [new-value]
     (setting/set-value-of-type! :string :report-timezone new-value)
@@ -657,7 +658,7 @@
   - Use [[metabase.driver.sql.util/format-sql]] in this method's implementation, providing dialect keyword
     representation that corresponds to to their driver's formatting (eg. `:sqlserver` uses `:tsql`).
   - Completly reimplement this method with their special formatting code."
-  {:added "0.48.0", :arglists '([driver native-form]), :style/indent 1}
+  {:added "0.47.0", :arglists '([driver native-form]), :style/indent 1}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
