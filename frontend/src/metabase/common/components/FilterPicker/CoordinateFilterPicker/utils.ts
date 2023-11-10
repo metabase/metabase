@@ -38,8 +38,15 @@ export function getAvailableColumns(
   column: Lib.ColumnMetadata,
 ) {
   const isLatitude = Lib.isLatitude(column);
+  const isLongitude = Lib.isLongitude(column);
   return Lib.filterableColumns(query, stageIndex).filter(column => {
-    return isLatitude ? Lib.isLongitude(column) : Lib.isLatitude(column);
+    if (isLatitude) {
+      return Lib.isLongitude(column);
+    }
+    if (isLongitude) {
+      return Lib.isLatitude(column);
+    }
+    return false;
   });
 }
 
@@ -78,6 +85,7 @@ function getCoercedLatitudeColumn(
 ) {
   return operator === "inside" &&
     secondColumn != null &&
+    Lib.isLongitude(column) &&
     Lib.isLatitude(secondColumn)
     ? secondColumn
     : column;
@@ -90,6 +98,7 @@ function getCoercedLongitudeColumn(
 ) {
   return operator === "inside" &&
     secondColumn != null &&
+    Lib.isLatitude(column) &&
     Lib.isLongitude(secondColumn)
     ? secondColumn
     : column;
