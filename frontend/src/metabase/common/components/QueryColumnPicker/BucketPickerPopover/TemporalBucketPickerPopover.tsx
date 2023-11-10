@@ -8,15 +8,12 @@ import {
   getBucketListItem,
 } from "./BaseBucketPickerPopover";
 
-function checkBucketIsSelected(item: BucketListItem) {
-  return !!item.selected;
-}
-
 export function TemporalBucketPickerPopover({
   query,
   stageIndex,
   column,
   buckets,
+  isEditing,
   onSelect,
   ...props
 }: CommonBucketPickerProps) {
@@ -37,10 +34,24 @@ export function TemporalBucketPickerPopover({
     [column, onSelect],
   );
 
+  const checkBucketIsSelected = useCallback(
+    (item: BucketListItem) => {
+      // `bucket: null` represents the "Don't bin" option
+      // It's considered selected when editing an existing clause without a binning strategy
+      if (item.bucket === null) {
+        return !selectedBucket && isEditing;
+      }
+
+      return !!item.selected;
+    },
+    [selectedBucket, isEditing],
+  );
+
   return (
     <BaseBucketPickerPopover
       {...props}
       query={query}
+      isEditing={isEditing}
       stageIndex={stageIndex}
       items={items}
       selectedBucket={selectedBucket}
