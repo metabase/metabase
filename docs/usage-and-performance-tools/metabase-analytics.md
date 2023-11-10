@@ -18,31 +18,100 @@ There are only two access types for the Metabase analytics collection: **View** 
 
 The Metabase Analytics collection includes a set of read-only dashboards.
 
+### Metabase metrics
+
+General information about people viewing and creating dashboards, questions, subscriptions, and alerts. Cards include:
+
+- Active users last week
+- Question views last week
+- Questions created last week
+- Dashboards created last week
+- Alerts and subscriptions created last week
+- Weekly active users
+- Question views per week
+- Most active users
+- Most active creators
+- Most viewed dashboards
+- Most viewed cards
+
 ### Most viewed content
 
-View the most relevant content in your Metabase.
+View the most relevant content in your Metabase. Cards include:
 
 Filter by group, person, or activated or deactivated accounts.
 
-### Single content view
+- Most viewed dashboards
+- Most viewed questions
+- Most viewed tables
 
-Information about dashboards, questions, models, and tables. Dashboard cards include:
+### Person overview
 
-- Content metadata
-- Content view over time
-- Most active users on this content
-- Last activity on content
-- ...
+See what someone's been up to in your Metabase. Cards include:
 
-### Metabase usage metrics
+- Member of
+- Active alerts
+- Questions created per month
+- Question views per month
+- Most viewed dashboards
+- Most viewed questions
+- Last viewed dashboards
+- Last viewed questions
+- Last viewed tables
+- Recent activity
+- Last queries
 
-### Single person view
+### Dashboard overview
+
+Information about dashboards, questions, models, and tables. Cards include:
+
+- Dashboard metadata
+- Dashboard views per month
+- Question performance
+- Most active people on this dashboard
+- Questions in this dashboard
+- Most active people on this dashboard
+- Questions in this dashboard
+- Recent activity on dashboard
+- Subscriptions on this dashboard
+
+### Question overview
+
+Views, performance, activity, and other data for a particular question. Cards include:
+
+- Question metadata
+- Question views per month
+- Question performance
+- Most active people on this question
+- Dashboards with this question
+- Last activity on this question
+- Alerts on this question
+
+### Performance overview
+
+Question, dashboard and database performance. Cards include:
+
+- Slowest dashboards
+- Dashboards consuming most resources
+- Slowest questions
+- Questions consuming the most resources
+- Dashboards with more questions in the same tab
+- Users consuming the most resources
+
+### Content with cobwebs
+
+Dashboards and questions that you could consider archiving.
+
+- Dashboards without recent reviews
+- Questions without recent reviews
+- Questions that don't belong to a dashboard
 
 ## Models
 
-### Activity
+The Metabase analytics collection includes a bunch of useful models based on Metabase's application database.
 
-Each row of this model describes one event. Fields include:
+### Activity log model
+
+Each row of this model describes one event of a particular topic. Fields include:
 
 - ID
 - Topic
@@ -53,7 +122,81 @@ Each row of this model describes one event. Fields include:
 - Model ID
 - Details
 
+The topics include:
+
+- alert-create
+- alert-delete
+- card-create
+- card-delete
+- card-update
+- dashboard-add-cards
+- dashboard-create
+- dashboard-delete
+- dashboard-remove-cards
+- install
+- metric-create
+- metric-delete
+- metric-update
+- segment-create
+- segment-delete
+- segment-update
+- setting-update
+- subscription-create
+- subscription-delete
+- user-joined
+
+### View Log model
+
+Tracks views cards (which includes models), dashboards, and tables.
+
+Fields include:
+
+- ID
+- Timestamp
+- User ID
+- Entity Type (card, dashboard, or table)
+- Entity ID
+- Entity Qualified ID
+
+### Query log model
+
+Query sources include:
+
+- action
+- ad-hoc
+- collection
+- csv-download
+- dashboard
+- embedded-dashboard
+- embedded-question
+- json-download
+- map-tiles
+- metabot
+- public-dashboard
+- public-question
+- pulse
+- question
+- xlsx-download
+
+### Content model
+
+All Metabase content, including questions, models, dashboards, events, and collections.
+
+Entity types include:
+
+- action
+- collection
+- dashboard
+- event
+- model
+- question
+
+### People model
+
+Everyone who's ever had an account in your Metabase, including both active and deactivated accounts.
+
 ### Alerts and subscriptions
+
 Data from alerts and subscriptions including recipients. Fields include:
 
 - ID
@@ -101,7 +244,7 @@ Questions, dashboards, models, events, and collections.
 
 ### Group members
 
-### People
+### People model
 
 Everyone in your Metabase, including deactivated accounts. Fields include:
 
@@ -118,7 +261,26 @@ Everyone in your Metabase, including deactivated accounts. Fields include:
 - SSO Source
 - Locale
 
-### Dashboard cards
+### Dashboard subscriptions model
+
+Which subscriptions are active, who created them, who's subscribed to them, when they're sent, and more.
+
+- Entity ID
+- Entity Qualified ID
+- Created At
+- Updated At
+- Creator ID
+- Archived
+- Dashboard Qualified ID
+- Schedule Type
+- Schedule Day
+- Schedule Hour
+- Recipient Type
+- Recipients
+- Recipient External
+- Parameters
+
+### Dashboard cards model
 
 Each row is a dashboard card: either a question card or a text card. Fields include:
 
@@ -133,7 +295,62 @@ Each row is a dashboard card: either a question card or a text card. Fields incl
 - Visualization Settings
 - Parameter Mappings
 
+## Databases model
+
+Information about your connected data sources.
+
+Fields include:
+
+- Entity ID
+- Entity Qualified ID
+- Created At
+- Updated At
+- Name
+- Description
+- Database Type
+- Metadata Sync Schedule
+- Cache Field Values Schedule
+- Timezone
+- Is On Demand
+- Auto Run Queries
+- Cache Ttl
+- Creator ID
+- Db Version
+
+## Tables model
+
+List of all tables across all connected data sources. Fields include:
+
+- Entity ID
+- Entity Qualified ID
+- Created At
+- Updated At
+- Name
+- Display Name
+- Description
+- Active
+- Database ID
+- Schema
+- Is Upload
+
+## Fields model
+
+All fields from all connected data sources.
+
+- Entity ID
+- Entity Qualified ID
+- Created At
+- Updated At
+- Name
+- Display Name
+- Description
+- Base Type
+- Visibility Type
+- Fk Target Field ID
+- Has Field Values
+- Active
+- Table ID
 
 ## Custom reports
 
-In the Custom reports section you can store custom questions, models, and dashboards based on data found in the parent Metabase analytics directory.
+In the Custom reports section, you can store custom questions, models, and dashboards based on data found in the parent Metabase analytics directory.
