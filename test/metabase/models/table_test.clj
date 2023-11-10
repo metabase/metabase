@@ -81,7 +81,6 @@
                (serdes/raw-hash ["PUBLIC" "widget" db-hash])
                (serdes/identity-hash table)))))))
 
-
 (deftest cleanup-permissions-after-delete-table-test
   (mt/with-temp
     [:model/Database         {db-id :id}    {}

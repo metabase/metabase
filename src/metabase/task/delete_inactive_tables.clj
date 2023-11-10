@@ -42,5 +42,5 @@
                  (triggers/start-now)
                  (triggers/with-schedule
                    ;; run every day at 1 AM
-                   (cron/cron-schedule "0 0 1 * * ? *")))]
+                   (cron/cron-schedule "0 30 1 * * ? *")))]
     (task/schedule-task! job trigger)))
