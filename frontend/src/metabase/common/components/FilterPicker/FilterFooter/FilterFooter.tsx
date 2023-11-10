@@ -15,6 +15,7 @@ export function FilterFooter({
   isNew,
   canSubmit,
   children,
+  onSubmit,
 }: FilterFooterProps) {
   return (
     <FilterFooterRoot p="sm" justify="space-between">
