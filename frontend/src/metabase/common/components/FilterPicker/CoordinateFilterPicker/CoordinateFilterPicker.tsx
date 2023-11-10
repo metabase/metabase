@@ -11,8 +11,16 @@ import { FilterHeader } from "../FilterHeader";
 import { FilterFooter } from "../FilterFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
+import { CoordinateColumnPicker } from "./CoordinateColumnPicker";
 import { OPERATOR_OPTIONS } from "./constants";
-import { getDefaultValues, hasValidValues } from "./utils";
+import {
+  canPickColumns,
+  getAvailableColumns,
+  getDefaultColumn,
+  getDefaultValues,
+  getFilterClause,
+  hasValidValues,
+} from "./utils";
 
 export function CoordinateFilterPicker({
   query,
@@ -40,12 +48,19 @@ export function CoordinateFilterPicker({
     [query, stageIndex, column],
   );
 
+  const availableColumns = useMemo(
+    () => getAvailableColumns(query, stageIndex, column),
+    [query, stageIndex, column],
+  );
+
   const [operator, setOperator] = useState(
     filterParts ? filterParts.operator : "=",
   );
-
   const [values, setValues] = useState(
     getDefaultValues(operator, filterParts?.values),
+  );
+  const [anotherColumn, setAnotherColumn] = useState(
+    getDefaultColumn(availableColumns, filterParts?.longitudeColumn),
   );
 
   const { valueCount } = OPERATOR_OPTIONS[operator];
@@ -58,24 +73,12 @@ export function CoordinateFilterPicker({
 
   const handleSubmit = () => {
     if (isValid) {
-      onChange(
-        Lib.coordinateFilterClause({
-          operator,
-          column,
-          longitudeColumn: column,
-          values,
-        }),
-      );
+      onChange(getFilterClause(operator, column, anotherColumn, values));
     }
   };
 
   return (
-    <Box
-      component="form"
-      maw={MAX_WIDTH}
-      data-testid="number-filter-picker"
-      onSubmit={handleSubmit}
-    >
+    <Box maw={MAX_WIDTH} data-testid="number-filter-picker">
       <FilterHeader columnName={columnInfo.longDisplayName} onBack={onBack}>
         <FilterOperatorPicker
           value={operator}
@@ -84,6 +87,15 @@ export function CoordinateFilterPicker({
         />
       </FilterHeader>
       <Box>
+        {canPickColumns(operator, availableColumns) && (
+          <CoordinateColumnPicker
+            query={query}
+            stageIndex={stageIndex}
+            column={column}
+            availableColumns={availableColumns}
+            onChange={setAnotherColumn}
+          />
+        )}
         <CoordinateValueInput
           values={values}
           valueCount={valueCount}

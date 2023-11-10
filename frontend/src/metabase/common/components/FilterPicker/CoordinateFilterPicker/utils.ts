@@ -1,4 +1,4 @@
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 import { OPERATOR_OPTIONS } from "./constants";
 import type { NumberValue } from "./types";
 
@@ -30,4 +30,56 @@ export function hasValidValues(
   }
 
   return hasMultipleValues ? values.length > 0 : values.length === valueCount;
+}
+
+export function getAvailableColumns(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+) {
+  const isLatitude = Lib.isLatitude(column);
+  return Lib.filterableColumns(query, stageIndex).filter(column => {
+    return isLatitude ? Lib.isLongitude(column) : Lib.isLatitude(column);
+  });
+}
+
+export function getDefaultColumn(
+  columns: Lib.ColumnMetadata[],
+  longitudeColumn?: Lib.ColumnMetadata,
+) {
+  return longitudeColumn ?? columns[0];
+}
+
+export function canPickColumns(
+  operator: Lib.CoordinateFilterOperatorName,
+  columns: Lib.ColumnMetadata[],
+) {
+  return operator === "inside" && columns.length > 1;
+}
+
+export function getFilterClause(
+  operator: Lib.CoordinateFilterOperatorName,
+  column: Lib.ColumnMetadata,
+  anotherColumn: Lib.ColumnMetadata | undefined,
+  values: number[],
+) {
+  if (operator !== "inside") {
+    return Lib.coordinateFilterClause({
+      operator,
+      column,
+      values,
+    });
+  }
+
+  const latitudeColumn =
+    anotherColumn && Lib.isLatitude(anotherColumn) ? anotherColumn : column;
+  const longitudeColumn =
+    anotherColumn && Lib.isLongitude(anotherColumn) ? anotherColumn : column;
+
+  return Lib.coordinateFilterClause({
+    operator,
+    column: latitudeColumn,
+    longitudeColumn,
+    values,
+  });
 }
