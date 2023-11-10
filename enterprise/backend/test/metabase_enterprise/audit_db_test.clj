@@ -13,13 +13,14 @@
 
 (defmacro with-audit-db-restoration [& body]
   "Calls `ensure-audit-db-installed!` before and after `body` to ensure that the audit DB is installed and then
-  restored if necessary."
-  `(do
-     (mbc/ensure-audit-db-installed!)
-     (try
-       ~@body
-       (finally
-         (mbc/ensure-audit-db-installed!)))))
+  restored if necessary. Also disables audit content loading if it is already loaded."
+  `(let [audit-collection-exists?# (t2/exists? :model/Collection :type "instance-analytics")]
+     (mt/with-temp-env-var-value [mb-load-analytics-content (not audit-collection-exists?#)]
+       (mbc/ensure-audit-db-installed!)
+       (try
+         ~@body
+         (finally
+           (mbc/ensure-audit-db-installed!))))))
 
 (deftest audit-db-installation-test
   (mt/test-drivers #{:postgres :h2 :mysql}
@@ -27,22 +28,22 @@
       (t2/delete! :model/Database :is_audit true)
       (with-redefs [audit-db/analytics-dir-resource nil]
         (is (= nil audit-db/analytics-dir-resource))
-        (is (= :metabase-enterprise.audit-db/installed (audit-db/ensure-audit-db-installed!)))
+        (is (= ::audit-db/installed (audit-db/ensure-audit-db-installed!)))
         (is (= perms/audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
             "Audit DB is installed.")
         (is (= 0 (t2/count :model/Card {:where [:= :database_id perms/audit-db-id]}))
             "No cards created for Audit DB."))
       (t2/delete! :model/Database :is_audit true))
 
-    (testing "Audit DB content is installed when it is not found"
-      (is (= :metabase-enterprise.audit-db/installed (audit-db/ensure-audit-db-installed!)))
+    (testing "Audit DB content is installed when it is found"
+      (is (= ::audit-db/installed (audit-db/ensure-audit-db-installed!)))
       (is (= perms/audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
           "Audit DB is installed.")
       (is (some? (io/resource "instance_analytics")))
       (is (not= 0 (t2/count :model/Card {:where [:= :database_id perms/audit-db-id]}))
           "Cards should be created for Audit DB when the content is there."))
 
-    (testing "Audit DB content is installed when it is not found"
+    (testing "Audit DB does not have scheduled syncs"
       (let [db-has-sync-job-trigger? (fn [db-id]
                                        (contains?
                                         (set (map #(-> % :data (get "db-id"))

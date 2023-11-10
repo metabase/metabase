@@ -15,7 +15,8 @@
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [metabase.models.setting :refer [defsetting]])
   (:import
    (java.util.jar JarEntry JarFile)))
 
@@ -176,23 +177,32 @@
                     {:replace-existing true})
       (log/info "Copying complete."))))
 
-(defn- load-analytics-content
+(defsetting load-analytics-content
+  "Whether or not we should load Metabase analytics content on startup. Defaults to true, but can be disabled via environment variable."
+  :type       :boolean
+  :default    true
+  :visibility :internal
+  :setter     :none
+  :audit      :never)
+
+(defn- maybe-load-analytics-content!
   [audit-db]
-  (ee.internal-user/ensure-internal-user-exists!)
-  (adjust-audit-db-to-source! audit-db)
-  (log/info "Loading Analytics Content...")
-  (ia-content->plugins)
-  (log/info (str "Loading Analytics Content from: plugins/instance_analytics"))
-  ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
-  (let [report (log/with-no-logs
-                 (serialization.cmd/v2-load-internal! "plugins/instance_analytics"
-                                                     {}
-                                                     :token-check? false))]
-    (if (not-empty (:errors report))
-      (log/info (str "Error Loading Analytics Content: " (pr-str report)))
-      (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))))
-  (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
-    (adjust-audit-db-to-host! audit-db)))
+  (when (and analytics-dir-resource (load-analytics-content))
+    (ee.internal-user/ensure-internal-user-exists!)
+    (adjust-audit-db-to-source! audit-db)
+    (log/info "Loading Analytics Content...")
+    (ia-content->plugins)
+    (log/info (str "Loading Analytics Content from: plugins/instance_analytics"))
+    ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
+    (let [report (log/with-no-logs
+                   (serialization.cmd/v2-load-internal! "plugins/instance_analytics"
+                                                       {}
+                                                       :token-check? false))]
+      (if (not-empty (:errors report))
+        (log/info (str "Error Loading Analytics Content: " (pr-str report)))
+        (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))))
+    (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
+      (adjust-audit-db-to-host! audit-db))))
 
 (defenterprise ensure-audit-db-installed!
   "EE implementation of `ensure-db-installed!`. Installs audit db if it does not already exist."
@@ -213,7 +223,6 @@
                    :else
                    ::no-op)]
     (let [audit-db (t2/select-one :model/Database :is_audit true)]
-      (when (and (not= result ::no-op) analytics-dir-resource)
         ;; prevent sync while loading
-        ((sync-util/with-duplicate-ops-prevented :sync-database audit-db (partial load-analytics-content audit-db))))
+      ((sync-util/with-duplicate-ops-prevented :sync-database audit-db (partial maybe-load-analytics-content! audit-db)))
       result)))
