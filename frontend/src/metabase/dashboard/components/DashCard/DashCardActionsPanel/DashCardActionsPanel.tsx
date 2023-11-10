@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import type { MouseEvent } from "react";
+import { useState } from "react";
 import { Icon } from "metabase/core/components/Icon";
 
 import { getVisualizationRaw } from "metabase/visualizations";
@@ -14,15 +16,16 @@ import type {
 import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard } from "metabase/dashboard/utils";
 
-import { DashCardTabMenu } from "../DashCardTabMenu/DashCardTabMenu";
-import DashCardActionButton from "./DashCardActionButton";
-
-import AddSeriesButton from "./AddSeriesButton";
-import ChartSettingsButton from "./ChartSettingsButton";
-
-import { DashCardActionButtonsContainer } from "./DashCardActionButtons.styled";
-import ActionSettingsButton from "./ActionSettingsButton";
-import LinkCardEditButton from "./LinkCardEditButton";
+import { ChartSettingsButton } from "./ChartSettingsButton";
+import { DashCardTabMenu } from "./DashCardTabMenu";
+import { DashCardActionButton } from "./DashCardActionButton";
+import { AddSeriesButton } from "./AddSeriesButton";
+import { ActionSettingsButton } from "./ActionSettingsButton";
+import { LinkCardEditButton } from "./LinkCardEditButton";
+import {
+  DashCardActionButtonsContainer,
+  DashCardActionsPanelContainer,
+} from "./DashCardActionsPanel.styled";
 
 interface Props {
   series: Series;
@@ -40,9 +43,11 @@ interface Props {
   ) => void;
   showClickBehaviorSidebar: () => void;
   onPreviewToggle: () => void;
+  onLeftEdge: boolean;
+  onMouseDown: (event: MouseEvent) => void;
 }
 
-function DashCardActionButtons({
+export function DashCardActionsPanel({
   series,
   dashboard,
   dashcard,
@@ -56,6 +61,8 @@ function DashCardActionButtons({
   onUpdateVisualizationSettings,
   showClickBehaviorSidebar,
   onPreviewToggle,
+  onLeftEdge,
+  onMouseDown,
 }: Props) {
   const {
     disableSettingsConfig,
@@ -64,10 +71,19 @@ function DashCardActionButtons({
     disableClickBehavior,
   } = getVisualizationRaw(series) ?? {};
 
+  const [isDashCardTabMenuOpen, setIsDashCardTabMenuOpen] = useState(false);
+
   const buttons = [];
 
   if (dashcard) {
-    buttons.push(<DashCardTabMenu key="tabs" dashCardId={dashcard.id} />);
+    buttons.push(
+      <DashCardTabMenu
+        key="tabs"
+        dashCardId={dashcard.id}
+        onClose={() => setIsDashCardTabMenuOpen(false)}
+        onOpen={() => setIsDashCardTabMenuOpen(true)}
+      />,
+    );
   }
 
   if (supportPreviewing) {
@@ -146,18 +162,22 @@ function DashCardActionButtons({
   }
 
   return (
-    <DashCardActionButtonsContainer>
-      {buttons}
-      <DashCardActionButton
-        onClick={onRemove}
-        tooltip={t`Remove`}
-        analyticsEvent="Dashboard;Remove Card Modal"
-      >
-        <DashCardActionButton.Icon name="close" />
-      </DashCardActionButton>
-    </DashCardActionButtonsContainer>
+    <DashCardActionsPanelContainer
+      data-testid="dashboardcard-actions-panel"
+      onMouseDown={onMouseDown}
+      isDashCardTabMenuOpen={isDashCardTabMenuOpen}
+      onLeftEdge={onLeftEdge}
+    >
+      <DashCardActionButtonsContainer>
+        {buttons}
+        <DashCardActionButton
+          onClick={onRemove}
+          tooltip={t`Remove`}
+          analyticsEvent="Dashboard;Remove Card Modal"
+        >
+          <DashCardActionButton.Icon name="close" />
+        </DashCardActionButton>
+      </DashCardActionButtonsContainer>
+    </DashCardActionsPanelContainer>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DashCardActionButtons;
