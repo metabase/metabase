@@ -76,7 +76,7 @@
   (merge
    (-> query-execution
        add-running-time
-       (dissoc :error :hash :executor_id :action_id :card_id :dashboard_id :pulse_id :result_rows :native))
+       (dissoc :error :hash :executor_id :action_id :is_sandboxed :card_id :dashboard_id :pulse_id :result_rows :native))
    result
    {:status                 :completed
     :average_execution_time (when cached?

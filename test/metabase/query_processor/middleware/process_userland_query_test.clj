@@ -58,6 +58,7 @@
               :database_id            nil
               :started_at             #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
               :json_query             query
+              :is_sandboxed           false
               :average_execution_time nil
               :context                nil
               :running_time           true}
@@ -73,6 +74,7 @@
               :pulse_id     nil
               :card_id      nil
               :action_id    nil
+              :is_sandboxed false
               :context      nil
               :running_time true
               :cache_hit    false
@@ -99,6 +101,7 @@
               :native       false
               :pulse_id     nil
               :action_id    nil
+              :is_sandboxed false
               :card_id      nil
               :context      nil
               :running_time true
