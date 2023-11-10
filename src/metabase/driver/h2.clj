@@ -540,6 +540,7 @@
      (when-not (sql-jdbc.execute/recursive-connection?)
        ;; in H2, setting readOnly to true doesn't prevent writes
        ;; see https://github.com/h2database/h2database/issues/1163
+       (.setAutoCommit conn (or write? sql-jdbc.execute/*read-only-connection-auto-commit*))
        (.setReadOnly conn (not write?)))
      (f conn))))
 

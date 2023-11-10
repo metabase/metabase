@@ -338,11 +338,6 @@
   The default is false, which means even read-only connections start with a transaction."
   false)
 
-(def ^:dynamic *read-only-connection-set-isolation-level*
-  "The transaction isolation level for read-only (JDBC) connections.
-  The default value false means the default set by the driver is used."
-  false)
-
 (mu/defn set-default-connection-options!
   "Part of the default implementation of [[do-with-connection-with-options]]: set options for a newly fetched
   Connection."
@@ -379,8 +374,6 @@
       (try
         (log/trace (pr-str (list '.setAutoCommit 'conn *read-only-connection-auto-commit*)))
         (.setAutoCommit conn *read-only-connection-auto-commit*)
-        (when *read-only-connection-set-isolation-level*
-          (set-best-transaction-level! driver conn))
         (catch Throwable e
           (log/debug e "Error enabling connection autoCommit"))))
     (try

@@ -177,13 +177,14 @@
 ;; 3.  SparkSQL doesn't support making connections read-only
 ;; 4.  SparkSQL doesn't support setting the default result set holdability
 (defmethod sql-jdbc.execute/do-with-connection-with-options :sparksql
-  [driver db-or-id-or-spec options f]
+  [driver db-or-id-or-spec {:keys [write?] :as options} f]
   (sql-jdbc.execute/do-with-resolved-connection
    driver
    db-or-id-or-spec
    options
    (fn [^Connection conn]
      (when-not (sql-jdbc.execute/recursive-connection?)
+       (.setAutoCommit conn (or write? sql-jdbc.execute/*read-only-connection-auto-commit*))
        (.setTransactionIsolation conn Connection/TRANSACTION_READ_UNCOMMITTED))
      (f conn))))
 

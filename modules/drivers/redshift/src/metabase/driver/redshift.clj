@@ -119,13 +119,14 @@
 ;; This impl is basically the same as the default impl in [[metabase.driver.sql-jdbc.execute]], but doesn't attempt to
 ;; make the connection read-only, because that seems to be causing problems for people
 (defmethod sql-jdbc.execute/do-with-connection-with-options :redshift
-  [driver db-or-id-or-spec {:keys [^String session-timezone], :as options} f]
+  [driver db-or-id-or-spec {:keys [^String session-timezone write?], :as options} f]
   (sql-jdbc.execute/do-with-resolved-connection
    driver
    db-or-id-or-spec
    options
    (fn [^Connection conn]
      (when-not (sql-jdbc.execute/recursive-connection?)
+       (.setAutoCommit conn (or write? sql-jdbc.execute/*read-only-connection-auto-commit*))
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
        (try

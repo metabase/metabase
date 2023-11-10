@@ -668,6 +668,7 @@
       (.setTimeZoneId underlying-conn session-timezone))
     ;; as with statement and prepared-statement, cannot set holdability on the connection level
     (let [read-only? (not write?)]
+      (.setAutoCommit conn (or write? sql-jdbc.execute/*read-only-connection-auto-commit*))
       (try
         (.setReadOnly conn read-only?)
         (catch Throwable e
