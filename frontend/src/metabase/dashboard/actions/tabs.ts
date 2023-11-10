@@ -23,6 +23,7 @@ import { addUndo } from "metabase/redux/undo";
 import { INITIAL_DASHBOARD_STATE } from "../constants";
 import { getDashCardById } from "../selectors";
 import { trackCardMoved } from "../analytics";
+import { calculateDashCardRowAfterUndo } from "../utils";
 import { getDashCardMoveToTabUndoMessage, getExistingDashCards } from "./utils";
 
 type CreateNewTabPayload = { tabId: DashboardTabId };
@@ -366,9 +367,7 @@ export const tabsReducer = createReducer<DashboardState>(
       ) => {
         const dashCard = state.dashcards[dashCardId];
 
-        // when a card is moved, another card could steal its position,
-        // this trick gives the original tab precedence on the position
-        dashCard.row = originalRow - 0.1;
+        dashCard.row = calculateDashCardRowAfterUndo(originalRow);
         dashCard.col = originalCol;
         dashCard.dashboard_tab_id = originalTabId;
         dashCard.isDirty = true;

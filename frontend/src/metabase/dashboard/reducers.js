@@ -46,7 +46,10 @@ import {
   tabsReducer,
   FETCH_CARD_DATA_PENDING,
 } from "./actions";
-import { syncParametersAndEmbeddingParams } from "./utils";
+import {
+  calculateDashCardRowAfterUndo,
+  syncParametersAndEmbeddingParams,
+} from "./utils";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
 
 const dashboardId = handleActions(
@@ -230,7 +233,7 @@ const dashcards = handleActions(
       [dashcardId]: {
         ...state[dashcardId],
         isRemoved: false,
-        row: state[dashcardId].row - 0.1,
+        row: calculateDashCardRowAfterUndo(state[dashcardId].row),
       },
     }),
     [MARK_NEW_CARD_SEEN]: (state, { payload: dashcardId }) => ({
