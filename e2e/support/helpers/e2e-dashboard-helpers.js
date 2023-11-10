@@ -67,7 +67,8 @@ export function showDashboardCardActions(index = 0) {
 
 export function removeDashboardCard(index = 0) {
   showDashboardCardActions(index);
-  cy.findAllByTestId("dashboardcard-actions-panel")
+  getDashboardCard(index)
+    .findAllByTestId("dashboardcard-actions-panel")
     .eq(0)
     .should("be.visible")
     .icon("close")
