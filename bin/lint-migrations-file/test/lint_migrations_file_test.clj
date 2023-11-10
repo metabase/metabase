@@ -31,11 +31,11 @@
                        (apply array-map keyvals))})
 
 (defn- validate [& changes]
-  (lint-migrations-file/validate-migrations
+  (#'lint-migrations-file/validate-migrations
    {:databaseChangeLog changes}))
 
 (defn- validate-ex-info [& changes]
-  (try (lint-migrations-file/validate-migrations {:databaseChangeLog changes})
+  (try (#'lint-migrations-file/validate-migrations {:databaseChangeLog changes})
        (catch Exception e (ex-data e))))
 
 (deftest require-unique-ids-test

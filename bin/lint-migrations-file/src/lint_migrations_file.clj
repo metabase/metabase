@@ -29,7 +29,6 @@
     id))
 
 (defn- distinct-change-set-ids? [change-log]
-  ;; there are actually two migration 32s, so that's the only exception we're allowing.
   (let [ids (change-set-ids change-log)]
     ;; can't apply distinct? with so many IDs
     (= (count ids) (count (set ids)))))

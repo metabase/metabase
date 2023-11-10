@@ -48,15 +48,15 @@ databaseChangeLog:
       changes:
         - sqlFile:
             dbms: postgresql
-            path: ../initialization/metabase_postgres.sql
+            path: initialization/metabase_postgres.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: mysql,mariadb
-            path: ../initialization/metabase_mysql.sql
+            path: initialization/metabase_mysql.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: h2
-            path: ../initialization/metabase_h2.sql
+            path: initialization/metabase_h2.sql
             relativeToChangelogFile: true
 
 # Note on rollback: migrations for v45 onwards should always include a rollback key unless they are supported
