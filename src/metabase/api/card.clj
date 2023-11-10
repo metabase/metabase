@@ -25,8 +25,7 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.models
-    :refer [Card CardBookmark Collection Database PersistedInfo Pulse Table
-            ViewLog]]
+    :refer [Card CardBookmark Collection Database PersistedInfo Pulse Table]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
@@ -107,34 +106,6 @@
   [_ table-id]
   (t2/select Card, :table_id table-id, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-(mu/defn ^:private cards-with-ids :- [:maybe [:sequential (mi/InstanceOf Card)]]
-  "Return unarchived Cards with `card-ids`.
-  Make sure cards are returned in the same order as `card-ids`; `[in card-ids]` won't preserve the order."
-  [card-ids :- [:sequential ms/PositiveInt]]
-  (when (seq card-ids)
-    (let [card-id->card (m/index-by :id (t2/select Card, :id [:in (set card-ids)], :archived false))]
-      (filter identity (map card-id->card card-ids)))))
-
-;; Return the 10 Cards most recently viewed by the current user, sorted by how recently they were viewed.
-(defmethod cards-for-filter-option* :recent
-  [_]
-  (cards-with-ids (map :model_id (t2/select [ViewLog :model_id [:%max.timestamp :max]]
-                                   :model   "card"
-                                   :user_id api/*current-user-id*
-                                   {:group-by [:model_id]
-                                    :order-by [[:max :desc]]
-                                    :limit    10}))))
-
-;; All Cards, sorted by popularity (the total number of times they are viewed in `ViewLogs`). (yes, this isn't
-;; actually filtering anything, but for the sake of simplicitiy it is included amongst the filter options for the time
-;; being).
-(defmethod cards-for-filter-option* :popular
-  [_]
-  (cards-with-ids (map :model_id (t2/select [ViewLog :model_id [:%count.* :count]]
-                                   :model "card"
-                                   {:group-by [:model_id]
-                                    :order-by [[:count :desc]]}))))
-
 ;; Cards that have been archived.
 (defmethod cards-for-filter-option* :archived
   [_]
@@ -165,9 +136,8 @@
 
 (api/defendpoint GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
-  `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, :using_model
-  and `archived`. See corresponditng implementation functions above for the specific behavior of each filter
-  option. :card_index:"
+  `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `using_model` and `archived`. See
+  corresponditng implementation functions above for the specific behavior of each filterp option. :card_index:"
   [f model_id]
   {f        [:maybe (into [:enum] card-filter-options)]
    model_id [:maybe ms/PositiveInt]}
