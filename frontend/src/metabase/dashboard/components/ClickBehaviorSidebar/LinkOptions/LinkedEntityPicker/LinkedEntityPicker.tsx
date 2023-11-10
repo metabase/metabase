@@ -25,11 +25,11 @@ import type {
   ClickBehavior,
   EntityCustomDestinationClickBehavior,
   DashboardTab,
-  Collection,
 } from "metabase-types/api";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
+import { isPublicCollection } from "metabase/collections/utils";
 import type Question from "metabase-lib/Question";
 
 import { SidebarItem } from "../../SidebarItem";
@@ -311,10 +311,6 @@ function LinkedEntityPicker({
       )}
     </div>
   );
-}
-
-function isPublicCollection(collection: Partial<Collection>) {
-  return !collection.is_personal;
 }
 
 export { LinkedEntityPicker };

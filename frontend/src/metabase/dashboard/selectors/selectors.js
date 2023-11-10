@@ -77,6 +77,9 @@ export const getIsShowDashboardInfoSidebar = createSelector(
   sidebar => sidebar.name === SIDEBAR_NAME.info,
 );
 
+/**
+ * @type {(state: import("metabase-types/store").State) => import("metabase-types/api").Dashboard}
+ */
 export const getDashboard = createSelector(
   [getDashboardId, getDashboards],
   (dashboardId, dashboards) => dashboards[dashboardId],

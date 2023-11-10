@@ -40,8 +40,9 @@ export function collection(collection?: Collection) {
     return `/collection/${id}`;
   }
 
-  const isPersonalCollection = typeof collection.personal_owner_id === "number";
-  const slug = isPersonalCollection
+  const isRootPersonalCollection =
+    typeof collection.personal_owner_id === "number";
+  const slug = isRootPersonalCollection
     ? slugifyPersonalCollection(collection)
     : slugg(collection.name);
 

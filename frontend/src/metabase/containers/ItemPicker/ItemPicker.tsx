@@ -11,7 +11,11 @@ import Collections from "metabase/entities/collections";
 
 import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
-import { isRootCollection } from "metabase/collections/utils";
+import {
+  isPersonalCollection,
+  isPublicCollection,
+  isRootCollection,
+} from "metabase/collections/utils";
 
 import type { Collection, CollectionId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -277,14 +281,6 @@ function getCollectionFilter(
   }
 
   return _.identity;
-}
-
-function isPersonalCollection(collection: Collection) {
-  return collection.is_personal;
-}
-
-function isPublicCollection(collection: Collection) {
-  return !collection.is_personal;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
