@@ -263,13 +263,13 @@ function uploadFile(testFile, valid = true) {
     );
   });
 
-  cy.findByRole("status").within(() => {
+  cy.findAllByRole("status").within(() => {
     cy.findByText(/Uploading/i);
     cy.findByText(testFile.fileName);
   });
 
   if (valid) {
-    cy.findByRole("status").within(() => {
+    cy.findAllByRole("status").within(() => {
       cy.findByText("Data added to Uploads Collection", {
         timeout: 10 * 1000,
       });
@@ -281,14 +281,14 @@ function uploadFile(testFile, valid = true) {
       cy.findByText(testFile.humanName);
     });
 
-    cy.findByRole("status").within(() => {
+    cy.findAllByRole("status").within(() => {
       cy.findByText("Start exploring").click();
     });
 
     cy.url().should("include", `/model/`);
     cy.findByTestId("TableInteractive-root");
   } else {
-    cy.findByRole("status").within(() => {
+    cy.findAllByRole("status").within(() => {
       cy.findByText("Error uploading your File");
     });
   }
