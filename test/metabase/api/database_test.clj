@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.database :as api.database]
    [metabase.api.table :as api.table]
    [metabase.driver :as driver]
@@ -22,6 +23,8 @@
    [metabase.sync.field-values :as field-values]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
+   [metabase.test.data.impl :as data.impl]
+   [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
@@ -47,6 +50,10 @@
 (defmethod driver/can-connect? ::test-driver
   [_ _]
   true)
+
+(defmethod driver/dbms-version ::test-driver
+  [_ _]
+  "1.0")
 
 (defn- db-details
   "Return default column values for a database (either the test database, via `(mt/db)`, or optionally passed in)."
@@ -223,20 +230,18 @@
 (defn- create-db-via-api! [& [m]]
   (let [db-name (mt/random-name)]
     (try
-      (let [{db-id :id, :as response} (with-redefs [driver/available?   (constantly true)
-                                                    driver/can-connect? (constantly true)]
-                                        (mt/user-http-request :crowberto :post 200 "database"
-                                                              (merge
-                                                               {:name    db-name
-                                                                :engine  (u/qualified-name ::test-driver)
-                                                                :details {:db "my_db"}}
-                                                               m)))]
-        (is (malli= [:map
-                     [:id ::lib.schema.id/database]]
-                    response))
-        (when (integer? db-id)
-          (t2/select-one Database :id db-id)))
-      (finally (t2/delete! Database :name db-name)))))
+     (let [{db-id :id, :as response} (with-redefs [driver/available?   (constantly true)
+                                                   driver/can-connect? (constantly true)]
+                                       (mt/user-http-request :crowberto :post 200 "database"
+                                                             (merge
+                                                              {:name    db-name
+                                                               :engine  (u/qualified-name ::test-driver)
+                                                               :details {:db "my_db"}}
+                                                              m)))]
+       (is (malli= [:map [:id ::lib.schema.id/database]]
+                   response))
+       (t2/select-one Database :id db-id))
+     (finally (t2/delete! Database :name db-name)))))
 
 (deftest create-db-test
   (testing "POST /api/database"
@@ -329,6 +334,27 @@
       (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
         (is (partial= {:cache_ttl 13}
                       (create-db-via-api! {:cache_ttl 13})))))))
+
+(deftest create-db-succesful-track-snowplow-test
+  ;; h2 is no longer supported as a db source
+  ;; the rests are disj because it's timeouted when adding it as a DB for some reasons
+  (mt/test-drivers (disj (mt/normal-drivers) :h2 :bigquery-cloud-sdk :athena :snowflake)
+    (snowplow-test/with-fake-snowplow-collector
+      (let [dataset-def (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'avian-singles))]
+        ;; trigger this to make sure the database exists before we add them
+        (data.impl/get-or-create-database! driver/*driver* dataset-def)
+        (mt/with-model-cleanup [:model/Database]
+          (is (=? {:id int?}
+                  (mt/user-http-request :crowberto :post 200 "database"
+                                        {:name    (mt/random-name)
+                                         :engine  (u/qualified-name driver/*driver*)
+                                         :details (tx/dbdef->connection-details driver/*driver* nil dataset-def)})))
+          (is (=? {"database"     (name driver/*driver*)
+                   "database_id"  int?
+                   "source"       "admin"
+                   "dbms_version" string?
+                   "event"        "database_connection_successful"}
+                  (:data (last (snowplow-test/pop-event-data-and-user-id!))))))))))
 
 (deftest create-db-audit-log-test
   (testing "POST /api/database"

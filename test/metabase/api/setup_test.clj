@@ -186,15 +186,22 @@
                                      :auto_run_queries {:default true}}
               v                     [true false nil]]
         (let [db-name (mt/random-name)]
-          (with-setup! {:database {:engine  "h2"
-                                   :name    db-name
-                                   :details details
-                                   k        v}}
-            (testing "Database should be created"
-              (is (t2/exists? Database :name db-name)))
-            (testing (format "should be able to set %s to %s (default: %s) during creation" k (pr-str v) default)
-              (is (= (if (some? v) v default)
-                     (t2/select-one-fn k Database :name db-name))))))))))
+          (snowplow-test/with-fake-snowplow-collector
+            (with-setup! {:database {:engine  "h2"
+                                     :name    db-name
+                                     :details details
+                                     k        v}}
+              (testing "Database should be created"
+                (is (t2/exists? Database :name db-name)))
+              (testing (format "should be able to set %s to %s (default: %s) during creation" k (pr-str v) default)
+                (is (= (if (some? v) v default)
+                       (t2/select-one-fn k Database :name db-name)))))
+            (is (=? {"database"     "h2"
+                     "database_id"  int?
+                     "source"       "setup"
+                     "dbms_version" string?
+                     "event"        "database_connection_successful"}
+                 (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))))))
 
 (def ^:private create-database-trigger-sync-test-event (atom nil))
 
