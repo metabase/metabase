@@ -470,6 +470,14 @@
         [#js ["field" (meta/id :venues :name) nil]
          #js ["field" (meta/id :venues :name) #js {}]])))
 
+(deftest ^:parallel find-column-for-legacy-ref-match-by-name-test
+  (testing "Make sure fallback matching by name works correctly"
+    (is (=? {:name "NAME"}
+            (lib/find-column-for-legacy-ref
+             lib.tu/venues-query
+             [:field (meta/id :venues :name) nil]
+             [(dissoc (meta/field-metadata :venues :name) :id :table-id)])))))
+
 (deftest ^:parallel find-column-for-legacy-ref-expression-test
   (are [legacy-ref] (=? {:name "expr", :lib/source :source/expressions}
                         (lib/find-column-for-legacy-ref

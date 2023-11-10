@@ -1858,7 +1858,8 @@
   (mr/validator Query))
 
 (def ^{:arglists '([query])} validate-query
-  "Validator for an outer query; throw an Exception explaining why the query is invalid if it is."
+  "Validator for an outer query; throw an Exception explaining why the query is invalid if it is. Returns query if
+  valid."
   (let [explainer (mr/explainer Query)]
     (fn [query]
       (if (valid-query? query)

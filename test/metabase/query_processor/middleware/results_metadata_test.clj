@@ -16,7 +16,6 @@
    [metabase.sync.analyze.query-results :as qr]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -307,27 +306,16 @@
                   :order-by     [[:asc $product_id->products.category]]
                   :limit        5})}]
         (testing (str description "\n" (u/pprint-to-str query))
-          (is (schema= {:status   (s/eq :completed)
-                        :data     (mt/$ids orders
-                                    {:cols             [(s/one {:name      (s/eq "CATEGORY")
-                                                                :field_ref (s/eq $product_id->products.category)
-                                                                :id        (s/eq %products.category)
-                                                                s/Keyword  s/Any}
-                                                               "products.category")
-                                                        (s/one {:name      (s/eq "count")
-                                                                :field_ref (s/eq [:aggregation 0])
-                                                                s/Keyword  s/Any}
-                                                               "count aggregation")]
-                                     :results_metadata {:columns  [(s/one {:name      (s/eq "CATEGORY")
-                                                                           :field_ref (s/eq $product_id->products.category)
-                                                                           :id        (s/eq %products.category)
-                                                                           s/Keyword  s/Any}
-                                                                          "results metadata for products.category")
-                                                                   (s/one {:name      (s/eq "count")
-                                                                           :field_ref (s/eq [:aggregation 0])
-                                                                           s/Keyword  s/Any}
-                                                                          "results metadata for count aggregation")]
-                                                        s/Keyword s/Any}
-                                     s/Keyword         s/Any})
-                        s/Keyword s/Any}
-                       (qp/process-query query))))))))
+          (is (=? {:status   :completed
+                   :data     (mt/$ids orders
+                               {:cols             [{:name      "CATEGORY"
+                                                    :field_ref $product_id->products.category
+                                                    :id        %products.category}
+                                                   {:name      "count"
+                                                    :field_ref [:aggregation 0]}]
+                                :results_metadata {:columns  [{:name      "CATEGORY"
+                                                               :field_ref $product_id->products.category
+                                                               :id        %products.category}
+                                                              {:name      "count"
+                                                               :field_ref [:aggregation 0]}]}})}
+                  (qp/process-query query))))))))

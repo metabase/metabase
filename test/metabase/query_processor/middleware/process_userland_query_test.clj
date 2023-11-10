@@ -124,35 +124,32 @@
 (deftest record-view-log-when-process-userland-query-test
   (testing "record a view log with only card id"
     (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query users)}]
-      (mt/with-model-cleanup [:model/ViewLog]
-        (qp/process-userland-query (assoc
-                                    (:dataset_query card)
-                                    :info {:card-id (:id card)}))
+      (qp/process-userland-query (assoc
+                                  (:dataset_query card)
+                                  :info {:card-id (:id card)}))
 
-        (is (true? (t2/exists? :model/ViewLog :model "card" :model_id (:id card) :user_id nil))))))
+      (is (true? (t2/exists? :model/ViewLog :model "card" :model_id (:id card) :user_id nil)))))
 
   (testing "record a view log with card id and executed by"
     (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query users)}]
-      (mt/with-model-cleanup [:model/ViewLog]
-        (qp/process-userland-query (assoc
-                                    (:dataset_query card)
-                                    :info {:card-id (:id card)
-                                           :executed-by (mt/user->id :rasta)}))
+      (qp/process-userland-query (assoc
+                                  (:dataset_query card)
+                                  :info {:card-id (:id card)
+                                         :executed-by (mt/user->id :rasta)}))
 
-        (is (true? (t2/exists? :model/ViewLog :model "card" :model_id (:id card) :user_id (mt/user->id :rasta)))))))
+      (is (true? (t2/exists? :model/ViewLog :model "card" :model_id (:id card) :user_id (mt/user->id :rasta))))))
 
   (testing "skip if context is dashboard or collection"
     (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query users)}]
-      (mt/with-model-cleanup [:model/ViewLog]
-        (qp/process-userland-query (assoc
-                                    (:dataset_query card)
-                                    :info {:card-id     (:id card)
-                                           :context     "collection"}))
-        (qp/process-userland-query (assoc
-                                    (:dataset_query card)
-                                    :info {:card-id     (:id card)
-                                           :context     "dashboard"}))
-       (is (false? (t2/exists? :model/ViewLog :model "card" :model_id (:id card))))))))
+      (qp/process-userland-query (assoc
+                                  (:dataset_query card)
+                                  :info {:card-id     (:id card)
+                                         :context     "collection"}))
+      (qp/process-userland-query (assoc
+                                  (:dataset_query card)
+                                  :info {:card-id     (:id card)
+                                         :context     "dashboard"}))
+      (is (false? (t2/exists? :model/ViewLog :model "card" :model_id (:id card)))))))
 
 (defn- async-middleware [qp]
   (fn async-middleware-qp [query rff context]
