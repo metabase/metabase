@@ -337,6 +337,20 @@
 (def ^:private default-recursion-limit 20)
 (def ^:private ^:dynamic *recursion-limit* default-recursion-limit)
 
+(defenterprise is-sandboxed?
+  "Pre-processing for the query execution table. Needs to fetch if a query will be sandboxed before middleware
+  has been run."
+  :feature :sandboxes
+  [query]
+  (let [user-id   (get-in query [:info :executed-by])
+        table-ids (all-table-ids query)
+        group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)
+        sandboxes (when (seq group-ids)
+                    (t2/select :model/GroupTableAccessPolicy :group_id [:in group-ids]
+                               :table_id [:in table-ids]))
+        enforced-sandboxes (mt.api.u/enforced-sandboxes sandboxes group-ids)]
+    (boolean (seq enforced-sandboxes))))
+
 (defenterprise apply-sandboxing
   "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
   restrict the rows returned, based on presence of sandboxes."

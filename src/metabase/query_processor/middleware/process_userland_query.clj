@@ -4,13 +4,12 @@
   These include things like saving QueryExecutions and adding query ViewLogs, storing exceptions and formatting the results."
   (:require
    [java-time.api :as t]
-   [metabase-enterprise.sandbox.api.util :as mt.api.u]
    [metabase.events :as events]
-   [metabase.mbql.util :as mbql.u]
    [metabase.models.query :as query]
    [metabase.models.query-execution
     :as query-execution
     :refer [QueryExecution]]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -109,21 +108,12 @@
        (vswap! row-count inc)
        (rf result row)))))
 
-(defn- all-table-ids [m]
-  (into #{} cat (mbql.u/match m
-                  (_ :guard (every-pred map? :source-table (complement ::gtap?)))
-                  (let [recursive-ids (all-table-ids (dissoc &match :source-table))]
-                    (cons (:source-table &match) recursive-ids)))))
-
-(defn- is-sandboxed? [query]
-  (let [user-id   (get-in query [:info :executed-by])
-        table-ids (all-table-ids query)
-        group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)
-        sandboxes (when (seq group-ids)
-                    (t2/select :model/GroupTableAccessPolicy :group_id [:in group-ids]
-                               :table_id [:in table-ids]))
-        enforced-sandboxes (mt.api.u/enforced-sandboxes sandboxes group-ids)]
-    (boolean (seq enforced-sandboxes))))
+(defenterprise is-sandboxed?
+  "Pre-processing for the query execution table. Needs to fetch if a query will be sandboxed before middleware
+  has been run. Returns false if feature flag is not present."
+  metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
+  [_]
+  false)
 
 (defn- query-execution-info
   "Return the info for the QueryExecution entry for this `query`."
