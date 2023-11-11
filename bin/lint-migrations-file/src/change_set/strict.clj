@@ -5,6 +5,8 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]))
 
+(set! *warn-on-reflection* true)
+
 (comment change-set.common/keep-me
          change.strict/keep-me)
 
@@ -22,17 +24,24 @@
    ;; different DBMSes
    :sql-changes-for-different-
    (s/and
-    (s/+ :change.strict/dbms-qualified-sql-change)
+    (s/+ (s/alt :sql-change :change.strict/dbms-qualified-sql-change
+                :sqlFile-change :change.strict/dbms-qualified-sqlFile-change))
     (fn [changes]
-      (apply distinct? (mapcat #(str/split (-> % :sql :dbms) #",")
-                               changes))))))
+      (apply distinct?
+             (mapcat (fn [change]
+                       (let [dbms-val (or (-> change val :sql :dbms)
+                                          (-> change val :sqlFile :dbms))]
+                         (if dbms-val
+                           (str/split dbms-val #",")
+                           []))) ; provide an empty list if dbms-val is nil
+                     changes))))))
 
 (def change-types-supporting-rollback
-  ;; This set was generated with a little grep and awk from the docs here:
-  ;; https://docs.liquibase.com/workflows/liquibase-community/liquibase-auto-rollback.html
-  ;;
-  ;; If a new change type is introduced that supports automatic rollback, it should be added
-  ;; to this set.
+  "This set was generated with a little grep and awk from the docs here:
+  https://docs.liquibase.com/workflows/liquibase-community/liquibase-auto-rollback.html
+
+  If a new change type is introduced that supports automatic rollback, it should be added
+  to this set."
   #{:addCheckConstraint
     :addColumn
     :addDefaultValue

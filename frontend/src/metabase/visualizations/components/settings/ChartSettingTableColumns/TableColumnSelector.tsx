@@ -36,7 +36,10 @@ export const TableColumnSelector = ({
   );
 
   return (
-    <TableColumnSelectorRoot role="list">
+    <TableColumnSelectorRoot
+      role="list"
+      aria-label="chart-settings-table-columns"
+    >
       {columnItems.length > 0 && (
         <div role="group" data-testid="visible-columns">
           <ChartSettingOrderedItems

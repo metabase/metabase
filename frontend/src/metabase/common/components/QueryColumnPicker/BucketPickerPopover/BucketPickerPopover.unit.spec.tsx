@@ -62,7 +62,9 @@ describe("BucketPickerPopover", () => {
 
     userEvent.click(screen.getByRole("button", { name: "More…" }));
 
-    expect(screen.getAllByRole("menuitem")).toHaveLength(buckets.length);
+    expect(screen.getAllByRole("menuitem")).toHaveLength(
+      [...buckets, "Don't bin"].length,
+    );
   });
 
   it("shouldn't show the More button if there are a few buckets", async () => {
@@ -81,7 +83,9 @@ describe("BucketPickerPopover", () => {
     const column = Lib.withTemporalBucket(dateColumn, lastBucket);
     await setupTemporalBucketPicker({ column });
 
-    expect(screen.getAllByRole("menuitem")).toHaveLength(buckets.length);
+    expect(screen.getAllByRole("menuitem")).toHaveLength(
+      [...buckets, "Don't bin"].length,
+    );
     expect(screen.queryByText("More…")).not.toBeInTheDocument();
   });
 
@@ -116,6 +120,8 @@ describe("BucketPickerPopover", () => {
     userEvent.click(screen.getByLabelText("Temporal bucket"));
     await screen.findByText("Month");
 
-    expect(screen.getAllByRole("menuitem")).toHaveLength(buckets.length);
+    expect(screen.getAllByRole("menuitem")).toHaveLength(
+      [...buckets, "Don't bin"].length,
+    );
   });
 });

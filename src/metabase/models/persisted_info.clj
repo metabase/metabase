@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.query-processor.util :as qp.util]
@@ -137,12 +136,13 @@
 (defn ready-unpersisted-models!
   "Looks for all new models in database and creates a persisted-info ready to be synced."
   [database-id]
-  (let [cards (t2/select Card {:where [:and
-                                       [:= :database_id database-id]
-                                       [:= :dataset true]
-                                       [:not [:exists {:select [1]
-                                                       :from [:persisted_info]
-                                                       :where [:= :persisted_info.card_id :report_card.id]}]]]})]
+  (let [cards (t2/select :model/Card
+                         {:where [:and
+                                  [:= :database_id database-id]
+                                  [:= :dataset true]
+                                  [:not [:exists {:select [1]
+                                                  :from [:persisted_info]
+                                                  :where [:= :persisted_info.card_id :report_card.id]}]]]})]
     (t2/insert! PersistedInfo (map #(create-row nil %) cards))))
 
 (defn turn-on-model!

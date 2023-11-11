@@ -24,7 +24,7 @@ function setup() {
   });
   const collectionItem = createMockCollectionItem({
     id: card.id,
-    type: "card",
+    model: "card",
     collection_preview: true,
   });
   setupCardEndpoints(card);
