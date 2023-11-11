@@ -6,8 +6,7 @@
    [hiccup.core :refer [html]]
    [metabase.pulse.render.body :as body]
    [metabase.pulse.render.common :as common]
-   [metabase.pulse.render.test-util :as render.tu]
-   [schema.core :as s]))
+   [metabase.pulse.render.test-util :as render.tu]))
 
 (use-fixtures :each
   (fn warn-possible-rebuild
@@ -292,12 +291,12 @@
                      :rows [["foo"]]}]
         (is (= "foo"
                (:render/text (body/render :scalar nil pacific-tz nil nil results))))
-        (is (schema= {:attachments (s/eq nil)
-                      :content     [(s/one (s/eq :div) "div tag")
-                                    (s/one {:style s/Str} "style map")
-                                    (s/one (s/eq "foo") "content")]
-                      :render/text (s/eq "foo")}
-                     (body/render :scalar nil pacific-tz nil nil results)))))
+        (is (=? {:attachments nil
+                 :content     [:div
+                               {:style string?}
+                               "foo"]
+                 :render/text "foo"}
+                (body/render :scalar nil pacific-tz nil nil results)))))
     (testing "for smartscalars"
       (let [cols    [{:name         "value",
                       :display_name "VALUE",
@@ -338,10 +337,10 @@
                (:render/text (body/render :smartscalar nil pacific-tz nil nil sameres))))
         (is (= "20\nNothing to compare to."
                (:render/text (body/render :smartscalar nil pacific-tz nil nil dumbres))))
-        (is (schema= {:attachments (s/eq nil)
-                      :content     (s/pred vector? "hiccup vector")
-                      :render/text (s/eq "40\nUp 133.33% vs. previous month: 30")}
-                     (body/render :smartscalar nil pacific-tz nil nil results)))))))
+        (is (=? {:attachments nil
+                 :content     vector?
+                 :render/text "40\nUp 133.33% vs. previous month: 30"}
+                (body/render :smartscalar nil pacific-tz nil nil results)))))))
 
 (defn- replace-style-maps [hiccup-map]
   (walk/postwalk (fn [maybe-map]

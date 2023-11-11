@@ -376,7 +376,7 @@ describe("scenarios > models", () => {
         table: "Orders",
       });
 
-      saveQuestionBasedOnModel({ modelId: 1, name: "Q1" });
+      saveQuestionBasedOnModel({ modelId: ORDERS_QUESTION_ID, name: "Q1" });
 
       assertQuestionIsBasedOnModel({
         questionName: "Q1",
@@ -403,7 +403,7 @@ describe("scenarios > models", () => {
         table: "Orders",
       });
 
-      saveQuestionBasedOnModel({ modelId: 1, name: "Q1" });
+      saveQuestionBasedOnModel({ modelId: ORDERS_QUESTION_ID, name: "Q1" });
 
       assertQuestionIsBasedOnModel({
         questionName: "Q1",

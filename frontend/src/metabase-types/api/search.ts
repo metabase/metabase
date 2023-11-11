@@ -1,6 +1,6 @@
 import type { UserId } from "metabase-types/api/user";
 import type { CardId } from "./card";
-import type { Collection } from "./collection";
+import type { Collection, CollectionId } from "./collection";
 import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { FieldReference } from "./query";
 import type { TableId } from "./table";
@@ -49,7 +49,7 @@ export interface SearchResults {
 }
 
 export interface SearchResult {
-  id: number | undefined;
+  id: number;
   name: string;
   model: SearchModelType;
   description: string | null;
@@ -88,4 +88,6 @@ export interface SearchListQuery {
   table_db_id?: DatabaseId;
   limit?: number;
   offset?: number;
+  collection?: CollectionId;
+  filter_items_in_personal_collection?: "only" | "exclude";
 }

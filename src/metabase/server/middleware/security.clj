@@ -133,7 +133,8 @@
     (str "Base-64 encoded public key for this site''s SSL certificate. "
          "Specify this to enable HTTP Public Key Pinning. "
          "See {0} for more information.")
-    "http://mzl.la/1EnfqBf"))
+    "http://mzl.la/1EnfqBf")
+  :audit :getter)
 ;; TODO - it would be nice if we could make this a proper link in the UI; consider enabling markdown parsing
 
 (defn- first-embedding-app-origin

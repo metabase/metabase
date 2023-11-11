@@ -18,6 +18,7 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import SelectList from "metabase/components/SelectList";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
+import { isPublicCollection } from "metabase/collections/utils";
 import { QuestionList } from "./QuestionList";
 
 import {
@@ -50,7 +51,8 @@ function QuestionPicker({ onSelect, collectionsById, getCollectionIcon }) {
   const handleSearchTextChange = e => setSearchText(e.target.value);
 
   const allCollections = (collection && collection.children) || [];
-  const collections = isPublicCollection(dashboardCollection)
+  const showOnlyPublicCollections = isPublicCollection(dashboardCollection);
+  const collections = showOnlyPublicCollections
     ? allCollections.filter(isPublicCollection)
     : allCollections;
 
@@ -107,14 +109,12 @@ function QuestionPicker({ onSelect, collectionsById, getCollectionIcon }) {
         searchText={debouncedSearchText}
         collectionId={currentCollectionId}
         onSelect={onSelect}
+        showOnlyPublicCollections={showOnlyPublicCollections}
       />
     </QuestionPickerRoot>
   );
 }
 
-function isPublicCollection(collection) {
-  return !collection.is_personal;
-}
 export default _.compose(
   entityObjectLoader({
     id: () => "root",

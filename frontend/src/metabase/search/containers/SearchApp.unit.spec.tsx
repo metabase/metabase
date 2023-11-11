@@ -12,7 +12,7 @@ import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
   setupTableEndpoints,
-  setupUsersEndpoints,
+  setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import {
   createMockCollection,
@@ -73,7 +73,7 @@ const setup = async ({
   setupDatabasesEndpoints([TEST_DATABASE]);
   setupSearchEndpoints(searchItems);
   setupTableEndpoints(TEST_TABLE);
-  setupUsersEndpoints(TEST_USER_LIST);
+  setupUserRecipientsEndpoint({ users: TEST_USER_LIST });
   setupCollectionByIdEndpoint({
     collections: [TEST_COLLECTION],
   });

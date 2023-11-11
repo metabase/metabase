@@ -9,7 +9,7 @@ import {
 import {
   setupCollectionByIdEndpoint,
   setupSearchEndpoints,
-  setupUsersEndpoints,
+  setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import type { SearchResult } from "metabase-types/api";
 import {
@@ -48,7 +48,7 @@ const setup = async ({
   footer = null,
 }: SearchResultsSetupProps = {}) => {
   setupSearchEndpoints(searchResults);
-  setupUsersEndpoints([createMockUser()]);
+  setupUserRecipientsEndpoint({ users: [createMockUser()] });
   setupCollectionByIdEndpoint({
     collections: [createMockCollection()],
   });
