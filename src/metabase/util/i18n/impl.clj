@@ -2,7 +2,6 @@
   "Lower-level implementation functions for `metabase.util.i18n`. Most of this is not meant to be used directly; use the
   functions and macros in `metabase.util.i18n` instead."
   (:require
-   [babashka.fs :as fs]
    [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -12,9 +11,10 @@
    [metabase.util.log :as log]
    [potemkin.types :as p.types])
   (:import
-   (java.nio.file Path)
+   (java.net JarURLConnection URL)
    (java.text MessageFormat)
    (java.util Locale)
+   (java.util.jar JarEntry JarFile)
    (org.apache.commons.lang3 LocaleUtils)))
 
 (set! *warn-on-reflection* true)
@@ -66,18 +66,42 @@
    (when-let [locale (locale locale-or-name)]
      (LocaleUtils/isAvailableLocale locale))))
 
+(defn- jar-entries->locale-names
+  "Extracts locale names from JAR file entries."
+  [^URL jar-file-url]
+  (let [jar-connection ^JarURLConnection (.openConnection jar-file-url)
+        jar-file       ^JarFile (.getJarFile jar-connection)
+        entries        (enumeration-seq (.entries jar-file))]
+    (map
+     (fn [^JarEntry entry]
+       (-> (str entry)
+           (str/replace #"i18n/" "")
+           (str/split #"\.")
+           first))
+     (filter #(and (not (.isDirectory ^JarEntry %)) (.startsWith (str %) "i18n/")) entries))))
+
+(defn- dir->locale-names
+  "Extracts locale names from files in a directory."
+  [^java.io.File dir]
+  (map
+   (fn [^java.io.File file]
+     (-> file
+         .getName
+         (str/split #"\.")
+         first))
+   (filter (fn [^java.io.File file] (.isFile file)) (.listFiles dir))))
+
 (def ^:private available-locale-names*
   (memoize/memo
    (fn []
-    (log/info "Reading available locales from resources/i18n/...")
-    (into (sorted-set "en")
-     (map
-      (fn [^Path path]
-        (-> path
-            fs/file-name
-            fs/split-ext
-            first))
-      (fs/list-dir (io/resource "i18n")))))))
+     (log/info "Reading available locales from resources/i18n/...")
+     (if-let [resource-url (io/resource "i18n")]
+       (let [url-str ^String (str resource-url)]
+         (into (sorted-set "en")
+               (if (.startsWith url-str "jar:")
+                 (jar-entries->locale-names (java.net.URL. url-str))
+                 (dir->locale-names (java.io.File. (.toURI (java.net.URL. url-str)))))))
+       (throw (IllegalStateException. "Resource 'i18n' not found"))))))
 
 (def ^{:arglists '([])} available-locale-names
   "Return sorted set of available locales, as Strings.
@@ -98,7 +122,7 @@
         (available-locale-names)))
 
 (def ^:private ^{:arglists '([a-locale])} find-fallback-locale
-  (memoize find-fallback-locale*))
+  (memoize/memo find-fallback-locale*))
 
 (defn fallback-locale
   "Find a translated fallback Locale in the following order:
@@ -136,7 +160,7 @@
 
     (translations \"es\") ;-> {:headers  { ... }
                                :messages {\"Username\" \"Nombre Usuario\", ...}}"
-  (comp (memoize translations*) locale))
+  (comp (memoize/memo translations*) locale))
 
 (defn- translated-format-string*
   "Find the translated version of `format-string` for `locale-or-name`, or `nil` if none can be found.
