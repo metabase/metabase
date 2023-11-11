@@ -507,7 +507,14 @@
           (with-all-users-data-perms {(mt/id) {:data       {:schemas :block :native :none}
                                                :data-model {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}}
             (mt/user-http-request :rasta :post 200 (format "table/%d/rescan_values" (mt/id :venues)))))
-        (is (= [1 2 3 4] (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))))
+        (is (= [1 2 3 4] (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price)))))
+
+      (testing "An audit log entry is generated when a manually triggered re-scan occurs"
+        (mt/with-model-cleanup [:model/AuditLog :model/Activity]
+          (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
+            (mt/user-http-request :rasta :post 200 (format "table/%d/rescan_values" table-id)))
+          (is (= table-id (:model_id (mt/latest-audit-log-entry))))
+          (is (= table-id (-> (mt/latest-audit-log-entry) :details :id))))))
 
     (testing "POST /api/table/:id/discard_values"
       (testing "A non-admin can discard field values if they have data model perms for the table"

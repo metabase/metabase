@@ -194,11 +194,14 @@
 (defmethod lib.metadata.calculation/display-name-method :between
   [query stage-number expr style]
   (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
+        ->unbucketed-display-name #(-> %
+                                       (update 1 dissoc :temporal-unit)
+                                       ->display-name)
         temporal? #(lib.util/original-isa? % :type/Temporal)]
     (mbql.u/match-one expr
       [:between _ (x :guard temporal?) (y :guard string?) (z :guard string?)]
       (i18n/tru "{0} is {1}"
-                (->display-name x)
+                (->unbucketed-display-name x)
                 (shared.ut/format-diff y z))
 
       [:between _

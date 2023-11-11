@@ -338,8 +338,9 @@
   (cond->> options
     (some #(= (:unit %) unit) options)
     (mapv (fn [option]
-            (cond-> (dissoc option option-key)
-              (= (:unit option) unit) (assoc option-key true))))))
+            (cond-> option
+              (contains? option option-key) (dissoc option option-key)
+              (= (:unit option) unit)       (assoc option-key true))))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/column
   [_query _stage-number field-metadata]
@@ -522,6 +523,14 @@
   "Find the field id for something or nil."
   [field-metadata :- lib.metadata/ColumnMetadata]
   (:id field-metadata))
+
+(mu/defn legacy-card-or-table-id :- [:maybe [:or :string ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+  "Find the legacy card id or table id for a given ColumnMetadata or nil.
+   Returns a either `\"card__<id>\"` or integer table id."
+  [{card-id :lib/card-id table-id :table-id} :- lib.metadata/ColumnMetadata]
+  (cond
+    card-id (str "card__" card-id)
+    table-id table-id))
 
 (defn- populate-fields-for-stage
   "Given a query and stage, sets the `:fields` list to be the fields which would be selected by default.

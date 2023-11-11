@@ -8,21 +8,23 @@
    [hf.depstar.api :as depstar]
    [metabuild-common.core :as u]))
 
-(defn driver-basis [driver edition]
+(set! *warn-on-reflection* true)
+
+(defn- driver-basis [driver edition]
   (let [edn (c/driver-edn driver edition)]
     (binding [deps.dir/*the-dir* (io/file (c/driver-project-dir driver))]
       (deps/calc-basis edn))))
 
-(defonce metabase-core-edn
+(defonce ^:private metabase-core-edn
   (deps/merge-edns
    ((juxt :root-edn :project-edn)
     (deps/find-edn-maps (u/filename u/project-root-directory "deps.edn")))))
 
-(defonce metabase-core-basis
+(defonce ^:private metabase-core-basis
   (binding [deps.dir/*the-dir* (io/file u/project-root-directory)]
     (deps/calc-basis metabase-core-edn)))
 
-(defonce metabase-core-provided-libs
+(defonce ^:private metabase-core-provided-libs
   (set (keys (:libs metabase-core-basis))))
 
 (defn- driver-parents [driver edition]
@@ -44,7 +46,7 @@
                [lib 'metabase-core]))
         metabase-core-provided-libs))
 
-(defn remove-provided-libs [basis driver edition]
+(defn- remove-provided-libs [basis driver edition]
   (let [provided-lib->provider (into {}
                                      (filter (fn [[lib]]
                                                (get-in basis [:libs lib])))
@@ -70,7 +72,9 @@
         ;; remove unneeded keys so Depstar doesn't try to do anything clever and resolve them
         (dissoc :deps :aliases :mvn/repos))))
 
-(defn create-uberjar! [driver edition]
+(defn create-uberjar!
+  "Build a driver jar for `driver`, either an `:oss` or `:ee` `edition`."
+  [driver edition]
   (u/step (format "Write %s %s uberjar -> %s" driver edition (c/driver-jar-destination-path driver))
     (let [start-time-ms (System/currentTimeMillis)]
       (depstar/uber

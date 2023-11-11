@@ -9,6 +9,8 @@
    [clojure.string :as str]
    [clojure.walk :as walk]))
 
+(set! *warn-on-reflection* true)
+
 (comment change-set.strict/keep-me
          change-set.unstrict/keep-me)
 
@@ -36,7 +38,7 @@
         :when id]
     (maybe-parse-to-int id)))
 
-(defn distinct-change-set-ids? [change-log]
+(defn- distinct-change-set-ids? [change-log]
   ;; there are actually two migration 32s, so that's the only exception we're allowing.
   (let [ids (remove (partial = 32) (change-set-ids change-log))]
     ;; can't apply distinct? with so many IDs
@@ -50,7 +52,7 @@
     (compare x y)
     (compare (str x) (str y))))
 
-(defn change-set-ids-in-order? [change-log]
+(defn- change-set-ids-in-order? [change-log]
   (let [ids (change-set-ids change-log)]
     (= ids (sort-by identity compare-ids ids))))
 
@@ -84,8 +86,8 @@
             x)
         x)
 
-      true ; some other kind of change; continue walking
-      x)
+      ;; some other kind of change; continue walking
+      :else x)
     x))
 
 (defn no-bare-blob-or-text-types?
@@ -119,14 +121,14 @@
   "All change sets with an ID >= this number will be validated with the strict spec."
   172)
 
-(defn change-set-validation-level [{id :id}]
+(defn- change-set-validation-level [{id :id}]
   (or (when-let [id (maybe-parse-to-int id)]
         (when (and (int? id)
                    (< id strict-change-set-cutoff))
           :unstrict))
       :strict))
 
-(defmulti change-set
+(defmulti ^:private change-set
   change-set-validation-level)
 
 (defmethod change-set :strict
@@ -140,7 +142,9 @@
 (s/def ::changeSet
   (s/multi-spec change-set change-set-validation-level))
 
-(defn validate-migrations [migrations]
+(defn validate-migrations
+  "Throws an error when there's an invalid migration."
+  [migrations]
   (when (= (s/conform ::migrations migrations) ::s/invalid)
     (let [data (s/explain-data ::migrations migrations)]
       (throw (ex-info (str "Validation failed:\n" (with-out-str (pprint/pprint (mapv #(dissoc % :val)
@@ -148,10 +152,10 @@
                       (or (dissoc data ::s/value) {})))))
   :ok)
 
-(def filename
+(def ^:private filename
   "../../resources/migrations/000_migrations.yaml")
 
-(defn migrations []
+(defn- migrations []
   (let [file (io/file filename)]
     (assert (.exists file) (format "%s does not exist" filename))
     (letfn [(fix-vals [x]
@@ -164,7 +168,11 @@
 (defn- validate-all []
   (validate-migrations (migrations)))
 
-(defn -main []
+(defn -main
+  "Entry point for Clojure CLI task `lint-migrations-file`. Run it with
+
+    ./bin/lint-migrations-file.sh"
+  []
   (println "Check Liquibase migrations file...")
   (try
     (validate-all)

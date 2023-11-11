@@ -8,10 +8,13 @@
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.collection :as collection]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.parameter-card :as parameter-card :refer [ParameterCard]]
+   [metabase.models.parameter-card
+    :as parameter-card
+    :refer [ParameterCard]]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
    [metabase.models.query :as query]
@@ -20,7 +23,9 @@
    [metabase.moderation :as moderation]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.query-processor.util :as qp.util]
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
@@ -59,6 +64,21 @@
   (derive ::perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+(defmethod mi/can-write? Card
+  ([instance]
+   ;; Cards in audit collection should be read only
+   (if (perms/is-parent-collection-audit? instance)
+     false
+     (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :write))))
+  ([_ pk]
+   (mi/can-write? (t2/select-one :model/Card :id pk))))
+
+(defmethod mi/can-read? Card
+  ([instance]
+   (perms/can-read-audit-helper :model/Card instance))
+  ([_ pk]
+   (mi/can-read? (t2/select-one :model/Card :id pk))))
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
@@ -551,3 +571,12 @@
       (when (seq snippets)
         (set (for [snippet-id snippets]
                ["NativeQuerySnippet" snippet-id]))))))
+
+
+;;; ------------------------------------------------ Audit Log --------------------------------------------------------
+
+(defmethod audit-log/model-details :model/Card
+  [{dataset? :dataset :as card} _event-type]
+  (merge (select-keys card [:name :description :database_id :table_id])
+          ;; Use `model` instead of `dataset` to mirror product terminology
+         {:model? dataset?}))

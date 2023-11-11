@@ -220,6 +220,7 @@
   doall-recursive
   file->bytes
   is-uuid-string?
+  latest-audit-log-entry
   let-url
   obj->json->obj
   postwalk-pred

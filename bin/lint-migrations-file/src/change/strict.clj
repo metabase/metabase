@@ -46,6 +46,25 @@
 (s/def ::change
   (s/keys :opt-un [::addColumn ::createTable ::createIndex ::customChange]))
 
+(s/def :change.strict.dbms-qualified-sql-change.sqlfile/dbms
+  string?)
+
+(s/def :change.strict.dbms-qualified-sql-change.sqlFile/path
+  string?)
+
+(s/def :change.strict.dbms-qualified-sqlFile-change.sqlFile/relativeToChangelogFile
+  boolean?)
+
+(s/def :change.strict.dbms-qualified-sqlFile-change/sqlFile
+  (s/keys :req-un [:change.strict.dbms-qualified-sqlFile-change.sqlFile/dbms
+                   :change.strict.dbms-qualified-sqlFile-change.sqlFile/path
+                   :change.strict.dbms-qualified-sqlFile-change.sqlFile/relativeToChangelogFile]))
+
+(s/def ::dbms-qualified-sqlFile-change
+  (s/merge
+   ::change
+   (s/keys :req-un [:change.strict.dbms-qualified-sqlFile-change/sqlFile])))
+
 (s/def :change.strict.dbms-qualified-sql-change.sql/dbms
   string?)
 
