@@ -1,14 +1,45 @@
+name: Question overview
 description: Views, performance, activity, and other data for a particular question.
+entity_id: jm7KgY6IuS6pQjkBZ7WUI
+created_at: '2023-06-15T19:16:35.989393Z'
+creator_id: internal@metabase.com
 archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+auto_apply_filters: true
+cache_ttl: null
 collection_position: 6
+position: null
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+show_in_getting_started: false
+caveats: null
+points_of_interest: null
+parameters:
+- id: 81d22d7f
+  isMultiSelect: false
+  name: Question ID
+  sectionId: id
+  slug: question_id
+  type: id
+serdes/meta:
+- id: jm7KgY6IuS6pQjkBZ7WUI
+  label: question_overview
+  model: Dashboard
 dashcards:
-- size_x: 12
-  dashboard_tab_id: null
-  action_id: null
+- entity_id: ejJ8SwwOs7vpmHsgPqq0r
+  card_id: XLzhOnMmk3DkefFAMx_Vg
+  created_at: '2023-11-01T02:34:20.626451Z'
+  row: 0
   col: 0
+  size_x: 12
+  size_y: 7
+  action_id: null
+  dashboard_tab_id: null
   parameter_mappings:
-  - parameter_id: 81d22d7f
-    card_id: XLzhOnMmk3DkefFAMx_Vg
+  - card_id: XLzhOnMmk3DkefFAMx_Vg
+    parameter_id: 81d22d7f
     target:
     - dimension
     - - field
@@ -17,20 +48,20 @@ dashcards:
         - v_content
         - entity_id
       - base-type: type/Integer
-  card_id: XLzhOnMmk3DkefFAMx_Vg
-  entity_id: ejJ8SwwOs7vpmHsgPqq0r
   visualization_settings:
     column_settings: null
-  size_y: 7
-  created_at: '2023-11-01T02:34:20.626451Z'
+- entity_id: jeaMN8dAMxu8cQrKT28nz
+  card_id: 613VT_7b325t9FBAJZcU8
+  created_at: '2023-11-01T02:35:42.541237Z'
   row: 0
-- size_x: 12
-  dashboard_tab_id: null
-  action_id: null
   col: 12
+  size_x: 12
+  size_y: 7
+  action_id: null
+  dashboard_tab_id: null
   parameter_mappings:
-  - parameter_id: 81d22d7f
-    card_id: 613VT_7b325t9FBAJZcU8
+  - card_id: 613VT_7b325t9FBAJZcU8
+    parameter_id: 81d22d7f
     target:
     - dimension
     - - field
@@ -40,20 +71,20 @@ dashcards:
         - entity_id
       - base-type: type/Integer
         join-alias: Content - Entity Qualified
-  card_id: 613VT_7b325t9FBAJZcU8
-  entity_id: jeaMN8dAMxu8cQrKT28nz
   visualization_settings:
     column_settings: null
-  size_y: 7
-  created_at: '2023-11-01T02:35:42.541237Z'
-  row: 0
-- size_x: 12
-  dashboard_tab_id: null
-  action_id: null
+- entity_id: ZW-Zh5fCsudRWuc_5-ebV
+  card_id: vrez-ciNppijhELOxLJOY
+  created_at: '2023-11-01T02:41:00.615638Z'
+  row: 13
   col: 0
+  size_x: 12
+  size_y: 12
+  action_id: null
+  dashboard_tab_id: null
   parameter_mappings:
-  - parameter_id: 81d22d7f
-    card_id: vrez-ciNppijhELOxLJOY
+  - card_id: vrez-ciNppijhELOxLJOY
+    parameter_id: 81d22d7f
     target:
     - dimension
     - - field
@@ -63,20 +94,20 @@ dashcards:
         - entity_id
       - base-type: type/Integer
         join-alias: Content - Card Qualified
-  card_id: vrez-ciNppijhELOxLJOY
-  entity_id: ZW-Zh5fCsudRWuc_5-ebV
   visualization_settings:
     column_settings: null
-  size_y: 12
-  created_at: '2023-11-01T02:41:00.615638Z'
-  row: 13
-- size_x: 12
-  dashboard_tab_id: null
-  action_id: null
+- entity_id: t94BPUqDcK5f5_WEuTP-S
+  card_id: y-_5bBl0fXY9XlEbpJkrj
+  created_at: '2023-11-01T02:46:22.129198Z'
+  row: 7
   col: 12
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
   parameter_mappings:
-  - parameter_id: 81d22d7f
-    card_id: y-_5bBl0fXY9XlEbpJkrj
+  - card_id: y-_5bBl0fXY9XlEbpJkrj
+    parameter_id: 81d22d7f
     target:
     - dimension
     - - field
@@ -86,20 +117,20 @@ dashcards:
         - entity_id
       - base-type: type/Integer
         join-alias: Content - Entity Qualified
-  card_id: y-_5bBl0fXY9XlEbpJkrj
-  entity_id: t94BPUqDcK5f5_WEuTP-S
   visualization_settings:
     column_settings: null
-  size_y: 6
-  created_at: '2023-11-01T02:46:22.129198Z'
-  row: 7
-- size_x: 12
-  dashboard_tab_id: null
-  action_id: null
+- entity_id: d6fgUU6_hAqWj_ngoJea_
+  card_id: MOAq881VSlM2BhVUv5e_K
+  created_at: '2023-11-01T02:47:47.57613Z'
+  row: 13
   col: 12
+  size_x: 12
+  size_y: 12
+  action_id: null
+  dashboard_tab_id: null
   parameter_mappings:
-  - parameter_id: 81d22d7f
-    card_id: MOAq881VSlM2BhVUv5e_K
+  - card_id: MOAq881VSlM2BhVUv5e_K
+    parameter_id: 81d22d7f
     target:
     - dimension
     - - field
@@ -109,20 +140,20 @@ dashcards:
         - entity_id
       - base-type: type/Integer
         join-alias: Question 35
-  card_id: MOAq881VSlM2BhVUv5e_K
-  entity_id: d6fgUU6_hAqWj_ngoJea_
   visualization_settings:
     column_settings: null
-  size_y: 12
-  created_at: '2023-11-01T02:47:47.57613Z'
-  row: 13
-- size_x: 24
-  dashboard_tab_id: null
-  action_id: null
+- entity_id: PljXyyyfScG10byiLANCg
+  card_id: YiHMsA2dv3iQob11DLTIz
+  created_at: '2023-11-01T02:51:46.409464Z'
+  row: 25
   col: 0
+  size_x: 24
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
   parameter_mappings:
-  - parameter_id: 81d22d7f
-    card_id: YiHMsA2dv3iQob11DLTIz
+  - card_id: YiHMsA2dv3iQob11DLTIz
+    parameter_id: 81d22d7f
     target:
     - dimension
     - - field
@@ -132,20 +163,20 @@ dashcards:
         - entity_id
       - base-type: type/Integer
         join-alias: Content - Card Qualified
-  card_id: YiHMsA2dv3iQob11DLTIz
-  entity_id: PljXyyyfScG10byiLANCg
   visualization_settings:
     column_settings: null
-  size_y: 6
-  created_at: '2023-11-01T02:51:46.409464Z'
-  row: 25
-- size_x: 12
-  dashboard_tab_id: null
-  action_id: null
+- entity_id: 8qi2lYbU4119zouFP9f6M
+  card_id: -_XgVaPuz7MY8jlG0wSEC
+  created_at: '2023-11-01T03:01:10.764008Z'
+  row: 7
   col: 0
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
   parameter_mappings:
-  - parameter_id: 81d22d7f
-    card_id: -_XgVaPuz7MY8jlG0wSEC
+  - card_id: -_XgVaPuz7MY8jlG0wSEC
+    parameter_id: 81d22d7f
     target:
     - dimension
     - - field
@@ -158,37 +189,6 @@ dashcards:
         - public
         - v_query_log
         - card_qualified_id
-  card_id: -_XgVaPuz7MY8jlG0wSEC
-  entity_id: 8qi2lYbU4119zouFP9f6M
   visualization_settings:
     column_settings: null
-  size_y: 6
-  created_at: '2023-11-01T03:01:10.764008Z'
-  row: 7
 tabs: []
-enable_embedding: false
-collection_id: vG58R8k-QddHWA7_47umn
-show_in_getting_started: false
-name: Question overview
-caveats: null
-creator_id: internal@metabase.com
-made_public_by_id: null
-embedding_params: null
-cache_ttl: null
-serdes/meta:
-- model: Dashboard
-  id: jm7KgY6IuS6pQjkBZ7WUI
-  label: question_overview
-position: null
-entity_id: jm7KgY6IuS6pQjkBZ7WUI
-parameters:
-- name: Question ID
-  slug: question_id
-  id: 81d22d7f
-  type: id
-  sectionId: id
-  isMultiSelect: false
-auto_apply_filters: true
-created_at: '2023-06-15T19:16:35.989393Z'
-public_uuid: null
-points_of_interest: null

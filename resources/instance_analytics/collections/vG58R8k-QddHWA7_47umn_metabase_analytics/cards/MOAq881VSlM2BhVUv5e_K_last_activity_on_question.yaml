@@ -1,23 +1,29 @@
+name: Last activity on question
 description: null
+entity_id: MOAq881VSlM2BhVUv5e_K
+created_at: '2023-11-01T02:47:25.64266Z'
+creator_id: internal@metabase.com
+display: table
 archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
 collection_position: null
+query_type: query
+dataset: false
+cache_ttl: null
+database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
 - public
 - v_audit_log
-result_metadata: null
-database_id: Internal Metabase Database
 enable_embedding: false
-collection_id: vG58R8k-QddHWA7_47umn
-query_type: query
-name: Last activity on question
-creator_id: internal@metabase.com
-made_public_by_id: null
 embedding_params: null
-cache_ttl: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
-  type: query
   query:
     fields:
     - - field
@@ -26,16 +32,19 @@ dataset_query:
     - - field
       - timestamp
       - base-type: type/DateTimeWithLocalTZ
+    filter:
+    - =
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - topic
+      - base-type: type/Text
+    - card-create
+    - card-delete
+    - card-update
     joins:
     - alias: Question 1
-      fields:
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_users
-          - full_name
-        - base-type: type/Text
-          join-alias: Question 1
       condition:
       - =
       - - field
@@ -51,9 +60,16 @@ dataset_query:
           - user_id
         - base-type: type/Integer
           join-alias: Question 1
+      fields:
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
+          - full_name
+        - base-type: type/Text
+          join-alias: Question 1
       source-table: 0wVIfjBJWclD0lKeABYYl
     - alias: Question 35
-      fields: none
       condition:
       - =
       - - field
@@ -69,6 +85,7 @@ dataset_query:
           - entity_qualified_id
         - base-type: type/Text
           join-alias: Question 35
+      fields: none
       source-table: AxSackBiyXVRUzM_TyyQY
     order-by:
     - - desc
@@ -79,26 +96,12 @@ dataset_query:
           - timestamp
         - base-type: type/DateTimeWithLocalTZ
     source-table: -lNDM3tJmuL5ltGbX0oyT
-    filter:
-    - =
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_audit_log
-        - topic
-      - base-type: type/Text
-    - card-create
-    - card-delete
-    - card-update
-parameter_mappings: []
-serdes/meta:
-- model: Card
-  id: MOAq881VSlM2BhVUv5e_K
-  label: last_activity_on_question
-display: table
-entity_id: MOAq881VSlM2BhVUv5e_K
-collection_preview: true
+  type: query
+result_metadata: null
 visualization_settings:
+  column_settings:
+    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
+    : column_title: Person
   table.cell_column: model_id
   table.columns:
   - enabled: true
@@ -324,11 +327,8 @@ visualization_settings:
     - base-type: type/Text
     name: topic
   table.pivot_column: end_timestamp
-  column_settings:
-    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
-    : column_title: Person
+serdes/meta:
+- id: MOAq881VSlM2BhVUv5e_K
+  label: last_activity_on_question
+  model: Card
 metabase_version: vUNKNOWN (13e6090)
-parameters: []
-dataset: false
-created_at: '2023-11-01T02:47:25.64266Z'
-public_uuid: null

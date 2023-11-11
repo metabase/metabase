@@ -1,83 +1,27 @@
+name: Group Members
 description: Metabase group membership
+entity_id: lTp-ATFsCUFEr9I0fMEaO
+created_at: '2023-06-08T14:32:26.114293Z'
+creator_id: internal@metabase.com
+display: table
 archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
 collection_position: null
+query_type: query
+dataset: true
+cache_ttl: null
+database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
 - public
 - v_group_members
-result_metadata:
-- description: null
-  semantic_type: type/FK
-  coercion_strategy: null
-  name: user_id
-  settings: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_group_members
-    - user_id
-  - null
-  effective_type: type/Integer
-  id:
-  - Internal Metabase Database
-  - public
-  - v_group_members
-  - user_id
-  visibility_type: normal
-  display_name: User ID
-  base_type: type/Integer
-- description: null
-  semantic_type: type/PK
-  coercion_strategy: null
-  name: group_id
-  settings: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_group_members
-    - group_id
-  - null
-  effective_type: type/Integer
-  id:
-  - Internal Metabase Database
-  - public
-  - v_group_members
-  - group_id
-  visibility_type: normal
-  display_name: Group ID
-  base_type: type/Integer
-- description: null
-  semantic_type: type/Name
-  coercion_strategy: null
-  name: group_name
-  settings: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_group_members
-    - group_name
-  - null
-  effective_type: type/Text
-  id:
-  - Internal Metabase Database
-  - public
-  - v_group_members
-  - group_name
-  visibility_type: normal
-  display_name: Group Name
-  base_type: type/Text
-database_id: Internal Metabase Database
 enable_embedding: false
-collection_id: vG58R8k-QddHWA7_47umn
-query_type: query
-name: Group Members
-creator_id: internal@metabase.com
-made_public_by_id: null
 embedding_params: null
-cache_ttl: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
   query:
@@ -86,20 +30,76 @@ dataset_query:
     - public
     - v_group_members
   type: query
-parameter_mappings: []
-serdes/meta:
-- model: Card
-  id: lTp-ATFsCUFEr9I0fMEaO
-  label: group_members
-display: table
-entity_id: lTp-ATFsCUFEr9I0fMEaO
-collection_preview: true
+result_metadata:
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: User ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_group_members
+    - user_id
+  - null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_group_members
+  - user_id
+  name: user_id
+  semantic_type: type/FK
+  settings: null
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Group ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_group_members
+    - group_id
+  - null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_group_members
+  - group_id
+  name: group_id
+  semantic_type: type/PK
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Group Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_group_members
+    - group_name
+  - null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_group_members
+  - group_name
+  name: group_name
+  semantic_type: type/Name
+  settings: null
+  visibility_type: normal
 visualization_settings:
-  table.pivot_column: group_id
-  table.cell_column: group_name
   column_settings: null
+  table.cell_column: group_name
+  table.pivot_column: group_id
+serdes/meta:
+- id: lTp-ATFsCUFEr9I0fMEaO
+  label: group_members
+  model: Card
 metabase_version: null
-parameters: []
-dataset: true
-created_at: '2023-06-08T14:32:26.114293Z'
-public_uuid: null
