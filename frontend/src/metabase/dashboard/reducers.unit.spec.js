@@ -348,7 +348,7 @@ describe("dashboard reducers", () => {
       });
     });
 
-    it("should not has duplicated id in loadingIds on pending (metabase#33692, metabase#34767)", () => {
+    it("should not have duplicated elements in loadingIds on pending (metabase#33692, metabase#34767)", () => {
       const result = reducer(
         {
           ...initState,
