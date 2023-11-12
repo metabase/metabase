@@ -24367,7 +24367,7 @@ msgid "Unfold JSON Columns"
 msgstr "Rozbaľte stĺpce JSON"
 
 #: metabase/driver/common.clj:180
-msgid "We unfold JSON columns into component fields.This is on by default but you can turn it off if performance is slow."
+msgid "We unfold JSON columns into component fields. This is on by default but you can turn it off if performance is slow."
 msgstr "Stĺpce JSON rozkladáme do polí komponentov. Toto je predvolene zapnuté, ale môžete ho vypnúť, ak je výkon pomalý."
 
 #: metabase/driver/mysql/ddl.clj:172

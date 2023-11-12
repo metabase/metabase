@@ -24198,7 +24198,7 @@ msgid "Unfold JSON Columns"
 msgstr "JSON 열 펼치기"
 
 #: metabase/driver/common.clj:180
-msgid "We unfold JSON columns into component fields.This is on by default but you can turn it off if performance is slow."
+msgid "We unfold JSON columns into component fields. This is on by default but you can turn it off if performance is slow."
 msgstr "JSON 열을 구성 요소 필드로 펼칩니다. 기본적으로 켜져 있지만 성능이 느린 경우 끌 수 있습니다."
 
 #: metabase/driver/mysql/ddl.clj:172
