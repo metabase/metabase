@@ -16,7 +16,6 @@
    [metabase.util :as u]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -979,17 +978,16 @@
            [metabase.util.i18n :as i18n :refer [deferred-tru]]))
         (defsetting foo (deferred-tru "A testing setting") :visibility :public)
         (catch Exception e
-          (is (schema= {:existing-setting
-                        {:description (s/eq (deferred-tru "A testing setting"))
-                         :name        (s/eq :foo)
-                         :munged-name (s/eq "foo")
-                         :type        (s/eq :string)
-                         :sensitive?  (s/eq false)
-                         :tag         (s/eq 'java.lang.String)
-                         :namespace   (s/eq current-ns)
-                         :visibility  (s/eq :public)
-                         s/Keyword s/Any}}
-                       (ex-data e)))
+          (is (=? {:existing-setting
+                   {:description (deferred-tru "A testing setting")
+                    :name        :foo
+                    :munged-name "foo"
+                    :type        :string
+                    :sensitive?  false
+                    :tag         'java.lang.String
+                    :namespace   current-ns
+                    :visibility  :public}}
+                  (ex-data e)))
           (is (= (str "Setting :foo already registered in " current-ns)
                  (ex-message e))))
         (finally (in-ns current-ns))))))
@@ -1091,3 +1089,104 @@
         (catch Exception e
           (is (re-matches #"defsetting docstrings must be a \*deferred\* i18n form.*"
                           (:cause (Throwable->map e)))))))))
+
+(defsetting test-setting-audit-never
+ "Test setting with no auditing"
+  :audit :never)
+
+(defsetting test-setting-audit-raw-value
+  "Test setting with auditing raw values"
+  :type  :integer
+  :audit :raw-value)
+
+(defsetting test-setting-audit-getter
+  "Test setting with auditing values returned from getter"
+  :type   :string
+  :getter (constantly "GETTER VALUE")
+  :audit  :getter)
+
+(defsetting test-sensitive-setting-audit
+  "Test that a sensitive setting has its value obfuscated before being audited"
+  :type       :string
+  :sensitive? true
+  :audit      :getter)
+
+(deftest setting-audit-test
+  (let [last-audit-event-fn #(t2/select-one [:model/AuditLog :topic :user_id :model :details]
+                                            :topic :setting-update
+                                            {:order-by [[:id :desc]]})]
+    (testing "Settings are audited by default without their value included"
+      (mt/with-test-user :rasta
+        (test-setting-1! "DON'T INCLUDE THIS VALUE"))
+      (is (= {:topic   :setting-update
+              :user_id  (mt/user->id :rasta)
+              :model   "Setting"
+              :details {:key "test-setting-1"}}
+             (last-audit-event-fn))))
+
+    (testing "Auditing can be disabled with `:audit :never`"
+      (test-setting-audit-never! "DON'T AUDIT")
+      (is (not= "test-setting-audit-never"
+                (-> (last-audit-event-fn) :details :key))))
+
+    (testing "Raw values (as stored in the DB) can be logged with `:audit :raw-value`"
+      (mt/with-temporary-setting-values [test-setting-audit-raw-value 99]
+        (test-setting-audit-raw-value! 100)
+        (is (= {:topic   :setting-update
+                :user_id  nil
+                :model   "Setting"
+                :details {:key            "test-setting-audit-raw-value"
+                          :previous-value "99"
+                          :new-value      "100"}}
+               (last-audit-event-fn)))))
+
+    (testing "Values returned from the setting's getter can be logged with `:audit :getter`"
+      (mt/with-temporary-setting-values [test-setting-audit-getter "PREVIOUS VALUE"]
+        (test-setting-audit-getter! "NEW RAW VALUE")
+        (is (= {:topic   :setting-update
+                :user_id  nil
+                :model   "Setting"
+                :details {:key            "test-setting-audit-getter"
+                          :previous-value "GETTER VALUE"
+                          :new-value      "GETTER VALUE"}}
+               (last-audit-event-fn)))))
+
+    (testing "Sensitive settings have their values obfuscated automatically"
+      (mt/with-temporary-setting-values [test-sensitive-setting-audit nil]
+        (test-sensitive-setting-audit! "old password")
+        (test-sensitive-setting-audit! "new password")
+        (is (= {:topic   :setting-update
+                :user_id  nil
+                :model   "Setting"
+                :details {:key            "test-sensitive-setting-audit"
+                          :previous-value "**********rd"
+                          :new-value      "**********rd"}}
+               (last-audit-event-fn)))))))
+
+(defsetting test-user-local-only-audited-setting
+  (deferred-tru  "Audited user-local setting")
+  :visibility :authenticated
+  :user-local :only
+  :audit      :raw-value)
+
+(deftest user-local-settings-audit-test
+  (let [last-audit-event-fn #(t2/select-one [:model/AuditLog :topic :user_id :model :details]
+                                            :topic :setting-update
+                                            {:order-by [[:id :desc]]})]
+    (testing "User-local settings are not audited by default"
+      (mt/with-test-user :rasta
+        (test-user-local-only-setting! "DON'T AUDIT"))
+      (is (not= "test-user-local-only-setting"
+                (-> (last-audit-event-fn) :details :key))))
+
+    (testing "User-local settings can be audited"
+      (mt/with-test-user :rasta
+        (mt/with-temporary-setting-values [test-user-local-only-audited-setting nil]
+          (test-user-local-only-audited-setting! "AUDIT ME")
+          (is (= {:topic   :setting-update
+                  :user_id  (mt/user->id :rasta)
+                  :model   "Setting"
+                  :details {:key            "test-user-local-only-audited-setting"
+                            :previous-value nil
+                            :new-value      "AUDIT ME"}}
+                 (last-audit-event-fn))))))))

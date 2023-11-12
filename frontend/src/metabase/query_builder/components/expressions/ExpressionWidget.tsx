@@ -63,7 +63,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
 
   const helpTextTargetRef = useRef(null);
 
-  const isValidName = withName ? !!name : true;
+  const isValidName = withName ? name.trim().length > 0 : true;
   const isValidExpression = !!expression && isExpression(expression);
 
   const isValid = !error && isValidName && isValidExpression;

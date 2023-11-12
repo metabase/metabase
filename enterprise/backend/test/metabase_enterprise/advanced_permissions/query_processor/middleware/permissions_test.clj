@@ -11,7 +11,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
-   [metabase.query-processor.context.default :as context.default]
+   [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.streaming-test :as streaming-test]
    [metabase.test :as mt]
    [metabase.util :as u])
@@ -97,7 +97,7 @@
 
 ;; Inspired by the similar middleware wrapper [[metabase.query-processor.middleware.limit-test/limit]]
 (defn- limit-download-result-rows [query]
-  (let [rff (ee.qp.perms/limit-download-result-rows query context.default/default-rff)
+  (let [rff (ee.qp.perms/limit-download-result-rows query qp.reducible/default-rff)
         rf  (rff {})]
     (transduce identity rf (repeat (inc @#'ee.qp.perms/max-rows-in-limited-downloads) [:ok]))))
 

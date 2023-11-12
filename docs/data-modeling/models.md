@@ -13,6 +13,7 @@ Models:
 - Let you update column descriptions and customize metadata to create great starting points for exploration.
 - Show up higher in search results and get highlighted when other users start new questions to promote reuse.
 - Live in collections to keep them separate from messy database schemas.
+- Can [surface individual records in search results](#surface-individual-records-in-search-by-matching-against-this-column).
 
 For a deep dive on why and how to use models, check out our [Learn article on models][learn-models].
 
@@ -110,6 +111,18 @@ You can specify whether a column should appear in the table view, or just in a d
 
 - Text
 - Link (it's a URL people should be able to click on)
+
+### Surface individual records in search by matching against this column
+
+For string fields in records with entity keys, Metabase will give you the option make the values in that field show up when people search your Metabase. Essentially, Metabase will index these values and make them available to Metabase's search engine. This option is handy when people often want to jump straight to an individual record in your model.
+
+For example, if you have a model with accounts, you could turn on this option for a column listing the account's name or email so that people can quickly search for specific accounts in the model from anywhere in your Metabase. When people click on a record in the search results, Metabase will jump straight to the model and the object detail for that record.
+
+There are some limitations to this indexing:
+
+- The indexed field must be a text/string type.
+- The record containing the field must have an integer entity key.
+- To keep your search speedy, Metabase will only index 5000 unique values from that field, so this option isn't the best choice to turn on for tables with a ton of records.
 
 ## Edit a model's query
 

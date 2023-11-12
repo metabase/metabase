@@ -22,6 +22,7 @@ import FormCollectionPicker from "metabase/collections/containers/FormCollection
 
 import type { CollectionId, Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
+import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
 
 const DASHBOARD_SCHEMA = Yup.object({
   name: Yup.string()
@@ -43,6 +44,7 @@ export interface CreateDashboardFormOwnProps {
   onCreate?: (dashboard: Dashboard) => void;
   onCancel?: () => void;
   initialValues?: CreateDashboardProperties | null;
+  filterPersonalCollections?: FilterItemsInPersonalCollection;
 }
 
 interface CreateDashboardFormStateProps {
@@ -78,6 +80,7 @@ function CreateDashboardForm({
   onCreate,
   onCancel,
   initialValues,
+  filterPersonalCollections,
 }: Props) {
   const computedInitialValues = useMemo(
     () => ({
@@ -120,6 +123,7 @@ function CreateDashboardForm({
           <FormCollectionPicker
             name="collection_id"
             title={t`Which collection should this go in?`}
+            filterPersonalCollections={filterPersonalCollections}
           />
           <FormFooter>
             <FormErrorMessage inline />

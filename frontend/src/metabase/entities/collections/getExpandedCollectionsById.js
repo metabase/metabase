@@ -28,7 +28,6 @@ function getExpandedCollectionsById(
           : null,
       parent: null,
       children: [],
-      is_personal: c.personal_owner_id != null,
     };
   }
 
@@ -54,7 +53,6 @@ function getExpandedCollectionsById(
       id: userPersonalCollectionId,
       parent: collectionsById[ROOT_COLLECTION.id],
       children: personalCollection?.children || [],
-      is_personal: true,
     });
   }
 
@@ -63,7 +61,6 @@ function getExpandedCollectionsById(
     ...PERSONAL_COLLECTIONS,
     parent: collectionsById[ROOT_COLLECTION.id],
     children: [],
-    is_personal: true,
   };
   collectionsById[ROOT_COLLECTION.id].children.push(
     collectionsById[PERSONAL_COLLECTIONS.id],

@@ -1,5 +1,6 @@
 /* istanbul ignore file */
 import fetchMock from "fetch-mock";
+import { setupUserRecipientsEndpoint } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import type { Screen } from "__support__/ui";
 import { mockSettings } from "__support__/settings";
@@ -104,8 +105,8 @@ export function setup(
 
   fetchMock.get("path:/api/pulse/form_input", channelData);
 
-  fetchMock.get("path:/api/user/recipients", {
-    data: [user],
+  setupUserRecipientsEndpoint({
+    users: [user],
   });
 
   fetchMock.get(

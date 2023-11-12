@@ -53,8 +53,11 @@ export const getIsShowingSnippetSidebar = state =>
   getUiControls(state).isShowingSnippetSidebar;
 export const getIsShowingDataReference = state =>
   getUiControls(state).isShowingDataReference;
+
+// This selector can be called from public questions / dashboards, which do not
+// have state.qb
 export const getIsShowingRawTable = state =>
-  getUiControls(state).isShowingRawTable;
+  !!state.qb?.uiControls.isShowingRawTable;
 
 const SIDEBARS = [
   "isShowingQuestionDetailsSidebar",

@@ -299,19 +299,6 @@ function getDefaultInstanceData() {
     instanceData.questions = cards;
   });
 
-  cy.request("/api/dashboard").then(async ({ body: dashboards }) => {
-    instanceData.dashboards = [];
-    // we need to hydrate the dashcards on each dashboard
-    for (const dashboard of dashboards) {
-      // this doesn't work with Promise.all because cypress request has fake promises
-      cy.request(`/api/dashboard/${dashboard.id}`).then(
-        ({ body: fullDashboard }) => {
-          instanceData.dashboards.push(fullDashboard);
-        },
-      );
-    }
-  });
-
   cy.request("/api/user").then(({ body: { data: users } }) => {
     instanceData.users = users;
   });
@@ -322,6 +309,21 @@ function getDefaultInstanceData() {
 
   cy.request("/api/collection").then(({ body: collections }) => {
     instanceData.collections = collections;
+
+    instanceData.dashboards = [];
+    for (const collection of collections) {
+      cy.request(
+        `/api/collection/${collection.id}/items?models=dashboard`,
+      ).then(({ body: { data: dashboards } }) => {
+        for (const dashboard of dashboards) {
+          if (!instanceData.dashboards.find(d => d.id === dashboard.id)) {
+            cy.request(`/api/dashboard/${dashboard.id}`).then(response => {
+              instanceData.dashboards.push(response.body);
+            });
+          }
+        }
+      });
+    }
   });
 
   return instanceData;

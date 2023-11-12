@@ -508,8 +508,10 @@
                 [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
                 [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
   (let [pulse-id (create-notification-and-add-cards-and-channels! kvs cards channels)]
-    ;; return the full Pulse (and record our create event)
-    (events/publish-event! :event/pulse-create (retrieve-pulse pulse-id))))
+    ;; return the full Pulse (and record our create event).
+    (u/prog1 (retrieve-pulse pulse-id)
+      (events/publish-event! :event/subscription-create {:object <>
+                                                         :user-id api/*current-user-id*}))))
 
 (defn create-alert!
   "Creates a pulse with the correct fields specified for an alert"
@@ -518,7 +520,7 @@
                (assoc :skip_if_empty true, :creator_id creator-id)
                (create-notification-and-add-cards-and-channels! [card-id] channels))]
     ;; return the full Pulse (and record our create event)
-    (events/publish-event! :event/alert-create (retrieve-alert id))))
+    (retrieve-alert id)))
 
 (mu/defn ^:private notification-or-id->existing-card-refs :- [:sequential CardRef]
   [notification-or-id]
@@ -568,8 +570,9 @@
   Returns the updated Pulse or throws an Exception."
   [pulse]
   (update-notification! pulse)
-  ;; fetch the fully updated pulse and return it
-  (retrieve-pulse (u/the-id pulse)))
+  ;; fetch the fully updated pulse, log an update event, and return it
+  (u/prog1 (retrieve-pulse (u/the-id pulse))
+    (events/publish-event! :event/subscription-update {:object <> :user-id api/*current-user-id*})))
 
 (defn- alert->notification
   "Convert an 'Alert` back into the generic 'Notification' format."
@@ -585,8 +588,9 @@
   "Updates the given `alert` and returns it"
   [alert]
   (update-notification! (alert->notification alert))
-  ;; fetch the fully updated pulse and return it
-  (retrieve-alert (u/the-id alert)))
+  ;; fetch the fully updated pulse, log an update event, and return it
+  (u/prog1 (retrieve-alert (u/the-id alert))
+    (events/publish-event! :event/alert-update {:object <> :user-id api/*current-user-id*})))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

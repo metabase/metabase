@@ -3,6 +3,8 @@
   (:require [babashka.process :refer [shell]]
             [clojure.string  :as str]))
 
+(set! *warn-on-reflection* true)
+
 (def release-page
   "Template for docs page that will list releases."
   (slurp "./resources/releases-template.md"))
@@ -86,7 +88,12 @@
    (shell {:out :string} command)
    :out))
 
-(defn -main [& args]
+(defn -main
+  "Entry point for creating a release list.
+  Run it from `bin/release-list/` with
+
+    bb -m release-list.main"
+  []
   ;; Clear existing list of releases
   (let [target "../../docs/releases.md"]
     (shell (str "rm -rf " target))

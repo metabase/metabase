@@ -40,14 +40,6 @@ export const DatasetColumnSelector = ({
     return getDatasetColumnSettingItems(datasetColumns, columnSettings);
   }, [datasetColumns, columnSettings]);
 
-  const enabledColumnItems = useMemo(() => {
-    return columnItems.filter(({ enabled }) => enabled);
-  }, [columnItems]);
-
-  const disabledColumnItems = useMemo(() => {
-    return columnItems.filter(({ enabled }) => !enabled);
-  }, [columnItems]);
-
   const handleEnableColumn = useCallback(
     (columnItem: ColumnSettingItem) => {
       onChange(enableColumnInSettings(columnSettings, columnItem));
@@ -64,16 +56,15 @@ export const DatasetColumnSelector = ({
 
   const handleDragColumn = useCallback(
     (props: DragColumnProps) => {
-      onChange(moveColumnInSettings(columnSettings, enabledColumnItems, props));
+      onChange(moveColumnInSettings(columnSettings, columnItems, props));
     },
-    [columnSettings, enabledColumnItems, onChange],
+    [columnSettings, columnItems, onChange],
   );
 
   return (
     <TableColumnSelector
-      enabledColumnItems={enabledColumnItems}
-      disabledColumnItems={disabledColumnItems}
-      getColumnName={getColumnName}
+      columnItems={columnItems}
+      getColumnName={({ datasetColumn }) => getColumnName(datasetColumn)}
       onEnableColumn={handleEnableColumn}
       onDisableColumn={handleDisableColumn}
       onDragColumn={handleDragColumn}

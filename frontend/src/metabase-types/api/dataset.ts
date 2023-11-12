@@ -118,7 +118,7 @@ export interface TemplateTag {
   dimension?: LocalFieldReference;
   "widget-type"?: string;
   required?: boolean;
-  default?: string;
+  default?: string | null;
   options?: ParameterOptions;
 
   // Card template specific

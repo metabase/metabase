@@ -369,7 +369,7 @@ export default class Dimension {
    * The display name of this dimension, e.x. the field's display_name
    * @abstract
    */
-  displayName(): string {
+  displayName(..._args: unknown[]): string {
     return "";
   }
 

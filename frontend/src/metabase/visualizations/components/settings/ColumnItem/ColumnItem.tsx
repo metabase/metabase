@@ -1,3 +1,5 @@
+import type { IconProps } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import {
   ColumnItemIcon,
   ColumnItemSpan,
@@ -14,6 +16,7 @@ interface ColumnItemProps {
   color?: string;
   role?: string;
   draggable?: boolean;
+  icon?: IconProps["name"];
   onClick?: () => void;
   onAdd?: (target: HTMLElement) => void;
   onRemove?: (target: HTMLElement) => void;
@@ -22,12 +25,13 @@ interface ColumnItemProps {
   onColorChange?: (newColor: string) => void;
 }
 
-export const ColumnItem = ({
+const BaseColumnItem = ({
   className,
   title,
   color,
   role,
   draggable = false,
+  icon,
   onClick,
   onAdd,
   onRemove,
@@ -43,6 +47,7 @@ export const ColumnItem = ({
       isDraggable={draggable}
       onClick={onClick}
       data-testid={draggable ? `draggable-item-${title}` : null}
+      data-enabled={!!onRemove}
     >
       <ColumnItemContainer>
         {draggable && <ColumnItemDragHandle name="grabber" />}
@@ -54,7 +59,10 @@ export const ColumnItem = ({
           />
         )}
         <ColumnItemContent>
-          <ColumnItemSpan>{title}</ColumnItemSpan>
+          <ColumnItemSpan>
+            {icon && <Icon name={icon} />}
+            {title}
+          </ColumnItemSpan>
           {onEdit && (
             <ActionIcon
               icon="ellipsis"
@@ -112,7 +120,9 @@ const ActionIcon = ({
   />
 );
 
-Object.assign(ColumnItem, {
+export const ColumnItem = Object.assign(BaseColumnItem, {
   Root: ColumnItemRoot,
   Container: ColumnItemContainer,
+  Icon: ColumnItemIcon,
+  Handle: ColumnItemDragHandle,
 });

@@ -198,7 +198,7 @@ export class Scalar extends Component {
       data: rows[0].map((value, index) => ({ value, col: cols[index] })),
       settings,
     };
-    const isClickable = visualizationIsClickable(clicked);
+    const isClickable = onVisualizationClick != null;
 
     const showSmallTitle =
       !!settings["card.title"] &&
@@ -206,6 +206,16 @@ export class Scalar extends Component {
       (gridSize?.width < 2 || gridSize?.height < 2);
 
     const titleLinesCount = getTitleLinesCount(height);
+
+    const handleClick = () => {
+      if (
+        this._scalar &&
+        onVisualizationClick &&
+        visualizationIsClickable(clicked)
+      ) {
+        onVisualizationClick({ ...clicked, element: this._scalar });
+      }
+    };
 
     return (
       <ScalarWrapper>
@@ -219,16 +229,7 @@ export class Scalar extends Component {
           alwaysShowTooltip={fullScalarValue !== displayValue}
           isClickable={isClickable}
         >
-          <span
-            onClick={
-              isClickable
-                ? () =>
-                    this._scalar &&
-                    onVisualizationClick({ ...clicked, element: this._scalar })
-                : undefined
-            }
-            ref={scalar => (this._scalar = scalar)}
-          >
+          <span onClick={handleClick} ref={scalar => (this._scalar = scalar)}>
             <ScalarValue
               fontFamily={fontFamily}
               gridSize={gridSize}

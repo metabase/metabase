@@ -16,7 +16,8 @@
                 (public-settings/application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
-  :visibility :authenticated)
+  :visibility :authenticated
+  :audit      :getter)
 
 (def ^:dynamic *db-max-results*
   "Number of raw results to fetch from the database. This number is in place to prevent massive application DB load by
@@ -95,21 +96,21 @@
   "Map with the various allowed search parameters, used to construct the SQL query."
   (mc/schema
    [:map {:closed true}
-    [:search-string                        [:maybe ms/NonBlankString]]
-    [:archived?                            :boolean]
-    [:current-user-perms                   [:set perms/PathSchema]]
-    [:models                               [:set SearchableModel]]
-    [:created-at          {:optional true} ms/NonBlankString]
-    [:created-by          {:optional true} [:set {:min 1} ms/PositiveInt]]
-    [:last-edited-at      {:optional true} ms/NonBlankString]
-    [:last-edited-by      {:optional true} [:set {:min 1} ms/PositiveInt]]
-    [:table-db-id         {:optional true} ms/PositiveInt]
-    [:limit-int           {:optional true} ms/Int]
-    [:offset-int          {:optional true} ms/Int]
-    [:search-native-query {:optional true} true?]
-    ;; true to search for verified items only,
-    ;; nil will return all items
-    [:verified            {:optional true} true?]]))
+    [:search-string                                        [:maybe ms/NonBlankString]]
+    [:archived?                                            :boolean]
+    [:current-user-perms                                   [:set perms/PathSchema]]
+    [:models                                               [:set SearchableModel]]
+    [:filter-items-in-personal-collection {:optional true} [:enum "only" "exclude"]]
+    [:created-at                          {:optional true} ms/NonBlankString]
+    [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
+    [:last-edited-at                      {:optional true} ms/NonBlankString]
+    [:last-edited-by                      {:optional true} [:set {:min 1} ms/PositiveInt]]
+    [:table-db-id                         {:optional true} ms/PositiveInt]
+    [:limit-int                           {:optional true} ms/Int]
+    [:offset-int                          {:optional true} ms/Int]
+    [:search-native-query                 {:optional true} true?]
+    ;; true to search for verified items only, nil will return all items
+    [:verified                            {:optional true} true?]]))
 
 
 (def all-search-columns
@@ -136,6 +137,7 @@
    ;; returned for Card, Dashboard, and Collection
    :collection_id       :integer
    :collection_name     :text
+   :collection_type     :text
    :collection_authority_level :text
    ;; returned for Card and Dashboard
    :collection_position :integer
@@ -293,6 +295,7 @@
   (conj (remove #{:updated_at} default-columns)
         [:collection.id :collection_id]
         [:name :collection_name]
+        [:type :collection_type]
         [:authority_level :collection_authority_level]
         bookmark-col))
 
