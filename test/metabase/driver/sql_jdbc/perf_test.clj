@@ -27,8 +27,9 @@
     (binding [sql-jdbc.execute/*read-only-connection-auto-commit* auto-commit]
       (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
         (mt/dataset sample-dataset
-          (let [queries (mapv make-query-fn (range start bound))]
-            (run-query (first queries))
+          (let [queries (mapv make-query-fn (range start bound))
+                warmup-query (first queries)]
+            (run-query warmup-query)
             #_{:clj-kondo/ignore [:discouraged-var]}
             (prn (assoc opts :driver driver/*driver* :auto-commit auto-commit))
             (flush)
@@ -55,7 +56,7 @@
                                                            (throw (ex-info (str "column " col " null")
                                                                            {:column col}))))))))))))
                                   (run! deref))
-                             {})]
+                             {:sample-count 1})]
                 #_{:clj-kondo/ignore [:discouraged-var]}
                 (prn (dissoc results :samples :runtime-details :results :os-details))))
             (flush)))))))
@@ -65,7 +66,7 @@
    (fn [i]
      (-> (mt/mbql-query orders
            {:aggregation [[:count]]
-            :condition   [:and
+            :filter      [:and
                           [:> $total 12]
                           [:< $quantity i]]
             :breakout    [!month.created_at]
@@ -79,12 +80,12 @@
    (fn [i]
      (-> (mt/mbql-query orders
            {:joins       [{:source-table $$orders
-                           :fields    :all
-                           :alias     "o2"
-                           :strategy  :inner-join
-                           :condition [:< $id &o2.$id]}]
-            :condition   [:and
-                          [:< $id 21]
+                           :fields       :all
+                           :alias        "o2"
+                           :strategy     :left-join
+                           :condition    [:<= $id &o2.$id]}]
+            :filter      [:and
+                          [:< $id 3001]
                           [:> $total 12]
                           [:<= $quantity i]
                           [:< &o2.$quantity 3]
@@ -94,7 +95,7 @@
             :order-by    [[:desc $quantity]]})
          qp/compile
          :query))
-   {:test :join :start 13 :bound 16})) ; TODO
+   {:test :join :start 23 :bound 26}))
 
 (comment
   (jdbc/with-db-connection [^Connection conn "jdbc:postgresql://vacskamati/metabase?user=metabase&password=metasample123"]
