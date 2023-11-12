@@ -101,6 +101,8 @@
 (derive :event/alert-unsubscribe ::pulse-event)
 (derive :event/subscription-create ::pulse-event)
 (derive :event/subscription-update ::pulse-event)
+(derive :event/subscription-send ::pulse-event)
+(derive :event/alert-send ::pulse-event)
 
 (defn- create-details-map [pulse name is-alert parent]
   (let [channels  (:channels pulse)
@@ -114,16 +116,17 @@
      :recipients (map :recipients channels)}))
 
 (methodical/defmethod events/publish-event! ::pulse-event
-  [topic {:keys [object user-id] :as _event}]
-  ;; Check if topic is a pulse or not (can be an unsubscribe event, which only contains email)
+  [topic {:keys [id object user-id] :as _event}]
+  ;; Check if object contains the keys that we want populated, if not then may be a unsubscribe/send event
   (let [details-map (if (some? (:id object))
                       (create-details-map object (:name object) false (:dashboard_id object))
-                      object)]
+                      object)
+        model-id    (or id (:id object))]
     (audit-log/record-event! topic
                              {:details  details-map
                               :user-id  user-id
                               :model    :model/Pulse
-                              :model-id (:id object)})))
+                              :model-id model-id})))
 
 (derive ::alert-event ::event)
 (derive :event/alert-create ::alert-event)
