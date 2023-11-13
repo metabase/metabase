@@ -1,5 +1,5 @@
 import {
-  isPersonalCollection,
+  isRootPersonalCollection,
   canonicalCollectionId,
   isRootCollection,
 } from "metabase/collections/utils";
@@ -7,17 +7,17 @@ import {
 import { createMockCollection } from "metabase-types/api/mocks";
 
 describe("Collections > utils", () => {
-  describe("isPersonalCollection", () => {
+  describe("isRootPersonalCollection", () => {
     it("returns true if personal_owner_id is a number", () => {
       const collection = { personal_owner_id: 1 };
 
-      expect(isPersonalCollection(collection)).toBe(true);
+      expect(isRootPersonalCollection(collection)).toBe(true);
     });
 
     it("returns false if personal_owner_id is not a number", () => {
       const collection = {};
 
-      expect(isPersonalCollection(collection)).toBe(false);
+      expect(isRootPersonalCollection(collection)).toBe(false);
     });
   });
 

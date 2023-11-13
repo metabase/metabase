@@ -6,7 +6,7 @@ import ItemPicker from "./ItemPicker";
 export interface DashboardPickerProps
   extends Pick<
     ItemPickerProps<DashboardId>,
-    "showOnlyPersonalCollections" | "onOpenCollectionChange"
+    "filterPersonalCollections" | "onOpenCollectionChange"
   > {
   value?: DashboardId;
   onChange: (dashboardId: DashboardId) => void;

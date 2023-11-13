@@ -3902,6 +3902,34 @@ databaseChangeLog:
             sql: drop view if exists v_view_log;
 
   - changeSet:
+      id: v48.00-046
+      author: noahmoss
+      comment: Added 0.48.0 - new indexes to optimize audit v2 queries
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/indexes/v1/postgres-indexes.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql
+            path: instance_analytics_views/indexes/v1/mysql-indexes.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mariadb
+            path: instance_analytics_views/indexes/v1/mariadb-indexes.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/indexes/v1/h2-indexes.sql
+            relativeToChangelogFile: true
+      rollback:
+        # Only MySQL needes a rollback because all the other DBs support "CREATE INDEX IF NOT EXISTS"
+        - sqlFile:
+            dbms: mysql
+            path: instance_analytics_views/indexes/v1/mysql-rollback.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
       id: v48.00-047
       author: noahmoss
       comment: Drop foreign key on recent_views so that it can be recreated with onDelete policy
@@ -3983,6 +4011,53 @@ databaseChangeLog:
                     ABSENT ON NULL
                   )
               FROM activity;
+      rollback: # not necessary
+
+  - changeSet:
+      id: v48.00-050
+      author: noahmoss
+      comment: Added 0.48.0 - no-op migration to remove audit DB and collection on downgrade
+      changes:
+        - comment: "No operation performed for this changeset on execution."
+      rollback:
+        - sql: DELETE FROM metabase_database WHERE is_audit = TRUE;
+        - sql: DELETE FROM collection WHERE type = 'instance_analytics';
+
+  - changeSet:
+      id: v48.00-051
+      author: calherries
+      comment: Migrate metabase_field when the fk target field is inactive
+      changes:
+        - sql:
+            dbms: mariadb,mysql
+            sql: >-
+              UPDATE metabase_field AS a
+              JOIN metabase_field AS b ON b.id = a.fk_target_field_id
+              SET a.fk_target_field_id = NULL,
+                  a.semantic_type = NULL
+              WHERE b.active = FALSE;
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE metabase_field
+              SET fk_target_field_id = NULL,
+                  semantic_type = NULL
+              WHERE fk_target_field_id IN (
+                  SELECT id
+                  FROM metabase_field
+                  WHERE active = FALSE
+              );
+      rollback: # no change
+
+  - changeSet:
+      id: v48.00-053
+      author: johnswanson
+      comment: Increase length of `activity.model` to fit longer model names
+      changes:
+        - modifyDataType:
+            tableName: activity
+            columnName: model
+            newDataType: VARCHAR(32)
       rollback: # not necessary
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
