@@ -88,7 +88,7 @@ export const isLatestVersion = (thisVersion: string, allVersions: string[]) => {
   const normalizedVersions = allVersions
     .filter(isValidVersionString)
     .filter(version => !isRCVersion(version))
-    .map((version) => String(coerce(version.replace(/(v1|v0)\./, ''))))
+    .map(version => String(coerce(version.replace(/(v1|v0)\./, ""))))
     .sort(compareVersions);
 
   if (!normalizedVersions.length) {
@@ -97,10 +97,18 @@ export const isLatestVersion = (thisVersion: string, allVersions: string[]) => {
 
   const lastVersion = normalizedVersions[normalizedVersions.length - 1];
 
-  return compareVersions(String(coerce(thisVersion.replace(/(v1|v0)\./, ''))), lastVersion) > -1;
+  return (
+    compareVersions(
+      String(coerce(thisVersion.replace(/(v1|v0)\./, ""))),
+      lastVersion,
+    ) > -1
+  );
 };
 
-const versionRequirements: Record<number, { java: number, node: number }> = {
+export const versionRequirements: Record<
+  number,
+  { java: number; node: number }
+> = {
   43: { java: 8, node: 14 },
   44: { java: 11, node: 14 },
   45: { java: 11, node: 14 },
@@ -118,10 +126,15 @@ export const getBuildRequirements = (version: string) => {
     return versionRequirements[majorVersion];
   }
 
-  const lastKey = Object.keys(versionRequirements)[Object.keys(versionRequirements).length - 1];
-  console.warn(`No build requirements found for version ${version}, using latest: v${lastKey}`);
+  const lastKey =
+    Object.keys(versionRequirements)[
+      Object.keys(versionRequirements).length - 1
+    ];
+  console.warn(
+    `No build requirements found for version ${version}, using latest: v${lastKey}`,
+  );
   return versionRequirements[Number(lastKey)];
-}
+};
 
 export const getNextVersions = (versionString: string): string[] => {
   if (!isValidVersionString(versionString)) {
@@ -130,31 +143,28 @@ export const getNextVersions = (versionString: string): string[] => {
 
   const versionType = getVersionType(versionString);
 
-  if (versionType === 'rc' || versionType === 'patch') {
+  if (versionType === "rc" || versionType === "patch") {
     return [];
   }
 
-  const editionString = isEnterpriseVersion(versionString)
-    ? 'v1.'
-    : 'v0.';
+  const editionString = isEnterpriseVersion(versionString) ? "v1." : "v0.";
 
   // minor releases -> next minor release
   const [major, minor] = versionString
-    .replace(/(v1|v0)\./, '')
+    .replace(/(v1|v0)\./, "")
     .replace(/.0$/, "")
-    .split('.')
+    .split(".")
     .map(Number);
 
-  if (versionType === 'minor') {
-    return [editionString + [major, minor + 1].join('.')];
+  if (versionType === "minor") {
+    return [editionString + [major, minor + 1].join(".")];
   }
 
-
   // major releases -> x.1 minor release AND next .0 major release
-  if (versionType === 'major') {
+  if (versionType === "major") {
     return [
-      editionString + [major, 1].join('.'),
-      editionString + [major + 1, 0].join('.'),
+      editionString + [major, 1].join("."),
+      editionString + [major + 1, 0].join("."),
     ];
   }
 
