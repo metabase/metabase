@@ -192,33 +192,37 @@ describe("scenarios > models metadata", () => {
     // Check that the relation is automatically suggested in the notebook once it is implemented.
   });
 
-  it("should keep metadata in sync with the query", () => {
-    cy.createNativeQuestion(
-      {
-        name: "Native Model",
-        dataset: true,
-        native: {
-          query: "SELECT * FROM ORDERS LIMIT 5",
+  it(
+    "should keep metadata in sync with the query",
+    { tags: ["@flake"] },
+    () => {
+      cy.createNativeQuestion(
+        {
+          name: "Native Model",
+          dataset: true,
+          native: {
+            query: "SELECT * FROM ORDERS LIMIT 5",
+          },
         },
-      },
-      { visitQuestion: true },
-    );
+        { visitQuestion: true },
+      );
 
-    openQuestionActions();
-    popover().findByTextEnsureVisible("Edit query definition").click();
+      openQuestionActions();
+      popover().findByTextEnsureVisible("Edit query definition").click();
 
-    cy.get(".ace_content").type(
-      "{selectAll}{backspace}SELECT TOTAL FROM ORDERS LIMIT 5",
-    );
+      cy.get(".ace_content").type(
+        "{selectAll}{backspace}SELECT TOTAL FROM ORDERS LIMIT 5",
+      );
 
-    cy.findByTestId("editor-tabs-metadata-name").click();
-    cy.wait("@dataset");
+      cy.findByTestId("editor-tabs-metadata-name").click();
+      cy.wait("@dataset");
 
-    cy.findAllByTestId("header-cell")
-      .should("have.length", 1)
-      .and("have.text", "TOTAL");
-    cy.findByLabelText("Display name").should("have.value", "TOTAL");
-  });
+      cy.findAllByTestId("header-cell")
+        .should("have.length", 1)
+        .and("have.text", "TOTAL");
+      cy.findByLabelText("Display name").should("have.value", "TOTAL");
+    },
+  );
 
   it("should allow reverting to a specific metadata revision", () => {
     cy.intercept("POST", "/api/revision/revert").as("revert");

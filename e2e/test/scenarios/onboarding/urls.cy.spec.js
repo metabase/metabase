@@ -72,7 +72,7 @@ describe("URLs", () => {
   });
 
   describe("collections", () => {
-    it("should slugify collection name", () => {
+    it("should slugify collection name", { tags: ["@flake"] }, () => {
       cy.visit("/collection/root");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("First collection").click();

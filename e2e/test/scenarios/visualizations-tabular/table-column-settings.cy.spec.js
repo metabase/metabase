@@ -577,23 +577,27 @@ describe("scenarios > visualizations > table column settings", () => {
   });
 
   describe("nested structured questions", () => {
-    it("should be able to show and hide fields from a nested query", () => {
-      cy.createQuestion(tableQuestion).then(({ body: card }) => {
-        cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
-      });
-      openSettings();
+    it(
+      "should be able to show and hide fields from a nested query",
+      { tags: ["@flake"] },
+      () => {
+        cy.createQuestion(tableQuestion).then(({ body: card }) => {
+          cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
+        });
+        openSettings();
 
-      const testData = {
-        column: "Tax",
-        columnName: "Tax",
-        table: "test question",
-      };
+        const testData = {
+          column: "Tax",
+          columnName: "Tax",
+          table: "test question",
+        };
 
-      _hideColumn(testData);
-      _showColumn(testData);
-      _removeColumn(testData);
-      _addColumn(testData);
-    });
+        _hideColumn(testData);
+        _showColumn(testData);
+        _removeColumn(testData);
+        _addColumn(testData);
+      },
+    );
 
     it("should be able to show and hide fields from a nested query with joins (metabase#32373)", () => {
       cy.createQuestion(tableQuestionWithJoin).then(({ body: card }) => {

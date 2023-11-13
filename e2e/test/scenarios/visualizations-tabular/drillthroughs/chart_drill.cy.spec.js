@@ -258,7 +258,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 
-  it("should drill through a nested query", () => {
+  it("should drill through a nested query", { tags: ["@flake"] }, () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
     cy.createQuestion({
