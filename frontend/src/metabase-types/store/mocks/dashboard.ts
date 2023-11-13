@@ -28,6 +28,13 @@ export const createMockDashboardState = (
     toastId: null,
     toastDashboardId: null,
   },
+  autoWireParameters: {
+    toast: {
+      dashboardId: null,
+      id: null,
+    },
+    disabledDashcards: {},
+  },
   tabDeletions: {},
   ...opts,
 });

@@ -12,6 +12,10 @@ import { createCard } from "metabase/lib/card";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 import { autoWireParametersToNewCard } from "metabase/dashboard/actions/auto-wire-parameters/actions";
+import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
+import { addUndo } from "metabase/redux/undo";
+import { getMetadata } from "metabase/selectors/metadata";
+import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
 import { trackCardCreated } from "../analytics";
 import { getDashCardById, getParameterMappingOptions } from "../selectors";
 import {
@@ -23,9 +27,6 @@ import {
 import { cancelFetchCardData, fetchCardData } from "./data-fetching";
 import { loadMetadataForDashboard } from "./metadata";
 import { getExistingDashCards } from "./utils";
-import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
-import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
-import { addUndo } from "metabase/redux/undo";
 
 export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
 export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
