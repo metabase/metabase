@@ -114,7 +114,7 @@ export function DateIntervalPicker({
             <Menu.Item
               icon={<Icon name={includeCurrent ? "check" : "calendar"} />}
               onClick={handleIncludeCurrentClick}
-              onMouseDown={handleIncludeCurrentClick}
+              onMouseDown={handleIncludeCurrentClick} // we need to close the menu on mousedown to prevent the outer popover from closing
               aria-selected={includeCurrent}
               data-testid="include-current-interval-option"
             >
