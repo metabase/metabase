@@ -1494,7 +1494,6 @@ function expectSearchResultItemNameContent(
       // Remove the `filter()` as soon as audit v2 part is fixed!
       .filter(el => el.textContent !== "MODERATION_REVIEW")
       .map(el => {
-        console.log(el.textContent);
         return el.textContent;
       });
 
