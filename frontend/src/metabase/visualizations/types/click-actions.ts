@@ -143,8 +143,8 @@ export type Drill<
 ) => ClickAction[];
 
 export interface ModeFooterProps {
-  query: Lib.Query;
-  updateQuery: (newQuery: Lib.Query) => void;
+  question: Question;
+  updateQuestion: (newQuestion: Question, opts?: { run?: boolean }) => void;
 }
 
 export interface QueryClickActionsMode {

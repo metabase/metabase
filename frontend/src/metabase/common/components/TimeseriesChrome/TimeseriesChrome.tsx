@@ -12,15 +12,15 @@ interface UpdateQuestionOpts {
   run?: boolean;
 }
 
-interface TimeseriesFooterProps {
+interface TimeseriesChromeProps {
   question: Question;
   updateQuestion: (newQuestion: Question, opts?: UpdateQuestionOpts) => void;
 }
 
-export function TimeseriesFooter({
+export function TimeseriesChrome({
   question,
   updateQuestion,
-}: TimeseriesFooterProps) {
+}: TimeseriesChromeProps) {
   const query = question._getMLv2Query();
 
   const handleChange = (query: Lib.Query) => {
