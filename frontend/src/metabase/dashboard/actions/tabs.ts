@@ -2,6 +2,7 @@ import { createAction, createReducer } from "@reduxjs/toolkit";
 import type { Draft } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import { arrayMove } from "@dnd-kit/sortable";
+import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 
 import type {
   DashCardId,
@@ -23,7 +24,6 @@ import { addUndo } from "metabase/redux/undo";
 import { INITIAL_DASHBOARD_STATE } from "../constants";
 import { getDashCardById } from "../selectors";
 import { trackCardMoved } from "../analytics";
-import { getExistingDashCards } from "./utils";
 
 type CreateNewTabPayload = {
   tabId: DashboardTabId;
