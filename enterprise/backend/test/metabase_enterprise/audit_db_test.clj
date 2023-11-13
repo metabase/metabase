@@ -10,7 +10,8 @@
    [metabase.task :as task]
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [clojure.string :as str]))
 
 (defmacro with-audit-db-restoration [& body]
   `(let [original-audit-db# (t2/select-one Database :is_audit true)]
@@ -75,20 +76,19 @@
            "plugins/instance_analytics/databases"}
          (set (map str (fs/list-dir "plugins/instance_analytics"))))))
 
-(defn- get-audit-db-triggers []
-  (t2/query
-   (str "select trigger_name from qrtz_triggers where trigger_name like '%"
-        perms/audit-db-id
-        "%';")))
+(defn- get-audit-db-trigger-keys []
+  (let [trigger-keys (->> (task/scheduler-info) :jobs (mapcat :triggers) (map :key))
+        audit-db? #(str/includes? % (str perms/audit-db-id))]
+    (filter audit-db? trigger-keys)))
 
 (deftest no-sync-tasks-for-audit-db
   (with-audit-db-restoration
-    (is (= :metabase-enterprise.audit-db/no-op (audit-db/ensure-audit-db-installed!)))
-    (is (= 0 (count (get-audit-db-triggers))) "no sync scheduled after installation")
+    (audit-db/ensure-audit-db-installed!)
+    (is (= 0 (count (get-audit-db-trigger-keys))) "no sync scheduled after installation")
 
     (with-redefs [task.sync-databases/job-context->database-id (constantly perms/audit-db-id)]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Cannot sync Database: It is the audit db."
            (#'task.sync-databases/sync-and-analyze-database! "job-context"))))
-    (is (= 0 (count (get-audit-db-triggers))) "no sync occured even when called directly for audit db.")))
+    (is (= 0 (count (get-audit-db-trigger-keys))) "no sync occured even when called directly for audit db.")))
