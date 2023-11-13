@@ -426,7 +426,7 @@ export function initializeIframeResizer(onReady = () => {}) {
     window.iFrameResizer = {
       autoResize: true,
       heightCalculationMethod: "max",
-      onReady: onReady,
+      onReady,
     };
 
     // FIXME: Crimes
