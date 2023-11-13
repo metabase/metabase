@@ -6,7 +6,6 @@
    [clojure.test :refer :all]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.database :as api.database]
-   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models :refer [Dashboard DashboardCard Database Field FieldValues
                             Permissions Table]]
