@@ -179,7 +179,7 @@ Metabase's reference documentation.
 ### Tools
 
 - [Tools overview](./usage-and-performance-tools/start.md)
-- [Auditing tools](./usage-and-performance-tools/audit.md)
+- [Metabase analytics](./usage-and-performance-tools/metabase-analytics.md)
 - [Admin tools](./usage-and-performance-tools/tools.md)
 
 ### Cloud
