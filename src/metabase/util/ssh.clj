@@ -30,7 +30,8 @@
   (deferred-tru "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).")
   :visibility :public
   :type       :integer
-  :default    180)
+  :default    180
+  :audit      :getter)
 
 (set! *warn-on-reflection* true)
 

@@ -136,6 +136,14 @@
   ;; just take the first part of the topic name after splitting on dashes.
   (first (str/split (name topic) #"-")))
 
+(defn object->model-id
+  "Determine the appropriate `model_id` (if possible) for a given `object`."
+  [topic object]
+  (if (contains? (set (keys object)) :id)
+    (:id object)
+    (let [model (topic->model topic)]
+      (get object (keyword (format "%s-id" model))))))
+
 (defn object->metadata
   "Determine metadata, if there is any, for given `object`.
   Expand the object when we need more metadata."

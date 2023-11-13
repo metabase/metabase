@@ -69,8 +69,8 @@ const AddToDashSelectDashModal = ({
     }),
   );
   const isOpenCollectionInPersonalCollection = openCollection?.is_personal;
-  const hideCreateNewDashboardOption =
-    isQuestionInPersonalCollection && !isOpenCollectionInPersonalCollection;
+  const showCreateNewDashboardOption =
+    !isQuestionInPersonalCollection || isOpenCollectionInPersonalCollection;
 
   const navigateToDashboard: Required<CreateDashboardFormOwnProps>["onCreate"] =
     dashboard => {
@@ -92,6 +92,9 @@ const AddToDashSelectDashModal = ({
   if (shouldCreateDashboard) {
     return (
       <CreateDashboardModal
+        filterPersonalCollections={
+          isQuestionInPersonalCollection ? "only" : undefined
+        }
         collectionId={card.collection_id}
         onCreate={navigateToDashboard}
         onClose={() => setShouldCreateDashboard(false)}
@@ -119,12 +122,14 @@ const AddToDashSelectDashModal = ({
     >
       <DashboardPicker
         onOpenCollectionChange={setOpenCollectionId}
-        showOnlyPersonalCollections={isQuestionInPersonalCollection}
+        filterPersonalCollections={
+          isQuestionInPersonalCollection ? "only" : undefined
+        }
         onChange={onDashboardSelected}
         collectionId={initialOpenCollectionId}
         value={mostRecentlyViewedDashboardQuery.data?.id}
       />
-      {!hideCreateNewDashboardOption && (
+      {showCreateNewDashboardOption && (
         <Link onClick={() => setShouldCreateDashboard(true)} to="">
           <LinkContent>
             <Icon name="add" className="mx1" />

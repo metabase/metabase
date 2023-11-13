@@ -132,6 +132,5 @@
       (update-tabs! current-tabs to-update))
     {:old->new-tab-id old->new-tab-id
      :created-tab-ids (vals old->new-tab-id)
-     :updated-tab-ids (map :id to-update)
      :deleted-tab-ids to-delete-ids
      :total-num-tabs  (reduce + (map count [to-create to-update]))}))

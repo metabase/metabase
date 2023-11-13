@@ -159,6 +159,13 @@
   (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
     (merge defaults field)))
 
+(t2/define-before-update :model/Field
+  [field]
+  (u/prog1 (t2/changes field)
+    (when (false? (:active <>))
+      (t2/update! :model/Field {:fk_target_field_id (:id field)} {:semantic_type      nil
+                                                                  :fk_target_field_id nil}))))
+
 ;;; Field permissions
 ;; There are several API endpoints where large instances can return many thousands of Fields. Normally Fields require
 ;; a DB call to fetch information about their Table, because a Field's permissions set is the same as its parent

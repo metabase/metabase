@@ -11,20 +11,14 @@
                        [:user-id pos-int?]
                        [:object [:fn #(t2/instance-of? :model/Dashboard %)]]])
       with-dashcards (mut/assoc default-schema
-                                :dashcards [:sequential [:map [:id pos-int?]]])
-      with-tab-ids   (mut/assoc default-schema
-                                :tab-ids [:sequential pos-int?])]
+                                :dashcards [:sequential [:map [:id pos-int?]]])]
   (def ^:private dashboard-events-schemas
     {:event/dashboard-read             default-schema
      :event/dashboard-create           default-schema
      :event/dashboard-update           default-schema
      :event/dashboard-delete           default-schema
-     :event/dashboard-reposition-cards with-dashcards
      :event/dashboard-remove-cards     with-dashcards
-     :event/dashboard-add-cards        with-dashcards
-     :event/dashboard-add-tabs         with-tab-ids
-     :event/dashboard-update-tabs      with-tab-ids
-     :event/dashboard-remove-tabs      with-tab-ids}))
+     :event/dashboard-add-cards        with-dashcards}))
 
 ;; card events
 
@@ -87,15 +81,11 @@
 
 (let [default-schema (mc/schema
                       [:map {:closed true}
-                       [:object [:fn #(t2/instance-of? :model/Database %)]]])
-      with-user      (mc/schema
-                      [:merge default-schema
-                       [:map {:closed true}
-                        [:user-id  pos-int?]]])]
-
+                       [:object [:fn #(t2/instance-of? :model/Database %)]]
+                       [:previous-object {:optional true} [:fn #(t2/instance-of? :model/Database %)]]
+                       [:user-id pos-int?]])]
   (def ^:private database-events
-    {:event/database-create with-user
-
+    {:event/database-create default-schema
      :event/database-update default-schema
      :event/database-delete default-schema}))
 

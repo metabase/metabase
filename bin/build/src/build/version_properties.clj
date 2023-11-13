@@ -3,7 +3,9 @@
    [clojure.string :as str]
    [metabuild-common.core :as u]))
 
-(def version-properties-filename
+(set! *warn-on-reflection* true)
+
+(def ^:private version-properties-filename
   (u/filename u/project-root-directory "resources" "version.properties"))
 
 (defn- shell-output-when-nonzero
@@ -14,16 +16,16 @@
     (when (zero? exit)
       (first out))))
 
-(defn git-hash []
+(defn- git-hash []
   ;; first 7 letters of hash should be enough; that's what GitHub uses
   (or (shell-output-when-nonzero "git" "show-ref" "--head" "--hash=7" "head")
       "?"))
 
-(defn git-branch []
+(defn- git-branch []
   (or (shell-output-when-nonzero "git" "symbolic-ref" "--short" "HEAD")
       "?"))
 
-(defn git-last-commit-date []
+(defn- git-last-commit-date []
   (or (shell-output-when-nonzero "git" "log" "-1" "--pretty=%ad" "--date=short")
       "?"))
 
@@ -35,7 +37,7 @@
                               :date   (git-last-commit-date)}]
                    (str (name k) \= v))))
 
-(defn most-recent-tag []
+(defn- most-recent-tag []
   (shell-output-when-nonzero "git" "describe" "--abbrev=0" "--tags"))
 
 (defn- tag-parts [tag]
@@ -74,7 +76,7 @@
   ([edition]
    (generate-version-properties-file! edition (current-snapshot-version edition)))
 
-  ([edition version]
+  ([_edition version]
    (u/delete-file-if-exists! version-properties-filename)
    (u/step (format "Generate version.properties file for version %s" version)
      (spit version-properties-filename (version-properties version))

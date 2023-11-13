@@ -257,7 +257,7 @@
   (are [method route expected] (= expected
                                   (internal/route-fn-name method route))
     'GET "/"                    'GET_
-    'GET "/:id/cards"           'GET_:id_cards
+    'GET "/:id/fks"             'GET_:id_fks
     ;; check that internal/route-fn-name can handle routes with regex conditions
     'GET ["/:id" :id #"[0-9]+"] 'GET_:id))
 
