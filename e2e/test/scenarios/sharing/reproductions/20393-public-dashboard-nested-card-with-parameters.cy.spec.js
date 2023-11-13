@@ -1,3 +1,4 @@
+// Trigger E2E tests
 import { restore, popover, visitDashboard } from "e2e/support/helpers";
 
 describe("issue 20393", () => {
