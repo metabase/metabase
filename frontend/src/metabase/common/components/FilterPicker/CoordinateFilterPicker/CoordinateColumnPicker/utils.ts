@@ -12,11 +12,27 @@ export function getColumnOptions(
     return {
       column,
       value: String(columnIndex),
-      label: columnInfo.displayName,
+      label: columnInfo.longDisplayName,
     };
   });
 }
 
+export function getInitialOption(
+  query: Lib.Query,
+  stageIndex: number,
+  options: ColumnOption[],
+  secondColumn?: Lib.ColumnMetadata,
+) {
+  if (!secondColumn) {
+    return undefined;
+  }
+
+  const columnInfo = Lib.displayInfo(query, stageIndex, secondColumn);
+  return options.find(option => option.label === columnInfo?.longDisplayName);
+}
+
 export function getColumnPlaceholder(column: Lib.ColumnMetadata) {
-  return Lib.isLatitude(column) ? t`Select longitude` : t`Select latitude`;
+  return Lib.isLatitude(column)
+    ? t`Select longitude column`
+    : t`Select latitude column`;
 }

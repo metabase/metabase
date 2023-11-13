@@ -1,12 +1,18 @@
 import { useMemo, useState } from "react";
+import { checkNotNull } from "metabase/lib/types";
 import { Select, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import { getColumnOptions, getColumnPlaceholder } from "./utils";
+import {
+  getColumnOptions,
+  getColumnPlaceholder,
+  getInitialOption,
+} from "./utils";
 
 interface CoordinateColumnPickerProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
+  secondColumn: Lib.ColumnMetadata | undefined;
   availableColumns: Lib.ColumnMetadata[];
   onChange: (secondColumn: Lib.ColumnMetadata) => void;
 }
@@ -15,6 +21,7 @@ export function CoordinateColumnPicker({
   query,
   stageIndex,
   column,
+  secondColumn,
   availableColumns,
   onChange,
 }: CoordinateColumnPickerProps) {
@@ -22,15 +29,15 @@ export function CoordinateColumnPicker({
     return getColumnOptions(query, stageIndex, availableColumns);
   }, [query, stageIndex, availableColumns]);
 
-  const [value, setValue] = useState<string | null>(null);
-  const placeholder = getColumnPlaceholder(column);
+  const [value, setValue] = useState(() => {
+    const option = getInitialOption(query, stageIndex, options, secondColumn);
+    return option?.value;
+  });
 
   const handleChange = (value: string | null) => {
-    const option = options.find(option => option.value === value);
-    if (option) {
-      setValue(option.value);
-      onChange(option.column);
-    }
+    const option = checkNotNull(options.find(option => option.value === value));
+    setValue(option.value);
+    onChange(option.column);
   };
 
   return (
@@ -38,7 +45,7 @@ export function CoordinateColumnPicker({
       <Select
         data={options}
         value={value}
-        placeholder={placeholder}
+        placeholder={getColumnPlaceholder(column)}
         onChange={handleChange}
       />
     </Stack>
