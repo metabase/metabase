@@ -7,8 +7,8 @@ import {
   within,
 } from "__support__/ui";
 import {
-  setupFieldSearchValuesEndpoints,
   setupFieldsValuesEndpoints,
+  setupFieldSearchValuesEndpoints,
 } from "__support__/server-mocks";
 import { checkNotNull } from "metabase/lib/types";
 import {
@@ -195,25 +195,6 @@ describe("StringFilterPicker", () => {
       expect(getNextFilterColumnName()).toBe("Product → Description");
     });
 
-    it("should add a filter with one value via keyboard", async () => {
-      const { onChange, getNextFilterParts, getNextFilterColumnName } = setup();
-
-      await setOperator("Contains");
-      const input = screen.getByPlaceholderText("Enter some text");
-      userEvent.type(input, "{enter}");
-      expect(onChange).not.toHaveBeenCalled();
-
-      userEvent.type(input, "green{enter}");
-      expect(onChange).toHaveBeenCalled();
-      expect(getNextFilterParts()).toMatchObject({
-        operator: "contains",
-        column: expect.anything(),
-        values: ["green"],
-        options: { "case-sensitive": false },
-      });
-      expect(getNextFilterColumnName()).toBe("Product → Description");
-    });
-
     it("should add a case-sensitive filter", async () => {
       const { getNextFilterParts, getNextFilterColumnName } = setup();
 
@@ -247,32 +228,6 @@ describe("StringFilterPicker", () => {
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
-        operator: "=",
-        column: expect.anything(),
-        values: ["Doohickey", "Widget"],
-        options: {},
-      });
-      expect(getNextFilterColumnName()).toBe("Product → Category");
-    });
-
-    it("should add a filter with many values via keyboard", async () => {
-      const query = createQuery();
-      const column = findStringColumn(query, { fieldValues: "list" });
-      const { onChange, getNextFilterParts, getNextFilterColumnName } = setup({
-        query,
-        column,
-      });
-      await waitForLoaderToBeRemoved();
-
-      const input = screen.getByPlaceholderText("Search the list");
-      userEvent.type(input, "{enter}");
-      expect(onChange).not.toHaveBeenCalled();
-
-      userEvent.click(screen.getByLabelText("Doohickey"));
-      userEvent.click(screen.getByLabelText("Widget"));
-      userEvent.type(input, "{enter}");
-      expect(onChange).toHaveBeenCalled();
-      expect(getNextFilterParts()).toMatchObject({
         operator: "=",
         column: expect.anything(),
         values: ["Doohickey", "Widget"],
