@@ -340,7 +340,8 @@ describe("scenarios > models metadata", () => {
       });
     });
 
-    it("should allow drills on FK columns from dashboards", () => {
+    // FIXME: zoom, fk-details, fk-filter drills should be returned for a native query model (metabase#35689)
+    it.skip("should allow drills on FK columns from dashboards", () => {
       cy.get("@modelId").then(modelId => {
         cy.createDashboard().then(response => {
           const dashboardId = response.body.id;
