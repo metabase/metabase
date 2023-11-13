@@ -90,13 +90,13 @@
          false)))
 
 (defn- datetime-string? [s]
-  (try (t/local-date-time s)
+  (try (upload-parsing/parse-datetime s)
        true
        (catch Exception _
          false)))
 
 (defn- offset-datetime-string? [s]
-  (try (t/offset-date-time s)
+  (try (upload-parsing/parse-offset-datetime s)
        true
        (catch Exception _
          false)))
@@ -165,7 +165,7 @@
 
 (defn- row->types
   [row]
-  (map (comp value->type search.util/normalize) row))
+  (map value->type row))
 
 (defn- lowest-common-member [[x & xs :as all-xs] ys]
   (cond
