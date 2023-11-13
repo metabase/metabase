@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import type { FormEvent } from "react";
 import { t } from "ttag";
-import { Box, Checkbox, Flex } from "metabase/ui";
+import { Box, Checkbox, Flex, TextInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { MAX_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
@@ -83,17 +83,14 @@ export function StringFilterPicker({
           onChange={handleOperatorChange}
         />
       </FilterHeader>
-      <Box>
-        {valueCount !== 0 && (
-          <FlexWithScroll p="md" mah={MAX_HEIGHT}>
-            <ColumnValuesWidget
-              column={column}
-              value={values}
-              hasMultipleValues={hasMultipleValues}
-              onChange={setValues}
-            />
-          </FlexWithScroll>
-        )}
+      <div>
+        <StringValueInput
+          column={column}
+          values={values}
+          valueCount={valueCount}
+          hasMultipleValues={hasMultipleValues}
+          onChange={setValues}
+        />
         <FilterFooter isNew={isNew} canSubmit={isValid}>
           {hasCaseSensitiveOption && (
             <CaseSensitiveOption
@@ -102,9 +99,54 @@ export function StringFilterPicker({
             />
           )}
         </FilterFooter>
-      </Box>
+      </div>
     </Box>
   );
+}
+
+interface StringValueInputProps {
+  column: Lib.ColumnMetadata;
+  values: string[];
+  valueCount: number;
+  hasMultipleValues?: boolean;
+  onChange: (values: string[]) => void;
+}
+
+function StringValueInput({
+  column,
+  values,
+  valueCount,
+  hasMultipleValues,
+  onChange,
+}: StringValueInputProps) {
+  if (hasMultipleValues) {
+    return (
+      <FlexWithScroll p="md" mah={MAX_HEIGHT}>
+        <ColumnValuesWidget
+          column={column}
+          value={values}
+          hasMultipleValues={hasMultipleValues}
+          onChange={onChange}
+        />
+      </FlexWithScroll>
+    );
+  }
+
+  if (valueCount === 1) {
+    return (
+      <Flex p="md">
+        <TextInput
+          value={values[0]}
+          onChange={event => onChange([event.target.value])}
+          placeholder={t`Enter some text`}
+          autoFocus
+          w="100%"
+        />
+      </Flex>
+    );
+  }
+
+  return null;
 }
 
 interface CaseSensitiveOptionProps {

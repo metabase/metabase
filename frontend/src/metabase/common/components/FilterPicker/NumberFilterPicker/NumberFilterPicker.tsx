@@ -77,7 +77,7 @@ export function NumberFilterPicker({
           onChange={handleOperatorChange}
         />
       </FilterHeader>
-      <Box>
+      <div>
         <NumberValueInput
           column={column}
           values={values}
@@ -86,7 +86,7 @@ export function NumberFilterPicker({
           onChange={setValues}
         />
         <FilterFooter isNew={isNew} canSubmit={isValid} />
-      </Box>
+      </div>
     </Box>
   );
 }
