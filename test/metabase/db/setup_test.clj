@@ -1,7 +1,6 @@
 (ns metabase.db.setup-test
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.data-source :as mdb.data-source]
@@ -10,7 +9,9 @@
    [metabase.db.setup :as mdb.setup]
    [metabase.driver :as driver]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (liquibase.changelog ChangeSet)))
 
 (set! *warn-on-reflection* true)
 
@@ -51,33 +52,35 @@
       (mt/with-temp-empty-app-db [conn driver/*driver*]
         (is (= :done
                (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true)))
-        (is (= (last (liquibase-test/liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*))
-               (t2/select-one-pk (liquibase/changelog-table-name conn) {:order-by [[:dateexecuted :desc]]})))))))
+        (testing "migrations are executed in the order they are defined"
+          (is (= (liquibase-test/liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*)
+                 (t2/select-pks-vec (liquibase/changelog-table-name conn) {:order-by [[:orderexecuted :asc]]}))))))))
+
+(defn- update-to-changelog-id
+  [change-log-id conn]
+  (liquibase/with-liquibase [liquibase conn]
+    (let [unrun-migrations (.listUnrunChangeSets liquibase nil nil)
+          run-count        (loop [cnt        1
+                                  changesets unrun-migrations]
+                             (if (= (.getId ^ChangeSet (first changesets)) change-log-id)
+                               cnt
+                               (recur (inc cnt) (rest changesets))))]
+      (.update liquibase ^Integer run-count nil))))
 
 (deftest setup-a-mb-instance-running-version-lower-than-45
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       (with-redefs [liquibase/decide-liquibase-file (fn [& _args] @#'liquibase/changelog-legacy-file)]
-        ;; set up a db in a way we have a MB instance running metabase 42
-        (liquibase/with-liquibase [liquibase conn]
-          (.update liquibase 380 ""))
-        (is (str/starts-with?
-             (t2/select-one-pk (liquibase/changelog-table-name conn) {:order-by [[:dateexecuted :desc]]})
-             "v42")))
-
+        ;; set up a db in a way we have a MB instance running metabase 44
+        (update-to-changelog-id "v44.00-000" conn))
       (is (= :done
              (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true))))))
 
 (deftest setup-a-mb-instance-running-version-greater-than-45
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
-      (with-redefs [liquibase/decide-liquibase-file (fn [& _args] @#'liquibase/changelog-legacy-file)]
-        ;; set up a db in a way we have a MB instance running metabase 45
-        (liquibase/with-liquibase [liquibase conn]
-          (.update liquibase 500 ""))
-        (is (str/starts-with?
-             (t2/select-one-pk (liquibase/changelog-table-name conn) {:order-by [[:dateexecuted :desc]]})
-             "v45")))
-
-      (is (= :done
-             (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true))))))
+     (with-redefs [liquibase/decide-liquibase-file (fn [& _args] @#'liquibase/changelog-legacy-file)]
+             ;; set up a db in a way we have a MB instance running metabase 45
+             (update-to-changelog-id "v45.00-001" conn))
+     (is (= :done
+            (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true))))))
