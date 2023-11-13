@@ -93,6 +93,7 @@ export function CoordinateFilterPicker({
             query={query}
             stageIndex={stageIndex}
             column={column}
+            secondColumn={secondColumn}
             availableColumns={availableColumns}
             onChange={setSecondColumn}
           />
