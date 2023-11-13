@@ -1,5 +1,6 @@
 import _ from "underscore";
 import dayjs from "dayjs";
+import { t } from "ttag";
 import type {
   DatePickerExtractionUnit,
   DatePickerOperator,
@@ -57,7 +58,7 @@ export function getExcludeValueOptionGroups(
         _.range(6, 12).map(getExcludeMonthOption),
       ];
     case "quarter-of-year":
-      return [_.range(1, 5).map(getExcludeQuarterOption)];
+      return [getExcludeQuarterOptions()];
   }
 }
 
@@ -76,9 +77,13 @@ function getExcludeMonthOption(month: number): ExcludeValueOption {
   return { value: month, label: date.format("MMMM") };
 }
 
-function getExcludeQuarterOption(quarter: number): ExcludeValueOption {
-  const date = dayjs().quarter(quarter);
-  return { value: quarter, label: date.format("Qo") };
+function getExcludeQuarterOptions(): ExcludeValueOption[] {
+  return [
+    { value: 1, label: t`1st` },
+    { value: 2, label: t`2nd` },
+    { value: 3, label: t`3rd` },
+    { value: 4, label: t`4th` },
+  ];
 }
 
 export function getExcludeOperatorValue(
