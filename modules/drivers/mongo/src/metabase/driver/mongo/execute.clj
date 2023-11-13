@@ -8,13 +8,13 @@
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.reducible :as qp.reducible]
-   [metabase.util.i18n :refer [tru trs]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [monger.conversion :as m.conversion]
    [monger.util :as m.util])
   (:import
-   (com.mongodb BasicDBObject DB DBObject BasicDBObject MongoCommandException)
+   (com.mongodb BasicDBObject DB DBObject BasicDBObject)
    (com.mongodb.client AggregateIterable ClientSession MongoDatabase MongoCollection MongoCursor)
    (java.util.concurrent TimeUnit)
    (org.bson BsonBoolean BsonInt32 Document)))
@@ -168,26 +168,17 @@
                 (remaining-rows-thunk)))]
       (qp.reducible/reducible-rows row-thunk (qp.context/canceled-chan context)))))
 
-(defn- interrupt-ex? [^MongoCommandException ex]
-  (and (= 11601 (.getErrorCode ex))
-       (= "Interrupted" (.getErrorCodeName ex))))
-
 (defn- reduce-results [native-query query context aggregate respond]
-  (try
-    (with-open [cursor ^MongoCursor (.cursor ^AggregateIterable aggregate)]
-      (let [first-row                        (when (.hasNext cursor)
-                                               (.next cursor))
-            {row-col-names       :row
-             unescaped-col-names :unescaped} (result-col-names native-query query (row-keys first-row))]
-        (log/tracef "Renaming columns in results %s -> %s" (pr-str row-col-names) (pr-str unescaped-col-names))
-        (respond (result-metadata unescaped-col-names)
-                 (if-not first-row
-                   []
-                   (reducible-rows context cursor first-row (post-process-row row-col-names))))))
-    (catch MongoCommandException ex
-      (if (interrupt-ex? ex)
-        (log/warn (trs "Query was interrupted"))
-        (throw ex)))))
+  (with-open [cursor ^MongoCursor (.cursor ^AggregateIterable aggregate)]
+    (let [first-row                        (when (.hasNext cursor)
+                                             (.next cursor))
+          {row-col-names       :row
+           unescaped-col-names :unescaped} (result-col-names native-query query (row-keys first-row))]
+      (log/tracef "Renaming columns in results %s -> %s" (pr-str row-col-names) (pr-str unescaped-col-names))
+      (respond (result-metadata unescaped-col-names)
+               (if-not first-row
+                 []
+                 (reducible-rows context cursor first-row (post-process-row row-col-names)))))))
 
 (defn- connection->database
   ^MongoDatabase

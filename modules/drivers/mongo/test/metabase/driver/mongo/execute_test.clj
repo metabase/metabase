@@ -2,9 +2,11 @@
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer :all]
+   [metabase.async.streaming-response :as streaming-response]
    [metabase.driver.mongo.execute :as mongo.execute]
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.context :as qp.context]
    [metabase.test :as mt]
    [monger.conversion :as m.conversion]
    [monger.util :as m.util])
@@ -66,6 +68,10 @@
                     :columns ["_id" "name" "last_login" "alias"]}
                    (mt/rows+column-names (qp/process-query query))))))))))
 
+(defn- interrupt-ex? [^MongoCommandException ex]
+  (and (= 11601 (.getErrorCode ex))
+       (= "Interrupted" (.getErrorCodeName ex))))
+
 (deftest kill-an-in-flight-query-method-validation-test
   (testing "Confirm that method used to kill in-flight queries on mongo works"
     (mt/with-driver :mongo
@@ -98,7 +104,7 @@
                      ;; TODO: Find workaround!
                      result-ch (a/thread (try (.into aggregate (java.util.ArrayList.))
                                               (catch MongoCommandException ex
-                                                (if (#'mongo.execute/interrupt-ex? ex)
+                                                (if (interrupt-ex? ex)
                                                   :interrupted
                                                   :unrecognized-failure))))]
                  (future (Thread/sleep 100)
@@ -107,3 +113,33 @@
                  (let [result (a/alt!! (a/timeout 15000) :timeout
                                        result-ch ([v] v))]
                    (is (= :interrupted result))))))))))))
+
+(deftest kill-an-in-flight-query-test
+  (mt/test-driver
+   :mongo
+   (mt/dataset
+    sample-dataset
+    (let [canceled-chan (a/chan)]
+      (with-redefs [qp.context/canceled-chan (constantly canceled-chan)]
+        (let [native-query
+              {:database (mt/id)
+               :type :native
+               :native {:collection "orders"
+                        :query [{"$lookup"
+                                 {"from" "people",
+                                  "let" {"let_user_id_164439" "$user_id"},
+                                  "pipeline" [{"$match" {"$expr" {"$eq" ["$$let_user_id_164439" "$id"]}}}],
+                                  "as" "join_alias_People - User"}}
+                                {"$unwind" {"path" "$join_alias_People - User", "preserveNullAndEmptyArrays" true}}
+                                {"$group"
+                                 {"_id"
+                                  {"created_at"
+                                   {"$dateTrunc"
+                                    {"date" "$created_at", "unit" "month", "timezone" "UTC", "startOfWeek" "sunday"}}},
+                                  "sum" {"$sum" "$total"}}}
+                                {"$sort" {"_id" 1}}
+                                {"$project" {"_id" false, "created_at" "$_id.created_at", "sum" true}}]}}]
+          (future (Thread/sleep 100)
+                  (a/>!! canceled-chan ::streaming-response/request-canceled))
+          (is (thrown? MongoCommandException
+                       (qp/process-query native-query)))))))))
