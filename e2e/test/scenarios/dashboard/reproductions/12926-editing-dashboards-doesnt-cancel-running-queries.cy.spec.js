@@ -1,8 +1,10 @@
 import {
+  addTextBox,
   editDashboard,
   getDashboardCard,
   openQuestionsSidebar,
   popover,
+  removeDashboardCard,
   restore,
   saveDashboard,
   setFilter,
@@ -73,6 +75,20 @@ describe("issue 12926", () => {
       cy.wait("@dashcardQueryRestored");
 
       getDashboardCard().findByText(queryResult);
+    });
+
+    it("should not break virtual cards (metabase#35545)", () => {
+      cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+        visitDashboard(dashboardId);
+      });
+
+      addTextBox("Text card content");
+
+      removeDashboardCard();
+
+      undo();
+
+      getDashboardCard().findByText("Text card content");
     });
   });
 
