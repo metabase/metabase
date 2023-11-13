@@ -22,6 +22,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       backend_all: ${{ steps.changes.outputs.backend_all }}
+      frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
     steps:
       - uses: actions/checkout@v3
       - name: Test which files changed
@@ -33,7 +34,7 @@ jobs:
 
   static-viz-files-changed:
     needs: files-changed
-    if: needs.files-changed.outputs.backend_all != 'true'
+    if: needs.files-changed.outputs.backend_all != 'true' && needs.files-changed.outputs.frontend_sources == 'true'
     name: Check whether static-viz files changed
     runs-on: ubuntu-22.04
     timeout-minutes: 10
