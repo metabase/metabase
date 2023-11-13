@@ -106,7 +106,8 @@
                                        :custom-column-names {:names ["-A-" "-B-" "-C-" "-D-"]}
                                        :hidden-columns      {:hide [0 2]}})
       :viz-tree
-      open-hiccup-as-html))
+      open-hiccup-as-html)
+  )
 
 (comment
   ;; This form has 3 cards:
