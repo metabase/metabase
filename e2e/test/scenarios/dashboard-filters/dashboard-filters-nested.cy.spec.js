@@ -23,100 +23,104 @@ describe("scenarios > dashboard > filters > nested questions", () => {
     );
   });
 
-  it("dashboard filters should work on nested question (metabase#12614, metabase#13186, metabase#18113, metabase#32126)", () => {
-    const filter = {
-      name: "Text Filter",
-      slug: "text",
-      id: "27454068",
-      type: "string/=",
-      sectionId: "string",
-    };
+  it(
+    "dashboard filters should work on nested question (metabase#12614, metabase#13186, metabase#18113, metabase#32126)",
+    { tags: ["@flake"] },
+    () => {
+      const filter = {
+        name: "Text Filter",
+        slug: "text",
+        id: "27454068",
+        type: "string/=",
+        sectionId: "string",
+      };
 
-    cy.createNativeQuestion({
-      name: "18113 Source",
-      native: {
-        query: "select * from products limit 5",
-      },
-      display: "table",
-    }).then(({ body: { id: Q1_ID } }) => {
-      const nestedQuestion = {
-        name: "18113 Nested",
-        query: {
-          "source-table": `card__${Q1_ID}`,
+      cy.createNativeQuestion({
+        name: "18113 Source",
+        native: {
+          query: "select * from products limit 5",
         },
-      };
+        display: "table",
+      }).then(({ body: { id: Q1_ID } }) => {
+        const nestedQuestion = {
+          name: "18113 Nested",
+          query: {
+            "source-table": `card__${Q1_ID}`,
+          },
+        };
 
-      const dashboardDetails = {
-        name: "Nested Filters",
-        parameters: [filter],
-      };
+        const dashboardDetails = {
+          name: "Nested Filters",
+          parameters: [filter],
+        };
 
-      cy.createQuestionAndDashboard({
-        questionDetails: nestedQuestion,
-        dashboardDetails,
-      }).then(({ body: { dashboard_id } }) => {
-        visitDashboard(dashboard_id);
+        cy.createQuestionAndDashboard({
+          questionDetails: nestedQuestion,
+          dashboardDetails,
+        }).then(({ body: { dashboard_id } }) => {
+          visitDashboard(dashboard_id);
+        });
       });
-    });
 
-    editDashboard();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(filter.name).find(".Icon-gear").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Select…").click();
+      editDashboard();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(filter.name).find(".Icon-gear").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Select…").click();
 
-    // This part reproduces metabase#13186
-    cy.log("Reported failing in v0.36.4 (`Category` is missing)");
-    popover().within(() => {
-      cy.findByText(/Ean/i);
-      cy.findByText(/Title/i);
-      cy.findByText(/Vendor/i);
-      cy.findByText(/Category/i).click();
-    });
+      // This part reproduces metabase#13186
+      cy.log("Reported failing in v0.36.4 (`Category` is missing)");
+      popover().within(() => {
+        cy.findByText(/Ean/i);
+        cy.findByText(/Title/i);
+        cy.findByText(/Vendor/i);
+        cy.findByText(/Category/i).click();
+      });
 
-    saveDashboard();
+      saveDashboard();
 
-    // Add multiple values (metabase#18113)
-    filterWidget().click();
-    popover().within(() => {
-      cy.findByText("Gizmo").click();
-      cy.findByText("Gadget").click();
-    });
+      // Add multiple values (metabase#18113)
+      filterWidget().click();
+      popover().within(() => {
+        cy.findByText("Gizmo").click();
+        cy.findByText("Gadget").click();
+      });
 
-    cy.button("Add filter").click();
-    cy.wait("@dashcardQuery");
+      cy.button("Add filter").click();
+      cy.wait("@dashcardQuery");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("2 selections");
-    cy.get("tbody > tr").should("have.length", 2);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("2 selections");
+      cy.get("tbody > tr").should("have.length", 2);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Doohickey").should("not.exist");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Doohickey").should("not.exist");
 
-    cy.reload();
-    cy.wait("@dashcardQuery");
+      cy.reload();
+      cy.wait("@dashcardQuery");
 
-    cy.location("search").should("eq", "?text=Gizmo&text=Gadget");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("2 selections");
+      cy.location("search").should("eq", "?text=Gizmo&text=Gadget");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("2 selections");
 
-    editDashboard();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(filter.name).find(".Icon-gear").click();
+      editDashboard();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(filter.name).find(".Icon-gear").click();
 
-    getDashboardCard().within(() => {
-      cy.findByText("Column to filter on");
-      cy.findByText("18113 Source.CATEGORY").click();
-    });
+      getDashboardCard().within(() => {
+        cy.findByText("Column to filter on");
+        cy.findByText("18113 Source.CATEGORY").click();
+      });
 
-    // This part reproduces metabase#12614
-    popover().within(() => {
-      cy.findByText(/Ean/i);
-      cy.findByText(/Title/i);
-      cy.findByText(/Vendor/i);
-      cy.findByText(/Category/i).click();
-    });
-  });
+      // This part reproduces metabase#12614
+      popover().within(() => {
+        cy.findByText(/Ean/i);
+        cy.findByText(/Title/i);
+        cy.findByText(/Vendor/i);
+        cy.findByText(/Category/i).click();
+      });
+    },
+  );
 
   it("should be possible to use ID filter on a nested question (metabase#17212)", () => {
     const baseQuestion = {

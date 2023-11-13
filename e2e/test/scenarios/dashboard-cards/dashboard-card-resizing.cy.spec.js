@@ -230,64 +230,68 @@ describe("scenarios > dashboard card resizing", () => {
     });
   });
 
-  it(`should not allow cards to be resized smaller than min height`, () => {
-    const cardIds = [];
-    TEST_QUESTIONS.forEach(question => {
-      cy.createQuestion(question).then(({ body: { id } }) => {
-        cardIds.push(id);
-      });
-    });
-    cy.createDashboard().then(({ body: { id: dashId } }) => {
-      cy.request("PUT", `/api/dashboard/${dashId}`, {
-        dashcards: cardIds.map((cardId, index) => ({
-          id: index,
-          card_id: cardId,
-          row: index * 2,
-          col: 0,
-          size_x: 2,
-          size_y: 2,
-        })),
-      });
-      visitDashboard(dashId);
-      editDashboard();
-
-      cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
-        const dashcards = body.dashcards;
-        dashcards.forEach(({ card }) => {
-          const dashcard = cy.contains(".DashCard", card.name);
-          resizeDashboardCard({
-            card: dashcard,
-            x: getDefaultSize(card.display).width * 100,
-            y: getDefaultSize(card.display).height * 100,
-          });
+  it(
+    `should not allow cards to be resized smaller than min height`,
+    { tags: ["@flake"] },
+    () => {
+      const cardIds = [];
+      TEST_QUESTIONS.forEach(question => {
+        cy.createQuestion(question).then(({ body: { id } }) => {
+          cardIds.push(id);
         });
-
-        saveDashboard();
+      });
+      cy.createDashboard().then(({ body: { id: dashId } }) => {
+        cy.request("PUT", `/api/dashboard/${dashId}`, {
+          dashcards: cardIds.map((cardId, index) => ({
+            id: index,
+            card_id: cardId,
+            row: index * 2,
+            col: 0,
+            size_x: 2,
+            size_y: 2,
+          })),
+        });
+        visitDashboard(dashId);
         editDashboard();
 
-        dashcards.forEach(({ card }) => {
-          const dashcard = cy.contains(".DashCard", card.name);
-          dashcard.within(() => {
+        cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
+          const dashcards = body.dashcards;
+          dashcards.forEach(({ card }) => {
+            const dashcard = cy.contains(".DashCard", card.name);
             resizeDashboardCard({
               card: dashcard,
-              x: -getDefaultSize(card.display).width * 200,
-              y: -getDefaultSize(card.display).height * 200,
+              x: getDefaultSize(card.display).width * 100,
+              y: getDefaultSize(card.display).height * 100,
+            });
+          });
+
+          saveDashboard();
+          editDashboard();
+
+          dashcards.forEach(({ card }) => {
+            const dashcard = cy.contains(".DashCard", card.name);
+            dashcard.within(() => {
+              resizeDashboardCard({
+                card: dashcard,
+                x: -getDefaultSize(card.display).width * 200,
+                y: -getDefaultSize(card.display).height * 200,
+              });
+            });
+          });
+
+          saveDashboard();
+
+          cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
+            body.dashcards.forEach(({ card, size_x, size_y }) => {
+              const { height, width } = getMinSize(card.display);
+              expect(size_x).to.equal(width);
+              expect(size_y).to.equal(height);
             });
           });
         });
-
-        saveDashboard();
-
-        cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
-          body.dashcards.forEach(({ card, size_x, size_y }) => {
-            const { height, width } = getMinSize(card.display);
-            expect(size_x).to.equal(width);
-            expect(size_y).to.equal(height);
-          });
-        });
       });
-    });
-  });
+    },
+  );
 
   describe("metabase#31701 - preventing link dashboard card overflows", () => {
     viewports.forEach(([width, height]) => {

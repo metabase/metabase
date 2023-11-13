@@ -1,7 +1,7 @@
 import { modal, popover, restore, describeOSS } from "e2e/support/helpers";
 
 // this is only testable in OSS because EE always has models from auditv2
-describeOSS("issue 25144", { tags: "@OSS" }, () => {
+describeOSS("issue 25144", { tags: ["@OSS", "@flake"] }, () => {
   beforeEach(() => {
     restore("setup");
     cy.signInAsAdmin();

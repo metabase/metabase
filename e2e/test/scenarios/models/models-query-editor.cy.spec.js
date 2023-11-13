@@ -27,7 +27,7 @@ describe("scenarios > models query editor", () => {
       });
     });
 
-    it("allows to edit GUI model query", () => {
+    it("allows to edit GUI model query", { tags: ["@flake"] }, () => {
       cy.visit(`/model/${ORDERS_QUESTION_ID}`);
       cy.wait("@dataset");
 
