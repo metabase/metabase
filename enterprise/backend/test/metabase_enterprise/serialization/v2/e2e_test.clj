@@ -318,7 +318,7 @@
                          (set (ingest/ingest-list (ingest/ingest-yaml dump-dir)))))))
 
               (testing "doing ingestion"
-                (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
+                (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                     "successful"))
 
               (testing "for Actions"
@@ -494,7 +494,7 @@
              (ts/with-dest-db
                ;; ingest
                (testing "doing ingestion"
-                 (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
+                 (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                      "successful"))
 
                (let [dash1d (t2/select-one Dashboard :name (:name dash1s))
@@ -602,7 +602,7 @@
               ;; ingest
               (ts/with-dest-db
                 (testing "doing ingestion"
-                  (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
+                  (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                       "successful"))
 
                 (doseq [[name model]
@@ -667,7 +667,7 @@
              (ts/with-dest-db
                ;; ingest
                (testing "doing ingestion"
-                 (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
+                 (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                      "successful"))
                (let [new-dashboard (-> (t2/select-one Dashboard :entity_id dashboard-eid)
                                        (t2/hydrate :tabs :dashcards))
@@ -708,13 +708,13 @@
             ;; preparation
             (t2.with-temp/with-temp [Dashboard _ {:name "some dashboard"}]
               (testing "export (v2-dump) command"
-                (is (cmd/v2-dump dump-dir {})
+                (is (cmd/v2-dump! dump-dir {})
                     "works"))
 
               (testing "import (v2-load) command"
                 (ts/with-dest-db
                   (testing "doing ingestion"
-                    (is (cmd/v2-load dump-dir {})
+                    (is (cmd/v2-load! dump-dir {})
                         "works"))))))))))
 
   (testing "without :serialization feature enabled"
@@ -726,12 +726,12 @@
             (t2.with-temp/with-temp [Dashboard _ {:name "some dashboard"}]
               (testing "export (v2-dump) command"
                 (is (thrown-with-msg? Exception #"Please upgrade"
-                                      (cmd/v2-dump dump-dir {}))
+                                      (cmd/v2-dump! dump-dir {}))
                     "throws"))
 
               (testing "import (v2-load) command"
                 (ts/with-dest-db
                   (testing "doing ingestion"
                     (is (thrown-with-msg? Exception #"Please upgrade"
-                                          (cmd/v2-load dump-dir {}))
+                                          (cmd/v2-load! dump-dir {}))
                         "throws")))))))))))

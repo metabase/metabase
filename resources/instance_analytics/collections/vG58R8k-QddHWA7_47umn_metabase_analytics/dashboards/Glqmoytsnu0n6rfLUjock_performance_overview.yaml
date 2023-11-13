@@ -1,0 +1,230 @@
+description: Question, dashboard and database performance.
+archived: false
+collection_position: 7
+dashcards:
+- size_x: 12
+  dashboard_tab_id: null
+  action_id: null
+  col: 0
+  parameter_mappings:
+  - parameter_id: cbef6d30
+    card_id: mm8k37Rgk7ChMNwAUdXK2
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_databases
+        - name
+      - source-field:
+        - Internal Metabase Database
+        - public
+        - v_query_log
+        - database_qualified_id
+  - parameter_id: dbeeb776
+    card_id: mm8k37Rgk7ChMNwAUdXK2
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_group_members
+        - group_name
+      - join-alias: Group Members - User
+  card_id: mm8k37Rgk7ChMNwAUdXK2
+  entity_id: iJ6TElSxr9vyZm6PgNn9s
+  visualization_settings:
+    column_settings: null
+  size_y: 6
+  created_at: '2023-11-01T11:21:03.166953Z'
+  row: 0
+- size_x: 12
+  dashboard_tab_id: null
+  action_id: null
+  col: 12
+  parameter_mappings:
+  - parameter_id: cbef6d30
+    card_id: 5gASJxNKdQCmkiGXb5kRP
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_databases
+        - name
+      - source-field:
+        - Internal Metabase Database
+        - public
+        - v_query_log
+        - database_qualified_id
+  - parameter_id: dbeeb776
+    card_id: 5gASJxNKdQCmkiGXb5kRP
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_group_members
+        - group_name
+      - join-alias: Group Members - User
+  card_id: 5gASJxNKdQCmkiGXb5kRP
+  entity_id: 8EOwPHjMTyhK7RNA65eRE
+  visualization_settings:
+    column_settings: null
+  size_y: 6
+  created_at: '2023-11-01T11:23:28.898047Z'
+  row: 0
+- size_x: 12
+  dashboard_tab_id: null
+  action_id: null
+  col: 0
+  parameter_mappings: []
+  card_id: r8r6O1VedjAjSD2MPxJs6
+  entity_id: I6pKZnuNRduK6inlhtJG8
+  visualization_settings:
+    column_settings: null
+  size_y: 6
+  created_at: '2023-11-01T11:29:58.249212Z'
+  row: 12
+- size_x: 12
+  dashboard_tab_id: null
+  action_id: null
+  col: 0
+  parameter_mappings:
+  - parameter_id: cbef6d30
+    card_id: OCkxXZM5KPJ9zOjYVEnqY
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_databases
+        - name
+      - source-field:
+        - Internal Metabase Database
+        - public
+        - v_query_log
+        - database_qualified_id
+  - parameter_id: dbeeb776
+    card_id: OCkxXZM5KPJ9zOjYVEnqY
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_group_members
+        - group_name
+      - join-alias: Group Members - Entity
+  card_id: OCkxXZM5KPJ9zOjYVEnqY
+  entity_id: HVh-W4SbKVwfOaw9pWg87
+  visualization_settings:
+    column_settings: null
+  size_y: 6
+  created_at: '2023-11-01T11:32:05.272167Z'
+  row: 6
+- size_x: 12
+  dashboard_tab_id: null
+  action_id: null
+  col: 12
+  parameter_mappings:
+  - parameter_id: cbef6d30
+    card_id: zdVQGoMs__No_3l_amEWV
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_databases
+        - name
+      - source-field:
+        - Internal Metabase Database
+        - public
+        - v_query_log
+        - database_qualified_id
+  - parameter_id: dbeeb776
+    card_id: zdVQGoMs__No_3l_amEWV
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_group_members
+        - group_name
+      - join-alias: Group Members - User
+  card_id: zdVQGoMs__No_3l_amEWV
+  entity_id: zClrjPJO--ZktPNLs02nb
+  visualization_settings:
+    column_settings: null
+  size_y: 6
+  created_at: '2023-11-01T11:33:19.539758Z'
+  row: 6
+- size_x: 12
+  dashboard_tab_id: null
+  action_id: null
+  col: 12
+  parameter_mappings:
+  - parameter_id: cbef6d30
+    card_id: DuL1yrlkmnqOgz4drGiG4
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_databases
+        - name
+      - source-field:
+        - Internal Metabase Database
+        - public
+        - v_query_log
+        - database_qualified_id
+  - parameter_id: dbeeb776
+    card_id: DuL1yrlkmnqOgz4drGiG4
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_group_members
+        - group_name
+      - join-alias: Group Members - User
+  card_id: DuL1yrlkmnqOgz4drGiG4
+  entity_id: 6im_kqIIunL0spceL4KLP
+  visualization_settings:
+    column_settings: null
+  size_y: 6
+  created_at: '2023-11-01T11:35:17.773595Z'
+  row: 12
+tabs: []
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+show_in_getting_started: false
+name: Performance overview
+caveats: null
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+serdes/meta:
+- model: Dashboard
+  id: Glqmoytsnu0n6rfLUjock
+  label: performance_overview
+position: null
+entity_id: Glqmoytsnu0n6rfLUjock
+parameters:
+- name: Database
+  slug: database
+  id: cbef6d30
+  type: string/=
+  sectionId: string
+- name: Group
+  slug: group
+  id: dbeeb776
+  type: string/=
+  sectionId: string
+  isMultiSelect: false
+  default:
+  - All Users
+auto_apply_filters: true
+created_at: '2023-11-01T11:13:09.170935Z'
+public_uuid: null
+points_of_interest: null

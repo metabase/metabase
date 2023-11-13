@@ -4,18 +4,19 @@ import { getMetadata } from "metabase/selectors/metadata";
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import * as Lib from "metabase-lib";
 import LegacyDimension from "metabase-lib/Dimension";
+import { MIN_WIDTH, MAX_WIDTH } from "../constants";
 
 interface ColumnValuesWidgetProps<T> {
   value: T[];
   column: Lib.ColumnMetadata;
-  canHaveManyValues?: boolean;
+  hasMultipleValues?: boolean;
   onChange: (value: T[]) => void;
 }
 
 export function ColumnValuesWidget<T extends string | number>({
   value,
   column,
-  canHaveManyValues,
+  hasMultipleValues,
   onChange,
 }: ColumnValuesWidgetProps<T>) {
   const metadata = useSelector(getMetadata);
@@ -38,12 +39,14 @@ export function ColumnValuesWidget<T extends string | number>({
       fields={fields}
       className="input"
       value={value}
-      minWidth="300px"
+      containerWidth="100%"
+      minWidth={`${MIN_WIDTH}px`}
+      maxWidth={`${MAX_WIDTH}px`}
       onChange={onChange}
       disablePKRemappingForSearch
       autoFocus
-      multi={canHaveManyValues}
-      disableSearch={!canHaveManyValues}
+      multi={hasMultipleValues}
+      disableSearch={!hasMultipleValues}
     />
   );
 }

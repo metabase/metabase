@@ -29,7 +29,6 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [pretty.core :as pretty]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -464,8 +463,8 @@
                        chan))))
             (testing "Run forbidden query again as superuser again, should be cached"
               (mw.session/with-current-user (mt/user->id :crowberto)
-                (is (schema= {:cached (s/eq true), s/Keyword s/Any}
-                             (run-forbidden-query)))))
+                (is (=? {:cached true}
+                        (run-forbidden-query)))))
             (testing "Run query as regular user, should get perms Exception even though result is cached"
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo

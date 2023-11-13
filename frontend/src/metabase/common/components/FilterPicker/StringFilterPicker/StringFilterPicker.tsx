@@ -1,20 +1,19 @@
-import { t } from "ttag";
 import { useState, useMemo } from "react";
-import { Box, Button, Checkbox, Flex } from "metabase/ui";
+import { t } from "ttag";
+import { Box, Checkbox, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
-
+import { MAX_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
-import { BackButton } from "../BackButton";
-import { Header } from "../Header";
 import { ColumnValuesWidget } from "../ColumnValuesWidget";
-import { Footer } from "../Footer";
-
+import { FilterHeader } from "../FilterHeader";
+import { FilterFooter } from "../FilterFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
-
 import { OPERATOR_OPTIONS } from "./constants";
-import { isFilterValid } from "./utils";
+import { getDefaultValues, getFilterClause, hasValidValues } from "./utils";
+
+const MAX_HEIGHT = 300;
 
 export function StringFilterPicker({
   query,
@@ -25,10 +24,15 @@ export function StringFilterPicker({
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
-  const columnName = Lib.displayInfo(query, stageIndex, column).longDisplayName;
-  const filterParts = filter
-    ? Lib.stringFilterParts(query, stageIndex, filter)
-    : null;
+  const columnInfo = useMemo(
+    () => Lib.displayInfo(query, stageIndex, column),
+    [query, stageIndex, column],
+  );
+
+  const filterParts = useMemo(
+    () => (filter ? Lib.stringFilterParts(query, stageIndex, filter) : null),
+    [query, stageIndex, filter],
+  );
 
   const availableOperators = useMemo(
     () =>
@@ -36,102 +40,79 @@ export function StringFilterPicker({
     [query, stageIndex, column],
   );
 
-  const [operatorName, setOperatorName] = useState(
-    filterParts?.operator ?? "=",
+  const [operator, setOperator] = useState(
+    filterParts ? filterParts.operator : "=",
   );
 
-  const [values, setValues] = useState(filterParts?.values ?? []);
-  const [options, setOptions] = useState(filterParts?.options ?? {});
-
-  const { valueCount = 0, hasCaseSensitiveOption = false } =
-    OPERATOR_OPTIONS[operatorName] ?? {};
-
-  const isValid = useMemo(
-    () => isFilterValid(operatorName, values),
-    [operatorName, values],
+  const [values, setValues] = useState(() =>
+    getDefaultValues(operator, filterParts?.values),
   );
 
-  const handleOperatorChange = (
-    nextOperatorName: Lib.StringFilterOperatorName,
-  ) => {
-    const nextOption = OPERATOR_OPTIONS[nextOperatorName] ?? {};
+  const [options, setOptions] = useState(
+    filterParts ? filterParts.options : {},
+  );
 
-    const nextValues = values.slice(0, nextOption.valueCount);
-    const nextOptions = nextOption.hasCaseSensitiveOption ? options : {};
+  const { valueCount, hasMultipleValues, hasCaseSensitiveOption } =
+    OPERATOR_OPTIONS[operator];
+  const isValid = hasValidValues(operator, values);
 
-    setOperatorName(nextOperatorName);
-    setValues(nextValues);
-    setOptions(nextOptions);
+  const handleOperatorChange = (operator: Lib.StringFilterOperatorName) => {
+    setOperator(operator);
+    setValues(getDefaultValues(operator, values));
   };
 
-  const handleFilterChange = () => {
-    onChange(
-      Lib.stringFilterClause({
-        operator: operatorName,
-        column,
-        values,
-        options,
-      }),
-    );
+  const handleSubmit = () => {
+    if (isValid) {
+      onChange(getFilterClause(operator, column, values, options));
+    }
   };
-
-  const canHaveManyValues = !Number.isFinite(valueCount);
 
   return (
-    <div data-testid="string-filter-picker">
-      <Header>
-        <BackButton onClick={onBack}>{columnName}</BackButton>
+    <Box maw={MAX_WIDTH} data-testid="string-filter-picker">
+      <FilterHeader columnName={columnInfo.longDisplayName} onBack={onBack}>
         <FilterOperatorPicker
-          value={operatorName}
+          value={operator}
           options={availableOperators}
           onChange={handleOperatorChange}
         />
-      </Header>
-      {valueCount > 0 && (
-        <FlexWithScroll p="md" mah={300}>
-          <ColumnValuesWidget
-            column={column}
-            value={values}
-            canHaveManyValues={canHaveManyValues}
-            onChange={setValues}
-          />
-        </FlexWithScroll>
-      )}
-      <Footer mt={valueCount === 0 ? -1 : undefined} /* to collapse borders */>
-        {hasCaseSensitiveOption ? (
-          <CaseSensitiveOption
-            value={options["case-sensitive"] ?? false}
-            onChange={newValue => setOptions({ "case-sensitive": newValue })}
-          />
-        ) : (
-          <Box />
+      </FilterHeader>
+      <Box>
+        {valueCount !== 0 && (
+          <FlexWithScroll p="md" mah={MAX_HEIGHT}>
+            <ColumnValuesWidget
+              column={column}
+              value={values}
+              hasMultipleValues={hasMultipleValues}
+              onChange={setValues}
+            />
+          </FlexWithScroll>
         )}
-        <Button
-          variant="filled"
-          disabled={!isValid}
-          onClick={handleFilterChange}
-        >
-          {isNew ? t`Add filter` : t`Update filter`}
-        </Button>
-      </Footer>
-    </div>
+        <FilterFooter isNew={isNew} canSubmit={isValid} onSubmit={handleSubmit}>
+          {hasCaseSensitiveOption && (
+            <CaseSensitiveOption
+              value={options["case-sensitive"] ?? false}
+              onChange={newValue => setOptions({ "case-sensitive": newValue })}
+            />
+          )}
+        </FilterFooter>
+      </Box>
+    </Box>
   );
 }
 
-function CaseSensitiveOption({
-  value,
-  onChange,
-}: {
+interface CaseSensitiveOptionProps {
   value: boolean;
   onChange: (value: boolean) => void;
-}) {
+}
+
+function CaseSensitiveOption({ value, onChange }: CaseSensitiveOptionProps) {
   return (
     <Flex align="center" px="sm">
       <Checkbox
-        onChange={e => onChange(e.target.checked)}
-        checked={value}
         size="xs"
         label={t`Case sensitive`}
+        checked={value}
+        onChange={e => onChange(e.target.checked)}
       />
     </Flex>
   );

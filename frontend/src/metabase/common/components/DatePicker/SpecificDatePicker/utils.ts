@@ -1,5 +1,4 @@
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import dayjs from "dayjs";
 import type {
   DatePickerOperator,
   SpecificDatePickerOperator,
@@ -15,8 +14,8 @@ export function getTabs(
 }
 
 export function getDefaultValue(): SpecificDatePickerValue {
-  const today = moment().startOf("date").toDate();
-  const past30Days = moment(today).subtract(30, "day").toDate();
+  const today = dayjs().startOf("date").toDate();
+  const past30Days = dayjs(today).subtract(30, "day").toDate();
 
   return {
     type: "specific",
@@ -30,8 +29,8 @@ export function setOperator(
   operator: SpecificDatePickerOperator,
 ): SpecificDatePickerValue {
   const [date] = value.values;
-  const past30Days = moment(date).subtract(30, "day").toDate();
-  const next30Days = moment(date).add(30, "day").toDate();
+  const past30Days = dayjs(date).subtract(30, "day").toDate();
+  const next30Days = dayjs(date).add(30, "day").toDate();
 
   switch (operator) {
     case "=":
@@ -80,9 +79,29 @@ export function setTimePart(value: Date, time: Date) {
 }
 
 export function clearTimePart(value: Date) {
-  return moment(value).startOf("date").toDate();
+  return dayjs(value).startOf("date").toDate();
 }
 
 export function hasTimeParts(value: Date) {
   return value.getHours() !== 0 || value.getMinutes() !== 0;
+}
+
+export function coerceValue({
+  type,
+  operator,
+  values,
+}: SpecificDatePickerValue) {
+  if (operator === "between") {
+    const [startDate, endDate] = values;
+
+    return {
+      type,
+      operator,
+      values: dayjs(endDate).isBefore(startDate)
+        ? [endDate, startDate]
+        : [startDate, endDate],
+    };
+  }
+
+  return { type, operator, values };
 }

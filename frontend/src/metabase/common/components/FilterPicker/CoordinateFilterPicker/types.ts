@@ -13,4 +13,7 @@ type CoordinatePickerOperator =
 export interface OperatorOption
   extends PickerOperatorOption<CoordinatePickerOperator> {
   valueCount: number;
+  hasMultipleValues?: boolean;
 }
+
+export type NumberValue = number | "";
