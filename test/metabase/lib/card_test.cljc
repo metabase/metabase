@@ -228,5 +228,5 @@
                                                             (lib/breakoutable-columns $q)))))]
       (is (= ["Source" "Distinct values of ID"]
              (map #(lib/display-name query %) (lib/returned-columns query))))
-      (is (= ["ID is equal to 1"]
+      (is (= ["ID is 1"]
              (map #(lib/display-name query %) (lib/filters query)))))))
