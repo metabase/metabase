@@ -15,6 +15,7 @@ import {
 import {
   closeAutoWireParameterToast,
   showAutoWireParametersToast,
+  showDisabledAutoConnectionToast,
 } from "metabase/dashboard/actions/auto-wire-parameters/toasts";
 import {
   getAllDashboardCardsWithUnmappedParameters,
@@ -217,11 +218,7 @@ export function autoWireParametersToNewCard({
             }),
           );
 
-          dispatch(
-            addUndo({
-              message: t`Auto-connection was disabled. You'll need to manually connect filters to this question.`,
-            }),
-          );
+          dispatch(showDisabledAutoConnectionToast());
         },
       }),
     );

@@ -64,11 +64,7 @@ export const showAutoWireParametersToast = createThunkAction(
               }),
             );
 
-            dispatch(
-              addUndo({
-                message: t`Auto-connection was disabled. You'll need to manually connect filters to this question.`,
-              }),
-            );
+            dispatch(showDisabledAutoConnectionToast());
           },
         }),
       );
@@ -86,3 +82,11 @@ export const closeAutoWireParameterToast = createThunkAction(
     }
   },
 );
+
+export const showDisabledAutoConnectionToast = () => (dispatch: Dispatch) => {
+  dispatch(
+    addUndo({
+      message: t`Auto-connection was disabled. You'll need to manually connect filters to this question.`,
+    }),
+  );
+};
