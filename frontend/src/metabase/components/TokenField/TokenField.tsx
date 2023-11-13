@@ -418,7 +418,7 @@ class TokenField extends Component<TokenFieldProps, TokenFieldState> {
       // if we previously updated on input change then we don't need to do it again,
       if (this.props.updateOnInputChange) {
         // if multi=true also prevent the input from changing due to this key press
-        if (multi && input?.value !== "") {
+        if (multi) {
           e.preventDefault();
         }
         // and clear the input
