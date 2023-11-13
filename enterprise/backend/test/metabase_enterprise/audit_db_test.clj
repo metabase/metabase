@@ -2,6 +2,7 @@
   (:require
    [babashka.fs :as fs]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer [deftest is]]
    [metabase-enterprise.audit-db :as audit-db]
    [metabase.core :as mbc]
@@ -10,8 +11,7 @@
    [metabase.task :as task]
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
-   [toucan2.core :as t2]
-   [clojure.string :as str]))
+   [toucan2.core :as t2]))
 
 (defmacro with-audit-db-restoration [& body]
   `(let [original-audit-db# (t2/select-one Database :is_audit true)]
