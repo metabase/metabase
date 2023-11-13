@@ -6,8 +6,7 @@ import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { UserInfo } from "./user";
 import type { Collection } from "./collection";
 
-export interface Card<Q extends DatasetQuery = DatasetQuery>
-  extends UnsavedCard<Q> {
+export interface Card<Q = DatasetQuery> extends UnsavedCard<Q> {
   id: CardId;
   name: string;
   description: string | null;
@@ -44,7 +43,7 @@ export interface PublicCard {
 
 export type CardDisplayType = string;
 
-export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {
+export interface UnsavedCard<Q = DatasetQuery> {
   display: CardDisplayType;
   dataset_query: Q;
   parameters?: Parameter[];
