@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { UserListResult } from "metabase-types/api";
 import { UserApi } from "metabase/services";
 
+// Need to keep this in the global scope so that we can cache the promise
 let userListPromise: Promise<UserListResult[]> | null = null;
 
 export const useUserRecipients = () => {
