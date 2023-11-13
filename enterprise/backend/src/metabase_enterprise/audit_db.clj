@@ -190,12 +190,12 @@
     (adjust-audit-db-to-source! audit-db)
     (log/info "Loading Analytics Content...")
     (ia-content->plugins)
-    (log/info (str "Loading Analytics Content from: plugins/instance_analytics"))
+    (log/info (str "Loading Analytics Content from: " instance-analytics-plugin-dir))
     ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
     (let [report (log/with-no-logs
-                   (serialization.cmd/v2-load-internal! "plugins/instance_analytics"
-                                                       {}
-                                                       :token-check? false))]
+                   (serialization.cmd/v2-load-internal! (str instance-analytics-plugin-dir)
+                                                        {}
+                                                        :token-check? false))]
       (if (not-empty (:errors report))
         (log/info (str "Error Loading Analytics Content: " (pr-str report)))
         (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))))
