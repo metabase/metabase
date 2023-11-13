@@ -8,9 +8,13 @@ import { findBreakoutClause, findColumn } from "./utils";
 
 const STAGE_INDEX = -1;
 
+interface UpdateQuestionOpts {
+  run?: boolean;
+}
+
 interface TimeseriesFooterProps {
   question: Question;
-  updateQuestion: (newQuestion: Question) => void;
+  updateQuestion: (newQuestion: Question, opts?: UpdateQuestionOpts) => void;
 }
 
 export function TimeseriesFooter({
@@ -20,7 +24,7 @@ export function TimeseriesFooter({
   const query = question._getMLv2Query();
 
   const handleChange = (query: Lib.Query) => {
-    updateQuestion(question._setMLv2Query(query));
+    updateQuestion(question._setMLv2Query(query), { run: true });
   };
 
   return (
