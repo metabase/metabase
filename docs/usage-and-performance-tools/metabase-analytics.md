@@ -8,11 +8,24 @@ title: Metabase analytics
 
 The **Metabase Analytics** collection is a special collection that contains view-only questions, dashboards, and models that help you understand how people are using your Metabase.
 
+There are two things to keep in mind with this special Metabase analytics collection:
+
+- It's a view-only collection. Even admins can't curate it. It just _exists_.
+- You can duplicate anything in it, modify it to your liking, and save it to another collection.
+
 ## Permissions
 
 By default, only admins can see the Metabase analytics collection. You can manage permissions for the collection in **Admin settings** > **Permissions** > **Collections**.
 
 There are only two access types for the Metabase analytics collection: **View** and **No access**.
+
+Additionally, this Metabase analytics collection has a default sub-collection called "Custom reports" which you can use to save duplicated/modified questions, dashboards, and models. This sub-collection inherits the same permissions, but it's not view-only; admins have curate access by default, and can grant other groups view access.
+
+## Creating custom reports
+
+You can duplicate any of the questions, dashboards and models in the Metabase analytics collection and tweak them to your liking, but you'll need to save them to a different collection.
+
+We recommend you save your custom reports in the conveniently named "Custom reports" collection, so these items inherit the same permissions, but you can save them wherever you like (except for the Metabase analytics collection).
 
 ## Dashboards
 
@@ -37,8 +50,6 @@ General information about people viewing and creating dashboards, questions, sub
 ### Most viewed content
 
 View the most relevant content in your Metabase. Cards include:
-
-Filter by group, person, or activated or deactivated accounts.
 
 - Most viewed dashboards
 - Most viewed questions
@@ -99,7 +110,7 @@ Question, dashboard and database performance. Cards include:
 
 ### Content with cobwebs
 
-Dashboards and questions that you could consider archiving.
+Dashboards and questions that you could consider archiving. Cards include:
 
 - Dashboards without recent reviews
 - Questions without recent reviews
@@ -147,9 +158,7 @@ The topics include:
 
 ### View Log model
 
-Tracks views cards (which includes models), dashboards, and tables.
-
-Fields include:
+Tracks views cards (which includes models), dashboards, and tables. Fields include:
 
 - ID
 - Timestamp
@@ -159,6 +168,26 @@ Fields include:
 - Entity Qualified ID
 
 ### Query log model
+
+Information about all queries Metabase ran across all dashboards. Fields include:
+
+- Entity ID
+- Started At
+- Running Time Seconds
+- Result Rows
+- Is Native
+- Query Source
+- Error
+- User ID
+- Card ID
+- Card Qualified ID
+- Dashboard ID
+- Dashboard Qualified ID
+- Pulse ID
+- Database ID
+- Database Qualified ID
+- Cache Hit
+- Action ID
 
 Query sources include:
 
@@ -180,9 +209,7 @@ Query sources include:
 
 ### Content model
 
-All Metabase content, including questions, models, dashboards, events, and collections.
-
-Entity types include:
+All Metabase content, including questions, models, dashboards, events, and collections. Entity types include:
 
 - action
 - collection
@@ -190,10 +217,6 @@ Entity types include:
 - event
 - model
 - question
-
-### People model
-
-Everyone who's ever had an account in your Metabase, including both active and deactivated accounts.
 
 ### Alerts and subscriptions
 
@@ -241,8 +264,6 @@ Questions, dashboards, models, events, and collections.
 - Question Database ID
 - Question Is Native
 - Event Timestamp
-
-### Group members
 
 ### People model
 
@@ -297,9 +318,7 @@ Each row is a dashboard card: either a question card or a text card. Fields incl
 
 ## Databases model
 
-Information about your connected data sources.
-
-Fields include:
+Information about your connected data sources. Fields include:
 
 - Entity ID
 - Entity Qualified ID
@@ -335,7 +354,7 @@ List of all tables across all connected data sources. Fields include:
 
 ## Fields model
 
-All fields from all connected data sources.
+All fields from all connected data sources. Fields include:
 
 - Entity ID
 - Entity Qualified ID
@@ -350,7 +369,3 @@ All fields from all connected data sources.
 - Has Field Values
 - Active
 - Table ID
-
-## Custom reports
-
-In the Custom reports section, you can store custom questions, models, and dashboards based on data found in the parent Metabase analytics directory.
