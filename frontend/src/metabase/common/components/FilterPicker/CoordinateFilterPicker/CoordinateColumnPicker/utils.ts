@@ -18,5 +18,7 @@ export function getColumnOptions(
 }
 
 export function getColumnPlaceholder(column: Lib.ColumnMetadata) {
-  return Lib.isLatitude(column) ? t`Select longitude` : t`Select latitude`;
+  return Lib.isLatitude(column)
+    ? t`Select longitude column`
+    : t`Select latitude column`;
 }
