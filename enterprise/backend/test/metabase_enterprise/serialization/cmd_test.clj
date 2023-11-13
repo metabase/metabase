@@ -1,9 +1,12 @@
 (ns ^:mb/once metabase-enterprise.serialization.cmd-test
   (:require
+   [babashka.fs :as fs]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.load :as load]
    [metabase-enterprise.serialization.test-util :as ts]
+   [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.cmd :as cmd]
    [metabase.models :refer [Card Dashboard DashboardCard Database User]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
@@ -57,6 +60,48 @@
                       :updated_at             :%now)
           ;; serialize "everything" (which should just be the card and user), which should succeed if #16931 is fixed
           (is (nil? (cmd/dump (ts/random-dump-dir "serdes-")))))))))
+
+(defmacro with-extra-key [[path k v] & body]
+  "For the dueration of the macro, the file at `path` is replaced with `(f (slurp path))`, and it will remain
+  unchanged after the body runs."
+  `(let [original-str# (slurp ~path)
+         original#     (yaml/from-file ~path)
+         new-content#   (yaml/generate-string (assoc original# ~k ~v))]
+     (try
+       (spit ~path new-content#)
+       ~@body
+       (finally
+         (spit ~path original-str#)))))
+
+(deftest loading-does-not-fail-on-extra-yaml-keys
+  (testing "an extra key does not break loading"
+    (premium-features-test/with-premium-features #{:serialization}
+      (ts/with-random-dump-dir [dump-dir "serialization/"]
+        (cmd/dump dump-dir)
+        (testing "create 2 questions in the source and add them to a dashboard"
+          (ts/with-source-and-dest-dbs
+            (ts/with-source-db
+              (let [{db-id :id, :as db} (ts/create! Database :name "My_Database")]
+                (mt/with-db db
+                  (let [{user-id :id}      (ts/create! User, :is_superuser true)
+                        {card-1-id :id}    (ts/create! Card
+                                                       :database_id   db-id
+                                                       :creator_id    user-id
+                                                       :name          "Card_1"
+                                                       :dataset_query {:database db-id, :type :native, :native {:query "SELECT 1;"}})
+                        {card-2-id :id}    (ts/create! Card
+                                                       :database_id   db-id
+                                                       :creator_id    user-id
+                                                       :name          "Card_2"
+                                                       :dataset_query {:database db-id, :type :native, :native {:query "SELECT 1;"}})
+                        {dashboard-id :id} (ts/create! Dashboard, :creator_id user-id, :name "Dashboard")]
+                    (doseq [card-id [card-1-id card-2-id]]
+                      (ts/create! DashboardCard :dashboard_id dashboard-id, :card_id card-id))
+                    (testing "dump in source"
+                      (is (nil? (cmd/dump dump-dir)))))))))
+          (let [dashboard-yaml-filename (str dump-dir "/collections/root/dashboards/Dashboard.yaml")]
+            (with-extra-key [dashboard-yaml-filename :foobar? true]
+              (cmd/load dump-dir "--mode" "update" "--on-error" "abort"))))))))
 
 (deftest blank-target-db-test
   (testing "Loading a dump into an empty app DB still works (#16639)"
