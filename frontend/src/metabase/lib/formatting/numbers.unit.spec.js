@@ -1,7 +1,7 @@
 import { formatNumber, numberFormatterForOptions } from "./numbers";
 
 describe("formatNumber", () => {
-  it("should the correct currency format (metabase#34242)", () => {
+  it("should show the correct currency format (metabase#34242)", () => {
     const numberFormatter = numberFormatterForOptions({
       number_style: "currency",
       currency: "USD",
