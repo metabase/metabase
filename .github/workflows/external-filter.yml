@@ -5,6 +5,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - 'master'
+      - 'e2e-external-friendly'
     paths-ignore:
       - '.github/**'
 
