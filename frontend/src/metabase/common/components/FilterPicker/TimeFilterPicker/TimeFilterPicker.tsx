@@ -9,7 +9,7 @@ import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterHeader } from "../FilterHeader";
 import { FilterFooter } from "../FilterFooter";
 import { OPERATOR_OPTIONS } from "./constants";
-import { getDefaultValues } from "./utils";
+import { getDefaultValues, getFilterClause } from "./utils";
 
 export function TimeFilterPicker({
   query,
@@ -51,7 +51,7 @@ export function TimeFilterPicker({
   };
 
   const handleSubmit = () => {
-    onChange(Lib.timeFilterClause({ operator, column, values }));
+    onChange(getFilterClause(operator, column, values));
   };
 
   return (

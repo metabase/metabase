@@ -151,6 +151,28 @@ describe("TimeFilterPicker", () => {
       expect(getNextFilterColumnName()).toBe("Time");
     });
 
+    it("should swap values when min > max", async () => {
+      const { getNextFilterParts, getNextFilterColumnName } = setup();
+
+      await setOperator("Between");
+
+      const [leftInput, rightInput] = screen.getAllByDisplayValue("00:00");
+      userEvent.type(leftInput, "12:30");
+      userEvent.type(rightInput, "11:15");
+      userEvent.click(screen.getByText("Add filter"));
+
+      const filterParts = getNextFilterParts();
+      expect(filterParts).toMatchObject({
+        operator: "between",
+        column: expect.anything(),
+        values: [
+          dayjs("11:15", "HH:mm").toDate(),
+          dayjs("12:30", "HH:mm").toDate(),
+        ],
+      });
+      expect(getNextFilterColumnName()).toBe("Time");
+    });
+
     it("should add a filter with no values", async () => {
       const { getNextFilterParts, getNextFilterColumnName } = setup();
 

@@ -1,4 +1,4 @@
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 import { OPERATOR_OPTIONS } from "./constants";
 
 function isNotEmpty(value: string) {
@@ -29,4 +29,13 @@ export function hasValidValues(
   }
 
   return hasMultipleValues ? values.length > 0 : values.length === valueCount;
+}
+
+export function getFilterClause(
+  operator: Lib.StringFilterOperatorName,
+  column: Lib.ColumnMetadata,
+  values: string[],
+  options: Lib.StringFilterOptions,
+) {
+  return Lib.stringFilterClause({ operator, column, values, options });
 }

@@ -1,4 +1,4 @@
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 import { OPERATOR_OPTIONS } from "./constants";
 import type { NumberValue } from "./types";
 
@@ -30,4 +30,28 @@ export function hasValidValues(
   }
 
   return hasMultipleValues ? values.length > 0 : values.length === valueCount;
+}
+
+export function getFilterClause(
+  operator: Lib.NumberFilterOperatorName,
+  column: Lib.ColumnMetadata,
+  values: number[],
+) {
+  return Lib.numberFilterClause({
+    operator,
+    column,
+    values: getCoercedValues(operator, values),
+  });
+}
+
+function getCoercedValues(
+  operator: Lib.NumberFilterOperatorName,
+  values: number[],
+) {
+  if (operator === "between") {
+    const [startValue, endValue] = values;
+    return [Math.min(startValue, endValue), Math.max(startValue, endValue)];
+  }
+
+  return values;
 }

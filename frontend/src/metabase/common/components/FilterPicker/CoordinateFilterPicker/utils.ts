@@ -38,9 +38,12 @@ export function getAvailableColumns(
   column: Lib.ColumnMetadata,
 ) {
   const isLatitude = Lib.isLatitude(column);
-  return Lib.filterableColumns(query, stageIndex).filter(column => {
-    return isLatitude ? Lib.isLongitude(column) : Lib.isLatitude(column);
-  });
+  const isLongitude = Lib.isLongitude(column);
+  return Lib.filterableColumns(query, stageIndex).filter(
+    column =>
+      (isLatitude && Lib.isLongitude(column)) ||
+      (isLongitude && Lib.isLatitude(column)),
+  );
 }
 
 export function getDefaultSecondColumn(
@@ -63,23 +66,60 @@ export function getFilterClause(
   secondColumn: Lib.ColumnMetadata | undefined,
   values: number[],
 ) {
-  if (operator !== "inside") {
-    return Lib.coordinateFilterClause({
-      operator,
-      column,
-      values,
-    });
-  }
-
-  const latitudeColumn =
-    secondColumn && Lib.isLatitude(secondColumn) ? secondColumn : column;
-  const longitudeColumn =
-    secondColumn && Lib.isLongitude(secondColumn) ? secondColumn : column;
-
   return Lib.coordinateFilterClause({
     operator,
-    column: latitudeColumn,
-    longitudeColumn,
-    values,
+    column: getCoercedLatitudeColumn(operator, column, secondColumn),
+    longitudeColumn: getCoercedLongitudeColumn(operator, column, secondColumn),
+    values: getCoercedValues(operator, values),
   });
+}
+
+function getCoercedLatitudeColumn(
+  operator: Lib.CoordinateFilterOperatorName,
+  column: Lib.ColumnMetadata,
+  secondColumn: Lib.ColumnMetadata | undefined,
+) {
+  return operator === "inside" &&
+    secondColumn != null &&
+    Lib.isLongitude(column) &&
+    Lib.isLatitude(secondColumn)
+    ? secondColumn
+    : column;
+}
+
+function getCoercedLongitudeColumn(
+  operator: Lib.CoordinateFilterOperatorName,
+  column: Lib.ColumnMetadata,
+  secondColumn: Lib.ColumnMetadata | undefined,
+) {
+  return operator === "inside" &&
+    secondColumn != null &&
+    Lib.isLatitude(column) &&
+    Lib.isLongitude(secondColumn)
+    ? secondColumn
+    : column;
+}
+
+function getCoercedValues(
+  operator: Lib.CoordinateFilterOperatorName,
+  values: number[],
+) {
+  if (operator === "inside") {
+    const [upperLatitude, leftLongitude, lowerLatitude, rightLongitude] =
+      values;
+
+    return [
+      Math.max(upperLatitude, lowerLatitude),
+      Math.min(leftLongitude, rightLongitude),
+      Math.min(lowerLatitude, upperLatitude),
+      Math.max(leftLongitude, rightLongitude),
+    ];
+  }
+
+  if (operator === "between") {
+    const [startValue, endValue] = values;
+    return [Math.min(startValue, endValue), Math.max(startValue, endValue)];
+  }
+
+  return values;
 }
