@@ -1,23 +1,15 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-
 import { Box, Flex, Text, TimeInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
-
 import { MAX_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
-import { Header } from "../Header";
-import { Footer } from "../Footer";
-
+import { FilterHeader } from "../FilterHeader";
+import { FilterFooter } from "../FilterFooter";
 import { OPERATOR_OPTIONS } from "./constants";
-import {
-  getDefaultValue,
-  getDefaultValuesForOperator,
-  getNextValues,
-  isFilterValid,
-} from "./utils";
+import { getDefaultValues, getFilterClause } from "./utils";
 
 export function TimeFilterPicker({
   query,
@@ -28,11 +20,14 @@ export function TimeFilterPicker({
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
-  const columnName = Lib.displayInfo(query, stageIndex, column).longDisplayName;
+  const columnInfo = useMemo(
+    () => Lib.displayInfo(query, stageIndex, column),
+    [query, stageIndex, column],
+  );
 
-  const filterParts = filter
-    ? Lib.timeFilterParts(query, stageIndex, filter)
-    : null;
+  const filterParts = useMemo(() => {
+    return filter ? Lib.timeFilterParts(query, stageIndex, filter) : null;
+  }, [query, stageIndex, filter]);
 
   const availableOperators = useMemo(
     () =>
@@ -40,78 +35,59 @@ export function TimeFilterPicker({
     [query, stageIndex, column],
   );
 
-  const [operatorName, setOperatorName] = useState(
-    filterParts?.operator ?? "<",
+  const [operator, setOperator] = useState(
+    filterParts ? filterParts.operator : "<",
   );
 
-  const [values, setValues] = useState(
-    filterParts?.values ?? getDefaultValuesForOperator(operatorName),
+  const [values, setValues] = useState(() =>
+    getDefaultValues(operator, filterParts?.values),
   );
 
-  const { valueCount = 0 } = OPERATOR_OPTIONS[operatorName] ?? {};
+  const { valueCount } = OPERATOR_OPTIONS[operator];
 
-  const isValid = useMemo(
-    () => isFilterValid(operatorName, values),
-    [operatorName, values],
-  );
-
-  const handleOperatorChange = (
-    nextOperatorName: Lib.TimeFilterOperatorName,
-  ) => {
-    const nextOption = OPERATOR_OPTIONS[nextOperatorName];
-    const nextValues = getNextValues(values, nextOption.valueCount);
-    setOperatorName(nextOperatorName);
-    setValues(nextValues);
+  const handleOperatorChange = (operator: Lib.TimeFilterOperatorName) => {
+    setOperator(operator);
+    setValues(getDefaultValues(operator, values));
   };
 
-  const handleFilterChange = () => {
-    onChange(
-      Lib.timeFilterClause({
-        operator: operatorName,
-        column,
-        values,
-      }),
-    );
+  const handleSubmit = () => {
+    onChange(getFilterClause(operator, column, values));
   };
 
   return (
     <Box maw={MAX_WIDTH} data-testid="time-filter-picker">
-      <Header columnName={columnName} onBack={onBack}>
+      <FilterHeader columnName={columnInfo.longDisplayName} onBack={onBack}>
         <FilterOperatorPicker
-          value={operatorName}
+          value={operator}
           options={availableOperators}
           onChange={handleOperatorChange}
         />
-      </Header>
+      </FilterHeader>
       <Box>
         {valueCount > 0 && (
           <Flex p="md">
-            <ValuesInput
+            <TimeValueInput
               values={values}
               valueCount={valueCount}
               onChange={setValues}
             />
           </Flex>
         )}
-        <Footer
-          isNew={isNew}
-          canSubmit={isValid}
-          onSubmit={handleFilterChange}
-        />
+        <FilterFooter isNew={isNew} canSubmit onSubmit={handleSubmit} />
       </Box>
     </Box>
   );
 }
 
-interface ValuesInputProps {
+interface TimeValueInputProps {
   values: Date[];
   valueCount: number;
   onChange: (values: Date[]) => void;
 }
 
-function ValuesInput({ values, valueCount, onChange }: ValuesInputProps) {
+function TimeValueInput({ values, valueCount, onChange }: TimeValueInputProps) {
   if (valueCount === 1) {
-    const [value = getDefaultValue()] = values;
+    const [value] = values;
     return (
       <TimeInput
         value={value}
@@ -122,7 +98,7 @@ function ValuesInput({ values, valueCount, onChange }: ValuesInputProps) {
   }
 
   if (valueCount === 2) {
-    const [value1 = getDefaultValue(), value2 = getDefaultValue()] = values;
+    const [value1, value2] = values;
     return (
       <Flex direction="row" align="center" gap="sm" w="100%">
         <TimeInput

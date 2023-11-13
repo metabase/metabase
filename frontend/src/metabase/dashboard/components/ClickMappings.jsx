@@ -117,10 +117,12 @@ class ClickMappingsInner extends Component {
 }
 
 const ClickMappings = _.compose(
-  loadQuestionMetadata((state, props) => (props.isDash ? null : props.object)),
+  loadQuestionMetadata((state, props) =>
+    props.isDashboard ? null : props.object,
+  ),
   withUserAttributes,
   connect((state, props) => {
-    const { object, isDash, dashcard, clickBehavior } = props;
+    const { object, isDashboard, dashcard, clickBehavior } = props;
     let parameters = getParameters(state, props);
 
     if (props.excludeParametersSources) {
@@ -137,7 +139,7 @@ const ClickMappings = _.compose(
     }
 
     const [setTargets, unsetTargets] = _.partition(
-      isDash
+      isDashboard
         ? getTargetsForDashboard(object, dashcard)
         : getTargetsForQuestion(object),
       ({ id }) =>

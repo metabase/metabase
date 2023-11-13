@@ -520,6 +520,16 @@ Default: `null`
 
 Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled.
 
+## MB_INACTIVE_TABLE_MAX_DAYS
+
+Type: integer<br>
+Default: `180`<br>
+Since: v48.0
+
+Sets the maximum number of days Metabase keep inactive tables.
+
+Once a day, Metabase will delete inactive tables older than this threshold.
+
 ### `MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE`
 
 Type: integer<br>
@@ -1197,6 +1207,8 @@ Setting the variable to `"none"` requires you to use HTTPS, otherwise browsers w
 Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about [interactive Embedding](../embedding/interactive-embedding.md).
 
 Learn more about SameSite cookies: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite
+
+> WARNING: If you're NOT embedding Metabase and you set `MB_SESSION_COOKIE_SAMESITE` to "none", Chrome and Safari will reject authentication attempts.
 
 ### `MB_SESSION_COOKIES`
 

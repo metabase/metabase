@@ -8,7 +8,6 @@ import {
   createQueryWithTimeFilter,
   findTimeColumn,
 } from "../test-utils";
-import { getDefaultValue } from "./utils";
 import { TimeFilterPicker } from "./TimeFilterPicker";
 
 type SetupOpts = {
@@ -72,6 +71,11 @@ async function setOperator(operator: string) {
 }
 
 describe("TimeFilterPicker", () => {
+  beforeAll(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2020, 0, 1));
+  });
+
   describe("new filter", () => {
     it("should render a blank editor", () => {
       setup();
@@ -104,7 +108,7 @@ describe("TimeFilterPicker", () => {
       expect(filterParts).toMatchObject({
         operator: "<",
         column: expect.anything(),
-        values: [getDefaultValue()],
+        values: [new Date(2020, 0, 1, 0, 0)],
       });
       expect(getNextFilterColumnName()).toBe("Time");
     });
@@ -133,6 +137,28 @@ describe("TimeFilterPicker", () => {
       const [leftInput, rightInput] = screen.getAllByDisplayValue("00:00");
       userEvent.type(leftInput, "11:15");
       userEvent.type(rightInput, "12:30");
+      userEvent.click(screen.getByText("Add filter"));
+
+      const filterParts = getNextFilterParts();
+      expect(filterParts).toMatchObject({
+        operator: "between",
+        column: expect.anything(),
+        values: [
+          dayjs("11:15", "HH:mm").toDate(),
+          dayjs("12:30", "HH:mm").toDate(),
+        ],
+      });
+      expect(getNextFilterColumnName()).toBe("Time");
+    });
+
+    it("should swap values when min > max", async () => {
+      const { getNextFilterParts, getNextFilterColumnName } = setup();
+
+      await setOperator("Between");
+
+      const [leftInput, rightInput] = screen.getAllByDisplayValue("00:00");
+      userEvent.type(leftInput, "12:30");
+      userEvent.type(rightInput, "11:15");
       userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();

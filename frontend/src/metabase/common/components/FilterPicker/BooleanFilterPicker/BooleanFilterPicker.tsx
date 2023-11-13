@@ -1,15 +1,15 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
+import { checkNotNull } from "metabase/lib/types";
 import { Icon } from "metabase/core/components/Icon";
 import { Box, Button, Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { Header } from "../Header";
-import { Footer } from "../Footer";
+import { FilterHeader } from "../FilterHeader";
+import { FilterFooter } from "../FilterFooter";
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
 import { OPTIONS } from "./constants";
 import { getFilterClause, getOptionType } from "./utils";
-import type { OptionType } from "./types";
 
 export function BooleanFilterPicker({
   query,
@@ -40,7 +40,8 @@ export function BooleanFilterPicker({
   }, [options, isExpanded]);
 
   const handleOptionChange = (type: string) => {
-    setOptionType(type as OptionType);
+    const option = checkNotNull(options.find(option => option.type === type));
+    setOptionType(option.type);
   };
 
   const handleSubmit = () => {
@@ -49,7 +50,7 @@ export function BooleanFilterPicker({
 
   return (
     <Box data-testid="boolean-filter-picker">
-      <Header columnName={columnName} onBack={onBack} />
+      <FilterHeader columnName={columnName} onBack={onBack} />
       <Box>
         <Radio.Group value={optionType} onChange={handleOptionChange}>
           <Stack p="md" pb={isExpanded ? "md" : 0} spacing="sm">
@@ -75,7 +76,7 @@ export function BooleanFilterPicker({
             {t`More options`}
           </Button>
         )}
-        <Footer isNew={isNew} canSubmit onSubmit={handleSubmit} />
+        <FilterFooter isNew={isNew} canSubmit onSubmit={handleSubmit} />
       </Box>
     </Box>
   );

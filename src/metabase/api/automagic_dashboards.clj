@@ -31,7 +31,7 @@
 
 (def ^:private Show
   (mu/with-api-error-message
-    [:maybe [:enum "all"]]
+    [:maybe [:or [:enum "all"] nat-int?]]
     (deferred-tru "invalid show value")))
 
 (def ^:private Prefix
@@ -143,17 +143,22 @@
     [:enum "segment" "adhoc" "table"]
     (deferred-tru "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\"")))
 
+(defn- coerce-show
+  "Show is either nil, \"all\", or a number. If it's a string it needs to be converted into a keyword."
+  [show]
+  (cond-> show (= "all" show) keyword))
+
 (api/defendpoint GET "/:entity/:entity-id-or-query"
   "Return an automagic dashboard for entity `entity` with id `id`."
   [entity entity-id-or-query show]
-  {show   [:maybe [:= "all"]]
+  {show   [:maybe [:or [:= "all"] nat-int?]]
    entity (mu/with-api-error-message
             (into [:enum] entities)
             (deferred-tru "Invalid entity type"))}
   (if (= entity "transform")
     (transform.dashboard/dashboard (->entity entity entity-id-or-query))
     (-> (->entity entity entity-id-or-query)
-        (automagic-analysis {:show (keyword show)}))))
+        (automagic-analysis {:show (coerce-show show)}))))
 
 (defn linked-entities
   "Identify the pk field of the model with `pk_ref`, and then find any fks that have that pk as a target."
@@ -270,7 +275,7 @@
    prefix Prefix
    dashboard-template   DashboardTemplate}
   (-> (->entity entity entity-id-or-query)
-      (automagic-analysis {:show (keyword show)
+      (automagic-analysis {:show (coerce-show show)
                            :dashboard-template ["table" prefix dashboard-template]})))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query"
@@ -282,7 +287,7 @@
    show       Show
    cell-query Base64EncodedJSON}
   (-> (->entity entity entity-id-or-query)
-      (automagic-analysis {:show       (keyword show)
+      (automagic-analysis {:show       (coerce-show show)
                            :cell-query (decode-base64-json cell-query)})))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:dashboard-template"
@@ -295,7 +300,7 @@
    dashboard-template       DashboardTemplate
    cell-query Base64EncodedJSON}
   (-> (->entity entity entity-id-or-query)
-      (automagic-analysis {:show       (keyword show)
+      (automagic-analysis {:show       (coerce-show show)
                            :dashboard-template       ["table" prefix dashboard-template]
                            :cell-query (decode-base64-json cell-query)})))
 
@@ -308,7 +313,7 @@
    comparison-entity ComparisonEntity}
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
-        dashboard (automagic-analysis left {:show         (keyword show)
+        dashboard (automagic-analysis left {:show         (coerce-show show)
                                             :query-filter nil
                                             :comparison?  true})]
     (comparison-dashboard dashboard left right {})))
@@ -324,7 +329,7 @@
    comparison-entity ComparisonEntity}
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
-        dashboard (automagic-analysis left {:show         (keyword show)
+        dashboard (automagic-analysis left {:show         (coerce-show show)
                                             :dashboard-template         ["table" prefix dashboard-template]
                                             :query-filter nil
                                             :comparison?  true})]
@@ -341,7 +346,7 @@
    comparison-entity ComparisonEntity}
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
-        dashboard (automagic-analysis left {:show         (keyword show)
+        dashboard (automagic-analysis left {:show         (coerce-show show)
                                             :query-filter nil
                                             :comparison?  true})]
     (comparison-dashboard dashboard left right {:left {:cell-query (decode-base64-json cell-query)}})))
@@ -359,7 +364,7 @@
    comparison-entity ComparisonEntity}
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
-        dashboard (automagic-analysis left {:show         (keyword show)
+        dashboard (automagic-analysis left {:show         (coerce-show show)
                                             :dashboard-template         ["table" prefix dashboard-template]
                                             :query-filter nil})]
     (comparison-dashboard dashboard left right {:left {:cell-query (decode-base64-json cell-query)}})))
