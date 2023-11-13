@@ -1,7 +1,5 @@
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
 
-echo 'hi mom'
-
 yarn precommit
 ./hooks/pre-commit.nocommit
