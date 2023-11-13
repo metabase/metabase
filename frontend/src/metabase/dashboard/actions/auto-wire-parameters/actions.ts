@@ -1,18 +1,21 @@
 import { t } from "ttag";
 import _ from "underscore";
-import { createAction, createThunkAction } from "metabase/lib/redux";
 import type {
   Card,
   DashboardCard,
-  DashboardId,
   DashCardId,
   ParameterId,
   ParameterTarget,
 } from "metabase-types/api";
+import type { Dispatch, GetState } from "metabase-types/store";
 import {
   setDashCardAttributes,
   setMultipleDashCardAttributes,
 } from "metabase/dashboard/actions";
+import {
+  closeAutoWireParameterToast,
+  showAutoWireParametersToast,
+} from "metabase/dashboard/actions/auto-wire-parameters/toasts";
 import {
   getAllDashboardCardsWithUnmappedParameters,
   getAutoWiredMappingsForDashcards,
@@ -21,21 +24,16 @@ import {
 
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 import {
-  getAutoWireParameterToast,
   getDashCardById,
   getDisabledAutoWireCards,
   getIsCardAutoWiringDisabled,
 } from "metabase/dashboard/selectors";
+import { createAction } from "metabase/lib/redux";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
-import { addUndo, dismissUndo } from "metabase/redux/undo";
+import { addUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { Dispatch, GetState } from "metabase-types/store";
 import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
 
-export const SHOW_AUTO_WIRE_PARAMETER_TOAST =
-  "metabase/dashboard/SHOW_AUTO_WIRE_PARAMETER_TOAST";
-export const HIDE_AUTO_WIRE_PARAMTER_TOAST =
-  "metabase/dashboard/HIDE_AUTO_WIRE_PARAMTER_TOAST";
 export const DISABLE_AUTO_WIRE_FOR_PARAMETER_TARGET =
   "metabase/dashboard/DISABLE_AUTO_WIRE_FOR_PARAMETER_TARGET";
 
@@ -229,73 +227,3 @@ export function autoWireParametersToNewCard({
     );
   };
 }
-
-export const showAutoWireParametersToast = createThunkAction(
-  SHOW_AUTO_WIRE_PARAMETER_TOAST,
-  ({
-      dashboardId,
-      parameter_id,
-      sourceDashcardId,
-      modifiedDashcards,
-    }: {
-      dashboardId: DashboardId;
-      parameter_id: ParameterId;
-      sourceDashcardId: DashCardId;
-      modifiedDashcards: DashboardCard[];
-    }) =>
-    (dispatch: Dispatch, getState: GetState) => {
-      const toastId = _.uniqueId();
-
-      dispatch(
-        addUndo({
-          id: toastId,
-          message: t`This filter has been auto-connected with questions with the same field.`,
-          actionLabel: t`Undo auto-connection`,
-          undo: true,
-          action: () => {
-            dispatch(
-              disableAutoWireForParameterTarget({
-                sourceDashcardId,
-                dashboardId,
-              }),
-            );
-
-            dispatch(
-              setMultipleDashCardAttributes({
-                dashcards: modifiedDashcards.map(dc => ({
-                  id: dc.id,
-                  attributes: {
-                    parameter_mappings: getParameterMappings(
-                      dc,
-                      parameter_id,
-                      dc.card.id,
-                      null,
-                    ),
-                  },
-                })),
-              }),
-            );
-
-            dispatch(
-              addUndo({
-                message: t`Auto-connection was disabled. You'll need to manually connect filters to this question.`,
-              }),
-            );
-          },
-        }),
-      );
-
-      return { toastId, dashboardId };
-    },
-);
-
-export const closeAutoWireParameterToast = createThunkAction(
-  HIDE_AUTO_WIRE_PARAMTER_TOAST,
-  () => (dispatch: Dispatch, getState: GetState) => {
-    const { id } = getAutoWireParameterToast(getState());
-
-    if (id) {
-      dispatch(dismissUndo(id, false));
-    }
-  },
-);

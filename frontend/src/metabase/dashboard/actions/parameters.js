@@ -13,11 +13,9 @@ import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import { updateDashboard } from "metabase/dashboard/actions/save";
-import {
-  autoWireDashcardsWithMatchingParameters,
-  closeAutoWireParameterToast,
-} from "metabase/dashboard/actions/auto-wire-parameters/actions";
+import { autoWireDashcardsWithMatchingParameters } from "metabase/dashboard/actions/auto-wire-parameters/actions";
 import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
+import { closeAutoWireParameterToast } from "metabase/dashboard/actions/auto-wire-parameters/toasts";
 import {
   isParameterValueEmpty,
   PULSE_PARAM_EMPTY,
