@@ -96,9 +96,9 @@ Transfer data from existing H2 database to the newly created MySQL or Postgres D
 load-from-h2 h2-connection-string
 ```
 
-## `migrate direction`
+## `migrate down`
 
-Run database migrations. Valid options for `direction` are `up`, `force`, `down`, `print`, or `release-locks`.
+Used for downgrading versions.
 
 ## `profile`
 
@@ -111,10 +111,6 @@ Reset the password for a user with `email-address`.
 ## `rotate-encryption-key new-key`
 
 Rotate the encryption key of a metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to the current key, and the parameter `new-key` has to be the new key. `new-key` has to be at least 16 chars.
-
-## `seed-entity-ids`
-
-Add entity IDs for instances of serializable models that don't already have them.
 
 ## `version`
 
