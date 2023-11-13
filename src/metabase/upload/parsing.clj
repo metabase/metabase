@@ -38,15 +38,12 @@
   "Parses a datetime string without an offset.
 
   Supported formats:
-    - yyyy-MM-dd HH:mm:ss
-    - yyyy-MM-dd HH:mm
-    - yyyy-MM-dd HH:mm:ss.SSS (and any other number of S's)
-    - yyyy-MM-dd'T'HH:mm:ss
     - yyyy-MM-dd'T'HH:mm
+    - yyyy-MM-dd'T'HH:mm:ss
     - yyyy-MM-dd'T'HH:mm:ss.SSS (and any other number of S's)
-    - yyyy-MM-dd't'HH:mm:ss
-    - yyyy-MM-dd't'HH:mm
-    - yyyy-MM-dd't'HH:mm:ss.SSS (and any other number of S's)"
+    - the above formats, with a space instead of a 'T'
+
+  Parsing is case-insensitive."
   [s]
   (-> s (str/replace \space \T) t/local-date-time))
 
@@ -63,7 +60,21 @@
                   (tru "{0} is not a recognizable datetime" s))))))))
 
 (defn parse-offset-datetime
-  "Parses a string `s` as an OffsetDateTime."
+  "Parses a string `s` as an OffsetDateTime.
+
+  The format consists of:
+    1) The a date and time, with the formats:
+      - yyyy-MM-dd'T'HH:mm
+      - yyyy-MM-dd'T'HH:mm:ss
+      - yyyy-MM-dd'T'HH:mm:ss.SSS (and any other number of S's)
+      - the above formats, with a space instead of a 'T'
+    2) An offset, with the formats:
+      - Z (for UTC)
+      - +HH or -HH
+      - +HH:mm or -HH:mm
+      - +HH:mm:ss or -HH:mm:ss
+
+  Parsing is case-insensitive."
   [s]
   (try
     (-> s (str/replace \space \T) t/offset-date-time)

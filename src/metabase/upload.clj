@@ -12,7 +12,6 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Database]]
    [metabase.public-settings :as public-settings]
-   [metabase.search.util :as search.util]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
