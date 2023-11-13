@@ -20,7 +20,7 @@
 - Set up [alerts](https://www.metabase.com/docs/latest/users-guide/15-alerts.html) to have Metabase notify you when your data changes.
 - [Embed charts and dashboards](https://www.metabase.com/docs/latest/administration-guide/13-embedding.html) in your app, or even [your entire Metabase](https://www.metabase.com/docs/latest/enterprise-guide/full-app-embedding.html).
 
-Take a [tour of Metabase](https://www.metabase.com/learn/getting-started/tour-of-metabase).
+Take a [tour of Metabase](https://www.metabase.com/learn/getting-started/tour-of-metabase)!
 
 ## Supported databases
 
