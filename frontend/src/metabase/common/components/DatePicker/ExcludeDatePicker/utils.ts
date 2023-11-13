@@ -1,6 +1,5 @@
 import _ from "underscore";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import dayjs from "dayjs";
 import type {
   DatePickerExtractionUnit,
   DatePickerOperator,
@@ -63,22 +62,22 @@ export function getExcludeValueOptionGroups(
 }
 
 function getExcludeHourOption(hour: number): ExcludeValueOption {
-  const date = moment().hour(hour);
+  const date = dayjs().hour(hour);
   return { value: hour, label: date.format("h A") };
 }
 
 function getExcludeDayOption(day: number): ExcludeValueOption {
-  const date = moment().isoWeekday(day);
+  const date = dayjs().isoWeekday(day);
   return { value: day, label: date.format("dddd") };
 }
 
 function getExcludeMonthOption(month: number): ExcludeValueOption {
-  const date = moment().month(month);
+  const date = dayjs().month(month);
   return { value: month, label: date.format("MMMM") };
 }
 
 function getExcludeQuarterOption(quarter: number): ExcludeValueOption {
-  const date = moment().quarter(quarter);
+  const date = dayjs().quarter(quarter);
   return { value: quarter, label: date.format("Qo") };
 }
 

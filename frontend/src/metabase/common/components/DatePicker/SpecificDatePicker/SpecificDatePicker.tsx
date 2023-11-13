@@ -5,6 +5,7 @@ import type { DatePickerOperator, SpecificDatePickerValue } from "../types";
 import { SingleDatePicker } from "./SingleDatePicker";
 import { DateRangePicker } from "./DateRangePicker";
 import {
+  coerceValue,
   getDate,
   getDefaultValue,
   getTabs,
@@ -52,7 +53,7 @@ export function SpecificDatePicker({
   };
 
   const handleSubmit = () => {
-    onChange(value);
+    onChange(coerceValue(value));
   };
 
   return (

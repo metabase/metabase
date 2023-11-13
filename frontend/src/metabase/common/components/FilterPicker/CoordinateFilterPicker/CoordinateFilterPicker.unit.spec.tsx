@@ -173,6 +173,31 @@ describe("CoordinateFilterPicker", () => {
           expect(getNextFilterColumnNames().column).toBe("User → Latitude");
         },
       );
+
+      it("should swap values when min > max", async () => {
+        const { getNextFilterParts, getNextFilterColumnNames } = setup();
+        const addFilterButton = screen.getByRole("button", {
+          name: "Add filter",
+        });
+
+        await setOperator("Between");
+
+        const [leftInput, rightInput] =
+          screen.getAllByPlaceholderText("Enter a number");
+        userEvent.type(leftInput, "5");
+        expect(addFilterButton).toBeDisabled();
+
+        userEvent.type(rightInput, "-10.5");
+        userEvent.click(addFilterButton);
+
+        const filterParts = getNextFilterParts();
+        expect(filterParts).toMatchObject({
+          operator: "between",
+          column: expect.anything(),
+          values: [-10.5, 5],
+        });
+        expect(getNextFilterColumnNames().column).toBe("User → Latitude");
+      });
     });
 
     describe("with four values", () => {
@@ -194,6 +219,32 @@ describe("CoordinateFilterPicker", () => {
         expect(filterParts).toMatchObject({
           operator: "inside",
           values: [42, -24, -42, 24],
+          column: expect.anything(),
+        });
+        expect(getNextFilterColumnNames()).toEqual({
+          column: "User → Latitude",
+          longitudeColumn: "User → Longitude",
+        });
+      });
+
+      it("should swap latitude and longitude values when min > max", async () => {
+        const { getNextFilterParts, getNextFilterColumnNames } = setup();
+        const addFilterButton = screen.getByRole("button", {
+          name: "Add filter",
+        });
+
+        await setOperator("Inside");
+        userEvent.type(screen.getByLabelText("Upper latitude"), "-40");
+        userEvent.type(screen.getByLabelText("Lower latitude"), "42");
+        expect(addFilterButton).toBeDisabled();
+        userEvent.type(screen.getByLabelText("Left longitude"), "24");
+        userEvent.type(screen.getByLabelText("Right longitude"), "-20");
+        userEvent.click(addFilterButton);
+
+        const filterParts = getNextFilterParts();
+        expect(filterParts).toMatchObject({
+          operator: "inside",
+          values: [42, -20, -40, 24],
           column: expect.anything(),
         });
         expect(getNextFilterColumnNames()).toEqual({
@@ -495,7 +546,7 @@ describe("CoordinateFilterPicker", () => {
 
       await setOperator("Inside");
 
-      expect(screen.queryByDisplayValue("-100")).not.toBeInTheDocument();
+      expect(screen.getByDisplayValue("-100")).toBeInTheDocument();
       expect(screen.queryByDisplayValue("200")).not.toBeInTheDocument();
       expect(screen.queryByText("100.00000000° S")).not.toBeInTheDocument();
       expect(screen.queryByText("200.00000000° N")).not.toBeInTheDocument();
