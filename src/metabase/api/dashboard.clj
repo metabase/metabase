@@ -986,30 +986,46 @@
              field             (param->fields param false)]
          (assoc field :value value))))
 
-(defn filter-values-from-field-refs
+(defn- nested-card-results
   "Get filter values when only field-refs (e.g. `[:field \"SOURCE\" {:base-type :type/Text}]`)
   are provided (rather than field-ids). This is a common case for nested queries."
-  [dashboard param-key]
+  [param]
+  (for [{:keys [target] {:keys [card]} :dashcard} (:mappings param)
+        :let  [[_ dimension] (->> (mbql.normalize/normalize-tokens target :ignore-path)
+                                  (mbql.u/check-clause :dimension))]
+        :when dimension]
+    (custom-values/values-from-card card dimension)))
+
+(defn- -chain-filter
+  [dashboard param-key constraint-param-key->value query]
   (let [dashboard       (t2/hydrate dashboard :resolved-params)
+        constraints     (chain-filter-constraints dashboard constraint-param-key->value)
         param           (get-in dashboard [:resolved-params param-key])
-        results         (for [{:keys [target] {:keys [card]} :dashcard} (:mappings param)
-                              :let [[_ dimension] (->> (mbql.normalize/normalize-tokens target :ignore-path)
-                                                       (mbql.u/check-clause :dimension))]
-                              :when dimension]
-                          (custom-values/values-from-card card dimension))]
-    (when-some [values (seq (distinct (mapcat :values results)))]
-      (let [has_more_values (boolean (some true? (map :has_more_values results)))]
-        {:values          (cond->> values
-                                   (seq values)
-                                   (sort-by (case (count (first values))
-                                              2 second
-                                              1 first)))
-         :has_more_values has_more_values}))))
+        fields          (param->fields param true)
+        results         (if (seq fields)
+                          (map (if (seq query)
+                                 #(chain-filter/chain-filter-search % constraints query :limit result-limit)
+                                 #(chain-filter/chain-filter % constraints :limit result-limit))
+                               fields)
+                          (nested-card-results param))
+        values          (distinct (mapcat :values results))
+        has_more_values (boolean (some true? (map :has_more_values results)))]
+    (if (seq values)
+      ;; results can come back as [[v] ...] *or* as [[orig remapped] ...]. Sort by remapped value if it's there
+      {:values          (cond->> values
+                          (seq values)
+                          (sort-by (case (count (first values))
+                                     2 second
+                                     1 first)))
+       :has_more_values has_more_values}
+      (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
+                      {:param       (get (:resolved-params dashboard) param-key)
+                       :status-code 400})))))
 
 (mu/defn chain-filter :- ms/FieldValuesResult
-  "C H A I N filters!
+  "Chain Filters!
 
-  Used to query for values that populate chained filter dropdowns and text search boxes."
+   Used to query for values that populate chained filter dropdowns and text search boxes."
   ([dashboard param-key constraint-param-key->value]
    (chain-filter dashboard param-key constraint-param-key->value nil))
 
@@ -1017,33 +1033,12 @@
     param-key                   :- ms/NonBlankString
     constraint-param-key->value :- ms/Map
     query                       :- [:maybe ms/NonBlankString]]
-   (let [dashboard   (t2/hydrate dashboard :resolved-params)
-         constraints (chain-filter-constraints dashboard constraint-param-key->value)
-         param       (get-in dashboard [:resolved-params param-key])
-         fields      (param->fields param true)]
-     (when (empty? fields)
-       (or (filter-values-from-field-refs dashboard param-key)
-           (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
-                           {:param       (get (:resolved-params dashboard) param-key)
-                            :status-code 400}))))
-     (try
-       (let [results         (map (if (seq query)
-                                    #(chain-filter/chain-filter-search % constraints query :limit result-limit)
-                                    #(chain-filter/chain-filter % constraints :limit result-limit))
-                                  fields)
-             values          (distinct (mapcat :values results))
-             has_more_values (boolean (some true? (map :has_more_values results)))]
-         ;; results can come back as [[v] ...] *or* as [[orig remapped] ...]. Sort by remapped value if it's there
-         {:values          (cond->> values
-                             (seq values)
-                             (sort-by (case (count (first values))
-                                        2 second
-                                        1 first)))
-          :has_more_values has_more_values})
-       (catch clojure.lang.ExceptionInfo e
-         (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
-           (api/throw-403 e)
-           (throw e)))))))
+   (try
+     (-chain-filter dashboard param-key constraint-param-key->value query)
+     (catch clojure.lang.ExceptionInfo e
+       (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+         (api/throw-403 e)
+         (throw e))))))
 
 (mu/defn param-values
   "Fetch values for a parameter.
