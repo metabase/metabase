@@ -1,8 +1,9 @@
+import dayjs from "dayjs";
 import type * as Lib from "metabase-lib";
 import { OPERATOR_OPTIONS } from "./constants";
 
 function getDefaultValue() {
-  return new Date(2020, 0, 1, 0, 0);
+  return dayjs().startOf("day").toDate(); // 00:00:00
 }
 
 export function getDefaultValues(

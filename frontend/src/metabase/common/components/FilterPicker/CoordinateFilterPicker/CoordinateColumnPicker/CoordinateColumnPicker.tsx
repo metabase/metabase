@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { checkNotNull } from "metabase/lib/types";
 import { Select, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import { getColumnOptions, getColumnPlaceholder } from "./utils";
@@ -26,11 +27,9 @@ export function CoordinateColumnPicker({
   const placeholder = getColumnPlaceholder(column);
 
   const handleChange = (value: string | null) => {
-    const option = options.find(option => option.value === value);
-    if (option) {
-      setValue(option.value);
-      onChange(option.column);
-    }
+    const option = checkNotNull(options.find(option => option.value === value));
+    setValue(option.value);
+    onChange(option.column);
   };
 
   return (

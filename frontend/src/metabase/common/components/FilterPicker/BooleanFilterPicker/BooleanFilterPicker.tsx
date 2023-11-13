@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
+import { checkNotNull } from "metabase/lib/types";
 import { Icon } from "metabase/core/components/Icon";
 import { Box, Button, Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -39,10 +40,8 @@ export function BooleanFilterPicker({
   }, [options, isExpanded]);
 
   const handleOptionChange = (type: string) => {
-    const option = options.find(option => option.type === type);
-    if (option) {
-      setOptionType(option.type);
-    }
+    const option = checkNotNull(options.find(option => option.type === type));
+    setOptionType(option.type);
   };
 
   const handleSubmit = () => {
