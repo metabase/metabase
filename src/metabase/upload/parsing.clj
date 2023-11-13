@@ -35,7 +35,7 @@
   (t/local-date s))
 
 (defn parse-datetime
-  "Parses a datetime string without an offset.
+  "Parses a string representing a local datetime into a LocalDateTime.
 
   Supported formats:
     - yyyy-MM-dd'T'HH:mm
@@ -60,7 +60,7 @@
                   (tru "{0} is not a recognizable datetime" s))))))))
 
 (defn parse-offset-datetime
-  "Parses a string `s` as an OffsetDateTime.
+  "Parses a string representing an offset datetime into an OffsetDateTime.
 
   The format consists of:
     1) The a date and time, with the formats:
