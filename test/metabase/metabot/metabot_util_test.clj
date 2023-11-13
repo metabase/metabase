@@ -369,33 +369,36 @@
                {:keys [column_aliases create_table_ddl]} (metabot-util/denormalize-model orders-model)]
            (is (= 9 (count (re-seq #"ABC(?:_\d+)?" column_aliases))))
            ;; Ensure that the same aliases are used in the create table ddl
-           (is (= 9 (count (re-seq #"ABC" create_table_ddl)))))))))
+           (is (= 9 (count (re-seq #"ABC" create_table_ddl))))))))))
+
+(deftest inner-query-name-collisions-with-joins-test
   (testing "Models with name collisions across joins are also correctly disambiguated"
     (mt/dataset sample-dataset
-      (t2.with-temp/with-temp
-       [Card model {:dataset     true
-                    :database_id (mt/id)
-                    :query_type  :query
-                    :dataset_query
-                    (mt/mbql-query orders
-                                   {:fields [$total &products.products.category &self.products.category]
-                                    :joins  [{:source-table $$products
-                                              :condition    [:= $product_id &products.products.id]
-                                              :strategy     :left-join
-                                              :alias        "products"}
-                                             {:source-table $$products
-                                              :condition    [:= $id &self.products.id]
-                                              :strategy     :left-join
-                                              :alias        "self"}]})}]
-       (let [model (update model :result_metadata
-                           (fn [v]
-                             (map #(assoc % :display_name "FOO") v)))
-             {:keys [column_aliases create_table_ddl]} (metabot-util/denormalize-model model)]
-         (is (= "\"TOTAL\" AS FOO, \"products__CATEGORY\" AS FOO_2, \"self__CATEGORY\" AS FOO_3"
-                column_aliases))
-         ;; Ensure that the same aliases are used in the create table ddl
-         ;; 7 = 3 for the column names + 2 for the type creation + 2 for the type references
-         (is (= 7 (count (re-seq #"FOO" create_table_ddl)))))))))
+      (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 10]
+        (t2.with-temp/with-temp
+          [Card model {:dataset     true
+                       :database_id (mt/id)
+                       :query_type  :query
+                       :dataset_query
+                       (mt/mbql-query orders
+                         {:fields [$total &products.products.category &self.products.category]
+                          :joins  [{:source-table $$products
+                                    :condition    [:= $product_id &products.products.id]
+                                    :strategy     :left-join
+                                    :alias        "products"}
+                                   {:source-table $$products
+                                    :condition    [:= $id &self.products.id]
+                                    :strategy     :left-join
+                                    :alias        "self"}]})}]
+          (let [model (update model :result_metadata
+                              (fn [v]
+                                (map #(assoc % :display_name "FOO") v)))
+                {:keys [column_aliases create_table_ddl]} (metabot-util/denormalize-model model)]
+            (is (= "\"TOTAL\" AS FOO, \"products__CATEGORY\" AS FOO_2, \"self__CATEGORY\" AS FOO_3"
+                   column_aliases))
+            ;; Ensure that the same aliases are used in the create table ddl
+            ;; 7 = 3 for the column names + 2 for the type creation + 2 for the type references
+            (is (= 7 (count (re-seq #"FOO" create_table_ddl))))))))))
 
 (deftest ^:parallel deconflicting-aliases-test
   (testing "Test sql_name generation deconfliction:
