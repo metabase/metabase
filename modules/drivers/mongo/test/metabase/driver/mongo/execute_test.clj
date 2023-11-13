@@ -141,5 +141,6 @@
                                 {"$project" {"_id" false, "created_at" "$_id.created_at", "sum" true}}]}}]
           (future (Thread/sleep 100)
                   (a/>!! canceled-chan ::streaming-response/request-canceled))
-          (is (thrown? MongoCommandException
-                       (qp/process-query native-query)))))))))
+          (testing "Cancel signal kills the in progress query"
+            (is (thrown? MongoCommandException
+                         (qp/process-query native-query))))))))))
