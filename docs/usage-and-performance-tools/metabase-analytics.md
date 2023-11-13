@@ -8,10 +8,11 @@ title: Metabase analytics
 
 The **Metabase Analytics** collection is a special collection that contains view-only questions, dashboards, and models that help you understand how people are using your Metabase.
 
-There are two things to keep in mind with this special Metabase analytics collection:
+Some things to keep in mind with this special Metabase analytics collection:
 
-- It's a view-only collection. Even admins can't curate it. It just _exists_.
-- You can duplicate anything in it, modify it to your liking, and save it to another collection.
+- Metabase analytics is a view-only collection. Even admins can't curate it. It is eternal.
+- By default, only admins can view the Metabase analytics collection. Though they can grant other groups view access to it.
+- You can duplicate any item in the Metabase analytics collection, modify the item to your liking, and save the item to another collection.
 
 ## Permissions
 
