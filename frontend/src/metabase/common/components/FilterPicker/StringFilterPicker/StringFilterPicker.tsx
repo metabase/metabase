@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import type { FormEvent } from "react";
 import { t } from "ttag";
 import { Box, Checkbox, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -61,14 +62,20 @@ export function StringFilterPicker({
     setValues(getDefaultValues(operator, values));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
     if (isValid) {
       onChange(getFilterClause(operator, column, values, options));
     }
   };
 
   return (
-    <Box maw={MAX_WIDTH} data-testid="string-filter-picker">
+    <Box
+      component="form"
+      maw={MAX_WIDTH}
+      data-testid="string-filter-picker"
+      onSubmit={handleSubmit}
+    >
       <FilterHeader columnName={columnInfo.longDisplayName} onBack={onBack}>
         <FilterOperatorPicker
           value={operator}
@@ -87,7 +94,7 @@ export function StringFilterPicker({
             />
           </FlexWithScroll>
         )}
-        <FilterFooter isNew={isNew} canSubmit={isValid} onSubmit={handleSubmit}>
+        <FilterFooter isNew={isNew} canSubmit={isValid}>
           {hasCaseSensitiveOption && (
             <CaseSensitiveOption
               value={options["case-sensitive"] ?? false}
