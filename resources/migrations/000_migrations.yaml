@@ -16054,7 +16054,7 @@ databaseChangeLog:
       rollback: # no change
 
   - changeSet:
-      id: v48.00-052
+      id: v48.00-053
       author: johnswanson
       comment: Increase length of `activity.model` to fit longer model names
       changes:
@@ -16065,7 +16065,7 @@ databaseChangeLog:
       rollback: # not necessary
 
   - changeSet:
-      id: v48.00-053
+      id: v48.00-054
       author: escherize
       comment: Added 0.48.0 - no-op migration to remove Internal Metabase User on downgrade
       changes:

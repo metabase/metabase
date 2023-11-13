@@ -1338,8 +1338,8 @@
                 (t2/select-one (t2/table-name :model/Field) :id field-2-id)))))))
 
 (deftest audit-v2-downgrade-test
-  (testing "Migration v48.00-050, and v48.00-53"
-    (impl/test-migrations "v48.00-053" [migrate!]
+  (testing "Migration v48.00-050, and v48.00-54"
+    (impl/test-migrations "v48.00-054" [migrate!]
       (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
             _db-audit-id (first (t2/insert-returning-pks! (t2/table-name :model/Database)
                                                           {:name       "Audit DB"
