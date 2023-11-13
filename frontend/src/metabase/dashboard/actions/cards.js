@@ -77,7 +77,9 @@ export const undoRemoveCardFromDashboard = createThunkAction(
       const dashcard = getDashCardById(getState(), dashcardId);
       const card = dashcard.card;
 
-      dispatch(fetchCardData(card, dashcard));
+      if (!["text", "action", "heading", "link"].includes(card.display)) {
+        dispatch(fetchCardData(card, dashcard));
+      }
 
       return { dashcardId };
     },
