@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase.db.data-source :as mdb.data-source]
    [metabase.db.setup :as mdb.setup]
-   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models :refer [Database]]
