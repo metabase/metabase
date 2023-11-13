@@ -16054,7 +16054,7 @@ databaseChangeLog:
       rollback: # no change
 
   - changeSet:
-      id: v48.00-053
+      id: v48.00-052
       author: johnswanson
       comment: Increase length of `activity.model` to fit longer model names
       changes:
