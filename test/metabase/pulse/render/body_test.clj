@@ -1,12 +1,16 @@
 (ns metabase.pulse.render.body-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [hiccup.core :refer [html]]
    [metabase.pulse.render.body :as body]
    [metabase.pulse.render.common :as common]
-   [metabase.pulse.render.test-util :as render.tu]))
+   [metabase.pulse.render.test-util :as render.tu]
+   [metabase.pulse.util :as pu]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]))
 
 (use-fixtures :each
   (fn warn-possible-rebuild
@@ -529,3 +533,37 @@
     " "  "1,234,543 21%"
     nil  "1,234,543.21%"
     ""   "1,234,543.21%"))
+
+(deftest add-dashcard-timeline-events-test-34924
+  (testing "Timeline events should be added to the isomorphic renderer stages"
+    (mt/dataset sample-dataset
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Collection {collection-id :id :as _collection} {:name "Rasta's Collection"}
+                       :model/Timeline tl-a {:name "tl-a" :collection_id collection-id}
+                       :model/Timeline tl-b {:name "tl-b" :collection_id collection-id}
+                       :model/TimelineEvent _ {:timeline_id (u/the-id tl-a) :name "un-1"}
+                       :model/TimelineEvent _ {:timeline_id (u/the-id tl-a) :name "archived-1"}
+                       :model/TimelineEvent _ {:timeline_id (u/the-id tl-b) :name "un-2"}
+                       :model/TimelineEvent _ {:timeline_id (u/the-id tl-b) :name "archived-2"}
+                       :model/Card {dataset-query :dataset_query
+                                    :as           card} {:name          "Dashboard Test Card"
+                                                         :collection_id collection-id
+                                                         :dataset_query {:type     :query,
+                                                                         :database (mt/id)
+                                                                         :query    {:source-table (mt/id :orders)
+                                                                                    :breakout     [[:field (mt/id :orders :created_at)
+                                                                                                    {:temporal-unit :month}]],
+                                                                                    :aggregation  [[:sum [:field (mt/id :orders :subtotal) nil]]
+                                                                                                   [:avg [:field (mt/id :orders :subtotal) nil]]]}}
+                                                         :creator_id    (mt/user->id :crowberto)}]
+          (let [data                   (qp/process-query dataset-query)
+                combined-cards-results (pu/execute-multi-card card nil)
+                cards-with-data        (map
+                                        (comp
+                                         #'body/add-dashcard-timeline-events
+                                         (fn [c d] {:card c :data d}))
+                                        (cons card (map :card combined-cards-results))
+                                        (cons data (map #(get-in % [:result :data]) combined-cards-results)))]
+            (testing "The underlying add-dashcard-timeline-events call adds the timeline events to the card"
+              (is (=? [tl-a tl-b] (:timeline_events (#'body/add-dashcard-timeline-events {:card card})))))
+            (is (= 2 (count (:timeline_events (first cards-with-data)))))))))))

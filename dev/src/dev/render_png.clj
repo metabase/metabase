@@ -7,6 +7,7 @@
     [hiccup.core :as hiccup]
     [metabase.models :refer [Card]]
     [metabase.models.card :as card]
+    [metabase.models.user :as user]
     [metabase.pulse :as pulse]
     [metabase.pulse.render :as render]
     [metabase.pulse.render.test-util :as render.tu]
@@ -87,9 +88,7 @@
 
 (comment
   (render-card-to-png 1)
-
-  (let [{:keys [content]} (render-pulse-card 1)]
-    (open-hiccup-as-html content))
+  (render-card-to-png 2700)
 
   ;; open viz in your browser
   (-> [["A" "B"]
