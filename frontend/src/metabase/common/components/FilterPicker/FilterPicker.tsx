@@ -15,13 +15,7 @@ import type LegacyQuery from "metabase-lib/queries/StructuredQuery";
 
 import type { ColumnListItem, SegmentListItem } from "./types";
 import { MIN_WIDTH, MAX_WIDTH } from "./constants";
-
-import { BooleanFilterPicker } from "./BooleanFilterPicker";
-import { DateFilterPicker } from "./DateFilterPicker";
-import { NumberFilterPicker } from "./NumberFilterPicker";
-import { CoordinateFilterPicker } from "./CoordinateFilterPicker";
-import { StringFilterPicker } from "./StringFilterPicker";
-import { TimeFilterPicker } from "./TimeFilterPicker";
+import { ColumnFilterPicker } from "./ColumnFilterPicker";
 import { FilterColumnPicker } from "./FilterColumnPicker";
 
 export interface FilterPickerProps {
@@ -130,27 +124,19 @@ export function FilterPicker({
     );
   }
 
-  const FilterWidget = getFilterWidget(column);
-
-  if (FilterWidget) {
-    return (
-      <Box miw={MIN_WIDTH}>
-        <FilterWidget
-          query={query}
-          stageIndex={stageIndex}
-          column={column}
-          filter={filter}
-          isNew={isNewFilter}
-          onChange={handleChange}
-          onBack={() => setColumn(undefined)}
-        />
-      </Box>
-    );
-  }
-
-  // This codepath should never be hit,
-  // but is here to make TypeScript happy
-  return renderExpressionEditor();
+  return (
+    <Box miw={MIN_WIDTH}>
+      <ColumnFilterPicker
+        query={query}
+        stageIndex={stageIndex}
+        column={column}
+        filter={filter}
+        isNew={isNewFilter}
+        onChange={handleChange}
+        onBack={() => setColumn(undefined)}
+      />
+    </Box>
+  );
 }
 
 function getInitialColumn(
@@ -172,28 +158,19 @@ function isExpressionEditorInitiallyOpen(
   if (!filter || Lib.isSegmentFilter(query, stageIndex, filter)) {
     return false;
   }
-  const hasWidget = column && getFilterWidget(column) != null;
-  return Lib.isCustomFilter(query, stageIndex, filter) || !hasWidget;
+  if (Lib.isCustomFilter(query, stageIndex, filter)) {
+    return true;
+  }
+  return !column || !hasFilterWidget(column);
 }
 
-function getFilterWidget(column: Lib.ColumnMetadata) {
-  if (Lib.isBoolean(column)) {
-    return BooleanFilterPicker;
-  }
-  if (Lib.isTime(column)) {
-    return TimeFilterPicker;
-  }
-  if (Lib.isDate(column)) {
-    return DateFilterPicker;
-  }
-  if (Lib.isCoordinate(column)) {
-    return CoordinateFilterPicker;
-  }
-  if (Lib.isString(column)) {
-    return StringFilterPicker;
-  }
-  if (Lib.isNumeric(column)) {
-    return NumberFilterPicker;
-  }
-  return null;
+function hasFilterWidget(column: Lib.ColumnMetadata) {
+  return (
+    Lib.isBoolean(column) ||
+    Lib.isTime(column) ||
+    Lib.isDate(column) ||
+    Lib.isCoordinate(column) ||
+    Lib.isString(column) ||
+    Lib.isNumeric(column)
+  );
 }

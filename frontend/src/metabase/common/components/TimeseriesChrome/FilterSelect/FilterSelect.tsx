@@ -1,7 +1,9 @@
-import { TextInput, Popover } from "metabase/ui";
-import type * as Lib from "metabase-lib";
-import { FilterPicker } from "metabase/common/components/FilterPicker";
+import { useMemo } from "react";
+import { t } from "ttag";
+import { Popover, TextInput } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import { Icon } from "metabase/core/components/Icon";
+import { ColumnFilterPicker } from "metabase/common/components/FilterPicker/ColumnFilterPicker";
 
 export interface FilterSelectProps {
   query: Lib.Query;
@@ -18,19 +20,26 @@ export function FilterSelect({
   filter,
   onChange,
 }: FilterSelectProps) {
+  const filterInfo = useMemo(() => {
+    return filter && Lib.displayInfo(query, stageIndex, filter);
+  }, [query, stageIndex, filter]);
+
   return (
     <Popover>
       <Popover.Target>
-        <TextInput readOnly rightSection={<Icon name="chevrondown" />} />
+        <TextInput
+          value={filterInfo ? filterInfo.displayName : t`All time`}
+          readOnly
+          rightSection={<Icon name="chevrondown" />}
+        />
       </Popover.Target>
       <Popover.Dropdown>
-        <FilterPicker
+        <ColumnFilterPicker
           query={query}
           stageIndex={stageIndex}
+          column={column}
           filter={filter}
-          legacyQuery={1 as any}
-          onSelect={onChange as any}
-          onSelectLegacy={1 as any}
+          onChange={onChange}
         />
       </Popover.Dropdown>
     </Popover>
