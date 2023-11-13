@@ -1366,12 +1366,12 @@
                                                                 :password (str (random-uuid))}))
             original-db (t2/query {:datasource data-source} "SELECT * FROM metabase_database")
             original-collections (t2/query {:datasource data-source}    "SELECT * FROM collection")
-            before-check! (fn []
-                            (is (partial= (set (map :name original-db))
-                                          (set (map :name (t2/query {:datasource data-source} "SELECT name FROM metabase_database")))))
-                            (is (partial= (set (map :name original-collections))
-                                          (set (map :name (t2/query {:datasource data-source} "SELECT name FROM collection")))))
-                            (is (= 1 (count (t2/query "SELECT * FROM core_user WHERE id = 13371338")))))]
+            check-before (fn []
+                           (is (partial= (set (map :name original-db))
+                                         (set (map :name (t2/query {:datasource data-source} "SELECT name FROM metabase_database")))))
+                           (is (partial= (set (map :name original-collections))
+                                         (set (map :name (t2/query {:datasource data-source} "SELECT name FROM collection")))))
+                           (is (= 1 (count (t2/query "SELECT * FROM core_user WHERE id = 13371338")))))]
 
         (check-before) ;; Verify that data is inserted correctly
         (migrate!) ;; no-op forward migration
