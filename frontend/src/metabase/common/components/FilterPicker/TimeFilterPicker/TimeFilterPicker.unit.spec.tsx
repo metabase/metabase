@@ -8,7 +8,6 @@ import {
   createQueryWithTimeFilter,
   findTimeColumn,
 } from "../test-utils";
-import { getDefaultValue } from "./utils";
 import { TimeFilterPicker } from "./TimeFilterPicker";
 
 type SetupOpts = {
@@ -72,6 +71,11 @@ async function setOperator(operator: string) {
 }
 
 describe("TimeFilterPicker", () => {
+  beforeAll(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2020, 0, 1));
+  });
+
   describe("new filter", () => {
     it("should render a blank editor", () => {
       setup();
@@ -104,7 +108,7 @@ describe("TimeFilterPicker", () => {
       expect(filterParts).toMatchObject({
         operator: "<",
         column: expect.anything(),
-        values: [getDefaultValue()],
+        values: [new Date(2020, 0, 1, 0, 0)],
       });
       expect(getNextFilterColumnName()).toBe("Time");
     });
@@ -118,24 +122,6 @@ describe("TimeFilterPicker", () => {
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
-        operator: ">",
-        column: expect.anything(),
-        values: [dayjs("11:15", "HH:mm").toDate()],
-      });
-      expect(getNextFilterColumnName()).toBe("Time");
-    });
-
-    it("should add a filter with one value via keyboard", async () => {
-      const { onChange, getNextFilterParts, getNextFilterColumnName } = setup();
-
-      await setOperator("After");
-      const input = screen.getByDisplayValue("00:00");
-      userEvent.type(input, "{enter}");
-      expect(onChange).not.toHaveBeenCalled();
-
-      userEvent.type(input, "11:15{enter}");
-      expect(onChange).toHaveBeenCalled();
-      expect(getNextFilterParts()).toMatchObject({
         operator: ">",
         column: expect.anything(),
         values: [dayjs("11:15", "HH:mm").toDate()],
@@ -165,20 +151,18 @@ describe("TimeFilterPicker", () => {
       expect(getNextFilterColumnName()).toBe("Time");
     });
 
-    it("should add a filter with two values via keyboard", async () => {
-      const { onChange, getNextFilterParts, getNextFilterColumnName } = setup();
+    it("should swap values when min > max", async () => {
+      const { getNextFilterParts, getNextFilterColumnName } = setup();
 
       await setOperator("Between");
+
       const [leftInput, rightInput] = screen.getAllByDisplayValue("00:00");
-      userEvent.type(leftInput, "{enter}");
-      expect(onChange).not.toHaveBeenCalled();
+      userEvent.type(leftInput, "12:30");
+      userEvent.type(rightInput, "11:15");
+      userEvent.click(screen.getByText("Add filter"));
 
-      userEvent.type(leftInput, "11:15{enter}");
-      expect(onChange).not.toHaveBeenCalled();
-
-      userEvent.type(rightInput, "12:30{enter}");
-      expect(onChange).toHaveBeenCalled();
-      expect(getNextFilterParts()).toMatchObject({
+      const filterParts = getNextFilterParts();
+      expect(filterParts).toMatchObject({
         operator: "between",
         column: expect.anything(),
         values: [

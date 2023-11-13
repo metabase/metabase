@@ -1,9 +1,7 @@
 import { useState, useMemo } from "react";
-import type { FormEvent } from "react";
 import { t } from "ttag";
 import { Box, Flex, NumberInput, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
-
 import type { FilterPickerWidgetProps } from "../types";
 import { MAX_WIDTH } from "../constants";
 import { getAvailableOperatorOptions } from "../utils";
@@ -12,9 +10,9 @@ import { FilterHeader } from "../FilterHeader";
 import { FilterFooter } from "../FilterFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
-
 import { OPERATOR_OPTIONS } from "./constants";
-import { isFilterValid } from "./utils";
+import { getDefaultValues, getFilterClause, hasValidValues } from "./utils";
+import type { NumberValue } from "./types";
 
 export function NumberFilterPicker({
   query,
@@ -25,10 +23,15 @@ export function NumberFilterPicker({
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
-  const columnName = Lib.displayInfo(query, stageIndex, column).longDisplayName;
-  const filterParts = filter
-    ? Lib.numberFilterParts(query, stageIndex, filter)
-    : null;
+  const columnInfo = useMemo(
+    () => Lib.displayInfo(query, stageIndex, column),
+    [query, stageIndex, column],
+  );
+
+  const filterParts = useMemo(
+    () => (filter ? Lib.numberFilterParts(query, stageIndex, filter) : null),
+    [query, stageIndex, filter],
+  );
 
   const availableOperators = useMemo(
     () =>
@@ -36,129 +39,117 @@ export function NumberFilterPicker({
     [query, stageIndex, column],
   );
 
-  const [operatorName, setOperatorName] = useState(
-    filterParts?.operator ?? "=",
+  const [operator, setOperator] = useState(
+    filterParts ? filterParts.operator : "=",
   );
 
-  const [values, setValues] = useState(filterParts?.values ?? []);
-
-  const { valueCount = 0 } = OPERATOR_OPTIONS[operatorName] ?? {};
-
-  const isValid = useMemo(
-    () => isFilterValid(operatorName, values),
-    [operatorName, values],
+  const [values, setValues] = useState(() =>
+    getDefaultValues(operator, filterParts?.values),
   );
 
-  const handleOperatorChange = (
-    nextOperatorName: Lib.NumberFilterOperatorName,
-  ) => {
-    const nextOption = OPERATOR_OPTIONS[nextOperatorName];
-    const nextValues = values.slice(0, nextOption.valueCount);
-    setOperatorName(nextOperatorName);
-    setValues(nextValues);
+  const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
+  const isValid = hasValidValues(operator, values);
+
+  const handleOperatorChange = (operator: Lib.NumberFilterOperatorName) => {
+    setOperator(operator);
+    setValues(getDefaultValues(operator, values));
   };
 
-  const handleFilterChange = () => {
-    onChange(
-      Lib.numberFilterClause({
-        operator: operatorName,
-        column,
-        values,
-      }),
-    );
-  };
-
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
+  const handleSubmit = () => {
     if (isValid) {
-      handleFilterChange();
+      onChange(getFilterClause(operator, column, values));
     }
   };
 
   return (
-    <Box
-      component="form"
-      maw={MAX_WIDTH}
-      data-testid="number-filter-picker"
-      onSubmit={handleSubmit}
-    >
-      <FilterHeader columnName={columnName} onBack={onBack}>
+    <Box maw={MAX_WIDTH} data-testid="number-filter-picker">
+      <FilterHeader columnName={columnInfo.longDisplayName} onBack={onBack}>
         <FilterOperatorPicker
-          value={operatorName}
+          value={operator}
           options={availableOperators}
           onChange={handleOperatorChange}
         />
       </FilterHeader>
       <Box>
         <NumberValueInput
+          column={column}
           values={values}
           valueCount={valueCount}
-          column={column}
+          hasMultipleValues={hasMultipleValues}
           onChange={setValues}
         />
-        <FilterFooter isNew={isNew} canSubmit={isValid} />
+        <FilterFooter
+          isNew={isNew}
+          canSubmit={isValid}
+          onSubmit={handleSubmit}
+        />
       </Box>
     </Box>
   );
 }
 
 interface NumberValueInputProps {
-  values: number[];
-  valueCount: number;
   column: Lib.ColumnMetadata;
-  onChange: (values: number[]) => void;
+  values: NumberValue[];
+  valueCount: number;
+  hasMultipleValues?: boolean;
+  onChange: (values: NumberValue[]) => void;
 }
 
 function NumberValueInput({
+  column,
   values,
   valueCount,
-  column,
+  hasMultipleValues,
   onChange,
 }: NumberValueInputProps) {
   const placeholder = t`Enter a number`;
 
-  switch (valueCount) {
-    case Infinity:
-      return (
-        <FlexWithScroll p="md" mah={300}>
-          <ColumnValuesWidget
-            value={values}
-            column={column}
-            canHaveManyValues
-            onChange={onChange}
-          />
-        </FlexWithScroll>
-      );
-    case 1:
-      return (
-        <Flex p="md">
-          <NumberInput
-            value={values[0]}
-            onChange={(newValue: number) => onChange([newValue])}
-            placeholder={placeholder}
-            autoFocus
-            w="100%"
-          />
-        </Flex>
-      );
-    case 2:
-      return (
-        <Flex align="center" justify="center" p="md">
-          <NumberInput
-            value={values[0]}
-            onChange={(newValue: number) => onChange([newValue, values[1]])}
-            placeholder={placeholder}
-            autoFocus
-          />
-          <Text mx="sm">{t`and`}</Text>
-          <NumberInput
-            value={values[1]}
-            onChange={(newValue: number) => onChange([values[0], newValue])}
-            placeholder={placeholder}
-          />
-        </Flex>
-      );
-    default:
-      return null;
+  if (hasMultipleValues) {
+    return (
+      <FlexWithScroll p="md" mah={300}>
+        <ColumnValuesWidget
+          value={values}
+          column={column}
+          hasMultipleValues
+          onChange={onChange}
+        />
+      </FlexWithScroll>
+    );
   }
+
+  if (valueCount === 1) {
+    return (
+      <Flex p="md">
+        <NumberInput
+          value={values[0]}
+          onChange={newValue => onChange([newValue])}
+          placeholder={placeholder}
+          autoFocus
+          w="100%"
+        />
+      </Flex>
+    );
+  }
+
+  if (valueCount === 2) {
+    return (
+      <Flex align="center" justify="center" p="md">
+        <NumberInput
+          value={values[0]}
+          onChange={(newValue: number) => onChange([newValue, values[1]])}
+          placeholder={placeholder}
+          autoFocus
+        />
+        <Text mx="sm">{t`and`}</Text>
+        <NumberInput
+          value={values[1]}
+          onChange={(newValue: number) => onChange([values[0], newValue])}
+          placeholder={placeholder}
+        />
+      </Flex>
+    );
+  }
+
+  return null;
 }

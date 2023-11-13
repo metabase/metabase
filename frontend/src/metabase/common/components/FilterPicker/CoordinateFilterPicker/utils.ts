@@ -1,103 +1,125 @@
 import * as Lib from "metabase-lib";
-import type { CoordinateFilterOperatorName } from "metabase-lib";
 import { OPERATOR_OPTIONS } from "./constants";
+import type { NumberValue } from "./types";
 
-export function findLatitudeColumns(query: Lib.Query, stageIndex: number) {
-  const filterableColumns = Lib.filterableColumns(query, stageIndex);
-  return filterableColumns.filter(column => Lib.isLatitude(column));
+function isNotEmpty(value: NumberValue) {
+  return value !== "";
 }
 
-export function findLongitudeColumns(query: Lib.Query, stageIndex: number) {
-  const filterableColumns = Lib.filterableColumns(query, stageIndex);
-  return filterableColumns.filter(column => Lib.isLongitude(column));
+export function getDefaultValues(
+  operator: Lib.CoordinateFilterOperatorName,
+  values: NumberValue[] = [],
+): NumberValue[] {
+  const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
+  if (hasMultipleValues) {
+    return values.filter(isNotEmpty);
+  }
+
+  return Array(valueCount)
+    .fill("")
+    .map((value, index) => values[index] ?? value);
 }
 
-/**
- * For "inside" filters, we may start with just one column, and need to find a second column
- */
-export const findSecondColumn = ({
-  query,
-  stageIndex,
-  column,
-  filter,
-  operatorName,
-}: {
-  query: Lib.Query;
-  stageIndex: number;
-  column: Lib.ColumnMetadata;
-  filter?: Lib.FilterClause;
-  operatorName: CoordinateFilterOperatorName;
-}): Lib.ColumnMetadata | null => {
-  if (operatorName !== "inside") {
-    return null;
-  }
-
-  if (filter) {
-    const filterParts = Lib.coordinateFilterParts(query, stageIndex, filter);
-    if (filterParts?.longitudeColumn) {
-      return filterParts.longitudeColumn;
-    }
-  }
-
-  if (Lib.isLatitude(column)) {
-    return findLongitudeColumns(query, stageIndex)[0] ?? null;
-  }
-
-  if (Lib.isLongitude(column)) {
-    return findLatitudeColumns(query, stageIndex)[0] ?? null;
-  }
-
-  return null;
-};
-
-export const getColumnOptions = ({
-  query,
-  stageIndex,
-  columns,
-}: {
-  query: Lib.Query;
-  stageIndex: number;
-  columns: Lib.ColumnMetadata[];
-}) => {
-  return columns.map(column => {
-    const columnInfo = Lib.displayInfo(query, stageIndex, column);
-
-    return {
-      label: columnInfo.displayName,
-      value: getColumnIdentifier(query, stageIndex, column),
-      column,
-    };
-  });
-};
-
-export const getColumnIdentifier = (
-  query: Lib.Query,
-  stageIndex: number,
-  column: Lib.ColumnMetadata | null,
-) => {
-  if (!column) {
-    return "";
-  }
-  const columnInfo = Lib.displayInfo(query, stageIndex, column);
-
-  return `${columnInfo?.table?.name ?? "computed"}_${columnInfo.name}`;
-};
-
-export function isFilterValid(
-  operatorName: CoordinateFilterOperatorName,
-  values: number[],
-) {
-  const option = OPERATOR_OPTIONS[operatorName];
-  if (!option) {
+export function hasValidValues(
+  operator: Lib.CoordinateFilterOperatorName,
+  values: NumberValue[] = [],
+): values is number[] {
+  const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
+  if (!values.every(isNotEmpty)) {
     return false;
   }
 
-  const { valueCount } = option;
-  const filledValues = values.filter(
-    value => typeof value === "number" && Number.isFinite(value),
-  );
+  return hasMultipleValues ? values.length > 0 : values.length === valueCount;
+}
 
-  return Number.isFinite(valueCount)
-    ? filledValues.length === valueCount
-    : filledValues.length >= 1;
+export function getAvailableColumns(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+) {
+  const isLatitude = Lib.isLatitude(column);
+  const isLongitude = Lib.isLongitude(column);
+  return Lib.filterableColumns(query, stageIndex).filter(
+    column =>
+      (isLatitude && Lib.isLongitude(column)) ||
+      (isLongitude && Lib.isLatitude(column)),
+  );
+}
+
+export function getDefaultSecondColumn(
+  columns: Lib.ColumnMetadata[],
+  longitudeColumn?: Lib.ColumnMetadata,
+) {
+  return longitudeColumn ?? columns[0];
+}
+
+export function canPickColumns(
+  operator: Lib.CoordinateFilterOperatorName,
+  columns: Lib.ColumnMetadata[],
+) {
+  return operator === "inside" && columns.length > 1;
+}
+
+export function getFilterClause(
+  operator: Lib.CoordinateFilterOperatorName,
+  column: Lib.ColumnMetadata,
+  secondColumn: Lib.ColumnMetadata | undefined,
+  values: number[],
+) {
+  return Lib.coordinateFilterClause({
+    operator,
+    column: getCoercedLatitudeColumn(operator, column, secondColumn),
+    longitudeColumn: getCoercedLongitudeColumn(operator, column, secondColumn),
+    values: getCoercedValues(operator, values),
+  });
+}
+
+function getCoercedLatitudeColumn(
+  operator: Lib.CoordinateFilterOperatorName,
+  column: Lib.ColumnMetadata,
+  secondColumn: Lib.ColumnMetadata | undefined,
+) {
+  return operator === "inside" &&
+    secondColumn != null &&
+    Lib.isLongitude(column) &&
+    Lib.isLatitude(secondColumn)
+    ? secondColumn
+    : column;
+}
+
+function getCoercedLongitudeColumn(
+  operator: Lib.CoordinateFilterOperatorName,
+  column: Lib.ColumnMetadata,
+  secondColumn: Lib.ColumnMetadata | undefined,
+) {
+  return operator === "inside" &&
+    secondColumn != null &&
+    Lib.isLatitude(column) &&
+    Lib.isLongitude(secondColumn)
+    ? secondColumn
+    : column;
+}
+
+function getCoercedValues(
+  operator: Lib.CoordinateFilterOperatorName,
+  values: number[],
+) {
+  if (operator === "inside") {
+    const [upperLatitude, leftLongitude, lowerLatitude, rightLongitude] =
+      values;
+
+    return [
+      Math.max(upperLatitude, lowerLatitude),
+      Math.min(leftLongitude, rightLongitude),
+      Math.min(lowerLatitude, upperLatitude),
+      Math.max(leftLongitude, rightLongitude),
+    ];
+  }
+
+  if (operator === "between") {
+    const [startValue, endValue] = values;
+    return [Math.min(startValue, endValue), Math.max(startValue, endValue)];
+  }
+
+  return values;
 }

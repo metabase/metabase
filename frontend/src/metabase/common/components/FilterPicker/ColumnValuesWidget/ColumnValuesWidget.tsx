@@ -9,14 +9,14 @@ import { MIN_WIDTH, MAX_WIDTH } from "../constants";
 interface ColumnValuesWidgetProps<T> {
   value: T[];
   column: Lib.ColumnMetadata;
-  canHaveManyValues?: boolean;
+  hasMultipleValues?: boolean;
   onChange: (value: T[]) => void;
 }
 
 export function ColumnValuesWidget<T extends string | number>({
   value,
   column,
-  canHaveManyValues,
+  hasMultipleValues,
   onChange,
 }: ColumnValuesWidgetProps<T>) {
   const metadata = useSelector(getMetadata);
@@ -45,8 +45,8 @@ export function ColumnValuesWidget<T extends string | number>({
       onChange={onChange}
       disablePKRemappingForSearch
       autoFocus
-      multi={canHaveManyValues}
-      disableSearch={!canHaveManyValues}
+      multi={hasMultipleValues}
+      disableSearch={!hasMultipleValues}
     />
   );
 }

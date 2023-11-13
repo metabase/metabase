@@ -4,8 +4,8 @@ import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import {
   createQuery,
-  createQueryWithNumberFilter,
   findNumericColumn,
+  createQueryWithNumberFilter,
   storeInitialState,
 } from "../test-utils";
 import { NumberFilterPicker } from "./NumberFilterPicker";
@@ -137,25 +137,6 @@ describe("NumberFilterPicker", () => {
           expect(getNextFilterColumnName()).toBe("Total");
         },
       );
-
-      it("should add a filter with one value via keyboard", async () => {
-        const { onChange, getNextFilterParts, getNextFilterColumnName } =
-          setup();
-
-        await setOperator("Greater than");
-        const input = screen.getByPlaceholderText("Enter a number");
-        userEvent.type(input, "{enter}");
-        expect(onChange).not.toHaveBeenCalled();
-
-        userEvent.type(input, "15{enter}");
-        expect(onChange).toHaveBeenCalled();
-        expect(getNextFilterParts()).toMatchObject({
-          operator: ">",
-          column: expect.anything(),
-          values: [15],
-        });
-        expect(getNextFilterColumnName()).toBe("Total");
-      });
     });
 
     describe("with two values", () => {
@@ -187,25 +168,27 @@ describe("NumberFilterPicker", () => {
         },
       );
 
-      it("should add a filter with two values via keyboard", async () => {
-        const { onChange, getNextFilterParts, getNextFilterColumnName } =
-          setup();
+      it("should swap values when min > max", async () => {
+        const { getNextFilterParts, getNextFilterColumnName } = setup();
+        const addFilterButton = screen.getByRole("button", {
+          name: "Add filter",
+        });
 
         await setOperator("Between");
+
         const [leftInput, rightInput] =
           screen.getAllByPlaceholderText("Enter a number");
-        userEvent.type(leftInput, "{enter}");
-        expect(onChange).not.toHaveBeenCalled();
+        userEvent.type(leftInput, "5");
+        expect(addFilterButton).toBeDisabled();
 
-        userEvent.type(leftInput, "-10{enter}");
-        expect(onChange).not.toHaveBeenCalled();
+        userEvent.type(rightInput, "-10.5");
+        userEvent.click(addFilterButton);
 
-        userEvent.type(rightInput, "20{enter}");
-        expect(onChange).toHaveBeenCalled();
-        expect(getNextFilterParts()).toMatchObject({
+        const filterParts = getNextFilterParts();
+        expect(filterParts).toMatchObject({
           operator: "between",
           column: expect.anything(),
-          values: [-10, 20],
+          values: [-10.5, 5],
         });
         expect(getNextFilterColumnName()).toBe("Total");
       });
@@ -226,24 +209,6 @@ describe("NumberFilterPicker", () => {
           operator: "=",
           column: expect.anything(),
           values: [-5, -1, 0, 1, 5],
-        });
-        expect(getNextFilterColumnName()).toBe("Total");
-      });
-
-      it("should add a filter with many values via keyboard", async () => {
-        const { getNextFilterParts, getNextFilterColumnName } = setup();
-
-        const input = screen.getByPlaceholderText("Enter a number");
-        userEvent.type(input, "-5{enter}");
-        userEvent.type(input, "0{enter}");
-        userEvent.type(input, "10{enter}");
-        userEvent.type(input, "{enter}");
-
-        const filterParts = getNextFilterParts();
-        expect(filterParts).toMatchObject({
-          operator: "=",
-          column: expect.anything(),
-          values: [-5, 0, 10],
         });
         expect(getNextFilterColumnName()).toBe("Total");
       });

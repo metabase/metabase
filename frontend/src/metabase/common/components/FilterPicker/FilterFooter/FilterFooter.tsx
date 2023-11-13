@@ -8,17 +8,19 @@ interface FilterFooterProps {
   isNew: boolean;
   canSubmit: boolean;
   children?: ReactNode;
+  onSubmit: () => void;
 }
 
 export function FilterFooter({
   isNew,
   canSubmit,
   children,
+  onSubmit,
 }: FilterFooterProps) {
   return (
     <FilterFooterRoot p="sm" justify="space-between">
       {isValidElement(children) ? children : <Box />}
-      <Button type="submit" variant="filled" disabled={!canSubmit}>
+      <Button variant="filled" disabled={!canSubmit} onClick={onSubmit}>
         {isNew ? t`Add filter` : t`Update filter`}
       </Button>
     </FilterFooterRoot>

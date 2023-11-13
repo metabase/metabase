@@ -342,7 +342,7 @@ describe("StringFilterPicker", () => {
 
       await setOperator("Is empty");
       await setOperator("Contains");
-      expect(screen.getByLabelText("Case sensitive")).not.toBeChecked();
+      expect(screen.getByLabelText("Case sensitive")).toBeChecked();
     });
 
     it("should go back", () => {
