@@ -13,11 +13,11 @@
 
 (s/def ::author string?)
 
-(s/def ::preConditions
-  (s/coll-of ::pre-condition))
-
-(s/def ::pre-condition
+(s/def ::preCondition
   (s/keys :opt-un [::dbms]))
+
+(s/def ::preConditions
+  (s/coll-of ::preCondition))
 
 (s/def ::dbms
   (s/keys :req-un [::type]))

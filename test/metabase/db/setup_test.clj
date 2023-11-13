@@ -6,6 +6,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.data-source :as mdb.data-source]
    [metabase.db.liquibase :as liquibase]
+   [metabase.db.liquibase-test :as liquibase-test]
    [metabase.db.setup :as mdb.setup]
    [metabase.driver :as driver]
    [metabase.test :as mt]
@@ -47,9 +48,11 @@
 (deftest setup-fresh-db-test
   (mt/test-drivers #{:h2 :mysql :postgres}
     (testing "can setup a fresh db"
-      (mt/with-temp-empty-app-db [_conn driver/*driver*]
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
         (is (= :done
-               (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true)))))))
+               (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true)))
+        (is (= (last (liquibase-test/liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*))
+               (t2/select-one-pk (liquibase/changelog-table-name conn) {:order-by [[:dateexecuted :desc]]})))))))
 
 (deftest setup-a-mb-instance-running-version-lower-than-45
   (mt/test-drivers #{:h2 :mysql :postgres}
@@ -72,9 +75,9 @@
         ;; set up a db in a way we have a MB instance running metabase 45
         (liquibase/with-liquibase [liquibase conn]
           (.update liquibase 500 ""))
-        (str/starts-with?
+        (is (str/starts-with?
              (t2/select-one-pk (liquibase/changelog-table-name conn) {:order-by [[:dateexecuted :desc]]})
-             "v45"))
+             "v45")))
 
       (is (= :done
              (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true))))))

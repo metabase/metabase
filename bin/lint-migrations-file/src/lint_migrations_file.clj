@@ -21,8 +21,7 @@
   (s/keys :req-un [::databaseChangeLog]))
 
 (defn- change-set-ids
-  "Get the sequence of all change set IDs. String IDs that can be parsed as integers will be returned as integers;
-  everything else will be returned as a String."
+  "Returns all the change set ids given a change-log."
   [change-log]
   (for [{{id :id} :changeSet} change-log
         :when id]
@@ -108,7 +107,7 @@
                      :objectQuotingStrategy (s/keys :req-un [::objectQuotingStrategy])
                      :changeSet             (s/keys :req-un [::changeSet])))))
 
-(defn ^:private validate-migrations [migrations]
+(defn- validate-migrations [migrations]
   (when (= (s/conform ::migrations migrations) ::s/invalid)
     (let [data (s/explain-data ::migrations migrations)]
       (throw (ex-info (str "Validation failed:\n" (with-out-str (pprint/pprint (mapv #(dissoc % :val)

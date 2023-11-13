@@ -67,17 +67,12 @@
 
 (defn table-exists?
   "Check if a table exists."
-  [table-name data-source-or-conn]
-  (letfn [(exists? [table-name ^java.sql.Connection conn]
-            (-> (.getMetaData conn)
-                (.getTables  nil nil table-name (u/varargs String ["TABLE"]))
-                jdbc/metadata-query
-                seq
-                boolean))]
-    (if (instance? java.sql.Connection data-source-or-conn)
-      (exists? table-name data-source-or-conn)
-      (with-open [conn (.getConnection ^javax.sql.DataSource data-source-or-conn)]
-        (exists? table-name conn)))))
+  [table-name ^java.sql.Connection conn]
+  (-> (.getMetaData conn)
+      (.getTables  nil nil table-name (u/varargs String ["TABLE"]))
+      jdbc/metadata-query
+      seq
+      boolean))
 
 (defn- fresh-install?
   [^java.sql.Connection conn]
@@ -309,9 +304,10 @@
 
   Previously migrations where stored in many small files which added seconds per file to the startup time because
   liquibase was checking the jar signature for each file. This function is required to correct the liquibase tables to
-  reflect that these migrations where moved to a single file.
+  reflect that these migrations were grouped into 2 files.
 
-  see https://github.com/metabase/metabase/issues/3715"
+  See https://github.com/metabase/metabase/issues/3715
+  Also see https://github.com/metabase/metabase/pull/34400"
   [conn :- (ms/InstanceOfClass java.sql.Connection)]
   (let [liquibase-table-name (changelog-table-name conn)
         statement            (format "UPDATE %s SET FILENAME = CASE WHEN ID = ? THEN ? WHEN ID < ? THEN ? ELSE ? END" liquibase-table-name)]
@@ -320,7 +316,8 @@
        {:connection conn}
        [statement
         "v00.00-000" "migrations/001_update_migrations.yaml"
-        "v45.00-001" "migrations/000_legacy_migrations.yaml" "migrations/001_update_migrations.yaml"]))))
+        "v45.00-001" "migrations/000_legacy_migrations.yaml"
+        "migrations/001_update_migrations.yaml"]))))
 
 (defn- extract-numbers
   "Returns contiguous integers parsed from string s"
