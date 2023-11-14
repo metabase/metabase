@@ -195,6 +195,7 @@
    ignore_view [:maybe :boolean]}
   (let [raw-card (t2/select-one Card :id id)
         card (-> raw-card
+                 api/read-check
                  (t2/hydrate :creator
                              :dashboard_count
                              :parameter_usage_count
@@ -206,7 +207,6 @@
                  collection.root/hydrate-root-collection
                  (cond-> ;; card
                    (:dataset raw-card) (t2/hydrate :persisted))
-                 api/read-check
                  (last-edit/with-last-edit-info :card))]
     (u/prog1 card
       (when-not ignore_view

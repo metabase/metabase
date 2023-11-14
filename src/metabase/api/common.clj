@@ -433,7 +433,7 @@
      (catch clojure.lang.ExceptionInfo e
        ;; this is commented out until we write a handler to add this to the view_log
        #_(events/publish-event! :event/read-permission-failure {:user-id *current-user-id*
-                                                              :object obj})
+                                                                :object obj})
        (throw e)))
    obj)
 
