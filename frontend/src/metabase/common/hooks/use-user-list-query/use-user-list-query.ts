@@ -7,7 +7,7 @@ import { useEntityListQuery } from "metabase/common/hooks/use-entity-list-query"
 import type { UserListQuery, UserListResult } from "metabase-types/api";
 
 export const useUserListQuery = (
-  props: UseEntityListQueryProps<UserListQuery>,
+  props: UseEntityListQueryProps<UserListQuery> = {},
 ): UseEntityListQueryResult<UserListResult> => {
   return useEntityListQuery(props, {
     fetchList: Users.actions.fetchList,
