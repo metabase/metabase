@@ -25,6 +25,8 @@
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.temporal-bucketing
+    :as lib.schema.temporal-bucketing]
    [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -269,13 +271,17 @@
 (defn- extract [unit expr]
   [::h2x/extract unit expr])
 
-(defn- date-trunc [unit expr]
+(mu/defn ^:private date-trunc
+  [unit :- ::lib.schema.temporal-bucketing/unit.date-time.truncate
+   expr]
   (letfn [(time-trunc [expr]
             (let [hour   [::pg-conversion (extract :hour expr) :integer]
                   minute (if (#{:minute :second} unit)
                            [::pg-conversion (extract :minute expr) :integer]
                            [:inline 0])
-                  second [:inline 0.0]]
+                  second (if (= unit :second)
+                           [::pg-conversion (extract :second expr) ::double]
+                           [:inline 0.0])]
               (-> [:make_time hour minute second]
                   (h2x/with-database-type-info "time"))))]
     (condp = (h2x/database-type expr)
