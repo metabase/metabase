@@ -68,7 +68,7 @@
 
   `keep-ids` = the IDs of Tables that we want to keep joins for. Joins that are not needed to keep these Tables may be
   removed."
-  [source-id in-joins keep-ids]
+  [source-id keep-ids in-joins]
   ;; we can't keep any joins that don't exist in `in-joins`, so go ahead and remove IDs for those joins if they're not
   ;; present
   (let [keep-ids (set/intersection (set keep-ids)

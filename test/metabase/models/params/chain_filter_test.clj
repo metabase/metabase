@@ -10,11 +10,12 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp]
+   [malli.destructure :as md]))
 
 (defn shorthand->constraint [field-id v]
   (if-not (vector? v)
-    {:field-id field-id
+    {:field-ref [:field field-id nil]
      :op       :=
      :value    v}
     (let [op      (when (keyword? (first v)) (first v))
@@ -22,7 +23,7 @@
           v       (cond-> v
                     op      (rest)
                     options (butlast))]
-      {:field-id field-id
+      {:field-ref [:field field-id nil]
        :op       (or op :=)
        :value    (vec v)
        :options  options})))
@@ -213,7 +214,7 @@
       (testing "airport -> municipality"
         (is (= [{:lhs {:table $$airport, :field %airport.municipality_id}
                  :rhs {:table $$municipality, :field %municipality.id}}]
-               (#'chain-filter/find-joins (mt/id) $$airport $$municipality))))
+               (#'chain-filter/find-joins (mt/id) :tables $$airport $$municipality))))
       (testing "airport [-> municipality -> region] -> country"
         (is (= [{:lhs {:table $$airport, :field %airport.municipality_id}
                  :rhs {:table $$municipality, :field %municipality.id}}
@@ -221,12 +222,12 @@
                  :rhs {:table $$region, :field %region.id}}
                 {:lhs {:table $$region, :field %region.country_id}
                  :rhs {:table $$country, :field %country.id}}]
-               (#'chain-filter/find-joins (mt/id) $$airport $$country))))
+               (#'chain-filter/find-joins (mt/id) :tables $$airport $$country))))
       (testing "[backwards]"
         (testing "municipality -> airport"
           (is (= [{:lhs {:table $$municipality, :field %municipality.id}
                    :rhs {:table $$airport, :field %airport.municipality_id}}]
-                 (#'chain-filter/find-joins (mt/id) $$municipality $$airport))))
+                 (#'chain-filter/find-joins (mt/id) :tables $$municipality $$airport))))
         (testing "country [-> region -> municipality] -> airport"
           (is (= [{:lhs {:table $$country, :field %country.id}
                    :rhs {:table $$region, :field %region.country_id}}
@@ -234,14 +235,14 @@
                    :rhs {:table $$municipality, :field %municipality.region_id}}
                   {:lhs {:table $$municipality, :field %municipality.id}
                    :rhs {:table $$airport, :field %airport.municipality_id}}]
-                 (#'chain-filter/find-joins (mt/id) $$country $$airport))))))))
+                 (#'chain-filter/find-joins (mt/id) :tables $$country $$airport))))))))
 
 (deftest find-all-joins-test
   (testing "With reverse joins disabled"
     (binding [chain-filter/*enable-reverse-joins* false]
       (mt/$ids nil
         (is (= [{:lhs {:table $$venues, :field %venues.category_id}, :rhs {:table $$categories, :field %categories.id}}]
-               (#'chain-filter/find-all-joins $$venues #{%categories.name %users.id}))))))
+               (#'chain-filter/find-all-joins $$venues {:field-ref $users.id} [{:field-ref $categories.name}] nil))))))
   (mt/dataset airports
     (mt/$ids nil
       (testing "airport [-> municipality] -> region"
@@ -250,7 +251,35 @@
                    :rhs {:table $$municipality, :field %municipality.id}}
                   {:lhs {:table $$municipality, :field %municipality.region_id}
                    :rhs {:table $$region, :field %region.id}}]
-                 (#'chain-filter/find-all-joins $$airport #{%region.name %municipality.name %region.id}))))))))
+                 (#'chain-filter/find-all-joins $$airport
+                                                {:field-ref $region.name}
+                                                [{:field-ref $municipality.name}
+                                                 {:field-ref $region.id}]
+                                                nil)))
+          (is (= [{:lhs {:table $$airport, :field %airport.municipality_id}
+                   :rhs {:table $$municipality, :field %municipality.id}}
+                  {:lhs {:table $$municipality, :field %municipality.region_id}
+                   :rhs {:table $$region, :field %region.id}}
+                  {:lhs {:table $$region :field %region.country_id}
+                   :rhs {:table $$country :field %country.id}}
+                  {:lhs {:table $$country :field %country.continent_id}
+                   :rhs {:table $$continent :field %continent.id}}]
+                 (#'chain-filter/find-all-joins $$airport
+                                                {:field-ref $municipality.name}
+                                                [{:field-ref $continent.name}]
+                                                nil))))))))
+
+(comment
+  (binding [chain-filter/*enable-reverse-joins* false]
+    (mt/$ids nil
+      (mt/dataset avian-singles
+        #_
+        (#'chain-filter/find-joins (mt/id) :tables $$messages $$users)
+        (#'chain-filter/find-all-joins $$messages #{%messages.sender_id %messages.receiver_id %users.id})
+        #_
+        (= [{:lhs {:table $$messages :field %messages.receiver_id}
+             :rhs {:table $$users :field %users.id}}]
+           (#'chain-filter/find-all-joins $$messages #{%messages.sender_id %messages.receiver_id %users.id}))))))
 
 (deftest database-fk-relationships-test
   (testing "We can find all database FK relationships"
@@ -262,6 +291,7 @@
                    [{:lhs {:table $$messages, :field %messages.receiver_id} :rhs {:table $$users, :field %users.id}}
                     {:lhs {:table $$messages, :field %messages.sender_id} :rhs {:table $$users, :field %users.id}}]}}
                  (-> (#'chain-filter/database-fk-relationships (mt/id) false)
+                     :tables
                      (update-in [$$messages $$users] (partial sort-by str))))))
         (testing "Should find all direct and reverse FKs"
           (is (= {$$messages
@@ -273,54 +303,279 @@
                    [{:lhs {:table $$users, :field %users.id}, :rhs {:table $$messages, :field %messages.receiver_id}}
                     {:lhs {:table $$users, :field %users.id}, :rhs {:table $$messages, :field %messages.sender_id}}]}}
                  (-> (#'chain-filter/database-fk-relationships (mt/id) true)
+                     :tables
                      (update-in [$$messages $$users] (partial sort-by str))
                      (update-in [$$users $$messages] (partial sort-by str))))))))))
 
-(deftest double-joins-test
-  (testing "Tests for when there two joins between same tables"
+
+(deftest many-joins-test
+  (testing "Tests for when there are two joins between same tables"
     (mt/$ids nil
       (mt/dataset avian-singles
-        (testing "find-joins should find both joins"
-          (is (= [{:lhs {:table $$messages, :field %messages.receiver_id} :rhs {:table $$users, :field %users.id}}
-                  {:lhs {:table $$messages, :field %messages.sender_id} :rhs {:table $$users, :field %users.id}}]
-                 (->> (#'chain-filter/find-joins (mt/id) $$messages $$users)
-                      (sort-by str)))))
+        (let [query {:source-table $$messages
+                     :joins        [{:fields       :all
+                                     :strategy     :left-join
+                                     :alias        "users_sender"
+                                     :source-table $$users
+                                     :condition    [:= $messages.sender_id &users_sender.users.id]}
+                                    {:fields       :all
+                                     :strategy     :left-join
+                                     :alias        "users_receiver"
+                                     :source-table $$users
+                                     :condition    [:= $messages.receiver_id &users_receiver.users.id]}]}]
+          (testing "when constraints come with specific joins, use them"
+            (is (= [{:lhs {:table $$users :field %users.id} :rhs {:table $$messages :field %messages.receiver_id}}
+                    {:lhs {:table $$messages :field %messages.sender_id} :rhs {:table $$users :field %users.id}}]
+                   (#'chain-filter/find-all-joins
+                    $$messages
+                    {:query     query
+                     :field-ref &users_receiver.users.name}
+                    [{:query     query
+                      :field-ref &users_sender.users.name
+                      :op        :=
+                      :value     "Rasta Toucan"}]
+                    nil))))))))
 
-        (testing "add-filters should check if fields are connected through supplied joins"
-          (= [:and
-              [:not-null &reverse_msgs.messages.receiver_id]
-              [:= &senders.users.name "Rasta Toucan"]]
-             (:filter
-              (#'chain-filter/add-filters
-               {:source-table $$users
-                :breakout     [&reverse_msgs.messages.receiver_id
-                               $users.name]
-                :limit        3
-                :filter       [:not-null &reverse_msgs.messages.receiver_id]
-                :order-by     [[:asc $users.name]]
-                :joins        [{:source-table $$messages
-                                :condition    [:= $users.id &reverse_msgs.messages.receiver_id]
-                                :alias        "reverse_msgs"}
-                               {:source-table $$users
-                                :condition    [:=  &reverse_msgs.messages.sender_id &senders.users.id]
-                                :alias        "senders"}]}
-               $$users
-               #{$$users $$messages}
-               [{:field-id %users.name
-                 :join     {:lhs {:table $$messages :field %messages.sender_id} :rhs {:table $$users :field %users.id}}
-                 :op       :=
-                 :options  nil
-                 :value    "Rasta Toucan"}]))))))))
+  (testing "Tests for when there are joins across a few tables"
+    (mt/$ids nil
+      (mt/dataset airports
+        (let [query {:source-table $$airport
+                     :joins        [{:alias        "Municipality"
+                                     :source-table $$municipality
+                                     :condition    [:= $municipality.id &Municipality.airport.municipality_id]
+                                     :fields       :all
+                                     :strategy     :left-join}
+                                    {:alias        "Region"
+                                     :source-table $$region
+                                     :condition    [:= $region.id &Region.municipality.region_id]
+                                     :fields       :all
+                                     :strategy     :left-join}
+                                    {:alias        "Country"
+                                     :source-table $$country
+                                     :condition    [:= $country.id &Country.region.country_id]
+                                     :fields       :all
+                                     :strategy     :left-join}
+                                    {:alias        "Continent"
+                                     :source-table $$continent
+                                     :condition    [:= $continent.id &Continent.country.continent_id]
+                                     :fields       :all
+                                     :strategy     :left-join}]}]
+          (is (= #{{:lhs {:table $$airport, :field %airport.municipality_id} :rhs {:table $$municipality, :field %municipality.id}}
+                   {:lhs {:table $$municipality, :field %municipality.region_id} :rhs {:table $$region, :field %region.id}}
+                   {:lhs {:table $$region :field %region.country_id} :rhs {:table $$country :field %country.id}}
+                   {:lhs {:table $$country :field %country.continent_id} :rhs {:table $$continent :field %continent.id}}}
+                 (#'chain-filter/find-all-joins
+                  $$airport
+                  {:field-ref &Municipality.municipality.name
+                   :query     query}
+                  [{:field-ref &Continent.continent.name
+                    :query     query
+                    :op        :=
+                    :value     "Europe"}]
+                  nil))))))))
+
+(comment
+  (mt/dataset airports
+    (mt/$ids nil
+      (let [query {:source-table $$airport
+                   :joins        [{:alias        "Municipality"
+                                   :source-table $$municipality
+                                   :condition    [:= $municipality.id &Municipality.airport.municipality_id]
+                                   :fields       :all
+                                   :strategy     :left-join}
+                                  {:alias        "Region"
+                                   :source-table $$region
+                                   :condition    [:= $region.id &Region.municipality.region_id]
+                                   :fields       :all
+                                   :strategy     :left-join}
+                                  {:alias        "Country"
+                                   :source-table $$country
+                                   :condition    [:= $country.id &Country.region.country_id]
+                                   :fields       :all
+                                   :strategy     :left-join}
+                                  {:alias        "Continent"
+                                   :source-table $$continent
+                                   :condition    [:= $continent.id &Continent.country.continent_id]
+                                   :fields       :all
+                                   :strategy     :left-join}]}]
+        (#'chain-filter/chain-filter-mbql-query
+         {:field-ref &Municipality.municipality.name
+          :query     query}
+         [{:field-ref &Continent.continent.name
+           :query     query
+           :op        :=
+           :value     "Europe"}]
+         {:original-field-id %municipality.id
+          :limit             3}))))
+
+  (mt/dataset airports
+    (mt/rows
+     (qp/process-query
+      {:database 891,
+       :type :query,
+       :query
+       {:source-table 2250,
+        :breakout [[:field 8681 nil] [:field 8683 nil]],
+        :limit 3,
+        :filter [:not-null [:field 8681 nil]],
+        :order-by [[:asc [:field 8683 nil]]],
+        :joins
+        [{:source-table 2250,
+          :condition [:= [:field 8669 {:join-alias "table_2247"}] [:field 8681 {:join-alias "table_2250"}]],
+          :alias "table_2250"}
+         {:source-table 2249,
+          :condition [:= [:field 8684 {:join-alias "table_2251"}] [:field 8678 {:join-alias "table_2249"}]],
+          :alias "table_2249"}
+         {:source-table 2248,
+          :condition [:= [:field 8682 nil] [:field 8673 {:join-alias "table_2248"}]],
+          :alias "table_2248"}
+         {:source-table 2249,
+          :condition [:= [:field 8674 {:join-alias "table_2248"}] [:field 8677 {:join-alias "table_2249_8674"}]],
+          :alias "table_2249_8674"}]},
+       :middleware {:disable-remaps? true}}
+      #_
+      {:database 891,
+       :type :query,
+       :query
+       {:source-table 2250,
+        :breakout [[:field 8681 nil] [:field 8683 nil]],
+        :limit 3,
+        :filter [:and [:not-null [:field 8681 nil]] [:= [:field 8686 {:join-alias "table_2251"}] "Europe"]],
+        :order-by [[:asc [:field 8683 nil]]],
+        :joins
+        [{:source-table 2248,
+          :condition [:= [:field 8682 nil] [:field 8673 {:join-alias "table_2248"}]],
+          :alias "table_2248"}
+         {:source-table 2249,
+          :condition [:= [:field 8674 {:join-alias "table_2248"}] [:field 8677 {:join-alias "table_2249"}]],
+          :alias "table_2249"}
+         {:source-table 2251,
+          :condition [:= [:field 8678 {:join-alias "table_2249"}] [:field 8684 {:join-alias "table_2251"}]],
+          :alias "table_2251"}]},
+       :middleware {:disable-remaps? true}}
+      #_
+      {:database 891,
+       :type :query,
+       :query
+       {:source-table 2250,
+        :breakout [[:field 8681 nil] [:field 8683 nil]],
+        :limit 3,
+        :filter [:and [:not-null [:field 8681 nil]] [:= [:field 8686 {:join-alias "table_2251"}] "Europe"]],
+        :order-by [[:asc [:field 8683 nil]]],
+        :joins
+        [{:source-table 2250,
+          :condition [:= [:field 8669 {:join-alias "table_2247"}] [:field 8681 {:join-alias "table_2250"}]],
+          :alias "table_2250"}
+         {:source-table 2249,
+          :condition [:= [:field 8684 {:join-alias "table_2251"}] [:field 8678 {:join-alias "table_2249"}]],
+          :alias "table_2249"}
+         {:source-table 2248,
+          :condition [:= [:field 8682 nil] [:field 8673 {:join-alias "table_2248"}]],
+          :alias "table_2248"}
+         {:source-table 2249,
+          :condition [:= [:field 8674 {:join-alias "table_2248"}] [:field 8677 {:join-alias "table_2249_8674"}]],
+          :alias "table_2249_8674"}
+         {:source-table 2251,
+          :condition [:= [:field 8678 {:join-alias "table_2249_8674"}] [:field 8684 {:join-alias "table_2251"}]],
+          :alias "table_2251"}]},
+       :middleware {:disable-remaps? true}})))
+
+  (mt/dataset avian-singles
+    (mt/$ids nil
+
+      #_
+      (-> (#'chain-filter/database-fk-relationships (mt/id) false)
+          :fields
+          (#'chain-filter/traverse-graph %messages.receiver_id %users.id 5))
+
+
+      (let [query {:source-table $$messages
+                   :joins        [{:fields       :all
+                                   :strategy     :left-join
+                                   :alias        "users_sender"
+                                   :source-table $$users
+                                   :condition    [:= $messages.sender_id &users_sender.users.id]}
+                                  {:fields       :all
+                                   :strategy     :left-join
+                                   :alias        "users_receiver"
+                                   :source-table $$users
+                                   :condition    [:= $messages.receiver_id &users_receiver.users.id]}]}]
+        (#'chain-filter/chain-filter-mbql-query
+         {:field-ref &users_receiver.users.name
+          :query     query
+          :op        :=}
+         [{:field-ref &users_sender.users.name
+           :query     query
+           :op        :=
+           :value     "Rasta Toucan"}]
+         {:original-field-id %messages.receiver_id
+          :limit             3}))))
+
+
+  (mt/dataset avian-singles
+    (mt/rows
+     (qp/process-query
+      {:database 878,
+       :type :query,
+       :query
+       {:source-table 2126,
+        :breakout [[:field 7730 {:join-alias "table_2127"}] [:field 7729 nil]],
+        :limit 3,
+        :filter
+        [:and
+         [:not-null [:field 7730 {:join-alias "table_2127"}]]
+         [:= [:field 7729 {:join-alias "table_2126"}] "Rasta Toucan"]],
+        :order-by [[:asc [:field 7729 nil]]],
+        :joins
+        [{:source-table 2127,
+          :condition [:= [:field 7728 nil] [:field 7730 {:join-alias "table_2127"}]],
+          :alias "table_2127"}
+         {:source-table 2126,
+          :condition [:= [:field 7733 {:join-alias "table_2127"}] [:field 7728 {:join-alias "table_2126"}]],
+          :alias "table_2126"}]},
+       :middleware {:disable-remaps? true}}
+      #_
+      {:database 878,
+       :type :query,
+       :query
+       {:source-table 2126,
+        :breakout [[:field 7730 {:join-alias "users_receiver"}] [:field 7729 nil]],
+        :limit 3,
+        :filter
+        [:and
+         [:not-null [:field 7730 {:join-alias "users_receiver"}]]
+         [:= [:field 7729 {:join-alias "users_sender"}] "Rasta Toucan"]],
+        :order-by [[:asc [:field 7729 nil]]],
+        :joins
+        [{:fields :all,
+          :strategy :left-join,
+          :alias "users_receiver",
+          :source-table 2127,
+          :condition [:= [:field 7728 nil] [:field 7730 {:join-alias "users_receiver"}]]}
+         {:fields :all,
+          :strategy :left-join,
+          :alias "users_sender",
+          :source-table 2126,
+          :condition [:= [:field 7733 {:join-alias "users_receiver"}] [:field 7728 {:join-alias "users_sender"}]]}]},
+       :middleware {:disable-remaps? true}})))
+
+  #_
+  (mt/dataset avian-singles
+    (mt/$ids nil
+      (#'chain-filter/chain-filter-mbql-query1
+       {:field-ref $users.name}
+       [{:field-ref $users.name
+         :value "Rasta Toucan"}]
+       {:original-field-id %messages.receiver_id
+        :limit             3}))))
 
 (deftest chain-filter-mbql-double-joins-test
   (testing "Should choose correct join when supplied with one"
     (mt/dataset avian-singles
       (mt/$ids nil
         (testing "Query generation"
-          (let [users-id $$users
-                messages-id $$messages
-                users-alias (str "table_" users-id)
-                messages-alias (str "table_" messages-id)]
+          (let [users-alias    (str "table_" $$users)
+                messages-alias (str "table_" $$messages)]
             (is (= {:database   (mt/id)
                     :type       :query
                     :query
@@ -342,32 +597,53 @@
                                      :alias        users-alias}]}
                     :middleware {:disable-remaps? true}}
 
-                   (#'chain-filter/chain-filter-mbql-query
-                    {:field-id %users.name
-                     :join     {:lhs {:table $$users :field %users.id} :rhs {:table $$messages :field %messages.receiver_id}}
-                     :op       :=}
-                    [{:field-id %users.name
-                      :join     {:lhs {:table $$messages :field %messages.sender_id} :rhs {:table $$users :field %users.id}}
-                      :op       :=
-                      :value    "Rasta Toucan"}]
-                    {:original-field-id %messages.receiver_id
-                     :limit             3})))))
+                   (let [query {:source-table $$messages
+                                :joins        [{:fields       :all
+                                                :strategy     :left-join
+                                                :alias        "users_sender"
+                                                :source-table $$users
+                                                :condition    [:= $messages.sender_id &users_sender.users.id]}
+                                               {:fields       :all
+                                                :strategy     :left-join
+                                                :alias        "users_receiver"
+                                                :source-table $$users
+                                                :condition    [:= $messages.receiver_id &users_receiver.users.id]}]}]
+                     (#'chain-filter/chain-filter-mbql-query
+                      {:field-ref &users_receiver.users.name
+                       :query     query
+                       :op        :=}
+                      [{:field-ref &users_sender.users.name
+                        :query     query
+                        :op        :=
+                        :value     "Rasta Toucan"}]
+                      {:original-field-id %messages.receiver_id
+                       :limit             3}))))))
 
         (testing "Fetches correct data"
           (is (= [[8 "Annie Albatross"] [4 "Bob the Sea Gull"] [7 "Brenda Blackbird"]]
                  (mt/rows
                   (qp/process-query
-                   (#'chain-filter/chain-filter-mbql-query
-                    {:field-id %users.name
-                     :join     {:lhs {:table $$users :field %users.id} :rhs {:table $$messages :field %messages.receiver_id}}
-                     :op       :=}
-                    [{:field-id %users.name
-                      :join     {:lhs {:table $$messages :field %messages.sender_id} :rhs {:table $$users :field %users.id}}
-                      :op       :=
-                      :options  nil
-                      :value    "Rasta Toucan"}]
-                    {:original-field-id %messages.receiver_id
-                     :limit             3}))))))))))
+                   (let [query {:source-table $$messages
+                                :joins        [{:fields       :all
+                                                :strategy     :left-join
+                                                :alias        "users_sender"
+                                                :source-table $$users
+                                                :condition    [:= $messages.sender_id &users_sender.users.id]}
+                                               {:fields       :all
+                                                :strategy     :left-join
+                                                :alias        "users_receiver"
+                                                :source-table $$users
+                                                :condition    [:= $messages.receiver_id &users_receiver.users.id]}]}]
+                     (#'chain-filter/chain-filter-mbql-query
+                      {:field-ref &users_receiver.users.name
+                       :query     query
+                       :op        :=}
+                      [{:field-ref &users_sender.users.name
+                        :query     query
+                        :op        :=
+                        :value     "Rasta Toucan"}]
+                      {:original-field-id %messages.receiver_id
+                       :limit             3})))))))))))
 
 (deftest multi-hop-test
   (mt/dataset airports
@@ -442,12 +718,12 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Field [\d,]+ does not exist"
-         (chain-filter/chain-filter-search {:field-id Integer/MAX_VALUE} nil "s"))))
+         (chain-filter/chain-filter-search {:field-ref [:field Integer/MAX_VALUE nil]} nil "s"))))
   (testing "Field that isn't type/Text should throw a 400"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Cannot search against non-Text Field"
-         (chain-filter/chain-filter-search {:field-id (mt/$ids %venues.price)} nil "s")))))
+         (chain-filter/chain-filter-search {:field-ref [:field (mt/$ids %venues.price) nil]} nil "s")))))
 
 
 ;;; --------------------------------------------------- Remapping ----------------------------------------------------
@@ -674,7 +950,7 @@
   (testing "chain-filter should accept time interval strings like `past32weeks` for temporal Fields"
     (mt/$ids
       (is (= [:time-interval $checkins.date -32 :week {:include-current false}]
-             (#'chain-filter/filter-clause $$checkins nil {:field-id %checkins.date
+             (#'chain-filter/filter-clause $$checkins nil {:field-ref [:field %checkins.date nil]
                                                            :op       :=
                                                            :value    "past32weeks"}))))))
 

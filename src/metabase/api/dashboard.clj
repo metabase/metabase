@@ -936,13 +936,10 @@
     (keyword (name type))
     :=))
 
-(defn- reverse-join [join]
-  {:rhs (:lhs join)
-   :lhs (:rhs join)})
-
 (mu/defn ^:private param->fields
-  [{:keys [mappings] :as param} :- mbql.s/Parameter top-level?]
+  [{:keys [mappings] :as param} :- mbql.s/Parameter]
   (for [{:keys [target] {:keys [card]} :dashcard} mappings
+
         :let  [[_ dimension] (->> (mbql.normalize/normalize-tokens target :ignore-path)
                                   (mbql.u/check-clause :dimension))]
         :when dimension
@@ -952,38 +949,29 @@
                               :expression   dimension
                               :template-tag (:dimension ttag)
                               (log/error "cannot handle this dimension" {:dimension dimension}))
-               [id options] (or
-                             ;; Get the field id from the field-clause if it contains it. This is the common case
-                             ;; for mbql queries.
-                             (lib.util.match/match-one dimension [:field (id :guard integer?) options] [id options])
-                             ;; Attempt to get the field clause from the model metadata corresponding to the field.
-                             ;; This is the common case for native queries in which mappings from original columns
-                             ;; have been performed using model metadata.
-                             ((juxt :id #(nth (:field_ref %) 2))
-                              (qp.util/field->field-info dimension (:result_metadata card))))]
-        :when id
-        :let [query     (-> card :dataset_query :query)
-              join      (when (:join-alias options)
-                          (u/seek= :alias (:join-alias options) (:joins query)))
-              ;;[lhs rhs] (mbql.u/match (:condition join) [:field (id :guard integer?) _] id)
-              [[_ lhs _] [_ rhs _]] (filter #(mbql.u/is-clause? :field %) (:condition join))]]
-    {:field-id id
-     :op       (param-type->op (:type param))
-     :options  (merge (:options ttag)
-                      (:options param))
-     :value    nil
-     :join     (when join
-                 (cond-> {:lhs {:table (:source-table query) :field lhs}
-                          :rhs {:table (:source-table join) :field rhs}}
-                   ;; when it's a parameter we're looking for, we need a reverse join
-                   top-level? reverse-join))}))
+               field-ref (or
+                          ;; In MBQL queries dimension will contain field id
+                          (when (and (mbql.u/is-clause? :field dimension)
+                                     (int? (second dimension)))
+                            dimension)
+                          ;; In other case, get the field from model metadata. This is the common case for native
+                          ;; queries in which mappings from original columns have been performed using model metadata.
+                          (:field_ref
+                           (qp.util/field->field-info dimension (:result_metadata card))))]
+        :when (int? (second field-ref))]
+    {:field-ref field-ref
+     :query     (-> card :dataset_query :query)
+     :op        (param-type->op (:type param))
+     :options   (merge (:options ttag)
+                       (:options param))
+     :value     nil}))
 
 (mu/defn ^:private chain-filter-constraints :- chain-filter/Constraints
   [dashboard constraint-param-key->value]
   (vec (for [[param-key value] constraint-param-key->value
              :let              [param (get-in dashboard [:resolved-params param-key])]
              :when             param
-             field             (param->fields param false)]
+             field             (param->fields param)]
          (assoc field :value value))))
 
 (defn- nested-card-results
@@ -1001,7 +989,7 @@
   (let [dashboard       (t2/hydrate dashboard :resolved-params)
         constraints     (chain-filter-constraints dashboard constraint-param-key->value)
         param           (get-in dashboard [:resolved-params param-key])
-        fields          (param->fields param true)
+        fields          (param->fields param)
         results         (if (seq fields)
                           (map (if (seq query)
                                  #(chain-filter/chain-filter-search % constraints query :limit result-limit)
