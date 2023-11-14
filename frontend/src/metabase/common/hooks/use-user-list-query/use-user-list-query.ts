@@ -4,14 +4,10 @@ import type {
   UseEntityListQueryResult,
 } from "metabase/common/hooks/use-entity-list-query";
 import { useEntityListQuery } from "metabase/common/hooks/use-entity-list-query";
-import type { UserListResult } from "metabase-types/api";
+import type { UserListQuery, UserListResult } from "metabase-types/api";
 
 export const useUserListQuery = (
-  props: UseEntityListQueryProps<{
-    recipients: boolean;
-  }> = {
-    query: { recipients: false },
-  },
+  props: UseEntityListQueryProps<UserListQuery>,
 ): UseEntityListQueryResult<UserListResult> => {
   return useEntityListQuery(props, {
     fetchList: Users.actions.fetchList,
