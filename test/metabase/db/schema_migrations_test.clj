@@ -799,17 +799,17 @@
                                                                                  :updated_at :%now
                                                                                  :active     true}))
             field-1-id  (first (t2/insert-returning-pks! (t2/table-name Field) {:name          "F1"
-                                                                                 :table_id      table-id
-                                                                                 :base_type     "type/Text"
-                                                                                 :database_type "TEXT"
-                                                                                 :created_at    :%now
-                                                                                 :updated_at    :%now}))
+                                                                                :table_id      table-id
+                                                                                :base_type     "type/Text"
+                                                                                :database_type "TEXT"
+                                                                                :created_at    :%now
+                                                                                :updated_at    :%now}))
             field-2-id  (first (t2/insert-returning-pks! (t2/table-name Field) {:name          "F2"
-                                                                                 :table_id      table-id
-                                                                                 :base_type     "type/Text"
-                                                                                 :database_type "TEXT"
-                                                                                 :created_at    :%now
-                                                                                 :updated_at    :%now}))
+                                                                                :table_id      table-id
+                                                                                :base_type     "type/Text"
+                                                                                :database_type "TEXT"
+                                                                                :created_at    :%now
+                                                                                :updated_at    :%now}))
             _           (t2/insert! (t2/table-name Dimension) {:field_id   field-1-id
                                                                :name       "F1 D1"
                                                                :type       "internal"
@@ -1298,6 +1298,44 @@
                  :details {:database_id 1
                            :table_id 6}}
                 (t2/select-one :model/AuditLog)))))))))
+
+(deftest inactive-fields-fk-migration-test
+  (testing "Migration v48.00-051"
+    (impl/test-migrations ["v48.00-051"] [migrate!]
+      (let [database-id (first (t2/insert-returning-pks! (t2/table-name Database) {:details   "{}"
+                                                                                   :engine    "h2"
+                                                                                   :is_sample false
+                                                                                   :name      "populate-collection-created-at-test-db"}))
+            table-1-id  (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      database-id
+                                                                                :name       "Table 1"
+                                                                                :created_at :%now
+                                                                                :updated_at :%now
+                                                                                :active     true}))
+            table-2-id  (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      database-id
+                                                                                :name       "Table 2"
+                                                                                :created_at :%now
+                                                                                :updated_at :%now
+                                                                                :active     true}))
+            field-1-id  (first (t2/insert-returning-pks! (t2/table-name Field) {:name          "F1"
+                                                                                :table_id      table-1-id
+                                                                                :base_type     "type/Text"
+                                                                                :database_type "TEXT"
+                                                                                :created_at    :%now
+                                                                                :updated_at    :%now
+                                                                                :active        false}))
+            field-2-id  (first (t2/insert-returning-pks! (t2/table-name Field) {:name               "F2"
+                                                                                :table_id           table-2-id
+                                                                                :base_type          "type/Text"
+                                                                                :database_type      "TEXT"
+                                                                                :created_at         :%now
+                                                                                :updated_at         :%now
+                                                                                :active             true
+                                                                                :fk_target_field_id field-1-id
+                                                                                :semantic_type      "type/FK"}))]
+        (migrate!)
+        (is (=? {:fk_target_field_id nil
+                 :semantic_type      nil}
+                (t2/select-one (t2/table-name :model/Field) :id field-2-id)))))))
 
 (deftest audit-v2-downgrade-test
   (testing "Migration v48.00-050"

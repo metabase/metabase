@@ -49,7 +49,7 @@
 (defn- check-premium-token! []
   (premium-features/assert-has-feature :serialization (trs "Serialization")))
 
-(mu/defn v1-load
+(mu/defn v1-load!
   "Load serialized metabase instance as created by [[dump]] command from directory `path`."
   [path context :- Context]
   (plugins/load-plugins!)
@@ -62,10 +62,10 @@
                        context)]
     (try
       (log/info (trs "BEGIN LOAD from {0} with context {1}" path context))
-      (let [all-res    [(load/load (str path "/users") context)
-                        (load/load (str path "/databases") context)
-                        (load/load (str path "/collections") context)
-                        (load/load-settings path context)]
+      (let [all-res    [(load/load! (str path "/users") context)
+                        (load/load! (str path "/databases") context)
+                        (load/load! (str path "/collections") context)
+                        (load/load-settings! path context)]
             reload-fns (filter fn? all-res)]
         (when (seq reload-fns)
           (log/info (trs "Finished first pass of load; now performing second pass"))
@@ -76,7 +76,7 @@
         (log/error e (trs "ERROR LOAD from {0}: {1}" path (.getMessage e)))
         (throw e)))))
 
-(mu/defn v2-load-internal
+(mu/defn v2-load-internal!
   "SerDes v2 load entry point for internal users.
 
   `opts` are passed to [[v2.load/load-metabase]]."
@@ -94,15 +94,15 @@
   ;  (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))
   (log/info (trs "Loading serialized Metabase files from {0}" path))
   (serdes/with-cache
-    (v2.load/load-metabase (v2.ingest/ingest-yaml path) opts)))
+    (v2.load/load-metabase! (v2.ingest/ingest-yaml path) opts)))
 
-(mu/defn v2-load
+(mu/defn v2-load!
   "SerDes v2 load entry point.
 
    opts are passed to load-metabase"
   [path :- :string
    opts :- [:map [:abort-on-error {:optional true} [:maybe :boolean]]]]
-  (v2-load-internal path opts :token-check? true))
+  (v2-load-internal! path opts :token-check? true))
 
 (defn- select-entities-in-collections
   ([model collections]
@@ -156,7 +156,7 @@
            (into base-collections))))))
 
 
-(defn v1-dump
+(defn v1-dump!
   "Legacy Metabase app data dump"
   [path {:keys [state user] :or {state :active} :as opts}]
   (log/info (trs "BEGIN DUMP to {0} via user {1}" path user))
@@ -183,7 +183,7 @@
                       (t2/select Metric :table_id [:in (map :id tables)] {:order-by [[:id :asc]]})
                       (t2/select Metric))
         collections (select-collections users state)]
-    (dump/dump path
+    (dump/dump! path
                databases
                tables
                (mapcat field/with-values (u/batches-of 32000 fields))
@@ -195,11 +195,11 @@
                (select-entities-in-collections Dashboard collections state)
                (select-entities-in-collections Pulse collections state)
                users))
-  (dump/dump-settings path)
-  (dump/dump-dimensions path)
+  (dump/dump-settings! path)
+  (dump/dump-dimensions! path)
   (log/info (trs "END DUMP to {0} via user {1}" path user)))
 
-(defn v2-dump
+(defn v2-dump!
   "Exports Metabase app data to directory at path"
   [path {:keys [collection-ids] :as opts}]
   (log/info (trs "Exporting Metabase to {0}" path) (u/emoji "🏭 🚛💨"))
@@ -214,14 +214,14 @@
   (log/info (trs "Export to {0} complete!" path) (u/emoji "🚛💨 📦"))
   ::v2-dump-complete)
 
-(defn seed-entity-ids
+(defn seed-entity-ids!
   "Add entity IDs for instances of serializable models that don't already have them.
 
   Returns truthy if all entity IDs were added successfully, or falsey if any errors were encountered."
   []
   (v2.entity-ids/seed-entity-ids!))
 
-(defn drop-entity-ids
+(defn drop-entity-hds!
   "Drop entity IDs for all instances of serializable models.
 
   This is needed for some cases of migrating from v1 to v2 serdes. v1 doesn't dump `entity_id`, so they may have been

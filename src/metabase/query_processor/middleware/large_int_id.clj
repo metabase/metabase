@@ -5,10 +5,14 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.store :as qp.store]))
 
+(defn- ->string [x]
+  (when x
+    (str x)))
+
 (defn- result-int->string
   [field-indexes rf]
   ((map (fn [row]
-          (reduce #(update (vec %1) %2 str) row field-indexes)))
+          (reduce #(update (vec %1) %2 ->string) row field-indexes)))
    rf))
 
 (defn- should-convert-to-string? [field]
@@ -38,7 +42,7 @@
   "Converts any ID (:type/PK and :type/FK) in a result to a string to handle a number > 2^51
   or < -2^51, the JavaScript float mantissa. This will allow proper display of large numbers,
   like IDs from services like social media. All ID numbers are converted to avoid the performance
-  penalty of a comparison based on size."
+  penalty of a comparison based on size. NULLs are converted to Clojure nil/JS null."
   [{{:keys [js-int-to-string?] :or {js-int-to-string? false}} :middleware, :as query} rff]
   ;; currently, this excludes `:field` w/ name clauses, aggregations, etc.
   ;;
