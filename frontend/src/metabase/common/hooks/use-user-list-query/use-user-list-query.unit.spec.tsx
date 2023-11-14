@@ -1,3 +1,4 @@
+import fetchMock from "fetch-mock";
 import {
   setupUserRecipientsEndpoint,
   setupUsersEndpoints,
@@ -47,16 +48,11 @@ function TestComponent({ getRecipients = false }: TestComponentProps) {
 }
 
 function setup({ getRecipients = false }: TestComponentProps = {}) {
-  const usersEndpoint = setupUsersEndpoints([TEST_USER]);
-  const userRecipientsEndpoint = setupUserRecipientsEndpoint({
+  setupUsersEndpoints([TEST_USER]);
+  setupUserRecipientsEndpoint({
     users: [TEST_USER],
   });
   renderWithProviders(<TestComponent getRecipients={getRecipients} />);
-
-  return {
-    usersEndpoint,
-    userRecipientsEndpoint,
-  };
 }
 
 describe("useUserListQuery", () => {
@@ -79,15 +75,17 @@ describe("useUserListQuery", () => {
     ).toBeInTheDocument();
   });
 
-  it("should call /api/user when recipient isn't passed or is false", async () => {
-    const { usersEndpoint } = setup();
+  it("should call /api/user when recipient isn't passed or is false", () => {
+    setup();
 
-    expect(usersEndpoint).toHaveBeenCalled();
+    expect(fetchMock.calls("path:/api/user")).toHaveLength(1);
+    expect(fetchMock.calls("path:/api/user/recipients")).toHaveLength(0);
   });
 
-  it("should call /api/user/recipients when the `recipient` is passed", async () => {
-    const { userRecipientsEndpoint } = setup({ getRecipients: true });
+  it("should call /api/user/recipients when the `recipient` is passed", () => {
+    setup({ getRecipients: true });
 
-    expect(userRecipientsEndpoint).toHaveBeenCalled();
+    expect(fetchMock.calls("path:/api/user")).toHaveLength(0);
+    expect(fetchMock.calls("path:/api/user/recipients")).toHaveLength(1);
   });
 });

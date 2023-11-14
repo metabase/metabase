@@ -23,5 +23,5 @@ export function setupUserRecipientsEndpoint({
 }: {
   users: UserListResult[];
 }) {
-  return fetchMock.get("path:/api/user/recipients", { data: users });
+  fetchMock.get("path:/api/user/recipients", { data: users });
 }
