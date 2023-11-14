@@ -257,11 +257,11 @@ jobs:
         run: clojure -M:ee:drivers:check
 
   be-check-stub:
-    needs: [files-changed, static-viz-files-changed]
+    needs: [files-changed, static-viz-files-changed, be-check]
     if: |
       always() &&
       github.event.pull_request.draft == false &&
-      (needs.files-changed.outputs.backend_all == 'false' && needs.static-viz-files-changed.outputs.static_viz == 'false')
+      needs.be-check.result == 'skipped'
     runs-on: ubuntu-22.04
     name: be-check-java-${{ matrix.java-version }}
     timeout-minutes: 10
