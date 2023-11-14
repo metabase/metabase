@@ -3,12 +3,12 @@ import type { FormEvent } from "react";
 import { t } from "ttag";
 import { Box, Flex, Text, TimeInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { MAX_WIDTH } from "../constants";
+import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
-import { FilterHeader } from "../FilterHeader";
-import { FilterFooter } from "../FilterFooter";
+import { FilterPickerHeader } from "../FilterPickerHeader";
+import { FilterPickerFooter } from "../FilterPickerFooter";
 import { OPERATOR_OPTIONS } from "./constants";
 import { getDefaultValues, getFilterClause } from "./utils";
 
@@ -59,17 +59,21 @@ export function TimeFilterPicker({
   return (
     <Box
       component="form"
+      miw={MIN_WIDTH}
       maw={MAX_WIDTH}
       data-testid="time-filter-picker"
       onSubmit={handleSubmit}
     >
-      <FilterHeader columnName={columnInfo.longDisplayName} onBack={onBack}>
+      <FilterPickerHeader
+        columnName={columnInfo.longDisplayName}
+        onBack={onBack}
+      >
         <FilterOperatorPicker
           value={operator}
           options={availableOperators}
           onChange={handleOperatorChange}
         />
-      </FilterHeader>
+      </FilterPickerHeader>
       <Box>
         {valueCount > 0 && (
           <Flex p="md">
@@ -80,7 +84,7 @@ export function TimeFilterPicker({
             />
           </Flex>
         )}
-        <FilterFooter isNew={isNew} canSubmit />
+        <FilterPickerFooter isNew={isNew} canSubmit />
       </Box>
     </Box>
   );

@@ -2,19 +2,19 @@ import { isValidElement } from "react";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 import { Box, Button } from "metabase/ui";
-import { FilterFooterRoot } from "./FilterFooter.styled";
+import { FilterFooterRoot } from "./FilterPickerFooter.styled";
 
-interface FilterFooterProps {
+interface FilterPickerFooterProps {
   isNew: boolean;
   canSubmit: boolean;
   children?: ReactNode;
 }
 
-export function FilterFooter({
+export function FilterPickerFooter({
   isNew,
   canSubmit,
   children,
-}: FilterFooterProps) {
+}: FilterPickerFooterProps) {
   return (
     <FilterFooterRoot p="sm" justify="space-between">
       {isValidElement(children) ? children : <Box />}

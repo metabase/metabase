@@ -1,6 +1,5 @@
 import { useCallback, useLayoutEffect, useState } from "react";
 
-import { Box } from "metabase/ui";
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
@@ -13,16 +12,9 @@ import { isExpression as isLegacyExpression } from "metabase-lib/expressions";
 import LegacyFilter from "metabase-lib/queries/structured/Filter";
 import type LegacyQuery from "metabase-lib/queries/StructuredQuery";
 
-import type { ColumnListItem, SegmentListItem } from "./types";
-import { MIN_WIDTH, MAX_WIDTH } from "./constants";
-
-import { BooleanFilterPicker } from "./BooleanFilterPicker";
-import { DateFilterPicker } from "./DateFilterPicker";
-import { NumberFilterPicker } from "./NumberFilterPicker";
-import { CoordinateFilterPicker } from "./CoordinateFilterPicker";
-import { StringFilterPicker } from "./StringFilterPicker";
-import { TimeFilterPicker } from "./TimeFilterPicker";
 import { FilterColumnPicker } from "./FilterColumnPicker";
+import { FilterPickerBody } from "./FilterPickerBody";
+import type { ColumnListItem, SegmentListItem } from "./types";
 
 export interface FilterPickerProps {
   query: Lib.Query;
@@ -115,40 +107,28 @@ export function FilterPicker({
 
   if (!column) {
     return (
-      <Box miw={MIN_WIDTH} maw={MAX_WIDTH}>
-        <FilterColumnPicker
-          query={query}
-          stageIndex={stageIndex}
-          checkItemIsSelected={checkItemIsSelected}
-          onColumnSelect={handleColumnSelect}
-          onSegmentSelect={handleChange}
-          onExpressionSelect={openExpressionEditor}
-        />
-      </Box>
+      <FilterColumnPicker
+        query={query}
+        stageIndex={stageIndex}
+        checkItemIsSelected={checkItemIsSelected}
+        onColumnSelect={handleColumnSelect}
+        onSegmentSelect={handleChange}
+        onExpressionSelect={openExpressionEditor}
+      />
     );
   }
 
-  const FilterWidget = getFilterWidget(column);
-
-  if (FilterWidget) {
-    return (
-      <Box miw={MIN_WIDTH}>
-        <FilterWidget
-          query={query}
-          stageIndex={stageIndex}
-          column={column}
-          filter={filter}
-          isNew={isNewFilter}
-          onChange={handleChange}
-          onBack={() => setColumn(undefined)}
-        />
-      </Box>
-    );
-  }
-
-  // This codepath should never be hit,
-  // but is here to make TypeScript happy
-  return renderExpressionEditor();
+  return (
+    <FilterPickerBody
+      query={query}
+      stageIndex={stageIndex}
+      column={column}
+      filter={filter}
+      isNew={isNewFilter}
+      onChange={handleChange}
+      onBack={() => setColumn(undefined)}
+    />
+  );
 }
 
 function getInitialColumn(
@@ -171,26 +151,4 @@ function isExpressionEditorInitiallyOpen(
     !Lib.isColumnFilter(query, stageIndex, filter) &&
     !Lib.isSegmentFilter(query, stageIndex, filter)
   );
-}
-
-function getFilterWidget(column: Lib.ColumnMetadata) {
-  if (Lib.isBoolean(column)) {
-    return BooleanFilterPicker;
-  }
-  if (Lib.isTime(column)) {
-    return TimeFilterPicker;
-  }
-  if (Lib.isDate(column)) {
-    return DateFilterPicker;
-  }
-  if (Lib.isCoordinate(column)) {
-    return CoordinateFilterPicker;
-  }
-  if (Lib.isString(column)) {
-    return StringFilterPicker;
-  }
-  if (Lib.isNumeric(column)) {
-    return NumberFilterPicker;
-  }
-  return null;
 }

@@ -3,12 +3,12 @@ import type { FormEvent } from "react";
 import { t } from "ttag";
 import { Box, Checkbox, Flex, TextInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { MAX_WIDTH } from "../constants";
+import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
 import { ColumnValuesWidget } from "../ColumnValuesWidget";
-import { FilterHeader } from "../FilterHeader";
-import { FilterFooter } from "../FilterFooter";
+import { FilterPickerHeader } from "../FilterPickerHeader";
+import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
 import { OPERATOR_OPTIONS } from "./constants";
@@ -72,17 +72,21 @@ export function StringFilterPicker({
   return (
     <Box
       component="form"
+      miw={MIN_WIDTH}
       maw={MAX_WIDTH}
       data-testid="string-filter-picker"
       onSubmit={handleSubmit}
     >
-      <FilterHeader columnName={columnInfo.longDisplayName} onBack={onBack}>
+      <FilterPickerHeader
+        columnName={columnInfo.longDisplayName}
+        onBack={onBack}
+      >
         <FilterOperatorPicker
           value={operator}
           options={availableOperators}
           onChange={handleOperatorChange}
         />
-      </FilterHeader>
+      </FilterPickerHeader>
       <div>
         <StringValueInput
           column={column}
@@ -91,14 +95,14 @@ export function StringFilterPicker({
           hasMultipleValues={hasMultipleValues}
           onChange={setValues}
         />
-        <FilterFooter isNew={isNew} canSubmit={isValid}>
+        <FilterPickerFooter isNew={isNew} canSubmit={isValid}>
           {hasCaseSensitiveOption && (
             <CaseSensitiveOption
               value={options["case-sensitive"] ?? false}
               onChange={newValue => setOptions({ "case-sensitive": newValue })}
             />
           )}
-        </FilterFooter>
+        </FilterPickerFooter>
       </div>
     </Box>
   );

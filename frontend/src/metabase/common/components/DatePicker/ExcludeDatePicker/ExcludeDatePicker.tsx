@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import { Box, Button, Checkbox, Divider, Group, Stack } from "metabase/ui";
 import { BackButton } from "../BackButton";
+import { MIN_WIDTH } from "../constants";
 import type {
   DatePickerExtractionUnit,
   DatePickerOperator,
@@ -97,7 +98,7 @@ export function ExcludeOptionPicker({
   };
 
   return (
-    <div>
+    <Box miw={MIN_WIDTH}>
       <BackButton onClick={onBack}>{t`Exclude…`}</BackButton>
       <Divider />
       <Box p="sm">
@@ -127,7 +128,7 @@ export function ExcludeOptionPicker({
           </Button>
         ))}
       </Box>
-    </div>
+    </Box>
   );
 }
 
@@ -181,7 +182,7 @@ function ExcludeValuePicker({
   };
 
   return (
-    <div>
+    <Box miw={MIN_WIDTH}>
       <BackButton onClick={onBack}>{option?.label}</BackButton>
       <Divider />
       <Stack p="md">
@@ -214,6 +215,6 @@ function ExcludeValuePicker({
           {isNew ? t`Add filter` : t`Update filter`}
         </Button>
       </Group>
-    </div>
+    </Box>
   );
 }

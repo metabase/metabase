@@ -5,11 +5,11 @@ import { Box, Flex, NumberInput, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import type { FilterPickerWidgetProps } from "../types";
-import { MAX_WIDTH } from "../constants";
+import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import { getAvailableOperatorOptions } from "../utils";
 import { ColumnValuesWidget } from "../ColumnValuesWidget";
-import { FilterHeader } from "../FilterHeader";
-import { FilterFooter } from "../FilterFooter";
+import { FilterPickerHeader } from "../FilterPickerHeader";
+import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
 import { CoordinateColumnPicker } from "./CoordinateColumnPicker";
@@ -83,17 +83,21 @@ export function CoordinateFilterPicker({
   return (
     <Box
       component="form"
+      miw={MIN_WIDTH}
       maw={MAX_WIDTH}
       data-testid="coordinate-filter-picker"
       onSubmit={handleSubmit}
     >
-      <FilterHeader columnName={columnInfo.longDisplayName} onBack={onBack}>
+      <FilterPickerHeader
+        columnName={columnInfo.longDisplayName}
+        onBack={onBack}
+      >
         <FilterOperatorPicker
           value={operator}
           options={availableOperators}
           onChange={handleOperatorChange}
         />
-      </FilterHeader>
+      </FilterPickerHeader>
       <Box>
         {canPickColumns(operator, availableColumns) && (
           <CoordinateColumnPicker
@@ -112,7 +116,7 @@ export function CoordinateFilterPicker({
           hasMultipleValues={hasMultipleValues}
           onChange={setValues}
         />
-        <FilterFooter isNew={isNew} canSubmit={isValid} />
+        <FilterPickerFooter isNew={isNew} canSubmit={isValid} />
       </Box>
     </Box>
   );
