@@ -5,6 +5,7 @@
   this writing, the SQL JDBC driver 'superclass' is the only thing that implements this method, and does so to close
   connection pools when database details change or when they are deleted."
   (:require
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.events :as events]
    [metabase.util.log :as log]
@@ -15,10 +16,15 @@
 (derive :event/database-delete ::event)
 
 (methodical/defmethod events/publish-event! ::event
-  [topic {database :object :as _event}]
+  [topic {database :object, previous-database :previous-object :as _event}]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
-   ;; notify the appropriate driver about the updated database
-   (driver/notify-database-updated (:engine database) database)
-   (catch Throwable e
-     (log/warnf e "Failed to process driver notifications event. %s" topic))))
+    ;; notify the appropriate driver about the updated database to release any resources it may be holding onto.
+    ;; don't notify the driver if the changes should not impact the state of any resource.
+    (let [paths-that-dont-impact-resource-state [[:updated_at]
+                                                 [:settings :database-enable-actions]]]
+      (when (not= (reduce m/dissoc-in database paths-that-dont-impact-resource-state)
+                  (reduce m/dissoc-in previous-database paths-that-dont-impact-resource-state))
+        (driver/notify-database-updated (:engine database) database)))
+    (catch Throwable e
+      (log/warnf e "Failed to process driver notifications event. %s" topic))))
