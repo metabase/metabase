@@ -19,7 +19,8 @@
    [metabase.util.methodical.null-cache :as u.methodical.null-cache]
    [metabase.util.methodical.unsorted-dispatcher
     :as u.methodical.unsorted-dispatcher]
-   [methodical.core :as methodical]))
+   [methodical.core :as methodical]
+   [steffan-westcott.clj-otel.api.trace.span :as span]))
 
 (set! *warn-on-reflection* true)
 
@@ -107,28 +108,31 @@
 
 (methodical/defmethod publish-event! :around :default
   [topic event]
-  (assert (not *compile-files*) "Calls to publish-event! are not allowed in the top level.")
-  (if-not @events-initialized?
-    ;; if the event namespaces aren't initialized yet, make sure they're all loaded up before trying to do dispatch.
-    (do
-     (initialize-events!)
-     (publish-event! topic event))
-    (do
-     (log/debugf "Publishing %s event:\n\n%s" (u/colorize :yellow (pr-str topic)) (u/pprint-to-str event))
-     (assert (and (qualified-keyword? topic)
-                  (isa? topic :metabase/event))
-             (format "Invalid event topic %s: events must derive from :metabase/event" (pr-str topic)))
-     (assert (map? event)
-             (format "Invalid event %s: event must be a map." (pr-str event)))
-     (try
-      (when-let [schema (events.schema/topic->schema topic)]
-        (mu/validate-throw schema event))
-      (next-method topic event)
-      (catch Throwable e
-        (throw (ex-info (i18n/tru "Error publishing {0} event: {1}" topic (ex-message e))
-                        {:topic topic, :event event}
-                        e))))
-     event)))
+  (span/with-span!
+    {:name       "publish-event!"
+     :attributes {:event/topic topic}}
+    (assert (not *compile-files*) "Calls to publish-event! are not allowed in the top level.")
+    (if-not @events-initialized?
+      ;; if the event namespaces aren't initialized yet, make sure they're all loaded up before trying to do dispatch.
+      (do
+        (initialize-events!)
+        (publish-event! topic event))
+      (do
+        (log/debugf "Publishing %s event:\n\n%s" (u/colorize :yellow (pr-str topic)) (u/pprint-to-str event))
+        (assert (and (qualified-keyword? topic)
+                     (isa? topic :metabase/event))
+                (format "Invalid event topic %s: events must derive from :metabase/event" (pr-str topic)))
+        (assert (map? event)
+                (format "Invalid event %s: event must be a map." (pr-str event)))
+        (try
+          (when-let [schema (events.schema/topic->schema topic)]
+            (mu/validate-throw schema event))
+          (next-method topic event)
+          (catch Throwable e
+            (throw (ex-info (i18n/tru "Error publishing {0} event: {1}" topic (ex-message e))
+                            {:topic topic, :event event}
+                            e))))
+        event))))
 
 (mu/defn topic->model :- [:maybe :string]
   "Determine a valid `model` identifier for the given `topic`."
@@ -155,3 +159,29 @@
    ;; and is important for distinguishing view events triggered when pinned cards are 'viewed'
    ;; when a user opens a collection.
    :context      (:context object)})
+
+(def ^:private async-publish-event-timeout 10000)
+
+(defn timeout-code [future]
+  ;; Wait for the specified timeout duration
+  (Thread/sleep 10000)
+  ;; If the timeout is reached, cancel the future
+  (when-not @future
+    (future-cancel future)
+    (println "Task cancelled due to timeout.")))
+
+(defn publish-event-async!
+  "Publish an event asynchronously with an optional timeout (default is 10s).
+  If the event fails, will log a warning."
+  ([topic event]
+   (publish-event-async! topic event async-publish-event-timeout))
+  ([topic event timeout]
+   (let [event-thread (future (publish-event! topic event))]
+     (future (Thread/sleep ^long timeout)
+             (when-not (future-done? event-thread)
+               (log/warnf "%s event %s event in %sms:\n\n%s"
+                          (u/colorize :red "Failed to publish async event")
+                          (u/colorize :yellow (pr-str topic))
+                          async-publish-event-timeout
+                          (u/pprint-to-str event))
+               (future-cancel event-thread))))))
