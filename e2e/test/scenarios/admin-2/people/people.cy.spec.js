@@ -396,13 +396,16 @@ describe("scenarios > admin > people", () => {
         assertTableRowsCount(PAGE_SIZE);
         cy.findByLabelText("Previous page").should("be.disabled");
 
-        cy.findByLabelText("Next page").click();
+        // cy.findByLabelText("Next page").click();
+        cy.findByTestId("next-page-btn").click();
         waitForUserRequests();
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Loading...").should("not.exist");
-
+        cy.pause();
         // Page 2
-        cy.findByTextEnsureVisible(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`);
+        cy.findByTestId("people-list-footer")
+          .findByText(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`)
+          .should("be.visible");
         assertTableRowsCount(NEW_TOTAL_USERS % PAGE_SIZE);
         cy.findByLabelText("Next page").should("be.disabled");
 
