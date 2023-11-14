@@ -186,7 +186,7 @@
   (span/with-span!
     {:name       "get-dashboard"
      :attributes {:dashboard/id id}}
-    (let [dashboard (-> (t2/select-one :model/Dashboard :id id) api/check-404 api/read-check)
+    (let [dashboard (api/read-check (t2/select-one :model/Dashboard :id id))
           ;; i'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
           ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
           ;; cannot be in this situation
