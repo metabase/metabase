@@ -5,7 +5,7 @@ import { FilterHeaderRoot } from "./FilterHeader.styled";
 interface FilterHeaderProps {
   columnName: string;
   children?: ReactNode;
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 export function FilterHeader({
@@ -15,7 +15,7 @@ export function FilterHeader({
 }: FilterHeaderProps) {
   return (
     <FilterHeaderRoot p="sm" justify="space-between">
-      <BackButton onClick={onBack}>{columnName}</BackButton>
+      {onBack && <BackButton onClick={onBack}>{columnName}</BackButton>}
       {children}
     </FilterHeaderRoot>
   );
