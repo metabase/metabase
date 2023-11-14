@@ -1147,8 +1147,8 @@ describe("availableDrillThrus", () => {
     // endregion
 
     // region --- drill-thru/zoom-in.timeseries
-    // "zoom-in.timeseries" should be returned for aggregated query metric click (metabase#33811)
     {
+      // "zoom-in.timeseries" should be returned for aggregated query metric click (metabase#33811)
       drillType: "drill-thru/zoom-in.timeseries",
       clickType: "cell",
       queryType: "aggregated",

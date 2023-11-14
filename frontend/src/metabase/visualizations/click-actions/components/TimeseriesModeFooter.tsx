@@ -7,6 +7,7 @@ import { TimeseriesGroupingWidget } from "./TimeseriesGroupingWidget";
 
 type Props = ModeFooterComponentProps;
 
+// TODO [33812]: Should we migrate this to mbqlv2 in scope of timeseries drill?
 export const TimeseriesModeFooter = (props: Props): JSX.Element | null => {
   const onChange = (question: Question) => {
     const { updateQuestion } = props;
