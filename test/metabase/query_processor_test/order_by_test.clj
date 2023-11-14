@@ -25,10 +25,13 @@
                            [:asc $id]]
                 :limit    10}))))))
 
-(deftest ^:parallel order-by-aggregate-fields-test-1
+(deftest ^:parallel order-by-aggregate-fields-test
   (mt/test-drivers (mt/normal-drivers)
     (testing :count
-      (is (= [[4 6] [3 13] [1 22] [2 59]]
+      (is (= [[4  6]
+              [3 13]
+              [1 22]
+              [2 59]]
              (mt/formatted-rows [int int]
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]
@@ -38,7 +41,10 @@
 (deftest ^:parallel order-by-aggregate-fields-test-2
   (mt/test-drivers (mt/normal-drivers)
     (testing :sum
-      (is (= [[2 2855] [1 1211] [3 615] [4 369]]
+      (is (= [[2 2855]
+              [1 1211]
+              [3  615]
+              [4  369]]
              (mt/formatted-rows [int int]
                (mt/run-mbql-query venues
                  {:aggregation [[:sum $id]]
@@ -48,7 +54,10 @@
 (deftest ^:parallel order-by-aggregate-fields-test-3
   (mt/test-drivers (mt/normal-drivers)
     (testing :distinct
-      (is (= [[4 6] [3 13] [1 22] [2 59]]
+      (is (= [[4  6]
+              [3 13]
+              [1 22]
+              [2 59]]
              (mt/formatted-rows [int int]
                (mt/run-mbql-query venues
                  {:aggregation [[:distinct $id]]
