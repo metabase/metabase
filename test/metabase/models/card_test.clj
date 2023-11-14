@@ -330,7 +330,7 @@
 (deftest validate-template-tag-field-ids-test
   (testing "Disallow saving a Card with native query Field filter template tags referencing a different Database (#14145)"
     (let [test-data-db-id      (mt/id)
-          sample-dataset-db-id (mt/dataset sample-dataset (mt/id))
+          sample-dataset-db-id (mt/dataset test-data (mt/id))
           card-data            (fn [database-id]
                                  {:database_id   database-id
                                   :dataset_query {:database database-id
@@ -488,7 +488,7 @@
                (t2/select 'ParameterCard :card_id source-card-id)))))))
 
 (deftest cleanup-parameter-on-card-changes-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (mt/with-temp
       [:model/Card {source-card-id :id} (merge (mt/card-with-source-metadata-for-query
                                                 (mt/mbql-query products {:fields [(mt/$ids $products.title)

@@ -88,7 +88,7 @@
 (deftest ^:parallel two-case-functions-test
   (testing "We should support expressions with two case statements (#15107)"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (is (= [[1] [0]]
                (mt/formatted-rows [int]
                  (mt/run-mbql-query products

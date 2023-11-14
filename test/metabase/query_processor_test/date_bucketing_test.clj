@@ -743,7 +743,7 @@
       ;; 2019-01-01 is Tuesday, so set start-of-week to tuesday so
       ;; breakout by week-of-year will have first row is the 1st week of year
       (mt/with-temporary-setting-values [start-of-week :tuesday]
-        (mt/dataset sample-dataset
+        (mt/dataset test-data
           (letfn [(test-break-out [unit]
                     (->> (mt/mbql-query orders
                            {:filter      [:between $created_at "2019-01-01" "2019-12-31"]

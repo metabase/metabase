@@ -335,7 +335,7 @@
 (deftest ^:parallel join-against-multiple-card-copies-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "join against multiple copies of a card (#34227)"
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                                  [(mt/mbql-query orders
                                     {:breakout [$user_id]
@@ -606,7 +606,7 @@
 (deftest ^:parallel join-source-queries-with-joins-test
   (testing "Should be able to join against source queries that themselves contain joins (#12928)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join :foreign-keys)
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (testing "(#12928)"
           (let [query (mt/mbql-query orders
                         {:source-query {:source-table $$orders
@@ -670,7 +670,7 @@
 (deftest ^:parallel join-against-saved-question-with-sort-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "Should be able to join against a Saved Question that is sorted (#13744)"
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [query (mt/mbql-query products
                       {:joins    [{:source-query {:source-table $$products
                                                   :aggregation  [[:count]]
@@ -698,7 +698,7 @@
 (deftest ^:parallel join-with-space-in-alias-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "Some drivers don't allow Table alises with spaces in them. Make sure joins still work."
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (mt/with-mock-fks-for-drivers-without-fk-constraints
           (let [query (mt/mbql-query products
                         {:joins    [{:source-query {:source-table $$orders}
@@ -719,7 +719,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing (str "Should be able to join two nested queries with the same aggregation on a Field in their respective "
                   "source queries (#18512)")
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [query (mt/mbql-query reviews
                       {:source-query {:source-table $$reviews
                                       :joins        [{:source-table $$products
@@ -756,7 +756,7 @@
 (deftest ^:parallel join-against-same-table-as-source-query-source-table-test
   (testing "Joining against the same table as the source table of the source query should work (#18502)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [query (mt/mbql-query people
                       {:source-query {:source-table $$people
                                       :breakout     [!month.created_at]
@@ -779,7 +779,7 @@
 (deftest ^:parallel join-against-multiple-saved-questions-with-same-column-test
   (testing "Should be able to join multiple against saved questions on the same column (#15863, #20362)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [q1 (mt/mbql-query products {:breakout [$category], :aggregation [[:count]]})
               q2 (mt/mbql-query products {:breakout [$category], :aggregation [[:sum $price]]})
               q3 (mt/mbql-query products {:breakout [$category], :aggregation [[:avg $rating]]})]
@@ -814,7 +814,7 @@
 (deftest ^:parallel use-correct-source-alias-for-fields-from-joins-test
   (testing "Make sure we use the correct escaped alias for a Fields coming from joins (#20413)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [query (mt/mbql-query orders
                       {:joins       [{:source-table $$products
                                       :alias        "Products Renamed"
@@ -934,7 +934,7 @@
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations)
                            ;; mongodb doesn't support foreign keys required by this test
                            :mongo)
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (mt/with-mock-fks-for-drivers-without-fk-constraints
           (let [query (mt/mbql-query orders
                         {:source-query {:source-table $$orders
@@ -968,7 +968,7 @@
                      (-> (:dbms_version (data/db))
                          :semantic-version
                          (driver.u/semantic-version-gte [5]))))
-        (mt/dataset sample-dataset
+        (mt/dataset test-data
           (doseq [[first-join-strategy second-join-strategy] [[:inner-join :left-join]
                                                               [:left-join :inner-join]]
                   :let [query (mt/mbql-query people
@@ -993,7 +993,7 @@
 
 (deftest ^:parallel join-with-brakout-and-aggregation-expression
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [query (mt/mbql-query orders
                                  {:source-query {:source-table $$orders
                                                  :joins    [{:source-table $$products
@@ -1015,7 +1015,7 @@
 
 (deftest ^:parallel mlv2-references-in-join-conditions-test
   (testing "Make sure join conditions that contain MLv2-generated refs with extra info like `:base-type` work correctly (#33083)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                         [(mt/mbql-query reviews
                                            {:joins       [{:source-table $$products
@@ -1058,7 +1058,7 @@
 
 (deftest ^:parallel test-31769
   (testing "Make sure queries built with MLv2 that have source Cards with joins work correctly (#31769) (#33083)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider
                                (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                mt/id)]

@@ -47,7 +47,7 @@
                :value {:type  :string/=
                        :value ["Doohickey"]}})))))
   (testing "Compound filters should be wrapped in parens"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-metadata-provider meta/metadata-provider
         (is (= {:replacement-snippet     "((\"PUBLIC\".\"PEOPLE\".\"STATE\" <> ?) OR (\"PUBLIC\".\"PEOPLE\".\"STATE\" IS NULL))"
                 :prepared-statement-args ["OR"]}

@@ -31,8 +31,6 @@
 
 (def ^:private test-db-name (bigquery.tx/normalize-name :db "test_data"))
 
-(def ^:private sample-dataset-name (bigquery.tx/normalize-name :db "sample_dataset"))
-
 (defn- with-test-db-name
   "Replaces instances of v3_test_data with the full per-test-run DB name"
   [x]
@@ -422,7 +420,7 @@
 (deftest ^:parallel reconcile-unix-timestamps-test
   (testing "temporal type reconciliation should work for UNIX timestamps (#15376)"
     (mt/test-driver :bigquery-cloud-sdk
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
                                           (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                           {:fields [{:id                (mt/id :reviews :rating)
@@ -436,7 +434,7 @@
                                              [:field %id {:add/source-table $$reviews}]]]
                                  :limit    1})
                 filter-clause (get-in query [:query :filter])]
-            (is (= [(str (format "timestamp_millis(%s.reviews.rating)" sample-dataset-name)
+            (is (= [(str (format "timestamp_millis(%s.reviews.rating)" test-db-name)
                          " = "
                          "timestamp_trunc(timestamp_add(current_timestamp(), INTERVAL -30 day), day)")]
                    (hsql/format-predicate (sql.qp/->honeysql :bigquery-cloud-sdk filter-clause))))
@@ -1004,7 +1002,7 @@
 
 (deftest ^:parallel custom-expression-args-quoted
   (mt/test-driver :bigquery-cloud-sdk
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "Arguments to custom aggregation expression functions have backticks applied properly"
         (is (= {:mbql?      true
                 :params     nil
@@ -1012,7 +1010,7 @@
                 :query      (format
                              (str "SELECT APPROX_QUANTILES(`%s.orders`.`quantity`, 10)[OFFSET(5)] AS `CE`"
                                   " FROM `%s.orders` LIMIT 10")
-                             sample-dataset-name sample-dataset-name)}
+                             test-db-name test-db-name)}
                (qp/compile (mt/mbql-query orders
                              {:aggregation [[:aggregation-options
                                              [:percentile $orders.quantity 0.5]

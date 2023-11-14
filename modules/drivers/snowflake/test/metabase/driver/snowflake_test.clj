@@ -265,7 +265,7 @@
 (deftest first-day-of-week-test
   (mt/test-driver :snowflake
     (testing "Day-of-week should work correctly regardless of what the `start-of-week` Setting is set to (#20999)"
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (doseq [[start-of-week friday-int] [[:friday 1]
                                             [:monday 5]
                                             [:sunday 6]]]

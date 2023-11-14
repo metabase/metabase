@@ -338,7 +338,7 @@
 
 (deftest ^:parallel legacy-parameters-with-no-widget-type-test
   (testing "Legacy queries with parameters that don't specify `:widget-type` should still work (#20643)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [query (mt/native-query
                     {:query         "SELECT count(*) FROM products WHERE {{cat}};"
                      :template-tags {"cat" {:id           "__MY_CAT__"
@@ -351,7 +351,7 @@
 
 (deftest date-parameter-for-native-query-with-nested-mbql-query-test
   (testing "Should be able to have a native query with a nested MBQL query and a date parameter (#21246)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (mt/mbql-query products)}]
         (let [param-name (format "#%d" card-id)
               query      (mt/native-query
@@ -385,7 +385,7 @@
                        (mt/rows (qp/process-query query))))))))))))
 
 (deftest ^:parallel multiple-native-query-parameters-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (let [sql   (str/join
                  \newline
                  ["SELECT orders.id, orders.created_at, people.state, people.name, people.source"
@@ -449,7 +449,7 @@
 
 (deftest ^:parallel inlined-number-test
   (testing "Number parameters are inlined into the SQL query and not parameterized (#29690)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (is (= {:query  "SELECT NOW() - INTERVAL '30 DAYS'"
               :params []}
              (qp/compile-and-splice-parameters

@@ -1110,7 +1110,7 @@
 (deftest ^:parallel do-not-cast-to-timestamp-if-column-if-timestamp-tz-or-date-test
   (testing "Don't cast a DATE or TIMESTAMPTZ to TIMESTAMP, it's not necessary (#19816)"
     (mt/test-driver :postgres
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [query (mt/mbql-query people
                       {:fields [!month.birth_date
                                 !month.created_at
