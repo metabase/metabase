@@ -1,6 +1,7 @@
 import { Fragment, useMemo } from "react";
 import type { ReactNode } from "react";
 import { Button, Box, Divider } from "metabase/ui";
+import { MIN_WIDTH } from "../constants";
 import type {
   DatePickerOperator,
   DatePickerShortcut,
@@ -33,7 +34,7 @@ export function DateShortcutPicker({
   }, [availableOperators]);
 
   return (
-    <Box p="sm">
+    <Box p="sm" miw={MIN_WIDTH}>
       {backButton}
       {shortcutGroups.map((group, groupIndex) => (
         <Fragment key={groupIndex}>

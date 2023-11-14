@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import { t } from "ttag";
 import { Box, Checkbox, Flex, TextInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { MAX_WIDTH } from "../constants";
+import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
 import { ColumnValuesWidget } from "../ColumnValuesWidget";
@@ -72,6 +72,7 @@ export function StringFilterPicker({
   return (
     <Box
       component="form"
+      miw={MIN_WIDTH}
       maw={MAX_WIDTH}
       data-testid="string-filter-picker"
       onSubmit={handleSubmit}
