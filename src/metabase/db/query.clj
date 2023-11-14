@@ -23,50 +23,18 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.db.connection :as mdb.connection]
-   [metabase.driver.impl :as driver.impl]
+   [metabase.driver :as driver]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
-   [toucan2.jdbc :as t2.jdbc])
-  (:import
-   (com.github.vertical_blank.sqlformatter SqlFormatter)
-   (com.github.vertical_blank.sqlformatter.languages Dialect)))
+   [toucan2.jdbc :as t2.jdbc]))
 
 (set! *warn-on-reflection* true)
 
-(defn- format-sql*
-  "Return a nicely-formatted version of a generic `sql` string.
-  Note that it will not play well with Metabase parameters."
-  [^String sql db-type]
-  (when sql
-    (let [formatter (SqlFormatter/of (case db-type
-                                       :mysql Dialect/MySql
-                                       :postgres Dialect/PostgreSql
-                                       :redshift Dialect/Redshift
-                                       :sparksql Dialect/SparkSql
-                                       :sqlserver Dialect/TSql
-                                       :oracle Dialect/PlSql
-                                       :bigquery-cloud-sdk Dialect/MySql
-                                       Dialect/StandardSql))]
-      (.format formatter sql))))
-
-(defn- fix-sql-params
-  "format-sql* will expand parameterized values (e.g. {{#123}} -> { { # 123 } }).
-  This function fixes that by removing whitespace from matching double-curly brace substrings."
-  [sql]
-  (when sql
-    (let [rgx #"\{\s*\{\s*[^\}]+\s*\}\s*\}"]
-      (str/replace sql rgx (fn [match] (str/replace match #"\s*" ""))))))
-
 (defn format-sql
-  "Return a nicely-formatted version of a `query` string.
-  For mongo queries, return as is since it's already in a nice json-like format."
- ([sql]
-  (format-sql sql (mdb.connection/db-type)))
- ([sql db-type]
-  (if (isa? driver.impl/hierarchy db-type :sql)
-    (fix-sql-params (format-sql* sql db-type))
-    sql)))
+  "Return a nicely-formatted version of a `query` string with the current application db driver formatting."
+  [sql]
+  (driver/prettify-native-form (mdb.connection/db-type) sql))
 
 (defmulti compile
   "Compile a `query` (e.g. a Honey SQL map) to `[sql & args]`."

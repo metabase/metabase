@@ -1,9 +1,8 @@
-(ns metabase-enterprise.serialization.v2.seed-entity-ids-test
+(ns metabase-enterprise.serialization.v2.entity-ids-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.serialization.v2.seed-entity-ids
-    :as v2.seed-entity-ids]
+   [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase.models :refer [Collection]]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -14,7 +13,7 @@
 
 (deftest seed-entity-ids-test
   (testing "Sanity check: should succeed before we go around testing specific situations"
-    (is (true? (v2.seed-entity-ids/seed-entity-ids!))))
+    (is (true? (v2.entity-ids/seed-entity-ids!))))
   (testing "With a temp Collection with no entity ID"
     (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
       (t2.with-temp/with-temp [Collection c {:name       "No Entity ID Collection"
@@ -28,7 +27,7 @@
                  (entity-id)))
           (testing "Should return truthy on success"
             (is (= true
-                   (v2.seed-entity-ids/seed-entity-ids!))))
+                   (v2.entity-ids/seed-entity-ids!))))
           (is (= "998b109c"
                  (entity-id))))
         (testing "Error: duplicate entity IDs"
@@ -43,6 +42,20 @@
                      (entity-id)))
               (testing "Should return falsey on error"
                 (is (= false
-                       (v2.seed-entity-ids/seed-entity-ids!))))
+                       (v2.entity-ids/seed-entity-ids!))))
               (is (= nil
                      (entity-id))))))))))
+
+(deftest drop-entity-ids-test
+  (testing "With a temp Collection with an entity ID"
+    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+      (t2.with-temp/with-temp [Collection c {:name       "No Entity ID Collection"
+                                             :slug       "no_entity_id_collection"
+                                             :created_at now}]
+        (letfn [(entity-id []
+                  (some-> (t2/select-one-fn :entity_id Collection :id (:id c)) str/trim))]
+          (is (some? (entity-id)))
+          (testing "Should return truthy on success"
+            (is (= true
+                   (v2.entity-ids/drop-entity-ids!))))
+          (is (nil? (entity-id))))))))
