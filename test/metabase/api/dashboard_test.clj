@@ -365,6 +365,7 @@
                                                     :card                       (merge api.card-test/card-defaults-no-hydrate
                                                                                        {:name                   "Dashboard Test Card"
                                                                                         :creator_id             (mt/user->id :rasta)
+                                                                                        :can_write              false ;; hydrate :can_write for issue #35077
                                                                                         :collection_id          true
                                                                                         :display                "table"
                                                                                         :entity_id              (:entity_id card)

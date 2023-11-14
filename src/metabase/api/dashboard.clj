@@ -220,6 +220,7 @@
       ;; cannot be in this situation
       (t2/hydrate [:ordered_cards
                    [:card [:moderation_reviews :moderator_details]]
+                   [:card :can_write]
                    :series
                    :dashcard/action
                    :dashcard/linkcard-info]
