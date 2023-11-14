@@ -61,7 +61,7 @@
   "Returns true when we should record audit data into the audit log."
   []
   (or (premium-features/is-hosted?)
-      (premium-features/has-feature? :audit_log)))
+      (premium-features/has-feature? :audit-app)))
 
 (mu/defn record-event!
   "Records an event in the Audit Log.

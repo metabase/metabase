@@ -1113,7 +1113,7 @@
   :audit      :getter)
 
 (deftest setting-audit-test
-  (with-redefs [audit-log/log-enabled? (fn [] true)]
+  (premium-features-test/with-premium-features #{:audit-app}
     (let [last-audit-event-fn #(t2/select-one [:model/AuditLog :topic :user_id :model :details]
                                               :topic :setting-update
                                               {:order-by [[:id :desc]]})]
