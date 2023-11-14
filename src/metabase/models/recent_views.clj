@@ -27,7 +27,7 @@
 (def ^:private ^:dynamic *recent-views-stored-per-user*
   "The number of recently viewed items to keep per user. This should be larger than the number of items returned by the
   /api/activity/recent_views endpoint, but it should still be lightweight to read all of a user's recent views at once."
-  100)
+  30)
 
 (defn- view-ids-to-prune
   "Returns a set of view IDs to prune from the RecentViews table so we only keep the most recent n views per user.
