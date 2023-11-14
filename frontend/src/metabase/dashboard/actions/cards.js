@@ -12,16 +12,11 @@ import { createCard } from "metabase/lib/card";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 import { autoWireParametersToNewCard } from "metabase/dashboard/actions/auto-wire-parameters/actions";
-import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
-import { addUndo } from "metabase/redux/undo";
-import { getMetadata } from "metabase/selectors/metadata";
-import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
 import { trackCardCreated } from "../analytics";
-import { getDashCardById, getParameterMappingOptions } from "../selectors";
+import { getDashCardById } from "../selectors";
 import {
   ADD_CARD_TO_DASH,
   REMOVE_CARD_FROM_DASH,
-  setDashCardAttributes,
   UNDO_REMOVE_CARD_FROM_DASH,
 } from "./core";
 import { cancelFetchCardData, fetchCardData } from "./data-fetching";
@@ -241,74 +236,4 @@ export const addActionToDashboard =
         tabId,
       }),
     );
-  };
-
-export const autoApplyParametersToNewCard =
-  ({ dashcard_id }) =>
-  async (dispatch, getState) => {
-    const metadata = getMetadata(getState());
-    const dashboardState = getState().dashboard;
-    const dashboardId = dashboardState.dashboardId;
-    const dashcards = getExistingDashCards(dashboardState, dashboardId);
-
-    const targetDashcard = getDashCardById(getState(), dashcard_id);
-    const dashcardMappingOptions = getParameterMappingOptions(
-      metadata,
-      null,
-      targetDashcard.card,
-      targetDashcard,
-    );
-
-    const parametersToAutoApply = [];
-    const processedParameterIds = new Set();
-
-    for (const opt of dashcardMappingOptions) {
-      for (const dashcard of dashcards) {
-        const param = dashcard.parameter_mappings.find(param =>
-          compareMappingOptionTargets(
-            param.target,
-            opt.target,
-            dashcard,
-            targetDashcard,
-            metadata,
-          ),
-        );
-
-        if (param && !processedParameterIds.has(param.parameter_id)) {
-          parametersToAutoApply.push(
-            ...getParameterMappings(
-              targetDashcard,
-              param.parameter_id,
-              targetDashcard.card_id,
-              param.target,
-            ),
-          );
-          processedParameterIds.add(param.parameter_id);
-        }
-      }
-    }
-
-    if (parametersToAutoApply.length > 0) {
-      dispatch(
-        setDashCardAttributes({
-          id: dashcard_id,
-          attributes: {
-            parameter_mappings: parametersToAutoApply,
-          },
-        }),
-      );
-
-      dispatch(
-        addUndo({
-          action: setDashCardAttributes({
-            id: dashcard_id,
-            attributes: {
-              parameter_mappings: [],
-            },
-          }),
-          message: t`${targetDashcard.card.name} has been auto-connected with existing filters.`,
-          actionLabel: "Undo auto-connection",
-        }),
-      );
-    }
   };

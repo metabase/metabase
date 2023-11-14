@@ -18,9 +18,6 @@ export function getSelectedTabId(state: State) {
   return state.dashboard.selectedTabId;
 }
 
-export const getAutoWireParameterToast = (state: State) =>
-  state.dashboard.autoWireParameters.toast;
-
 export const getDisabledAutoWireCards = (
   state: State,
   dashboardId: DashboardId,

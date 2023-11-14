@@ -38,10 +38,6 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
     toastDashboardId: null,
   },
   autoWireParameters: {
-    toast: {
-      id: null,
-      dashboardId: null,
-    },
     disabledDashcards: {},
   },
   tabDeletions: {},

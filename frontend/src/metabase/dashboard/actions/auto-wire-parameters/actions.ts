@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import _ from "underscore";
 import type {
   Card,
   DashboardCard,
@@ -193,11 +192,11 @@ export function autoWireParametersToNewCard({
       }),
     );
 
-    const toastId = _.uniqueId();
+    // const toastId = _.uniqueId();
 
     dispatch(
       addUndo({
-        id: toastId,
+        // id: toastId,
         message: t`${targetDashcard.card.name} has been auto-connected with filters with the same field.`,
         actionLabel: t`Undo auto-connection`,
         undo: true,
