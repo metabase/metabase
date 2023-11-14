@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.email-test :as et]
-   [metabase.events.audit-log-test :as audit-log-test]
    [metabase.http-client :as client]
    [metabase.models
     :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient
@@ -13,6 +12,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
    [metabase.models.pulse-test :as pulse-test]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
@@ -631,6 +631,7 @@
                                   (dissoc (default-alert-req card pc {} []) :channels))))))))
 
 (deftest alert-event-test
+  (premium-features-test/with-premium-features #{:audit-app}
     (mt/with-non-admin-groups-no-root-collection-perms
       (t2.with-temp/with-temp [Collection collection {}
                                Card       card {:name          "My question"
@@ -672,7 +673,7 @@
                                    :channel    ["email"]
                                    :schedule   ["daily"]
                                    :recipients [[]]}}
-                       (mt/latest-audit-log-entry :alert-update (u/the-id alert)))))))))))
+                       (mt/latest-audit-log-entry :alert-update (u/the-id alert))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            GET /alert/question/:id                                             |
@@ -927,7 +928,7 @@
 
 (deftest alert-unsubscribe-event-test
   (testing "Alert has two recipients, and non-admin unsubscribes"
-    (mt/with-model-cleanup [:model/User]
+    (premium-features-test/with-premium-features #{:audit-app}
       (mt/with-temp [Card                  card  (basic-alert-query)
                      Pulse                 alert (basic-alert)
                      PulseCard             _     (pulse-card alert card)

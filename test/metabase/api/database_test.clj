@@ -1146,7 +1146,7 @@
                (t2/exists? FieldValues :id (u/the-id values-2))))))))
 
 (deftest discard-db-fieldvalues-audit-log-test
-  (testing "Can we DISCARD all the FieldValues for a DB?"
+  (testing "Do we get an audit log entry when we discard all the FieldValues for a DB?"
     (premium-features-test/with-premium-features #{:audit-app}
       (mt/with-temp [Database db {:engine "h2", :details (:details (mt/db))}]
         (is (= {:status "ok"} (mt/user-http-request :crowberto :post 200 (format "database/%d/discard_values" (u/the-id db)))))
