@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders } from "__support__/ui";
 
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 
 import type { Field, FieldValue } from "metabase-types/api";
 import { createMockField } from "metabase-types/api/mocks";

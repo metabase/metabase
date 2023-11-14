@@ -42,7 +42,7 @@ const LEGEND_FONT = {
 const WIDTH = 620;
 const HEIGHT = 440;
 
-interface StaticRowChartProps {
+export interface StaticRowChartProps {
   data: DatasetData;
   settings: VisualizationSettings;
   getColor: ColorGetter;

@@ -5,6 +5,11 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
+(defn wildcard-match
+  "Returns a string pattern to match a wildcard search term."
+  [s]
+  (str "%" s "%"))
+
 (mu/defn normalize :- :string
   "Normalize a `query` to lower-case."
   [query :- :string]

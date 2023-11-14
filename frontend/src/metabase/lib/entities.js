@@ -166,7 +166,7 @@ export function createEntity(def) {
 
   // normalize helpers
   entity.normalize = (object, schema = entity.schema) => ({
-    // include raw `object` (and alias under nameOne) for convienence
+    // include raw `object` (and alias under nameOne) for convenience
     object,
     [entity.nameOne]: object,
     // include standard normalizr properties, `result` and `entities`
@@ -174,7 +174,7 @@ export function createEntity(def) {
   });
 
   entity.normalizeList = (list, schema = entity.schema) => ({
-    // include raw `list` (and alias under nameMany) for convienence
+    // include raw `list` (and alias under nameMany) for convenience
     list,
     [entity.nameMany]: list,
     // include standard normalizr properties, `result` and `entities`

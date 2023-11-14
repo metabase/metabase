@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import Radio from "metabase/core/components/Radio";
-import { isNotNull } from "metabase/core/utils/types";
+import { isNotNull } from "metabase/lib/types";
 
 import { ActionFormFieldWidget } from "metabase/actions/components/ActionFormFieldWidget";
 import { getFieldTypes, getInputTypes } from "metabase/actions/constants";

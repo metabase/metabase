@@ -6,6 +6,7 @@
   ;; prefer keeping source width about ~118, GitHub seems to cut off stuff at either 119 or 120 and it's nicer
   ;; to look at code in GH when you don't have to scroll back and forth
   (fill-column . 118)
+  (whitespace-line-column . 118)
   ;; tell find-things-fast to always use this directory as project root regardless of presence of other
   ;; deps.edn files
   (ftf-project-finders . (ftf-get-top-git-dir)))

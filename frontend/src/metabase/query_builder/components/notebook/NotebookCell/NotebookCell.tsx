@@ -53,6 +53,7 @@ export const NotebookCellItem = forwardRef<
     <NotebookCellItemContainer
       inactive={inactive}
       readOnly={readOnly}
+      disabled={disabled}
       color={color}
       {...restProps}
       data-testid={restProps["data-testid"] ?? "notebook-cell-item"}

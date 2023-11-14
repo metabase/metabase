@@ -11,6 +11,7 @@
    [cheshire.core :as json]
    [clojure.core.match :refer [match]]
    [clojure.set :as set]
+   [clojure.walk :as walk]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
@@ -105,7 +106,7 @@
 (define-reversible-migration SplitDataPermissions
   (let [current-perms-set (t2/select-fn-set
                            (juxt :object :group_id)
-                           :model/Permissions
+                           :permissions
                            {:where [:or
                                     [:like :object (h2x/literal "/db/%")]
                                     [:like :object (h2x/literal "/data/db/%")]
@@ -352,15 +353,15 @@
 
 (defn- update-card-row-on-downgrade-for-dashboard-tab
   [dashboard-id]
-  (let [ordered-tab+cards (->> (t2/query {:select    [:report_dashboardcard.* [:dashboard_tab.position :tab_position]]
-                                          :from      [:report_dashboardcard]
-                                          :where     [:= :report_dashboardcard.dashboard_id dashboard-id]
-                                          :left-join [:dashboard_tab [:= :dashboard_tab.id :report_dashboardcard.dashboard_tab_id]]})
+  (let [tab+cards (->> (t2/query {:select    [:report_dashboardcard.* [:dashboard_tab.position :tab_position]]
+                                  :from      [:report_dashboardcard]
+                                  :where     [:= :report_dashboardcard.dashboard_id dashboard-id]
+                                  :left-join [:dashboard_tab [:= :dashboard_tab.id :report_dashboardcard.dashboard_tab_id]]})
                                (group-by :tab_position)
                                ;; sort by tab position
                                (sort-by first))
         cards->max-height (fn [cards] (apply max (map #(+ (:row %) (:size_y %)) cards)))]
-    (loop [position+cards ordered-tab+cards
+    (loop [position+cards tab+cards
            next-tab-row   0]
       (when-let [[tab-pos cards] (first position+cards)]
         (if (zero? tab-pos)
@@ -714,3 +715,177 @@
                                        :where  [:= :id id]}))))]
     (run! rollback-one! (t2/reducible-query {:select [:id :settings :options]
                                              :from   [:metabase_database]}))))
+
+;;; Fix click through migration
+
+(defn- fix-click-through
+  "Fixes click behavior settings on dashcards, returns nil if no fix available. Format changed from:
+
+  `{... click click_link_template ...}` to `{... click_behavior { type linkType linkTemplate } ...}`
+
+  at the top level and
+  {... view_as link_template link_text ...} to `{ ... click_behavior { type linkType linkTemplate linkTextTemplate } ...}`
+
+  at the column_settings level. Scours the card to find all click behavior, reshapes it, and deep merges it into the
+  reshapen dashcard.  scour for all links in the card, fixup the dashcard and then merge in any new click_behaviors
+  from the card. See extensive tests for different scenarios.
+
+  We are in a migration so this returns nil if there is nothing to do so that it is filtered and we aren't running sql
+  statements that are replacing data for no purpose.
+
+  Merging the following click behaviors in order (later merges on top of earlier):
+  - fixed card click behavior
+  - fixed dash click behavior
+  - existing new style dash click behavior"
+  [{id :id card :card_visualization dashcard :dashcard_visualization}]
+  (let [remove-nil-keys (fn [m]
+                          (into {} (remove #(nil? (val %)) m)))
+        existing-fixed  (fn [settings]
+                         (-> settings
+                             (m/update-existing "column_settings"
+                                                (fn [column_settings]
+                                                  (m/map-vals
+                                                   #(select-keys % ["click_behavior"])
+                                                   column_settings)))
+                             ;; select click behavior top level and in column settings
+                             (select-keys ["column_settings" "click_behavior"])
+                             (remove-nil-keys)))
+        fix-top-level   (fn [toplevel]
+                         (if (= (get toplevel "click") "link")
+                           (assoc toplevel
+                                  ;; add new shape top level
+                                  "click_behavior"
+                                  {"type"         (get toplevel "click")
+                                   "linkType"     "url"
+                                   "linkTemplate" (get toplevel "click_link_template")})
+                           toplevel))
+        fix-cols        (fn [column-settings]
+                         (reduce-kv
+                          (fn [m col field-settings]
+                            (assoc m col
+                                   ;; add the click stuff under the new click_behavior entry or keep the
+                                   ;; field settings as is
+                                   (if (and (= (get field-settings "view_as") "link")
+                                            (contains? field-settings "link_template"))
+                                     ;; remove old shape and add new shape under click_behavior
+                                     (assoc field-settings
+                                            "click_behavior"
+                                            {"type"             (get field-settings "view_as")
+                                             "linkType"         "url"
+                                             "linkTemplate"     (get field-settings "link_template")
+                                             "linkTextTemplate" (get field-settings "link_text")})
+                                     field-settings)))
+                          {}
+                          column-settings))
+        fixed-card      (-> (if (contains? dashcard "click")
+                             (dissoc card "click_behavior") ;; throw away click behavior if dashcard has click
+                             ;; behavior added
+                             (fix-top-level card))
+                           (update "column_settings" fix-cols) ;; fix columns and then select only the new shape from
+                           ;; the settings tree
+                           existing-fixed)
+        fixed-dashcard  (update (fix-top-level dashcard) "column_settings" fix-cols)
+        final-settings  (->> (m/deep-merge fixed-card fixed-dashcard (existing-fixed dashcard))
+                            ;; remove nils and empty maps _AFTER_ deep merging so that the shapes are
+                            ;; uniform. otherwise risk not fully clobbering an underlying form if the one going on top
+                            ;; doesn't have link text
+                            (walk/postwalk (fn [form]
+                                             (if (map? form)
+                                               (into {} (for [[k v] form
+                                                              :when (if (seqable? v)
+                                                                      ;; remove keys with empty maps. must be postwalk
+                                                                      (seq v)
+                                                                      ;; remove nils
+                                                                      (some? v))]
+                                                          [k v]))
+                                               form))))]
+    (when (not= final-settings dashcard)
+      {:id                     id
+       :visualization_settings final-settings})))
+
+(defn- parse-to-json [& ks]
+  (fn [x]
+    (reduce #(update %1 %2 json/parse-string)
+            x
+            ks)))
+
+;; This was previously a data migration, hence the metadata. The metadata is unused but potentially useful
+;; as documentation.
+(defn- migrate-click-through!
+  {:author "dpsutton"
+   :added  "0.38.1"
+   :doc    "Migration of old 'custom drill-through' to new 'click behavior'; see #15014"}
+  []
+  (transduce (comp (map (parse-to-json :card_visualization :dashcard_visualization))
+                   (map fix-click-through)
+                   (filter :visualization_settings))
+             (completing
+              (fn [_ {:keys [id visualization_settings]}]
+                (t2/update! :report_dashboardcard id
+                            {:visualization_settings (json/generate-string visualization_settings)})))
+             nil
+             ;; flamber wrote a manual postgres migration that this faithfully recreates: see
+             ;; https://github.com/metabase/metabase/issues/15014
+             (t2/query {:select [:dashcard.id
+                                 [:card.visualization_settings :card_visualization]
+                                 [:dashcard.visualization_settings :dashcard_visualization]]
+                        :from   [[:report_dashboardcard :dashcard]]
+                        :join   [[:report_card :card] [:= :dashcard.card_id :card.id]]
+                        :where  [:or
+                                 [:like
+                                  :card.visualization_settings "%\"link_template\":%"]
+                                 [:like
+                                  :card.visualization_settings "%\"click_link_template\":%"]
+                                 [:like
+                                  :dashcard.visualization_settings "%\"link_template\":%"]
+                                 [:like
+                                  :dashcard.visualization_settings "%\"click_link_template\":%"]]})))
+
+(define-migration MigrateClickThrough
+  (migrate-click-through!))
+
+;;; Removing admin from group mapping migration
+
+(defn- raw-setting
+  "Get raw setting directly from DB.
+  For some reasons during data-migration [[metabase.models.setting/get]] return the default value defined in
+  [[metabase.models.setting/defsetting]] instead of value from Setting table."
+  [k]
+  (t2/select-one-fn :value :setting :key (name k)))
+
+(defn- remove-admin-group-from-mappings-by-setting-key!
+  [mapping-setting-key]
+  (let [admin-group-id (t2/select-one-pk :permissions_group :name "Administrators")
+        mapping        (try
+                        (json/parse-string (raw-setting mapping-setting-key))
+                        (catch Exception _e
+                          {}))]
+    (when-not (empty? mapping)
+      (t2/update! :setting {:key (name mapping-setting-key)}
+                  {:value
+                   (->> mapping
+                        (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
+                        (into {})
+                        json/generate-string)}))))
+
+(defn- migrate-remove-admin-from-group-mapping-if-needed
+  {:author "qnkhuat"
+   :added  "0.43.0"
+   :doc    "In the past we have a setting to disable group sync for admin group when using SSO or LDAP, but it's broken
+            and haven't really worked (see #13820).
+            In #20991 we remove this option entirely and make sync for admin group just like a regular group.
+            But on upgrade, to make sure we don't unexpectedly begin adding or removing admin users:
+              - for LDAP, if the `ldap-sync-admin-group` toggle is disabled, we remove all mapping for the admin group
+              - for SAML, JWT, we remove all mapping for admin group, because they were previously never being synced
+            if `ldap-sync-admin-group` has never been written, getting raw-setting will return a `nil`, and nil could
+            also be interpreted as disabled. so checking `(not= x \"true\")` is safer than `(= x \"false\")`."}
+  []
+  (when (not= (raw-setting :ldap-sync-admin-group) "true")
+    (remove-admin-group-from-mappings-by-setting-key! :ldap-group-mappings))
+  ;; sso are enterprise feature but we still run this even in OSS in case a customer
+  ;; have switched from enterprise -> SSO and stil have this mapping in Setting table
+  (remove-admin-group-from-mappings-by-setting-key! :jwt-group-mappings)
+  (remove-admin-group-from-mappings-by-setting-key! :saml-group-mappings))
+
+(define-migration MigrateRemoveAdminFromGroupMappingIfNeeded
+  (migrate-remove-admin-from-group-mapping-if-needed))

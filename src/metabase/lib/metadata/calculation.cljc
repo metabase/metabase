@@ -1,6 +1,7 @@
 (ns metabase.lib.metadata.calculation
   (:require
    [clojure.string :as str]
+   [metabase.lib.cache :as lib.cache]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join.util :as lib.join.util]
@@ -236,7 +237,7 @@
                                         #(= (namespace %) "metadata")]]]]
   "Calculate an appropriate `:metadata/*` object for something. What this looks like depends on what we're calculating
   metadata for. If it's a reference or expression of some sort, this should return a single `:metadata/column`
-  map (i.e., something satisfying the [[metabase.lib.metadata/ColumnMetadata]] schema."
+  map (i.e., something satisfying the `::lib.schema.metadata/column` schema."
   ([query]
    (metadata query -1 query))
   ([query x]
@@ -264,49 +265,53 @@
 
 (defmulti display-info-method
   "Implementation for [[display-info]]. Implementations that call [[display-name]] should use the `:default` display
-  name style."
+  name style.
+
+  Do not call this recursively from its own `defmethod`s, aside from calling the `:default`. Prefer calling
+  [[display-info]] directly, so that its caching can encourage reuse. (Eg. column-groups recursively call `display-info`
+  on their columns.)"
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
 (mr/register! ::display-info
-  [:map
-   [:display-name :string]
-   [:long-display-name {:optional true} :string]
+              [:map
+               [:display-name :string]
+               [:long-display-name {:optional true} :string]
    ;; for things that have a Table, e.g. a Field
-   [:table {:optional true} [:maybe [:ref ::display-info]]]
+               [:table {:optional true} [:maybe [:ref ::display-info]]]
    ;; these are derived from the `:lib/source`/`:metabase.lib.schema.metadata/column-source`, but instead of using
    ;; that value directly we're returning a different property so the FE doesn't break if we change those keys in the
    ;; future, e.g. if we consolidate or split some of those keys. This is all the FE really needs to know.
    ;;
    ;; if this is a Column, does it come from a previous stage?
-   [:is-from-previous-stage {:optional true} [:maybe :boolean]]
+               [:is-from-previous-stage {:optional true} [:maybe :boolean]]
    ;; if this is a Column, does it come from a join in this stage?
-   [:is-from-join {:optional true} [:maybe :boolean]]
+               [:is-from-join {:optional true} [:maybe :boolean]]
    ;; if this is a Column, is it 'calculated', i.e. does it come from an expression in this stage?
-   [:is-calculated {:optional true} [:maybe :boolean]]
+               [:is-calculated {:optional true} [:maybe :boolean]]
    ;; if this is a Column, is it an implicitly joinable one? I.e. is it from a different table that we have not
    ;; already joined, but could implicitly join against?
-   [:is-implicitly-joinable {:optional true} [:maybe :boolean]]
+               [:is-implicitly-joinable {:optional true} [:maybe :boolean]]
    ;; For the `:table` field of a Column, is this the source table, or a joined table?
-   [:is-source-table {:optional true} [:maybe :boolean]]
+               [:is-source-table {:optional true} [:maybe :boolean]]
    ;; does this column occur in the breakout clause?
-   [:is-breakout-column {:optional true} [:maybe :boolean]]
+               [:is-breakout-column {:optional true} [:maybe :boolean]]
    ;; does this column occur in the order-by clause?
-   [:is-order-by-column {:optional true} [:maybe :boolean]]
+               [:is-order-by-column {:optional true} [:maybe :boolean]]
    ;; for joins
-   [:name {:optional true} :string]
+               [:name {:optional true} :string]
    ;; for aggregation operators
-   [:column-name {:optional true} :string]
-   [:description {:optional true} :string]
-   [:short-name {:optional true} :string]
-   [:requires-column {:optional true} :boolean]
-   [:selected {:optional true} :boolean]
+               [:column-name {:optional true} :string]
+               [:description {:optional true} :string]
+               [:short-name {:optional true} :string]
+               [:requires-column {:optional true} :boolean]
+               [:selected {:optional true} :boolean]
    ;; for binning and bucketing
-   [:default {:optional true} :boolean]
+               [:default {:optional true} :boolean]
    ;; for order by
-   [:direction {:optional true} [:enum :asc :desc]]])
+               [:direction {:optional true} [:enum :asc :desc]]])
 
 (mu/defn display-info :- ::display-info
   "Given some sort of Cljs object, return a map with the info you'd need to implement UI for it. This is mostly meant to
@@ -318,14 +323,20 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     x]
-   (try
-     (display-info-method query stage-number x)
-     (catch #?(:clj Throwable :cljs js/Error) e
-       (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}"
-                                 (lib.dispatch/dispatch-value x)
-                                 (ex-message e))
-                       {:query query, :stage-number stage-number, :x x}
-                       e))))))
+   (lib.cache/side-channel-cache
+     ;; TODO: Caching by stage here is probably unnecessary - it's already a mistake to have an `x` from a different
+     ;; stage than `stage-number`. But it also doesn't hurt much, since a given `x` will only ever have `display-info`
+     ;; called with one `stage-number` anyway.
+     (keyword "display-info" (str "stage-" stage-number)) x
+     (fn [x]
+       (try
+         (display-info-method query stage-number x)
+         (catch #?(:clj Throwable :cljs js/Error) e
+           (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}"
+                                     (lib.dispatch/dispatch-value x)
+                                     (ex-message e))
+                           {:query query, :stage-number stage-number, :x x}
+                           e))))))))
 
 (defn default-display-info
   "Default implementation of [[display-info-method]], available in case you want to use this in a different
@@ -356,10 +367,12 @@
        {:is-from-previous-stage (= source :source/previous-stage)
         :is-from-join           (= source :source/joins)
         :is-calculated          (= source :source/expressions)
-        :is-implicitly-joinable (= source :source/implicitly-joinable)})
+        :is-implicitly-joinable (= source :source/implicitly-joinable)
+        :is-aggregation         (= source :source/aggregations)
+        :is-breakout            (= source :source/breakouts)})
      (when-some [selected (:selected? x-metadata)]
        {:selected selected})
-     (select-keys x-metadata [:breakout-position :order-by-position]))))
+     (select-keys x-metadata [:breakout-position :order-by-position :filter-positions]))))
 
 (defmethod display-info-method :default
   [query stage-number x]
@@ -373,7 +386,7 @@
 (def ColumnMetadataWithSource
   "Schema for the column metadata that should be returned by [[metadata]]."
   [:merge
-   lib.metadata/ColumnMetadata
+   [:ref ::lib.schema.metadata/column]
    [:map
     [:lib/source ::lib.schema.metadata/column-source]]])
 
@@ -520,7 +533,7 @@
    (let [options (merge (default-visible-columns-options) options)]
      (visible-columns-method query stage-number x options))))
 
-(mu/defn primary-keys :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
   "Returns a list of primary keys for the source table of this query."
   [query        :- ::lib.schema/query]
   (if-let [table-id (lib.util/source-table-id query)]

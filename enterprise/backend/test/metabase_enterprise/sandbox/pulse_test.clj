@@ -6,7 +6,9 @@
    [medley.core :as m]
    [metabase-enterprise.test :as met]
    [metabase.api.alert :as api.alert]
+   [metabase.email :as email]
    [metabase.email.messages :as messages]
+   [metabase.events.audit-log-test :as audit-log-test]
    [metabase.models
     :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.models.pulse :as pulse]
@@ -58,6 +60,85 @@
                                          :subject "Pulse: Test Pulse"}]}
                  (m/dissoc-in results ["rasta@metabase.com" 0 :body])))
           (get-in results ["rasta@metabase.com" 0 :body 0 :result]))))))
+
+(deftest bcc-enabled-pulse-test
+  (testing "When bcc is not enabled, return an email that uses to:"
+    (mt/with-temp [Card                  pulse-card {}
+                   Pulse                 pulse {:name "Test Pulse"}
+                   PulseCard             _ {:pulse_id (:id pulse), :card_id (:id pulse-card)}
+                   PulseChannel          pc {:channel_type :email
+                                             :pulse_id     (:id pulse)
+                                             :enabled      true}
+                   PulseChannelRecipient _ {:pulse_channel_id (:id pc)
+                                            :user_id          (mt/user->id :rasta)}]
+      (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
+        (mt/with-fake-inbox
+          (with-redefs [messages/render-pulse-email  (fn [_ _ _ [{:keys [result]}] _]
+                                                       [{:result result}])
+                        email/bcc-enabled? (constantly false)]
+            (mt/with-test-user nil
+              (metabase.pulse/send-pulse! pulse)))
+          (let [results @mt/inbox]
+            (is (= {"rasta@metabase.com" [{:from    "metamailman@metabase.com"
+                                           :to      ["rasta@metabase.com"]
+                                           :subject "Pulse: Test Pulse"}]}
+                   (m/dissoc-in results ["rasta@metabase.com" 0 :body])))
+            (get-in results ["rasta@metabase.com" 0 :body 0 :result])))))))
+
+(deftest pulse-send-event-test
+  (testing "When we send a pulse, we also log the event:"
+    (mt/with-model-cleanup [:model/AuditLog]
+      (t2.with-temp/with-temp [Card                  pulse-card {}
+                               Pulse                 pulse {:creator_id (mt/user->id :crowberto)
+                                                            :name "Test Pulse"}
+                               PulseCard             _ {:pulse_id (:id pulse)
+                                                        :card_id (:id pulse-card)}
+                               PulseChannel          pc {:channel_type :email
+                                                         :pulse_id     (:id pulse)
+                                                         :enabled      true}
+                               PulseChannelRecipient _ {:pulse_channel_id (:id pc)
+                                                        :user_id          (mt/user->id :rasta)}]
+        (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
+          (mt/with-fake-inbox
+            (with-redefs [messages/render-pulse-email  (fn [_ _ _ [{:keys [result]}] _]
+                                                         [{:result result}])]
+              (mt/with-test-user :lucky
+                (metabase.pulse/send-pulse! pulse)))
+            (is (= {:topic    :subscription-send
+                    :user_id  (mt/user->id :crowberto)
+                    :model    "Pulse"
+                    :model_id (:id pulse)
+                    :details  {:recipients [[(dissoc (mt/fetch-user :rasta) :last_login :is_qbnewb :is_superuser :date_joined)]]
+                               :filters    []}}
+                   (audit-log-test/latest-event :subscription-send (:id pulse))))))))))
+
+(deftest alert-send-event-test
+  (testing "When we send a pulse, we also log the event:"
+    (mt/with-model-cleanup [:model/AuditLog]
+      (t2.with-temp/with-temp [Card                  pulse-card {:dataset_query (mt/mbql-query venues)}
+                               Pulse                 pulse {:creator_id (mt/user->id :crowberto)
+                                                            :name "Test Pulse"
+                                                            :alert_condition "rows"}
+                               PulseCard             _ {:pulse_id (:id pulse)
+                                                        :card_id (:id pulse-card)}
+                               PulseChannel          pc {:channel_type :email
+                                                         :pulse_id     (:id pulse)
+                                                         :enabled      true}
+                               PulseChannelRecipient _ {:pulse_channel_id (:id pc)
+                                                        :user_id          (mt/user->id :rasta)}]
+        (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
+          (mt/with-fake-inbox
+            (with-redefs [messages/render-pulse-email  (fn [_ _ _ [{:keys [result]}] _]
+                                                         [{:result result}])]
+              (mt/with-test-user :lucky
+                (metabase.pulse/send-pulse! pulse)))
+            (is (= {:topic    :alert-send
+                    :user_id  (mt/user->id :crowberto)
+                    :model    "Pulse"
+                    :model_id (:id pulse)
+                    :details  {:recipients [[(dissoc (mt/fetch-user :rasta) :last_login :is_qbnewb :is_superuser :date_joined)]]
+                               :filters    []}}
+                   (audit-log-test/latest-event :alert-send (:id pulse))))))))))
 
 (deftest e2e-sandboxed-pulse-test
   (testing "Sending Pulses w/ sandboxing, end-to-end"

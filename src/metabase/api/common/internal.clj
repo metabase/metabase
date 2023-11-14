@@ -206,6 +206,7 @@
        :re (first (try (mc/children schema)
                        (catch clojure.lang.ExceptionInfo _
                          (mc/children #_:clj-kondo/ignore (eval schema)))))
+       :keyword #"[\S]+"
        'pos-int? #"[0-9]+"
        :int #"-?[0-9]+"
        'int? #"-?[0-9]+"
@@ -215,7 +216,9 @@
 
 (def ^:private no-regex-schemas #{(mc/type ms/NonBlankString)
                                   (mc/type (mc/schema [:maybe ms/PositiveInt]))
-                                  (mc/type [:enum "a" "b"])})
+                                  (mc/type [:enum "a" "b"])
+                                  :fn
+                                  :string})
 
 (defn add-route-param-schema
   "Expand a `route` string like \"/:id\" into a Compojure route form with regexes to match parameters based on
@@ -227,25 +230,25 @@
   (if (vector? route)
     route
     (let [[wildcard & wildcards]
-          (->> "metabase.api.common.internal/no-regex-schemas."
-               (str "Either add " (pr-str schema-type) " to "
-                    "metabase.api.common.internal/->matching-regex or ")
-               colorize/green
-               log/warn
-               (when (and config/is-dev? (not (contains? no-regex-schemas schema-type)))
-                 (log/warn (colorize/red (str "Warning: missing route-param regex for schema: "
-                                              route " " [k schema]))))
-               (if re
-                 [route (keyword k) re])
-               (for [[k schema] arg->schema
-                     :when (re-find (re-pattern (str ":" k)) route)
-                     :let [[schema-type re] (->matching-regex schema)]])
+          (->> (for [[k schema] arg->schema
+                     :when      (re-find (re-pattern (str ":" k)) route)
+                     :let       [[schema-type re] (->matching-regex schema)]]
+                 (if re
+                   [route (keyword k) re]
+                   (when (and config/is-dev? (not (contains? no-regex-schemas schema-type)))
+                     (let [overview (str "Warning: missing route-param regex for schema: "
+                                         route " " [k schema])
+                           fix      (str "Either add `" (pr-str schema-type) "` to "
+                                         "metabase.api.common.internal/->matching-regex or "
+                                         "metabase.api.common.internal/no-regex-schemas.")]
+                       (log/warn (colorize/red overview))
+                       (log/warn (colorize/green fix))))))
                (remove nil?))]
       (cond
         ;; multiple hits -> tack them onto the original route shape.
         wildcards (vec (reduce into wildcard (mapv #(drop 1 %) wildcards)))
-        wildcard wildcard
-        :else route))))
+        wildcard  wildcard
+        :else     route))))
 
 ;;; ## ROUTE ARG AUTO PARSING
 

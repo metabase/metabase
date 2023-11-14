@@ -47,6 +47,8 @@ The languages you can currently pick from are:
 - Ukrainian
 - Vietnamese
 
+> While Metabase can support languages that read right to left, the Metabase UI is designed around languages that read left to right.
+
 ## Translations
 
 Our community contributes to Metabase translations on our [POEditor project](https://poeditor.com/join/project/ynjQmwSsGh). If you'd like to help make Metabase available in a language you're fluent in, we'd love your help!

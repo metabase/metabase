@@ -23,9 +23,9 @@
    timestamp    ms/TemporalString
    time_matters [:maybe :boolean]
    timezone     :string
-   icon         [:maybe timeline/Icons]
+   icon         [:maybe timeline-event/Icon]
    timeline_id  ms/PositiveInt
-   source       [:maybe timeline-event/Sources]
+   source       [:maybe timeline-event/Source]
    question_id  [:maybe ms/PositiveInt]
    archived     [:maybe :boolean]}
   ;; deliberately not using api/check-404 so we can have a useful error message.
@@ -67,7 +67,7 @@
    timestamp    [:maybe ms/TemporalString]
    time_matters [:maybe :boolean]
    timezone     [:maybe :string]
-   icon         [:maybe timeline/Icons]
+   icon         [:maybe timeline-event/Icon]
    timeline_id  [:maybe ms/PositiveInt]
    archived     [:maybe :boolean]}
   (let [existing (api/write-check TimelineEvent id)

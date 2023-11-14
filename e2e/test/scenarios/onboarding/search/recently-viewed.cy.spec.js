@@ -7,14 +7,10 @@ import {
   setTokenFeatures,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
-
-const { PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("search > recently viewed", () => {
   beforeEach(() => {
@@ -44,24 +40,9 @@ describe("search > recently viewed", () => {
   });
 
   it("shows list of recently viewed items", () => {
-    assertRecentlyViewedItem(
-      0,
-      "Orders in a dashboard",
-      "Dashboard",
-      `/dashboard/${ORDERS_DASHBOARD_ID}-orders-in-a-dashboard`,
-    );
-    assertRecentlyViewedItem(
-      1,
-      "Orders",
-      "Question",
-      `/question/${ORDERS_QUESTION_ID}-orders`,
-    );
-    assertRecentlyViewedItem(
-      2,
-      "People",
-      "Table",
-      `/question#?db=${SAMPLE_DB_ID}&table=${PEOPLE_ID}`,
-    );
+    assertRecentlyViewedItem(0, "Orders in a dashboard", "Dashboard");
+    assertRecentlyViewedItem(1, "Orders", "Question");
+    assertRecentlyViewedItem(2, "People", "Table");
   });
 
   it("allows to select an item from keyboard", () => {
@@ -95,25 +76,15 @@ describeEE("search > recently viewed > enterprise features", () => {
   it("should show verified badge in the 'Recently viewed' list (metabase#18021)", () => {
     cy.findByPlaceholderText("Search…").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Recently viewed")
-      .parent()
-      .within(() => {
-        cy.findByText("Orders").closest("a").find(".Icon-verified");
-      });
+    cy.findByTestId("recently-viewed-item").within(() => {
+      cy.icon("verified_filled").should("be.visible");
+    });
   });
 });
 
-const assertRecentlyViewedItem = (index, title, type, link) => {
-  cy.findAllByTestId("recently-viewed-item")
-    .eq(index)
-    .parent()
-    .should("have.attr", "href", link);
-
+const assertRecentlyViewedItem = (index, title, type) => {
   cy.findAllByTestId("recently-viewed-item-title")
     .eq(index)
     .should("have.text", title);
-  cy.findAllByTestId("recently-viewed-item-type")
-    .eq(index)
-    .should("have.text", type);
+  cy.findAllByTestId("result-link-wrapper").eq(index).should("have.text", type);
 };

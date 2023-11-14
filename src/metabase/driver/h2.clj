@@ -2,7 +2,7 @@
   (:require
    [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.config :as config]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.db.spec :as mdb.spec]
@@ -573,7 +573,7 @@
 (defmethod driver/upload-type->database-type :h2
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar_255              [:varchar]
+    ::upload/varchar-255              [:varchar]
     ::upload/text                     [:varchar]
     ::upload/int                      [:bigint]
     ::upload/int-pk                   [:bigint :primary-key]
@@ -582,7 +582,8 @@
     ::upload/float                    [(keyword "DOUBLE PRECISION")]
     ::upload/boolean                  [:boolean]
     ::upload/date                     [:date]
-    ::upload/datetime                 [:timestamp]))
+    ::upload/datetime                 [:timestamp]
+    ::upload/offset-datetime          [:timestamp-with-time-zone]))
 
 (defmethod driver/table-name-length-limit :h2
   [_driver]

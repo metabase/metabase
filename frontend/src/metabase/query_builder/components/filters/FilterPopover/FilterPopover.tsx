@@ -165,10 +165,14 @@ export function FilterPopover({
   };
 
   if (editingFilter) {
+    const filterMBQL = filter?.raw();
+    const expression = isExpression(filterMBQL)
+      ? (filterMBQL as Expression)
+      : undefined;
     return (
       <ExpressionWidget
         query={query}
-        expression={filter?.raw() as Expression | undefined}
+        expression={expression}
         startRule="boolean"
         header={<ExpressionWidgetHeader onBack={handleExpressionWidgetClose} />}
         onChangeExpression={handleExpressionChange}

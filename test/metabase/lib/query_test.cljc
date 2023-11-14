@@ -1,7 +1,9 @@
 (ns metabase.lib.query-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing]]
+   [clojure.walk :as walk]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
@@ -23,7 +25,7 @@
     (is (= (str "Venues,"
                 " Sum of Price,"
                 " Grouped by Category ID,"
-                " Filtered by Name equals \"Toucannery\","
+                " Filtered by Name is Toucannery,"
                 " Sorted by ID ascending,"
                 " 100 rows")
            (lib/display-name query)
@@ -52,3 +54,39 @@
            (:stages (lib/with-different-table query (meta/id :orders)))))
     (is (= [{:lib/type :mbql.stage/mbql :source-card card-id}]
            (:stages (lib/with-different-table query (str "card__" card-id)))))))
+
+(deftest ^:parallel type-fill-in-converted-test
+  (is (=? {:stages [{:fields [[:field {:base-type :type/BigInteger
+                                       :effective-type :type/BigInteger}
+                               (meta/id :venues :id)]]
+                     :filters [[:= {} [:expression {:base-type :type/Integer :effective-type :type/Integer} "math"] 2]]}]}
+          (lib/query
+           meta/metadata-provider
+            (lib.convert/->pMBQL {:type :query
+                                  :database (meta/id)
+                                  :query {:source-table (meta/id :venues)
+                                          :expressions {"math" [:+ 1 1]}
+                                          :fields [[:field (meta/id :venues :id) nil]]
+                                          :filters [[:= [:expression "math"] 2]]}}))))
+  (testing "filling in works for nested join queries"
+    (let [clause (as-> (lib/expression lib.tu/venues-query "CC" (lib/+ 1 1)) $q
+                   (lib/join-clause $q [(lib/= (meta/field-metadata :venues :id)
+                                               (lib/expression-ref $q "CC"))]))
+          query (lib/join lib.tu/venues-query clause)
+          ;; Make a legacy query but don't put types in :field and :expression
+          converted-query (lib.convert/->pMBQL
+                            (walk/postwalk
+                              (fn [node]
+                                (if (map? node)
+                                  (dissoc node :base-type :effective-type)
+                                  node))
+                              (lib.convert/->legacy-MBQL query)))]
+      (is (=? {:stages [{:joins [{:conditions [[:= {}
+                                                [:field {:base-type :type/BigInteger} (meta/id :venues :id)]
+                                                [:expression
+                                                 {}
+                                                 ;; TODO Fill these in?
+                                                 #_{:base-type :type/Integer}
+                                                 "CC"]]]}]}]}
+
+              (lib/query meta/metadata-provider converted-query))))))

@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [honeysql.core :as hsql]
    [honeysql.format :as hformat]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
@@ -1077,3 +1077,8 @@
                1234.1234567890124
                1234.1234567890123456M]]
              (mt/rows (mt/process-query query)))))))
+
+(deftest ^:parallel test-bigquery-log
+  (testing "correct format of log10 for BigQuery"
+    (is (= ["log(150, 10)"]
+           (hsql/format-predicate (sql.qp/->honeysql :bigquery-cloud-sdk [:log 150]))))))

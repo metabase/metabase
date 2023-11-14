@@ -107,7 +107,7 @@
 (deftest update-test
   (testing "PUT /api/metric"
     (testing "test security. Requires superuser perms"
-      (t2.with-temp/with-temp [Metric metric]
+      (t2.with-temp/with-temp [Metric metric {:table_id (mt/id :checkins)}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request
                 :rasta :put 403 (str "metric/" (u/the-id metric))
@@ -161,7 +161,7 @@
 
 (deftest archive-test
   (testing "Can we archive a Metric with the PUT endpoint?"
-    (t2.with-temp/with-temp [Metric {:keys [id]}]
+    (t2.with-temp/with-temp [Metric {:keys [id]} {:table_id (mt/id :checkins)}]
       (is (some? (mt/user-http-request
                   :crowberto :put 200 (str "metric/" id)
                   {:archived true, :revision_message "Archive the Metric"})))
@@ -170,7 +170,8 @@
 
 (deftest unarchive-test
   (testing "Can we unarchive a Metric with the PUT endpoint?"
-    (t2.with-temp/with-temp [Metric {:keys [id]} {:archived true}]
+    (t2.with-temp/with-temp [Metric {:keys [id]} {:archived true
+                                                  :table_id (mt/id :venues)}]
       (is (some? (mt/user-http-request
                   :crowberto :put 200 (str "metric/" id)
                   {:archived false, :revision_message "Unarchive the Metric"})))
@@ -179,7 +180,7 @@
 (deftest delete-test
   (testing "DELETE /api/metric/:id"
     (testing "test security. Requires superuser perms"
-      (t2.with-temp/with-temp [Metric {:keys [id]}]
+      (t2.with-temp/with-temp [Metric {:keys [id]} {:table_id (mt/id :checkins)}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request
                 :rasta :delete 403 (str "metric/" id) :revision_message "yeeeehaw!")))))
@@ -292,7 +293,7 @@
 (deftest revert-metric-test
   (testing "POST /api/metric/:id/revert"
     (testing "test security. Requires superuser perms"
-      (t2.with-temp/with-temp [Metric {:keys [id]}]
+      (t2.with-temp/with-temp [Metric {:keys [id]} {:table_id (mt/id :checkins)}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request
                 :rasta :post 403 (format "metric/%d/revert" id)
@@ -406,7 +407,8 @@
                                                                                      [:segment segment-id]]}))
                                                 :table_id   (mt/id :venues)}
                              ;; inactive metrics shouldn't show up
-                             Metric {id-3 :id} {:archived true}]
+                             Metric {id-3 :id} {:archived true
+                                                :table_id (mt/id :venues)}]
       (is (=? [{:name                   "Metric A"
                 :id                     id-1
                 :creator                {}
@@ -414,13 +416,13 @@
                {:name                   "Metric B"
                 :id                     id-2
                 :creator                {}
-                :definition_description "Venues, Sum of Category → Name, Filtered by Price equals 4 and Segment"}]
+                :definition_description "Venues, Sum of Category → Name, Filtered by Price is equal to 4 and Segment"}]
               (filter (fn [{metric-id :id}]
                         (contains? #{id-1 id-2 id-3} metric-id))
                       (mt/user-http-request :rasta :get 200 "metric/")))))))
 
 (deftest metric-related-entities-test
   (testing "Test related/recommended entities"
-    (t2.with-temp/with-temp [Metric {metric-id :id}]
+    (t2.with-temp/with-temp [Metric {metric-id :id} {:table_id (mt/id :checkins)}]
       (is (= #{:table :metrics :segments}
              (-> (mt/user-http-request :crowberto :get 200 (format "metric/%s/related" metric-id)) keys set))))))

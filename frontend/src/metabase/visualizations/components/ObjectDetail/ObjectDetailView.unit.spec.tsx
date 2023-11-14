@@ -29,7 +29,7 @@ import {
   PEOPLE_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { ObjectDetailView } from "./ObjectDetailView";
 import type { ObjectDetailProps } from "./types";
 

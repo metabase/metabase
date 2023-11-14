@@ -64,6 +64,9 @@ function getPopperOptions({
   );
 }
 
+/**
+ * @deprecated prefer Popover from "metabase/ui" instead
+ */
 function TippyPopover({
   className,
   disableContentSandbox,

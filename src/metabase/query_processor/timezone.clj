@@ -1,7 +1,7 @@
 (ns metabase.query-processor.timezone
   "Functions for fetching the timezone for the current query."
   (:require
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]

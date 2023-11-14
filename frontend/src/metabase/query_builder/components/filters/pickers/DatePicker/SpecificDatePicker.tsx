@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import type { Moment } from "moment-timezone";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import { getDateStyleFromSettings } from "metabase/lib/time";
 import type { SelectAll } from "metabase/components/Calendar";

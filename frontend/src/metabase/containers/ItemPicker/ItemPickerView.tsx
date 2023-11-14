@@ -120,7 +120,7 @@ function ItemPickerView<TId>({
       <ItemPickerHeader data-testid="item-picker-header">
         <Breadcrumbs crumbs={crumbs} />
         {showSearch && (
-          <SearchToggle onClick={handleOpenSearch}>
+          <SearchToggle onClick={handleOpenSearch} aria-label={t`Search`}>
             <Icon name="search" />
           </SearchToggle>
         )}

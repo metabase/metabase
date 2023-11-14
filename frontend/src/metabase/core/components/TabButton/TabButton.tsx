@@ -133,6 +133,7 @@ const _TabButton = forwardRef(function TabButton<T>(
           {label}
         </TabButtonInputResizer>
         <TabButtonInput
+          maxLength={75}
           type="text"
           value={label}
           isSelected={isSelected}

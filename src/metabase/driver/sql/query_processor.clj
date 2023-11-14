@@ -158,7 +158,7 @@
 
 (defmulti ->integer
   "Cast to integer"
-  {:arglists '([driver honeysql-expr])}
+  {:changelog-test/ignore true :added "0.45.0" :arglists '([driver honeysql-expr])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -168,7 +168,7 @@
 
 (defmulti ->float
   "Cast to float."
-  {:arglists '([driver honeysql-expr])}
+  {:changelog-test/ignore true :added "0.45.0" :arglists '([driver honeysql-expr])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -194,7 +194,7 @@
 (defmulti ->honeysql
   "Return an appropriate HoneySQL form for an object. Dispatches off both driver and either clause name or object class
   making this easy to override in any places needed for a given driver."
-  {:arglists '([driver mbql-expr-or-object])}
+  {:added "0.37.0" :arglists '([driver mbql-expr-or-object])}
   (fn [driver x]
     [(driver/dispatch-on-initialized-driver driver) (mbql.u/dispatch-by-clause-name-or-class x)])
   :hierarchy #'driver/hierarchy)
@@ -221,7 +221,7 @@
 (defmulti current-datetime-honeysql-form
   "HoneySQL form that should be used to get the current `datetime` (or equivalent). Defaults to `:%now`. Should ideally
   include the database type info on the form (ex: via [[hx/with-type-info]])."
-  {:arglists '([driver])}
+  {:added "0.34.2" :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -235,7 +235,7 @@
   component.
 
   `honeysql-expr` is already compiled to Honey SQL, so DO NOT call [[->honeysql]] on it."
-  {:arglists '([driver unit honeysql-expr])}
+  {:added "0.32.0" :arglists '([driver unit honeysql-expr])}
   (fn [driver unit _] [(driver/dispatch-on-initialized-driver driver) unit])
   :hierarchy #'driver/hierarchy)
 
@@ -340,7 +340,7 @@
     (add-interval-honeysql-form :my-driver hsql-form 1 :day) -> (hx/call :date_add hsql-form 1 (hx/literal 'day'))
 
   `amount` is usually an integer, but can be floating-point for units like seconds."
-  {:arglists '([driver hsql-form amount unit])}
+  {:added "0.34.2" :arglists '([driver hsql-form amount unit])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -400,7 +400,7 @@
   method name is a bit of a misnomer!
 
   TODO -- we should update this method name to better reflect its usage in Honey SQL 2."
-  {:arglists '([driver])}
+  {:added "0.32.0" :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -457,7 +457,7 @@
   of `honeysql-form`. Most drivers can use the default implementations for all of these methods, but some may need to
   override one or more (e.g. SQL Server needs to override this method for the `:limit` clause, since T-SQL uses `TOP`
   instead of `LIMIT`)."
-  {:arglists '([driver top-level-clause honeysql-form query]), :style/indent 2}
+  {:added "0.32.0", :arglists '([driver top-level-clause honeysql-form query]), :style/indent 2}
   (fn [driver top-level-clause _ _]
     [(driver/dispatch-on-initialized-driver driver) top-level-clause])
   :hierarchy #'driver/hierarchy)
@@ -471,7 +471,7 @@
 
   Lots of SQL DB's have denormalized JSON fields and they all have some sort of special syntax for dealing with
   indexing into it. Implement the special syntax in this multimethod."
-  {:arglists '([driver identifier json-field]), :added "0.43.1"}
+  {:changelog-test/ignore true, :arglists '([driver identifier json-field]), :added "0.43.1"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -754,7 +754,25 @@
       (throw (ex-info "Summing intervals is not supported" {:args args})))
     (apply hx/call :+ (map (partial ->honeysql driver) args))))
 
-(defmethod ->honeysql [:sql :-] [driver [_ & args]] (apply hx/call :- (map (partial ->honeysql driver) args)))
+(defmethod ->honeysql [:sql :-]
+  [driver [_ & [first-arg & other-args :as args]]]
+  (cond (interval? first-arg)
+        (throw (ex-info (tru "Interval as first argrument to subtraction is not allowed.")
+                        {:type qp.error-type/invalid-query
+                         :args args}))
+        (and (some interval? other-args)
+             (not (every? interval? other-args)))
+        (throw (ex-info (tru "All but first argument to subtraction must be an interval.")
+                        {:type qp.error-type/invalid-query
+                         :args args})))
+  (if (interval? (first other-args))
+    (reduce (fn [hsql-form [_ amount unit]]
+              ;; We are adding negative amount. Inspired by `->honeysql [:sql :datetime-subtract]`.
+              (add-interval-honeysql-form driver hsql-form (- amount) unit))
+            (->honeysql driver first-arg)
+            other-args)
+    (apply hx/call :- (map (partial ->honeysql driver) args))))
+
 (defmethod ->honeysql [:sql :*] [driver [_ & args]] (apply hx/call :* (map (partial ->honeysql driver) args)))
 
 ;; for division we want to go ahead and convert any integer args to floats, because something like field / 2 will do
@@ -1211,13 +1229,13 @@
 
 (defmulti join->honeysql
   "Compile a single MBQL `join` to HoneySQL."
-  {:arglists '([driver join])}
+  {:added "0.32.9" :arglists '([driver join])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmulti join-source
   "Generate HoneySQL for a table or query to be joined."
-  {:arglists '([driver join])}
+  {:added "0.32.9" :arglists '([driver join])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -1506,7 +1524,7 @@
   "Do miscellaneous transformations to the MBQL before compiling the query. These changes are idempotent, so it is safe
   to use this function in your own implementations of [[driver/mbql->native]], if you want to apply changes to the
   same version of the query that we will ultimately be compiling."
-  {:arglists '([driver inner-query]), :added "0.42.0"}
+  {:changelog-test/ignore true, :arglists '([driver inner-query]), :added "0.42.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 

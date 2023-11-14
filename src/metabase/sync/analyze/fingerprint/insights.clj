@@ -1,7 +1,7 @@
 (ns metabase.sync.analyze.fingerprint.insights
   "Deeper statistical analysis of results."
   (:require
-   [java-time :as t]
+   [java-time.api :as t]
    [kixi.stats.core :as stats]
    [kixi.stats.math :as math]
    [kixi.stats.protocols :as p]

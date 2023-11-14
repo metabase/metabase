@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
 import type {
@@ -49,6 +49,11 @@ const ParameterSettings = ({
   onRemoveParameter,
 }: ParameterSettingsProps): JSX.Element => {
   const [tempLabelValue, setTempLabelValue] = useState(parameter.name);
+
+  useLayoutEffect(() => {
+    setTempLabelValue(parameter.name);
+  }, [parameter.name]);
+
   const labelError = getLabelError({
     labelValue: tempLabelValue,
     isParameterSlugUsed,

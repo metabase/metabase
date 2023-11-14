@@ -94,7 +94,7 @@ class Query {
    * NOTE: Ideally we'd also have `dimensions()` that returns a flat list, but currently StructuredQuery has it's own `dimensions()` for another purpose.
    */
   dimensionOptions(
-    filter: (dimension: Dimension) => boolean,
+    filter?: (dimension: Dimension) => boolean,
   ): DimensionOptions {
     return new DimensionOptions();
   }
@@ -102,7 +102,7 @@ class Query {
   /**
    * Variables exposed by this query
    */
-  variables(filter: (variable: Variable) => boolean): Variable[] {
+  variables(filter?: (variable: Variable) => boolean): Variable[] {
     return [];
   }
 

@@ -280,6 +280,7 @@ function QueryBuilder(props) {
       const createdQuestion = await apiCreateQuestion(
         newQuestion.setPinned(shouldBePinned),
       );
+      await setUIControls({ isModifiedFromNotebook: false });
 
       scheduleCallback(async () => {
         await updateUrl(createdQuestion, { dirty: false });
@@ -287,12 +288,19 @@ function QueryBuilder(props) {
         setRecentlySaved("created");
       });
     },
-    [apiCreateQuestion, setRecentlySaved, updateUrl, scheduleCallback],
+    [
+      apiCreateQuestion,
+      setRecentlySaved,
+      setUIControls,
+      updateUrl,
+      scheduleCallback,
+    ],
   );
 
   const handleSave = useCallback(
     async (updatedQuestion, { rerunQuery } = {}) => {
       await apiUpdateQuestion(updatedQuestion, { rerunQuery });
+      await setUIControls({ isModifiedFromNotebook: false });
 
       scheduleCallback(async () => {
         if (!rerunQuery) {
@@ -312,6 +320,7 @@ function QueryBuilder(props) {
       updateUrl,
       onChangeLocation,
       setRecentlySaved,
+      setUIControls,
       scheduleCallback,
     ],
   );

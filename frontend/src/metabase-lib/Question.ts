@@ -24,6 +24,7 @@ import { sortObject } from "metabase-lib/utils";
 
 import type {
   Card as CardObject,
+  Collection,
   CollectionId,
   DatabaseId,
   DatasetColumn,
@@ -775,13 +776,14 @@ class Question {
     const tableColumns = this.setting("table.columns");
     if (
       tableColumns &&
-      addedColumnNames.length > 0 &&
-      removedColumnNames.length === 0
+      (addedColumnNames.length > 0 || removedColumnNames.length > 0)
     ) {
       return this.updateSettings({
         "table.columns": [
           ...tableColumns.filter(
-            column => !addedColumnNames.includes(column.name),
+            column =>
+              !removedColumnNames.includes(column.name) &&
+              !addedColumnNames.includes(column.name),
           ),
           ...addedColumnNames.map(name => {
             const dimension = query.columnDimensionWithName(name);
@@ -910,6 +912,10 @@ class Question {
 
   collectionId(): number | null | undefined {
     return this._card && this._card.collection_id;
+  }
+
+  collectionType(): Pick<Collection, "type"> {
+    return this._card?.collection?.type;
   }
 
   setCollectionId(collectionId: number | null | undefined) {
@@ -1219,6 +1225,12 @@ class Question {
         metadata,
         this.datasetQuery(),
       );
+    }
+
+    // Helpers for working with the current query from CLJS REPLs.
+    if (process.env.NODE_ENV === "development") {
+      window.__MLv2_metadata = metadata;
+      window.__MLv2_query = this.__mlv2Query;
     }
 
     return this.__mlv2Query;

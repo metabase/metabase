@@ -218,7 +218,7 @@
                   ;; clear out the list of updated Field Names
                   (reset! updated-field-names #{})
                   ;; ok, now update the parameter mapping to the new field. The new Field should get new values
-                  (dashboard/update-dashcards! (t2/hydrate dash [:ordered_cards :series :card])
+                  (dashboard/update-dashcards! (t2/hydrate dash [:dashcards :series :card])
                     [(assoc dashcard :parameter_mappings (parameter-mappings-for-card-and-field card new-field))])))))))
 
     (testing "with newly added param referencing Field in non-On-Demand DB should *not* get updated FieldValues"
@@ -239,5 +239,5 @@
               {:db {:is_on_demand false}}
               (fn [{:keys [table card dash dashcard]}]
                 (t2.with-temp/with-temp [Field new-field {:table_id (u/the-id table), :has_field_values "list"}]
-                  (dashboard/update-dashcards! (t2/hydrate dash [:ordered_cards :series :card])
+                  (dashboard/update-dashcards! (t2/hydrate dash [:dashcards :series :card])
                     [(assoc dashcard :parameter_mappings (parameter-mappings-for-card-and-field card new-field))])))))))))

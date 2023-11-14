@@ -1,7 +1,7 @@
 (ns metabase.models.task-history
   (:require
    [cheshire.generate :refer [add-encoder encode-map]]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]

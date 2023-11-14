@@ -5,14 +5,13 @@ import { createThunkAction } from "metabase/lib/redux";
 
 import Dashboards from "metabase/entities/dashboards";
 
-import { DashboardApi, CardApi } from "metabase/services";
+import { CardApi } from "metabase/services";
 import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavior";
 
 import { getDashboardBeforeEditing } from "../selectors";
 
 import { fetchDashboard } from "./data-fetching";
 import { hasDashboardChanged, haveDashboardCardsChanged } from "./utils";
-import { saveCardsAndTabs } from "./tabs";
 
 export const UPDATE_DASHBOARD_AND_CARDS =
   "metabase/dashboard/UPDATE_DASHBOARD_AND_CARDS";
@@ -27,7 +26,7 @@ export const updateDashboardAndCards = createThunkAction(
       const { dashboards, dashcards, dashboardId } = state.dashboard;
       const dashboard = {
         ...dashboards[dashboardId],
-        ordered_cards: dashboards[dashboardId].ordered_cards.map(
+        dashcards: dashboards[dashboardId].dashcards.map(
           dashcardId => dashcards[dashcardId],
         ),
       };
@@ -41,8 +40,8 @@ export const updateDashboardAndCards = createThunkAction(
         );
 
         const cardsHaveChanged = haveDashboardCardsChanged(
-          dashboard.ordered_cards,
-          dashboardBeforeEditing.ordered_cards,
+          dashboard.dashcards,
+          dashboardBeforeEditing.dashcards,
         );
 
         if (!cardsHaveChanged && !dashboardHasChanged) {
@@ -55,10 +54,10 @@ export const updateDashboardAndCards = createThunkAction(
       // Invalid (partially complete) states are fine during editing,
       // but we should restore the previous value if saved while invalid.
       const clickBehaviorPath = ["visualization_settings", "click_behavior"];
-      dashboard.ordered_cards = dashboard.ordered_cards.map((card, index) => {
+      dashboard.dashcards = dashboard.dashcards.map((card, index) => {
         if (!clickBehaviorIsValid(getIn(card, clickBehaviorPath))) {
           const startingValue = getIn(dashboardBeforeEditing, [
-            "ordered_cards",
+            "dashcards",
             index,
             ...clickBehaviorPath,
           ]);
@@ -70,7 +69,7 @@ export const updateDashboardAndCards = createThunkAction(
       });
 
       // update parameter mappings
-      dashboard.ordered_cards = dashboard.ordered_cards.map(dc => ({
+      dashboard.dashcards = dashboard.dashcards.map(dc => ({
         ...dc,
         parameter_mappings: dc.parameter_mappings.filter(
           mapping =>
@@ -88,18 +87,14 @@ export const updateDashboardAndCards = createThunkAction(
 
       // update modified cards
       await Promise.all(
-        dashboard.ordered_cards
+        dashboard.dashcards
           .filter(dc => dc.card.isDirty)
           .map(async dc => CardApi.update(dc.card)),
       );
 
-      // update the dashboard cards and tabs
-      const dashcardsToUpdate = dashboard.ordered_cards.filter(
-        dc => !dc.isRemoved,
-      );
-      const updatedCardsAndTabs = await DashboardApi.updateCardsAndTabs({
-        dashId: dashboard.id,
-        cards: dashcardsToUpdate.map(dc => ({
+      const dashcardsToUpdate = dashboard.dashcards
+        .filter(dc => !dc.isRemoved)
+        .map(dc => ({
           id: dc.id,
           card_id: dc.card_id,
           dashboard_tab_id: dc.dashboard_tab_id,
@@ -111,17 +106,20 @@ export const updateDashboardAndCards = createThunkAction(
           series: dc.series,
           visualization_settings: dc.visualization_settings,
           parameter_mappings: dc.parameter_mappings,
-        })),
-        ordered_tabs: (dashboard.ordered_tabs ?? [])
-          .filter(tab => !tab.isRemoved)
-          .map(({ id, name }) => ({
-            id,
-            name,
-          })),
-      });
-      dispatch(saveCardsAndTabs(updatedCardsAndTabs));
-
-      await dispatch(Dashboards.actions.update(dashboard));
+        }));
+      const tabsToUpdate = (dashboard.tabs ?? [])
+        .filter(tab => !tab.isRemoved)
+        .map(({ id, name }) => ({
+          id,
+          name,
+        }));
+      await dispatch(
+        Dashboards.actions.update({
+          ...dashboard,
+          dashcards: dashcardsToUpdate,
+          tabs: tabsToUpdate,
+        }),
+      );
 
       // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
       dispatch(

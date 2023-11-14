@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase.models.permissions :as perms]
    [metabase.util.cron :as u.cron]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]))
@@ -15,6 +16,7 @@
 ;; JOIN report_card card     ON qe.card_id = card.id
 ;; JOIN metabase_table t     ON card.table_id = t.id
 ;; JOIN metabase_database db ON t.db_id = db.id
+;; WHERE db.id != audit-db-id
 ;; GROUP BY db.id
 ;; ORDER BY lower(db.name) ASC
 ;;
@@ -35,6 +37,7 @@
                :join     [[:report_card :card]     [:= :qe.card_id :card.id]
                           [:metabase_table :t]     [:= :card.table_id :t.id]
                           [:metabase_database :db] [:= :t.db_id :db.id]]
+               :where    [:not= :db.id perms/audit-db-id]
                :group-by [:db.id]
                :order-by [[[:lower :db.name] :asc]]})})
 
@@ -53,7 +56,8 @@
                                  :left-join [[:report_card :card] [:= :qe.card_id :card.id]]
                                  :where     [:and
                                              [:not= :qe.card_id nil]
-                                             [:not= :card.database_id nil]]
+                                             [:not= :card.database_id nil]
+                                             [:not= :card.database_id perms/audit-db-id]]
                                  :group-by  [(common/grouped-datetime datetime-unit :qe.started_at) :card.database_id]
                                  :order-by  [[(common/grouped-datetime datetime-unit :qe.started_at) :asc]
                                              [:card.database_id :asc]]}]]
@@ -103,6 +107,7 @@
                              [:db.cache_ttl :cache_ttl]]
                  :from      [[:metabase_database :db]]
                  :left-join [:counts [:= :db.id :counts.id]]
+                 :where     [:not= :db.id perms/audit-db-id]
                  :order-by  [[[:lower :db.name] :asc]
                              [:database_id :asc]]}
                 (common/add-search-clause query-string :db.name)))

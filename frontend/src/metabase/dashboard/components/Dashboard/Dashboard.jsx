@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import { getMainElement } from "metabase/lib/dom";
 
-import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
+import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
@@ -196,7 +196,7 @@ class Dashboard extends Component {
         addCardToDashboard({
           dashId: dashboardId,
           cardId: addCardOnLoad,
-          tabId: this.props.dashboard.ordered_tabs[0]?.id ?? null,
+          tabId: this.props.dashboard.tabs[0]?.id ?? null,
         });
       }
     } catch (error) {
@@ -240,10 +240,10 @@ class Dashboard extends Component {
 
     const canWrite = dashboard?.can_write ?? false;
 
-    const dashboardHasCards = dashboard?.ordered_cards.length > 0 ?? false;
+    const dashboardHasCards = dashboard?.dashcards.length > 0 ?? false;
 
     const tabHasCards =
-      dashboard?.ordered_cards.filter(
+      dashboard?.dashcards.filter(
         c =>
           selectedTabId !== undefined && c.dashboard_tab_id === selectedTabId,
       ).length > 0 ?? false;

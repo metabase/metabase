@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import React from "react";
+import { useState } from "react";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import { createMockUiParameter } from "metabase-lib/parameters/mock";
@@ -7,36 +7,68 @@ import ParameterSidebar from "./ParameterSidebar";
 
 interface SetupOpts {
   initialParameter: UiParameter;
+  nextParameter?: UiParameter;
   otherParameters: UiParameter[];
 }
 
-const setup = ({ initialParameter, otherParameters }: SetupOpts) => {
-  const TestWrapper = () => {
-    const [parameter, setParameter] = React.useState(initialParameter);
+const setup = ({
+  initialParameter,
+  nextParameter,
+  otherParameters,
+}: SetupOpts): {
+  clickNextParameterButton: () => void;
+} => {
+  const NEXT_PARAMETER_BUTTON_ID = "parameter-sidebar-test-change";
 
-    const onChangeName = (newName: string) => {
-      setParameter(prevParameter => ({ ...prevParameter, name: newName }));
+  const TestWrapper = ({
+    initialParameter,
+    nextParameter,
+    otherParameters,
+  }: SetupOpts) => {
+    const [parameter, setParameter] = useState(initialParameter);
+
+    const onChangeName = (_parameterId: string, name: string) => {
+      setParameter({ ...initialParameter, name });
     };
 
     return (
-      <ParameterSidebar
-        parameter={parameter}
-        otherParameters={otherParameters}
-        onChangeName={onChangeName}
-        onChangeDefaultValue={jest.fn()}
-        onChangeIsMultiSelect={jest.fn()}
-        onChangeQueryType={jest.fn()}
-        onChangeSourceType={jest.fn()}
-        onChangeSourceConfig={jest.fn()}
-        onChangeFilteringParameters={jest.fn()}
-        onRemoveParameter={jest.fn()}
-        onShowAddParameterPopover={jest.fn()}
-        onClose={jest.fn()}
-      />
+      <div>
+        <button
+          data-testid={NEXT_PARAMETER_BUTTON_ID}
+          onClick={() => nextParameter && setParameter(nextParameter)}
+        >
+          Next Parameter Button
+        </button>
+        <ParameterSidebar
+          parameter={parameter}
+          otherParameters={otherParameters}
+          onChangeName={onChangeName}
+          onChangeDefaultValue={jest.fn()}
+          onChangeIsMultiSelect={jest.fn()}
+          onChangeQueryType={jest.fn()}
+          onChangeSourceType={jest.fn()}
+          onChangeSourceConfig={jest.fn()}
+          onChangeFilteringParameters={jest.fn()}
+          onRemoveParameter={jest.fn()}
+          onShowAddParameterPopover={jest.fn()}
+          onClose={jest.fn()}
+        />
+      </div>
     );
   };
 
-  renderWithProviders(<TestWrapper />);
+  renderWithProviders(
+    <TestWrapper
+      initialParameter={initialParameter}
+      nextParameter={nextParameter}
+      otherParameters={otherParameters}
+    />,
+  );
+
+  return {
+    clickNextParameterButton: () =>
+      userEvent.click(screen.getByTestId(NEXT_PARAMETER_BUTTON_ID)),
+  };
 };
 
 function fillValue(input: HTMLElement, value: string) {
@@ -76,6 +108,29 @@ describe("ParameterSidebar", () => {
     // sanity check with another value
     fillValue(labelInput, "Bar");
     labelInput.blur();
+    expect(labelInput).toHaveValue("Bar");
+  });
+
+  it("if the parameter updates, the label should update (metabase#34611)", () => {
+    const initialParameter = createMockUiParameter({
+      id: "id1",
+      name: "Foo",
+      slug: "foo",
+    });
+    const nextParameter = createMockUiParameter({
+      id: "id1",
+      name: "Bar",
+      slug: "Bar",
+    });
+    const { clickNextParameterButton } = setup({
+      initialParameter,
+      nextParameter,
+      otherParameters: [],
+    });
+
+    const labelInput = screen.getByLabelText("Label");
+    expect(labelInput).toHaveValue("Foo");
+    clickNextParameterButton();
     expect(labelInput).toHaveValue("Bar");
   });
 });

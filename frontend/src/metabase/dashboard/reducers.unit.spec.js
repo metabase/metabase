@@ -193,7 +193,7 @@ describe("dashboard reducers", () => {
   describe("SET_DASHBOARD_ATTRIBUTES", () => {
     const emptyDashboard = {
       archived: false,
-      ordered_cards: [],
+      dashcards: [],
       can_write: true,
       enable_embedding: false,
       show_in_getting_started: false,

@@ -49,12 +49,13 @@ const LegacyChoropleth = ({
                 onMouseLeave={() => onHoverFeature(null)}
                 className={cx({ "cursor-pointer": !!onClickFeature })}
                 onClick={
-                  onClickFeature &&
-                  (e =>
-                    onClickFeature({
-                      feature: feature,
-                      event: e.nativeEvent,
-                    }))
+                  onClickFeature
+                    ? e =>
+                        onClickFeature({
+                          feature: feature,
+                          event: e.nativeEvent,
+                        })
+                    : undefined
                 }
               />
             ))}

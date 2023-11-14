@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
@@ -121,11 +120,11 @@
      (get-in query [:native :template-tags]))))
 
 (defn- allowed-parameter-type-for-template-tag-widget-type? [parameter-type widget-type]
-  (when-let [allowed-template-tag-types (get-in lib.schema.parameter/types [parameter-type :allowed-for])]
+  (when-let [allowed-template-tag-types (get-in mbql.s/parameter-types [parameter-type :allowed-for])]
     (contains? allowed-template-tag-types widget-type)))
 
 (defn- allowed-parameter-types-for-template-tag-widget-type [widget-type]
-  (into #{} (for [[parameter-type {:keys [allowed-for]}] lib.schema.parameter/types
+  (into #{} (for [[parameter-type {:keys [allowed-for]}] mbql.s/parameter-types
                   :when                                  (contains? allowed-for widget-type)]
               parameter-type)))
 
@@ -141,7 +140,7 @@
   See [[metabase.mbql.schema/parameter-types]] for details."
   [parameter-name
    widget-type          :- ::lib.schema.template-tag/widget-type
-   parameter-value-type :- ::lib.schema.parameter/type]
+   parameter-value-type :- ::mbql.s/ParameterType]
   (when-not (allowed-parameter-type-for-template-tag-widget-type? parameter-value-type widget-type)
     (let [allowed-types (allowed-parameter-types-for-template-tag-widget-type widget-type)]
       (throw (ex-info (tru "Invalid parameter type {0} for parameter {1}. Parameter type must be one of: {2}"
@@ -201,21 +200,22 @@
                   ;; param `run` can be used to control how the query is ran, e.g. if you need to
                   ;; customize the `context` passed to the QP
                   (^:once fn* [query info]
-                   (qp.streaming/streaming-response [context export-format (u/slugify (:card-name info))]
-                                                    (qp-runner query info context))))
-        card  (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id
-                                              :cache_ttl :collection_id :dataset :result_metadata]
+                   (qp.streaming/streaming-response [{:keys [rff context]} export-format (u/slugify (:card-name info))]
+                     (qp-runner query info rff context))))
+        card  (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :cache_ttl :collection_id
+                                              :dataset :result_metadata :visualization_settings]
                                              :id card-id))
         query (-> (assoc (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id}) :async? true)
                   (update :middleware (fn [middleware]
                                         (merge
                                          {:js-int-to-string? true :ignore-cached-results? ignore_cache}
                                          middleware))))
-        info  (cond-> {:executed-by  api/*current-user-id*
-                       :context      context
-                       :card-id      card-id
-                       :card-name    (:name card)
-                       :dashboard-id dashboard-id}
+        info  (cond-> {:executed-by            api/*current-user-id*
+                       :context                context
+                       :card-id                card-id
+                       :card-name              (:name card)
+                       :dashboard-id           dashboard-id
+                       :visualization-settings (:visualization_settings card)}
                 (and (:dataset card) (seq (:result_metadata card)))
                 (assoc :metadata/dataset-metadata (:result_metadata card)))]
     (api/check-not-archived card)
@@ -224,4 +224,4 @@
     (log/tracef "Running query for Card %d:\n%s" card-id
                 (u/pprint-to-str query))
     (binding [qp.perms/*card-id* card-id]
-     (run query info))))
+      (run query info))))

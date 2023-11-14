@@ -318,7 +318,7 @@
                          (set (ingest/ingest-list (ingest/ingest-yaml dump-dir)))))))
 
               (testing "doing ingestion"
-                (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
+                (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                     "successful"))
 
               (testing "for Actions"
@@ -494,7 +494,7 @@
              (ts/with-dest-db
                ;; ingest
                (testing "doing ingestion"
-                 (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
+                 (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                      "successful"))
 
                (let [dash1d (t2/select-one Dashboard :name (:name dash1s))
@@ -528,7 +528,7 @@
                                        :link         {:entity {:id    id
                                                                :model model}}})
               dashboard->link-cards (fn [dashboard]
-                                      (map #(get-in % [:visualization_settings :link :entity]) (:ordered_cards dashboard)))]
+                                      (map #(get-in % [:visualization_settings :link :entity]) (:dashcards dashboard)))]
           (t2.with-temp/with-temp
             [Collection    {coll-id   :id
                             coll-name :name
@@ -602,7 +602,7 @@
               ;; ingest
               (ts/with-dest-db
                 (testing "doing ingestion"
-                  (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
+                  (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                       "successful"))
 
                 (doseq [[name model]
@@ -628,7 +628,7 @@
                             {:id new-card-id  :model "card"}
                             {:id new-model-id :model "dataset"}]
                            (-> (t2/select-one Dashboard :name dashboard-name)
-                               (t2/hydrate :ordered_cards)
+                               (t2/hydrate :dashcards)
                                dashboard->link-cards)))))))))))))
 
 (deftest dashboard-with-tabs-test
@@ -667,10 +667,10 @@
              (ts/with-dest-db
                ;; ingest
                (testing "doing ingestion"
-                 (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
+                 (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                      "successful"))
                (let [new-dashboard (-> (t2/select-one Dashboard :entity_id dashboard-eid)
-                                       (t2/hydrate :ordered_tabs :ordered_cards))
+                                       (t2/hydrate :tabs :dashcards))
                      new-tab-id-1  (t2/select-one-pk :model/DashboardTab :entity_id tab-eid-1)
                      new-tab-id-2  (t2/select-one-pk :model/DashboardTab :entity_id tab-eid-2)
                      new-card-id-1 (t2/select-one-pk Card :entity_id card-eid-1)
@@ -684,7 +684,7 @@
                            :dashboard_id (:id new-dashboard)
                            :name         "Tab 2"
                            :position     1}]
-                         (:ordered_tabs new-dashboard)))
+                         (:tabs new-dashboard)))
                  (is (=? [{:card_id          new-card-id-1
                            :dashboard_id     (:id new-dashboard)
                            :dashboard_tab_id new-tab-id-1}
@@ -697,7 +697,7 @@
                           {:card_id          new-card-id-2
                            :dashboard_id     (:id new-dashboard)
                            :dashboard_tab_id new-tab-id-2}]
-                         (:ordered_cards new-dashboard))))))))))))
+                         (:dashcards new-dashboard))))))))))))
 
 (deftest premium-features-test
   (testing "with :serialization enabled on the token"
@@ -708,13 +708,13 @@
             ;; preparation
             (t2.with-temp/with-temp [Dashboard _ {:name "some dashboard"}]
               (testing "export (v2-dump) command"
-                (is (cmd/v2-dump dump-dir {})
+                (is (cmd/v2-dump! dump-dir {})
                     "works"))
 
               (testing "import (v2-load) command"
                 (ts/with-dest-db
                   (testing "doing ingestion"
-                    (is (cmd/v2-load dump-dir {})
+                    (is (cmd/v2-load! dump-dir {})
                         "works"))))))))))
 
   (testing "without :serialization feature enabled"
@@ -726,12 +726,12 @@
             (t2.with-temp/with-temp [Dashboard _ {:name "some dashboard"}]
               (testing "export (v2-dump) command"
                 (is (thrown-with-msg? Exception #"Please upgrade"
-                                      (cmd/v2-dump dump-dir {}))
+                                      (cmd/v2-dump! dump-dir {}))
                     "throws"))
 
               (testing "import (v2-load) command"
                 (ts/with-dest-db
                   (testing "doing ingestion"
                     (is (thrown-with-msg? Exception #"Please upgrade"
-                                          (cmd/v2-load dump-dir {}))
+                                          (cmd/v2-load! dump-dir {}))
                         "throws")))))))))))

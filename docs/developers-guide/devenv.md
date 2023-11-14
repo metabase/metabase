@@ -13,7 +13,13 @@ Both components are built and assembled together into a single JAR file. In the 
 
 ## Quick start
 
-To spin up a development environment, you'll need to start two terminal sessions: one for the [frontend](#frontend) and one for the [backend](#backend).
+To spin up a development environment, run:
+
+```
+yarn dev
+```
+
+This runs both the [frontend](#frontend) and [backend](#backend).  Alternatively, you can run them separately in two terminal sessions below.
 
 ### Frontend
 

@@ -123,12 +123,13 @@ export type LoadingMessage =
   | "running-query"
   | "loading-results";
 
-export type TokenStatusStatus = "unpaid" | "past-due" | string;
+export type TokenStatusStatus = "unpaid" | "past-due" | "invalid" | string;
 
 export interface TokenStatus {
   status?: TokenStatusStatus;
   valid: boolean;
   "valid-thru"?: string;
+  "error-details"?: string;
   trial: boolean;
 }
 
@@ -171,6 +172,8 @@ export type PasswordComplexity = {
   digit?: number;
 };
 
+export type SessionCookieSameSite = "lax" | "strict" | "none";
+
 export interface SettingDefinition {
   key: string;
   env_name?: string;
@@ -193,6 +196,7 @@ export interface Settings {
   "application-name": string;
   "available-fonts": string[];
   "available-locales": LocaleData[] | null;
+  "bcc-enabled?": boolean;
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
   "custom-homepage": boolean;
@@ -200,6 +204,7 @@ export interface Settings {
   "deprecation-notice-version"?: string;
   "dismissed-custom-dashboard-toast"?: boolean;
   "email-configured?": boolean;
+  "embedding-app-origin": string;
   "embedding-secret-key"?: string;
   "enable-embedding": boolean;
   "enable-enhancements?": boolean;
@@ -241,6 +246,7 @@ export interface Settings {
   "search-typeahead-enabled": boolean;
   "setup-token": string | null;
   "session-cookies": boolean | null;
+  "session-cookie-samesite": SessionCookieSameSite;
   "snowplow-enabled": boolean;
   "snowplow-url": string;
   "show-database-syncing-modal": boolean;

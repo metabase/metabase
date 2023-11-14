@@ -3,7 +3,7 @@ import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import Tooltip from "metabase/core/components/Tooltip";
 
-import { DashboardHeaderButton } from "metabase/dashboard/containers/DashboardHeader.styled";
+import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import DashboardSharingEmbeddingModal from "../containers/DashboardSharingEmbeddingModal.jsx";
 import {
   FullScreenButtonIcon,
@@ -39,12 +39,12 @@ export const getDashboardActions = (
   const buttons = [];
 
   const isLoaded = !!dashboard;
-  const hasCards = isLoaded && dashboard.ordered_cards.length > 0;
+  const hasCards = isLoaded && dashboard.dashcards.length > 0;
 
   // dashcardData only contains question cards, text ones don't appear here
   const hasDataCards =
     hasCards &&
-    dashboard.ordered_cards.some(
+    dashboard.dashcards.some(
       dashCard => !["text", "heading"].includes(dashCard.card.display),
     );
 

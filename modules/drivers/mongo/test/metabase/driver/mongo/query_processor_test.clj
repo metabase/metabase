@@ -1,8 +1,9 @@
 (ns metabase.driver.mongo.query-processor-test
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.models :refer [Field Table]]
@@ -12,7 +13,6 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel query->collection-name-test
@@ -106,7 +106,7 @@
                        :filter      [:time-interval $datetime :last :month]}))))
 
             (testing "should still work even with bucketing bucketing"
-              (let [tz (qp.timezone/results-timezone-id :mongo mt/db)
+              (let [tz    (qp.timezone/results-timezone-id :mongo mt/db)
                     query (mt/with-metadata-provider (mt/id)
                             (qp/compile
                              (mt/mbql-query attempts
@@ -120,39 +120,38 @@
                                         [{"$expr" {"$gte" ["$datetime" {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}
                                          {"$expr" {"$lt" ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
                                       {"$group" {"_id"   (if (date-arithmetic-supported?)
-                                                           {"datetime" {:$dateTrunc {:date "$datetime"
-                                                                                     :startOfWeek "sunday"
-                                                                                     :timezone tz
-                                                                                     :unit "month"}}
-                                                            "datetime_2" {:$dateTrunc {:date "$datetime"
+                                                           {"datetime"   {:$dateTrunc {:date        "$datetime"
                                                                                        :startOfWeek "sunday"
-                                                                                       :timezone tz
-                                                                                       :unit "day"}}}
-                                                           {"datetime" {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
-                                                                                                             :timezone tz}}}
-                                                                               :in   {:$dateFromParts {:year  "$$parts.year"
-                                                                                                       :month "$$parts.month"
-                                                                                                       :timezone tz}}}}
-                                                            "datetime_2"   {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
-                                                                                                                 :timezone tz}}}
-                                                                                   :in   {:$dateFromParts {:year  "$$parts.year"
-                                                                                                           :month "$$parts.month"
-                                                                                                           :day   "$$parts.day"
-                                                                                                           :timezone tz}}}}})
+                                                                                       :timezone    tz
+                                                                                       :unit        "month"}}
+                                                            "datetime_2" {:$dateTrunc {:date        "$datetime"
+                                                                                       :startOfWeek "sunday"
+                                                                                       :timezone    tz
+                                                                                       :unit        "day"}}}
+                                                           {"datetime"   {:$let {:vars {:parts {:$dateToParts {:date     "$datetime"
+                                                                                                               :timezone tz}}}
+                                                                                 :in   {:$dateFromParts {:year     "$$parts.year"
+                                                                                                         :month    "$$parts.month"
+                                                                                                         :timezone tz}}}}
+                                                            "datetime_2" {:$let {:vars {:parts {:$dateToParts {:date     "$datetime"
+                                                                                                               :timezone tz}}}
+                                                                                 :in   {:$dateFromParts {:year     "$$parts.year"
+                                                                                                         :month    "$$parts.month"
+                                                                                                         :day      "$$parts.day"
+                                                                                                         :timezone tz}}}}})
                                                  "count" {"$sum" 1}}}
                                       {"$sort" {"_id" 1}}
-                                      {"$project" {"_id"              false
-                                                   "datetime" "$_id.datetime"
-                                                   "datetime_2"   "$_id.datetime_2"
-                                                   "count"            true}}
+                                      {"$project" {"_id"        false
+                                                   "datetime"   "$_id.datetime"
+                                                   "datetime_2" "$_id.datetime_2"
+                                                   "count"      true}}
                                       {"$sort" {"datetime" 1}}]
                         :collection  "attempts"
                         :mbql?       true}
                        query))
                 (testing "Make sure we can actually run the query"
-                  (is (schema= {:status   (s/eq :completed)
-                                s/Keyword s/Any}
-                               (qp/process-query (mt/native-query query)))))))))))))
+                  (is (=? {:status :completed}
+                          (qp/process-query (mt/native-query query)))))))))))))
 
 (deftest ^:parallel field-filter-relative-time-native-test
   (mt/test-driver :mongo
@@ -249,7 +248,16 @@
               ;; the "source", "url", and "venue" fields should NOT have been chosen as projections, since they have
               ;; at least one child field selected as a projection, which is not allowed as of MongoDB 4.4
               ;; see docstring on mongo.qp/remove-parent-fields for full details
-              (is (empty? (set/intersection projections #{"source" "url" "venue"}))))))))))
+              (is (empty? (set/intersection projections #{"source" "url" "venue"})))))
+          (testing "Nested fields in join condition aliases are transformed to use `_` instead of a `.` (#32182)"
+            (let [query (mt/mbql-query tips
+                          {:joins [{:alias "Tips"
+                                    :source-table $$tips
+                                    :condition [:= $tips.source.categories &Tips.$tips.source.categories]}]})
+                  compiled (mongo.qp/mbql->native query)
+                  let-lhs (-> compiled (get-in [:query 0 "$lookup" :let]) keys first)]
+                 (is (and (not (str/includes? let-lhs "."))
+                          (str/includes? let-lhs "source_categories"))))))))))
 
 (deftest ^:parallel multiple-distinct-count-test
   (mt/test-driver :mongo

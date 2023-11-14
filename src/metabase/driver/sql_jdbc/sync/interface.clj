@@ -12,7 +12,8 @@
   functions for more details on the differences.
 
   `metabase` is an instance of `DatabaseMetaData`."
-  {:arglists '([driver
+  {:added "0.37.1"
+   :arglists '([driver
                 ^java.sql.Connection connection
                 ^String schema-inclusion-filters
                 ^String schema-exclusion-filters])}
@@ -21,7 +22,7 @@
 
 (defmulti excluded-schemas
   "Return set of string names of schemas to skip syncing tables from."
-  {:arglists '([driver])}
+  {:added "0.37.1" :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -29,7 +30,7 @@
   "Check if we have SELECT privileges for given `table`.
 
   Default impl is in [[metabase.driver.sql-jdbc.sync.describe-database]]."
-  {:arglists '([driver ^java.sql.Connection connection ^String table-schema ^String table-name])}
+  {:added "0.37.1" :arglists '([driver ^java.sql.Connection connection ^String table-schema ^String table-name])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -39,11 +40,13 @@
   a sequence of all schema names from the JDBC database metadata and filter out any schemas in `excluded-schemas`, along
   with any that shouldn't be included based on the given inclusion and exclusion patterns (see the
   `metabase.driver.sync` namespace for full explanation)."
-  {:added "0.43.0", :arglists '([driver
-                                 ^java.sql.Connection connection
-                                 ^java.sql.DatabaseMetaData metadata
-                                 ^String schema-inclusion-patterns
-                                 ^String schema-exclusion-patterns])}
+  {:changelog-test/ignore true
+   :added "0.43.0"
+   :arglists '([driver
+                ^java.sql.Connection connection
+                ^java.sql.DatabaseMetaData metadata
+                ^String schema-inclusion-patterns
+                ^String schema-exclusion-patterns])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -51,7 +54,7 @@
   "Given a native DB column type (as a keyword), return the corresponding `Field` `base-type`, which should derive from
   `:type/*`. You can use `pattern-based-database-type->base-type` in this namespace to implement this using regex
   patterns."
-  {:arglists '([driver database-type])}
+  {:added "0.37.1" :arglists '([driver database-type])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -60,7 +63,7 @@
   driver can mark Postgres JSON type columns as `:type/SerializedJSON` semantic type.
 
   `database-type` and `column-name` will be strings."
-  {:arglists '([driver database-type column-name])}
+  {:added "0.37.1" :arglists '([driver database-type column-name])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -71,7 +74,7 @@
 
     (fallback-metadata-query :postgres \"public\" \"my_table\")
     ;; -> [\"SELECT * FROM public.my_table WHERE 1 <> 1 LIMIT 0\"]"
-  {:arglists '([driver schema table])}
+  {:added "0.37.1" :arglists '([driver schema table])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -86,7 +89,7 @@
   DEPRECATED: you can implement [[metabase.driver/db-default-timezone]] directly;
   use [[metabase.driver.sql-jdbc.execute/do-with-connection-with-options]] to get a `java.sql.Connection` for a
   Database."
-  {:arglists '([driver jdbc-spec]), :deprecated "0.48.0"}
+  {:added "0.38.0", :arglists '([driver jdbc-spec]), :deprecated "0.48.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 

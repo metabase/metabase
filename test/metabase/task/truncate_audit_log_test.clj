@@ -1,7 +1,7 @@
 (ns metabase.task.truncate-audit-log-test
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.models.query-execution :refer [QueryExecution]]
    [metabase.models.setting :as setting]
    [metabase.public-settings.premium-features :as premium-features]

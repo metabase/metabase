@@ -1,10 +1,16 @@
 (ns metabase.driver.impl-test
   (:require
    [clojure.core.async :as a]
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
-   [metabase.test.util.async :as tu.async]))
+   [metabase.test.util.async :as tu.async]
+   [metabase.util :as u])
+  (:import
+   (com.vladsch.flexmark.ast Heading)
+   (com.vladsch.flexmark.parser Parser)
+   (com.vladsch.flexmark.util.ast Document Node)))
 
 (set! *warn-on-reflection* true)
 
@@ -36,3 +42,66 @@
                  (driver/the-initialized-driver ::race-condition-test)))
           (is (= true
                  @finished-loading)))))))
+
+;;;; [[driver-multimethods-in-changelog-test]]
+
+(defn- parse-drivers-changelog
+  "Create a mapping of version to appropriate changelog file section.
+  All level 2 headings containing version and sections following are collected. This approach could handle changes from
+  version 0.42.0 onwards, as prior to this version, this information was stored at github wiki. Output has a following
+  shape {\"0.47.0\" \"...insert-into!...\" ...}."
+  []
+  (let [changelog     (slurp (io/file "docs/developers-guide/driver-changelog.md"))
+        parser        (.build (Parser/builder))
+        document      (.parse ^Parser parser ^String changelog)]
+    (loop [[child & children] (.getChildren ^Document document)
+           version->text      {}
+           last-version       nil]
+      (cond (nil? child)
+            version->text
+
+            (and (instance? Heading child)
+                 (= 2 (.getLevel ^Heading child)))
+            (let [heading-str      (str (.getChars ^Node child))
+                  new-last-version (re-find #"(?<=## Metabase )\d+\.\d+\.\d+" heading-str)]
+              (if (some? new-last-version)
+                (recur children version->text new-last-version)
+                (recur children version->text nil)))
+
+            (some? last-version)
+            (recur children
+                   (update version->text last-version str (.getChars ^Node child))
+                   last-version)
+
+            :else
+            (recur children version->text last-version)))))
+
+(defn- collect-metadatas
+  "List metadata for all defmultis of driver namespaces."
+  []
+  (let [nss (filter #(re-find #"^metabase\.driver" (name %)) u/metabase-namespace-symbols)]
+    (apply require nss)
+    (->> (map ns-publics nss)
+         (mapcat vals)
+         (filter #(instance? clojure.lang.MultiFn (deref %)))
+         (map meta))))
+
+(defn- older-than-42?
+  [version]
+  (when-let [version (drop 1 (re-find #"(\d+)\.(\d+)\.(\d+)" (str version)))]
+    (< (compare (mapv #(Integer/parseInt %) version)
+                [0 42 0])
+       0)))
+
+(deftest driver-multimethods-in-changelog-test
+  (let [metadatas             (collect-metadatas)
+        version->section-text (parse-drivers-changelog)]
+    (doseq [m metadatas]
+      (when-not (:changelog-test/ignore m)
+        (let [method (str (:ns m) "/" (:name m))]
+          (testing (str method " has `:added` metadata set")
+            (is (contains? m :added)))
+          (when-not (older-than-42? (:added m))
+            (testing (str method " is mentioned in changelog for version " (:added m))
+              (is (re-find (re-pattern (str "\\Q" (:name m) "\\E"))
+                           (get version->section-text (:added m) ""))))))))))

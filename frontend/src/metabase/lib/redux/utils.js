@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import _ from "underscore";
 import { getIn } from "icepick";
@@ -283,7 +284,8 @@ function withCachedData(
   // thunk decorator:
   return thunkCreator =>
     // thunk creator:
-    (...args) => {
+    (...args) =>
+      // thunk:
       async function thunk(dispatch, getState) {
         const options = args[args.length - 1] || {};
         const { useCachedForbiddenError, reload, properties } = options;
@@ -327,7 +329,7 @@ function withCachedData(
               await queryPromise;
 
               // need to wait for next tick to allow loaded request data to be processed and avoid loops
-              await delay(10);
+              await delay(0);
 
               // retry this function after waited request gets resolved
               return thunk(dispatch, getState);
@@ -338,10 +340,7 @@ function withCachedData(
         }
 
         return thunkCreator(...args)(dispatch, getState);
-      }
-
-      return thunk;
-    };
+      };
 }
 
 export function withAnalytics(categoryOrFn, actionOrFn, labelOrFn, valueOrFn) {

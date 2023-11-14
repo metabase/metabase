@@ -14,9 +14,16 @@ import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import Button from "metabase/core/components/Button";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormRadio from "metabase/core/components/FormRadio";
-import { canonicalCollectionId } from "metabase/collections/utils";
+
+import { useCollectionListQuery } from "metabase/common/hooks";
+
+import {
+  canonicalCollectionId,
+  isInstanceAnalyticsCollection,
+  getInstanceAnalyticsCustomCollection,
+} from "metabase/collections/utils";
 import type { CollectionId } from "metabase-types/api";
-import * as Errors from "metabase/core/utils/errors";
+import * as Errors from "metabase/lib/errors";
 import { getIsSavedQuestionChanged } from "metabase/query_builder/selectors";
 import { useSelector } from "metabase/lib/redux";
 import type Question from "metabase-lib/Question";
@@ -47,11 +54,11 @@ const SAVE_QUESTION_SCHEMA = Yup.object({
 interface SaveQuestionModalProps {
   question: Question;
   originalQuestion: Question | null;
-  onCreate: (question: Question) => void;
+  onCreate: (question: Question) => Promise<void>;
   onSave: (question: Question) => Promise<void>;
   onClose: () => void;
   multiStep?: boolean;
-  initialCollectionId?: number;
+  initialCollectionId?: CollectionId;
 }
 
 interface FormValues {
@@ -77,8 +84,10 @@ export const SaveQuestionModal = ({
   multiStep,
   initialCollectionId,
 }: SaveQuestionModalProps) => {
+  const { data: collections } = useCollectionListQuery();
+
   const handleOverwrite = useCallback(
-    async (originalQuestion: Question, details: FormValues) => {
+    async (originalQuestion: Question) => {
       const collectionId = canonicalCollectionId(
         originalQuestion.collectionId(),
       );
@@ -120,7 +129,7 @@ export const SaveQuestionModal = ({
   const handleSubmit = useCallback(
     async (details: FormValues) => {
       if (isOverwriteMode(originalQuestion, details.saveType)) {
-        await handleOverwrite(originalQuestion, details);
+        await handleOverwrite(originalQuestion);
       } else {
         await handleCreate(details);
       }
@@ -129,6 +138,20 @@ export const SaveQuestionModal = ({
   );
 
   const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
+
+  // we can't use null because that can be ID of the root collection
+  const instanceAnalyticsCollectionId =
+    collections?.find(isInstanceAnalyticsCollection)?.id ?? "not found";
+
+  if (
+    collections &&
+    originalQuestion?.collectionId() === instanceAnalyticsCollectionId
+  ) {
+    const customCollection = getInstanceAnalyticsCustomCollection(collections);
+    if (customCollection) {
+      initialCollectionId = customCollection.id;
+    }
+  }
 
   const initialValues: FormValues = {
     name: question.generateQueryDescription() || "",

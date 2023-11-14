@@ -10,7 +10,7 @@ import FormTextArea from "metabase/core/components/FormTextArea";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 
-import * as Errors from "metabase/core/utils/errors";
+import * as Errors from "metabase/lib/errors";
 
 import type { CreateQueryActionParams } from "metabase/entities/actions";
 

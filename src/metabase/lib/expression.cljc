@@ -75,6 +75,10 @@
   [_query _stage-number s _style]
   (str \" s \"))
 
+(defmethod lib.metadata.calculation/display-name-method :dispatch-type/boolean
+  [_query _stage-number s _style]
+  (str s))
+
 (defmethod lib.metadata.calculation/display-name-method :expression
   [_query _stage-number [_expression _opts expression-name] _style]
   expression-name)

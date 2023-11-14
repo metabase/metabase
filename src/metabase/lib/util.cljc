@@ -11,11 +11,13 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.mbql.util :as mbql.u]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
@@ -55,22 +57,37 @@
   [clause]
   (clause-of-type? clause :field))
 
+(defn ref-clause?
+  "Returns true if this is any sort of reference clause"
+  [clause]
+  (and (clause? clause)
+       (lib.hierarchy/isa? (first clause) ::lib.schema.ref/ref)))
+
+(defn original-isa?
+  "Returns whether the type of `expression` isa? `typ`.
+   If the expression has an original-effective-type due to bucketing, check that."
+  [expression typ]
+  (isa?
+    (or (and (clause? expression)
+             (:metabase.lib.field/original-effective-type (second expression)))
+        (lib.schema.expression/type-of expression))
+    typ))
+
 (defn expression-name
   "Returns the :lib/expression-name of `clause`. Returns nil if `clause` is not a clause."
   [clause]
   (when (clause? clause)
-    (get-in clause [1 :lib/expression-name])))
+    (:lib/expression-name (lib.options/options clause))))
 
 (defn named-expression-clause
   "Top level expressions must be clauses with :lib/expression-name, so if we get a literal, wrap it in :value."
   [clause a-name]
-  (assoc-in
-    (if (clause? clause)
-      clause
-      [:value {:lib/uuid (str (random-uuid))
-               :effective-type (lib.schema.expression/type-of clause)}
-       clause])
-    [1 :lib/expression-name] a-name))
+  (-> (if (clause? clause)
+        clause
+        [:value {:lib/uuid (str (random-uuid))
+                 :effective-type (lib.schema.expression/type-of clause)}
+         clause])
+      (lib.options/update-options assoc :lib/expression-name a-name)))
 
 (defn replace-clause
   "Replace the `target-clause` in `stage` `location` with `new-clause`.
@@ -97,7 +114,7 @@
    If `location` contains no clause with `target-clause` no removal happens.
    If the the location is empty, dissoc it from stage.
    For the [:fields] location if only expressions remain, dissoc from stage."
-  [stage location target-clause]
+  [stage location target-clause stage-number]
   {:pre [(clause? target-clause)]}
   (if-let [target (get-in stage location)]
     (let [target-uuid (lib.options/uuid target-clause)
@@ -115,6 +132,7 @@
                         {:error ::cannot-remove-final-join-condition
                          :conditions (get-in stage location)
                          :join (get-in stage (pop location))
+                         :stage-number stage-number
                          :stage stage}))
 
         (= [:joins :fields] [first-loc last-loc])

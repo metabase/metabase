@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.config :as config]
    [metabase.integrations.slack :as slack]
    [metabase.test :as mt]))

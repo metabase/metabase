@@ -1,7 +1,7 @@
 description: null
 archived: false
 collection_position: null
-ordered_cards:
+dashcards:
 - size_x: 15
   dashboard_tab_id: null
   action_id: null
@@ -23,7 +23,7 @@ creator_id: a@a.a
 made_public_by_id: null
 embedding_params: null
 cache_ttl: null
-ordered_tabs: []
+tabs: []
 serdes/meta:
 - model: Dashboard
   id: WFmN9gRmW1LCfzHneB4QH

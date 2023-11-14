@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [colorize.core :as colorize]
    [honeysql.core :as hsql]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.driver :as driver]

@@ -7,7 +7,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [honey.sql :as sql]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
@@ -752,7 +752,7 @@
 (defmethod driver/upload-type->database-type :postgres
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar_255              [[:varchar 255]]
+    ::upload/varchar-255              [[:varchar 255]]
     ::upload/text                     [:text]
     ::upload/int                      [:bigint]
     ::upload/int-pk                   [:bigint :primary-key]
@@ -761,7 +761,8 @@
     ::upload/float                    [:float]
     ::upload/boolean                  [:boolean]
     ::upload/date                     [:date]
-    ::upload/datetime                 [:timestamp]))
+    ::upload/datetime                 [:timestamp]
+    ::upload/offset-datetime          [:timestamp-with-time-zone]))
 
 (defmethod driver/table-name-length-limit :postgres
   [_driver]
@@ -851,9 +852,11 @@
 
 (defmethod driver.sql/set-role-statement :postgres
   [_ role]
-  (if (= (u/upper-case-en role) "NONE")
-   (format "SET ROLE %s;" role)
-   (format "SET ROLE \"%s\";" role)))
+  (let [special-chars-pattern #"[^a-zA-Z0-9_]"
+        needs-quote           (re-find special-chars-pattern role)]
+    (if needs-quote
+      (format "SET ROLE \"%s\";" role)
+      (format "SET ROLE %s;" role))))
 
 (defmethod driver.sql/default-database-role :postgres
   [_ _]

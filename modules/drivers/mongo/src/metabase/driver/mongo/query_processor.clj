@@ -6,7 +6,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.util :as driver.u]
@@ -646,7 +646,7 @@
 
 (defmulti datetime-diff
   "Helper function for ->rvalue for `datetime-diff` clauses."
-  {:arglists '([x y unit])}
+  {:added "0.46.0" :arglists '([x y unit])}
   (fn [_ _ unit] unit))
 
 (defmethod datetime-diff :year
@@ -705,7 +705,7 @@
 (defmulti compile-filter
   "Compile an mbql filter clause to datastructures suitable to query mongo. Note this is not the whole query but just
   compiling the \"where\" clause equivalent."
-  {:arglists '([clause])}
+  {:added "0.39.0" :arglists '([clause])}
   mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod compile-filter :between
@@ -908,8 +908,9 @@
                      [:field _ (_ :guard #(not= (:join-alias %) alias))])
         ;; Map the own fields to a fresh alias and to its rvalue.
         mapping (map (fn [f] (let [alias (-> (format "let_%s_" (->lvalue f))
-                                            ;; ~ in let aliases provokes a parse error in Mongo
-                                            (str/replace "~" "_")
+                                            ;; ~ in let aliases provokes a parse error in Mongo. For correct function,
+                                            ;; aliases should also contain no . characters (#32182).
+                                            (str/replace #"~|\." "_")
                                             gensym
                                             name)]
                               {:field f, :rvalue (->rvalue f), :alias alias}))

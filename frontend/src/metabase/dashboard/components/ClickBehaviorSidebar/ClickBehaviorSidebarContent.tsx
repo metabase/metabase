@@ -3,7 +3,7 @@ import { getIn } from "icepick";
 
 import type {
   Dashboard,
-  DashboardOrderedCard,
+  DashboardCard,
   DashCardId,
   CardId,
   ClickBehavior,
@@ -21,7 +21,7 @@ import { SidebarContent } from "./ClickBehaviorSidebar.styled";
 
 interface Props {
   dashboard: Dashboard;
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   dashcardData: Record<DashCardId, Record<CardId, DatasetData>>;
   parameters: UiParameter[];
   clickBehavior?: ClickBehavior;
@@ -32,7 +32,7 @@ interface Props {
   onTypeSelectorVisibilityChange: (isVisible: boolean) => void;
 }
 
-function ClickBehaviorSidebar({
+function ClickBehaviorSidebarContent({
   dashboard,
   dashcard,
   dashcardData,
@@ -92,4 +92,4 @@ function ClickBehaviorSidebar({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ClickBehaviorSidebar;
+export default ClickBehaviorSidebarContent;
