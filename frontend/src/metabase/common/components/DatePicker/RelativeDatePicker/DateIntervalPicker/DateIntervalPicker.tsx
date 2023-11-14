@@ -1,4 +1,3 @@
-import { useState } from "react";
 import type { FormEvent } from "react";
 import { t } from "ttag";
 import { Icon } from "metabase/core/components/Icon";
@@ -42,7 +41,6 @@ export function DateIntervalPicker({
   onChange,
   onSubmit,
 }: DateIntervalPickerProps) {
-  const [isMenuOpened, setIsMenuOpened] = useState(false);
   const interval = getInterval(value);
   const unitOptions = getUnitOptions(value);
   const includeCurrent = getIncludeCurrent(value);
@@ -63,12 +61,10 @@ export function DateIntervalPicker({
 
   const handleStartingFromClick = () => {
     onChange(setDefaultOffset(value));
-    setIsMenuOpened(false);
   };
 
   const handleIncludeCurrentClick = () => {
     onChange(setIncludeCurrent(value, !includeCurrent));
-    setIsMenuOpened(false);
   };
 
   const handleSubmit = (event: FormEvent) => {
@@ -92,7 +88,7 @@ export function DateIntervalPicker({
           ml="md"
           onChange={handleUnitChange}
         />
-        <Menu opened={isMenuOpened} onChange={setIsMenuOpened}>
+        <Menu>
           <Menu.Target>
             <Button
               c="text.2"
@@ -106,7 +102,6 @@ export function DateIntervalPicker({
               <Menu.Item
                 icon={<Icon name="arrow_left_to_line" />}
                 onClick={handleStartingFromClick}
-                onMouseDown={handleStartingFromClick}
               >
                 {t`Starting from…`}
               </Menu.Item>
@@ -114,7 +109,6 @@ export function DateIntervalPicker({
             <Menu.Item
               icon={<Icon name={includeCurrent ? "check" : "calendar"} />}
               onClick={handleIncludeCurrentClick}
-              onMouseDown={handleIncludeCurrentClick} // we need to close the menu on mousedown to prevent the outer popover from closing
               aria-selected={includeCurrent}
               data-testid="include-current-interval-option"
             >
