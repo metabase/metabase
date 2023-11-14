@@ -3818,7 +3818,7 @@
                                                                                      [:field "SOURCE" {:base-type :type/Text}]]}
                                                                      {:card_id      final-card-id
                                                                       :parameter_id "_CITY_IS_NOT_"
-                                                                      :target       [:dimension
+                                                                      :target       ["dimension"
                                                                                      [:field "CITY" {:base-type :type/Text}]]}]}]
             (let [param    "_USER_SOURCE_"
                   url      (str "dashboard/" dashboard-id "/params/" param "/values")
@@ -3869,23 +3869,25 @@
         (let [dashboard (t2/hydrate dashboard :resolved-params)]
           (testing "Should return correct join information after looking up for a field"
             (mt/$ids nil
-              (is (= [{:field-id %users.name
-                       :join     {:lhs {:table $$messages :field %messages.sender_id}
-                                  :rhs {:table $$users :field %users.id}}
-                       :op       :=
-                       :options  nil
-                       :value    nil}]
-                     (#'api.dashboard/param->fields (get-in dashboard [:resolved-params "sender"]) false)))
-              (testing "Top-level should have reverse join going on"
-                (is (= [{:field-id %users.name
-                         :join     {:lhs {:table $$users :field %users.id}
-                                    :rhs {:table $$messages :field %messages.receiver_id}}
-                         :op       :=
-                         :options  nil
-                         :value    nil}]
-                       (#'api.dashboard/param->fields (get-in dashboard [:resolved-params "receiver"]) true)))))))
+              (is (= [{:field-ref &snd.users.name
+                       :query     {:source-table $$messages
+                                   :fields       [$messages.text
+                                                  &snd.users.name
+                                                  &rcv.users.name]
+                                   :joins        [{:source-table $$users
+                                                   :alias        "snd"
+                                                   :condition    [:= $messages.sender_id &snd.users.id]
+                                                   :strategy     :left-join}
+                                                  {:source-table $$users
+                                                   :alias        "rcv"
+                                                   :condition    [:= $messages.receiver_id &snd.users.id]
+                                                   :strategy     :left-join}]}
+                       :op        :=
+                       :options   nil
+                       :value     nil}]
+                     (#'api.dashboard/param->fields (get-in dashboard [:resolved-params "sender"])))))))
         (testing "GET /api/dashboard/:id/params/:param-key/values"
           (mt/let-url [url (chain-filter-values-url dashboard "receiver")]
-            (is (= {:values [["Annie Albatross"] ["Bob the Sea Gull"] ["Brenda Blackbird"]]
+            (is (= {:values          [["Annie Albatross"] ["Bob the Sea Gull"] ["Brenda Blackbird"]]
                     :has_more_values false}
                    (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))))))
