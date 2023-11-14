@@ -8,6 +8,7 @@ import type {
 import { drillDownForDimensions } from "metabase-lib/queries/utils/drilldown";
 import type Question from "metabase-lib/Question";
 import { FieldDimension } from "metabase-lib/Dimension";
+import { isDate } from "metabase-lib/types/utils/isa";
 
 export const getNextZoomDrilldown = (
   question: Question,
@@ -23,7 +24,7 @@ export const getNextZoomDrilldown = (
   const dimensions = clicked?.dimensions ?? [];
   const drilldown = drillDownForDimensions(dimensions, question.metadata());
 
-  if (drilldown) {
+  if (drilldown && !dimensions.some(isDateDimension)) {
     return {
       dimensions,
       drilldown,
@@ -32,6 +33,9 @@ export const getNextZoomDrilldown = (
 
   return null;
 };
+
+const isDateDimension = (dimension: ClickObjectDimension) =>
+  isDate(dimension.column);
 
 export const getZoomDrillTitle = (
   dimensions: ClickObjectDimension[],
