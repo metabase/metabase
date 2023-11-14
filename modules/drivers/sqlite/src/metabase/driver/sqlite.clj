@@ -114,20 +114,17 @@
                                   :from   [[(h2x/identifier :table schema table)]]
                                   :limit  1}))
 
-(defn- maybe-convert [expr database-type conversion-function-name]
-  (if (= (h2x/database-type expr) database-type)
-    expr
-    (-> [conversion-function-name expr]
-        (h2x/with-database-type-info database-type))))
+(defn- ->date [& args]
+  (-> (into [:date] args)
+      (h2x/with-database-type-info "date")))
 
-(defn- ->date [expr]
-  (maybe-convert expr "date" :date))
+(defn- ->datetime [& args]
+  (-> (into [:datetime] args)
+      (h2x/with-database-type-info "datetime")))
 
-(defn- ->datetime [expr]
-  (maybe-convert expr "datetime" :datetime))
-
-(defn- ->time [expr]
-  (maybe-convert expr "time" :time))
+(defn- ->time [& args]
+  (-> (into [:time] args)
+      (h2x/with-database-type-info "time")))
 
 (defn- strftime [format-str expr]
   [:strftime (h2x/literal format-str) expr])
