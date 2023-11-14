@@ -1280,6 +1280,19 @@ describe("availableDrillThrus", () => {
     //   },
     // },
     // endregion
+
+    // region --- drill-thru/zoom-in.geographic
+    {
+      drillType: "drill-thru/zoom-in.geographic",
+      clickType: "cell",
+      queryType: "aggregated",
+      queryTable: "PEOPLE",
+      columnName: "STATE",
+      expectedParameters: {
+        type: "drill-thru/zoom-in.geographic",
+      },
+    },
+    // endregion
   ])(
     'should return "$drillType" drill config for $columnName $clickType in $queryType query',
     ({

@@ -263,7 +263,8 @@ export type DrillThruType =
   | "drill-thru/summarize-column-by-time"
   | "drill-thru/column-filter"
   | "drill-thru/underlying-records"
-  | "drill-thru/zoom-in.timeseries";
+  | "drill-thru/zoom-in.timeseries"
+  | "drill-thru/zoom-in.geographic";
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
@@ -320,6 +321,11 @@ export type ZoomTimeseriesDrillThruInfo =
     displayName?: string;
   };
 
+export type ZoomGeographicDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/zoom-in.geographic"> & {
+    displayName?: string;
+  };
+
 export type DrillThruDisplayInfo =
   | QuickFilterDrillThruInfo
   | PKDrillThruInfo
@@ -333,7 +339,8 @@ export type DrillThruDisplayInfo =
   | SummarizeColumnByTimeDrillThruInfo
   | ColumnFilterDrillThruInfo
   | UnderlyingRecordsDrillThruInfo
-  | ZoomTimeseriesDrillThruInfo;
+  | ZoomTimeseriesDrillThruInfo
+  | ZoomGeographicDrillThruInfo;
 
 export interface Dimension {
   column: DatasetColumn;
