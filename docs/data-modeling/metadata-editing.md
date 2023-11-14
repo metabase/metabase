@@ -1,5 +1,5 @@
 ---
-title: "Metadata editing"
+title: "Table metadata admin settings"
 redirect_from:
   - /docs/latest/administration-guide/03-metadata-editing
 ---
@@ -142,11 +142,13 @@ To change a column's [filter widget](../dashboards/filters.md):
 5. Select a filter widget option.
 
 #### Filter widget options
+
 - **Search box**: Enter a search term and Metabase will display checkboxes for column values that match the search.
 - **A list of all values**: dropdown menu with checkboxes for all column values.
 - **Plain input box**: Enter a search term and Metabase will make autocomplete suggestions for the search (no checkboxes).
 
 #### Default filters
+
 - Columns with more than 100 unique values will default to a plain input box filter.
 - Columns with fewer values will display a search box filter.
 
@@ -228,6 +230,16 @@ To update the values in your filter dropdown menus, refresh or reset the cached 
 3. Click the **gear** icon at the right of a column's settings box.
 4. Scroll to **Cached field values**.
 5. Select a cache action.
+
+## Unfold JSON
+
+If Metabase supports JSON unfolding for your database, you can decide whether to unfold JSON into component fields, where each JSON key becomes a column. You can turn this off if performance is slow.
+
+1. Go to **Admin settings** > **Table Metadata**.
+2. Find your database and table.
+3. Click the **gear** icon at the right of a column's settings box.
+4. Scroll to **Unfold JSON**.
+5. Toggle JSON unfolding.
 
 ## Further reading
 
