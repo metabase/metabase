@@ -1,0 +1,1531 @@
+commit b0f7d8a1c07938952983a6fb0995f119cda31482
+Author: Alexander Polyankin <alexander.polyankin@metabase.com>
+Date:   Tue Nov 29 15:18:56 2022 +0200
+
+    Add database form skeleton (#26766)
+
+diff --git a/frontend/src/metabase-types/api/mocks/settings.ts b/frontend/src/metabase-types/api/mocks/settings.ts
+index 47b17bbb10..0fd421bf0f 100644
+--- a/frontend/src/metabase-types/api/mocks/settings.ts
++++ b/frontend/src/metabase-types/api/mocks/settings.ts
+@@ -1,5 +1,7 @@
+ import {
+   Engine,
++  EngineField,
++  EngineSource,
+   FontFile,
+   SettingDefinition,
+   Settings,
+@@ -9,10 +11,24 @@ import {
+ 
+ export const createMockEngine = (opts?: Partial<Engine>): Engine => ({
+   "driver-name": "PostgreSQL",
++  "details-fields": [],
++  source: createMockEngineSource(),
+   "superseded-by": undefined,
+-  source: {
+-    type: "official",
+-  },
++  ...opts,
++});
++
++export const createMockEngineField = (
++  opts?: Partial<EngineField>,
++): EngineField => ({
++  name: "field",
++  "display-name": "Field",
++  ...opts,
++});
++
++export const createMockEngineSource = (
++  opts?: Partial<EngineSource>,
++): EngineSource => ({
++  type: "official",
+   ...opts,
+ });
+ 
+diff --git a/frontend/src/metabase-types/api/settings.ts b/frontend/src/metabase-types/api/settings.ts
+index ea99be2784..4f17fa959c 100644
+--- a/frontend/src/metabase-types/api/settings.ts
++++ b/frontend/src/metabase-types/api/settings.ts
+@@ -23,8 +23,41 @@ export interface CurrencyFormattingSettings {
+ 
+ export interface Engine {
+   "driver-name": string;
+-  "superseded-by": string | undefined;
++  "details-fields"?: EngineField[];
+   source: EngineSource;
++  "superseded-by": string | undefined;
++}
++
++export interface EngineField {
++  name: string;
++  type?: EngineFieldType;
++  "display-name"?: string;
++  description?: string;
++  "helper-text"?: string;
++  placeholder?: unknown;
++  required?: boolean;
++  default?: unknown;
++  options?: EngineFieldOption[];
++  "visible-if"?: Record<string, unknown>;
++  "treat-before-posting"?: EngineFieldTreatType;
++}
++
++export type EngineFieldType =
++  | "string"
++  | "password"
++  | "text"
++  | "integer"
++  | "boolean"
++  | "select"
++  | "textFile"
++  | "info"
++  | "section";
++
++export type EngineFieldTreatType = "base64";
++
++export interface EngineFieldOption {
++  name: string;
++  value: string;
+ }
+ 
+ export interface EngineSource {
+diff --git a/frontend/src/metabase-types/api/timeline.ts b/frontend/src/metabase-types/api/timeline.ts
+index 9deeee97a1..c160ff26ec 100644
+--- a/frontend/src/metabase-types/api/timeline.ts
++++ b/frontend/src/metabase-types/api/timeline.ts
+@@ -19,7 +19,7 @@ export interface Timeline {
+ }
+ 
+ export interface TimelineData {
+-  id?: number;
++  id?: TimelineId;
+   collection_id: RegularCollectionId | null;
+   name: string;
+   description: string | null;
+@@ -29,7 +29,7 @@ export interface TimelineData {
+ }
+ 
+ export interface TimelineEvent {
+-  id: number;
++  id: TimelineEventId;
+   timeline_id: TimelineId;
+   name: string;
+   description: string | null;
+diff --git a/frontend/src/metabase/core/components/FileInput/index.ts b/frontend/src/metabase/core/components/FileInput/index.ts
+index a7fb363370..1a40d33f11 100644
+--- a/frontend/src/metabase/core/components/FileInput/index.ts
++++ b/frontend/src/metabase/core/components/FileInput/index.ts
+@@ -1 +1,2 @@
+ export { default } from "./FileInput";
++export type { FileInputProps } from "./FileInput";
+diff --git a/frontend/src/metabase/core/components/FormCheckBox/FormCheckBox.tsx b/frontend/src/metabase/core/components/FormCheckBox/FormCheckBox.tsx
+index 333e8ffd94..4b7d2bf546 100644
+--- a/frontend/src/metabase/core/components/FormCheckBox/FormCheckBox.tsx
++++ b/frontend/src/metabase/core/components/FormCheckBox/FormCheckBox.tsx
+@@ -34,7 +34,7 @@ const FormCheckBox = forwardRef(function FormCheckBox(
+         {...props}
+         id={id}
+         name={name}
+-        checked={value}
++        checked={value ?? false}
+         onChange={onChange}
+         onBlur={onBlur}
+       />
+diff --git a/frontend/src/metabase/core/components/FormField/FormField.styled.tsx b/frontend/src/metabase/core/components/FormField/FormField.styled.tsx
+index 59427ab223..8bd6dc89d8 100644
+--- a/frontend/src/metabase/core/components/FormField/FormField.styled.tsx
++++ b/frontend/src/metabase/core/components/FormField/FormField.styled.tsx
+@@ -14,6 +14,8 @@ export interface FieldRootProps {
+ 
+ export const FieldRoot = styled.div<FieldRootProps>`
+   display: ${props => props.orientation === "horizontal" && "flex"};
++  justify-content: ${props =>
++    props.orientation === "horizontal" && "space-between"};
+   color: ${props => (props.hasError ? color("error") : color("text-medium"))};
+   margin-bottom: 1.25rem;
+ 
+diff --git a/frontend/src/metabase/core/components/FormFileInput/FormFileInput.tsx b/frontend/src/metabase/core/components/FormFileInput/FormFileInput.tsx
+new file mode 100644
+index 0000000000..1e5848aad9
+--- /dev/null
++++ b/frontend/src/metabase/core/components/FormFileInput/FormFileInput.tsx
+@@ -0,0 +1,89 @@
++import React, {
++  ChangeEvent,
++  forwardRef,
++  ReactNode,
++  Ref,
++  useCallback,
++} from "react";
++import { useField } from "formik";
++import { useUniqueId } from "metabase/hooks/use-unique-id";
++import FileInput, { FileInputProps } from "metabase/core/components/FileInput";
++import FormField from "metabase/core/components/FormField";
++
++export type FormFileInputEncoding = "base64";
++
++export interface FormFileInputProps
++  extends Omit<FileInputProps, "value" | "onChange" | "onBlur"> {
++  name: string;
++  encoding?: FormFileInputEncoding;
++  title?: string;
++  description?: ReactNode;
++}
++
++const FormFileInput = forwardRef(function FormFileInput(
++  {
++    name,
++    encoding,
++    className,
++    style,
++    title,
++    description,
++    ...props
++  }: FormFileInputProps,
++  ref: Ref<HTMLDivElement>,
++) {
++  const id = useUniqueId();
++  const [{ onBlur }, { error, touched }, { setValue }] = useField(name);
++
++  const handleChange = useCallback(
++    async (event: ChangeEvent<HTMLInputElement>) => {
++      setValue(await getFieldValue(event.target, encoding));
++    },
++    [encoding, setValue],
++  );
++
++  return (
++    <FormField
++      ref={ref}
++      className={className}
++      style={style}
++      title={title}
++      description={description}
++      orientation="horizontal"
++      htmlFor={id}
++      error={touched ? error : undefined}
++    >
++      <FileInput
++        {...props}
++        id={id}
++        name={name}
++        onChange={handleChange}
++        onBlur={onBlur}
++      />
++    </FormField>
++  );
++});
++
++const getFieldValue = (
++  { files }: HTMLInputElement,
++  encoding?: FormFileInputEncoding,
++): Promise<string> => {
++  return new Promise((resolve, reject) => {
++    if (!files?.length) {
++      resolve("");
++      return;
++    }
++
++    const reader = new FileReader();
++    reader.onload = () => resolve(String(reader.result));
++    reader.onerror = () => reject();
++
++    if (encoding === "base64") {
++      reader.readAsDataURL(files[0]);
++    } else {
++      reader.readAsText(files[0]);
++    }
++  });
++};
++
++export default FormFileInput;
+diff --git a/frontend/src/metabase/core/components/FormFileInput/index.ts b/frontend/src/metabase/core/components/FormFileInput/index.ts
+new file mode 100644
+index 0000000000..cce963df9a
+--- /dev/null
++++ b/frontend/src/metabase/core/components/FormFileInput/index.ts
+@@ -0,0 +1 @@
++export { default } from "./FormFileInput";
+diff --git a/frontend/src/metabase/core/components/FormSelect/FormSelect.tsx b/frontend/src/metabase/core/components/FormSelect/FormSelect.tsx
+index d4d7721aec..0dd14524e9 100644
+--- a/frontend/src/metabase/core/components/FormSelect/FormSelect.tsx
++++ b/frontend/src/metabase/core/components/FormSelect/FormSelect.tsx
+@@ -1,14 +1,15 @@
+-import React, { forwardRef, ReactNode, Ref, useMemo } from "react";
++import React, { forwardRef, ReactNode, Ref, useCallback, useMemo } from "react";
+ import { useField } from "formik";
+ import { useUniqueId } from "metabase/hooks/use-unique-id";
+ import Select, {
++  SelectChangeEvent,
+   SelectOption,
+   SelectProps,
+ } from "metabase/core/components/Select";
+ import FormField from "metabase/core/components/FormField";
+ 
+ export interface FormSelectProps<TValue, TOption = SelectOption<TValue>>
+-  extends Omit<SelectProps<TValue, TOption>, "value" | "onChange"> {
++  extends Omit<SelectProps<TValue, TOption>, "value"> {
+   name: string;
+   title?: string;
+   description?: ReactNode;
+@@ -23,6 +24,7 @@ const FormSelect = forwardRef(function FormSelect<
+     className,
+     title,
+     description,
++    onChange: onChangeProp,
+     ...props
+   }: FormSelectProps<TValue, TOption>,
+   ref: Ref<HTMLDivElement>,
+@@ -31,6 +33,14 @@ const FormSelect = forwardRef(function FormSelect<
+   const [{ value, onChange, onBlur }, { error, touched }] = useField(name);
+   const buttonProps = useMemo(() => ({ id, onBlur }), [id, onBlur]);
+ 
++  const handleChange = useCallback(
++    (event: SelectChangeEvent<TValue>) => {
++      onChange(event);
++      onChangeProp?.(event);
++    },
++    [onChange, onChangeProp],
++  );
++
+   return (
+     <FormField
+       ref={ref}
+@@ -44,7 +54,7 @@ const FormSelect = forwardRef(function FormSelect<
+         {...props}
+         name={name}
+         value={value}
+-        onChange={onChange}
++        onChange={handleChange}
+         buttonProps={buttonProps}
+       />
+     </FormField>
+diff --git a/frontend/src/metabase/core/components/FormToggle/FormToggle.tsx b/frontend/src/metabase/core/components/FormToggle/FormToggle.tsx
+index 77448071a7..807fc5ff55 100644
+--- a/frontend/src/metabase/core/components/FormToggle/FormToggle.tsx
++++ b/frontend/src/metabase/core/components/FormToggle/FormToggle.tsx
+@@ -33,7 +33,7 @@ const FormToggle = forwardRef(function FormToggle(
+         {...props}
+         id={id}
+         name={name}
+-        value={value}
++        value={value ?? false}
+         onChange={setValue}
+         onBlur={onBlur}
+       />
+diff --git a/frontend/src/metabase/core/components/Select/Select.tsx b/frontend/src/metabase/core/components/Select/Select.tsx
+index 1c0430eb9c..4b6847ff13 100644
+--- a/frontend/src/metabase/core/components/Select/Select.tsx
++++ b/frontend/src/metabase/core/components/Select/Select.tsx
+@@ -34,7 +34,7 @@ export interface SelectProps<TValue, TOption = SelectOption<TValue>> {
+   value: TValue;
+   name?: string;
+   defaultValue?: TValue;
+-  onChange: (event: SelectChangeEvent<TValue>) => void;
++  onChange?: (event: SelectChangeEvent<TValue>) => void;
+   multiple?: boolean;
+   placeholder?: string;
+   disabled?: boolean;
+@@ -191,7 +191,7 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
+     } else {
+       value = optionValue;
+     }
+-    onChange({ target: { name, value } });
++    onChange?.({ target: { name, value } });
+     if (!multiple) {
+       this._popover?.close();
+       this.handleClose();
+diff --git a/frontend/src/metabase/databases/components/DatabaseAuthCodeDescription/DatabaseAuthCodeDescription.tsx b/frontend/src/metabase/databases/components/DatabaseAuthCodeDescription/DatabaseAuthCodeDescription.tsx
+new file mode 100644
+index 0000000000..cd40912ad8
+--- /dev/null
++++ b/frontend/src/metabase/databases/components/DatabaseAuthCodeDescription/DatabaseAuthCodeDescription.tsx
+@@ -0,0 +1,47 @@
++import React from "react";
++import { useFormikContext } from "formik";
++import { jt, t } from "ttag";
++import ExternalLink from "metabase/core/components/ExternalLink";
++import { DatabaseValues } from "../../types";
++
++const AUTH_CODE_URLS: Record<string, string> = {
++  bigquery:
++    "https://accounts.google.com/o/oauth2/auth?redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/bigquery",
++  bigquery_with_drive:
++    "https://accounts.google.com/o/oauth2/auth?redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/bigquery%20https://www.googleapis.com/auth/drive",
++};
++
++const DatabaseAuthCodeDescription = (): JSX.Element | null => {
++  const { values } = useFormikContext<DatabaseValues>();
++  const { engine, details } = values;
++
++  if (!engine || !AUTH_CODE_URLS[engine]) {
++    return null;
++  }
++
++  const clientId = details["client-id"] ?? "";
++  const authCodeUrl = new URL(AUTH_CODE_URLS[engine]);
++  const googleDriveUrl = new URL(AUTH_CODE_URLS["bigquery_with_drive"]);
++  authCodeUrl.searchParams.set("client_id", String(clientId));
++  googleDriveUrl.searchParams.set("client_id", String(clientId));
++
++  return (
++    <span>
++      {jt`${(
++        <ExternalLink href={authCodeUrl.href}>{t`Click here`}</ExternalLink>
++      )} to get an auth code.`}
++      {engine === "bigquery" && (
++        <span>
++          {" "}
++          ({t`or`}{" "}
++          <ExternalLink href={googleDriveUrl.href}>
++            {t`with Google Drive permissions`}
++          </ExternalLink>
++          )
++        </span>
++      )}
++    </span>
++  );
++};
++
++export default DatabaseAuthCodeDescription;
+diff --git a/frontend/src/metabase/databases/components/DatabaseAuthCodeDescription/index.ts b/frontend/src/metabase/databases/components/DatabaseAuthCodeDescription/index.ts
+new file mode 100644
+index 0000000000..f29706d24e
+--- /dev/null
++++ b/frontend/src/metabase/databases/components/DatabaseAuthCodeDescription/index.ts
+@@ -0,0 +1 @@
++export { default } from "./DatabaseAuthCodeDescription";
+diff --git a/frontend/src/metabase/databases/components/DatabaseClientIdDescription/DatabaseClientIdDescription.tsx b/frontend/src/metabase/databases/components/DatabaseClientIdDescription/DatabaseClientIdDescription.tsx
+new file mode 100644
+index 0000000000..8af08570d0
+--- /dev/null
++++ b/frontend/src/metabase/databases/components/DatabaseClientIdDescription/DatabaseClientIdDescription.tsx
+@@ -0,0 +1,36 @@
++import React from "react";
++import { useFormikContext } from "formik";
++import { jt, t } from "ttag";
++import ExternalLink from "metabase/core/components/ExternalLink";
++import { DatabaseValues } from "../../types";
++
++const CREDENTIAL_URLS: Record<string, string> = {
++  bigquery:
++    "https://console.developers.google.com/apis/credentials/oauthclient",
++};
++
++const DatabaseClientIdDescription = (): JSX.Element | null => {
++  const { values } = useFormikContext<DatabaseValues>();
++  const { engine, details } = values;
++
++  if (!engine || !CREDENTIAL_URLS[engine]) {
++    return null;
++  }
++
++  const projectId = details["project-id"] ?? "";
++  const projectUrl = new URL(CREDENTIAL_URLS[engine]);
++  projectUrl.searchParams.set("project", String(projectId));
++
++  return (
++    <span>
++      {jt`${(
++        <ExternalLink className="link" href={projectUrl.href}>
++          {t`Click here`}
++        </ExternalLink>
++      )} to generate a Client ID and Client Secret for your project.`}{" "}
++      {t`Choose "Desktop App" as the application type. Name it whatever you'd like.`}
++    </span>
++  );
++};
++
++export default DatabaseClientIdDescription;
+diff --git a/frontend/src/metabase/databases/components/DatabaseClientIdDescription/index.ts b/frontend/src/metabase/databases/components/DatabaseClientIdDescription/index.ts
+new file mode 100644
+index 0000000000..9b7a78bea1
+--- /dev/null
++++ b/frontend/src/metabase/databases/components/DatabaseClientIdDescription/index.ts
+@@ -0,0 +1 @@
++export { default } from "./DatabaseClientIdDescription";
+diff --git a/frontend/src/metabase/databases/components/DatabaseDetailField/DatabaseDetailField.tsx b/frontend/src/metabase/databases/components/DatabaseDetailField/DatabaseDetailField.tsx
+new file mode 100644
+index 0000000000..5cb9592678
+--- /dev/null
++++ b/frontend/src/metabase/databases/components/DatabaseDetailField/DatabaseDetailField.tsx
+@@ -0,0 +1,88 @@
++import React from "react";
++import { EngineField } from "metabase-types/api";
++import FormNumericInput from "metabase/core/components/FormNumericInput";
++import FormFileInput from "metabase/core/components/FormFileInput";
++import FormInput from "metabase/core/components/FormInput";
++import FormSelect from "metabase/core/components/FormSelect";
++import FormTextArea from "metabase/core/components/FormTextArea";
++import FormToggle from "metabase/core/components/FormToggle";
++import DatabaseInfoField from "../DatabaseInfoField";
++import DatabaseSectionField from "../DatabaseSectionField";
++import { FIELD_OVERRIDES } from "../../constants";
++import { EngineFieldOverride } from "../../types";
++
++export interface DatabaseDetailFieldProps {
++  field: EngineField;
++}
++
++const DatabaseDetailField = ({
++  field,
++}: DatabaseDetailFieldProps): JSX.Element => {
++  const override = FIELD_OVERRIDES[field.name];
++  const type = getFieldType(field, override);
++  const props = getFieldProps(field, override);
++
++  if (typeof type === "function") {
++    const Component = type;
++    return <Component {...props} />;
++  }
++
++  switch (type) {
++    case "password":
++      return <FormInput {...props} {...getPasswordProps(field)} nullable />;
++    case "text":
++      return <FormTextArea {...props} />;
++    case "integer":
++      return <FormNumericInput {...props} {...getInputProps(field)} nullable />;
++    case "boolean":
++      return <FormToggle {...props} />;
++    case "select":
++      return <FormSelect {...props} {...getSelectProps(field, override)} />;
++    case "textFile":
++      return <FormFileInput {...props} />;
++    case "info":
++      return <DatabaseInfoField {...props} />;
++    case "section":
++      return <DatabaseSectionField {...props} />;
++    default:
++      return <FormInput {...props} {...getInputProps(field)} nullable />;
++  }
++};
++
++const getFieldType = (field: EngineField, override?: EngineFieldOverride) => {
++  return override?.type ?? field.type;
++};
++
++const getFieldProps = (field: EngineField, override?: EngineFieldOverride) => {
++  const placeholder = override?.placeholder ?? field.placeholder;
++
++  return {
++    name: override?.name ?? `details.${field.name}`,
++    title: override?.title ?? field["display-name"],
++    description: override?.description ?? field.description,
++    placeholder: placeholder != null ? String(placeholder) : undefined,
++  };
++};
++
++const getInputProps = (field: EngineField) => {
++  return {
++    infoTooltip: field["helper-text"],
++    rightIcon: field["helper-text"] && "info",
++    rightIconTooltip: field["helper-text"],
++  };
++};
++
++const getPasswordProps = (field: EngineField) => {
++  return {
++    ...getInputProps(field),
++    type: "password",
++  };
++};
++
++const getSelectProps = (field: EngineField, override?: EngineFieldOverride) => {
++  return {
++    options: override?.options ?? field.options ?? [],
++  };
++};
++
++export default DatabaseDetailField;
+diff --git a/frontend/src/metabase/databases/components/DatabaseDetailField/index.ts b/frontend/src/metabase/databases/components/DatabaseDetailField/index.ts
+new file mode 100644
+index 0000000000..dec6266c51
+--- /dev/null
++++ b/frontend/src/metabase/databases/components/DatabaseDetailField/index.ts
+@@ -0,0 +1 @@
++export { default } from "./DatabaseDetailField";
+diff --git a/frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineField.tsx b/frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineField.tsx
+new file mode 100644
+index 0000000000..062a34992d
+--- /dev/null
++++ b/frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineField.tsx
+@@ -0,0 +1,46 @@
++import React, { useCallback, useMemo, useRef } from "react";
++import { t } from "ttag";
++import FormSelect from "metabase/core/components/FormSelect";
++import { Engine } from "metabase-types/api";
++import { SelectChangeEvent } from "metabase/core/components/Select";
++
++export interface DatabaseEngineFieldProps {
++  engine?: string;
++  engines: Record<string, Engine>;
++  onChange: (engine: string) => void;
++}
++
++const DatabaseEngineField = ({
++  engine,
++  engines,
++  onChange,
++}: DatabaseEngineFieldProps): JSX.Element => {
++  const { current: isDisabled } = useRef(engine != null);
++  const options = useMemo(() => getEngineOptions(engines), [engines]);
++
++  const handleChange = useCallback(
++    (event: SelectChangeEvent<string>) => {
++      onChange(event.target.value);
++    },
++    [onChange],
++  );
++
++  return (
++    <FormSelect
++      name="engine"
++      title={t`Database type`}
++      placeholder={t`Select a database`}
++      options={options}
++      disabled={isDisabled}
++      onChange={handleChange}
++    />
++  );
++};
++
++const getEngineOptions = (engines: Record<string, Engine>) => {
++  return Object.entries(engines)
++    .map(([value, engine]) => ({ name: engine["driver-name"], value }))
++    .sort((a, b) => a.name.localeCompare(b.name));
++};
++
++export default DatabaseEngineField;
+diff --git a/frontend/src/metabase/databases/components/DatabaseEngineField/index.ts b/frontend/src/metabase/databases/components/DatabaseEngineField/index.ts
+new file mode 100644
+index 0000000000..fef428ddea
+--- /dev/null
++++ b/frontend/src/metabase/databases/components/DatabaseEngineField/index.ts
+@@ -0,0 +1 @@
++export { default } from "./DatabaseEngineField";
+diff --git a/frontend/src/metabase/databases/components/DatabaseForm/DatabaseForm.stories.tsx b/frontend/src/metabase/databases/components/DatabaseForm/DatabaseForm.stories.tsx
+new file mode 100644
+index 0000000000..63a07e5ec7
+--- /dev/null
++++ b/frontend/src/metabase/databases/components/DatabaseForm/DatabaseForm.stories.tsx
+@@ -0,0 +1,420 @@
++import React from "react";
++import type { ComponentStory } from "@storybook/react";
++import { createMockEngine } from "metabase-types/api/mocks";
++import DatabaseForm from "./DatabaseForm";
++
++export default {
++  title: "Databases/DatabaseForm",
++  component: DatabaseForm,
++};
++
++const Template: ComponentStory<typeof DatabaseForm> = args => {
++  return <DatabaseForm {...args} />;
++};
++
++export const Default = Template.bind({});
++Default.args = {
++  engines: {
++    postgres: createMockEngine({
++      "driver-name": "PostgreSQL",
++      "details-fields": [
++        {
++          name: "host",
++          "display-name": "Host",
++          "helper-text":
++            "Your databases IP address (e.g. 98.137.149.56) or its domain name (e.g. esc.mydatabase.com).",
++          placeholder: "name.database.com",
++        },
++        {
++          name: "port",
++          "display-name": "Port",
++          type: "integer",
++          placeholder: 5432,
++        },
++        {
++          name: "dbname",
++          "display-name": "Database name",
++          placeholder: "birds_of_the_world",
++          required: true,
++        },
++        {
++          name: "user",
++          "display-name": "Username",
++          placeholder: "username",
++          required: true,
++        },
++        {
++          name: "password",
++          "display-name": "Password",
++          type: "password",
++          placeholder: "••••••••",
++        },
++        {
++          name: "schema-filters-type",
++          "display-name": "Schemas",
++          type: "select",
++          options: [
++            {
++              name: "All",
++              value: "all",
++            },
++            {
++              name: "Only these...",
++              value: "inclusion",
++            },
++            {
++              name: "All except...",
++              value: "exclusion",
++            },
++          ],
++          default: "all",
++        },
++        {
++          name: "schema-filters-patterns",
++          type: "text",
++          placeholder: "E.x. public,auth*",
++          description:
++            "Comma separated names of schemas that <strong>should</strong> appear in Metabase",
++          "visible-if": {
++            "schema-filters-type": "inclusion",
++          },
++          "helper-text":
++            "You can use patterns like <strong>auth*</strong> to match multiple schemas",
++          required: true,
++        },
++        {
++          name: "schema-filters-patterns",
++          type: "text",
++          placeholder: "E.x. public,auth*",
++          description:
++            "Comma separated names of schemas that <strong>should NOT</strong> appear in Metabase",
++          "visible-if": {
++            "schema-filters-type": "exclusion",
++          },
++          "helper-text":
++            "You can use patterns like <strong>auth*</strong> to match multiple schemas",
++          required: true,
++        },
++        {
++          name: "ssl",
++          "display-name": "Use a secure connection (SSL)",
++          type: "boolean",
++          default: false,
++        },
++        {
++          name: "ssl-mode",
++          "display-name": "SSL Mode",
++          type: "select",
++          options: [
++            {
++              name: "allow",
++              value: "allow",
++            },
++            {
++              name: "prefer",
++              value: "prefer",
++            },
++            {
++              name: "require",
++              value: "require",
++            },
++            {
++              name: "verify-ca",
++              value: "verify-ca",
++            },
++            {
++              name: "verify-full",
++              value: "verify-full",
++            },
++          ],
++          default: "require",
++          "visible-if": {
++            ssl: true,
++          },
++        },
++        {
++          name: "ssl-root-cert-options",
++          "display-name": "SSL Root Certificate (PEM)",
++          type: "select",
++          options: [
++            {
++              name: "Local file path",
++              value: "local",
++            },
++            {
++              name: "Uploaded file path",
++              value: "uploaded",
++            },
++          ],
++          default: "local",
++          "visible-if": {
++            ssl: true,
++            "ssl-mode": ["verify-ca", "verify-full"],
++          },
++        },
++        {
++          name: "ssl-root-cert-value",
++          type: "textFile",
++          "treat-before-posting": "base64",
++          "visible-if": {
++            ssl: true,
++            "ssl-mode": ["verify-ca", "verify-full"],
++            "ssl-root-cert-options": "uploaded",
++          },
++        },
++        {
++          name: "ssl-root-cert-path",
++          type: "string",
++          "display-name": "File path",
++          placeholder: null,
++          "visible-if": {
++            ssl: true,
++            "ssl-mode": ["verify-ca", "verify-full"],
++            "ssl-root-cert-options": "local",
++          },
++        },
++        {
++          name: "ssl-use-client-auth",
++          "display-name": "Authenticate client certificate?",
++          type: "boolean",
++          "visible-if": {
++            ssl: true,
++          },
++        },
++        {
++          name: "ssl-client-cert-options",
++          "display-name": "SSL Client Certificate (PEM)",
++          type: "select",
++          options: [
++            {
++              name: "Local file path",
++              value: "local",
++            },
++            {
++              name: "Uploaded file path",
++              value: "uploaded",
++            },
++          ],
++          default: "local",
++          "visible-if": {
++            ssl: true,
++            "ssl-use-client-auth": true,
++          },
++        },
++        {
++          name: "ssl-client-cert-value",
++          type: "textFile",
++          "treat-before-posting": "base64",
++          "visible-if": {
++            ssl: true,
++            "ssl-use-client-auth": true,
++            "ssl-client-cert-options": "uploaded",
++          },
++        },
++        {
++          name: "ssl-client-cert-path",
++          type: "string",
++          "display-name": "File path",
++          placeholder: null,
++          "visible-if": {
++            ssl: true,
++            "ssl-use-client-auth": true,
++            "ssl-client-cert-options": "local",
++          },
++        },
++        {
++          name: "ssl-key-options",
++          "display-name": "SSL Client Key (PKCS-8/DER)",
++          type: "select",
++          options: [
++            {
++              name: "Local file path",
++              value: "local",
++            },
++            {
++              name: "Uploaded file path",
++              value: "uploaded",
++            },
++          ],
++          default: "local",
++          "visible-if": {
++            ssl: true,
++            "ssl-use-client-auth": true,
++          },
++        },
++        {
++          name: "ssl-key-value",
++          type: "textFile",
++          "treat-before-posting": "base64",
++          "visible-if": {
++            ssl: true,
++            "ssl-use-client-auth": true,
++            "ssl-key-options": "uploaded",
++          },
++        },
++        {
++          name: "ssl-key-path",
++          type: "string",
++          "display-name": "File path",
++          placeholder: null,
++          "visible-if": {
++            ssl: true,
++            "ssl-use-client-auth": true,
++            "ssl-key-options": "local",
++          },
++        },
++        {
++          name: "ssl-key-password-value",
++          "display-name": "SSL Client Key Password",
++          type: "password",
++          "visible-if": {
++            ssl: true,
++            "ssl-use-client-auth": true,
++          },
++        },
++        {
++          name: "tunnel-enabled",
++          "display-name": "Use an SSH tunnel",
++          placeholder: "Enable this SSH tunnel?",
++          type: "boolean",
++          default: false,
++        },
++        {
++          name: "tunnel-host",
++          "display-name": "SSH tunnel host",
++          "helper-text": "The hostname that you use to connect to SSH tunnels.",
++          placeholder: "hostname",
++          required: true,
++          "visible-if": {
++            "tunnel-enabled": true,
++          },
++        },
++        {
++          name: "tunnel-port",
++          "display-name": "SSH tunnel port",
++          type: "integer",
++          default: 22,
++          required: false,
++          "visible-if": {
++            "tunnel-enabled": true,
++          },
++        },
++        {
++          name: "tunnel-user",
++          "display-name": "SSH tunnel username",
++          "helper-text": "The username you use to login to your SSH tunnel.",
++          placeholder: "username",
++          required: true,
++          "visible-if": {
++            "tunnel-enabled": true,
++          },
++        },
++        {
++          name: "tunnel-auth-option",
++          "display-name": "SSH Authentication",
++          type: "select",
++          options: [
++            {
++              name: "SSH Key",
++              value: "ssh-key",
++            },
++            {
++              name: "Password",
++              value: "password",
++            },
++          ],
++          default: "ssh-key",
++          "visible-if": {
++            "tunnel-enabled": true,
++          },
++        },
++        {
++          name: "tunnel-pass",
++          "display-name": "SSH tunnel password",
++          type: "password",
++          placeholder: "******",
++          "visible-if": {
++            "tunnel-enabled": true,
++            "tunnel-auth-option": "password",
++          },
++        },
++        {
++          name: "tunnel-private-key",
++          "display-name": "SSH private key to connect to the tunnel",
++          type: "string",
++          placeholder: "Paste the contents of an SSH private key here",
++          required: true,
++          "visible-if": {
++            "tunnel-enabled": true,
++            "tunnel-auth-option": "ssh-key",
++          },
++        },
++        {
++          name: "tunnel-private-key-passphrase",
++          "display-name": "Passphrase for SSH private key",
++          type: "password",
++          placeholder: "******",
++          "visible-if": {
++            "tunnel-enabled": true,
++            "tunnel-auth-option": "ssh-key",
++          },
++        },
++        {
++          name: "advanced-options",
++          type: "section",
++          default: false,
++        },
++        {
++          name: "json-unfolding",
++          "display-name": "Unfold JSON Columns",
++          type: "boolean",
++          "visible-if": {
++            "advanced-options": true,
++          },
++          description:
++            "We unfold JSON columns into component fields.This is on by default but you can turn it off if performance is slow.",
++          default: true,
++        },
++        {
++          name: "additional-options",
++          "display-name": "Additional JDBC connection string options",
++          "visible-if": {
++            "advanced-options": true,
++          },
++          placeholder: "prepareThreshold=0",
++        },
++        {
++          name: "auto_run_queries",
++          type: "boolean",
++          default: true,
++          "display-name": "Rerun queries for simple explorations",
++          description:
++            "We execute the underlying query when you explore data using Summarize or Filter. This is on by default but you can turn it off if performance is slow.",
++          "visible-if": {
++            "advanced-options": true,
++          },
++        },
++        {
++          name: "let-user-control-scheduling",
++          type: "boolean",
++          "display-name": "Choose when syncs and scans happen",
++          description:
++            "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes.",
++          "visible-if": {
++            "advanced-options": true,
++          },
++        },
++        {
++          name: "refingerprint",
++          type: "boolean",
++          "display-name": "Periodically refingerprint tables",
++          description:
++            "This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.",
++          "visible-if": {
++            "advanced-options": true,
++          },
++        },
++      ],
++    }),
++  },
++};
+diff --git a/frontend/src/metabase/databases/components/DatabaseForm/DatabaseForm.tsx b/frontend/src/metabase/databases/components/DatabaseForm/DatabaseForm.tsx
+new file mode 100644
+index 0000000000..c630a2de38
+--- /dev/null
++++ b/frontend/src/metabase/databases/components/DatabaseForm/DatabaseForm.tsx
+@@ -0,0 +1,83 @@
++import React, { useLayoutEffect, useMemo, useState } from "react";
++import { t } from "ttag";
++import Form from "metabase/core/components/Form";
++import FormProvider from "metabase/core/components/FormProvider";
++import FormSubmitButton from "metabase/core/components/FormSubmitButton";
++import FormErrorMessage from "metabase/core/components/FormErrorMessage";
++import { Engine } from "metabase-types/api";
++import { DatabaseValues } from "../../types";
++import { getValidationSchema, getVisibleFields } from "../../utils";
++import DatabaseEngineField from "../DatabaseEngineField";
++import DatabaseNameField from "../DatabaseNameField";
++import DatabaseDetailField from "../DatabaseDetailField";
++
++export interface DatabaseFormProps {
++  engines: Record<string, Engine>;
++  onSubmit: (values: DatabaseValues) => void;
++}
++
++const DatabaseForm = ({
++  engines,
++  onSubmit,
++}: DatabaseFormProps): JSX.Element => {
++  const [engineName, setEngineName] = useState<string>();
++  const engine = engineName ? engines[engineName] : undefined;
++
++  const validationSchema = useMemo(() => {
++    return getValidationSchema(engine, engineName);
++  }, [engine, engineName]);
++
++  const initialValues = useMemo(() => {
++    return validationSchema.getDefault();
++  }, [validationSchema]);
++
++  return (
++    <FormProvider
++      initialValues={initialValues}
++      validationSchema={validationSchema}
++      enableReinitialize
++      onSubmit={onSubmit}
++    >
++      {({ values }) => (
++        <DatabaseFormBody
++          engine={engine}
++          engines={engines}
++          values={values}
++          onEngineChange={setEngineName}
++        />
++      )}
++    </FormProvider>
++  );
++};
++
++interface DatabaseFormBodyProps {
++  engine: Engine | undefined;
++  engines: Record<string, Engine>;
++  values: DatabaseValues;
++  onEngineChange: (engineName: string) => void;
++}
++
++const DatabaseFormBody = ({
++  engine,
++  engines,
++  values,
++  onEngineChange,
++}: DatabaseFormBodyProps): JSX.Element => {
++  const fields = useMemo(() => {
++    return engine ? getVisibleFields(engine, values) : [];
++  }, [engine, values]);
++
++  return (
++    <Form>
++      <DatabaseEngineField engines={engines} onChange={onEngineChange} />
++      {engine && <DatabaseNameField engine={engine} />}
++      {fields.map(field => (
++        <DatabaseDetailField key={field.name} field={field} />
++      ))}
++      <FormSubmitButton title={t`Save`} primary />
++      <FormErrorMessage />
++    </Form>
++  );
++};
++
++export default DatabaseForm;
+diff --git a/frontend/src/metabase/databases/components/DatabaseForm/index.ts b/frontend/src/metabase/databases/components/DatabaseForm/index.ts
+new file mode 100644
+index 0000000000..9241f534d7
+--- /dev/null
++++ b/frontend/src/metabase/databases/components/DatabaseForm/index.ts
+@@ -0,0 +1 @@
++export { default } from "./DatabaseForm";
+diff --git a/frontend/src/metabase/databases/components/DatabaseInfoField/DatabaseInfoField.styled.tsx b/frontend/src/metabase/databases/components/DatabaseInfoField/DatabaseInfoField.styled.tsx
+new file mode 100644
+index 0000000000..61e7e61e37
+--- /dev/null
++++ b/frontend/src/metabase/databases/components/DatabaseInfoField/DatabaseInfoField.styled.tsx
+@@ -0,0 +1,9 @@
++import styled from "@emotion/styled";
++import { color } from "metabase/lib/colors";
++
++export const InfoBanner = styled.div`
++  padding: 0.75rem;
++  border-radius: 6px;
++  color: ${color("text-medium")};
++  background-color: ${color("bg-light")};
++`;
+diff --git a/frontend/src/metabase/databases/components/DatabaseInfoField/DatabaseInfoField.tsx b/frontend/src/metabase/databases/components/DatabaseInfoField/DatabaseInfoField.tsx
+new file mode 100644
+index 0000000000..9fff839dff
+--- /dev/null
++++ b/frontend/src/metabase/databases/components/DatabaseInfoField/DatabaseInfoField.tsx
+@@ -0,0 +1,14 @@
++import React from "react";
++import { InfoBanner } from "./DatabaseInfoField.styled";
++
++export interface DatabaseInfoFieldProps {
++  placeholder?: string;
++}
++
++const DatabaseInfoField = ({
++  placeholder,
++}: DatabaseInfoFieldProps): JSX.Element => {
++  return <InfoBanner>{placeholder}</InfoBanner>;
++};
++
++export default DatabaseInfoField;
+diff --git a/frontend/src/metabase/databases/components/DatabaseInfoField/index.ts b/frontend/src/metabase/databases/components/DatabaseInfoField/index.ts
+new file mode 100644
+index 0000000000..8e735d64bb
+--- /dev/null
++++ b/frontend/src/metabase/databases/components/DatabaseInfoField/index.ts
+@@ -0,0 +1 @@
++export { default } from "./DatabaseInfoField";
+diff --git a/frontend/src/metabase/databases/components/DatabaseNameField/DatabaseNameField.tsx b/frontend/src/metabase/databases/components/DatabaseNameField/DatabaseNameField.tsx
+new file mode 100644
+index 0000000000..76ac9192af
+--- /dev/null
++++ b/frontend/src/metabase/databases/components/DatabaseNameField/DatabaseNameField.tsx
+@@ -0,0 +1,25 @@
++import React from "react";
++import { t } from "ttag";
++import FormInput from "metabase/core/components/FormInput";
++import { Engine } from "metabase-types/api";
++
++export interface DatabaseNameFieldProps {
++  engine: Engine;
++}
++
++const DatabaseNameField = ({ engine }: DatabaseNameFieldProps): JSX.Element => {
++  const name = engine["driver-name"] ?? t`Database`;
++
++  return (
++    <FormInput
++      name="name"
++      title={t`Display name`}
++      placeholder={t`Our ${name}`}
++      rightIcon="info"
++      rightIconTooltip={t`Choose what this data will be called in Metabase.`}
++      nullable
++    />
++  );
++};
++
++export default DatabaseNameField;
+diff --git a/frontend/src/metabase/databases/components/DatabaseNameField/index.ts b/frontend/src/metabase/databases/components/DatabaseNameField/index.ts
+new file mode 100644
+index 0000000000..32ba07b685
+--- /dev/null
++++ b/frontend/src/metabase/databases/components/DatabaseNameField/index.ts
+@@ -0,0 +1 @@
++export { default } from "./DatabaseNameField";
+diff --git a/frontend/src/metabase/databases/components/DatabaseSectionField/DatabaseSectionField.styled.tsx b/frontend/src/metabase/databases/components/DatabaseSectionField/DatabaseSectionField.styled.tsx
+new file mode 100644
+index 0000000000..6fae497c73
+--- /dev/null
++++ b/frontend/src/metabase/databases/components/DatabaseSectionField/DatabaseSectionField.styled.tsx
+@@ -0,0 +1,14 @@
++import styled from "@emotion/styled";
++import { color } from "metabase/lib/colors";
++import Button from "metabase/core/components/Button";
++
++export const SectionButton = styled(Button)`
++  color: ${color("brand")};
++  padding: 0;
++  border: none;
++  border-radius: 0;
++
++  &:hover {
++    background-color: transparent;
++  }
++`;
+diff --git a/frontend/src/metabase/databases/components/DatabaseSectionField/DatabaseSectionField.tsx b/frontend/src/metabase/databases/components/DatabaseSectionField/DatabaseSectionField.tsx
+new file mode 100644
+index 0000000000..8771d50e46
+--- /dev/null
++++ b/frontend/src/metabase/databases/components/DatabaseSectionField/DatabaseSectionField.tsx
+@@ -0,0 +1,33 @@
++import React, { useCallback } from "react";
++import { useField } from "formik";
++import { t } from "ttag";
++import FormField from "metabase/core/components/FormField";
++import { SectionButton } from "./DatabaseSectionField.styled";
++
++export interface DatabaseSectionFieldProps {
++  name: string;
++}
++
++const DatabaseSectionField = ({
++  name,
++}: DatabaseSectionFieldProps): JSX.Element => {
++  const [{ value }, , { setValue }] = useField(name);
++
++  const handleClick = useCallback(() => {
++    setValue(!value);
++  }, [value, setValue]);
++
++  return (
++    <FormField>
++      <SectionButton
++        type="button"
++        iconRight={value ? "chevronup" : "chevrondown"}
++        onClick={handleClick}
++      >
++        {value ? t`Hide advanced options` : t`Show advanced options`}
++      </SectionButton>
++    </FormField>
++  );
++};
++
++export default DatabaseSectionField;
+diff --git a/frontend/src/metabase/databases/components/DatabaseSectionField/index.ts b/frontend/src/metabase/databases/components/DatabaseSectionField/index.ts
+new file mode 100644
+index 0000000000..7d42deee69
+--- /dev/null
++++ b/frontend/src/metabase/databases/components/DatabaseSectionField/index.ts
+@@ -0,0 +1 @@
++export { default } from "./DatabaseSectionField";
+diff --git a/frontend/src/metabase/databases/components/DatabaseSshDescription/DatabaseSshDescription.tsx b/frontend/src/metabase/databases/components/DatabaseSshDescription/DatabaseSshDescription.tsx
+new file mode 100644
+index 0000000000..7c36d0f718
+--- /dev/null
++++ b/frontend/src/metabase/databases/components/DatabaseSshDescription/DatabaseSshDescription.tsx
+@@ -0,0 +1,18 @@
++import React from "react";
++import { jt, t } from "ttag";
++import MetabaseSettings from "metabase/lib/settings";
++import ExternalLink from "metabase/core/components/ExternalLink";
++
++const DatabaseSshDescription = (): JSX.Element => {
++  const docsUrl = MetabaseSettings.docsUrl("databases/ssh-tunnel");
++
++  return (
++    <>
++      {jt`If a direct connection to your database isn't possible, you may want to use an SSH tunnel. ${(
++        <ExternalLink key="link" href={docsUrl}>{t`Learn more`}</ExternalLink>
++      )}.`}
++    </>
++  );
++};
++
++export default DatabaseSshDescription;
+diff --git a/frontend/src/metabase/databases/components/DatabaseSshDescription/index.ts b/frontend/src/metabase/databases/components/DatabaseSshDescription/index.ts
+new file mode 100644
+index 0000000000..b496592797
+--- /dev/null
++++ b/frontend/src/metabase/databases/components/DatabaseSshDescription/index.ts
+@@ -0,0 +1 @@
++export { default } from "./DatabaseSshDescription";
+diff --git a/frontend/src/metabase/databases/components/DatabaseSslKeyDescription/DatabaseSslKeyDescription.tsx b/frontend/src/metabase/databases/components/DatabaseSslKeyDescription/DatabaseSslKeyDescription.tsx
+new file mode 100644
+index 0000000000..dabdba0d66
+--- /dev/null
++++ b/frontend/src/metabase/databases/components/DatabaseSslKeyDescription/DatabaseSslKeyDescription.tsx
+@@ -0,0 +1,30 @@
++import React from "react";
++import { useFormikContext } from "formik";
++import { jt, t } from "ttag";
++import MetabaseSettings from "metabase/lib/settings";
++import ExternalLink from "metabase/core/components/ExternalLink";
++import { DatabaseValues } from "../../types";
++
++const DatabaseSslKeyDescription = (): JSX.Element | null => {
++  const { values } = useFormikContext<DatabaseValues>();
++  const { engine } = values;
++
++  if (engine !== "postgres") {
++    return null;
++  }
++
++  const docsUrl = MetabaseSettings.docsUrl(
++    "databases/connections/postgresql",
++    "authenticate-client-certificate",
++  );
++
++  return (
++    <>
++      {jt`If you have a PEM SSL client key, you can convert that key to the PKCS-8/DER format using OpenSSL. ${(
++        <ExternalLink href={docsUrl}>{t`Learn more`}</ExternalLink>
++      )}.`}
++    </>
++  );
++};
++
++export default DatabaseSslKeyDescription;
+diff --git a/frontend/src/metabase/databases/components/DatabaseSslKeyDescription/index.ts b/frontend/src/metabase/databases/components/DatabaseSslKeyDescription/index.ts
+new file mode 100644
+index 0000000000..74068b8fc7
+--- /dev/null
++++ b/frontend/src/metabase/databases/components/DatabaseSslKeyDescription/index.ts
+@@ -0,0 +1 @@
++export { default } from "./DatabaseSslKeyDescription";
+diff --git a/frontend/src/metabase/databases/constants.tsx b/frontend/src/metabase/databases/constants.tsx
+new file mode 100644
+index 0000000000..f2f6963696
+--- /dev/null
++++ b/frontend/src/metabase/databases/constants.tsx
+@@ -0,0 +1,61 @@
++import React from "react";
++import { t } from "ttag";
++import DatabaseAuthCodeDescription from "./components/DatabaseAuthCodeDescription";
++import DatabaseClientIdDescription from "./components/DatabaseClientIdDescription";
++import DatabaseSshDescription from "./components/DatabaseSshDescription";
++import DatabaseSslKeyDescription from "./components/DatabaseSslKeyDescription";
++import { EngineFieldOverride } from "./types";
++
++export const FIELD_OVERRIDES: Record<string, EngineFieldOverride> = {
++  "tunnel-enabled": {
++    title: t`Use an SSH-tunnel`,
++    description: <DatabaseSshDescription />,
++  },
++  "use-jvm-timezone": {
++    title: t`Use the Java Virtual Machine (JVM) timezone`,
++    description: t`We suggest you leave this off unless you plan on doing a lot of manual timezone casting with this data.`,
++  },
++  "include-user-id-and-hash": {
++    title: t`Include User ID and query hash in queries`,
++    description: t`This can be useful for auditing and debugging, but prevents BigQuery from caching results and may increase your costs.`,
++  },
++  "use-srv": {
++    title: t`Connect using DNS SRV`,
++    description: t`If you're connecting to an Atlas cluster, you might need to turn this on. Note that your provided host must be a fully qualified domain name.`,
++  },
++  "client-id": {
++    description: <DatabaseClientIdDescription />,
++  },
++  "auth-code": {
++    description: <DatabaseAuthCodeDescription />,
++  },
++  "tunnel-private-key": {
++    title: t`SSH private key`,
++    placeholder: t`Paste the contents of your ssh private key here`,
++    type: "text",
++  },
++  "tunnel-private-key-passphrase": {
++    title: t`Passphrase for the SSH private key`,
++  },
++  "tunnel-auth-option": {
++    title: t`SSH authentication`,
++    options: [
++      { name: t`SSH Key`, value: "ssh-key" },
++      { name: t`Password`, value: "password" },
++    ],
++  },
++  "ssl-cert": {
++    title: t`Server SSL certificate chain`,
++    placeholder: t`Paste the contents of the server's SSL certificate chain here`,
++    type: "text",
++  },
++  "ssl-key-options": {
++    description: <DatabaseSslKeyDescription />,
++  },
++  auto_run_queries: {
++    name: "auto_run_queries",
++  },
++  refingerprint: {
++    name: "refingerprint",
++  },
++};
+diff --git a/frontend/src/metabase/databases/types.ts b/frontend/src/metabase/databases/types.ts
+new file mode 100644
+index 0000000000..f541eca96b
+--- /dev/null
++++ b/frontend/src/metabase/databases/types.ts
+@@ -0,0 +1,28 @@
++import { ComponentType, ReactNode } from "react";
++import {
++  DatabaseId,
++  EngineFieldOption,
++  EngineFieldType,
++} from "metabase-types/api";
++
++export interface DatabaseValues {
++  id?: DatabaseId;
++  engine: string | undefined;
++  details: Record<string, unknown>;
++}
++
++export interface EngineFieldOverride {
++  type?: EngineFieldType | ComponentType<EngineFieldProps>;
++  name?: string;
++  title?: string;
++  description?: ReactNode;
++  placeholder?: unknown;
++  options?: EngineFieldOption[];
++}
++
++export interface EngineFieldProps {
++  name: string;
++  title?: string;
++  description?: ReactNode;
++  placeholder?: string;
++}
+diff --git a/frontend/src/metabase/databases/utils.ts b/frontend/src/metabase/databases/utils.ts
+new file mode 100644
+index 0000000000..c490ebc9f2
+--- /dev/null
++++ b/frontend/src/metabase/databases/utils.ts
+@@ -0,0 +1,70 @@
++import * as Yup from "yup";
++import type { TestContext } from "yup";
++import * as Errors from "metabase/core/utils/errors";
++import { Engine, EngineField } from "metabase-types/api";
++import { DatabaseValues } from "./types";
++
++export const getValidationSchema = (engine?: Engine, engineName?: string) => {
++  const fields = engine?.["details-fields"] ?? [];
++  const entries = fields.map(field => [field.name, getFieldSchema(field)]);
++
++  return Yup.object({
++    engine: Yup.string().default(engineName).required(Errors.required),
++    name: Yup.string().nullable().default(null).required(Errors.required),
++    details: Yup.object(Object.fromEntries(entries)),
++  });
++};
++
++const getFieldSchema = (field: EngineField) => {
++  switch (field.type) {
++    case "integer":
++      return Yup.number()
++        .nullable()
++        .default(field.default != null ? Number(field.default) : null)
++        .test((value, context) => isFieldValid(field, value, context));
++    case "boolean":
++    case "section":
++      return Yup.boolean()
++        .defined()
++        .default(field.default != null ? Boolean(field.default) : false)
++        .test((value, context) => isFieldValid(field, value, context));
++    default:
++      return Yup.string()
++        .nullable()
++        .default(field.default != null ? String(field.default) : null)
++        .test((value, context) => isFieldValid(field, value, context));
++  }
++};
++
++const isFieldValid = (
++  field: EngineField,
++  value: unknown,
++  context: TestContext,
++) => {
++  const isEmpty = value == null || value === "";
++  const isVisible = isFieldVisible(field, context.parent);
++
++  if (field.required && isEmpty && isVisible) {
++    return context.createError({ message: Errors.required });
++  } else {
++    return true;
++  }
++};
++
++const isFieldVisible = (
++  field: EngineField,
++  details?: Record<string, unknown>,
++) => {
++  const rules = field["visible-if"] ?? {};
++
++  return Object.entries(rules).every(([name, value]) =>
++    Array.isArray(value)
++      ? value.includes(details?.[name])
++      : value === details?.[name],
++  );
++};
++
++export const getVisibleFields = (engine: Engine, values: DatabaseValues) => {
++  const fields = engine["details-fields"] ?? [];
++  return fields.filter(field => isFieldVisible(field, values.details));
++};
+diff --git a/frontend/src/types/react-augment.d.ts b/frontend/src/types/react.d.ts
+similarity index 100%
+rename from frontend/src/types/react-augment.d.ts
+rename to frontend/src/types/react.d.ts

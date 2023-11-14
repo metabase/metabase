@@ -6,12 +6,13 @@ import _ from "underscore";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import CopyWidget from "metabase/components/CopyWidget";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import Form, {
+import {
   FormField,
   FormSubmit,
   FormMessage,
   FormSection,
 } from "metabase/containers/FormikForm";
+import { Form, FormProvider } from "metabase/forms";
 import MetabaseSettings from "metabase/lib/settings";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 
@@ -54,139 +55,140 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
   );
 
   return (
-    <Form
-      className="mx2"
+    <FormProvider
       initialValues={{ ...settingValues, ...attributeValues }}
-      disablePristineSubmit
-      overwriteOnInitialValuesChange
       onSubmit={handleSubmit}
+      enableReinitialize
+      // disablePristineSubmit
     >
-      <Breadcrumbs
-        className="mb3"
-        crumbs={[
-          [t`Authentication`, "/admin/settings/authentication"],
-          [t`SAML`],
-        ]}
-      />
-      <h2 className="mb3">{t`Set up SAML-based SSO`}</h2>
-      <SAMLFormCaption>
-        {jt`Use the settings below to configure your SSO via SAML. If you have any questions, check out our ${(
-          <ExternalLink href={getDocsUrl()}>{t`documentation`}</ExternalLink>
-        )}.`}
-      </SAMLFormCaption>
-      <SAMLFormSection>
-        <h3 className="mb0">{t`Configure your identity provider (IdP)`}</h3>
-        <p className="mb4 mt1 text-medium">{t`Your identity provider will need the following info about Metabase.`}</p>
+      <Form className="mx2">
+        <Breadcrumbs
+          className="mb3"
+          crumbs={[
+            [t`Authentication`, "/admin/settings/authentication"],
+            [t`SAML`],
+          ]}
+        />
+        <h2 className="mb3">{t`Set up SAML-based SSO`}</h2>
+        <SAMLFormCaption>
+          {jt`Use the settings below to configure your SSO via SAML. If you have any questions, check out our ${(
+            <ExternalLink href={getDocsUrl()}>{t`documentation`}</ExternalLink>
+          )}.`}
+        </SAMLFormCaption>
+        <SAMLFormSection>
+          <h3 className="mb0">{t`Configure your identity provider (IdP)`}</h3>
+          <p className="mb4 mt1 text-medium">{t`Your identity provider will need the following info about Metabase.`}</p>
 
-        <div className="Form-field">
-          <div className="Form-label">{t`URL the IdP should redirect back to`}</div>
-          <div className="pb1">{t`This is called the Single Sign On URL in Okta, the Application Callback URL in Auth0,
+          <div className="Form-field">
+            <div className="Form-label">{t`URL the IdP should redirect back to`}</div>
+            <div className="pb1">{t`This is called the Single Sign On URL in Okta, the Application Callback URL in Auth0,
                                   and the ACS (Consumer) URL in OneLogin. `}</div>
-          <CopyWidget value={getAcsCustomerUrl()} />
-        </div>
+            <CopyWidget value={getAcsCustomerUrl()} />
+          </div>
 
-        <h4 className="pt2">{t`SAML attributes`}</h4>
-        <p className="mb3 mt1 text-medium">{t`In most IdPs, you'll need to put each of these in an input box labeled
+          <h4 className="pt2">{t`SAML attributes`}</h4>
+          <p className="mb3 mt1 text-medium">{t`In most IdPs, you'll need to put each of these in an input box labeled
                         "Name" in the attribute statements section.`}</p>
 
-        <FormField
-          {...fields["saml-attribute-email"]}
-          title={t`User's email attribute`}
-          type={({ field }) => <CopyWidget {...field} />}
-        />
-        <FormField
-          {...fields["saml-attribute-firstname"]}
-          title={t`User's first name attribute`}
-          type={({ field }) => <CopyWidget {...field} />}
-        />
-        <FormField
-          {...fields["saml-attribute-lastname"]}
-          title={t`User's last name attribute`}
-          type={({ field }) => <CopyWidget {...field} />}
-        />
-      </SAMLFormSection>
-
-      <SAMLFormSection>
-        <h3 className="mb0">{t`Tell Metabase about your identity provider`}</h3>
-        <p className="mb4 mt1 text-medium">{t`Metabase will need the following info about your provider.`}</p>
-        <FormField
-          {...fields["saml-identity-provider-uri"]}
-          title={t`SAML Identity Provider URL`}
-          placeholder="https://your-org-name.yourIDP.com"
-          required
-          autoFocus
-        />
-        <FormField
-          {...fields["saml-identity-provider-certificate"]}
-          title={t`SAML Identity Provider Certificate`}
-          type="text"
-          required
-          monospaceText
-        />
-        <FormField
-          {...fields["saml-application-name"]}
-          title={t`SAML Application Name`}
-        />
-        <FormField
-          {...fields["saml-identity-provider-issuer"]}
-          title={t`SAML Identity Provider Issuer`}
-        />
-      </SAMLFormSection>
-
-      <SAMLFormSection isSSLSection={true}>
-        <FormSection title={t`Sign SSO requests (optional)`} collapsible>
           <FormField
-            {...fields["saml-keystore-path"]}
-            title={t`SAML Keystore Path`}
+            {...fields["saml-attribute-email"]}
+            title={t`User's email attribute`}
+            type={({ field }) => <CopyWidget {...field} />}
           />
           <FormField
-            {...fields["saml-keystore-password"]}
-            title={t`SAML Keystore Password`}
-            type="password"
-            placeholder={t`Shh...`}
+            {...fields["saml-attribute-firstname"]}
+            title={t`User's first name attribute`}
+            type={({ field }) => <CopyWidget {...field} />}
           />
           <FormField
-            {...fields["saml-keystore-alias"]}
-            title={t`SAML Keystore Alias`}
+            {...fields["saml-attribute-lastname"]}
+            title={t`User's last name attribute`}
+            type={({ field }) => <CopyWidget {...field} />}
           />
-        </FormSection>
-      </SAMLFormSection>
+        </SAMLFormSection>
 
-      <SAMLFormSection wide>
-        <h3 className="mb0">{t`Synchronize group membership with your SSO`}</h3>
-        <p className="mb4 mt1 text-medium">
-          {t`To enable this, you'll need to create mappings to tell Metabase which group(s) your users should
-               be added to based on the SSO group they're in.`}
-        </p>
-        <FormField
-          {...fields["saml-group-sync"]}
-          type={({ field: { value, onChange } }) => (
-            <GroupMappingsWidget
-              // map to legacy setting props
-              setting={{ key: "saml-group-sync", value }}
-              onChange={onChange}
-              settingValues={settingValues}
-              mappingSetting="saml-group-mappings"
-              groupHeading={t`Group Name`}
-              groupPlaceholder={t`Group Name`}
+        <SAMLFormSection>
+          <h3 className="mb0">{t`Tell Metabase about your identity provider`}</h3>
+          <p className="mb4 mt1 text-medium">{t`Metabase will need the following info about your provider.`}</p>
+          <FormField
+            {...fields["saml-identity-provider-uri"]}
+            title={t`SAML Identity Provider URL`}
+            placeholder="https://your-org-name.yourIDP.com"
+            required
+            autoFocus
+          />
+          <FormField
+            {...fields["saml-identity-provider-certificate"]}
+            title={t`SAML Identity Provider Certificate`}
+            type="text"
+            required
+            monospaceText
+          />
+          <FormField
+            {...fields["saml-application-name"]}
+            title={t`SAML Application Name`}
+          />
+          <FormField
+            {...fields["saml-identity-provider-issuer"]}
+            title={t`SAML Identity Provider Issuer`}
+          />
+        </SAMLFormSection>
+
+        <SAMLFormSection isSSLSection={true}>
+          <FormSection title={t`Sign SSO requests (optional)`} collapsible>
+            <FormField
+              {...fields["saml-keystore-path"]}
+              title={t`SAML Keystore Path`}
             />
-          )}
-        />
-        <FormField
-          {...fields["saml-attribute-group"]}
-          title={t`Group attribute name`}
-        />
-      </SAMLFormSection>
+            <FormField
+              {...fields["saml-keystore-password"]}
+              title={t`SAML Keystore Password`}
+              type="password"
+              placeholder={t`Shh...`}
+            />
+            <FormField
+              {...fields["saml-keystore-alias"]}
+              title={t`SAML Keystore Alias`}
+            />
+          </FormSection>
+        </SAMLFormSection>
 
-      <div>
-        <FormMessage />
-      </div>
-      <SAMLFormFooter>
-        <FormSubmit>
-          {isEnabled ? t`Save changes` : t`Save and enable`}
-        </FormSubmit>
-      </SAMLFormFooter>
-    </Form>
+        <SAMLFormSection wide>
+          <h3 className="mb0">{t`Synchronize group membership with your SSO`}</h3>
+          <p className="mb4 mt1 text-medium">
+            {t`To enable this, you'll need to create mappings to tell Metabase which group(s) your users should
+               be added to based on the SSO group they're in.`}
+          </p>
+          <FormField
+            {...fields["saml-group-sync"]}
+            type={({ field: { value, onChange } }) => (
+              <GroupMappingsWidget
+                // map to legacy setting props
+                setting={{ key: "saml-group-sync", value }}
+                onChange={onChange}
+                settingValues={settingValues}
+                mappingSetting="saml-group-mappings"
+                groupHeading={t`Group Name`}
+                groupPlaceholder={t`Group Name`}
+              />
+            )}
+          />
+          <FormField
+            {...fields["saml-attribute-group"]}
+            title={t`Group attribute name`}
+          />
+        </SAMLFormSection>
+
+        <div>
+          <FormMessage />
+        </div>
+        <SAMLFormFooter>
+          <FormSubmit>
+            {isEnabled ? t`Save changes` : t`Save and enable`}
+          </FormSubmit>
+        </SAMLFormFooter>
+      </Form>
+    </FormProvider>
   );
 };
 

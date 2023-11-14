@@ -1,0 +1,470 @@
+commit 493daac2b7950aed9443fa5e22a2e8caa2749b3d
+Author: Alexander Polyankin <alexander.polyankin@metabase.com>
+Date:   Thu Nov 3 18:37:39 2022 +0200
+
+    Migrate UserStep form to formik (#26215)
+
+diff --git a/frontend/src/metabase-types/store/setup.ts b/frontend/src/metabase-types/store/setup.ts
+index be113f982a..e015cf665d 100644
+--- a/frontend/src/metabase-types/store/setup.ts
++++ b/frontend/src/metabase-types/store/setup.ts
+@@ -4,8 +4,8 @@ export interface Locale {
+ }
+ 
+ export interface UserInfo {
+-  first_name: string;
+-  last_name: string;
++  first_name: string | null;
++  last_name: string | null;
+   email: string;
+   site_name: string;
+   password: string;
+@@ -13,8 +13,8 @@ export interface UserInfo {
+ }
+ 
+ export interface InviteInfo {
+-  first_name: string;
+-  last_name: string;
++  first_name: string | null;
++  last_name: string | null;
+   email: string;
+ }
+ 
+diff --git a/frontend/src/metabase/entities/users/forms.js b/frontend/src/metabase/entities/users/forms.js
+index 52dfb1ff5c..b848f82906 100644
+--- a/frontend/src/metabase/entities/users/forms.js
++++ b/frontend/src/metabase/entities/users/forms.js
+@@ -97,19 +97,6 @@ export default {
+       disablePristineSubmit: true,
+     };
+   },
+-  setup: () => ({
+-    fields: [
+-      ...getNameFields(),
+-      getEmailField(),
+-      {
+-        name: "site_name",
+-        title: t`Company or team name`,
+-        placeholder: t`Department of Awesome`,
+-        validate: validate.required(),
+-      },
+-      ...getPasswordFields(),
+-    ],
+-  }),
+   setup_invite: user => ({
+     fields: [
+       ...getNameFields(),
+diff --git a/frontend/src/metabase/setup/actions.ts b/frontend/src/metabase/setup/actions.ts
+index 8491dc0dfe..315ef0ef13 100644
+--- a/frontend/src/metabase/setup/actions.ts
++++ b/frontend/src/metabase/setup/actions.ts
+@@ -1,9 +1,10 @@
+ import { createAction } from "redux-actions";
++import { getIn } from "icepick";
+ import { SetupApi, UtilApi } from "metabase/services";
+ import { createThunkAction } from "metabase/lib/redux";
+ import { loadLocalization } from "metabase/lib/i18n";
+-import Settings from "metabase/lib/settings";
+-import { UserInfo, DatabaseInfo, Locale } from "metabase-types/store";
++import MetabaseSettings from "metabase/lib/settings";
++import { DatabaseInfo, Locale } from "metabase-types/store";
+ import { getUserToken, getDefaultLocale, getLocales } from "./utils";
+ 
+ export const SET_STEP = "metabase/setup/SET_STEP";
+@@ -50,26 +51,31 @@ export const LOAD_LOCALE_DEFAULTS = "metabase/setup/LOAD_LOCALE_DEFAULTS";
+ export const loadLocaleDefaults = createThunkAction(
+   LOAD_LOCALE_DEFAULTS,
+   () => async (dispatch: any) => {
+-    const data = Settings.get("available-locales");
++    const data = MetabaseSettings.get("available-locales");
+     const locale = getDefaultLocale(getLocales(data));
+     await dispatch(setLocale(locale));
+   },
+ );
+ 
+-export const VALIDATE_PASSWORD = "metabase/setup/VALIDATE_PASSWORD";
+-export const validatePassword = createThunkAction(
+-  VALIDATE_PASSWORD,
+-  (user: UserInfo) => async () => {
+-    await UtilApi.password_check({ password: user.password });
+-  },
+-);
++export const validatePassword = async (password: string) => {
++  const error = MetabaseSettings.passwordComplexityDescription(password);
++  if (error) {
++    return error;
++  }
++
++  try {
++    await UtilApi.password_check({ password });
++  } catch (error) {
++    return getIn(error, ["data", "errors", "password"]);
++  }
++};
+ 
+ export const VALIDATE_DATABASE = "metabase/setup/VALIDATE_DATABASE";
+ export const validateDatabase = createThunkAction(
+   VALIDATE_DATABASE,
+   (database: DatabaseInfo) => async () => {
+     await SetupApi.validate_db({
+-      token: Settings.get("setup-token"),
++      token: MetabaseSettings.get("setup-token"),
+       details: database,
+     });
+   },
+@@ -102,7 +108,7 @@ export const submitSetup = createThunkAction(
+     const { locale, user, database, invite, isTrackingAllowed } = setup;
+ 
+     await SetupApi.create({
+-      token: Settings.get("setup-token"),
++      token: MetabaseSettings.get("setup-token"),
+       user,
+       database,
+       invite,
+@@ -113,6 +119,6 @@ export const submitSetup = createThunkAction(
+       },
+     });
+ 
+-    Settings.set("setup-token", null);
++    MetabaseSettings.set("setup-token", null);
+   },
+ );
+diff --git a/frontend/src/metabase/setup/components/UserForm/UserForm.styled.tsx b/frontend/src/metabase/setup/components/UserForm/UserForm.styled.tsx
+new file mode 100644
+index 0000000000..7c2bfe6a83
+--- /dev/null
++++ b/frontend/src/metabase/setup/components/UserForm/UserForm.styled.tsx
+@@ -0,0 +1,15 @@
++import styled from "@emotion/styled";
++import { breakpointMinSmall } from "metabase/styled-components/theme";
++import Form from "metabase/core/components/Form";
++
++export const UserFormRoot = styled(Form)`
++  margin-top: 1rem;
++`;
++
++export const UserFieldGroup = styled.div`
++  ${breakpointMinSmall} {
++    display: grid;
++    grid-template-columns: repeat(2, 1fr);
++    gap: 1rem;
++  }
++`;
+diff --git a/frontend/src/metabase/setup/components/UserForm/UserForm.tsx b/frontend/src/metabase/setup/components/UserForm/UserForm.tsx
+new file mode 100644
+index 0000000000..6e4b6d433d
+--- /dev/null
++++ b/frontend/src/metabase/setup/components/UserForm/UserForm.tsx
+@@ -0,0 +1,128 @@
++import React, { useCallback, useMemo } from "react";
++import { t } from "ttag";
++import * as Yup from "yup";
++import _ from "underscore";
++import FormProvider from "metabase/core/components/FormProvider";
++import FormInput from "metabase/core/components/FormInput";
++import FormSubmitButton from "metabase/core/components/FormSubmitButton";
++import { UserInfo } from "metabase-types/store";
++import { UserFieldGroup, UserFormRoot } from "./UserForm.styled";
++
++const UserSchema = Yup.object({
++  first_name: Yup.string().max(100, t`must be 100 characters or less`),
++  last_name: Yup.string().max(100, t`must be 100 characters or less`),
++  email: Yup.string()
++    .required(t`required`)
++    .email(t`must be a valid email address`),
++  site_name: Yup.string().required(t`required`),
++  password: Yup.string()
++    .required(t`required`)
++    .test(async (value = "", context) => {
++      const error = await context.options.context?.onValidatePassword(value);
++      return error ? context.createError({ message: error }) : true;
++    }),
++  password_confirm: Yup.string()
++    .required(t`required`)
++    .oneOf([Yup.ref("password")], t`passwords do not match`),
++});
++
++interface UserFormProps {
++  user?: UserInfo;
++  onValidatePassword: (password: string) => Promise<string | undefined>;
++  onSubmit: (user: UserInfo) => void;
++}
++
++const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
++  const initialValues = useMemo(() => {
++    return getInitialValues(user);
++  }, [user]);
++
++  const validationContext = useMemo(
++    () => ({
++      onValidatePassword: _.memoize(onValidatePassword),
++    }),
++    [onValidatePassword],
++  );
++
++  const handleSubmit = useCallback(
++    (values: UserInfo) => onSubmit(getSubmitValues(values)),
++    [onSubmit],
++  );
++
++  return (
++    <FormProvider
++      initialValues={initialValues}
++      validationSchema={UserSchema}
++      validationContext={validationContext}
++      onSubmit={handleSubmit}
++    >
++      <UserFormRoot>
++        <UserFieldGroup>
++          <FormInput
++            name="first_name"
++            title={t`First name`}
++            placeholder={t`Johnny`}
++            autoFocus
++            fullWidth
++          />
++          <FormInput
++            name="last_name"
++            title={t`Last name`}
++            placeholder={t`Appleseed`}
++            fullWidth
++          />
++        </UserFieldGroup>
++        <FormInput
++          name="email"
++          type="email"
++          title={t`Email`}
++          placeholder="nicetoseeyou@email.com"
++          fullWidth
++        />
++        <FormInput
++          name="site_name"
++          title={t`Company or team name`}
++          placeholder={t`Department of Awesome`}
++          fullWidth
++        />
++        <FormInput
++          name="password"
++          type="password"
++          title={t`Create a password`}
++          placeholder={t`Shhh...`}
++          fullWidth
++        />
++        <FormInput
++          name="password_confirm"
++          type="password"
++          title={t`Confirm your password`}
++          placeholder={t`Shhh... but one more time so we get it right`}
++          fullWidth
++        />
++        <FormSubmitButton title={t`Next`} primary />
++      </UserFormRoot>
++    </FormProvider>
++  );
++};
++
++const getInitialValues = (user?: UserInfo): UserInfo => {
++  return {
++    email: "",
++    site_name: "",
++    password: "",
++    password_confirm: "",
++    ...user,
++    first_name: user?.first_name || "",
++    last_name: user?.last_name || "",
++  };
++};
++
++const getSubmitValues = (user: UserInfo): UserInfo => {
++  return {
++    ...user,
++    first_name: user.first_name || null,
++    last_name: user.last_name || null,
++  };
++};
++
++export default UserForm;
+diff --git a/frontend/src/metabase/setup/components/UserForm/index.ts b/frontend/src/metabase/setup/components/UserForm/index.ts
+new file mode 100644
+index 0000000000..0aed9c2f92
+--- /dev/null
++++ b/frontend/src/metabase/setup/components/UserForm/index.ts
+@@ -0,0 +1 @@
++export { default } from "./UserForm";
+diff --git a/frontend/src/metabase/setup/components/UserStep/UserStep.styled.tsx b/frontend/src/metabase/setup/components/UserStep/UserStep.styled.tsx
+index e0f2995c8f..8971d97c58 100644
+--- a/frontend/src/metabase/setup/components/UserStep/UserStep.styled.tsx
++++ b/frontend/src/metabase/setup/components/UserStep/UserStep.styled.tsx
+@@ -1,21 +1,7 @@
+ import styled from "@emotion/styled";
+ import { color } from "metabase/lib/colors";
+-import { breakpointMinSmall } from "metabase/styled-components/theme";
+-import User from "metabase/entities/users";
+ 
+ export const StepDescription = styled.div`
+   color: ${color("text-medium")};
+   margin-top: 0.875rem;
+ `;
+-
+-export const UserFormRoot = styled(User.Form)`
+-  margin-top: 1rem;
+-`;
+-
+-export const UserFormGroup = styled.div`
+-  ${breakpointMinSmall} {
+-    display: grid;
+-    grid-template-columns: repeat(2, 1fr);
+-    gap: 1rem;
+-  }
+-`;
+diff --git a/frontend/src/metabase/setup/components/UserStep/UserStep.tsx b/frontend/src/metabase/setup/components/UserStep/UserStep.tsx
+index e088ce89ef..841c1e3668 100644
+--- a/frontend/src/metabase/setup/components/UserStep/UserStep.tsx
++++ b/frontend/src/metabase/setup/components/UserStep/UserStep.tsx
+@@ -1,16 +1,10 @@
+ import React from "react";
+ import { t } from "ttag";
+-import { getIn } from "icepick";
+-import Users from "metabase/entities/users";
+ import { UserInfo } from "metabase-types/store";
+ import ActiveStep from "../ActiveStep";
+ import InactiveStep from "../InvactiveStep";
+-import {
+-  UserFormRoot,
+-  UserFormGroup,
+-  StepDescription,
+-} from "./UserStep.styled";
+-import { FormProps } from "./types";
++import UserForm from "../UserForm";
++import { StepDescription } from "./UserStep.styled";
+ 
+ export interface UserStepProps {
+   user?: UserInfo;
+@@ -18,7 +12,7 @@ export interface UserStepProps {
+   isStepActive: boolean;
+   isStepCompleted: boolean;
+   isSetupCompleted: boolean;
+-  onPasswordChange: (user: UserInfo) => void;
++  onValidatePassword: (password: string) => Promise<string | undefined>;
+   onStepSelect: () => void;
+   onStepSubmit: (user: UserInfo) => void;
+ }
+@@ -29,7 +23,7 @@ const UserStep = ({
+   isStepActive,
+   isStepCompleted,
+   isSetupCompleted,
+-  onPasswordChange,
++  onValidatePassword,
+   onStepSelect,
+   onStepSubmit,
+ }: UserStepProps): JSX.Element => {
+@@ -55,54 +49,13 @@ const UserStep = ({
+       )}
+       <UserForm
+         user={user}
++        onValidatePassword={onValidatePassword}
+         onSubmit={onStepSubmit}
+-        onPasswordChange={onPasswordChange}
+       />
+     </ActiveStep>
+   );
+ };
+ 
+-interface UserFormProps {
+-  user?: UserInfo;
+-  onSubmit: (user: UserInfo) => void;
+-  onPasswordChange: (user: UserInfo) => void;
+-}
+-
+-const UserForm = ({ user, onSubmit, onPasswordChange }: UserFormProps) => {
+-  const handleAsyncValidate = async (user: UserInfo) => {
+-    try {
+-      await onPasswordChange(user);
+-      return {};
+-    } catch (error) {
+-      return getSubmitError(error);
+-    }
+-  };
+-
+-  return (
+-    <UserFormRoot
+-      form={Users.forms.setup()}
+-      user={user}
+-      asyncValidate={handleAsyncValidate}
+-      asyncBlurFields={["password"]}
+-      onSubmit={onSubmit}
+-    >
+-      {({ Form, FormField, FormFooter }: FormProps) => (
+-        <Form>
+-          <UserFormGroup>
+-            <FormField name="first_name" />
+-            <FormField name="last_name" />
+-          </UserFormGroup>
+-          <FormField name="email" />
+-          <FormField name="site_name" />
+-          <FormField name="password" />
+-          <FormField name="password_confirm" />
+-          <FormFooter submitTitle={t`Next`} />
+-        </Form>
+-      )}
+-    </UserFormRoot>
+-  );
+-};
+-
+ const getStepTitle = (user: UserInfo | undefined, isStepCompleted: boolean) => {
+   const namePart = user?.first_name ? `, ${user.first_name}` : "";
+   return isStepCompleted
+@@ -110,8 +63,4 @@ const getStepTitle = (user: UserInfo | undefined, isStepCompleted: boolean) => {
+     : t`What should we call you?`;
+ };
+ 
+-const getSubmitError = (error: unknown) => {
+-  return getIn(error, ["data", "errors"]);
+-};
+-
+ export default UserStep;
+diff --git a/frontend/src/metabase/setup/components/UserStep/UserStep.unit.spec.tsx b/frontend/src/metabase/setup/components/UserStep/UserStep.unit.spec.tsx
+index 34a27acd5b..b7022fe5de 100644
+--- a/frontend/src/metabase/setup/components/UserStep/UserStep.unit.spec.tsx
++++ b/frontend/src/metabase/setup/components/UserStep/UserStep.unit.spec.tsx
+@@ -3,13 +3,6 @@ import { render, screen } from "@testing-library/react";
+ import { UserInfo } from "metabase-types/store";
+ import UserStep, { UserStepProps } from "./UserStep";
+ 
+-const FormMock = () => <div />;
+-
+-jest.mock("metabase/entities/users", () => ({
+-  forms: { setup: jest.fn() },
+-  Form: FormMock,
+-}));
+-
+ describe("UserStep", () => {
+   it("should render in active state", () => {
+     const props = getProps({
+@@ -40,7 +33,7 @@ const getProps = (opts?: Partial<UserStepProps>): UserStepProps => ({
+   isStepActive: false,
+   isStepCompleted: false,
+   isSetupCompleted: false,
+-  onPasswordChange: jest.fn(),
++  onValidatePassword: jest.fn(),
+   onStepSelect: jest.fn(),
+   onStepSubmit: jest.fn(),
+   ...opts,
+diff --git a/frontend/src/metabase/setup/containers/UserStep/UserStep.tsx b/frontend/src/metabase/setup/containers/UserStep/UserStep.tsx
+index 8281ee09fb..809669bb1b 100644
+--- a/frontend/src/metabase/setup/containers/UserStep/UserStep.tsx
++++ b/frontend/src/metabase/setup/containers/UserStep/UserStep.tsx
+@@ -20,12 +20,10 @@ const mapStateToProps = (state: State) => ({
+   isStepCompleted: isStepCompleted(state, USER_STEP),
+   isSetupCompleted: isSetupCompleted(state),
+   isLocaleLoaded: isLocaleLoaded(state),
++  onValidatePassword: validatePassword,
+ });
+ 
+ const mapDispatchToProps = (dispatch: any) => ({
+-  onPasswordChange: async (user: UserInfo) => {
+-    await dispatch(validatePassword(user));
+-  },
+   onStepSelect: () => {
+     dispatch(setStep(USER_STEP));
+   },

@@ -1,0 +1,709 @@
+commit f5608c6da14dd1fe89f97cb451a01761a4a8c50d
+Author: Alexander Polyankin <alexander.polyankin@metabase.com>
+Date:   Thu Nov 17 15:54:02 2022 +0200
+
+    Migrate GoogleSettingsForm to formik and add unit tests (#26293)
+
+diff --git a/enterprise/frontend/src/metabase-enterprise/auth/index.js b/enterprise/frontend/src/metabase-enterprise/auth/index.js
+index 7bce7a15dc..43e30dd81e 100644
+--- a/enterprise/frontend/src/metabase-enterprise/auth/index.js
++++ b/enterprise/frontend/src/metabase-enterprise/auth/index.js
+@@ -14,7 +14,6 @@ import GroupMappingsWidget from "metabase/admin/settings/components/widgets/Grou
+ import SecretKeyWidget from "metabase/admin/settings/components/widgets/SecretKeyWidget";
+ import SessionTimeoutSetting from "metabase-enterprise/auth/components/SessionTimeoutSetting";
+ 
+-import SettingsGoogleForm from "metabase/admin/settings/components/SettingsGoogleForm";
+ import { createSessionMiddleware } from "../auth/middleware/session-middleware";
+ import SettingsSAMLForm from "./components/SettingsSAMLForm";
+ import SettingsJWTForm from "./components/SettingsJWTForm";
+@@ -264,29 +263,4 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
+   ]),
+ );
+ 
+-PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
+-  ...sections,
+-  "authentication/google": {
+-    component: SettingsGoogleForm,
+-    settings: [
+-      {
+-        key: "google-auth-client-id",
+-        required: true,
+-        autoFocus: true,
+-      },
+-      {
+-        // Default to OSS fields if enterprise SSO is not enabled
+-        ...sections["authentication/google"].settings.find(
+-          setting => setting.key === "google-auth-auto-create-accounts-domain",
+-        ),
+-        ...(hasPremiumFeature("sso") && {
+-          placeholder: "mycompany.com, example.com.br, otherdomain.co.uk",
+-          description:
+-            "Allow users to sign up on their own if their Google account email address is from one of the domains you specify here:",
+-        }),
+-      },
+-    ],
+-  },
+-}));
+-
+ PLUGIN_REDUX_MIDDLEWARES.push(createSessionMiddleware([LOGIN, LOGIN_GOOGLE]));
+diff --git a/frontend/src/metabase-types/api/mocks/settings.ts b/frontend/src/metabase-types/api/mocks/settings.ts
+index 8e58d7c5a1..2690f43845 100644
+--- a/frontend/src/metabase-types/api/mocks/settings.ts
++++ b/frontend/src/metabase-types/api/mocks/settings.ts
+@@ -1,4 +1,11 @@
+-import { Engine, FontFile, Settings, Version } from "metabase-types/api";
++import {
++  Engine,
++  FontFile,
++  SettingDefinition,
++  Settings,
++  TokenFeatures,
++  Version,
++} from "metabase-types/api";
+ 
+ export const createMockEngine = (opts?: Partial<Engine>): Engine => ({
+   "driver-name": "PostgreSQL",
+@@ -58,6 +65,30 @@ export const createMockTokenStatus = () => ({
+   "valid-thru": "2022-12-30T23:00:00Z",
+ });
+ 
++export const createMockTokenFeatures = (
++  opts?: Partial<TokenFeatures>,
++): TokenFeatures => ({
++  advanced_config: false,
++  advanced_permissions: false,
++  audit_app: false,
++  content_management: false,
++  embedding: false,
++  hosting: false,
++  sandboxes: false,
++  sso: false,
++  whitelabel: false,
++  ...opts,
++});
++
++export const createMockSettingDefinition = (
++  opts?: Partial<SettingDefinition>,
++): SettingDefinition => ({
++  key: "key",
++  env_name: "",
++  is_env_setting: false,
++  ...opts,
++});
++
+ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
+   "application-font": "Lato",
+   "application-font-files": [],
+@@ -92,7 +123,8 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
+   "slack-files-channel": null,
+   "slack-token": null,
+   "slack-token-valid?": false,
+-  "token-status": createMockTokenStatus(),
++  "token-features": createMockTokenFeatures(),
++  "token-status": null,
+   engines: createMockEngines(),
+   version: createMockVersion(),
+   ...opts,
+diff --git a/frontend/src/metabase-types/api/settings.ts b/frontend/src/metabase-types/api/settings.ts
+index d717dabb6d..2fc8d57a4a 100644
+--- a/frontend/src/metabase-types/api/settings.ts
++++ b/frontend/src/metabase-types/api/settings.ts
+@@ -58,9 +58,27 @@ export type LoadingMessage =
+ 
+ export type TokenStatusStatus = "unpaid" | "past-due" | string;
+ 
+-export type TokenStatus = {
++export interface TokenStatus {
+   status?: TokenStatusStatus;
+-};
++}
++
++export interface TokenFeatures {
++  advanced_config: boolean;
++  advanced_permissions: boolean;
++  audit_app: boolean;
++  content_management: boolean;
++  embedding: boolean;
++  hosting: boolean;
++  sandboxes: boolean;
++  sso: boolean;
++  whitelabel: boolean;
++}
++
++export interface SettingDefinition {
++  key: string;
++  env_name: string;
++  is_env_setting: boolean;
++}
+ 
+ export interface Settings {
+   "application-font": string;
+@@ -96,7 +114,8 @@ export interface Settings {
+   "slack-files-channel": string | null;
+   "slack-token": string | null;
+   "slack-token-valid?": boolean;
+-  "token-status": TokenStatus | undefined;
++  "token-features": TokenFeatures;
++  "token-status": TokenStatus | null;
+   engines: Record<string, Engine>;
+   version: Version;
+ }
+diff --git a/frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.styled.tsx b/frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.styled.tsx
+new file mode 100644
+index 0000000000..d049cc0d7b
+--- /dev/null
++++ b/frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.styled.tsx
+@@ -0,0 +1,16 @@
++import styled from "@emotion/styled";
++import Form from "metabase/core/components/Form";
++import { color } from "metabase/lib/colors";
++
++export const GoogleForm = styled(Form)`
++  margin: 0 1rem;
++  max-width: 32.5rem;
++`;
++
++export const GoogleFormHeader = styled.h2`
++  margin-top: 1rem;
++`;
++
++export const GoogleFormCaption = styled.p`
++  color: ${color("text-medium")};
++`;
+diff --git a/frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx b/frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx
+new file mode 100644
+index 0000000000..4c165cff51
+--- /dev/null
++++ b/frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx
+@@ -0,0 +1,121 @@
++import React, { useMemo } from "react";
++import { jt, t } from "ttag";
++import _ from "underscore";
++import MetabaseSettings from "metabase/lib/settings";
++import ExternalLink from "metabase/core/components/ExternalLink";
++import FormProvider from "metabase/core/components/FormProvider";
++import FormInput from "metabase/core/components/FormInput";
++import FormSubmitButton from "metabase/core/components/FormSubmitButton";
++import FormErrorMessage from "metabase/core/components/FormErrorMessage";
++import Breadcrumbs from "metabase/components/Breadcrumbs";
++import { SettingDefinition, Settings } from "metabase-types/api";
++import { GOOGLE_SCHEMA } from "../../constants";
++import {
++  GoogleForm,
++  GoogleFormCaption,
++  GoogleFormHeader,
++} from "./GoogleAuthForm.styled";
++
++const ENABLED_KEY = "google-auth-enabled";
++const CLIENT_ID_KEY = "google-auth-client-id";
++const DOMAIN_KEY = "google-auth-auto-create-accounts-domain";
++
++const BREADCRUMBS = [
++  [t`Authentication`, "/admin/settings/authentication"],
++  [t`Google Sign-In`],
++];
++
++export interface GoogleAuthFormProps {
++  elements?: SettingDefinition[];
++  settingValues?: Partial<Settings>;
++  isEnabled: boolean;
++  isSsoEnabled: boolean;
++  onSubmit: (settingValues: Partial<Settings>) => void;
++}
++
++const GoogleAuthForm = ({
++  elements = [],
++  settingValues = {},
++  isEnabled,
++  isSsoEnabled,
++  onSubmit,
++}: GoogleAuthFormProps): JSX.Element => {
++  const settings = useMemo(() => {
++    return _.indexBy(elements, "key");
++  }, [elements]);
++
++  const initialValues = useMemo(() => {
++    const values = GOOGLE_SCHEMA.cast(settingValues, { stripUnknown: true });
++    return { ...values, [ENABLED_KEY]: true };
++  }, [settingValues]);
++
++  return (
++    <FormProvider
++      initialValues={initialValues}
++      enableReinitialize
++      validationSchema={GOOGLE_SCHEMA}
++      validationContext={settings}
++      onSubmit={onSubmit}
++    >
++      {({ dirty }) => (
++        <GoogleForm disabled={!dirty}>
++          <Breadcrumbs crumbs={BREADCRUMBS} />
++          <GoogleFormHeader>{t`Sign in with Google`}</GoogleFormHeader>
++          <GoogleFormCaption>
++            {t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`}
++          </GoogleFormCaption>
++          <GoogleFormCaption>
++            {jt`To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found ${(
++              <ExternalLink key="link" href={getDocsLink()}>
++                {t`here`}
++              </ExternalLink>
++            )}.`}
++          </GoogleFormCaption>
++          <FormInput
++            name={CLIENT_ID_KEY}
++            title={t`Client ID`}
++            placeholder={t`{your-client-id}.apps.googleusercontent.com`}
++            {...getFormFieldProps(settings[CLIENT_ID_KEY])}
++          />
++          <FormInput
++            name={DOMAIN_KEY}
++            title={t`Domain`}
++            description={
++              isSsoEnabled
++                ? t`Allow users to sign up on their own if their Google account email address is from one of the domains you specify here:`
++                : t`Allow users to sign up on their own if their Google account email address is from:`
++            }
++            placeholder={
++              isSsoEnabled
++                ? "mycompany.com, example.com.br, otherdomain.co.uk"
++                : "mycompany.com"
++            }
++            nullable
++            {...getFormFieldProps(settings[DOMAIN_KEY])}
++          />
++          <FormSubmitButton
++            title={isEnabled ? t`Save changes` : t`Save and enable`}
++            primary
++            disabled={!dirty}
++          />
++          <FormErrorMessage />
++        </GoogleForm>
++      )}
++    </FormProvider>
++  );
++};
++
++const getFormFieldProps = (setting?: SettingDefinition) => {
++  if (setting?.is_env_setting) {
++    return { placeholder: t`Using ${setting.env_name}`, readOnly: true };
++  }
++};
++
++const getDocsLink = (): string => {
++  return MetabaseSettings.docsUrl(
++    "people-and-groups/google-and-ldap",
++    "enabling-google-sign-in",
++  );
++};
++
++export default GoogleAuthForm;
+diff --git a/frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.unit.spec.tsx b/frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.unit.spec.tsx
+new file mode 100644
+index 0000000000..8224901bb3
+--- /dev/null
++++ b/frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.unit.spec.tsx
+@@ -0,0 +1,80 @@
++import React from "react";
++import { render, screen, waitFor } from "@testing-library/react";
++import userEvent from "@testing-library/user-event";
++import { createMockSettingDefinition } from "metabase-types/api/mocks";
++import GoogleAuthForm, { GoogleAuthFormProps } from "./GoogleAuthForm";
++
++describe("GoogleAuthForm", () => {
++  it("should submit the form", async () => {
++    const props = getProps();
++
++    render(<GoogleAuthForm {...props} />);
++    userEvent.type(screen.getByLabelText("Client ID"), "id.test");
++    await waitFor(() => expect(screen.getByText(/Save/)).toBeEnabled());
++    screen.getByText("Save and enable").click();
++
++    await waitFor(() => {
++      expect(props.onSubmit).toHaveBeenCalledWith(
++        {
++          "google-auth-enabled": true,
++          "google-auth-client-id": "id.test",
++          "google-auth-auto-create-accounts-domain": null,
++        },
++        expect.anything(),
++      );
++    });
++  });
++
++  it("should not submit the form without required fields", () => {
++    const props = getProps({
++      isEnabled: true,
++      elements: [
++        createMockSettingDefinition({
++          key: "google-auth-client-id",
++          is_env_setting: false,
++        }),
++      ],
++    });
++
++    render(<GoogleAuthForm {...props} />);
++    userEvent.type(screen.getByLabelText("Domain"), "domain.test");
++
++    expect(screen.getByText("Save changes")).toBeDisabled();
++  });
++
++  it("should submit the form when required fields set by env vars", async () => {
++    const props = getProps({
++      isEnabled: true,
++      elements: [
++        createMockSettingDefinition({
++          key: "google-auth-client-id",
++          is_env_setting: true,
++        }),
++      ],
++    });
++
++    render(<GoogleAuthForm {...props} />);
++    userEvent.type(screen.getByLabelText("Domain"), "domain.test");
++    screen.getByText("Save changes").click();
++
++    await waitFor(() => {
++      expect(props.onSubmit).toHaveBeenCalledWith(
++        {
++          "google-auth-enabled": true,
++          "google-auth-client-id": null,
++          "google-auth-auto-create-accounts-domain": "domain.test",
++        },
++        expect.anything(),
++      );
++    });
++  });
++});
++
++const getProps = (
++  opts?: Partial<GoogleAuthFormProps>,
++): GoogleAuthFormProps => ({
++  isEnabled: false,
++  isSsoEnabled: false,
++  onSubmit: jest.fn(),
++  ...opts,
++});
+diff --git a/frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/index.ts b/frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/index.ts
+new file mode 100644
+index 0000000000..34832e7400
+--- /dev/null
++++ b/frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/index.ts
+@@ -0,0 +1 @@
++export { default } from "./GoogleAuthForm";
+diff --git a/frontend/src/metabase/admin/settings/auth/constants.ts b/frontend/src/metabase/admin/settings/auth/constants.ts
+index fdb15c2568..025af06b67 100644
+--- a/frontend/src/metabase/admin/settings/auth/constants.ts
++++ b/frontend/src/metabase/admin/settings/auth/constants.ts
+@@ -1,18 +1,29 @@
+ import * as Yup from "yup";
++import * as Errors from "metabase/core/utils/errors";
++import { SettingDefinition } from "metabase-types/api";
++
++const REQUIRED_SCHEMA = {
++  is: (isEnabled: boolean, setting?: SettingDefinition) =>
++    isEnabled && !setting?.is_env_setting,
++  then: (schema: Yup.AnySchema) => schema.required(Errors.required),
++};
+ 
+ export const GOOGLE_SCHEMA = Yup.object({
+-  "google-auth-enabled": Yup.boolean().default(false),
+-  "google-auth-client-id": Yup.string().nullable().default(null),
++  "google-auth-enabled": Yup.boolean().nullable().default(false),
++  "google-auth-client-id": Yup.string()
++    .nullable()
++    .default(null)
++    .when(["google-auth-enabled", "$google-auth-client-id"], REQUIRED_SCHEMA),
+   "google-auth-auto-create-accounts-domain": Yup.string()
+     .nullable()
+     .default(null),
+ });
+ 
+ export const LDAP_SCHEMA = Yup.object({
+-  "ldap-enabled": Yup.boolean().default(false),
++  "ldap-enabled": Yup.boolean().nullable().default(false),
+   "ldap-host": Yup.string().nullable().default(null),
+   "ldap-port": Yup.number().nullable().default(null),
+-  "ldap-security": Yup.string().default("none"),
++  "ldap-security": Yup.string().nullable().default("none"),
+   "ldap-bind-dn": Yup.string().nullable().default(null),
+   "ldap-password": Yup.string().nullable().default(null),
+   "ldap-user-base": Yup.string().nullable().default(null),
+@@ -20,7 +31,7 @@ export const LDAP_SCHEMA = Yup.object({
+   "ldap-attribute-email": Yup.string().nullable().default(null),
+   "ldap-attribute-firstname": Yup.string().nullable().default(null),
+   "ldap-attribute-lastname": Yup.string().nullable().default(null),
+-  "ldap-group-sync": Yup.boolean().default(false),
++  "ldap-group-sync": Yup.boolean().nullable().default(false),
+   "ldap-group-base": Yup.string().nullable().default(null),
+-  "ldap-group-mappings": Yup.object().default(null),
++  "ldap-group-mappings": Yup.object().nullable().default(null),
+ });
+diff --git a/frontend/src/metabase/admin/settings/auth/containers/GoogleAuthForm/GoogleAuthForm.tsx b/frontend/src/metabase/admin/settings/auth/containers/GoogleAuthForm/GoogleAuthForm.tsx
+new file mode 100644
+index 0000000000..2406e91ba2
+--- /dev/null
++++ b/frontend/src/metabase/admin/settings/auth/containers/GoogleAuthForm/GoogleAuthForm.tsx
+@@ -0,0 +1,15 @@
++import { connect } from "react-redux";
++import { State } from "metabase-types/store";
++import GoogleAuthForm from "../../components/GoogleAuthForm";
++import { updateGoogleSettings } from "../../../settings";
++
++const mapStateToProps = (state: State) => ({
++  isEnabled: state.settings.values["google-auth-enabled"],
++  isSsoEnabled: state.settings.values["token-features"].sso,
++});
++
++const mapDispatchToProps = {
++  onSubmit: updateGoogleSettings,
++};
++
++export default connect(mapStateToProps, mapDispatchToProps)(GoogleAuthForm);
+diff --git a/frontend/src/metabase/admin/settings/auth/containers/GoogleAuthForm/index.ts b/frontend/src/metabase/admin/settings/auth/containers/GoogleAuthForm/index.ts
+new file mode 100644
+index 0000000000..34832e7400
+--- /dev/null
++++ b/frontend/src/metabase/admin/settings/auth/containers/GoogleAuthForm/index.ts
+@@ -0,0 +1 @@
++export { default } from "./GoogleAuthForm";
+diff --git a/frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.styled.tsx b/frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.styled.tsx
+deleted file mode 100644
+index 35ad46b6fe..0000000000
+--- a/frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.styled.tsx
++++ /dev/null
+@@ -1,21 +0,0 @@
+-import styled from "@emotion/styled";
+-import Form from "metabase/containers/FormikForm";
+-import { color } from "metabase/lib/colors";
+-
+-export const FormRoot = styled(Form)`
+-  margin: 0 1rem;
+-  max-width: 32.5rem;
+-`;
+-
+-export const FormHeader = styled.h2`
+-  margin-top: 1rem;
+-`;
+-
+-export const FormCaption = styled.p`
+-  color: ${color("text-medium")};
+-`;
+-
+-export const FormSection = styled.div`
+-  display: flex;
+-  gap: 0.5rem;
+-`;
+diff --git a/frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx b/frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx
+deleted file mode 100644
+index 7dfcd355b3..0000000000
+--- a/frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx
++++ /dev/null
+@@ -1,107 +0,0 @@
+-import React, { useCallback } from "react";
+-import { connect } from "react-redux";
+-import { jt, t } from "ttag";
+-import MetabaseSettings from "metabase/lib/settings";
+-import ExternalLink from "metabase/core/components/ExternalLink";
+-import Breadcrumbs from "metabase/components/Breadcrumbs";
+-import {
+-  FormField,
+-  FormMessage,
+-  FormSubmit,
+-} from "metabase/containers/FormikForm";
+-import { updateGoogleSettings } from "metabase/admin/settings/settings";
+-import { settingToFormField } from "metabase/admin/settings/utils";
+-import {
+-  FormCaption,
+-  FormSection,
+-  FormHeader,
+-  FormRoot,
+-} from "./SettingsGoogleForm.styled";
+-
+-export interface SettingElement {
+-  key: string;
+-}
+-
+-export interface SettingsGoogleFormProps {
+-  elements?: SettingElement[];
+-  settingValues?: Record<string, unknown>;
+-  onSubmit: (settingValues: Record<string, unknown>) => void;
+-}
+-
+-const SettingsGoogleForm = ({
+-  elements = [],
+-  settingValues = {},
+-  onSubmit,
+-}: SettingsGoogleFormProps) => {
+-  const isEnabled = Boolean(settingValues["google-auth-enabled"]);
+-
+-  const handleSubmit = useCallback(
+-    (values: Record<string, unknown>) => {
+-      return onSubmit({ ...values, "google-auth-enabled": true });
+-    },
+-    [onSubmit],
+-  );
+-
+-  return (
+-    <FormRoot
+-      initialValues={settingValues}
+-      disablePristineSubmit
+-      overwriteOnInitialValuesChange
+-      onSubmit={handleSubmit}
+-    >
+-      <Breadcrumbs
+-        crumbs={[
+-          [t`Authentication`, "/admin/settings/authentication"],
+-          [t`Google Sign-In`],
+-        ]}
+-      />
+-      <FormHeader>{t`Sign in with Google`}</FormHeader>
+-      <FormCaption>
+-        {t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`}
+-      </FormCaption>
+-      <FormCaption>
+-        {jt`To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found ${(
+-          <ExternalLink key="link" href={getDocsLink()}>{t`here`}</ExternalLink>
+-        )}.`}
+-      </FormCaption>
+-      <FormField
+-        {...getField("google-auth-client-id", elements)}
+-        title={t`Client ID`}
+-        description=""
+-        placeholder={t`{your-client-id}.apps.googleusercontent.com`}
+-        required
+-        autoFocus
+-      />
+-      <FormField
+-        {...getField("google-auth-auto-create-accounts-domain", elements)}
+-        title={t`Domain`}
+-      />
+-      <FormSection>
+-        <FormMessage />
+-      </FormSection>
+-      <FormSection>
+-        <FormSubmit>
+-          {isEnabled ? t`Save changes` : t`Save and enable`}
+-        </FormSubmit>
+-      </FormSection>
+-    </FormRoot>
+-  );
+-};
+-
+-const getField = (name: string, elements: SettingElement[]) => {
+-  const setting = elements.find(e => e.key === name) ?? { key: name };
+-  return settingToFormField(setting);
+-};
+-
+-const getDocsLink = () => {
+-  return MetabaseSettings.docsUrl(
+-    "people-and-groups/google-and-ldap",
+-    "enabling-google-sign-in",
+-  );
+-};
+-
+-const mapDispatchToProps = {
+-  onSubmit: updateGoogleSettings,
+-};
+-
+-export default connect(null, mapDispatchToProps)(SettingsGoogleForm);
+diff --git a/frontend/src/metabase/admin/settings/components/SettingsGoogleForm/index.ts b/frontend/src/metabase/admin/settings/components/SettingsGoogleForm/index.ts
+deleted file mode 100644
+index f3c8fda759..0000000000
+--- a/frontend/src/metabase/admin/settings/components/SettingsGoogleForm/index.ts
++++ /dev/null
+@@ -1 +0,0 @@
+-export { default } from "./SettingsGoogleForm";
+diff --git a/frontend/src/metabase/core/hooks/use-form-submit/types.ts b/frontend/src/metabase/core/hooks/use-form-submit/types.ts
+index 35c22de028..a9c5958abf 100644
+--- a/frontend/src/metabase/core/hooks/use-form-submit/types.ts
++++ b/frontend/src/metabase/core/hooks/use-form-submit/types.ts
+@@ -1,7 +1,7 @@
+ import type { FormikErrors } from "formik";
+ 
+ export interface FormError<T> extends FormErrorData<T> {
+-  data?: FormErrorData<T>;
++  data?: string | FormErrorData<T>;
+ }
+ 
+ export interface FormErrorData<T> {
+diff --git a/frontend/src/metabase/core/hooks/use-form-submit/use-form-submit.ts b/frontend/src/metabase/core/hooks/use-form-submit/use-form-submit.ts
+index fd3e9ede5f..915ea928e4 100644
+--- a/frontend/src/metabase/core/hooks/use-form-submit/use-form-submit.ts
++++ b/frontend/src/metabase/core/hooks/use-form-submit/use-form-submit.ts
+@@ -42,11 +42,23 @@ const isFormError = <T>(error: unknown): error is FormError<T> => {
+ };
+ 
+ const getFormErrors = (error: unknown) => {
+-  return isFormError(error) ? error.data?.errors ?? error.errors ?? {} : {};
++  if (isFormError(error)) {
++    if (typeof error.data !== "string") {
++      return error.data?.errors ?? error.errors ?? {};
++    }
++  }
++
++  return {};
+ };
+ 
+ const getFormMessage = (error: unknown) => {
+-  return isFormError(error) ? error.data?.message ?? error.message : undefined;
++  if (isFormError(error)) {
++    if (typeof error.data !== "string") {
++      return error.data?.message ?? error.message;
++    } else {
++      return error.data;
++    }
++  }
+ };
+ 
+ export default useFormSubmit;
+diff --git a/frontend/src/metabase/plugins/builtin/auth/google.js b/frontend/src/metabase/plugins/builtin/auth/google.js
+index 1350ce71dc..75eba2180f 100644
+--- a/frontend/src/metabase/plugins/builtin/auth/google.js
++++ b/frontend/src/metabase/plugins/builtin/auth/google.js
+@@ -8,8 +8,9 @@ import {
+ 
+ import MetabaseSettings from "metabase/lib/settings";
+ 
+-import SettingsGoogleForm from "metabase/admin/settings/components/SettingsGoogleForm";
++import FormikForm from "metabase/containers/FormikForm";
+ import GoogleAuthCard from "metabase/admin/settings/auth/containers/GoogleAuthCard";
++import GoogleSettingsForm from "metabase/admin/settings/auth/containers/GoogleAuthForm";
+ 
+ PLUGIN_AUTH_PROVIDERS.push(providers => {
+   const googleProvider = {
+@@ -38,19 +39,10 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
+ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
+   ...sections,
+   "authentication/google": {
+-    component: SettingsGoogleForm,
++    component: GoogleSettingsForm ?? FormikForm,
+     settings: [
+-      {
+-        key: "google-auth-client-id",
+-        required: true,
+-        autoFocus: true,
+-      },
+-      {
+-        key: "google-auth-auto-create-accounts-domain",
+-        description:
+-          "Allow users to sign up on their own if their Google account email address is from:",
+-        placeholder: "mycompany.com",
+-      },
++      { key: "google-auth-client-id" },
++      { key: "google-auth-auto-create-accounts-domain" },
+     ],
+   },
+ }));
+diff --git a/src/metabase/api/google.clj b/src/metabase/api/google.clj
+index c07bdb43bf..925f263937 100644
+--- a/src/metabase/api/google.clj
++++ b/src/metabase/api/google.clj
+@@ -11,7 +11,7 @@
+ (api/defendpoint PUT "/settings"
+   "Update Google Sign-In related settings. You must be a superuser or have `setting` permission to do this."
+   [:as {{:keys [google-auth-client-id google-auth-enabled google-auth-auto-create-accounts-domain]} :body}]
+-  {google-auth-client-id                   s/Str
++  {google-auth-client-id                   (s/maybe s/Str)
+    google-auth-enabled                     (s/maybe s/Bool)
+    google-auth-auto-create-accounts-domain (s/maybe s/Str)}
+   (validation/check-has-application-permission :setting)

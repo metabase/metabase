@@ -1,0 +1,181 @@
+commit 5450d974680a0829013c39fa294e20dcc3080d73
+Author: Uladzimir Havenchyk <125459446+uladzimirdev@users.noreply.github.com>
+Date:   Mon May 1 19:33:05 2023 +0300
+
+    Use FormProvider in SaveQuestionModal (#30418)
+
+diff --git a/frontend/src/metabase/containers/SaveQuestionModal.jsx b/frontend/src/metabase/containers/SaveQuestionModal.jsx
+index 398ae81eae..5947c93905 100644
+--- a/frontend/src/metabase/containers/SaveQuestionModal.jsx
++++ b/frontend/src/metabase/containers/SaveQuestionModal.jsx
+@@ -1,14 +1,22 @@
+-/* eslint-disable react/prop-types */
+ import React, { Component } from "react";
+ import PropTypes from "prop-types";
+ import { CSSTransition, TransitionGroup } from "react-transition-group";
+ import { t } from "ttag";
++import * as Yup from "yup";
+ 
+-import Form, { FormField, FormFooter } from "metabase/containers/FormikForm";
+ import ModalContent from "metabase/components/ModalContent";
+-import Radio from "metabase/core/components/Radio";
+-import validate from "metabase/lib/validate";
++import FormProvider from "metabase/core/components/FormProvider/FormProvider";
++import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
++import Form from "metabase/core/components/Form";
++import FormInput from "metabase/core/components/FormInput";
++import FormFooter from "metabase/core/components/FormFooter";
++import FormTextArea from "metabase/core/components/FormTextArea";
++import FormErrorMessage from "metabase/core/components/FormErrorMessage";
++import Button from "metabase/core/components/Button";
++import FormSubmitButton from "metabase/core/components/FormSubmitButton";
++import FormRadio from "metabase/core/components/FormRadio";
+ import { canonicalCollectionId } from "metabase/collections/utils";
++import * as Errors from "metabase/core/utils/errors";
+ 
+ import "./SaveQuestionModal.css";
+ 
+@@ -22,6 +30,17 @@ const getSingleStepTitle = (questionType, showSaveType) => {
+   }
+ };
+ 
++const SAVE_QUESTION_SCHEMA = Yup.object({
++  saveType: Yup.string(),
++  name: Yup.string().when("saveType", {
++    // We don't care if the form is valid when overwrite mode is enabled,
++    // as original question's data will be submitted instead of the form values
++    is: value => value !== "overwrite",
++    then: Yup.string().required(Errors.required),
++    otherwise: Yup.string().nullable(true),
++  }),
++});
++
+ export default class SaveQuestionModal extends Component {
+   static propTypes = {
+     question: PropTypes.object.isRequired,
+@@ -30,14 +49,7 @@ export default class SaveQuestionModal extends Component {
+     onSave: PropTypes.func.isRequired,
+     onClose: PropTypes.func.isRequired,
+     multiStep: PropTypes.bool,
+-  };
+-
+-  validateName = (name, { values }) => {
+-    if (values.saveType !== "overwrite") {
+-      // We don't care if the form is valid when overwrite mode is enabled,
+-      // as original question's data will be submitted instead of the form values
+-      return validate.required()(name);
+-    }
++    initialCollectionId: PropTypes.number,
+   };
+ 
+   handleSubmit = async details => {
+@@ -119,29 +131,28 @@ export default class SaveQuestionModal extends Component {
+         title={title}
+         onClose={this.props.onClose}
+       >
+-        <Form
++        <FormProvider
+           initialValues={initialValues}
+-          fields={[
+-            { name: "saveType" },
+-            {
+-              name: "name",
+-              validate: this.validateName,
+-            },
+-            { name: "description" },
+-            { name: "collection_id" },
+-          ]}
+           onSubmit={this.handleSubmit}
+-          overwriteOnInitialValuesChange
++          validationSchema={SAVE_QUESTION_SCHEMA}
++          enableReinitialize
+         >
+-          {({ values, Form }) => (
++          {({ values }) => (
+             <Form>
+-              <FormField
+-                name="saveType"
+-                title={t`Replace or save as new?`}
+-                type={SaveTypeInput}
+-                hidden={!showSaveType}
+-                originalQuestion={originalQuestion}
+-              />
++              {showSaveType && (
++                <FormRadio
++                  name="saveType"
++                  title={t`Replace or save as new?`}
++                  options={[
++                    {
++                      name: t`Replace original question, "${originalQuestion?.displayName()}"`,
++                      value: "overwrite",
++                    },
++                    { name: t`Save as new question`, value: "create" },
++                  ]}
++                  vertical
++                />
++              )}
+               <TransitionGroup>
+                 {values.saveType === "create" && (
+                   <CSSTransition
+@@ -152,49 +163,37 @@ export default class SaveQuestionModal extends Component {
+                     }}
+                   >
+                     <div className="saveQuestionModalFields">
+-                      <FormField
++                      <FormInput
+                         autoFocus
+                         name="name"
+                         title={t`Name`}
+                         placeholder={nameInputPlaceholder}
+                       />
+-                      <FormField
++                      <FormTextArea
+                         name="description"
+-                        type="text"
+                         title={t`Description`}
+                         placeholder={t`It's optional but oh, so helpful`}
+                       />
+-                      <FormField
++                      <FormCollectionPicker
+                         name="collection_id"
+                         title={t`Which collection should this go in?`}
+-                        type="collection"
+                       />
+                     </div>
+                   </CSSTransition>
+                 )}
+               </TransitionGroup>
+-              <FormFooter submitTitle={t`Save`} onCancel={this.props.onClose} />
++              <FormFooter>
++                <FormErrorMessage inline />
++                <Button
++                  type="button"
++                  onClick={this.props.onClose}
++                >{t`Cancel`}</Button>
++                <FormSubmitButton title={t`Save`} primary />
++              </FormFooter>
+             </Form>
+           )}
+-        </Form>
++        </FormProvider>
+       </ModalContent>
+     );
+   }
+ }
+-
+-const SaveTypeInput = ({ field, originalQuestion }) => (
+-  <Radio
+-    {...field}
+-    type={""}
+-    options={[
+-      {
+-        name: t`Replace original question, "${
+-          originalQuestion && originalQuestion.displayName()
+-        }"`,
+-        value: "overwrite",
+-      },
+-      { name: t`Save as new question`, value: "create" },
+-    ]}
+-    vertical
+-  />
+-);

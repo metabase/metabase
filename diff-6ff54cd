@@ -1,0 +1,733 @@
+commit 6ff54cd48e83386f4566338a04cc15d55f063d7b
+Author: Anton Kulyk <kuliks.anton@gmail.com>
+Date:   Tue Nov 29 15:12:00 2022 +0000
+
+    Migrate new dashboard form to formik (#26770)
+    
+    * Add `isValidCollectionId` helper
+    
+    * Add `FormCollectionPicker` component
+    
+    * Add `FormFooter` component
+    
+    * Fix `FormProvider` template types
+    
+    * Add `CreateDashboardForm`
+    
+    * Reimplement `CreateDashboardModal`
+    
+    * Fix type error
+    
+    * Use new `CreateDashboardModal`
+    
+    * Delete old `CreateDashboardModal`
+    
+    * Accept root collection's `null` id
+    
+    * Remove console errors/warns overwrite in tests
+    
+    * Remove flaky test
+    
+    * Use `getBy*` element selectors instead of `queryBy*`)
+    
+    * Fix creating new dashboard for a question
+    
+    * Open new dashboards in editing mode
+    
+    * Rely on validation schema to set initial values
+    
+    * Make `description` input `nullable`
+    
+    * Use `userEvent` instead of `fireEvent` in tests
+    
+    * Move `FormCollectionPicker` to collections module
+
+diff --git a/frontend/src/metabase/collections/containers/FormCollectionPicker/FormCollectionPicker.styled.tsx b/frontend/src/metabase/collections/containers/FormCollectionPicker/FormCollectionPicker.styled.tsx
+new file mode 100644
+index 0000000000..ad80cf0d02
+--- /dev/null
++++ b/frontend/src/metabase/collections/containers/FormCollectionPicker/FormCollectionPicker.styled.tsx
+@@ -0,0 +1,11 @@
++import styled from "@emotion/styled";
++
++import ItemPicker from "metabase/containers/ItemPicker";
++
++export const MIN_POPOVER_WIDTH = 300;
++
++export const PopoverItemPicker = styled(ItemPicker)<{ width: number }>`
++  width: ${({ width = MIN_POPOVER_WIDTH }) => width}px;
++  padding: 1rem;
++  overflow: auto;
++`;
+diff --git a/frontend/src/metabase/collections/containers/FormCollectionPicker/FormCollectionPicker.tsx b/frontend/src/metabase/collections/containers/FormCollectionPicker/FormCollectionPicker.tsx
+new file mode 100644
+index 0000000000..3f2cf29e39
+--- /dev/null
++++ b/frontend/src/metabase/collections/containers/FormCollectionPicker/FormCollectionPicker.tsx
+@@ -0,0 +1,104 @@
++import React, {
++  useCallback,
++  useEffect,
++  useState,
++  useRef,
++  HTMLAttributes,
++} from "react";
++import { t } from "ttag";
++import { useField } from "formik";
++
++import { useUniqueId } from "metabase/hooks/use-unique-id";
++
++import FormField from "metabase/core/components/FormField";
++import SelectButton from "metabase/core/components/SelectButton";
++import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
++
++import CollectionName from "metabase/containers/CollectionName";
++
++import { isValidCollectionId } from "metabase/collections/utils";
++
++import type { CollectionId } from "metabase-types/api";
++
++import {
++  PopoverItemPicker,
++  MIN_POPOVER_WIDTH,
++} from "./FormCollectionPicker.styled";
++
++export interface FormCollectionPickerProps
++  extends HTMLAttributes<HTMLDivElement> {
++  name: string;
++  title?: string;
++  placeholder?: string;
++}
++
++const ITEM_PICKER_MODELS = ["collection"];
++
++function FormCollectionPicker({
++  className,
++  style,
++  name,
++  title,
++  placeholder = t`Select a collection`,
++}: FormCollectionPickerProps) {
++  const id = useUniqueId();
++  const [{ value }, { error, touched }, { setValue }] = useField(name);
++  const formFieldRef = useRef<HTMLDivElement>(null);
++  const [width, setWidth] = useState(MIN_POPOVER_WIDTH);
++
++  useEffect(() => {
++    const { width: formFieldWidth } =
++      formFieldRef.current?.getBoundingClientRect() || {};
++    if (formFieldWidth) {
++      setWidth(formFieldWidth);
++    }
++  }, []);
++
++  const renderTrigger = useCallback(
++    ({ onClick: handleShowPopover }) => (
++      <FormField
++        className={className}
++        style={style}
++        title={title}
++        htmlFor={id}
++        error={touched ? error : undefined}
++        ref={formFieldRef}
++      >
++        <SelectButton onClick={handleShowPopover}>
++          {isValidCollectionId(value) ? (
++            <CollectionName id={value} />
++          ) : (
++            placeholder
++          )}
++        </SelectButton>
++      </FormField>
++    ),
++    [id, value, title, placeholder, error, touched, className, style],
++  );
++
++  const renderContent = useCallback(
++    ({ closePopover }) => (
++      <PopoverItemPicker
++        value={{ id: value, model: "collection" }}
++        models={ITEM_PICKER_MODELS}
++        onChange={({ id }: { id: CollectionId }) => {
++          setValue(id);
++          closePopover();
++        }}
++        width={width}
++      />
++    ),
++    [value, width, setValue],
++  );
++
++  return (
++    <TippyPopoverWithTrigger
++      placement="bottom-start"
++      renderTrigger={renderTrigger}
++      popoverContent={renderContent}
++      maxWidth={width}
++    />
++  );
++}
++
++export default FormCollectionPicker;
+diff --git a/frontend/src/metabase/collections/containers/FormCollectionPicker/index.ts b/frontend/src/metabase/collections/containers/FormCollectionPicker/index.ts
+new file mode 100644
+index 0000000000..52ba13eb82
+--- /dev/null
++++ b/frontend/src/metabase/collections/containers/FormCollectionPicker/index.ts
+@@ -0,0 +1 @@
++export { default } from "./FormCollectionPicker";
+diff --git a/frontend/src/metabase/collections/utils.ts b/frontend/src/metabase/collections/utils.ts
+index 226264de1a..a632ee096a 100644
+--- a/frontend/src/metabase/collections/utils.ts
++++ b/frontend/src/metabase/collections/utils.ts
+@@ -98,3 +98,10 @@ export function canonicalCollectionId(
+     return parseInt(collectionId, 10);
+   }
+ }
++
++export function isValidCollectionId(
++  collectionId: string | number | null | undefined,
++): boolean {
++  const id = canonicalCollectionId(collectionId);
++  return id === null || typeof id === "number";
++}
+diff --git a/frontend/src/metabase/components/CreateDashboardModal.jsx b/frontend/src/metabase/components/CreateDashboardModal.jsx
+deleted file mode 100644
+index 3d9ac53a18..0000000000
+--- a/frontend/src/metabase/components/CreateDashboardModal.jsx
++++ /dev/null
+@@ -1,58 +0,0 @@
+-/* eslint-disable react/prop-types */
+-import React, { Component } from "react";
+-import PropTypes from "prop-types";
+-import { connect } from "react-redux";
+-import { withRouter } from "react-router";
+-import { push } from "react-router-redux";
+-import _ from "underscore";
+-
+-import * as Urls from "metabase/lib/urls";
+-
+-import Collection from "metabase/entities/collections";
+-import Dashboard from "metabase/entities/dashboards";
+-
+-const mapStateToProps = (state, props) => ({
+-  initialCollectionId: Collection.selectors.getInitialCollectionId(
+-    state,
+-    props,
+-  ),
+-});
+-
+-const mapDispatchToProps = {
+-  onChangeLocation: push,
+-};
+-
+-class CreateDashboardModal extends Component {
+-  static propTypes = {
+-    onSaved: PropTypes.func,
+-    onClose: PropTypes.func,
+-  };
+-
+-  onSaved = dashboard => {
+-    const { onClose, onChangeLocation } = this.props;
+-    if (onClose) {
+-      onClose();
+-    }
+-
+-    const url = Urls.dashboard(dashboard, { editMode: true });
+-    onChangeLocation(url);
+-  };
+-
+-  render() {
+-    const { initialCollectionId, onSaved, onClose } = this.props;
+-    return (
+-      <Dashboard.ModalForm
+-        form={Dashboard.forms.create}
+-        overwriteOnInitialValuesChange
+-        dashboard={{ collection_id: initialCollectionId }}
+-        onClose={onClose}
+-        onSaved={typeof onSaved === "function" ? onSaved : this.onSaved}
+-      />
+-    );
+-  }
+-}
+-
+-export default _.compose(
+-  withRouter,
+-  connect(mapStateToProps, mapDispatchToProps),
+-)(CreateDashboardModal);
+diff --git a/frontend/src/metabase/components/NewItemMenu/NewItemMenu.tsx b/frontend/src/metabase/components/NewItemMenu/NewItemMenu.tsx
+index b245c34311..05cd20bd09 100644
+--- a/frontend/src/metabase/components/NewItemMenu/NewItemMenu.tsx
++++ b/frontend/src/metabase/components/NewItemMenu/NewItemMenu.tsx
+@@ -3,11 +3,11 @@ import { t } from "ttag";
+ 
+ import Modal from "metabase/components/Modal";
+ import EntityMenu from "metabase/components/EntityMenu";
+-import CreateDashboardModal from "metabase/components/CreateDashboardModal";
+ 
+ import * as Urls from "metabase/lib/urls";
+ 
+ import CollectionCreate from "metabase/collections/containers/CollectionCreate";
++import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardModal";
+ 
+ import type { Collection, CollectionId } from "metabase-types/api";
+ 
+diff --git a/frontend/src/metabase/containers/AddToDashSelectDashModal.jsx b/frontend/src/metabase/containers/AddToDashSelectDashModal.jsx
+index ecceda31d5..21ab7008a4 100644
+--- a/frontend/src/metabase/containers/AddToDashSelectDashModal.jsx
++++ b/frontend/src/metabase/containers/AddToDashSelectDashModal.jsx
+@@ -6,10 +6,12 @@ import { t } from "ttag";
+ import Icon from "metabase/components/Icon";
+ import Link from "metabase/core/components/Link";
+ import ModalContent from "metabase/components/ModalContent";
+-import CreateDashboardModal from "metabase/components/CreateDashboardModal";
+ import DashboardPicker from "metabase/containers/DashboardPicker";
+ 
+ import * as Urls from "metabase/lib/urls";
++
++import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardModal";
++
+ import { LinkContent } from "./AddToDashSelectDashModal.styled";
+ 
+ function mapStateToProps(state) {
+@@ -44,7 +46,7 @@ class AddToDashSelectDashModal extends Component {
+       return (
+         <CreateDashboardModal
+           collectionId={this.props.card.collection_id}
+-          onSaved={this.navigateToDashboard}
++          onCreate={this.navigateToDashboard}
+           onClose={() => this.setState({ shouldCreateDashboard: false })}
+         />
+       );
+diff --git a/frontend/src/metabase/core/components/FormFooter/FormFooter.styled.tsx b/frontend/src/metabase/core/components/FormFooter/FormFooter.styled.tsx
+new file mode 100644
+index 0000000000..9e7ff8c8be
+--- /dev/null
++++ b/frontend/src/metabase/core/components/FormFooter/FormFooter.styled.tsx
+@@ -0,0 +1,10 @@
++import styled from "@emotion/styled";
++
++const FormFooter = styled.div`
++  display: flex;
++  align-items: center;
++  justify-content: flex-end;
++  gap: 0.5rem;
++`;
++
++export default FormFooter;
+diff --git a/frontend/src/metabase/core/components/FormFooter/index.ts b/frontend/src/metabase/core/components/FormFooter/index.ts
+new file mode 100644
+index 0000000000..481551f32b
+--- /dev/null
++++ b/frontend/src/metabase/core/components/FormFooter/index.ts
+@@ -0,0 +1 @@
++export { default } from "./FormFooter.styled";
+diff --git a/frontend/src/metabase/core/components/FormProvider/FormProvider.tsx b/frontend/src/metabase/core/components/FormProvider/FormProvider.tsx
+index f31fdf266f..af5178ef51 100644
+--- a/frontend/src/metabase/core/components/FormProvider/FormProvider.tsx
++++ b/frontend/src/metabase/core/components/FormProvider/FormProvider.tsx
+@@ -1,6 +1,6 @@
+ import React from "react";
+ import { Formik } from "formik";
+-import type { FormikConfig } from "formik";
++import type { FormikConfig, FormikValues } from "formik";
+ import type { AnySchema } from "yup";
+ import useFormSubmit from "metabase/core/hooks/use-form-submit";
+ import useFormValidation from "metabase/core/hooks/use-form-validation";
+@@ -11,7 +11,7 @@ export interface FormProviderProps<T, C> extends FormikConfig<T> {
+   validationContext?: C;
+ }
+ 
+-function FormProvider<T, C>({
++function FormProvider<T extends FormikValues, C = unknown>({
+   initialValues,
+   validationSchema,
+   validationContext,
+@@ -19,7 +19,7 @@ function FormProvider<T, C>({
+   ...props
+ }: FormProviderProps<T, C>): JSX.Element {
+   const { state, handleSubmit } = useFormSubmit({ onSubmit });
+-  const { initialErrors, handleValidate } = useFormValidation({
++  const { initialErrors, handleValidate } = useFormValidation<T, C>({
+     initialValues,
+     validationSchema,
+     validationContext,
+@@ -27,7 +27,7 @@ function FormProvider<T, C>({
+ 
+   return (
+     <FormContext.Provider value={state}>
+-      <Formik
++      <Formik<T>
+         initialValues={initialValues}
+         initialErrors={initialErrors}
+         validate={handleValidate}
+diff --git a/frontend/src/metabase/dashboard/containers/CreateDashboardForm.tsx b/frontend/src/metabase/dashboard/containers/CreateDashboardForm.tsx
+new file mode 100644
+index 0000000000..75f1191d8d
+--- /dev/null
++++ b/frontend/src/metabase/dashboard/containers/CreateDashboardForm.tsx
+@@ -0,0 +1,138 @@
++import React, { useCallback, useMemo } from "react";
++import { t } from "ttag";
++import _ from "underscore";
++import * as Yup from "yup";
++import { connect } from "react-redux";
++import { withRouter } from "react-router";
++
++import Button from "metabase/core/components/Button";
++import Form from "metabase/core/components/Form";
++import FormFooter from "metabase/core/components/FormFooter";
++import FormProvider from "metabase/core/components/FormProvider";
++import FormInput from "metabase/core/components/FormInput";
++import FormTextArea from "metabase/core/components/FormTextArea";
++import FormSubmitButton from "metabase/core/components/FormSubmitButton";
++import FormErrorMessage from "metabase/core/components/FormErrorMessage";
++
++import * as Errors from "metabase/core/utils/errors";
++
++import Collections from "metabase/entities/collections";
++import Dashboards from "metabase/entities/dashboards";
++
++import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
++
++import type { CollectionId, Dashboard } from "metabase-types/api";
++import type { State } from "metabase-types/store";
++
++const DASHBOARD_SCHEMA = Yup.object({
++  name: Yup.string()
++    .required(Errors.required)
++    .max(100, Errors.maxLength)
++    .default(""),
++  description: Yup.string().nullable().max(255, Errors.maxLength).default(null),
++  collection_id: Yup.number().nullable(),
++});
++
++interface CreateDashboardProperties {
++  name: string;
++  description: string | null;
++  collection_id: CollectionId;
++}
++
++export interface CreateDashboardFormOwnProps {
++  collectionId?: CollectionId; // can be used by `getInitialCollectionId`
++  onCreate?: (dashboard: Dashboard) => void;
++  onCancel?: () => void;
++}
++
++interface CreateDashboardFormStateProps {
++  initialCollectionId: CollectionId;
++}
++
++interface CreateDashboardFormDispatchProps {
++  handleCreateDashboard: (
++    dashboard: CreateDashboardProperties,
++  ) => Promise<Dashboard>;
++}
++
++type Props = CreateDashboardFormOwnProps &
++  CreateDashboardFormStateProps &
++  CreateDashboardFormDispatchProps;
++
++function mapStateToProps(state: State, props: CreateDashboardFormOwnProps) {
++  return {
++    initialCollectionId: Collections.selectors.getInitialCollectionId(
++      state,
++      props,
++    ),
++  };
++}
++
++const mapDispatchToProps = {
++  handleCreateDashboard: Dashboards.actions.create,
++};
++
++function CreateDashboardForm({
++  initialCollectionId,
++  handleCreateDashboard,
++  onCreate,
++  onCancel,
++}: Props) {
++  const initialValues = useMemo(
++    () => ({
++      ...DASHBOARD_SCHEMA.getDefault(),
++      collection_id: initialCollectionId,
++    }),
++    [initialCollectionId],
++  );
++
++  const handleCreate = useCallback(
++    async (values: CreateDashboardProperties) => {
++      const action = await handleCreateDashboard(values);
++      const dashboard = Dashboards.HACK_getObjectFromAction(action);
++      onCreate?.(dashboard);
++    },
++    [handleCreateDashboard, onCreate],
++  );
++
++  return (
++    <FormProvider
++      initialValues={initialValues}
++      validationSchema={DASHBOARD_SCHEMA}
++      onSubmit={handleCreate}
++    >
++      {({ dirty }) => (
++        <Form>
++          <FormInput
++            name="name"
++            title={t`Name`}
++            placeholder={t`What is the name of your dashboard?`}
++            autoFocus
++          />
++          <FormTextArea
++            name="description"
++            title={t`Description`}
++            placeholder={t`It's optional but oh, so helpful`}
++            nullable
++          />
++          <FormCollectionPicker
++            name="collection_id"
++            title={t`Which collection should this go in?`}
++          />
++          <FormFooter>
++            <FormErrorMessage inline />
++            {!!onCancel && (
++              <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
++            )}
++            <FormSubmitButton title={t`Create`} disabled={!dirty} primary />
++          </FormFooter>
++        </Form>
++      )}
++    </FormProvider>
++  );
++}
++
++export default _.compose(
++  withRouter,
++  connect(mapStateToProps, mapDispatchToProps),
++)(CreateDashboardForm);
+diff --git a/frontend/src/metabase/dashboard/containers/CreateDashboardModal.tsx b/frontend/src/metabase/dashboard/containers/CreateDashboardModal.tsx
+new file mode 100644
+index 0000000000..271bcca00c
+--- /dev/null
++++ b/frontend/src/metabase/dashboard/containers/CreateDashboardModal.tsx
+@@ -0,0 +1,70 @@
++import React, { useCallback } from "react";
++import { t } from "ttag";
++import { connect } from "react-redux";
++import { push } from "react-router-redux";
++import type { LocationDescriptor } from "history";
++
++import ModalContent from "metabase/components/ModalContent";
++
++import * as Urls from "metabase/lib/urls";
++
++import type { Dashboard } from "metabase-types/api";
++import type { State } from "metabase-types/store";
++
++import CreateDashboardForm, {
++  CreateDashboardFormOwnProps,
++} from "./CreateDashboardForm";
++
++interface CreateDashboardModalOwnProps
++  extends Omit<CreateDashboardFormOwnProps, "onCancel"> {
++  onClose?: () => void;
++}
++
++interface CreateDashboardModalDispatchProps {
++  onChangeLocation: (location: LocationDescriptor) => void;
++}
++
++type Props = CreateDashboardModalOwnProps & CreateDashboardModalDispatchProps;
++
++const mapDispatchToProps = {
++  onChangeLocation: push,
++};
++
++function CreateDashboardModal({
++  onCreate,
++  onChangeLocation,
++  onClose,
++  ...props
++}: Props) {
++  const handleCreate = useCallback(
++    (dashboard: Dashboard) => {
++      if (typeof onCreate === "function") {
++        onCreate(dashboard);
++      } else {
++        onClose?.();
++        onChangeLocation(Urls.dashboard(dashboard, { editMode: true }));
++      }
++    },
++    [onCreate, onChangeLocation, onClose],
++  );
++
++  return (
++    <ModalContent title={t`New dashboard`} onClose={onClose}>
++      <CreateDashboardForm
++        {...props}
++        onCreate={handleCreate}
++        onCancel={onClose}
++      />
++    </ModalContent>
++  );
++}
++
++export default connect<
++  unknown,
++  CreateDashboardModalDispatchProps,
++  CreateDashboardModalOwnProps,
++  State
++>(
++  null,
++  mapDispatchToProps,
++)(CreateDashboardModal);
+diff --git a/frontend/src/metabase/components/CreateDashboardModal.unit.spec.js b/frontend/src/metabase/dashboard/containers/CreateDashboardModal.unit.spec.tsx
+similarity index 71%
+rename from frontend/src/metabase/components/CreateDashboardModal.unit.spec.js
+rename to frontend/src/metabase/dashboard/containers/CreateDashboardModal.unit.spec.tsx
+index fe8c4e89e7..115027a105 100644
+--- a/frontend/src/metabase/components/CreateDashboardModal.unit.spec.js
++++ b/frontend/src/metabase/dashboard/containers/CreateDashboardModal.unit.spec.tsx
+@@ -1,14 +1,10 @@
+ import React from "react";
+ import userEvent from "@testing-library/user-event";
+ import xhrMock from "xhr-mock";
+-import {
+-  fireEvent,
+-  renderWithProviders,
+-  screen,
+-  waitFor,
+-} from "__support__/ui";
++import { renderWithProviders, screen, waitFor } from "__support__/ui";
+ import { setupEnterpriseTest } from "__support__/enterprise";
+ import MetabaseSettings from "metabase/lib/settings";
++import { createMockDashboard } from "metabase-types/api/mocks";
+ import CreateDashboardModal from "./CreateDashboardModal";
+ 
+ function mockCachingEnabled(enabled = true) {
+@@ -50,22 +46,30 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
+   };
+ }
+ 
+-function setupCreateRequestAssertion(doneCallback, changedValues) {
+-  xhrMock.post("/api/dashboard", req => {
++function setupCreateRequestAssertion(
++  doneCallback: (...args: any[]) => any,
++  changedValues: Record<string, unknown>,
++) {
++  xhrMock.post("/api/dashboard", (req, res) => {
+     try {
++      console.log("### POST /api/dashboard", { body: req.body() });
+       expect(JSON.parse(req.body())).toEqual({
+         ...changedValues,
+         collection_id: null,
+       });
+       doneCallback();
++      const dashboard = createMockDashboard(changedValues);
++      return res.status(200).body(dashboard);
+     } catch (err) {
+       doneCallback(err);
+     }
+   });
+ }
+ 
+-function fillForm({ name, description } = {}) {
+-  const nextDashboardState = {};
++type FormInputValues = { name?: string; description?: string };
++
++function fillForm({ name, description }: FormInputValues = {}) {
++  const nextDashboardState: FormInputValues = {};
+   if (name) {
+     const input = screen.getByLabelText("Name");
+     userEvent.clear(input);
+@@ -102,48 +106,32 @@ describe("CreateDashboardModal", () => {
+   it("displays empty form fields", () => {
+     setup();
+ 
+-    expect(screen.queryByLabelText("Name")).toBeInTheDocument();
+-    expect(screen.queryByLabelText("Name")).toHaveValue("");
++    expect(screen.getByLabelText("Name")).toBeInTheDocument();
++    expect(screen.getByLabelText("Name")).toHaveValue("");
+ 
+-    expect(screen.queryByLabelText("Description")).toBeInTheDocument();
+-    expect(screen.queryByLabelText("Description")).toHaveValue("");
++    expect(screen.getByLabelText("Description")).toBeInTheDocument();
++    expect(screen.getByLabelText("Description")).toHaveValue("");
+ 
+-    expect(screen.queryByText("Our analytics")).toBeInTheDocument();
++    expect(screen.getByText("Our analytics")).toBeInTheDocument();
+ 
+-    expect(
+-      screen.queryByRole("button", { name: "Create" }),
+-    ).toBeInTheDocument();
+-    expect(
+-      screen.queryByRole("button", { name: "Create" }),
+-    ).toBeInTheDocument();
++    expect(screen.getByRole("button", { name: "Create" })).toBeInTheDocument();
++    expect(screen.getByRole("button", { name: "Create" })).toBeInTheDocument();
+   });
+ 
+   it("can't submit if name is empty", async () => {
+     setup();
+     const submitButton = await waitFor(() =>
+-      screen.queryByRole("button", { name: "Create" }),
++      screen.getByRole("button", { name: "Create" }),
+     );
+     expect(submitButton).toBeDisabled();
+   });
+ 
+   it("calls onClose when Cancel button is clicked", () => {
+     const { onClose } = setup();
+-    fireEvent.click(screen.queryByRole("button", { name: "Cancel" }));
++    userEvent.click(screen.getByRole("button", { name: "Cancel" }) as Element);
+     expect(onClose).toHaveBeenCalledTimes(1);
+   });
+ 
+-  it("submits a create request correctly", done => {
+-    const FORM = {
+-      name: "New fancy dashboard",
+-      description: "Just testing the form",
+-    };
+-    setupCreateRequestAssertion(done, FORM);
+-    setup({ mockCreateDashboardResponse: false });
+-
+-    fillForm(FORM);
+-    fireEvent.click(screen.queryByRole("button", { name: "Create" }));
+-  });
+-
+   describe("Cache TTL field", () => {
+     beforeEach(() => {
+       mockCachingEnabled();
+diff --git a/frontend/src/metabase/lib/settings.ts b/frontend/src/metabase/lib/settings.ts
+index 830b34163e..8ef0b3cb35 100644
+--- a/frontend/src/metabase/lib/settings.ts
++++ b/frontend/src/metabase/lib/settings.ts
+@@ -52,6 +52,7 @@ const PASSWORD_COMPLEXITY_CLAUSES = {
+ 
+ // TODO: dump this from backend settings definitions
+ export type SettingName =
++  | "application-name"
+   | "admin-email"
+   | "analytics-uuid"
+   | "anon-tracking-enabled"
+diff --git a/frontend/src/metabase/routes.jsx b/frontend/src/metabase/routes.jsx
+index 2998ceb28a..139ff42ecc 100644
+--- a/frontend/src/metabase/routes.jsx
++++ b/frontend/src/metabase/routes.jsx
+@@ -43,8 +43,6 @@ import SetupApp from "metabase/setup/containers/SetupApp";
+ 
+ import NewModelOptions from "metabase/new_model/containers/NewModelOptions";
+ 
+-import CreateDashboardModal from "metabase/components/CreateDashboardModal";
+-
+ import { Unauthorized } from "metabase/containers/ErrorPages";
+ import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
+ 
+@@ -76,6 +74,7 @@ import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
+ import PublicQuestion from "metabase/public/containers/PublicQuestion";
+ import PublicDashboard from "metabase/public/containers/PublicDashboard";
+ import ArchiveDashboardModal from "metabase/dashboard/containers/ArchiveDashboardModal";
++import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardModal";
+ import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal";
+ import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
+ import { ModalRoute } from "metabase/hoc/ModalRoute";
