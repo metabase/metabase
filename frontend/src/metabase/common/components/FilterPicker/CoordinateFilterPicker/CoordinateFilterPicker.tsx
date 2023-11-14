@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import type { FormEvent } from "react";
 import { t } from "ttag";
 import { Box, Flex, NumberInput, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -72,14 +73,20 @@ export function CoordinateFilterPicker({
     setValues(getDefaultValues(operator, values));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
     if (isValid) {
       onChange(getFilterClause(operator, column, secondColumn, values));
     }
   };
 
   return (
-    <Box maw={MAX_WIDTH} data-testid="coordinate-filter-picker">
+    <Box
+      component="form"
+      maw={MAX_WIDTH}
+      data-testid="coordinate-filter-picker"
+      onSubmit={handleSubmit}
+    >
       <FilterHeader columnName={columnInfo.longDisplayName} onBack={onBack}>
         <FilterOperatorPicker
           value={operator}
@@ -105,11 +112,7 @@ export function CoordinateFilterPicker({
           hasMultipleValues={hasMultipleValues}
           onChange={setValues}
         />
-        <FilterFooter
-          isNew={isNew}
-          canSubmit={isValid}
-          onSubmit={handleSubmit}
-        />
+        <FilterFooter isNew={isNew} canSubmit={isValid} />
       </Box>
     </Box>
   );
