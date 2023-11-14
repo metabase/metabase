@@ -12,7 +12,6 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (deftest params-values-test
@@ -82,19 +81,13 @@
          (fn [{:keys [card-id mappings add-card! dashcards]}]
            (testing "Should be able to add a card with `parameter_mapping` with only sandboxed perms"
              (perms/grant-permissions! (perms-group/all-users) (perms/table-sandboxed-query-path (mt/id :venues)))
-             (is (schema= [{:card_id            (s/eq card-id)
-                            :parameter_mappings [(s/one
-                                                   {:parameter_id (s/eq "_CATEGORY_ID_")
-                                                    :target       (s/eq ["dimension" ["field" (mt/id :venues :category_id) nil]])
-                                                    s/Keyword     s/Any}
-                                                   "mapping")]
-                            s/Keyword           s/Any}]
-                          (:dashcards (add-card! 200))))
-             (is (schema= [(s/one {:card_id            (s/eq card-id)
-                                   :parameter_mappings (s/eq mappings)
-                                   s/Keyword           s/Any}
-                                  "DashboardCard")]
-                          (dashcards))))))))))
+             (is (=? [{:card_id            card-id
+                       :parameter_mappings [{:parameter_id "_CATEGORY_ID_"
+                                             :target       ["dimension" ["field" (mt/id :venues :category_id) nil]]}]}]
+                     (:dashcards (add-card! 200))))
+             (is (=? [{:card_id            card-id
+                       :parameter_mappings mappings}]
+                     (dashcards))))))))))
 
 (deftest update-cards-parameter-mapping-permissions-test
   (testing "PUT /api/dashboard/:id"

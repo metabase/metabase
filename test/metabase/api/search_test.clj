@@ -1519,3 +1519,21 @@
         (is (= #{"dashboard" "collection"}
                (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term
                                           :filter_items_in_personal_collection "exclude"))))))))
+
+(deftest archived-search-results-with-no-write-perms-test
+  (testing "Results which the searching user has no write permissions for are filtered out. #33602"
+    (mt/with-temp [Collection  {collection-id :id} (archived {:name "collection test collection"})
+                   Card        _ (archived {:name "card test card is returned"})
+                   Card        _ (archived {:name "card test card"
+                                            :collection_id collection-id})
+                   Card        _ (archived {:name "dataset test dataset" :dataset true
+                                            :collection_id collection-id})
+                   Dashboard   _ (archived {:name          "dashboard test dashboard"
+                                            :collection_id collection-id})]
+      ;; remove read/write access and add back read access to the collection
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
+      (is (= ["card test card is returned"]
+             (->> (mt/user-http-request :lucky :get 200 "search" :archived true :q "test")
+                  :data
+                  (map :name)))))))

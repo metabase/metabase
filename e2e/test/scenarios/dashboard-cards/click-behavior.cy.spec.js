@@ -2,7 +2,6 @@ import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addOrUpdateDashboardCard,
-  deleteTab,
   editDashboard,
   getActionCardDetails,
   getBrokenUpTextMatcher,
@@ -349,38 +348,107 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           );
         });
       });
+    });
 
-      cy.log("click behavior should still work after removing target tab");
+    it("should show error and disable the form after target dashboard tab has been removed and there is more than 1 tab left", () => {
+      cy.createDashboard(TARGET_DASHBOARD, {
+        wrapId: true,
+        idAlias: "targetDashboardId",
+      });
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        cy.request("PUT", `/api/dashboard/${targetDashboardId}/cards`, {
+          cards: [],
+          tabs: [FIRST_TAB, SECOND_TAB, THIRD_TAB],
+        });
+        const inexistingTabId = 999;
+        const cardDetails = {
+          visualization_settings: {
+            click_behavior: {
+              parameterMapping: {},
+              targetId: targetDashboardId,
+              tabId: inexistingTabId,
+              linkType: "dashboard",
+              type: "link",
+            },
+          },
+        };
+        cy.createQuestionAndDashboard({
+          questionDetails,
+          cardDetails,
+        }).then(({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+        });
+      });
+
       editDashboard();
-      deleteTab(SECOND_TAB.name);
+      getDashboardCard().realHover().icon("click").click();
+
+      cy.get("aside")
+        .findByText("The selected tab is no longer available")
+        .should("exist");
+      cy.button("Done").should("be.disabled");
+
+      cy.get("aside")
+        .findByLabelText("Select a dashboard tab")
+        .should("not.have.value")
+        .click();
+      cy.findByRole("listbox").findByText(SECOND_TAB.name).click();
+
+      cy.get("aside")
+        .findByText("The selected tab is no longer available")
+        .should("not.exist");
+      cy.button("Done").should("be.enabled").click();
+
       saveDashboard();
 
-      cy.get("@dashboardId").then(dashboardId => {
-        visitDashboard(dashboardId);
+      clickLineChartPoint();
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        cy.location().should(({ pathname, search }) => {
+          expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+          expect(search).to.equal(`?tab=${SECOND_TAB_SLUG}`);
+        });
+      });
+    });
+
+    it("should fall back to the first tab after target dashboard tab has been removed and there is only 1 tab left", () => {
+      cy.createDashboard(TARGET_DASHBOARD, {
+        wrapId: true,
+        idAlias: "targetDashboardId",
+      });
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        const inexistingTabId = 999;
+        const cardDetails = {
+          visualization_settings: {
+            click_behavior: {
+              parameterMapping: {},
+              targetId: targetDashboardId,
+              tabId: inexistingTabId,
+              linkType: "dashboard",
+              type: "link",
+            },
+          },
+        };
+        cy.createQuestionAndDashboard({
+          questionDetails,
+          cardDetails,
+        }).then(({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+        });
       });
 
       editDashboard();
       getDashboardCard().realHover().icon("click").click();
       cy.get("aside")
         .findByLabelText("Select a dashboard tab")
-        .should("have.value", FIRST_TAB.name)
-        .click();
-      cy.findByRole("listbox").findByText(SECOND_TAB.name).should("not.exist");
-      cy.get("header").button("Cancel").click();
-      // migrateDeletedTab causes detection of changes even though user did not change anything
-      modal().button("Discard changes").click();
-      cy.button("Cancel").should("not.exist");
+        .should("not.exist");
+      cy.button("Done").should("be.enabled").click();
+      saveDashboard();
 
       clickLineChartPoint();
-      cy.findAllByTestId("field-set")
-        .should("have.length", 1)
-        .should("contain.text", POINT_COUNT);
       cy.get("@targetDashboardId").then(targetDashboardId => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
-          expect(search).to.equal(
-            `?tab=${FIRST_TAB_SLUG}&${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}`,
-          );
+          expect(search).to.equal("");
         });
       });
     });

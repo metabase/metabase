@@ -173,9 +173,13 @@
       (when-not (:last_login superuser)
         (events/publish-event! :event/user-joined {:user-id user-id}))
       (snowplow/track-event! ::snowplow/new-user-created user-id)
-      (when database (snowplow/track-event! ::snowplow/database-connection-successful
-                                            user-id
-                                            {:database engine, :database-id (u/the-id database), :source :setup}))
+      (when database
+        (snowplow/track-event! ::snowplow/database-connection-successful
+                               user-id
+                               {:database     engine
+                                :database-id  (u/the-id database)
+                                :source       :setup
+                                :dbms_version (:version (driver/dbms-version (keyword engine) database))}))
       ;; return response with session ID and set the cookie as well
       (mw.session/set-session-cookies request {:id session-id} session (t/zoned-date-time (t/zone-id "GMT"))))))
 

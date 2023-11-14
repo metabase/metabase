@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import DashCardActionButton from "../DashCardActionButtons/DashCardActionButton";
+import { DashCardActionButton } from "../DashCardActionButton";
 
 /**
  * This is a button with a bigger "hover area" to make it easier

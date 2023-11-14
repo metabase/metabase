@@ -21,7 +21,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -1058,9 +1057,8 @@
               (testing group
                 (testing (format "attempt to set locale to %s" new-locale)
                   (testing "response"
-                    (is (schema= {:errors {:locale #".*String must be a valid two-letter ISO language or language-country code.*"}
-                                  s/Any   s/Any}
-                                 (set-locale! 400 {:locale new-locale}))))
+                    (is (=? {:errors {:locale #".*String must be a valid two-letter ISO language or language-country code.*"}}
+                            (set-locale! 400 {:locale new-locale}))))
                   (testing "value in DB should be unchanged"
                     (is (= "en_US"
                            (locale-from-db)))))))))))))
@@ -1089,9 +1087,8 @@
                (mt/user-http-request :crowberto :put 404 (format "user/%s/reactivate" Integer/MAX_VALUE)))))
 
       (testing " Attempting to reactivate an already active user should fail"
-        (is (schema= {:message  (s/eq "Not able to reactivate an active user")
-                      s/Keyword s/Any}
-                     (mt/user-http-request :crowberto :put 400 (format "user/%s/reactivate" (mt/user->id :rasta)))))))
+        (is (=? {:message "Not able to reactivate an active user"}
+                (mt/user-http-request :crowberto :put 400 (format "user/%s/reactivate" (mt/user->id :rasta)))))))
 
     (testing (str "test that when disabling Google auth if a user gets disabled and re-enabled they are no longer "
                   "Google Auth (#3323)")
@@ -1155,10 +1152,10 @@
     (testing "Test that we return a session if we are changing our own password"
       (t2.with-temp/with-temp [User user {:password "def", :is_superuser false}]
         (let [creds {:username (:email user), :password "def"}]
-          (is (schema= {:session_id (s/pred mt/is-uuid-string? "session")
-                        :success    (s/eq true)}
-                       (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password     "abc123!!DEF"
-                                                                                         :old_password "def"}))))))
+          (is (=? {:session_id mt/is-uuid-string?
+                   :success    true}
+                  (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password     "abc123!!DEF"
+                                                                                    :old_password "def"}))))))
 
     (testing "Test that we don't return a session if we are changing our someone else's password as a superuser"
       (t2.with-temp/with-temp [User user {:password "def", :is_superuser false}]

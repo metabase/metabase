@@ -520,6 +520,16 @@ Default: `null`
 
 Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled.
 
+## MB_INACTIVE_TABLE_MAX_DAYS
+
+Type: integer<br>
+Default: `180`<br>
+Since: v48.0
+
+Sets the maximum number of days Metabase keep inactive tables.
+
+Once a day, Metabase will delete inactive tables older than this threshold.
+
 ### `MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE`
 
 Type: integer<br>

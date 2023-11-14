@@ -23,7 +23,7 @@ import { addUndo } from "metabase/redux/undo";
 import { INITIAL_DASHBOARD_STATE } from "../constants";
 import { getDashCardById } from "../selectors";
 import { trackCardMoved } from "../analytics";
-import { getExistingDashCards } from "./utils";
+import { getDashCardMoveToTabUndoMessage, getExistingDashCards } from "./utils";
 
 type CreateNewTabPayload = { tabId: DashboardTabId };
 type DeleteTabPayload = {
@@ -112,7 +112,7 @@ export const moveDashCardToTab =
 
     dispatch(
       addUndo({
-        message: t`Card moved`,
+        message: getDashCardMoveToTabUndoMessage(dashCard),
         undo: true,
         action: () => {
           dispatch(

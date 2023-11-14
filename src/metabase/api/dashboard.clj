@@ -183,7 +183,7 @@
   "Get Dashboard with ID."
   [id]
   (-> (t2/select-one :model/Dashboard :id id)
-      api/check-404
+      api/read-check
       ;; i'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
       ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
       ;; cannot be in this situation
@@ -199,7 +199,6 @@
                   :param_values
                   [:collection :is_personal])
       collection.root/hydrate-root-collection
-      api/read-check
       api/check-not-archived
       hide-unreadable-cards
       add-query-average-durations))
@@ -557,7 +556,8 @@
   [id {:keys [dashcards tabs] :as dash-updates}]
   (let [current-dash               (api/write-check Dashboard id)
         changes-stats              (atom nil)
-        ;; tabs are sent in production as well, but there are lots of tests that exclude it. so this only checks for dashcards
+        ;; tabs are always sent in production as well when dashcards are updated, but there are lots of
+        ;; tests that exclude it. so this only checks for dashcards
         update-dashcards-and-tabs? (contains? dash-updates :dashcards)]
     (collection/check-allowed-to-change-collection current-dash dash-updates)
     (check-allowed-to-change-embedding current-dash dash-updates)
@@ -606,10 +606,11 @@
                       (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards]))))))
        true))
     (let [dashboard (t2/select-one :model/Dashboard id)]
-      (events/publish-event! :event/dashboard-update {:object dashboard :user-id api/*current-user-id*})
-      (when update-dashcards-and-tabs?
-        ;; execute these events for old PUT /api/dashboard/:id/cards calls and new PUT /api/dashboard/:id calls, and not for old PUT /api/dashboard/:id calls
-        (track-dashcard-and-tab-events! dashboard @changes-stats))
+      ;; skip publishing the event if it's just a change in its collection position
+      (when-not (= #{:collection_position}
+                   (set (keys dash-updates)))
+        (events/publish-event! :event/dashboard-update {:object dashboard :user-id api/*current-user-id*}))
+      (track-dashcard-and-tab-events! dashboard @changes-stats)
       (-> (t2/hydrate dashboard [:collection :is_personal] [:dashcards :series] :tabs)
           (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))))
 
@@ -638,7 +639,8 @@
   (update-dashboard id dash-updates))
 
 (api/defendpoint PUT "/:id/cards"
-  "Update `Cards` and `Tabs` on a Dashboard. Request body should have the form:
+  "(DEPRECATED -- Use the `PUT /api/dashboard/:id` endpoint instead.)
+   Update `Cards` and `Tabs` on a Dashboard. Request body should have the form:
 
     {:cards        [{:id                 ... ; DashboardCard ID
                      :size_x             ...
@@ -657,6 +659,8 @@
    ;; tabs should be required in production, making it optional because lots of
    ;; e2e tests curerntly doesn't include it
    tabs [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
+  (log/warn
+   "DELETE /api/dashboard/:id/cards is deprecated. Use PUT /api/dashboard/:id instead.")
   (let [dashboard (update-dashboard id {:dashcards cards :tabs tabs})]
     {:cards (:dashcards dashboard)
      :tabs  (:tabs dashboard)}))

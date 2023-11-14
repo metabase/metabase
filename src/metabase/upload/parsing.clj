@@ -27,27 +27,57 @@
                                                  (tru "{0} is not a recognizable boolean" s)))))
 
 (defn parse-date
-  "Parses a date."
+  "Parses a date.
+
+  Supported formats:
+    - yyyy-MM-dd"
   [s]
   (t/local-date s))
 
 (defn parse-datetime
-  "Parses a datetime (without timezone)."
+  "Parses a string representing a local datetime into a LocalDateTime.
+
+  Supported formats:
+    - yyyy-MM-dd'T'HH:mm
+    - yyyy-MM-dd'T'HH:mm:ss
+    - yyyy-MM-dd'T'HH:mm:ss.SSS (and any other number of S's)
+    - the above formats, with a space instead of a 'T'
+
+  Parsing is case-insensitive."
+  [s]
+  (-> s (str/replace \space \T) t/local-date-time))
+
+(defn parse-as-datetime
+  "Parses a string `s` as a LocalDateTime. Supports all the formats for [[parse-date]] and [[parse-datetime]]."
   [s]
   (try
-    (t/local-date-time (t/local-date s) (t/local-time "00:00:00"))
+    (t/local-date-time (parse-date s) (t/local-time "00:00:00"))
     (catch Exception _
       (try
-        (t/local-date-time s)
+        (parse-datetime s)
         (catch Exception _
           (throw (IllegalArgumentException.
                   (tru "{0} is not a recognizable datetime" s))))))))
 
 (defn parse-offset-datetime
-  "Parses a datetime (with offset)."
+  "Parses a string representing an offset datetime into an OffsetDateTime.
+
+  The format consists of:
+    1) The a date and time, with the formats:
+      - yyyy-MM-dd'T'HH:mm
+      - yyyy-MM-dd'T'HH:mm:ss
+      - yyyy-MM-dd'T'HH:mm:ss.SSS (and any other number of S's)
+      - the above formats, with a space instead of a 'T'
+    2) An offset, with the formats:
+      - Z (for UTC)
+      - +HH or -HH
+      - +HH:mm or -HH:mm
+      - +HH:mm:ss or -HH:mm:ss
+
+  Parsing is case-insensitive."
   [s]
   (try
-    (t/offset-date-time s)
+    (-> s (str/replace \space \T) t/offset-date-time)
     (catch Exception e
       (throw (IllegalArgumentException. (tru "{0} is not a recognizable zoned datetime" s) e)))))
 
@@ -135,7 +165,7 @@
 (defmethod upload-type->parser :metabase.upload/datetime
   [_]
   (comp
-   parse-datetime
+   parse-as-datetime
    str/trim))
 
 (defmethod upload-type->parser :metabase.upload/offset-datetime

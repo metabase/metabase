@@ -21,6 +21,7 @@ import { isValidCollectionId } from "metabase/collections/utils";
 import type { CollectionId } from "metabase-types/api";
 
 import { useSelector } from "metabase/lib/redux";
+import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
 import {
   PopoverItemPicker,
   MIN_POPOVER_WIDTH,
@@ -34,7 +35,7 @@ export interface FormCollectionPickerProps
   type?: "collections" | "snippet-collections";
   initialOpenCollectionId?: CollectionId;
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
-  showOnlyPersonalCollections?: boolean;
+  filterPersonalCollections?: FilterItemsInPersonalCollection;
 }
 
 function ItemName({
@@ -60,7 +61,7 @@ function FormCollectionPicker({
   type = "collections",
   initialOpenCollectionId,
   onOpenCollectionChange,
-  showOnlyPersonalCollections,
+  filterPersonalCollections,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
   const [{ value }, { error, touched }, { setValue }] = useField(name);
@@ -107,7 +108,8 @@ function FormCollectionPicker({
 
   const isOpenCollectionInPersonalCollection = openCollection?.is_personal;
   const showCreateNewCollectionOption =
-    !showOnlyPersonalCollections || isOpenCollectionInPersonalCollection;
+    filterPersonalCollections !== "only" ||
+    isOpenCollectionInPersonalCollection;
 
   const renderContent = useCallback(
     ({ closePopover }) => {
@@ -132,11 +134,11 @@ function FormCollectionPicker({
             onOpenCollectionChange?.(id);
             setOpenCollectionId(id);
           }}
-          showOnlyPersonalCollections={showOnlyPersonalCollections}
+          filterPersonalCollections={filterPersonalCollections}
         >
           {showCreateNewCollectionOption && (
             <CreateCollectionOnTheGoButton
-              showOnlyPersonalCollections={showOnlyPersonalCollections}
+              filterPersonalCollections={filterPersonalCollections}
               openCollectionId={openCollectionId}
             />
           )}
@@ -148,7 +150,7 @@ function FormCollectionPicker({
       value,
       width,
       initialOpenCollectionId,
-      showOnlyPersonalCollections,
+      filterPersonalCollections,
       showCreateNewCollectionOption,
       openCollectionId,
       setValue,
