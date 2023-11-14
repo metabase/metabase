@@ -217,11 +217,10 @@ jobs:
           fail-on-error: false
 
   be-tests-stub:
-    needs: [files-changed, static-viz-files-changed]
+    needs: [be-tests]
     if: |
-      always() &&
-      github.event.pull_request.draft == false &&
-      (needs.files-changed.outputs.backend_all == 'false' && needs.static-viz-files-changed.outputs.static_viz == 'false')
+      !cancelled() &&
+      github.event.pull_request.draft == false && needs.be-tests.result == 'skipped'
     runs-on: ubuntu-22.04
     name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
     timeout-minutes: 5

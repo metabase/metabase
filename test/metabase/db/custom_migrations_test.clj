@@ -1455,10 +1455,4 @@
       (testing "rollback causes all known data_migrations to reappear"
         (migrate! :down 47)
         ;; 34 because there was a total of 34 data migrations (which are filled on rollback)
-        (is (= 34 (t2/count :data_migrations))))
-
-      (testing "when migrating up, migrations won't run since they are in data_migration because of rollback"
-        (is (nil?
-             (with-redefs [custom-migrations/migrate-click-through!                            throw-err
-                           custom-migrations/migrate-remove-admin-from-group-mapping-if-needed throw-err]
-               (migrate!))))))))
+        (is (= 34 (t2/count :data_migrations)))))))

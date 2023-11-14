@@ -1115,6 +1115,10 @@
                           :moderation_reviews
                           (map clean)))))))))))
 
+(deftest fetch-card-404-test
+  (testing "GET /api/card/:id"
+   (is (= "Not found."
+         (mt/user-http-request :crowberto :get 404 (format "card/%d" Integer/MAX_VALUE))))))
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       UPDATING A CARD (PUT /api/card/:id)
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1122,7 +1126,7 @@
 
 (deftest updating-a-card-that-doesnt-exist-should-give-a-404
   (is (= "Not found."
-         (mt/user-http-request :crowberto :put 404 "card/12345"))))
+         (mt/user-http-request :crowberto :put 404 (format "card/%d" Integer/MAX_VALUE)))))
 
 (deftest test-that-we-can-edit-a-card
   (t2.with-temp/with-temp [:model/Card card {:name "Original Name"}]
