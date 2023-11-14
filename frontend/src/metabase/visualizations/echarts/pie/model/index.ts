@@ -7,7 +7,7 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { findWithIndex } from "metabase/core/utils/arrays";
+import { findWithIndex } from "metabase/lib/arrays";
 
 import { OTHER_SLICE_MIN_PERCENTAGE } from "../constants";
 import type { PieColumnDescriptors, PieChartModel, PieSlice } from "./types";
