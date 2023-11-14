@@ -998,7 +998,7 @@
     (js->clj options :keywordize-keys true)))
 
 (defn ^:export find-matching-column
-  "Given `a-ref` and a list of `columns`, finds the column that best matches this ref.
+  "Given a `column` and a list of `columns`, finds the column that best matches this ref.
 
    Matching is based on finding the basically plausible matches first. There is often zero or one plausible matches, and
    this can return quickly.
@@ -1006,10 +1006,10 @@
    If there are multiple plausible matches, they are disambiguated by the most important extra included in the `ref`.
    (`:join-alias` first, then `:temporal-unit`, etc.)
 
-   - Integer IDs in the `ref` are matched by ID; this usually is unambiguous.
+   - Integer IDs in the `column` are matched by ID; this usually is unambiguous.
    - If there are multiple joins on one table (including possible implicit joins), check `:join-alias` next.
-   - If `a-ref` has a `:join-alias`, only a column which matches it can be the match, and it should be unique.
-   - If `a-ref` doesn't have a `:join-alias`, prefer the column with no `:join-alias`, and prefer already selected
+   - If `column` has a `:join-alias`, only a column which matches it can be the match, and it should be unique.
+   - If `column` doesn't have a `:join-alias`, prefer the column with no `:join-alias`, and prefer already selected
    columns over implicitly joinable ones.
    - There may be broken cases where the ref has an ID but the column does not. Therefore the ID must be resolved to a
    name or `:lib/desired-column-alias` and matched that way.
@@ -1021,5 +1021,5 @@
    - The same disambiguation (by `:join-alias` etc.) is applied if there are multiple plausible matches.
 
    Returns the matching column, or nil if no match is found."
-  [a-ref columns]
-  (lib.core/find-matching-column a-ref columns))
+  [column columns]
+  (lib.core/find-matching-column (lib.core/ref column) columns))

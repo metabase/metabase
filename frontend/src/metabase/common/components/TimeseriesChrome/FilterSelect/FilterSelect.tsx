@@ -3,14 +3,14 @@ import { t } from "ttag";
 import { Popover, TextInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { Icon } from "metabase/core/components/Icon";
-import { ColumnFilterPicker } from "metabase/common/components/FilterPicker/ColumnFilterPicker";
+import { FilterPicker } from "metabase/common/components/FilterPicker";
 
 export interface FilterSelectProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
-  onChange: (newFilter: Lib.ExpressionClause) => void;
+  onChange: (newFilter: Lib.ExpressionClause | Lib.SegmentMetadata) => void;
 }
 
 export function FilterSelect({
@@ -34,12 +34,12 @@ export function FilterSelect({
         />
       </Popover.Target>
       <Popover.Dropdown>
-        <ColumnFilterPicker
+        <FilterPicker
           query={query}
           stageIndex={stageIndex}
           column={column}
           filter={filter}
-          onChange={onChange}
+          onSelect={onChange}
         />
       </Popover.Dropdown>
     </Popover>

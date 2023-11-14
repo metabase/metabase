@@ -74,7 +74,9 @@ function TimeseriesControls({
     [query, stageIndex, filterColumn],
   );
 
-  const handleFilterChange = (newFilter: Lib.ExpressionClause) => {
+  const handleFilterChange = (
+    newFilter: Lib.ExpressionClause | Lib.SegmentMetadata,
+  ) => {
     if (filter) {
       onChange(Lib.replaceClause(query, stageIndex, filter, newFilter));
     } else {
