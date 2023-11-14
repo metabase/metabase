@@ -22,7 +22,6 @@
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -845,9 +844,9 @@
                                                         :type     :query
                                                         :query    {:source-table (mt/id :venues)}
                                                         :async?   true}}]
-      (is (schema= {:card   (s/pred map?)
-                    :result (s/pred map?)}
-                   (pu/execute-card {:creator_id (mt/user->id :rasta)} card))))))
+      (is (=? {:card   map?
+               :result map?}
+              (pu/execute-card {:creator_id (mt/user->id :rasta)} card))))))
 
 (deftest pulse-permissions-test
   (testing "Pulses should be sent with the Permissions of the user that created them."

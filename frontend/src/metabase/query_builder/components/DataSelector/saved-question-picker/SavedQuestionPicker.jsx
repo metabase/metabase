@@ -11,7 +11,7 @@ import Collection, {
   buildCollectionTree,
 } from "metabase/entities/collections";
 import {
-  isPersonalCollection,
+  isRootPersonalCollection,
   nonPersonalOrArchivedCollection,
   currentUserPersonalCollections,
 } from "metabase/collections/utils";
@@ -80,7 +80,7 @@ function SavedQuestionPicker({
     if (currentUser.is_superuser) {
       const otherPersonalCollections = collections.filter(
         collection =>
-          isPersonalCollection(collection) &&
+          isRootPersonalCollection(collection) &&
           collection.personal_owner_id !== currentUser.id,
       );
 

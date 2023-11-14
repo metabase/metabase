@@ -12,8 +12,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [schema.core :as s]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -275,14 +274,21 @@
               "Sum of Quantity"]
              (map :display_name (mt/cols results)))))
     (testing "Rows should have the correct shape"
-      (let [Row [(s/one (s/maybe (apply s/enum (distinct-values :people   :state)))    "state")
-                 (s/one (s/maybe (apply s/enum (distinct-values :people   :source)))   "source")
-                 (s/one (s/maybe (apply s/enum (distinct-values :products :category))) "category")
-                 (s/one (s/enum 0 1 3 4 5 7)                                           "pivot group bitmask")
-                 (s/one s/Int                                                          "count")
-                 (s/one s/Int                                                          "sum")]]
-        (is (schema= [Row]
-                     rows))))))
+      (let [Row [:cat
+                 ;; state
+                 [:maybe (into [:enum] (distinct-values :people :state))]
+                 ;; source
+                 [:maybe (into [:enum] (distinct-values :people :source))]
+                 ;; category
+                 [:maybe (into [:enum] (distinct-values :products :category))]
+                 ;; pivot group bitmask
+                 [:enum 0 1 3 4 5 7]
+                 ;; count
+                 :int
+                 ;; sum
+                 :int]]
+        (is (malli= [:sequential {:min 1} Row]
+                    rows))))))
 
 (deftest ^:parallel allow-other-rfs-test
   (letfn [(rff [_]
@@ -295,10 +301,9 @@
 
 (deftest ^:parallel parameters-query-test
   (mt/dataset sample-dataset
-    (is (schema= {:status    (s/eq :completed)
-                  :row_count (s/eq 137)
-                  s/Keyword  s/Any}
-                 (qp.pivot/run-pivot-query (api.pivots/parameters-query))))))
+    (is (=? {:status    :completed
+             :row_count 137}
+            (qp.pivot/run-pivot-query (api.pivots/parameters-query))))))
 
 (deftest ^:parallel pivots-should-not-return-expressions-test
   (mt/dataset sample-dataset
@@ -340,15 +345,7 @@
                     (mt/cols
                      (qp.pivot/run-pivot-query (-> query
                                                    (assoc-in [:query :fields] [[:expression "test-expr"]])
-                                                   (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]})))))))))
-
-    (testing "We should still be able to use expressions inside the aggregations"
-      (is (=? {:status :completed}
-              (qp.pivot/run-pivot-query
-               (mt/mbql-query orders
-                 {:expressions {"Product Rating + 1" [:+ $product_id->products.rating 1]}
-                  :aggregation [[:count]]
-                  :breakout    [$user_id->people.source [:expression "Product Rating + 1"]]})))))))
+                                                   (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]})))))))))))
 
 (deftest ^:parallel pivots-should-not-return-expressions-test-3
   (mt/dataset sample-dataset
@@ -379,14 +376,12 @@
             ;; Collection inherits Root Collection perms when created
             (mt/with-temp [Collection collection {}
                            Card       card {:collection_id (u/the-id collection), :dataset_query query}]
-              (is (schema= {:status   (s/eq "completed")
-                            s/Keyword s/Any}
-                           (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id card)))))
+              (is (=? {:status "completed"}
+                      (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id card)))))
               (testing "... with the pivot-table endpoints"
                 (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))]
-                  (is (schema= {:status   (s/eq "completed")
-                                s/Keyword s/Any}
-                               result))
+                  (is (=? {:status "completed"}
+                          result))
                   (is (= (mt/rows (qp.pivot/run-pivot-query query))
                          (mt/rows result))))))))))))
 

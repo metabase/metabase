@@ -22,7 +22,6 @@
    [metabase.test.integrations.ldap :as ldap.test]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -39,7 +38,8 @@
     (reset! (:attempts throttler) nil)))
 
 (def ^:private SessionResponse
-  {:id (s/pred mt/is-uuid-string? "session")})
+  [:map
+   [:id ms/UUIDString]])
 
 (def ^:private session-cookie @#'mw.session/metabase-session-cookie)
 
@@ -47,13 +47,13 @@
   (reset-throttlers!)
   (testing "POST /api/session"
     (testing "Test that we can login"
-      (is (schema= SessionResponse
-                   (mt/client :post 200 "session" (mt/user->credentials :rasta)))))
+      (is (malli= SessionResponse
+                  (mt/client :post 200 "session" (mt/user->credentials :rasta)))))
     (testing "Test that we can login with email of mixed case"
       (let [creds    (update (mt/user->credentials :rasta) :username u/upper-case-en)
             response (mt/client :post 200 "session" creds)]
-        (is (schema= SessionResponse
-                     response))
+        (is (malli= SessionResponse
+                    response))
         (testing "Login should record a LoginHistory item"
           (is (malli= [:map
                        [:id                 ms/PositiveInt]
@@ -74,17 +74,12 @@
         (is (nil? (get-in response [:cookies session-cookie :expires]))))))
   (testing "failure should log an error(#14317)"
     (t2.with-temp/with-temp [User user]
-      (is (schema= [(s/one (s/eq :error)
-                           "log type")
-                    (s/one clojure.lang.ExceptionInfo
-                           "exception")
-                    (s/one (s/eq "Authentication endpoint error")
-                           "log message")]
-                   (->> (mt/with-log-messages-for-level :error
-                          (mt/client :post 400 "session" {:email (:email user), :password "wooo"}))
-                        ;; geojson can throw errors and we want the authentication error
-                        (filter (fn [[_log-level _error message]] (= message "Authentication endpoint error")))
-                        first))))))
+      (is (=? [:error clojure.lang.ExceptionInfo "Authentication endpoint error"]
+              (->> (mt/with-log-messages-for-level :error
+                     (mt/client :post 400 "session" {:email (:email user), :password "wooo"}))
+                   ;; geojson can throw errors and we want the authentication error
+                   (filter (fn [[_log-level _error message]] (= message "Authentication endpoint error")))
+                   first))))))
 
 (deftest login-validation-test
   (reset-throttlers!)
@@ -121,14 +116,9 @@
         (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
                  (login))))
       (testing "Error should be logged (#14317)"
-        (is (schema= [(s/one (s/eq :error)
-                             "log type")
-                      (s/one clojure.lang.ExceptionInfo
-                             "exception")
-                      (s/one (s/eq "Authentication endpoint error")
-                             "log message")]
-                     (first (mt/with-log-messages-for-level :error
-                              (login))))))
+        (is (=? [:error clojure.lang.ExceptionInfo "Authentication endpoint error"]
+                (first (mt/with-log-messages-for-level :error
+                         (login))))))
       (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
                (login))
           "Trying to login immediately again should still return throttling error"))))
@@ -315,16 +305,16 @@
               (mt/client :post 200 "session" (:old creds))
               ;; Call reset password endpoint to change the PW
               (testing "reset password endpoint should return a valid session token"
-                (is (schema= {:session_id (s/pred mt/is-uuid-string? "session")
-                              :success    (s/eq true)}
-                             (mt/client :post 200 "session/reset_password" {:token    token
-                                                                            :password (:new password)}))))
+                (is (=? {:session_id mt/is-uuid-string?
+                         :success    true}
+                        (mt/client :post 200 "session/reset_password" {:token    token
+                                                                       :password (:new password)}))))
               (testing "Old creds should no longer work"
                 (is (= {:errors {:password "did not match stored password"}}
                        (mt/client :post 401 "session" (:old creds)))))
               (testing "New creds *should* work"
-                (is (schema= SessionResponse
-                             (mt/client :post 200 "session" (:new creds)))))
+                (is (malli= SessionResponse
+                            (mt/client :post 200 "session" (:new creds)))))
               (testing "check that reset token was cleared"
                 (is (= {:reset_token     nil
                         :reset_triggered nil}
@@ -476,8 +466,8 @@
                                                  "\"first_name\":\"test\","
                                                  "\"last_name\":\"user\","
                                                  "\"email\":\"test@metabase.com\"}")})]
-            (is (schema= SessionResponse
-                         (mt/client :post 200 "session/google_auth" {:token "foo"}))))))
+            (is (malli= SessionResponse
+                        (mt/client :post 200 "session/google_auth" {:token "foo"}))))))
       (testing "Google auth throws exception for a disabled account"
         (t2.with-temp/with-temp [User _ {:email "test@metabase.com" :is_active false}]
           (with-redefs [http/post (constantly
@@ -498,14 +488,14 @@
     (testing "Test that we can login with LDAP"
       (t2.with-temp/with-temp [User _ {:email    "ngoc@metabase.com"
                                        :password "securedpassword"}]
-        (is (schema= SessionResponse
-                     (mt/client :post 200 "session" {:username "ngoc@metabase.com"
-                                                     :password "securedpassword"})))))
+        (is (malli= SessionResponse
+                    (mt/client :post 200 "session" {:username "ngoc@metabase.com"
+                                                    :password "securedpassword"})))))
 
     (testing "Test that login will fallback to local for users not in LDAP"
       (mt/with-temporary-setting-values [enable-password-login true]
-        (is (schema= SessionResponse
-                     (mt/client :post 200 "session" (mt/user->credentials :crowberto)))))
+        (is (malli= SessionResponse
+                    (mt/client :post 200 "session" (mt/user->credentials :crowberto)))))
       (testing "...but not if password login is disabled"
         (premium-features-test/with-premium-features #{:disable-password-login}
           (mt/with-temporary-setting-values [enable-password-login false]
@@ -529,24 +519,24 @@
       (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
         (t2.with-temp/with-temp [User _ {:email    "ngoc@metabase.com"
                                          :password "securedpassword"}]
-          (is (schema= SessionResponse
-                       (mt/client :post 200 "session" {:username "ngoc@metabase.com"
-                                                       :password "securedpassword"}))))))
+          (is (malli= SessionResponse
+                      (mt/client :post 200 "session" {:username "ngoc@metabase.com"
+                                                      :password "securedpassword"}))))))
 
     (testing "Test that we can login with LDAP with new user"
       (try
-        (is (schema= SessionResponse
-                     (mt/client :post 200 "session" {:username "sbrown20", :password "1234"})))
+        (is (malli= SessionResponse
+                    (mt/client :post 200 "session" {:username "sbrown20", :password "1234"})))
         (finally
           (t2/delete! User :email "sally.brown@metabase.com"))))
 
     (testing "Test that we can login with LDAP multiple times if the email stored in LDAP contains upper-case
              characters (#13739)"
       (try
-        (is (schema=
+        (is (malli=
              SessionResponse
              (mt/client :post 200 "session" {:username "John.Smith@metabase.com", :password "strongpassword"})))
-        (is (schema=
+        (is (malli=
              SessionResponse
              (mt/client :post 200 "session" {:username "John.Smith@metabase.com", :password "strongpassword"})))
         (finally
@@ -556,8 +546,8 @@
       (t2.with-temp/with-temp [PermissionsGroup group {:name "Accounting"}]
         (mt/with-temporary-raw-setting-values
           [ldap-group-mappings (json/generate-string {"cn=Accounting,ou=Groups,dc=metabase,dc=com" [(:id group)]})]
-          (is (schema= SessionResponse
-                       (mt/client :post 200 "session" {:username "fred.taylor@metabase.com", :password "pa$$word"})))
+          (is (malli= SessionResponse
+                      (mt/client :post 200 "session" {:username "fred.taylor@metabase.com", :password "pa$$word"})))
           (testing "PermissionsGroupMembership should exist"
             (let [user-id (t2/select-one-pk User :email "fred.taylor@metabase.com")]
               (is (t2/exists? PermissionsGroupMembership :group_id (u/the-id group) :user_id (u/the-id user-id))))))))))

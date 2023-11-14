@@ -44,11 +44,18 @@ const setup = ({
     },
   });
 
-  return renderWithProviders(<DashCardTabMenu dashCardId={DASHCARD.id} />, {
-    storeInitialState: createMockState({
-      dashboard,
-    }),
-  });
+  return renderWithProviders(
+    <DashCardTabMenu
+      dashCardId={DASHCARD.id}
+      onClose={jest.fn()}
+      onOpen={jest.fn()}
+    />,
+    {
+      storeInitialState: createMockState({
+        dashboard,
+      }),
+    },
+  );
 };
 
 describe("DashCardTabMenu", () => {

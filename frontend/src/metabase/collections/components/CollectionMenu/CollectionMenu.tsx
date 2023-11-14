@@ -6,7 +6,7 @@ import EntityMenu from "metabase/components/EntityMenu";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
   isInstanceAnalyticsCustomCollection,
-  isPersonalCollection,
+  isRootPersonalCollection,
   isRootCollection,
 } from "metabase/collections/utils";
 import type { Collection } from "metabase-types/api";
@@ -27,7 +27,7 @@ export const CollectionMenu = ({
   const items = [];
   const url = Urls.collection(collection);
   const isRoot = isRootCollection(collection);
-  const isPersonal = isPersonalCollection(collection);
+  const isPersonal = isRootPersonalCollection(collection);
   const isInstanceAnalyticsCustom =
     isInstanceAnalyticsCustomCollection(collection);
   const canWrite = collection.can_write;

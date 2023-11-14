@@ -12,13 +12,13 @@ In general, embedding works by displaying a Metabase URL inside an iframe in you
 
 You can can't use static embeds with [data sandboxes](../permissions/data-sandboxes.md), [drill-through](https://www.metabase.com/learn/questions/drill-through) or [auditing tools](../usage-and-performance-tools/audit.md) because signed JWTs don't create user sessions (server-side sessions). For those features, check out [interactive embedding](./interactive-embedding.md).
 
-To restrict data in static embeds for specific people or groups, set up [locked parameters](./static-embedding-parameters.md#restricting-data-in-a-signed-embed) instead.
+To restrict data in static embeds for specific people or groups, set up [locked parameters](./static-embedding-parameters.md#restricting-data-in-a-static-embed) instead.
 
 ## How static embedding works
 
 If you want to set up interactive Metabase filters in your iframe, your web server will need to make requests to Metabase for updated data each time a website visitor updates the filter widget.
 
-To ask for updated data from Metabase, your web server will generate a new Metabase [embedding URL](#adding-the-embedding-url-to-your-website). For example, if a website visitor enters the value "true" in an [embedded filter widget](./static-embedding-parameters.md#adding-a-filter-widget-to-a-signed-embed), your web server will generate a new embedding URL with an extra parameter:
+To ask for updated data from Metabase, your web server will generate a new Metabase [embedding URL](#adding-the-embedding-url-to-your-website). For example, if a website visitor enters the value "true" in an [embedded filter widget](./static-embedding-parameters.md#adding-a-filter-widget-to-a-static-embed), your web server will generate a new embedding URL with an extra parameter:
 
 ```
 your_metabase_embedding_url?filter=true
@@ -44,7 +44,7 @@ If you want to embed charts with additional interactive features, like [drill-do
 1. Go to the question or dashboard that you want to embed in your website.
 2. Click on the **sharing icon** (square with an arrow pointing to the top right).
 3. Select **Embed this item in an application**.
-4. Optional: [Preview the appearance of the embed](#customizing-the-appearance-of-signed-embeds).
+4. Optional: [Preview the appearance of the embed](#customizing-the-appearance-of-static-embeds).
 5. Optional: [Add parameters to the embed](./static-embedding-parameters.md).
 6. Click **Publish**.
 
@@ -65,7 +65,7 @@ Once you've made a question or dashboard [embeddable](#making-a-question-or-dash
 3. Optional: [Preview the server code](#previewing-the-frontend-code-for-an-embed).
 4. Add the server code to the file that builds your website.
 5. Optional: [Preview the frontend code](#previewing-the-frontend-code-for-an-embed).
-6. Add the frontend code to the HTML file where you want your signed embed to appear.
+6. Add the frontend code to the HTML file where you want your static embed to appear.
 
 For more examples, see our [reference apps repo](https://github.com/metabase/embedding-reference-apps).
 
@@ -103,7 +103,7 @@ You can find a list of all embedded questions and dashboards from **Admin settin
 3. Select **Embed this item in an application**.
 4. Click **Unpublish**.
 
-## Customizing the appearance of signed embeds
+## Customizing the appearance of static embeds
 
 You can change the way an embedded question or dashboard looks in an iframe (which won't change how it looks in your Metabase instance). Settings include:
 
@@ -117,11 +117,11 @@ You can change the way an embedded question or dashboard looks in an iframe (whi
 
 ² Available on [paid plans](https://www.metabase.com/pricing) and hides the download button on questions only (not dashboards).
 
-To update the appearance of a signed embed:
+To update the appearance of a static embed:
 
 1. Optional: Preview the appearance changes from your question or dashboard's embedding settings (**sharing icon** > **Embed this item in an application**).
 2. Optional: Click **Code** to find the updated server code snippet in the top code block.
-3. Change the [parameters](./static-embedding-parameters.md#customizing-the-appearance-of-a-signed-embed) in your actual server code.
+3. Change the [parameters](./static-embedding-parameters.md#customizing-the-appearance-of-a-static-embed) in your actual server code.
 
 For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
 

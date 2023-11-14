@@ -1,4 +1,4 @@
-import { restore, setupSMTP } from "e2e/support/helpers";
+import { restore, setupSMTP, popover } from "e2e/support/helpers";
 
 import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -11,22 +11,40 @@ describe("scenarios > pulse", { tags: "@external" }, () => {
   });
 
   it("should create a new pulse", () => {
+    const pulseTitle = "Foo";
+
+    cy.intercept("GET", "/api/user/recipients").as("recipients");
     cy.visit("/pulse/create");
+    cy.wait("@recipients");
 
-    cy.findByPlaceholderText("Important metrics").click().type("pulse title");
+    cy.get("main").findByText("Pulses are being phased out");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Select a question").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Orders, Count").click();
+    cy.findByRole("heading", { name: "Name your pulse" })
+      .parent()
+      .within(() => {
+        cy.findByPlaceholderText("Important metrics").type(pulseTitle).blur();
+        cy.findByDisplayValue(pulseTitle);
+      });
 
-    cy.findByPlaceholderText("Enter user names or email addresses")
-      .type("bobby@example.test")
-      .blur();
+    cy.findByRole("heading", { name: "Pick your data" })
+      .parent()
+      .as("pulseData")
+      .within(() => {
+        cy.findByTestId("select-button").contains("Select a question").click();
+      });
+
+    popover().findByText("Orders, Count").click();
 
     // pulse card preview
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("18,760");
+    cy.get("@pulseData").contains("18,760");
+
+    cy.findByRole("heading", { name: "Where should this data go?" })
+      .parent()
+      .within(() => {
+        cy.findByPlaceholderText("Enter user names or email addresses")
+          .type("bobby@example.test")
+          .blur();
+      });
 
     cy.button("Create pulse").click();
 
@@ -35,8 +53,7 @@ describe("scenarios > pulse", { tags: "@external" }, () => {
       /\/collection\/\d+-bobby-tables-s-personal-collection$/,
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("pulse title");
+    cy.findAllByTestId("collection-entry-name").should("contain", pulseTitle);
   });
 
   describe("existing pulses", () => {
