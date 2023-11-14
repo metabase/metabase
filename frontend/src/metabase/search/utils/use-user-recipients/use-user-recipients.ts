@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { UserListResult } from "metabase-types/api";
 import { UserApi } from "metabase/services";
 
-// Need to keep this in the global scope so that we can cache the promise
+// Need to keep outside the hook scope so that we can cache the promise
 let userListPromise: Promise<UserListResult[]> | null = null;
 
 export const useUserRecipients = () => {
@@ -14,6 +14,9 @@ export const useUserRecipients = () => {
     if (!userListPromise) {
       userListPromise = UserApi.list()
         .then(response => {
+          if (response.status !== 200) {
+            throw new Error("Failed to fetch users");
+          }
           return response.data;
         })
         .catch(err => {
@@ -27,12 +30,17 @@ export const useUserRecipients = () => {
     userListPromise
       .then(apiData => {
         setData(apiData);
-        setLoading(false);
       })
       .catch(err => {
         setError(err);
+      })
+      .finally(() => {
         setLoading(false);
       });
+
+    return () => {
+      userListPromise = null;
+    };
   }, []);
 
   return { data, loading, error };

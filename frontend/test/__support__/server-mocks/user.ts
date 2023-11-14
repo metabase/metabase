@@ -20,8 +20,13 @@ export function setupUserAttributesEndpoint(attributes: UserAttribute[]) {
 
 export function setupUserRecipientsEndpoint({
   users,
+  responseStatus = 200,
 }: {
   users: UserListResult[];
+  responseStatus?: number;
 }) {
-  fetchMock.get("path:/api/user/recipients", { data: users });
+  return fetchMock.get("path:/api/user/recipients", {
+    data: users,
+    status: responseStatus,
+  });
 }
