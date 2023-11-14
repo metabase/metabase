@@ -22,6 +22,7 @@ const metadata = createMockMetadata({
 
 const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
 
+// TODO [33812]: Adapt these tests for new drill
 describe("ZoomDrill", () => {
   it("should not be valid for top level actions", () => {
     expect(ZoomDrill({ question: ordersTable.newQuestion() })).toHaveLength(0);
