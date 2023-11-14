@@ -63,7 +63,7 @@
 
         (testing "loading into an empty database succeeds"
           (ts/with-dest-db
-            (serdes.load/load-metabase (ingestion-in-memory @serialized))
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
             (let [colls (t2/select Collection)]
               (is (= 1 (count colls)))
               (is (= "Basic Collection" (:name (first colls))))
@@ -71,7 +71,7 @@
 
         (testing "loading again into the same database does not duplicate"
           (ts/with-dest-db
-            (serdes.load/load-metabase (ingestion-in-memory @serialized))
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
             (let [colls (t2/select Collection)]
               (is (= 1 (count colls)))
               (is (= "Basic Collection" (:name (first colls))))
@@ -99,7 +99,7 @@
           (ts/with-dest-db
             (ts/create! Collection :name "Unrelated Collection")
             (ts/create! Collection :name "Parent Collection" :location "/" :entity_id (:entity_id @parent))
-            (serdes.load/load-metabase (ingestion-in-memory @serialized))
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
             (let [parent-dest     (t2/select-one Collection :entity_id (:entity_id @parent))
                   child-dest      (t2/select-one Collection :entity_id (:entity_id @child))
                   grandchild-dest (t2/select-one Collection :entity_id (:entity_id @grandchild))]
@@ -158,7 +158,7 @@
 
         (testing "deserialization works properly, keeping the same-named tables apart"
           (ts/with-dest-db
-            (serdes.load/load-metabase (ingestion-in-memory @serialized))
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
             (reset! db1d (t2/select-one Database :name (:name @db1s)))
             (reset! db2d (t2/select-one Database :name (:name @db2s)))
 
@@ -235,7 +235,7 @@
             (reset! user1d  (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
 
             ;; Load the serialized content.
-            (serdes.load/load-metabase (ingestion-in-memory @serialized))
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
 
             ;; Fetch the relevant bits
             (reset! db1d    (t2/select-one Database :name "my-db"))
@@ -314,7 +314,7 @@
             (reset! user1d  (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
 
             ;; Load the serialized content.
-            (serdes.load/load-metabase (ingestion-in-memory @serialized))
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
 
             ;; Fetch the relevant bits
             (reset! db1d    (t2/select-one Database :name "my-db"))
@@ -389,7 +389,7 @@
             (reset! user1d  (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
 
             ;; Load the serialized content.
-            (serdes.load/load-metabase (ingestion-in-memory @serialized))
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
 
             ;; Fetch the relevant bits
             (reset! db1d     (t2/select-one Database :name "my-db"))
@@ -542,7 +542,7 @@
             (reset! user1d  (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
 
             ;; Load the serialized content.
-            (serdes.load/load-metabase (ingestion-in-memory @serialized))
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
 
             ;; Fetch the relevant bits
             (reset! db1d       (t2/select-one Database :name "my-db"))
@@ -662,7 +662,7 @@
                         :creator_id (:id @user1s) :timezone "America/New_York")
 
             ;; Load the serialized content.
-            (serdes.load/load-metabase (ingestion-in-memory @serialized))
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
 
             ;; Fetch the relevant bits
             (reset! timeline2d (t2/select-one Timeline :entity_id (:entity_id @timeline2s)))
@@ -734,7 +734,7 @@
             (reset! user1d  (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
 
             ;; Load the serialized content.
-            (serdes.load/load-metabase (ingestion-in-memory @serialized))
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
 
             ;; Fetch the relevant bits
             (reset! metric1d (t2/select-one Metric :name "Large Users"))
@@ -834,7 +834,7 @@
           (reset! fv1d     (ts/create! FieldValues :field_id (:id @field1d) :values ["WA" "NC" "NM" "WI"]))
 
           ;; Load the serialized content.
-          (serdes.load/load-metabase (ingestion-in-memory @serialized))
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
 
           ;; Fetch the relevant bits
           (reset! fv1d (t2/select-one FieldValues :field_id (:id @field1d)))
@@ -883,7 +883,7 @@
                                                  :name          "Some card"
                                                  :table_id      ["my-db" nil "CUSTOMERS"]
                                                  :visualization_settings {}}])]
-            (is (some? (serdes.load/load-metabase ingestion)))))
+            (is (some? (serdes.load/load-metabase! ingestion)))))
 
         (testing "depending on nonexisting values fails"
           (let [ingestion (ingestion-in-memory [{:serdes/meta   [{:model "Card" :id "0123456789abcdef_0123"}]
@@ -900,7 +900,7 @@
                                                  :visualization_settings {}}])]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                   #"Failed to read file"
-                                  (serdes.load/load-metabase ingestion)))))))))
+                                  (serdes.load/load-metabase! ingestion)))))))))
 
 (deftest card-with-snippet-test
   (let [db1s       (atom nil)
@@ -933,7 +933,7 @@
         (testing "when loading"
           (let [new-eid   (u/generate-nano-id)
                 ingestion (ingestion-in-memory [(assoc @extracted :entity_id new-eid)])]
-            (is (some? (serdes.load/load-metabase ingestion)))
+            (is (some? (serdes.load/load-metabase! ingestion)))
             (is (= (:id @snippet1s)
                    (-> (t2/select-one Card :entity_id new-eid)
                        :dataset_query
@@ -972,8 +972,55 @@
                 (is (string? (:type action-serialized))))))))
       (testing "loading succeeds"
         (ts/with-dest-db
-          (serdes.load/load-metabase (ingestion-in-memory @serialized))
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
           (let [action (t2/select-one Action :entity_id eid)]
             (is (some? action))
             (testing ":type should be a keyword again"
               (is (keyword? (:type action))))))))))
+
+(deftest remove-dashcards-test
+  (let [serialized (atom nil)
+        dash1s     (atom nil)
+        dash1d     (atom nil)
+        dashcard1s (atom nil)
+        dashcard2d (atom nil)
+        tab1s      (atom nil)
+        tab2d      (atom nil)]
+    (ts/with-source-and-dest-dbs
+      (testing "Serializing the original database"
+        (ts/with-source-db
+          (reset! dash1s (ts/create! Dashboard :name "My Dashboard"))
+          (reset! tab1s (ts/create! :model/DashboardTab :name "Tab 1" :dashboard_id (:id @dash1s)))
+          (reset! dashcard1s (ts/create! DashboardCard :dashboard_id (:id @dash1s) :dashboard_tab_id (:id tab1s)))
+
+          (reset! serialized (into [] (serdes.extract/extract {})))))
+
+      (testing "New dashcard will be removed on load"
+        (ts/with-dest-db
+          (reset! dash1d (ts/create! Dashboard :name "Weird Name" :entity_id (:entity_id @dash1s)))
+          ;; A dashcard to be removed since it does not exist in serialized data
+          (reset! dashcard2d (ts/create! DashboardCard :dashboard_id (:id @dash1d)))
+          (reset! tab2d (ts/create! :model/DashboardTab :name "Tab 2" :dashboard_id (:id @dash1d)))
+
+          ;; Load the serialized content.
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+
+          (reset! dash1d (-> (t2/select-one Dashboard :name "My Dashboard")
+                             (t2/hydrate :dashcards)
+                             (t2/hydrate :tabs)))
+
+          (testing "Dashboard has correct number of dashcards"
+            (is (= 1
+                   (count (:dashcards @dash1d))))
+            (is (= (:entity_id @dashcard1s)
+                   (get-in @dash1d [:dashcards 0 :entity_id])))
+            (is (not= (:entity_id @dashcard1s)
+                      (:entity_id @dashcard2d))))
+
+          (testing "Dashboard has correct number of tabs"
+            (is (= 1
+                   (count (:tabs @dash1d))))
+            (is (= (:entity_id @tab1s)
+                   (get-in @dash1d [:tabs 0 :entity_id])))
+            (is (not= (:entity_id @tab1s)
+                      (:entity_id @tab2d)))))))))

@@ -14,6 +14,7 @@ import { getVisualizationRaw } from "metabase/visualizations";
 import { autoWireParametersToNewCard } from "metabase/dashboard/actions/auto-wire-parameters/actions";
 import { trackCardCreated } from "../analytics";
 import { getDashCardById } from "../selectors";
+import { isVirtualDashCard } from "../utils";
 import {
   ADD_CARD_TO_DASH,
   REMOVE_CARD_FROM_DASH,
@@ -94,7 +95,9 @@ export const undoRemoveCardFromDashboard = createThunkAction(
       const dashcard = getDashCardById(getState(), dashcardId);
       const card = dashcard.card;
 
-      dispatch(fetchCardData(card, dashcard));
+      if (!isVirtualDashCard(dashcard)) {
+        dispatch(fetchCardData(card, dashcard));
+      }
 
       return { dashcardId };
     },

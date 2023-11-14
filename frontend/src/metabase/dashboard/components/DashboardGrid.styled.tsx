@@ -9,6 +9,9 @@ export const DashboardCard = styled.div<DashboardCardProps>`
   position: relative;
   z-index: 1;
 
+  container-name: DashboardCard;
+  container-type: inline-size;
+
   /**
   * Dashcards are positioned absolutely so each one forms a new stacking context.
   * The dashcard user is currently interacting with needs to be positioned above other dashcards

@@ -15,7 +15,7 @@ jobs:
 
   shared-tests-cljs:
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
     - uses: actions/checkout@v3
     - name: Prepare front-end environment

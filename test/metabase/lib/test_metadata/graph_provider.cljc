@@ -1,7 +1,6 @@
 (ns metabase.lib.test-metadata.graph-provider
   (:require
    [clojure.core.protocols]
-   [clojure.test :refer [deftest is]]
    [medley.core :as m]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    #?@(:clj
@@ -74,19 +73,9 @@
   (datafy [_this]
     (list `->SimpleGraphMetadataProvider metadata-graph))
 
-  #?(:clj Object :cljs IEquiv)
-  (#?(:clj equals :cljs -equiv) [_this another]
-    (and (instance? SimpleGraphMetadataProvider another)
-         (= metadata-graph
-            (#?(:clj .metadata-graph :cljs .-metadata-graph) ^SimpleGraphMetadataProvider another))))
-
   #?@(:clj
       [pretty/PrettyPrintable
        (pretty [_this]
-               (if (identical? metadata-graph @(requiring-resolve 'metabase.lib.test-metadata/metadata))
-                 'metabase.lib.test-metadata/metadata-provider
-                 (list `->SimpleGraphMetadataProvider metadata-graph)))]))
-
-(deftest ^:parallel equality-test
-  (is (= (->SimpleGraphMetadataProvider {})
-         (->SimpleGraphMetadataProvider {}))))
+         (if (identical? metadata-graph @(requiring-resolve 'metabase.lib.test-metadata/metadata))
+           'metabase.lib.test-metadata/metadata-provider
+           (list `->SimpleGraphMetadataProvider metadata-graph)))]))

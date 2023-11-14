@@ -11,7 +11,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import DashCardActionButton from "./DashCardActionButton";
+import { DashCardActionButton } from "../DashCardActionButton";
 
 interface Props {
   series: Series;

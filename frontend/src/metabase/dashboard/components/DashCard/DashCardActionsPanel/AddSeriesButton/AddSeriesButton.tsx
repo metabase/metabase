@@ -5,7 +5,7 @@ import { Icon } from "metabase/core/components/Icon";
 import visualizations from "metabase/visualizations";
 import type { Series } from "metabase-types/api";
 
-import DashCardActionButton from "../DashCardActionButton";
+import { DashCardActionButton } from "../DashCardActionButton";
 import {
   ActionButton,
   IconContainer,
@@ -44,5 +44,4 @@ function AddSeriesButton({
   );
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default AddSeriesButton;
+export { AddSeriesButton };
