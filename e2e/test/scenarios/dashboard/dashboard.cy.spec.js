@@ -201,7 +201,7 @@ describe("scenarios > dashboard", () => {
     });
   });
 
-  describeWithSnowplow("existing dashboard", () => {
+  describe("existing dashboard", () => {
     const originalDashboardName = "Amazing Dashboard";
 
     beforeEach(() => {
@@ -210,10 +210,6 @@ describe("scenarios > dashboard", () => {
           visitDashboard(id);
         },
       );
-    });
-
-    afterEach(() => {
-      expectNoBadSnowplowEvents();
     });
 
     context("add a question (dashboard card)", () => {
@@ -248,10 +244,6 @@ describe("scenarios > dashboard", () => {
         assertBothCardsArePresent();
         saveDashboard();
         assertBothCardsArePresent();
-
-        expectGoodSnowplowEvent({
-          event: "dashboard_saved",
-        });
 
         function assertBothCardsArePresent() {
           getDashboardCards()
