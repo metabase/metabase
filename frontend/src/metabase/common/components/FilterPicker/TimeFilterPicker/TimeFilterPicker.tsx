@@ -7,8 +7,8 @@ import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
-import { FilterHeader } from "../FilterHeader";
-import { FilterFooter } from "../FilterFooter";
+import { FilterPickerHeader } from "../FilterPickerHeader";
+import { FilterPickerFooter } from "../FilterPickerFooter";
 import { OPERATOR_OPTIONS } from "./constants";
 import { getDefaultValues, getFilterClause } from "./utils";
 
@@ -64,13 +64,16 @@ export function TimeFilterPicker({
       data-testid="time-filter-picker"
       onSubmit={handleSubmit}
     >
-      <FilterHeader columnName={columnInfo.longDisplayName} onBack={onBack}>
+      <FilterPickerHeader
+        columnName={columnInfo.longDisplayName}
+        onBack={onBack}
+      >
         <FilterOperatorPicker
           value={operator}
           options={availableOperators}
           onChange={handleOperatorChange}
         />
-      </FilterHeader>
+      </FilterPickerHeader>
       <Box>
         {valueCount > 0 && (
           <Flex p="md">
@@ -81,7 +84,7 @@ export function TimeFilterPicker({
             />
           </Flex>
         )}
-        <FilterFooter isNew={isNew} canSubmit />
+        <FilterPickerFooter isNew={isNew} canSubmit />
       </Box>
     </Box>
   );
