@@ -163,6 +163,8 @@
 (def ^:private async-publish-event-timeout 10000)
 
 (defn publish-event-async!
+  ;; TODO - per team discussions, this will give us a short-term fix to performance issues related to blocking DB
+  ;; operations from resource contention. However, we'd still prefer to minimize resource contention.
   "Publish an event asynchronously with an optional timeout (default is 10s).
   If the event fails, will log a warning."
   ([topic event]
