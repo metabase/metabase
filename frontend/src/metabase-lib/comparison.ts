@@ -14,6 +14,13 @@ export function areLegacyQueriesEqual(
   return ML.query_EQ_(query1, query2, fieldIds);
 }
 
+export function findMatchingColumn(
+  column: ColumnMetadata,
+  columns: ColumnMetadata[],
+): ColumnMetadata | null {
+  return ML.find_matching_column(column, columns);
+}
+
 export function findColumnIndexesFromLegacyRefs(
   query: Query,
   stageIndex: number,

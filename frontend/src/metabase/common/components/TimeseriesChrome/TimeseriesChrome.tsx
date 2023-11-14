@@ -5,7 +5,12 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import { FilterSelect } from "./FilterSelect";
 import { TemporalBucketSelect } from "./TemporalBucketSelect";
-import { findBreakoutClause, findColumn, findFilterClause } from "./utils";
+import {
+  findBreakoutClause,
+  findBreakoutColumn,
+  findFilterClause,
+  findFilterColumn,
+} from "./utils";
 
 const STAGE_INDEX = -1;
 
@@ -48,19 +53,25 @@ function TimeseriesControls({
   stageIndex,
   onChange,
 }: TimeseriesControlsProps) {
-  const column = useMemo(
-    () => findColumn(query, stageIndex),
+  const breakoutColumn = useMemo(
+    () => findBreakoutColumn(query, stageIndex),
     [query, stageIndex],
   );
 
-  const filter = useMemo(
-    () => column && findFilterClause(query, stageIndex, column),
-    [query, stageIndex, column],
+  const breakout = useMemo(
+    () =>
+      breakoutColumn && findBreakoutClause(query, stageIndex, breakoutColumn),
+    [query, stageIndex, breakoutColumn],
   );
 
-  const breakout = useMemo(
-    () => column && findBreakoutClause(query, stageIndex, column),
-    [query, stageIndex, column],
+  const filterColumn = useMemo(
+    () => breakoutColumn && findFilterColumn(query, stageIndex, breakoutColumn),
+    [query, stageIndex, breakoutColumn],
+  );
+
+  const filter = useMemo(
+    () => filterColumn && findFilterClause(query, stageIndex, filterColumn),
+    [query, stageIndex, filterColumn],
   );
 
   const handleFilterChange = (newFilter: Lib.ExpressionClause) => {
@@ -77,7 +88,7 @@ function TimeseriesControls({
     }
   };
 
-  if (!column) {
+  if (!breakoutColumn || !filterColumn) {
     return null;
   }
 
@@ -87,7 +98,7 @@ function TimeseriesControls({
       <FilterSelect
         query={query}
         stageIndex={stageIndex}
-        column={column}
+        column={filterColumn}
         filter={filter}
         onChange={handleFilterChange}
       />
@@ -95,7 +106,7 @@ function TimeseriesControls({
       <TemporalBucketSelect
         query={query}
         stageIndex={stageIndex}
-        column={column}
+        column={breakoutColumn}
         onChange={handleBreakoutChange}
       />
     </Group>
