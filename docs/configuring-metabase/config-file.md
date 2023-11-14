@@ -6,7 +6,10 @@ title: "Configuration file"
 
 {% include plans-blockquote.html feature="Loading from a configuration file" self-hosted-only="true" %}
 
-On some paid, self-hosted plans, Metabase supports initialization on launch from a config file named `config.yml`. This file should either be in the current directory (the directory where the running Metabase JAR is located), or in a path specified by the `MB_CONFIG_FILE_PATH` [environment variable](./environment-variables.md).
+On some paid, self-hosted plans, Metabase supports initialization on launch from a config file named `config.yml`. The config file should be located at:
+
+- The current directory (the directory where the running Metabase JAR is located).
+- The path specified by the `MB_CONFIG_FILE_PATH` [environment variable](./environment-variables.md).
 
 The settings as defined in the config file work the same as if you set these settings in the Admin Settings in your Metabase. Settings defined in this configuration file will update any existing settings. If, for example, a database already exists (that is, you'd already added it via the initial set up or **Admin settings** > **Databases**, Metabase will update the database entry based on the data in the config file).
 
