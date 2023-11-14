@@ -275,14 +275,17 @@
   SITUATIONS CORRECTLY before using these IDs to make a DB call. Better yet, use
   [[visible-collection-ids->honeysql-filter-clause]] to generate appropriate HoneySQL."
   [permissions-set]
-  (if (contains? permissions-set "/")
-    :all
-    (set
-     (for [path  permissions-set
-           :let  [[_ id-str] (re-matches #"/collection/((?:\d+)|root)/(read/)?" path)]
-           :when id-str]
-       (cond-> id-str
-         (not= id-str "root") Integer/parseInt)))))
+  (let [collection-ids-set (if (contains? permissions-set "/")
+                             (into (t2/select-fn-set :id :model/Collection) ["root"])
+                             (set
+                              (for [path  permissions-set
+                                    :let  [[_ id-str] (re-matches #"/collection/((?:\d+)|root)/(read/)?" path)]
+                                    :when id-str]
+                                (cond-> id-str
+                                  (not= id-str "root") Integer/parseInt))))]
+    (if (premium-features/enable-audit-app?)
+      collection-ids-set
+      (disj collection-ids-set (:id (perms/default-audit-collection)) (:id (perms/default-custom-reports-collection))))))
 
 (mu/defn visible-collection-ids->honeysql-filter-clause
   "Generate an appropriate HoneySQL `:where` clause to filter something by visible Collection IDs, such as the ones
@@ -493,7 +496,9 @@
 
 (mu/defn ^:private effective-children-where-clause
   [collection & additional-honeysql-where-clauses]
-  (let [visible-collection-ids (permissions-set->visible-collection-ids @*current-user-permissions-set*)]
+  (let [visible-collection-ids (permissions-set->visible-collection-ids @*current-user-permissions-set*)
+        tmp (println collection)
+        tmp1 (println visible-collection-ids)]
     ;; Collection B is an effective child of Collection A if...
     (into
       [:and
