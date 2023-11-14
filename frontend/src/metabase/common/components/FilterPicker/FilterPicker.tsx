@@ -1,6 +1,5 @@
 import { useCallback, useLayoutEffect, useState } from "react";
 
-import { Box } from "metabase/ui";
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
@@ -14,7 +13,6 @@ import LegacyFilter from "metabase-lib/queries/structured/Filter";
 import type LegacyQuery from "metabase-lib/queries/StructuredQuery";
 
 import type { ColumnListItem, SegmentListItem } from "./types";
-import { MIN_WIDTH, MAX_WIDTH } from "./constants";
 
 import { BooleanFilterPicker } from "./BooleanFilterPicker";
 import { DateFilterPicker } from "./DateFilterPicker";
@@ -58,9 +56,7 @@ export function FilterPicker({
   const [
     isEditingExpression,
     { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
-  ] = useToggle(
-    isExpressionEditorInitiallyOpen(query, stageIndex, column, filter),
-  );
+  ] = useToggle(isExpressionEditorInitiallyOpen(query, stageIndex, filter));
 
   const isNewFilter = !initialFilter;
 
@@ -117,16 +113,14 @@ export function FilterPicker({
 
   if (!column) {
     return (
-      <Box miw={MIN_WIDTH} maw={MAX_WIDTH}>
-        <FilterColumnPicker
-          query={query}
-          stageIndex={stageIndex}
-          checkItemIsSelected={checkItemIsSelected}
-          onColumnSelect={handleColumnSelect}
-          onSegmentSelect={handleChange}
-          onExpressionSelect={openExpressionEditor}
-        />
-      </Box>
+      <FilterColumnPicker
+        query={query}
+        stageIndex={stageIndex}
+        checkItemIsSelected={checkItemIsSelected}
+        onColumnSelect={handleColumnSelect}
+        onSegmentSelect={handleChange}
+        onExpressionSelect={openExpressionEditor}
+      />
     );
   }
 
@@ -134,17 +128,15 @@ export function FilterPicker({
 
   if (FilterWidget) {
     return (
-      <Box miw={MIN_WIDTH}>
-        <FilterWidget
-          query={query}
-          stageIndex={stageIndex}
-          column={column}
-          filter={filter}
-          isNew={isNewFilter}
-          onChange={handleChange}
-          onBack={() => setColumn(undefined)}
-        />
-      </Box>
+      <FilterWidget
+        query={query}
+        stageIndex={stageIndex}
+        column={column}
+        filter={filter}
+        isNew={isNewFilter}
+        onChange={handleChange}
+        onBack={() => setColumn(undefined)}
+      />
     );
   }
 
@@ -166,14 +158,13 @@ function getInitialColumn(
 function isExpressionEditorInitiallyOpen(
   query: Lib.Query,
   stageIndex: number,
-  column: Lib.ColumnMetadata | undefined,
   filter?: Lib.FilterClause,
 ) {
-  if (!filter || Lib.isSegmentFilter(query, stageIndex, filter)) {
-    return false;
-  }
-  const hasWidget = column && getFilterWidget(column) != null;
-  return Lib.isCustomFilter(query, stageIndex, filter) || !hasWidget;
+  return (
+    filter != null &&
+    !Lib.isStandardFilter(query, stageIndex, filter) &&
+    !Lib.isSegmentFilter(query, stageIndex, filter)
+  );
 }
 
 function getFilterWidget(column: Lib.ColumnMetadata) {

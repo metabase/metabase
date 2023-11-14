@@ -1,3 +1,5 @@
+export const MIN_WIDTH = 300;
+
 export const SPECIFIC_DATE_PICKER_OPERATORS = [
   "=",
   "<",

@@ -3,12 +3,13 @@ import type { FormEvent } from "react";
 import { t } from "ttag";
 import { checkNotNull } from "metabase/lib/types";
 import { Icon } from "metabase/core/components/Icon";
-import { Button, Radio, Stack } from "metabase/ui";
+import { Box, Button, Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { FilterHeader } from "../FilterHeader";
 import { FilterFooter } from "../FilterFooter";
-import type { FilterPickerWidgetProps } from "../types";
+import { MIN_WIDTH } from "../constants";
 import { getAvailableOperatorOptions } from "../utils";
+import type { FilterPickerWidgetProps } from "../types";
 import { OPTIONS } from "./constants";
 import { getFilterClause, getOptionType } from "./utils";
 
@@ -51,7 +52,12 @@ export function BooleanFilterPicker({
   };
 
   return (
-    <form data-testid="boolean-filter-picker" onSubmit={handleSubmit}>
+    <Box
+      component="form"
+      miw={MIN_WIDTH}
+      data-testid="boolean-filter-picker"
+      onSubmit={handleSubmit}
+    >
       <FilterHeader columnName={columnName} onBack={onBack} />
       <div>
         <Radio.Group value={optionType} onChange={handleOptionChange}>
@@ -80,6 +86,6 @@ export function BooleanFilterPicker({
         )}
         <FilterFooter isNew={isNew} canSubmit />
       </div>
-    </form>
+    </Box>
   );
 }
