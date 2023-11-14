@@ -10,6 +10,8 @@
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as m]
    [toucan2.core :as t2]))
 
@@ -56,6 +58,41 @@
     {:previous (select-keys previous-object shared-updated-keys)
      :new (select-keys object shared-updated-keys)}))
 
+(mr/def ::event-params [:map {:closed true
+                              :doc "Used when inserting a value to the Audit Log."}
+                        [:object          {:optional true} [:maybe :map]]
+                        [:previous-object {:optional true} [:maybe :map]]
+                        [:user-id         {:optional true} [:maybe pos-int?]]
+                        [:model           {:optional true} [:maybe [:or :keyword :string]]]
+                        [:model-id        {:optional true} [:maybe pos-int?]]
+                        [:details         {:optional true} [:maybe :map]]])
+
+(mu/defn construct-event
+  :- [:map
+      [:unqualified-topic simple-keyword?]
+      [:user-id [:maybe ms/PositiveInt]]
+      [:model-name [:maybe :string]]
+      [:model-id [:maybe ms/PositiveInt]]
+      [:details :map]]
+  "Generates the data to be recorded in the Audit Log."
+  ([topic :- :keyword
+    params :- ::event-params
+    current-user-id :- [:maybe pos-int?]]
+   (let [unqualified-topic (keyword (name topic))
+         object            (:object params)
+         previous-object   (:previous-object params)
+         object-details    (model-details object unqualified-topic)
+         previous-details  (model-details previous-object unqualified-topic)]
+     {:unqualified-topic unqualified-topic
+      :user-id           (or (:user-id params) current-user-id)
+      :model-name        (model-name (or (:model params) object))
+      :model-id          (or (:model-id params) (u/id object))
+      :details           (merge {}
+                                (:details params)
+                                (if (not-empty previous-object)
+                                  (prepare-update-event-data object-details previous-details)
+                                  object-details))})))
+
 (mu/defn record-event!
   "Records an event in the Audit Log.
 
@@ -74,30 +111,13 @@
   then they are added to `:details` before the event is recorded. `:previous-object` is only included if any audited fields
   were updated."
   [topic :- :keyword
-   params :- [:map {:closed true}
-              [:object          {:optional true} [:maybe :map]]
-              [:previous-object {:optional true} [:maybe :map]]
-              [:user-id         {:optional true} [:maybe pos-int?]]
-              [:model           {:optional true} [:maybe [:or :keyword :string]]]
-              [:model-id        {:optional true} [:maybe pos-int?]]
-              [:details         {:optional true} [:maybe :map]]]]
-  (let [unqualified-topic (keyword (name topic))
-        object            (:object params)
-        previous-object   (:previous-object params)
-        object-details    (model-details object unqualified-topic)
-        previous-details  (model-details previous-object unqualified-topic)
-        user-id           (or (:user-id params) api/*current-user-id*)
-        model             (model-name (or (:model params) object))
-        model-id          (or (:model-id params) (u/id object))
-        details           (merge {}
-                           (:details params)
-                           (if (not-empty previous-object)
-                             (prepare-update-event-data object-details previous-details)
-                             object-details))]
+   params :- ::event-params]
+  (let [{:keys [user-id model-name model-id details unqualified-topic object]}
+        (construct-event topic params api/*current-user-id*)]
     (t2/insert! :model/AuditLog
                 :topic    unqualified-topic
                 :details  details
-                :model    model
+                :model    model-name
                 :model_id model-id
                 :user_id  user-id)
     ;; TODO: temporarily double-writing to the `activity` table, delete this in Metabase v48
@@ -107,7 +127,7 @@
        {:topic    topic
         :object   object
         :details  details
-        :model    model
+        :model    model-name
         :model-id model-id
         :user-id  user-id}))))
 
