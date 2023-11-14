@@ -132,17 +132,15 @@ export function FilterPicker({
 
   if (FilterWidget) {
     return (
-      <Box miw={MIN_WIDTH}>
-        <FilterWidget
-          query={query}
-          stageIndex={stageIndex}
-          column={column}
-          filter={filter}
-          isNew={isNewFilter}
-          onChange={handleChange}
-          onBack={() => setColumn(undefined)}
-        />
-      </Box>
+      <FilterWidget
+        query={query}
+        stageIndex={stageIndex}
+        column={column}
+        filter={filter}
+        isNew={isNewFilter}
+        onChange={handleChange}
+        onBack={() => setColumn(undefined)}
+      />
     );
   }
 
