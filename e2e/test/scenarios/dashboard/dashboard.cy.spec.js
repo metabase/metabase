@@ -977,7 +977,7 @@ describeWithSnowplow("scenarios > dashboard", () => {
   });
 
   it("saving a dashboard should track a 'dashboard_saved' snowplow event", () => {
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
     editDashboard();
     const newTitle = "New title";
     cy.findByTestId("dashboard-name-heading").clear().type(newTitle).blur();
