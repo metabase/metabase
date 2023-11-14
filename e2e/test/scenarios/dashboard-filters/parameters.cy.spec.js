@@ -810,65 +810,6 @@ describe("scenarios > dashboard > parameters", () => {
           )
           .should("be.visible");
       });
-
-      it("should not auto-wire a card if the user undoes the wiring", () => {
-        createDashboardWithCards([
-          {
-            card_id: ORDERS_BY_YEAR_QUESTION_ID,
-            row: 0,
-            col: 0,
-            size_x: 5,
-            size_y: 4,
-          },
-          {
-            card_id: ORDERS_COUNT_QUESTION_ID,
-            row: 0,
-            col: 4,
-            size_x: 5,
-            size_y: 4,
-          },
-        ]).then(dashboardId => {
-          visitDashboard(dashboardId);
-          cy.wait("@dashboard");
-        });
-        cy.icon("pencil").click();
-
-        cy.findByTestId("dashboard-header").icon("filter").click();
-        popover().within(() => {
-          cy.contains("Text or Category").click();
-          cy.findByText("Is").click();
-        });
-
-        selectDashboardFilter(getDashboardCard(0), "Name");
-
-        getDashboardCard(0).within(() => {
-          cy.findByText("User.Name").should("exist");
-        });
-
-        getDashboardCard(1).within(() => {
-          cy.findByText("User.Name").should("exist");
-        });
-
-        undoToast().findByText("Undo auto-connection").click();
-
-        getDashboardCard(1).within(() => {
-          cy.findByText("User.Name").should("not.exist");
-        });
-
-        getDashboardCard(0).within(() => {
-          cy.findByLabelText("close icon").click();
-        });
-
-        selectDashboardFilter(getDashboardCard(0), "Address");
-
-        getDashboardCard(0).within(() => {
-          cy.findByText("User.Address").should("exist");
-        });
-
-        getDashboardCard(1).within(() => {
-          cy.findByText("Select…").should("exist");
-        });
-      });
     });
 
     describe("wiring parameters when adding a card", () => {
@@ -970,68 +911,6 @@ describe("scenarios > dashboard > parameters", () => {
             "This filter has been auto-connected with questions with the same field.",
           )
           .should("be.visible");
-      });
-
-      it("should not auto-wire the added card if the user undoes the auto-wiring", () => {
-        const cards = [
-          {
-            card_id: ORDERS_BY_YEAR_QUESTION_ID,
-            row: 0,
-            col: 0,
-            size_x: 5,
-            size_y: 4,
-          },
-          {
-            card_id: ORDERS_COUNT_QUESTION_ID,
-            row: 0,
-            col: 5,
-            size_x: 5,
-            size_y: 4,
-          },
-        ];
-
-        createDashboardWithCards(cards).then(dashboardId => {
-          visitDashboard(dashboardId);
-          cy.wait("@dashboard");
-        });
-
-        cy.icon("pencil").click();
-
-        cy.findByTestId("dashboard-header").icon("filter").click();
-        popover().within(() => {
-          cy.contains("Text or Category").click();
-          cy.findByText("Is").click();
-        });
-
-        selectDashboardFilter(getDashboardCard(0), "Name");
-
-        for (let i = 0; i < cards.length; i++) {
-          getDashboardCard(i).findByText("User.Name").should("exist");
-        }
-
-        addCardToDashboard();
-        goToFilterMapping();
-
-        for (let i = 0; i < cards.length + 1; i++) {
-          getDashboardCard(i).findByText("User.Name").should("exist");
-        }
-
-        undoToast().within(() => {
-          cy.findByText(
-            "Orders Model has been auto-connected with filters with the same field.",
-          ).should("be.visible");
-          cy.findByText("Undo auto-connection").click();
-        });
-
-        undoToast()
-          .findByText(
-            "Auto-connection was disabled. You'll need to manually connect filters to this question.",
-          )
-          .should("exist");
-
-        getDashboardCard(2).within(() => {
-          cy.findByText("Select…").should("exist");
-        });
       });
     });
   });

@@ -9,7 +9,6 @@ import Questions from "metabase/entities/questions";
 import Actions from "metabase/entities/actions";
 import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
 
-import { DISABLE_AUTO_WIRE_FOR_PARAMETER_TARGET } from "metabase/dashboard/actions/auto-wire-parameters/actions";
 import {
   INITIALIZE,
   FETCH_DASHBOARD,
@@ -481,35 +480,6 @@ export const autoApplyFilters = handleActions(
   INITIAL_DASHBOARD_STATE.autoApplyFilters,
 );
 
-export const autoWireParameters = handleActions(
-  {
-    [DISABLE_AUTO_WIRE_FOR_PARAMETER_TARGET]: {
-      next: (state, { payload: { sourceDashcardId, dashboardId } }) => {
-        const existingDisabledTargets =
-          state.disabledDashcards?.[dashboardId] ?? [];
-
-        if (existingDisabledTargets.includes(sourceDashcardId)) {
-          return state;
-        }
-
-        const disabledCardsForDashboard = [
-          ...existingDisabledTargets,
-          sourceDashcardId,
-        ];
-
-        return {
-          ...state,
-          disabledDashcards: {
-            ...(state.disabledDashcards ?? {}),
-            [dashboardId]: disabledCardsForDashboard,
-          },
-        };
-      },
-    },
-  },
-  INITIAL_DASHBOARD_STATE.autoWireParameters,
-);
-
 export default reduceReducers(
   INITIAL_DASHBOARD_STATE,
   combineReducers({
@@ -528,7 +498,6 @@ export default reduceReducers(
     sidebar,
     missingActionParameters,
     autoApplyFilters,
-    autoWireParameters,
     // Combined reducer needs to init state for every slice
     selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,
     tabDeletions: (state = INITIAL_DASHBOARD_STATE.tabDeletions) => state,

@@ -42,9 +42,6 @@ describe("dashboard reducers", () => {
         toastId: null,
         toastDashboardId: null,
       },
-      autoWireParameters: {
-        disabledDashcards: {},
-      },
       tabDeletions: {},
     });
   });

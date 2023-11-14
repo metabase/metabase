@@ -1,4 +1,3 @@
-import { t } from "ttag";
 import type {
   Card,
   DashboardCard,
@@ -13,8 +12,8 @@ import {
 } from "metabase/dashboard/actions";
 import {
   closeAutoWireParameterToast,
+  showAddedCardAutoWireParametersToast,
   showAutoWireParametersToast,
-  showDisabledAutoConnectionToast,
 } from "metabase/dashboard/actions/auto-wire-parameters/toasts";
 import {
   getAllDashboardCardsWithUnmappedParameters,
@@ -23,23 +22,10 @@ import {
 } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
-import {
-  getDashCardById,
-  getDisabledAutoWireCards,
-  getIsCardAutoWiringDisabled,
-} from "metabase/dashboard/selectors";
-import { createAction } from "metabase/lib/redux";
+import { getDashCardById } from "metabase/dashboard/selectors";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
-import { addUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
 import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
-
-export const DISABLE_AUTO_WIRE_FOR_PARAMETER_TARGET =
-  "metabase/dashboard/DISABLE_AUTO_WIRE_FOR_PARAMETER_TARGET";
-
-export const disableAutoWireForParameterTarget = createAction(
-  DISABLE_AUTO_WIRE_FOR_PARAMETER_TARGET,
-);
 
 export function autoWireDashcardsWithMatchingParameters(
   parameter_id: ParameterId,
@@ -54,21 +40,11 @@ export function autoWireDashcardsWithMatchingParameters(
       return;
     }
 
-    const disabledDashcards = getDisabledAutoWireCards(
-      getState(),
-      dashboard_state.dashboardId,
-    );
-    const isDisabled = disabledDashcards.includes(dashcard.id);
-
-    if (isDisabled) {
-      return;
-    }
-
     const dashcardsToAutoApply = getAllDashboardCardsWithUnmappedParameters({
       dashboardState: dashboard_state,
       dashboardId: dashboard_state.dashboardId,
       parameter_id: parameter_id,
-      excludeDashcardIds: [dashcard.id, ...disabledDashcards],
+      excludeDashcardIds: [dashcard.id],
     });
 
     const dashcardAttributes = getAutoWiredMappingsForDashcards(
@@ -116,16 +92,11 @@ export function autoWireParametersToNewCard({
       return;
     }
 
-    const disabledDashcards = [
-      dashcard_id,
-      ...getDisabledAutoWireCards(getState(), dashboardId),
-    ];
-
     const dashcards = getExistingDashCards(
       dashboardState.dashboards,
       dashboardState.dashcards,
       dashboardId,
-    ).filter(dc => !disabledDashcards.includes(dc.id));
+    );
 
     const targetDashcard: StoreDashcard = getDashCardById(
       getState(),
@@ -184,16 +155,6 @@ export function autoWireParametersToNewCard({
       return;
     }
 
-    const isDisabled = getIsCardAutoWiringDisabled(
-      getState(),
-      dashboardId,
-      dashcard_id,
-    );
-
-    if (isDisabled) {
-      return;
-    }
-
     dispatch(
       setDashCardAttributes({
         id: dashcard_id,
@@ -203,33 +164,10 @@ export function autoWireParametersToNewCard({
       }),
     );
 
-    // const toastId = _.uniqueId();
-
     dispatch(
-      addUndo({
-        // id: toastId,
-        message: t`${targetDashcard.card.name} has been auto-connected with filters with the same field.`,
-        actionLabel: t`Undo auto-connection`,
-        undo: true,
-        action: () => {
-          dispatch(
-            disableAutoWireForParameterTarget({
-              sourceDashcardId: dashcard_id,
-              dashboardId,
-            }),
-          );
-
-          dispatch(
-            setDashCardAttributes({
-              id: dashcard_id,
-              attributes: {
-                parameter_mappings: [],
-              },
-            }),
-          );
-
-          dispatch(showDisabledAutoConnectionToast());
-        },
+      showAddedCardAutoWireParametersToast({
+        targetDashcard,
+        dashcard_id,
       }),
     );
   };

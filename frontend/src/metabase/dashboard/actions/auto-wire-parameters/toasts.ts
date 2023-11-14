@@ -7,12 +7,15 @@ import type {
   ParameterId,
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
-import { setMultipleDashCardAttributes } from "metabase/dashboard/actions";
-import { disableAutoWireForParameterTarget } from "metabase/dashboard/actions/auto-wire-parameters/actions";
+import {
+  setDashCardAttributes,
+  setMultipleDashCardAttributes,
+} from "metabase/dashboard/actions";
+// import { disableAutoWireForParameterTarget } from "metabase/dashboard/actions/auto-wire-parameters/actions";
 import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 
-const AUTO_WIRE_TOAST_ID = _.uniqueId();
+export const AUTO_WIRE_TOAST_ID = _.uniqueId();
 
 type ShowAutoWireParametersToastType = {
   dashboardId: DashboardId;
@@ -22,12 +25,7 @@ type ShowAutoWireParametersToastType = {
 };
 
 export const showAutoWireParametersToast =
-  ({
-    dashboardId,
-    parameter_id,
-    sourceDashcardId,
-    modifiedDashcards,
-  }: ShowAutoWireParametersToastType) =>
+  ({ parameter_id, modifiedDashcards }: ShowAutoWireParametersToastType) =>
   (dispatch: Dispatch) => {
     dispatch(
       addUndo({
@@ -36,13 +34,6 @@ export const showAutoWireParametersToast =
         actionLabel: t`Undo auto-connection`,
         undo: true,
         action: () => {
-          dispatch(
-            disableAutoWireForParameterTarget({
-              sourceDashcardId,
-              dashboardId,
-            }),
-          );
-
           dispatch(
             setMultipleDashCardAttributes({
               dashcards: modifiedDashcards.map(dc => ({
@@ -58,8 +49,35 @@ export const showAutoWireParametersToast =
               })),
             }),
           );
+        },
+      }),
+    );
+  };
 
-          dispatch(showDisabledAutoConnectionToast());
+export const showAddedCardAutoWireParametersToast =
+  ({
+    targetDashcard,
+    dashcard_id,
+  }: {
+    targetDashcard: DashboardCard;
+    dashcard_id: DashCardId;
+  }) =>
+  (dispatch: Dispatch) => {
+    dispatch(
+      addUndo({
+        id: AUTO_WIRE_TOAST_ID,
+        message: t`${targetDashcard.card.name} has been auto-connected with filters with the same field.`,
+        actionLabel: t`Undo auto-connection`,
+        undo: true,
+        action: () => {
+          dispatch(
+            setDashCardAttributes({
+              id: dashcard_id,
+              attributes: {
+                parameter_mappings: [],
+              },
+            }),
+          );
         },
       }),
     );
@@ -67,12 +85,4 @@ export const showAutoWireParametersToast =
 
 export const closeAutoWireParameterToast = () => (dispatch: Dispatch) => {
   dispatch(dismissUndo(AUTO_WIRE_TOAST_ID, false));
-};
-
-export const showDisabledAutoConnectionToast = () => (dispatch: Dispatch) => {
-  dispatch(
-    addUndo({
-      message: t`Auto-connection was disabled. You'll need to manually connect filters to this question.`,
-    }),
-  );
 };

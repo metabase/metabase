@@ -81,8 +81,4 @@ export interface DashboardState {
     toastDashboardId: number | null;
   };
   tabDeletions: Record<TabDeletionId, TabDeletion>;
-
-  autoWireParameters: {
-    disabledDashcards: Record<DashboardId, DashCardId[]>;
-  };
 }
