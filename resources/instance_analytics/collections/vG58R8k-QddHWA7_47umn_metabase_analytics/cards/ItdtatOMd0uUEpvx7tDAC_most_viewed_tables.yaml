@@ -42,6 +42,20 @@ dataset_query:
         - name
       - base-type: type/Text
         join-alias: Databases
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_databases
+        - entity_id
+      - base-type: type/Integer
+        join-alias: Databases
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_tables
+        - entity_id
+      - base-type: type/Integer
+        join-alias: Tables - Entity Qualified
     filter:
     - and
     - - =
@@ -156,14 +170,64 @@ visualization_settings:
     : column_title: Dashboard name
     ? '["ref",["field",["Internal Metabase Database","public","v_databases","name"],{"base-type":"type/Text","join-alias":"Databases"}]]'
     : column_title: Database
+      link_url: /browse/{{entity_id}}
+      view_as: link
     ? '["ref",["field",["Internal Metabase Database","public","v_tables","name"],{"base-type":"type/Text","join-alias":"Tables - Entity Qualified"}]]'
     : column_title: Table name
+      link_url: /question#?db={{entity_id_2}}&table={{entity_id}}
+      view_as: link
   graph.dimensions:
   - name
   graph.metrics:
   - count
   graph.show_values: true
   table.cell_column: count
+  table.columns:
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_tables
+      - name
+    - base-type: type/Text
+      join-alias: Tables - Entity Qualified
+    name: name
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_databases
+      - name
+    - base-type: type/Text
+      join-alias: Databases
+    name: name_2
+  - enabled: false
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_databases
+      - entity_id
+    - base-type: type/Integer
+      join-alias: Databases
+    name: entity_id
+  - enabled: true
+    fieldRef:
+    - aggregation
+    - 0
+    name: count
+  - enabled: false
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_tables
+      - entity_id
+    - base-type: type/Integer
+      join-alias: Tables - Entity Qualified
+    name: false_2
   table.pivot: false
   table.pivot_column: name_2
 serdes/meta:

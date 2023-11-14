@@ -30,3 +30,6 @@ create index idx_view_log_timestamp on view_log (timestamp);
 
 create index idx_view_log_entity_qualified_id
     on view_log ((concat(model, '_', model_id)));
+
+create index idx_task_history_started_at
+    on task_history(started_at);

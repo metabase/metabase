@@ -70,6 +70,47 @@ dataset_query:
       fields: none
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
+    - alias: Content - Entity Qualified
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_audit_log
+          - entity_qualified_id
+        - base-type: type/Text
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - entity_qualified_id
+        - base-type: type/Text
+          join-alias: Content - Entity Qualified
+      fields:
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - entity_id
+        - base-type: type/Integer
+          join-alias: Content - Entity Qualified
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - entity_type
+        - base-type: type/Text
+          join-alias: Content - Entity Qualified
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - name
+        - base-type: type/Text
+          join-alias: Content - Entity Qualified
+      source-table: AxSackBiyXVRUzM_TyyQY
+      strategy: left-join
+    limit: 200
     order-by:
     - - desc
       - - field
@@ -82,7 +123,11 @@ dataset_query:
   type: query
 result_metadata: null
 visualization_settings:
-  column_settings: null
+  column_settings:
+    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
+    : column_title: Content name
+      link_url: /{{entity_type}}/{{entity_id}}
+      view_as: link
   table.cell_column: details
   table.columns:
   - enabled: true
@@ -109,6 +154,16 @@ visualization_settings:
     - field
     - - Internal Metabase Database
       - public
+      - v_content
+      - name
+    - base-type: type/Text
+      join-alias: Content - Entity Qualified
+    name: name
+  - enabled: false
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
       - v_audit_log
       - entity_qualified_id
     - base-type: type/Text
@@ -122,6 +177,26 @@ visualization_settings:
       - details
     - base-type: type/Text
     name: details
+  - enabled: false
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - entity_id
+    - base-type: type/Integer
+      join-alias: Content - Entity Qualified
+    name: entity_id
+  - enabled: false
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - entity_type
+    - base-type: type/Text
+      join-alias: Content - Entity Qualified
+    name: entity_type
   table.pivot_column: topic
 serdes/meta:
 - id: WlQ-en2l-iRRCvO2-v5j1

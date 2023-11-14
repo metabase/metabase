@@ -118,8 +118,12 @@ visualization_settings:
       show_mini_bar: true
     ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Entity Qualified"}]]'
     : column_title: Dashboard ID
+      link_url: dashboard/{{entity_id}}
+      view_as: link
     ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
     : column_title: Dashboard name
+      link_url: dashboard/{{entity_id}}
+      view_as: link
   graph.dimensions:
   - name
   graph.metrics:

@@ -310,7 +310,39 @@ dashcards:
       - base-type: type/DateTimeWithLocalTZ
         temporal-unit: default
   visualization_settings:
-    column_settings: null
+    column_settings:
+      '["name","count"]':
+        column_title: Question views
+        show_mini_bar: true
+      ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
+      : column_title: User
+    table.cell_column: model_id
+    table.columns:
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - base-type: type/Text
+        join-alias: People - User
+      name: full_name
+    - enabled: false
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - user_id
+      - base-type: type/Integer
+      name: user_id
+    - enabled: true
+      fieldRef:
+      - aggregation
+      - 0
+      name: count
+    table.pivot_column: end_timestamp
 - entity_id: _iLvtXz7cnTL6NrcNxEtQ
   card_id: p-z74CSp1IOs1rXwAcwcS
   created_at: '2023-06-15T02:23:27.106361Z'

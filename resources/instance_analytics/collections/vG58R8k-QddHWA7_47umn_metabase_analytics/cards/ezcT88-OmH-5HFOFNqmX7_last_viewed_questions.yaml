@@ -33,14 +33,24 @@ dataset_query:
         - timestamp
       - base-type: type/DateTimeWithLocalTZ
     filter:
-    - =
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_view_log
-        - entity_type
-      - base-type: type/Text
-    - card
+    - and
+    - - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_view_log
+          - entity_type
+        - base-type: type/Text
+      - card
+    - - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - entity_type
+        - base-type: type/Text
+          join-alias: Content - Entity Qualified
+      - question
     joins:
     - alias: Content - Entity Qualified
       condition:
@@ -99,6 +109,7 @@ dataset_query:
       fields: none
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
+    limit: 200
     order-by:
     - - desc
       - - field
@@ -125,6 +136,8 @@ visualization_settings:
       view_as: null
     ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
     : column_title: Question name
+      link_url: /question/{{entity_id}}
+      view_as: link
     '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35"}]]':
       column_title: Dashboard name
   table.cell_column: model_id
@@ -134,317 +147,12 @@ visualization_settings:
     - field
     - - Internal Metabase Database
       - public
-      - v_content
-      - id
-    - join-alias: Question 35
-    name: id
-  - enabled: false
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - user_id
-    - join-alias: Question 1
-    name: user_id
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - entity_id
-    - base-type: type/Integer
-      join-alias: Content - Entity Qualified
-    name: entity_id_2
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - entity_qualified_id
-    - base-type: type/Text
-      join-alias: Content - Entity Qualified
-    name: entity_qualified_id_2
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - entity_type
-    - base-type: type/Text
-      join-alias: Content - Entity Qualified
-    name: entity_type_2
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - created_at
-    - base-type: type/DateTimeWithLocalTZ
-      join-alias: Content - Entity Qualified
-    name: created_at
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - updated_at
-    - base-type: type/DateTimeWithLocalTZ
-      join-alias: Content - Entity Qualified
-    name: updated_at
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - creator_id
-    - base-type: type/Integer
-      join-alias: Content - Entity Qualified
-    name: creator_id
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - collection_id
-    - base-type: type/Integer
-      join-alias: Content - Entity Qualified
-    name: collection_id
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - made_public_by_user
-    - base-type: type/Integer
-      join-alias: Content - Entity Qualified
-    name: made_public_by_user
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - is_embedding_enabled
-    - base-type: type/Boolean
-      join-alias: Content - Entity Qualified
-    name: is_embedding_enabled
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - archived
-    - base-type: type/Boolean
-      join-alias: Content - Entity Qualified
-    name: archived
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - action_type
-    - base-type: type/Text
-      join-alias: Content - Entity Qualified
-    name: action_type
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - action_model_id
-    - base-type: type/Integer
-      join-alias: Content - Entity Qualified
-    name: action_model_id
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - collection_is_official
-    - base-type: type/Boolean
-      join-alias: Content - Entity Qualified
-    name: collection_is_official
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - collection_is_personal
-    - base-type: type/Boolean
-      join-alias: Content - Entity Qualified
-    name: collection_is_personal
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - question_viz_type
-    - base-type: type/Text
-      join-alias: Content - Entity Qualified
-    name: question_viz_type
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - question_database_id
-    - base-type: type/Text
-      join-alias: Content - Entity Qualified
-    name: question_database_id
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - question_is_native
-    - base-type: type/Boolean
-      join-alias: Content - Entity Qualified
-    name: question_is_native
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - event_timestamp
-    - base-type: type/DateTimeWithLocalTZ
-      join-alias: Content - Entity Qualified
-    name: event_timestamp
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - user_id
-    - join-alias: People - Creator
-    name: user_id_2
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - email
-    - join-alias: People - Creator
-    name: email
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - first_name
-    - join-alias: People - Creator
-    name: first_name
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - last_name
-    - join-alias: People - Creator
-    name: last_name
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - full_name
-    - join-alias: People - Creator
-    name: full_name
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - date_joined
-    - join-alias: People - Creator
-    name: date_joined
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - last_login
-    - join-alias: People - Creator
-    name: last_login
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - updated_at
-    - join-alias: People - Creator
-    name: updated_at_2
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - is_admin
-    - join-alias: People - Creator
-    name: is_admin
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - is_active
-    - join-alias: People - Creator
-    name: is_active
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - sso_source
-    - join-alias: People - Creator
-    name: sso_source
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - locale
-    - join-alias: People - Creator
-    name: locale
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
       - v_view_log
       - timestamp
     - base-type: type/DateTimeWithLocalTZ
+      temporal-unit: default
     name: timestamp
-  - enabled: true
+  - enabled: false
     fieldRef:
     - field
     - - Internal Metabase Database
