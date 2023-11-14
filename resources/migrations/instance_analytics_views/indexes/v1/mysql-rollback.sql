@@ -9,3 +9,4 @@ drop index idx_view_log_model_id on view_log;
 drop index idx_view_log_timestamp on view_log;
 create index idx_view_log_timestamp on view_log (model_id);
 drop index idx_view_log_entity_qualified_id on view_log;
+drop index idx_task_history_started_at on task_history;
