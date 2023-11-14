@@ -17,9 +17,9 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [steffan-westcott.clj-otel.api.trace.span :as span]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]
-   [steffan-westcott.clj-otel.api.trace.span :as span]))
+   [toucan2.core :as t2]))
 
 (defn- check-card-and-dashcard-are-in-dashboard
   "Check that the Card with `card-id` is in Dashboard with `dashboard-id`, either in the DashboardCard with
