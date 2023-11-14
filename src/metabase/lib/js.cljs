@@ -996,3 +996,8 @@
     offset-n
     (some-> offset-unit keyword)
     (js->clj options :keywordize-keys true)))
+
+(defn ^:export stage-count
+  "Returns the count of stages in query"
+  [a-query]
+  (lib.core/stage-count a-query))
