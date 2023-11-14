@@ -22,7 +22,6 @@
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -221,7 +220,7 @@
 ;;; |                                                     Tests                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest execute-dashboard-test
+(deftest ^:parallel execute-dashboard-test
   (testing "it runs for each non-virtual card"
     (mt/with-temp [Card          {card-id-1 :id} {}
                    Card          {card-id-2 :id} {}
@@ -230,12 +229,16 @@
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2}
                    User {user-id :id} {}]
       (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
-        (is (= (count result) 2))
-        (is (schema= [{:card     (s/pred map?)
-                       :dashcard (s/pred map?)
-                       :result   (s/pred map?)
-                       :type     (s/eq :card)}]
-                     result)))))
+        (is (malli= [:sequential
+                     {:min 2, :max 2}
+                     [:map
+                      [:card     :map]
+                      [:dashcard :map]
+                      [:result   :map]
+                      [:type     [:= :card]]]]
+                    result))))))
+
+(deftest ^:parallel execute-dashboard-test-2
   (testing "hides empty card when card.hide_empty is true"
     (mt/with-temp [Card          {card-id-1 :id} {}
                    Card          {card-id-2 :id} {}
@@ -244,7 +247,9 @@
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2 :visualization_settings {:card.hide_empty true}}
                    User {user-id :id} {}]
       (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
-        (is (= (count result) 1)))))
+        (is (= (count result) 1))))))
+
+(deftest ^:parallel execute-dashboard-test-3
   (testing "dashboard cards are ordered correctly -- by rows, and then by columns (#17419)"
     (mt/with-temp [Card          {card-id-1 :id} {}
                    Card          {card-id-2 :id} {}
@@ -256,7 +261,9 @@
                    User {user-id :id} {}]
       (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
         (is (= [card-id-3 card-id-2 card-id-1]
-               (map #(-> % :card :id) result))))))
+               (map #(-> % :card :id) result)))))))
+
+(deftest ^:parallel execute-dashboard-test-4
   (testing "virtual (text) cards are returned as a viz settings map"
     (mt/with-temp [Card          _ {}
                    Card          _ {}
@@ -264,7 +271,8 @@
                    DashboardCard _ {:dashboard_id dashboard-id
                                     :visualization_settings {:virtual_card {}, :text "test"}}
                    User {user-id :id} {}]
-      (is (= [{:virtual_card {} :text "test" :type :text}] (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard))))))
+      (is (= [{:virtual_card {} :text "test" :type :text}]
+             (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard))))))
 
 (deftest basic-table-test
   (tests {:pulse {:skip_if_empty false} :display :table}

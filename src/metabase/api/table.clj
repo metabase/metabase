@@ -8,6 +8,7 @@
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
+   [metabase.events :as events]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
@@ -466,6 +467,7 @@
   [id]
   {id ms/PositiveInt}
   (let [table (api/write-check (t2/select-one Table :id id))]
+    (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
     ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)

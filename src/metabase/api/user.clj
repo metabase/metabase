@@ -11,6 +11,7 @@
    [metabase.api.session :as api.session]
    [metabase.config :as config]
    [metabase.email.messages :as messages]
+   [metabase.events :as events]
    [metabase.integrations.google :as google]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -31,19 +32,20 @@
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
-(defsetting user-visibility
-  (deferred-tru "Note: Sandboxed users will never see suggestions.")
-  :visibility   :authenticated
-  :feature      :email-restrict-recipients
-  :type         :keyword
-  :default      :all)
-
 (set! *warn-on-reflection* true)
 
 (when config/ee-available?
   (classloader/require 'metabase-enterprise.sandbox.api.util
                        'metabase-enterprise.advanced-permissions.common
                        'metabase-enterprise.advanced-permissions.models.permissions.group-manager))
+
+(defsetting user-visibility
+  (deferred-tru "Note: Sandboxed users will never see suggestions.")
+  :visibility   :authenticated
+  :feature      :email-restrict-recipients
+  :type         :keyword
+  :default      :all
+  :audit        :raw-value)
 
 (defn check-self-or-superuser
   "Check that `user-id` is *current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
@@ -53,6 +55,13 @@
    (or
     (= user-id api/*current-user-id*)
     api/*is-superuser?*)))
+
+(defn check-not-internal-user
+  "Check that `user-id` is not the id of the Internal User."
+  [user-id]
+  {:pre [(integer? user-id)]}
+  (api/check (not= user-id config/internal-mb-user-id)
+           [400 (tru "Not able to modify the internal user")]))
 
 (defn- fetch-user [& query-criteria]
   (apply t2/select-one (vec (cons User user/admin-or-self-visible-columns)) query-criteria))
@@ -142,6 +151,8 @@
   [status query group_ids include_deactivated]
   (cond-> {}
     true                                               (sql.helpers/where (status-clause status include_deactivated))
+    ;; don't send the internal user
+    true                                               (sql.helpers/where [:not [:= :core_user.id config/internal-mb-user-id]])
     (premium-features/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
     (some? query)                                      (sql.helpers/where (query-clause query))
     (some? group_ids)                                  (sql.helpers/right-join
@@ -337,9 +348,9 @@
    (check-self-or-superuser id)
    (catch clojure.lang.ExceptionInfo _e
      (validation/check-group-manager)))
+  (check-not-internal-user id)
   (-> (api/check-404 (fetch-user :id id, :is_active true))
       (t2/hydrate :user_group_memberships)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Creating a new User -- POST /api/user                                      |
@@ -413,7 +424,7 @@
     (check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
       (validation/check-group-manager)))
-
+  (check-not-internal-user id)
   ;; only allow updates if the specified account is active
   (api/let-404 [user-before-update (fetch-user :id id, :is_active true)]
     ;; Google/LDAP non-admin users can't change their email to prevent account hijacking
@@ -439,7 +450,10 @@
                                          api/*is-superuser?* (conj :login_attributes))
                               :non-nil (cond-> #{:email}
                                          api/*is-superuser?* (conj :is_superuser))))]
-          (t2/update! User id changes))
+          (t2/update! User id changes)
+          (events/publish-event! :event/user-update {:object (t2/select-one User :id id)
+                                                     :previous-object user-before-update
+                                                     :user-id api/*current-user-id*}))
         (maybe-update-user-personal-collection-name! user-before-update body))
       (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)
@@ -467,13 +481,14 @@
   [id]
   {id ms/PositiveInt}
   (api/check-superuser)
-  (let [user (t2/select-one [User :id :is_active :sso_source] :id id)]
+  (check-not-internal-user id)
+  (let [user (t2/select-one [:model/User :id :email :first_name :last_name :is_active :sso_source] :id id)]
     (api/check-404 user)
     ;; Can only reactivate inactive users
     (api/check (not (:is_active user))
       [400 {:message (tru "Not able to reactivate an active user")}])
-    (reactivate-user! user)))
-
+    (events/publish-event! :event/user-reactivated {:object user :user-id api/*current-user-id*})
+    (reactivate-user! (dissoc user [:email :first_name :last_name]))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
@@ -509,7 +524,11 @@
   [id]
   {id ms/PositiveInt}
   (api/check-superuser)
-  (api/check-500 (pos? (t2/update! User id {:is_active false})))
+  ;; don't technically need to because the internal user is already 'deleted' (deactivated), but keeps the warnings consistent
+  (check-not-internal-user id)
+  (api/check-500
+   (when (pos? (t2/update! User id {:is_active false}))
+     (events/publish-event! :event/user-deactivated {:object (t2/select-one User :id id) :user-id api/*current-user-id*})))
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -522,6 +541,7 @@
   [id modal]
   {id ms/PositiveInt}
   (check-self-or-superuser id)
+  (check-not-internal-user id)
   (let [k (or (get {"qbnewb"      :is_qbnewb
                     "datasetnewb" :is_datasetnewb}
                    modal)
@@ -536,6 +556,7 @@
   [id]
   {id ms/PositiveInt}
   (api/check-superuser)
+  (check-not-internal-user id)
   (when-let [user (t2/select-one User :id id, :is_active true)]
     (let [reset-token (user/set-password-reset-token! id)
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user

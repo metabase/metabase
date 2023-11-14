@@ -8,6 +8,7 @@
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.dashboard-card
@@ -47,6 +48,21 @@
   (derive ::perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+(defmethod mi/can-write? Dashboard
+  ([instance]
+   ;; Dashboards in audit collection should be read only
+   (if (perms/is-parent-collection-audit? instance)
+     false
+     (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :write))))
+  ([_ pk]
+   (mi/can-write? (t2/select-one :model/Dashboard :id pk))))
+
+(defmethod mi/can-read? Dashboard
+  ([instance]
+   (perms/can-read-audit-helper :model/Dashboard instance))
+  ([_ pk]
+   (mi/can-read? (t2/select-one :model/Dashboard :id pk))))
 
 (t2/deftransforms :model/Dashboard
   {:parameters       mi/transform-parameters-list
@@ -599,15 +615,30 @@
          :serdes/meta  [{:model "Dashboard"    :id (:entity_id dashboard)}
                         {:model "DashboardTab" :id (:entity_id tab)}]))
 
+(defn- drop-excessive-nested!
+  "Remove nested entities which are not present in incoming serialization load"
+  [hydration-key ingested local]
+  (let [local-nested    (get (t2/hydrate local hydration-key) hydration-key)
+        ingested-nested (get ingested hydration-key)
+        to-remove       (set/difference (set (map :entity_id local-nested))
+                                        (set (map :entity_id ingested-nested)))
+        model           (t2/model (first local-nested))]
+    (when (seq to-remove)
+      (t2/delete! model :entity_id [:in to-remove]))))
+
 ;; Call the default load-one! for the Dashboard, then for each DashboardCard.
 (defmethod serdes/load-one! "Dashboard" [ingested maybe-local]
   (let [dashboard ((get-method serdes/load-one! :default) (dissoc ingested :dashcards :tabs) maybe-local)]
+
+    (drop-excessive-nested! :tabs ingested dashboard)
     (doseq [tab (:tabs ingested)]
       (serdes/load-one! (dashtab-for tab dashboard)
                         (t2/select-one :model/DashboardTab :entity_id (:entity_id tab))))
+
+    (drop-excessive-nested! :dashcards ingested dashboard)
     (doseq [dashcard (:dashcards ingested)]
       (serdes/load-one! (dashcard-for dashcard dashboard)
-                        (t2/select-one 'DashboardCard :entity_id (:entity_id dashcard))))))
+                        (t2/select-one :model/DashboardCard :entity_id (:entity_id dashcard))))))
 
 (defn- serdes-deps-dashcard
   [{:keys [action_id card_id parameter_mappings visualization_settings]}]
@@ -642,3 +673,22 @@
       ;; parameter with values_source_type = "card" will depend on a card
      (set (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
             ["Card" card-id])))))
+
+
+;;; ------------------------------------------------ Audit Log --------------------------------------------------------
+
+(defmethod audit-log/model-details Dashboard
+  [dashboard event-type]
+  (case event-type
+    (:dashboard-create :dashboard-delete :dashboard-read)
+    (select-keys dashboard [:description :name])
+
+    (:dashboard-add-cards :dashboard-remove-cards)
+    (-> (select-keys dashboard [:description :name :parameters :dashcards])
+        (update :dashcards (fn [dashcards]
+                             (for [{:keys [id card_id]} dashcards]
+                                  (-> (t2/select-one [Card :name :description], :id card_id)
+                                      (assoc :id id)
+                                      (assoc :card_id card_id))))))
+
+    {}))

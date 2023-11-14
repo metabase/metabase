@@ -23,11 +23,13 @@
 (defsetting email-from-address
   (deferred-tru "The email address you want to use for the sender of emails.")
   :default    "notifications@metabase.com"
-  :visibility :settings-manager)
+  :visibility :settings-manager
+  :audit      :getter)
 
 (defsetting email-from-name
   (deferred-tru "The name you want to use for the sender of emails.")
-  :visibility :settings-manager)
+  :visibility :settings-manager
+  :audit      :getter)
 
 (defsetting bcc-enabled?
   (deferred-tru "Whether or not bcc emails are enabled, default behavior is that it is")
@@ -43,40 +45,46 @@
 
 (defsetting email-reply-to
   (deferred-tru "The email address you want the replies to go to, if different from the from address.")
-  :type :json
+  :type       :json
   :visibility :settings-manager
-  :setter (fn [new-value]
-           (if (validate-reply-to-addresses new-value)
-             (setting/set-value-of-type! :json :email-reply-to new-value)
-             (throw (ex-info "Invalid reply-to address" {:value new-value})))))
+  :audit      :getter
+  :setter     (fn [new-value]
+               (if (validate-reply-to-addresses new-value)
+                 (setting/set-value-of-type! :json :email-reply-to new-value)
+                 (throw (ex-info "Invalid reply-to address" {:value new-value})))))
 
 (defsetting email-smtp-host
   (deferred-tru "The address of the SMTP server that handles your emails.")
-  :visibility :settings-manager)
+  :visibility :settings-manager
+  :audit      :getter)
 
 (defsetting email-smtp-username
   (deferred-tru "SMTP username.")
-  :visibility :settings-manager)
+  :visibility :settings-manager
+  :audit      :getter)
 
 (defsetting email-smtp-password
   (deferred-tru "SMTP password.")
   :visibility :settings-manager
-  :sensitive? true)
+  :sensitive? true
+  :audit      :getter)
 
 (defsetting email-smtp-port
   (deferred-tru "The port your SMTP server uses for outgoing emails.")
   :type       :integer
-  :visibility :settings-manager)
+  :visibility :settings-manager
+  :audit      :getter)
 
 (defsetting email-smtp-security
   (deferred-tru "SMTP secure connection protocol. (tls, ssl, starttls, or none)")
   :type       :keyword
   :default    :none
   :visibility :settings-manager
-  :setter  (fn [new-value]
-             (when (some? new-value)
-               (assert (#{:tls :ssl :none :starttls} (keyword new-value))))
-             (setting/set-value-of-type! :keyword :email-smtp-security new-value)))
+  :audit      :raw-value
+  :setter     (fn [new-value]
+                (when (some? new-value)
+                  (assert (#{:tls :ssl :none :starttls} (keyword new-value))))
+                (setting/set-value-of-type! :keyword :email-smtp-security new-value)))
 
 ;; ## PUBLIC INTERFACE
 
