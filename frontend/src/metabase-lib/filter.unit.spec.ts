@@ -365,6 +365,20 @@ describe("filter", () => {
 
       expect(filterParts).toBeNull();
     });
+
+    it("should ignore expressions with incorrect column type", () => {
+      const { filterParts } = addStringFilter(
+        query,
+        Lib.stringFilterClause({
+          operator: "=",
+          column: findColumn(query, tableName, "PRICE"),
+          values: ["A"],
+          options: {},
+        }),
+      );
+
+      expect(filterParts).toBeNull();
+    });
   });
 
   describe("number filters", () => {
@@ -481,6 +495,19 @@ describe("filter", () => {
       const { filterParts } = addNumberFilter(
         query,
         Lib.expressionClause("=", [column, column]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions with incorrect column type", () => {
+      const { filterParts } = addNumberFilter(
+        query,
+        Lib.numberFilterClause({
+          operator: "=",
+          column: findColumn(query, tableName, "CREATED_AT"),
+          values: [10],
+        }),
       );
 
       expect(filterParts).toBeNull();
@@ -634,6 +661,19 @@ describe("filter", () => {
 
       expect(filterParts).toBeNull();
     });
+
+    it("should ignore expressions with incorrect column type", () => {
+      const { filterParts } = addCoordinateFilter(
+        query,
+        Lib.coordinateFilterClause({
+          operator: "=",
+          column: findColumn(query, tableName, "CREATED_AT"),
+          values: [10],
+        }),
+      );
+
+      expect(filterParts).toBeNull();
+    });
   });
 
   describe("boolean filters", () => {
@@ -708,6 +748,19 @@ describe("filter", () => {
       const { filterParts } = addBooleanFilter(
         query,
         Lib.expressionClause("=", [column, column]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions with incorrect column type", () => {
+      const { filterParts } = addBooleanFilter(
+        query,
+        Lib.booleanFilterClause({
+          operator: "=",
+          column: findColumn(query, tableName, "CREATED_AT"),
+          values: [true],
+        }),
       );
 
       expect(filterParts).toBeNull();
@@ -928,6 +981,19 @@ describe("filter", () => {
 
       expect(filterParts).toBeNull();
     });
+
+    it("should ignore expressions with incorrect column type", () => {
+      const { filterParts } = addSpecificDateFilter(
+        query,
+        Lib.specificDateFilterClause(query, 0, {
+          operator: "=",
+          column: findColumn(query, tableName, "PRICE"),
+          values: [new Date(2020, 1, 1)],
+        }),
+      );
+
+      expect(filterParts).toBeNull();
+    });
   });
 
   describe("relative date filters", () => {
@@ -1093,7 +1159,7 @@ describe("filter", () => {
     it("should ignore expressions without first column", () => {
       const { filterParts } = addRelativeDateFilter(
         query,
-        Lib.expressionClause("!=", ["2020-01-01", column]),
+        Lib.expressionClause("time-interval", ["current", column, "day"]),
       );
 
       expect(filterParts).toBeNull();
@@ -1102,7 +1168,39 @@ describe("filter", () => {
     it("should ignore expressions with non-time arguments", () => {
       const { filterParts } = addRelativeDateFilter(
         query,
-        Lib.expressionClause("!=", [column, column]),
+        Lib.expressionClause("time-interval", [column, column, "day"]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions with incorrect column type", () => {
+      const { filterParts } = addRelativeDateFilter(
+        query,
+        Lib.relativeDateFilterClause({
+          column: findColumn(query, tableName, "PRICE"),
+          value: 1,
+          bucket: "day",
+          offsetValue: null,
+          offsetBucket: null,
+          options: {},
+        }),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions with offset and incorrect column type", () => {
+      const { filterParts } = addRelativeDateFilter(
+        query,
+        Lib.relativeDateFilterClause({
+          column: findColumn(query, tableName, "PRICE"),
+          value: 1,
+          bucket: "day",
+          offsetValue: 1,
+          offsetBucket: "day",
+          options: {},
+        }),
       );
 
       expect(filterParts).toBeNull();
@@ -1242,6 +1340,20 @@ describe("filter", () => {
 
       expect(filterParts).toBeNull();
     });
+
+    it("should ignore expressions with incorrect column type", () => {
+      const { filterParts } = addExcludeDateFilter(
+        query,
+        Lib.excludeDateFilterClause(query, 0, {
+          operator: "!=",
+          column: findColumn(query, tableName, "PRICE"),
+          bucket: "day-of-week",
+          values: [1, 2],
+        }),
+      );
+
+      expect(filterParts).toBeNull();
+    });
   });
 
   describe("time filters", () => {
@@ -1336,6 +1448,19 @@ describe("filter", () => {
       const { filterParts } = addTimeFilter(
         query,
         Lib.expressionClause(">", [column, column]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions with incorrect column type", () => {
+      const { filterParts } = addTimeFilter(
+        query,
+        Lib.timeFilterClause({
+          operator: "between",
+          column: findColumn(query, tableName, "CREATED_AT"),
+          values: [new Date(2015, 0, 1, 10, 20), new Date(2015, 0, 1, 18, 50)],
+        }),
       );
 
       expect(filterParts).toBeNull();

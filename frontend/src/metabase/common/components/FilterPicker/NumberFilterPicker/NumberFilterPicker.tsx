@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import type { FormEvent } from "react";
 import { t } from "ttag";
 import { Box, Flex, NumberInput, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -55,14 +56,20 @@ export function NumberFilterPicker({
     setValues(getDefaultValues(operator, values));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
     if (isValid) {
       onChange(getFilterClause(operator, column, values));
     }
   };
 
   return (
-    <Box maw={MAX_WIDTH} data-testid="number-filter-picker">
+    <Box
+      component="form"
+      maw={MAX_WIDTH}
+      data-testid="number-filter-picker"
+      onSubmit={handleSubmit}
+    >
       <FilterHeader columnName={columnInfo.longDisplayName} onBack={onBack}>
         <FilterOperatorPicker
           value={operator}
@@ -70,7 +77,7 @@ export function NumberFilterPicker({
           onChange={handleOperatorChange}
         />
       </FilterHeader>
-      <Box>
+      <div>
         <NumberValueInput
           column={column}
           values={values}
@@ -78,12 +85,8 @@ export function NumberFilterPicker({
           hasMultipleValues={hasMultipleValues}
           onChange={setValues}
         />
-        <FilterFooter
-          isNew={isNew}
-          canSubmit={isValid}
-          onSubmit={handleSubmit}
-        />
-      </Box>
+        <FilterFooter isNew={isNew} canSubmit={isValid} />
+      </div>
     </Box>
   );
 }

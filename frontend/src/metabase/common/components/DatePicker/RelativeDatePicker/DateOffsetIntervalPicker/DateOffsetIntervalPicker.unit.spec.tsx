@@ -46,7 +46,7 @@ describe("DateOffsetIntervalPicker", () => {
     const defaultValue = getDefaultValue(direction);
 
     it("should change the interval", () => {
-      const { onChange } = setup({
+      const { onChange, onSubmit } = setup({
         value: defaultValue,
       });
 
@@ -58,10 +58,14 @@ describe("DateOffsetIntervalPicker", () => {
         ...defaultValue,
         value: direction === "last" ? -20 : 20,
       });
+      expect(onSubmit).not.toHaveBeenCalled();
+
+      userEvent.type(input, "{enter}");
+      expect(onSubmit).toHaveBeenCalled();
     });
 
     it("should change the interval with a negative value", () => {
-      const { onChange } = setup({
+      const { onChange, onSubmit } = setup({
         value: defaultValue,
       });
 
@@ -73,10 +77,11 @@ describe("DateOffsetIntervalPicker", () => {
         ...defaultValue,
         value: direction === "last" ? -10 : 10,
       });
+      expect(onSubmit).not.toHaveBeenCalled();
     });
 
     it("should coerce zero", () => {
-      const { onChange } = setup({
+      const { onChange, onSubmit } = setup({
         value: defaultValue,
       });
 
@@ -89,10 +94,11 @@ describe("DateOffsetIntervalPicker", () => {
         ...defaultValue,
         value: direction === "last" ? -1 : 1,
       });
+      expect(onSubmit).not.toHaveBeenCalled();
     });
 
     it("should ignore empty values", () => {
-      const { onChange } = setup({
+      const { onChange, onSubmit } = setup({
         value: defaultValue,
       });
 
@@ -102,10 +108,11 @@ describe("DateOffsetIntervalPicker", () => {
 
       expect(input).toHaveValue("30");
       expect(onChange).not.toHaveBeenCalled();
+      expect(onSubmit).not.toHaveBeenCalled();
     });
 
     it("should ignore invalid values", () => {
-      const { onChange } = setup({
+      const { onChange, onSubmit } = setup({
         value: defaultValue,
       });
 
@@ -116,10 +123,11 @@ describe("DateOffsetIntervalPicker", () => {
 
       expect(input).toHaveValue("30");
       expect(onChange).not.toHaveBeenCalled();
+      expect(onSubmit).not.toHaveBeenCalled();
     });
 
     it("should allow to change the unit", () => {
-      const { onChange } = setup({
+      const { onChange, onSubmit } = setup({
         value: defaultValue,
       });
 
@@ -131,10 +139,11 @@ describe("DateOffsetIntervalPicker", () => {
         unit: "year",
         offsetUnit: "year",
       });
+      expect(onSubmit).not.toHaveBeenCalled();
     });
 
     it("should change the offset interval", () => {
-      const { onChange } = setup({
+      const { onChange, onSubmit } = setup({
         value: defaultValue,
       });
 
@@ -146,10 +155,11 @@ describe("DateOffsetIntervalPicker", () => {
         ...defaultValue,
         offsetValue: direction === "last" ? -20 : 20,
       });
+      expect(onSubmit).not.toHaveBeenCalled();
     });
 
     it("should change the offset interval with a negative value", () => {
-      const { onChange } = setup({
+      const { onChange, onSubmit } = setup({
         value: defaultValue,
       });
 
@@ -161,10 +171,11 @@ describe("DateOffsetIntervalPicker", () => {
         ...defaultValue,
         offsetValue: direction === "last" ? -10 : 10,
       });
+      expect(onSubmit).not.toHaveBeenCalled();
     });
 
     it("should accept zero offset interval", () => {
-      const { onChange } = setup({
+      const { onChange, onSubmit } = setup({
         value: defaultValue,
       });
 
@@ -177,10 +188,11 @@ describe("DateOffsetIntervalPicker", () => {
         ...defaultValue,
         offsetValue: 0,
       });
+      expect(onSubmit).not.toHaveBeenCalled();
     });
 
     it("should ignore an empty offset interval", () => {
-      const { onChange } = setup({
+      const { onChange, onSubmit } = setup({
         value: defaultValue,
       });
 
@@ -190,10 +202,11 @@ describe("DateOffsetIntervalPicker", () => {
 
       expect(input).toHaveValue("14");
       expect(onChange).not.toHaveBeenCalled();
+      expect(onSubmit).not.toHaveBeenCalled();
     });
 
     it("should ignore invalid offset values", () => {
-      const { onChange } = setup({
+      const { onChange, onSubmit } = setup({
         value: defaultValue,
       });
 
@@ -204,10 +217,11 @@ describe("DateOffsetIntervalPicker", () => {
 
       expect(input).toHaveValue("30");
       expect(onChange).not.toHaveBeenCalled();
+      expect(onSubmit).not.toHaveBeenCalled();
     });
 
     it("should allow to change the offset unit", () => {
-      const { onChange } = setup({
+      const { onChange, onSubmit } = setup({
         value: defaultValue,
       });
 
@@ -219,6 +233,7 @@ describe("DateOffsetIntervalPicker", () => {
         ...defaultValue,
         offsetUnit: "year",
       });
+      expect(onSubmit).not.toHaveBeenCalled();
     });
 
     it("should only show offset units larger or equal to the current one", () => {
@@ -250,7 +265,7 @@ describe("DateOffsetIntervalPicker", () => {
     });
 
     it("should be able to remove the offset", () => {
-      const { onChange } = setup({
+      const { onChange, onSubmit } = setup({
         value: defaultValue,
       });
 
@@ -261,6 +276,7 @@ describe("DateOffsetIntervalPicker", () => {
         offsetValue: undefined,
         offsetUnit: undefined,
       });
+      expect(onSubmit).not.toHaveBeenCalled();
     });
   });
 });

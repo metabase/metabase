@@ -1,3 +1,4 @@
+import type { FormEvent } from "react";
 import { t } from "ttag";
 import { Icon } from "metabase/core/components/Icon";
 import { Button, Divider, Group, NumberInput, Select, Text } from "metabase/ui";
@@ -69,8 +70,13 @@ export function DateOffsetIntervalPicker({
     onChange(removeOffset(value));
   };
 
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    onSubmit();
+  };
+
   return (
-    <div>
+    <form onSubmit={handleSubmit}>
       <PickerGrid p="md">
         <Text>{directionText}</Text>
         <NumberInput
@@ -83,7 +89,6 @@ export function DateOffsetIntervalPicker({
           data={unitOptions}
           value={value.unit}
           aria-label={t`Unit`}
-          withinPortal={false}
           onChange={handleUnitChange}
         />
         <div />
@@ -98,7 +103,6 @@ export function DateOffsetIntervalPicker({
           data={offsetUnitOptions}
           value={value.offsetUnit}
           aria-label={t`Starting from unit`}
-          withinPortal={false}
           onChange={handleOffsetUnitChange}
         />
         <Button
@@ -114,10 +118,10 @@ export function DateOffsetIntervalPicker({
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>
-        <Button variant="filled" onClick={onSubmit}>
+        <Button variant="filled" type="submit">
           {isNew ? t`Add filter` : t`Update filter`}
         </Button>
       </Group>
-    </div>
+    </form>
   );
 }
