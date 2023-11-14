@@ -183,7 +183,7 @@
   "Get Dashboard with ID."
   [id]
   (-> (t2/select-one :model/Dashboard :id id)
-      api/check-404
+      api/read-check
       ;; i'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
       ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
       ;; cannot be in this situation
@@ -199,7 +199,6 @@
                   :param_values
                   [:collection :is_personal])
       collection.root/hydrate-root-collection
-      api/read-check
       api/check-not-archived
       hide-unreadable-cards
       add-query-average-durations))
@@ -607,7 +606,10 @@
                       (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards]))))))
        true))
     (let [dashboard (t2/select-one :model/Dashboard id)]
-      (events/publish-event! :event/dashboard-update {:object dashboard :user-id api/*current-user-id*})
+      ;; skip publishing the event if it's just a change in its collection position
+      (when-not (= #{:collection_position}
+                   (set (keys dash-updates)))
+        (events/publish-event! :event/dashboard-update {:object dashboard :user-id api/*current-user-id*}))
       (track-dashcard-and-tab-events! dashboard @changes-stats)
       (-> (t2/hydrate dashboard [:collection :is_personal] [:dashcards :series] :tabs)
           (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))))

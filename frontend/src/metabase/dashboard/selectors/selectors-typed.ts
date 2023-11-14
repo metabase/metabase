@@ -18,6 +18,13 @@ export function getSelectedTabId(state: State) {
   return state.dashboard.selectedTabId;
 }
 
+export const getDashcards = (state: State) => state.dashboard.dashcards;
+
+export const getDashCardById = (state: State, dashcardId: DashCardId) => {
+  const dashcards = getDashcards(state);
+  return dashcards[dashcardId];
+};
+
 export const getDisabledAutoWireCards = (
   state: State,
   dashboardId: DashboardId,

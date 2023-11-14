@@ -2,7 +2,6 @@ import { createAction, createReducer } from "@reduxjs/toolkit";
 import type { Draft } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import { arrayMove } from "@dnd-kit/sortable";
-import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 
 import type {
   DashCardId,
@@ -24,10 +23,9 @@ import { addUndo } from "metabase/redux/undo";
 import { INITIAL_DASHBOARD_STATE } from "../constants";
 import { getDashCardById } from "../selectors";
 import { trackCardMoved } from "../analytics";
+import { getDashCardMoveToTabUndoMessage, getExistingDashCards } from "./utils";
 
-type CreateNewTabPayload = {
-  tabId: DashboardTabId;
-};
+type CreateNewTabPayload = { tabId: DashboardTabId };
 type DeleteTabPayload = {
   tabId: DashboardTabId | null;
   tabDeletionId: TabDeletionId;
@@ -35,17 +33,12 @@ type DeleteTabPayload = {
 type UndoDeleteTabPayload = {
   tabDeletionId: TabDeletionId;
 };
-type RenameTabPayload = {
-  tabId: DashboardTabId | null;
-  name: string;
-};
+type RenameTabPayload = { tabId: DashboardTabId | null; name: string };
 type MoveTabPayload = {
   sourceTabId: DashboardTabId;
   destinationTabId: DashboardTabId;
 };
-type SelectTabPayload = {
-  tabId: DashboardTabId | null;
-};
+type SelectTabPayload = { tabId: DashboardTabId | null };
 type MoveDashCardToTabPayload = {
   dashCardId: DashCardId;
   destinationTabId: DashboardTabId;
@@ -120,7 +113,7 @@ export const moveDashCardToTab =
 
     dispatch(
       addUndo({
-        message: t`Card moved`,
+        message: getDashCardMoveToTabUndoMessage(dashCard),
         undo: true,
         action: () => {
           dispatch(
@@ -426,12 +419,7 @@ export const tabsReducer = createReducer<DashboardState>(
 
     builder.addCase<
       string,
-      {
-        type: string;
-        payload?: {
-          clearCache: boolean;
-        };
-      }
+      { type: string; payload?: { clearCache: boolean } }
     >(INITIALIZE, (state, { payload: { clearCache = true } = {} }) => {
       if (clearCache) {
         state.selectedTabId = INITIAL_DASHBOARD_STATE.selectedTabId;

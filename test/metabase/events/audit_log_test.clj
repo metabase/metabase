@@ -401,6 +401,40 @@
               :details     {:email "test"}}
              (latest-event "subscription-unsubscribe-undo"))))))
 
+(deftest subscription-send-event-test
+  (testing :subscription-send
+    (mt/with-model-cleanup [:model/AuditLog]
+      (let [id 1]
+        (mt/with-test-user :rasta
+          (events/publish-event! :event/subscription-send {:id      id
+                                                           :user-id (mt/user->id :lucky)
+                                                           :object  {:recipients [[{:email "test"}]]
+                                                                     :filters    []}}))
+        (is (= {:topic       :subscription-send
+                :user_id     (mt/user->id :lucky)
+                :model       "Pulse"
+                :model_id    id
+                :details     {:recipients [[{:email "test"}]]
+                              :filters    []}}
+               (latest-event "subscription-send" id)))))))
+
+(deftest alert-send-event-test
+  (testing :alert-send
+    (mt/with-model-cleanup [:model/AuditLog]
+      (let [id 1]
+        (mt/with-test-user :rasta
+          (events/publish-event! :event/alert-send {:id      id
+                                                    :user-id (mt/user->id :lucky)
+                                                    :object  {:recipients [[{:email "test"}]]
+                                                              :filters    []}}))
+        (is (= {:topic       :alert-send
+                :user_id     (mt/user->id :lucky)
+                :model       "Pulse"
+                :model_id    id
+                :details     {:recipients [[{:email "test"}]]
+                              :filters    []}}
+               (latest-event "alert-send" id)))))))
+
 (deftest alert-unsubscribe-event-test
   (testing :alert-unsubscribe
     (mt/with-test-user :rasta
