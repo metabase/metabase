@@ -201,7 +201,7 @@ describe("scenarios > dashboard", () => {
     });
   });
 
-  describe("existing dashboard", () => {
+  describeWithSnowplow("existing dashboard", () => {
     const originalDashboardName = "Amazing Dashboard";
 
     beforeEach(() => {
@@ -210,6 +210,10 @@ describe("scenarios > dashboard", () => {
           visitDashboard(id);
         },
       );
+    });
+
+    afterEach(() => {
+      expectNoBadSnowplowEvents();
     });
 
     context("add a question (dashboard card)", () => {
@@ -244,6 +248,10 @@ describe("scenarios > dashboard", () => {
         assertBothCardsArePresent();
         saveDashboard();
         assertBothCardsArePresent();
+
+        expectGoodSnowplowEvent({
+          event: "dashboard_saved",
+        });
 
         function assertBothCardsArePresent() {
           getDashboardCards()
@@ -974,6 +982,17 @@ describeWithSnowplow("scenarios > dashboard", () => {
 
   afterEach(() => {
     expectNoBadSnowplowEvents();
+  });
+
+  it("saving a dashboard should track a 'dashboard_saved' snowplow event", () => {
+    visitDashboard(1);
+    editDashboard();
+    const newTitle = "New title";
+    cy.findByTestId("dashboard-name-heading").clear().type(newTitle).blur();
+    saveDashboard();
+    expectGoodSnowplowEvent({
+      event: "dashboard_saved",
+    });
   });
 
   it("should allow users to add link cards to dashboards", () => {
