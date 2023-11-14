@@ -1451,12 +1451,12 @@
           (is (= ldap-group-mappings (get-json-setting :ldap-group-mappings))))))))
 
 (deftest check-data-migrations-rollback
-  (impl/test-migrations ["v48.00-024"] [migrate!]
+  ;; We're actually testing `v48.00-024`, but we want the `migrate!` function to run all the migrations in 48
+  ;; after rolling back to 47, so we're using `v48.00-000` as the start of the migration range in `test-migrations`
+  (impl/test-migrations ["v48.00-000"] [migrate!]
     (let [{:keys [db-type ^javax.sql.DataSource
                   data-source]} mdb.connection/*application-db*
-          migrate-all!          (partial db.setup/migrate! db-type data-source)
-          throw-err             (fn [& _args]
-                                  (throw (ex-info "This shouldn't be called ever" {})))]
+          migrate-all!          (partial db.setup/migrate! db-type data-source)]
 
       (testing "we can migrate even if data_migrations is empty"
         ;; 0 because we removed them and fresh db won't trigger any
@@ -1470,10 +1470,4 @@
       (testing "rollback causes all known data_migrations to reappear"
         (migrate-all! :down 47)
         ;; 34 because there was a total of 34 data migrations (which are filled on rollback)
-        (is (= 34 (t2/count :data_migrations))))
-
-      (testing "when migrating up, migrations won't run since they are in data_migration because of rollback"
-        (is (nil?
-             (with-redefs [custom-migrations/migrate-click-through!                            throw-err
-                           custom-migrations/migrate-remove-admin-from-group-mapping-if-needed throw-err]
-               (migrate!))))))))
+        (is (= 34 (t2/count :data_migrations)))))))

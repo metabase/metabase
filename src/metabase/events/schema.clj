@@ -81,15 +81,11 @@
 
 (let [default-schema (mc/schema
                       [:map {:closed true}
-                       [:object [:fn #(t2/instance-of? :model/Database %)]]])
-      with-user      (mc/schema
-                      [:merge default-schema
-                       [:map {:closed true}
-                        [:user-id  pos-int?]]])]
-
+                       [:object [:fn #(t2/instance-of? :model/Database %)]]
+                       [:previous-object {:optional true} [:fn #(t2/instance-of? :model/Database %)]]
+                       [:user-id pos-int?]])]
   (def ^:private database-events
-    {:event/database-create with-user
-
+    {:event/database-create default-schema
      :event/database-update default-schema
      :event/database-delete default-schema}))
 
@@ -118,6 +114,19 @@
                        [:user-id  pos-int?]
                        [:object [:fn #(t2/instance-of? :model/Table %)]]])})
 
+(let [default-schema (mc/schema
+                      [:map {:closed true}
+                       [:user-id [:maybe pos-int?]]
+                       [:object [:fn #(boolean (t2/model %))]]])]
+  (def ^:private permission-failure-events
+    {:event/read-permission-failure default-schema
+     :event/write-permission-failure default-schema
+     :event/update-permission-failure default-schema
+     :event/create-permission-failure (mc/schema
+                                       [:map {:closed true}
+                                        [:user-id [:maybe pos-int?]]
+                                        [:model [:or :keyword :string]]])}))
+
 (def topic->schema
   "Returns the schema for an event topic."
   (merge dashboard-events-schemas
@@ -128,4 +137,5 @@
          database-events
          alert-schema
          pulse-schemas
-         table-events))
+         table-events
+         permission-failure-events))

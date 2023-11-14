@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 import {
   renderWithProviders,
@@ -47,8 +48,8 @@ const setup = async ({
   searchText = "test",
   footer = null,
 }: SearchResultsSetupProps = {}) => {
-  setupSearchEndpoints(searchResults);
   setupUserRecipientsEndpoint({ users: [createMockUser()] });
+  setupSearchEndpoints(searchResults);
   setupCollectionByIdEndpoint({
     collections: [createMockCollection()],
   });
@@ -176,5 +177,10 @@ describe("SearchResults", () => {
     expect(screen.getByTestId("test-total")).toHaveTextContent(
       TEST_SEARCH_RESULTS.length.toString(),
     );
+  });
+
+  it("should only call the /api/user/recipients endpoint once even if there are multiple search results", async () => {
+    await setup();
+    expect(fetchMock.calls("path:/api/user/recipients").length).toBe(1);
   });
 });

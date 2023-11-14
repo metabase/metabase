@@ -1,0 +1,417 @@
+description: Information about all queries Metabase ran across all dashboards
+archived: false
+collection_position: 10
+table_id:
+- Internal Metabase Database
+- public
+- v_query_log
+result_metadata:
+- description: null
+  semantic_type: type/PK
+  coercion_strategy: null
+  name: entity_id
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_query_log
+    - entity_id
+  - null
+  effective_type: type/Integer
+  id:
+  - Internal Metabase Database
+  - public
+  - v_query_log
+  - entity_id
+  visibility_type: normal
+  display_name: Entity ID
+  base_type: type/Integer
+- description: null
+  semantic_type: type/CreationTimestamp
+  coercion_strategy: null
+  unit: default
+  name: started_at
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_query_log
+    - started_at
+  - temporal-unit: default
+  effective_type: type/DateTimeWithLocalTZ
+  id:
+  - Internal Metabase Database
+  - public
+  - v_query_log
+  - started_at
+  visibility_type: normal
+  display_name: Started At
+  base_type: type/DateTimeWithLocalTZ
+- description: null
+  semantic_type: null
+  coercion_strategy: null
+  name: running_time_seconds
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_query_log
+    - running_time_seconds
+  - null
+  effective_type: type/Float
+  id:
+  - Internal Metabase Database
+  - public
+  - v_query_log
+  - running_time_seconds
+  visibility_type: normal
+  display_name: Running Time Seconds
+  base_type: type/Float
+- description: null
+  semantic_type: null
+  coercion_strategy: null
+  name: result_rows
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_query_log
+    - result_rows
+  - null
+  effective_type: type/Integer
+  id:
+  - Internal Metabase Database
+  - public
+  - v_query_log
+  - result_rows
+  visibility_type: normal
+  display_name: Result Rows
+  base_type: type/Integer
+- description: null
+  semantic_type: type/Category
+  coercion_strategy: null
+  name: is_native
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_query_log
+    - is_native
+  - null
+  effective_type: type/Boolean
+  id:
+  - Internal Metabase Database
+  - public
+  - v_query_log
+  - is_native
+  visibility_type: normal
+  display_name: Is Native
+  base_type: type/Boolean
+- description: null
+  semantic_type: type/Source
+  coercion_strategy: null
+  name: query_source
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_query_log
+    - query_source
+  - null
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_query_log
+  - query_source
+  visibility_type: normal
+  display_name: Query Source
+  base_type: type/Text
+- description: null
+  semantic_type: null
+  coercion_strategy: null
+  name: error
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_query_log
+    - error
+  - null
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_query_log
+  - error
+  visibility_type: normal
+  display_name: Error
+  base_type: type/Text
+- description: null
+  semantic_type: type/FK
+  coercion_strategy: null
+  name: user_id
+  settings: null
+  fk_target_field_id: 739
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_query_log
+    - user_id
+  - null
+  effective_type: type/Integer
+  id:
+  - Internal Metabase Database
+  - public
+  - v_query_log
+  - user_id
+  visibility_type: normal
+  display_name: User ID
+  base_type: type/Integer
+- description: null
+  semantic_type: null
+  coercion_strategy: null
+  name: card_id
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_query_log
+    - card_id
+  - null
+  effective_type: type/Integer
+  id:
+  - Internal Metabase Database
+  - public
+  - v_query_log
+  - card_id
+  visibility_type: details-only
+  display_name: Card ID
+  base_type: type/Integer
+- description: null
+  semantic_type: type/FK
+  coercion_strategy: null
+  name: card_qualified_id
+  settings: null
+  fk_target_field_id: 1484
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_query_log
+    - card_qualified_id
+  - null
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_query_log
+  - card_qualified_id
+  visibility_type: normal
+  display_name: Card Qualified ID
+  base_type: type/Text
+- description: null
+  semantic_type: null
+  coercion_strategy: null
+  name: dashboard_id
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_query_log
+    - dashboard_id
+  - null
+  effective_type: type/Integer
+  id:
+  - Internal Metabase Database
+  - public
+  - v_query_log
+  - dashboard_id
+  visibility_type: details-only
+  display_name: Dashboard ID
+  base_type: type/Integer
+- description: null
+  semantic_type: type/FK
+  coercion_strategy: null
+  name: dashboard_qualified_id
+  settings: null
+  fk_target_field_id: 1484
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_query_log
+    - dashboard_qualified_id
+  - null
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_query_log
+  - dashboard_qualified_id
+  visibility_type: normal
+  display_name: Dashboard Qualified ID
+  base_type: type/Text
+- description: null
+  semantic_type: null
+  coercion_strategy: null
+  name: pulse_id
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_query_log
+    - pulse_id
+  - null
+  effective_type: type/Integer
+  id:
+  - Internal Metabase Database
+  - public
+  - v_query_log
+  - pulse_id
+  visibility_type: normal
+  display_name: Pulse ID
+  base_type: type/Integer
+- description: null
+  semantic_type: null
+  coercion_strategy: null
+  name: database_id
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_query_log
+    - database_id
+  - null
+  effective_type: type/Integer
+  id:
+  - Internal Metabase Database
+  - public
+  - v_query_log
+  - database_id
+  visibility_type: details-only
+  display_name: Database ID
+  base_type: type/Integer
+- description: null
+  semantic_type: type/FK
+  coercion_strategy: null
+  name: database_qualified_id
+  settings: null
+  fk_target_field_id: 1556
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_query_log
+    - database_qualified_id
+  - null
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_query_log
+  - database_qualified_id
+  visibility_type: normal
+  display_name: Database Qualified ID
+  base_type: type/Text
+- description: null
+  semantic_type: type/Category
+  coercion_strategy: null
+  name: cache_hit
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_query_log
+    - cache_hit
+  - null
+  effective_type: type/Boolean
+  id:
+  - Internal Metabase Database
+  - public
+  - v_query_log
+  - cache_hit
+  visibility_type: normal
+  display_name: Cache Hit
+  base_type: type/Boolean
+- description: null
+  semantic_type: null
+  coercion_strategy: null
+  name: action_id
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_query_log
+    - action_id
+  - null
+  effective_type: type/Integer
+  id:
+  - Internal Metabase Database
+  - public
+  - v_query_log
+  - action_id
+  visibility_type: details-only
+  display_name: Action ID
+  base_type: type/Integer
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Query log
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  database: Internal Metabase Database
+  type: query
+  query:
+    source-table:
+    - Internal Metabase Database
+    - public
+    - v_query_log
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: QOtZaiTLf2FDD4AT6Oinb
+  label: query_log
+display: table
+entity_id: QOtZaiTLf2FDD4AT6Oinb
+collection_preview: true
+visualization_settings:
+  table.pivot_column: error
+  table.cell_column: running_time_seconds
+  column_settings: null
+metabase_version: vUNKNOWN (0e09ac7)
+parameters: []
+dataset: true
+created_at: '2023-10-31T21:50:16.833016Z'
+public_uuid: null
