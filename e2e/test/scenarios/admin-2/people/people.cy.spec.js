@@ -401,7 +401,7 @@ describe("scenarios > admin > people", () => {
         waitForUserRequests();
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Loading...").should("not.exist");
-        cy.pause();
+
         // Page 2
         cy.findByTestId("people-list-footer")
           .findByText(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`)
