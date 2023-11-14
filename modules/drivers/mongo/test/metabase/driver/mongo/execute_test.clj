@@ -11,7 +11,7 @@
    [monger.conversion :as m.conversion]
    [monger.util :as m.util])
   (:import
-   (com.mongodb MongoCommandException)
+   (com.mongodb BasicDBObject MongoCommandException)
    (com.mongodb.client ClientSession MongoCollection MongoDatabase)
    (java.util NoSuchElementException)))
 
@@ -24,7 +24,7 @@
       (next [_] (let [i @counter]
                   (vswap! counter inc)
                   (if (< i (count rows))
-                    (org.bson.Document. ^java.util.Map (get rows i))
+                    (BasicDBObject. ^java.util.Map (get rows i))
                     (throw (NoSuchElementException. (str "no element at " i))))))
       (close [_]))))
 

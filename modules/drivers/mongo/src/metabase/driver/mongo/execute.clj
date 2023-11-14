@@ -14,10 +14,10 @@
    [monger.conversion :as m.conversion]
    [monger.util :as m.util])
   (:import
-   (com.mongodb BasicDBObject DB DBObject BasicDBObject)
+   (com.mongodb BasicDBObject DB DBObject)
    (com.mongodb.client AggregateIterable ClientSession MongoDatabase MongoCollection MongoCursor)
    (java.util.concurrent TimeUnit)
-   (org.bson BsonBoolean BsonInt32 Document)))
+   (org.bson BsonBoolean BsonInt32)))
 
 (set! *warn-on-reflection* true)
 
@@ -109,7 +109,7 @@
     (mapv (fn [col-name]
             (let [col-parts (str/split col-name #"\.")
                   val       (reduce
-                             (fn [^Document object ^String part-name]
+                             (fn [^BasicDBObject object ^String part-name]
                                (when object
                                  (.get object part-name)))
                              row
@@ -126,7 +126,7 @@
 ;;; |                                                      Run                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- row-keys [^Document row]
+(defn- row-keys [^DBObject row]
   (when row
     (.keySet row)))
 
@@ -150,7 +150,7 @@
    stages timeout-ms]
   (let [coll      ^MongoCollection (.getCollection db coll)
         pipe      (m.util/into-array-list (m.conversion/to-db-object stages))
-        aggregate (.aggregate coll session pipe)]
+        aggregate (.aggregate coll session pipe BasicDBObject)]
     (init-aggregate! aggregate timeout-ms)))
 
 (defn- reducible-rows [context ^MongoCursor cursor first-row post-process]
