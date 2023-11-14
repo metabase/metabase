@@ -44,3 +44,16 @@
                            (lib/available-drill-thrus query context))]
           (testing (str "\nAvailable drills =\n" (u/pprint-to-str drills))
             (is (not (contains? drills :drill-thru/fk-filter)))))))))
+
+(deftest ^:parallel do-not-return-fk-filter-for-null-fk-test
+  (testing "#13957 if this is an FK column but the value clicked is NULL, don't show the FK filter drill"
+    (let [test-case            {:click-type  :cell
+                                :query-type  :unaggregated
+                                :column-name "PRODUCT_ID"}
+          {:keys [query row]}  (lib.drill-thru.tu/query-and-row-for-test-case test-case)
+          context              (lib.drill-thru.tu/test-case-context query row test-case)
+          drill-types          #(->> % (lib/available-drill-thrus query) (map :type) set)]
+      (is (contains? (drill-types context)
+                     :drill-thru/fk-filter))
+      (is (not (contains? (drill-types (assoc context :value :null))
+                          :drill-thru/fk-filter))))))

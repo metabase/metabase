@@ -26,15 +26,19 @@ import type {
   EntityCustomDestinationClickBehavior,
   DashboardTab,
 } from "metabase-types/api";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { getDashboard } from "metabase/dashboard/selectors";
+import { useSelector } from "metabase/lib/redux";
+import { isPublicCollection } from "metabase/collections/utils";
 import type Question from "metabase-lib/Question";
 
-import { SidebarItem } from "../SidebarItem";
-import { Heading } from "../ClickBehaviorSidebar.styled";
+import { SidebarItem } from "../../SidebarItem";
+import { Heading } from "../../ClickBehaviorSidebar.styled";
 import {
   LinkTargetEntityPickerContent,
   SelectedEntityPickerIcon,
   SelectedEntityPickerContent,
-} from "./LinkOptions.styled";
+} from "../LinkOptions.styled";
 
 const LINK_TARGETS = {
   question: {
@@ -178,11 +182,11 @@ function LinkedEntityPicker({
     });
   }, [clickBehavior, updateSettings]);
 
-  const { data: dashboard } = useDashboardQuery({
+  const { data: targetDashboard } = useDashboardQuery({
     enabled: isDashboard,
     id: targetId,
   });
-  const dashboardTabs = dashboard?.tabs ?? NO_DASHBOARD_TABS;
+  const dashboardTabs = targetDashboard?.tabs ?? NO_DASHBOARD_TABS;
   const defaultDashboardTabId: number | undefined = dashboardTabs[0]?.id;
   const dashboardTabId = isDashboard
     ? clickBehavior.tabId ?? defaultDashboardTabId
@@ -215,23 +219,37 @@ function LinkedEntityPicker({
   );
 
   useEffect(
+    // If the target dashboard tab has been deleted, and there are no other tabs
+    // to choose from (we don't render <Select/> when there is only 1 tab)
+    // automatically pick the correct target dashboard tab for the user.
+    // Otherwise, make user manually pick a new dashboard tab.
     function migrateDeletedTab() {
       if (
         isDashboard &&
         !dashboardTabExists &&
-        typeof defaultDashboardTabId !== "undefined"
+        targetDashboard?.tabs &&
+        targetDashboard.tabs.length < 2 &&
+        typeof dashboardTabId !== "undefined"
       ) {
         updateSettings({ ...clickBehavior, tabId: defaultDashboardTabId });
       }
     },
     [
       clickBehavior,
+      targetDashboard,
+      dashboardTabId,
       dashboardTabExists,
       defaultDashboardTabId,
       isDashboard,
       updateSettings,
     ],
   );
+
+  const dashboard = useSelector(getDashboard);
+  const dashboardCollection = dashboard.collection ?? ROOT_COLLECTION;
+  const filterPersonalCollections = isPublicCollection(dashboardCollection)
+    ? "exclude"
+    : undefined;
 
   return (
     <div>
@@ -253,6 +271,7 @@ function LinkedEntityPicker({
               {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
               {/* @ts-ignore */}
               <PickerComponent
+                filterPersonalCollections={filterPersonalCollections}
                 value={clickBehavior.targetId}
                 onChange={(targetId: CardId | DashboardId) => {
                   handleSelectLinkTargetEntityId(targetId);
@@ -266,6 +285,11 @@ function LinkedEntityPicker({
 
       {isDashboard && dashboardTabs.length > 1 && (
         <Select
+          error={
+            dashboardTabExists
+              ? undefined
+              : t`The selected tab is no longer available`
+          }
           data={dashboardTabs.map(tab => ({
             label: tab.name,
             value: String(tab.id),
@@ -289,5 +313,4 @@ function LinkedEntityPicker({
   );
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default LinkedEntityPicker;
+export { LinkedEntityPicker };

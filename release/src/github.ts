@@ -24,11 +24,17 @@ const findMilestone = async ({
   const expectedMilestoneName = getOSSVersion(version).replace(/^v/, "");
 
   return milestones.data.find(
-    (milestone: { title: string, number: number } ) => milestone.title === expectedMilestoneName,
+    (milestone: { title: string; number: number }) =>
+      milestone.title === expectedMilestoneName,
   )?.number;
 };
 
-export const closeMilestone = async ({ github, owner, repo, version }: ReleaseProps) => {
+export const closeMilestone = async ({
+  github,
+  owner,
+  repo,
+  version,
+}: ReleaseProps) => {
   const milestoneId = await findMilestone({ version, github, owner, repo });
 
   if (!milestoneId) {
@@ -40,25 +46,30 @@ export const closeMilestone = async ({ github, owner, repo, version }: ReleasePr
     owner,
     repo,
     milestone_number: milestoneId,
-    state: 'closed',
+    state: "closed",
   });
 };
 
-export const openNextMilestones = async ({ github, owner, repo, version }: ReleaseProps) => {
-  const nextMilestones = getNextVersions(version)
-    .map(version => getOSSVersion(version).replace(/^v/, ''));
+export const openNextMilestones = async ({
+  github,
+  owner,
+  repo,
+  version,
+}: ReleaseProps) => {
+  const nextMilestones = getNextVersions(version).map(version =>
+    getOSSVersion(version).replace(/^v/, ""),
+  );
 
   await Promise.all(
-    nextMilestones.map((milestoneName) => (
+    nextMilestones.map(milestoneName =>
       github.rest.issues.createMilestone({
         owner,
         repo,
         title: milestoneName,
-      })
-    )
-  ));
+      }),
+    ),
+  );
 };
-
 
 export const getMilestoneIssues = async ({
   version,

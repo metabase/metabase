@@ -9,9 +9,9 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
-(declare load-one)
+(declare load-one!)
 
-(defn- load-deps
+(defn- load-deps!
   "Given a list of `deps` (hierarchies), [[load-one]] them all.
   If [[load-one]] throws because it can't find that entity in the filesystem, check if it's already loaded in
   our database."
@@ -20,7 +20,7 @@
     ctx
     (letfn [(loader [ctx dep]
               (try
-                (load-one ctx dep)
+                (load-one! ctx dep)
                 (catch Exception e
                   (if (and (= (:error (ex-data e)) ::not-found)
                            (serdes/load-find-local dep))
@@ -30,7 +30,7 @@
                     (throw e)))))]
       (reduce loader ctx deps))))
 
-(defn- load-one
+(defn- load-one!
   "Loads a single entity, specified by its `:serdes/meta` abstract path, into the appdb, doing some bookkeeping to avoid
   cycles.
 
@@ -57,7 +57,7 @@
                 deps     (serdes/dependencies ingested)
                 ctx      (-> ctx
                              (update :expanding conj path)
-                             (load-deps deps)
+                             (load-deps! deps)
                              (update :seen conj path)
                              (update :expanding disj path))
                 ;; Use the abstract path as attached by the ingestion process, not the original one we were passed.
@@ -72,27 +72,27 @@
                                  :deps-chain expanding}
                                 e)))))))
 
-(defn- try-load-one
+(defn- try-load-one!
   [ctx path]
   (try
-    (load-one ctx path)
+    (load-one! ctx path)
     (catch Exception e
       (log/error (trs "Error importing {0}. Continuing..." (serdes/log-path-str path)))
       (update ctx :errors conj e))))
 
-(defn load-metabase
+(defn load-metabase!
   "Loads in a database export from an ingestion source, which is any Ingestable instance."
   [ingestion & {:keys [abort-on-error] :or {abort-on-error true}}]
   ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared dependencies guide
   ;; the import, and make sure all containers are imported before contents, etc.
-  (serdes.backfill/backfill-ids)
+  (serdes.backfill/backfill-ids!)
   (let [contents (serdes.ingest/ingest-list ingestion)
         ctx      {:expanding #{}
                   :seen      #{}
                   :ingestion ingestion
                   :from-ids  (m/index-by :id contents)
                   :errors    []}
-        result   (reduce (if abort-on-error load-one try-load-one) ctx contents)]
+        result   (reduce (if abort-on-error load-one! try-load-one!) ctx contents)]
     (when-let [errors (seq (:errors result))]
       (log/error (trs "Errors were encountered during import."))
       (doseq [e errors]

@@ -5,8 +5,7 @@
    [java-time.api :as t]
    [metabase.server.request.util :as request.u]
    [metabase.test :as mt]
-   [ring.mock.request :as ring.mock]
-   [schema.core :as s]))
+   [ring.mock.request :as ring.mock]))
 
 (deftest ^:parallel https?-test
   (doseq [[headers expected] {{"x-forwarded-proto" "https"}    true
@@ -77,35 +76,46 @@
                    (request.u/ip-address mock-request)))))))))
 
 (deftest ^:parallel geocode-ip-addresses-test
-  (are [ip-addresses expected] (schema= (s/conditional some? expected nil? (s/eq nil))
-                                        (request.u/geocode-ip-addresses ip-addresses))
+  (are [ip-addresses expected] (malli= [:maybe expected]
+                                       (request.u/geocode-ip-addresses ip-addresses))
     ;; Google DNS
     ["8.8.8.8"]
-    {(s/required-key "8.8.8.8") {:description #"United States"
-                                 :timezone    (s/eq (t/zone-id "America/Chicago"))}}
+    [:map
+     ["8.8.8.8" [:map
+                 [:description [:re #"United States"]]
+                 [:timezone    [:= (t/zone-id "America/Chicago")]]]]]
 
     ;; this is from the MaxMind sample high-risk IP address list https://www.maxmind.com/en/high-risk-ip-sample-list
     ["185.233.100.23"]
-    {(s/required-key "185.233.100.23") {:description #"France"
-                                        :timezone    (s/eq (t/zone-id "Europe/Paris"))}}
+    [:map
+     ["185.233.100.23" [:map
+                        [:description [:re #"France"]]
+                        [:timezone    [:= (t/zone-id "Europe/Paris")]]]]]
 
     ["127.0.0.1"]
-    {(s/required-key "127.0.0.1") {:description (s/eq "Unknown location")
-                                   :timezone    (s/eq nil)}}
+    [:map
+     ["127.0.0.1" [:map
+                   [:description [:= "Unknown location"]]
+                   [:timezone    :nil]]]]
 
     ["0:0:0:0:0:0:0:1"]
-    {(s/required-key "0:0:0:0:0:0:0:1") {:description (s/eq "Unknown location")
-                                         :timezone    (s/eq nil)}}
+    [:map
+     ["0:0:0:0:0:0:0:1" [:map
+                         [:description [:= "Unknown location"]]
+                         [:timezone    :nil]]]]
 
     ;; multiple addresses at once
     ;; store.metabase.com, Google DNS
     ["52.206.149.9" "2001:4860:4860::8844"]
-    {(s/required-key "52.206.149.9")         {:description #"United States"
-                                              :timezone    (s/eq (t/zone-id "America/New_York"))}
-     (s/required-key "2001:4860:4860::8844") {:description #"United States"
-                                              :timezone    (s/eq (t/zone-id "America/Chicago"))}}
+    [:map
+     ["52.206.149.9"         [:map
+                              [:description [:re #"United States"]]
+                              [:timezone    [:= (t/zone-id "America/New_York")]]]]
+     ["2001:4860:4860::8844" [:map
+                              [:description [:re #"United States"]]
+                              [:timezone    [:= (t/zone-id "America/Chicago")]]]]]
 
-    ["wow"] (s/eq nil)
-    ["   "] (s/eq nil)
-    []      (s/eq nil)
-    nil     (s/eq nil)))
+    ["wow"] :nil
+    ["   "] :nil
+    []      :nil
+    nil     :nil))

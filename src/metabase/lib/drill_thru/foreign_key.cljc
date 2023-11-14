@@ -21,6 +21,7 @@
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              column
              (some? value)
+             (not= value :null) ; If the FK is null, don't show this option.
              (not (lib.types.isa/primary-key? column))
              (lib.types.isa/foreign-key? column))
     {:lib/type  :metabase.lib.drill-thru/drill-thru

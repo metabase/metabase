@@ -54,7 +54,6 @@
    [metabase.upload :as upload]
    [metabase.upload-test :as upload-test]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -758,13 +757,12 @@
       (doseq [enable-embedding? [true false]]
         (mt/with-temporary-setting-values [enable-embedding enable-embedding?]
           (mt/with-model-cleanup [:model/Card]
-            (is (schema= {:enable_embedding (s/eq false)
-                          s/Keyword         s/Any}
-                         (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
-                                                                            :display                :table
-                                                                            :dataset_query          (mt/mbql-query venues)
-                                                                            :visualization_settings {}
-                                                                            :enable_embedding       true})))))))))
+            (is (=? {:enable_embedding false}
+                    (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
+                                                                       :display                :table
+                                                                       :dataset_query          (mt/mbql-query venues)
+                                                                       :visualization_settings {}
+                                                                       :enable_embedding       true})))))))))
 
 (deftest save-empty-card-test
   (testing "POST /api/card"
@@ -981,17 +979,15 @@
         (t2.with-temp/with-temp [Collection collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           (mt/with-model-cleanup [:model/Card]
-            (is (schema= {:collection_id       (s/eq (u/the-id collection))
-                          :collection_position (s/eq 1)
-                          :name                (s/eq card-name)
-                          s/Keyword            s/Any}
-                         (mt/user-http-request :rasta :post 200 "card"
-                                               (assoc (card-with-name-and-query card-name)
-                                                      :collection_id (u/the-id collection), :collection_position 1))))
-            (is (schema= {:collection_id       (s/eq (u/the-id collection))
-                          :collection_position (s/eq 1)
-                          s/Keyword            s/Any}
-                         (t2/select-one :model/Card :name card-name)))))))))
+            (is (=? {:collection_id       (u/the-id collection)
+                     :collection_position 1
+                     :name                card-name}
+                    (mt/user-http-request :rasta :post 200 "card"
+                                          (assoc (card-with-name-and-query card-name)
+                                                 :collection_id (u/the-id collection), :collection_position 1))))
+            (is (=? {:collection_id       (u/the-id collection)
+                     :collection_position 1}
+                    (t2/select-one :model/Card :name card-name)))))))))
 
 (deftest need-permission-for-collection
   (testing "You need to have Collection permissions to create a Card in a Collection"
@@ -1119,6 +1115,10 @@
                           :moderation_reviews
                           (map clean)))))))))))
 
+(deftest fetch-card-404-test
+  (testing "GET /api/card/:id"
+   (is (= "Not found."
+         (mt/user-http-request :crowberto :get 404 (format "card/%d" Integer/MAX_VALUE))))))
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       UPDATING A CARD (PUT /api/card/:id)
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1126,7 +1126,7 @@
 
 (deftest updating-a-card-that-doesnt-exist-should-give-a-404
   (is (= "Not found."
-         (mt/user-http-request :crowberto :put 404 "card/12345"))))
+         (mt/user-http-request :crowberto :put 404 (format "card/%d" Integer/MAX_VALUE)))))
 
 (deftest test-that-we-can-edit-a-card
   (t2.with-temp/with-temp [:model/Card card {:name "Original Name"}]
@@ -1536,17 +1536,15 @@
                                                    request-body))]
           (testing "\nadmin"
             (testing "*should* be allowed to update query"
-              (is (schema= {:id            (s/eq card-id)
-                            :dataset_query (s/eq (mt/obj->json->obj (mt/mbql-query checkins)))
-                            s/Keyword      s/Any}
-                           (update-card! :crowberto 200 {:dataset_query (mt/mbql-query checkins)})))))
+              (is (=? {:id            card-id
+                       :dataset_query (mt/obj->json->obj (mt/mbql-query checkins))}
+                      (update-card! :crowberto 200 {:dataset_query (mt/mbql-query checkins)})))))
 
           (testing "\nnon-admin"
             (testing "should be allowed to update fields besides query"
-              (is (schema= {:id       (s/eq card-id)
-                            :name     (s/eq "Updated name")
-                            s/Keyword s/Any}
-                           (update-card! :rasta 200 {:name "Updated name"}))))
+              (is (=? {:id   card-id
+                       :name "Updated name"}
+                      (update-card! :rasta 200 {:name "Updated name"}))))
 
             (testing "should *not* be allowed to update query"
               (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
@@ -1562,11 +1560,10 @@
                        (t2/select-one-fn :dataset_query :model/Card :id card-id)))))
 
             (testing "should be allowed to update other fields if query is passed in but hasn't changed (##11719)"
-              (is (schema= {:id            (s/eq card-id)
-                            :name          (s/eq "Another new name")
-                            :dataset_query (s/eq (mt/obj->json->obj (mt/mbql-query checkins)))
-                            s/Keyword      s/Any}
-                           (update-card! :rasta 200 {:name "Another new name", :dataset_query (mt/mbql-query checkins)}))))))))))
+              (is (=? {:id            card-id
+                       :name          "Another new name"
+                       :dataset_query (mt/obj->json->obj (mt/mbql-query checkins))}
+                      (update-card! :rasta 200 {:name "Another new name", :dataset_query (mt/mbql-query checkins)}))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1980,10 +1977,9 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (t2.with-temp/with-temp [Collection collection]
           (mt/with-model-cleanup [:model/Card]
-            (is (schema= {:message (s/eq "You do not have curate permissions for this Collection.")
-                          s/Keyword s/Any}
-                         (mt/user-http-request :rasta :post 403 "card"
-                                               (assoc (card-with-name-and-query) :collection_id (u/the-id collection)))))))))))
+            (is (=? {:message "You do not have curate permissions for this Collection."}
+                    (mt/user-http-request :rasta :post 403 "card"
+                                          (assoc (card-with-name-and-query) :collection_id (u/the-id collection)))))))))))
 
 (deftest set-card-collection-id-test
   (testing "Should be able to set the Collection ID of a Card in the Root Collection (i.e., `collection_id` is nil)"
@@ -2293,10 +2289,9 @@
 
       (testing "Cannot share an archived Card"
         (t2.with-temp/with-temp [:model/Card card {:archived true}]
-          (is (schema= {:message    (s/eq "The object has been archived.")
-                        :error_code (s/eq "archived")
-                        s/Keyword   s/Any}
-                       (mt/user-http-request :crowberto :post 404 (format "card/%d/public_link" (u/the-id card)))))))
+          (is (=? {:message    "The object has been archived."
+                   :error_code "archived"}
+                  (mt/user-http-request :crowberto :post 404 (format "card/%d/public_link" (u/the-id card)))))))
 
       (testing "Cannot share a Card that doesn't exist"
         (is (= "Not found."
@@ -2364,15 +2359,16 @@
 
 (deftest test-related-recommended-entities
   (t2.with-temp/with-temp [:model/Card card]
-    (is (schema= {:table             s/Any
-                  :metrics           s/Any
-                  :segments          s/Any
-                  :dashboard-mates   s/Any
-                  :similar-questions s/Any
-                  :canonical-metric  s/Any
-                  :dashboards        s/Any
-                  :collections       s/Any}
-                 (mt/user-http-request :crowberto :get 200 (format "card/%s/related" (u/the-id card)))))))
+    (is (malli= [:map
+                 [:table             :any]
+                 [:metrics           :any]
+                 [:segments          :any]
+                 [:dashboard-mates   :any]
+                 [:similar-questions :any]
+                 [:canonical-metric  :any]
+                 [:dashboards        :any]
+                 [:collections       :any]]
+                (mt/user-http-request :crowberto :get 200 (format "card/%s/related" (u/the-id card)))))))
 
 (deftest pivot-card-test
   (mt/test-drivers (api.pivots/applicable-drivers)
