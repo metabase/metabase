@@ -31,7 +31,7 @@ function getSingleSeriesTrendOptionAndDataset(
   const trendDataPoints = getTrendDataPointsFromInsight(
     insights[index],
     d3.extent(xValues),
-    xValues.length, // TODO fix this
+    xValues.length,
   );
   // TODO handle normalized stacking
 
@@ -50,7 +50,7 @@ function getSingleSeriesTrendOptionAndDataset(
     dimensions: [chartModel.dimensionModel.dataKey, TREND_LINE_DATA_KEY],
     source: trendDataPoints.map(([x, y], i) => ({
       [chartModel.dimensionModel.dataKey]:
-        chartModel.dataset[i][chartModel.dimensionModel.dataKey], // TODO make this use actual x value from trend calc
+        chartModel.dataset[i][chartModel.dimensionModel.dataKey],
       [TREND_LINE_DATA_KEY]: y,
     })),
   };
@@ -68,11 +68,6 @@ export function getTrendLineOptionsAndDatasets(
 } {
   if (!settings["graph.show_trendline"]) {
     return { options: null, datasets: null };
-  }
-  if (!chartModel.insights) {
-    throw Error(
-      `"graph.show_trendline" setting is true but "chartModel.insights" is undefined`,
-    );
   }
   if (chartModel.insights.length !== chartModel.seriesModels.length) {
     throw Error("Number of insight objects does not match number of series");

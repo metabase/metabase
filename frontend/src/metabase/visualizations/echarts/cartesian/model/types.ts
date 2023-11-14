@@ -64,5 +64,5 @@ export type CartesianChartModel = {
 
   leftAxisColumn?: DatasetColumn;
   rightAxisColumn?: DatasetColumn;
-  insights?: Insight[];
+  insights: Insight[];
 };

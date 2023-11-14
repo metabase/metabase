@@ -111,6 +111,8 @@ export const getCartesianChartModel = (
     seriesModel => seriesModel.dataKey === rightSeriesDataKeys[0],
   )?.column;
 
+  const insights = rawSeries.flatMap(series => series.data.insights ?? []);
+
   return {
     dataset,
     transformedDataset,
@@ -120,6 +122,6 @@ export const getCartesianChartModel = (
     leftAxisColumn,
     rightAxisColumn,
     yAxisExtents,
-    insights: rawSeries[0].data.insights, // TODO merge insights between cards
+    insights,
   };
 };
