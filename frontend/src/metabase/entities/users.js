@@ -25,7 +25,7 @@ function loadMemberships() {
   return require("metabase/admin/people/people").loadMemberships();
 }
 
-const getUserList = args => GET("/api/user")(args);
+const getUserList = GET("/api/user");
 const getRecipientsList = GET("/api/user/recipients");
 
 const Users = createEntity({
@@ -36,7 +36,7 @@ const Users = createEntity({
   path: "/api/user",
 
   api: {
-    list: async ({ recipients = false, ...args }) =>
+    list: ({ recipients = false, ...args }) =>
       recipients ? getRecipientsList() : getUserList(args),
   },
 
