@@ -233,7 +233,7 @@ To update the values in your filter dropdown menus, refresh or reset the cached 
 
 ## Unfold JSON
 
-If Metabase supports JSON unfolding for your database, you can decide whether to Unfold JSON into component fields, where each JSON key becomes a column. You can turn this off if performance is slow.
+If Metabase supports JSON unfolding for your database, you can decide whether to unfold JSON into component fields, where each JSON key becomes a column. You can turn this off if performance is slow.
 
 1. Go to **Admin settings** > **Table Metadata**.
 2. Find your database and table.
