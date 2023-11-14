@@ -496,9 +496,7 @@
 
 (mu/defn ^:private effective-children-where-clause
   [collection & additional-honeysql-where-clauses]
-  (let [visible-collection-ids (permissions-set->visible-collection-ids @*current-user-permissions-set*)
-        tmp (println collection)
-        tmp1 (println visible-collection-ids)]
+  (let [visible-collection-ids (permissions-set->visible-collection-ids @*current-user-permissions-set*)]
     ;; Collection B is an effective child of Collection A if...
     (into
       [:and
