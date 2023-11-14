@@ -209,7 +209,7 @@
                            (dissoc :last_login)))))
               (testing "User Invite Event is logged."
                 (is (= "newuser@metabase.com"
-                       (get-in (audit-log-test/latest-event :user-invited (:id new-user))
+                       (get-in (mt/latest-audit-log-entry :user-invited (:id new-user))
                                [:details :email]))))
               (testing "attributes"
                 (is (= {"more" "stuff"
