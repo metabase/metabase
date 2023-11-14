@@ -5,7 +5,7 @@ import * as Lib from "metabase-lib";
 import { Icon } from "metabase/core/components/Icon";
 import { FilterPicker } from "metabase/common/components/FilterPicker";
 
-export interface FilterSelectProps {
+export interface TemporalFilterSelectProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
@@ -13,13 +13,13 @@ export interface FilterSelectProps {
   onChange: (newFilter: Lib.ExpressionClause | Lib.SegmentMetadata) => void;
 }
 
-export function FilterSelect({
+export function TemporalFilterSelect({
   query,
   stageIndex,
   column,
   filter,
   onChange,
-}: FilterSelectProps) {
+}: TemporalFilterSelectProps) {
   const filterInfo = useMemo(() => {
     return filter && Lib.displayInfo(query, stageIndex, filter);
   }, [query, stageIndex, filter]);

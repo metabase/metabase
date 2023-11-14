@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { Group, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
-import { FilterSelect } from "./FilterSelect";
+import { TemporalFilterSelect } from "./TemporalFilterSelect";
 import { TemporalBucketSelect } from "./TemporalBucketSelect";
 import {
   findBreakoutClause,
@@ -97,7 +97,7 @@ function TimeseriesControls({
   return (
     <Group p="md" position="center" spacing="sm">
       <Text>{t`View`}</Text>
-      <FilterSelect
+      <TemporalFilterSelect
         query={query}
         stageIndex={stageIndex}
         column={filterColumn}
