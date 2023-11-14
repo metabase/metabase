@@ -6,25 +6,28 @@ import type {
   DashCardId,
   ParameterId,
 } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
+import type { Dispatch } from "metabase-types/store";
 import { setMultipleDashCardAttributes } from "metabase/dashboard/actions";
 import { disableAutoWireForParameterTarget } from "metabase/dashboard/actions/auto-wire-parameters/actions";
 import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 
 const AUTO_WIRE_TOAST_ID = _.uniqueId();
+
+type ShowAutoWireParametersToastType = {
+  dashboardId: DashboardId;
+  parameter_id: ParameterId;
+  sourceDashcardId: DashCardId;
+  modifiedDashcards: DashboardCard[];
+};
+
 export const showAutoWireParametersToast =
   ({
     dashboardId,
     parameter_id,
     sourceDashcardId,
     modifiedDashcards,
-  }: {
-    dashboardId: DashboardId;
-    parameter_id: ParameterId;
-    sourceDashcardId: DashCardId;
-    modifiedDashcards: DashboardCard[];
-  }) =>
+  }: ShowAutoWireParametersToastType) =>
   (dispatch: Dispatch) => {
     dispatch(
       addUndo({
@@ -62,10 +65,9 @@ export const showAutoWireParametersToast =
     );
   };
 
-export const closeAutoWireParameterToast =
-  () => (dispatch: Dispatch, getState: GetState) => {
-    dispatch(dismissUndo(AUTO_WIRE_TOAST_ID, false));
-  };
+export const closeAutoWireParameterToast = () => (dispatch: Dispatch) => {
+  dispatch(dismissUndo(AUTO_WIRE_TOAST_ID, false));
+};
 
 export const showDisabledAutoConnectionToast = () => (dispatch: Dispatch) => {
   dispatch(
