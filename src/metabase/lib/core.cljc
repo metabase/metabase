@@ -256,6 +256,7 @@
  [lib.query
   can-run
   query
+  stage-count
   with-different-table]
  [lib.ref
   ref]
