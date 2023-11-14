@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import { t } from "ttag";
 import { checkNotNull } from "metabase/lib/types";
 import { Icon } from "metabase/core/components/Icon";
-import { Box, Button, Radio, Stack } from "metabase/ui";
+import { Button, Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { FilterHeader } from "../FilterHeader";
 import { FilterFooter } from "../FilterFooter";
@@ -44,14 +45,15 @@ export function BooleanFilterPicker({
     setOptionType(option.type);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
     onChange(getFilterClause(column, optionType));
   };
 
   return (
-    <Box data-testid="boolean-filter-picker">
+    <form data-testid="boolean-filter-picker" onSubmit={handleSubmit}>
       <FilterHeader columnName={columnName} onBack={onBack} />
-      <Box>
+      <div>
         <Radio.Group value={optionType} onChange={handleOptionChange}>
           <Stack p="md" pb={isExpanded ? "md" : 0} spacing="sm">
             {visibleOptions.map(option => (
@@ -76,8 +78,8 @@ export function BooleanFilterPicker({
             {t`More options`}
           </Button>
         )}
-        <FilterFooter isNew={isNew} canSubmit onSubmit={handleSubmit} />
-      </Box>
-    </Box>
+        <FilterFooter isNew={isNew} canSubmit />
+      </div>
+    </form>
   );
 }

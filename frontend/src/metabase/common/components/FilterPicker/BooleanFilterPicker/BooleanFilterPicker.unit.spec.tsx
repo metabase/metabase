@@ -118,6 +118,22 @@ describe("BooleanFilterPicker", () => {
       },
     );
 
+    it("should create a filter via keyboard", () => {
+      const { getNextFilterParts, getNextFilterColumnName } = setup();
+
+      const option = screen.getByLabelText("True");
+      userEvent.click(option);
+      userEvent.type(option, "{enter}");
+
+      const filterParts = getNextFilterParts();
+      expect(filterParts).toMatchObject({
+        operator: "=",
+        column: expect.anything(),
+        values: [true],
+      });
+      expect(getNextFilterColumnName()).toBe("User → Is Active");
+    });
+
     it("should go back", () => {
       const { onBack, onChange } = setup();
       userEvent.click(screen.getByLabelText("Back"));

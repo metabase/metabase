@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import { t } from "ttag";
 import { Box, Flex, Text, TimeInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -50,12 +51,18 @@ export function TimeFilterPicker({
     setValues(getDefaultValues(operator, values));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
     onChange(getFilterClause(operator, column, values));
   };
 
   return (
-    <Box maw={MAX_WIDTH} data-testid="time-filter-picker">
+    <Box
+      component="form"
+      maw={MAX_WIDTH}
+      data-testid="time-filter-picker"
+      onSubmit={handleSubmit}
+    >
       <FilterHeader columnName={columnInfo.longDisplayName} onBack={onBack}>
         <FilterOperatorPicker
           value={operator}
@@ -73,7 +80,7 @@ export function TimeFilterPicker({
             />
           </Flex>
         )}
-        <FilterFooter isNew={isNew} canSubmit onSubmit={handleSubmit} />
+        <FilterFooter isNew={isNew} canSubmit />
       </Box>
     </Box>
   );
