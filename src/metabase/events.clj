@@ -162,14 +162,6 @@
 
 (def ^:private async-publish-event-timeout 10000)
 
-(defn timeout-code [future]
-  ;; Wait for the specified timeout duration
-  (Thread/sleep 10000)
-  ;; If the timeout is reached, cancel the future
-  (when-not @future
-    (future-cancel future)
-    (println "Task cancelled due to timeout.")))
-
 (defn publish-event-async!
   "Publish an event asynchronously with an optional timeout (default is 10s).
   If the event fails, will log a warning."
