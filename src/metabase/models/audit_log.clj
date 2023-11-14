@@ -6,8 +6,10 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.models.activity :as activity]
    [metabase.models.interface :as mi]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [methodical.core :as m]
@@ -56,6 +58,12 @@
     {:previous (select-keys previous-object shared-updated-keys)
      :new (select-keys object shared-updated-keys)}))
 
+(defn- log-enabled?
+  "Returns true when we should record audit data into the audit log."
+  []
+  (or (premium-features/is-hosted?)
+      (premium-features/has-feature? :audit_log)))
+
 (mu/defn record-event!
   "Records an event in the Audit Log.
 
@@ -72,7 +80,11 @@
 
   `:object` and `:previous-object` both have `model-details` called on them to determine which fields should be audited,
   then they are added to `:details` before the event is recorded. `:previous-object` is only included if any audited fields
-  were updated."
+  were updated.
+
+  Under certain conditions this function does _not_ insert anything into the audit log.
+  - If nothing is logged, returns nil
+  - Otherwise, returns the audit logged row."
   [topic :- :keyword
    params :- [:map {:closed true}
               [:object          {:optional true} [:maybe :map]]
@@ -81,35 +93,37 @@
               [:model           {:optional true} [:maybe [:or :keyword :string]]]
               [:model-id        {:optional true} [:maybe pos-int?]]
               [:details         {:optional true} [:maybe :map]]]]
-  (let [unqualified-topic (keyword (name topic))
-        object            (:object params)
-        previous-object   (:previous-object params)
-        object-details    (model-details object unqualified-topic)
-        previous-details  (model-details previous-object unqualified-topic)
-        user-id           (or (:user-id params) api/*current-user-id*)
-        model             (model-name (or (:model params) object))
-        model-id          (or (:model-id params) (u/id object))
-        details           (merge {}
-                           (:details params)
-                           (if (not-empty previous-object)
-                             (prepare-update-event-data object-details previous-details)
-                             object-details))]
-    (t2/insert! :model/AuditLog
-                :topic    unqualified-topic
-                :details  details
-                :model    model
-                :model_id model-id
-                :user_id  user-id)
-    ;; TODO: temporarily double-writing to the `activity` table, delete this in Metabase v48
-    ;; TODO figure out set of events to actually continue recording in activity
-    (when-not (#{:card-read :dashboard-read :table-read :card-query :setting-update} unqualified-topic)
-      (activity/record-activity!
-       {:topic    topic
-        :object   object
-        :details  details
-        :model    model
-        :model-id model-id
-        :user-id  user-id}))))
+  (when (log-enabled?)
+    (let [unqualified-topic (keyword (name topic))
+          object            (:object params)
+          previous-object   (:previous-object params)
+          object-details    (model-details object unqualified-topic)
+          previous-details  (model-details previous-object unqualified-topic)
+          user-id           (or (:user-id params) api/*current-user-id*)
+          model             (model-name (or (:model params) object))
+          model-id          (or (:model-id params) (u/id object))
+          details           (merge {}
+                                   (:details params)
+                                   (if (not-empty previous-object)
+                                     (prepare-update-event-data object-details previous-details)
+                                     object-details))]
+      (u/prog1 (first (t2/insert-returning-instances! :model/AuditLog
+                                                      :topic    unqualified-topic
+                                                      :details  details
+                                                      :model    model
+                                                      :model_id model-id
+                                                      :user_id  user-id))
+        ;; TODO: temporarily double-writing to the `activity` table, delete this in Metabase v48
+        ;; TODO figure out set of events to actually continue recording in activity
+        (when-not (contains? #{:card-read :dashboard-read :table-read :card-query :setting-update}
+                             unqualified-topic)
+          (activity/record-activity!
+           {:topic    topic
+            :object   object
+            :details  details
+            :model    model
+            :model-id model-id
+            :user-id  user-id}))))))
 
 (t2/define-before-insert :model/AuditLog
   [activity]
