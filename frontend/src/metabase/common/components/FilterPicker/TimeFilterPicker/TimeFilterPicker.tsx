@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import { t } from "ttag";
 import { Box, Flex, Text, TimeInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { MAX_WIDTH } from "../constants";
+import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
@@ -59,6 +59,7 @@ export function TimeFilterPicker({
   return (
     <Box
       component="form"
+      miw={MIN_WIDTH}
       maw={MAX_WIDTH}
       data-testid="time-filter-picker"
       onSubmit={handleSubmit}

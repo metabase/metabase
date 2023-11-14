@@ -5,7 +5,7 @@ import { Box, Flex, NumberInput, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import type { FilterPickerWidgetProps } from "../types";
-import { MAX_WIDTH } from "../constants";
+import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import { getAvailableOperatorOptions } from "../utils";
 import { ColumnValuesWidget } from "../ColumnValuesWidget";
 import { FilterHeader } from "../FilterHeader";
@@ -83,6 +83,7 @@ export function CoordinateFilterPicker({
   return (
     <Box
       component="form"
+      miw={MIN_WIDTH}
       maw={MAX_WIDTH}
       data-testid="coordinate-filter-picker"
       onSubmit={handleSubmit}
