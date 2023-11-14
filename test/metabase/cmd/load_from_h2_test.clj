@@ -92,8 +92,8 @@
   (delay (or (config/current-major-version)
              (parse-major-version))))
 
-(defn- create-dumps
-  [db-name h2-filename versions]
+(defn- migrate-down-then-up-and-create-dump
+  [db-name h2-filename version]
   (let [db-type driver/*driver*
         db-def {:database-name db-name}
         current-version @current-major-version
@@ -102,19 +102,23 @@
     (create-current-database db-type db-def data-source)
     (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source)]
       (mt/dataset bird-flocks
-        (doseq [version (sort > versions)]
-          (let [filename (dump-filename h2-filename version)]
-            (when (< version current-version)
-              (log/info "rolling back to version" version)
-              (t2.conn/with-connection [conn]
-                (liquibase/with-liquibase [liquibase conn]
-                  (liquibase/rollback-major-version db-type conn liquibase version))))
-            (when (= version current-version)
-              (is (= 18 (ffirst (mt/formatted-rows [int]
-                                  (mt/run-mbql-query bird
-                                    {:aggregation [[:count]]}))))))
-            (log/info "creating dump" filename)
-            (dump-to-h2/dump-to-h2! filename)))))))
+          ;; make sure the data is there
+        (is (= 18 (ffirst (mt/formatted-rows [int]
+                                             (mt/run-mbql-query bird
+                                               {:aggregation [[:count]]})))))
+        (let [filename (dump-filename h2-filename version)]
+          (when (< version current-version)
+            (log/info "rolling back to version" version)
+            (t2.conn/with-connection [conn]
+              (liquibase/with-liquibase [liquibase conn]
+                (liquibase/rollback-major-version db-type conn liquibase version))))
+          (log/info "creating dump" filename)
+            ;; this migrates the DB back to the newest and creates a dump
+          (dump-to-h2/dump-to-h2! filename)
+            ;; check if after a down and up migration we can still run a query
+          (is (= 18 (ffirst (mt/formatted-rows [int]
+                                               (mt/run-mbql-query bird
+                                                 {:aggregation [[:count]]}))))))))))
 
 (defn- load-dump
   [db-name h2-filename version]
@@ -129,10 +133,10 @@
                                {:aggregation [[:count]]})))))
         (log/info "loading dump" h2-filename "version" version)
         (load-from-h2/load-from-h2! (dump-filename h2-filename version))
-        (when (= version @current-major-version)
-          (is (= 18 (ffirst (mt/formatted-rows [int]
-                              (mt/run-mbql-query bird
-                                {:aggregation [[:count]]}))))))))))
+        ;; check that we can run the query using data from the dump
+        (is (= 18 (ffirst (mt/formatted-rows [int]
+                            (mt/run-mbql-query bird
+                              {:aggregation [[:count]]})))))))))
 
 (deftest down-migrate-and-load-dump-test
   (mt/test-drivers #{:mysql :postgres}
@@ -141,6 +145,6 @@
             current-version (or @current-major-version
                                 (throw (ex-info "Couldn't determine current major version" {})))
             versions (range current-version (- current-version 4) -1)]
-        (create-dumps "load-test-source" h2-filename versions)
         (doseq [version versions]
+          (migrate-down-then-up-and-create-dump "load-test-source" h2-filename version)
           (load-dump "load-test-target" h2-filename version))))))
