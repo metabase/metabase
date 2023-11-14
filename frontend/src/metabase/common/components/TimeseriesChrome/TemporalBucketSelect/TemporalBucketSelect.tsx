@@ -1,7 +1,9 @@
 import { useMemo } from "react";
-import { Select } from "metabase/ui";
+import { t } from "ttag";
+import { Button, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { getAvailableOptions, getSelectedOption } from "./utils";
+import { Icon } from "metabase/core/components/Icon";
+import { getAvailableOptions, getSelectedItem } from "./utils";
 
 interface TemporalBucketSelectProps {
   query: Lib.Query;
@@ -16,28 +18,37 @@ export function TemporalBucketSelect({
   column,
   onChange,
 }: TemporalBucketSelectProps) {
-  const selectedOption = useMemo(
-    () => getSelectedOption(query, stageIndex, column),
+  const selectedItem = useMemo(
+    () => getSelectedItem(query, stageIndex, column),
     [query, stageIndex, column],
   );
 
-  const availableOptions = useMemo(
+  const availableItems = useMemo(
     () => getAvailableOptions(query, stageIndex, column),
     [query, stageIndex, column],
   );
 
-  const handleChange = (value: string | null) => {
-    const option = availableOptions.find(option => option.value === value);
-    if (option != null) {
-      onChange(Lib.withTemporalBucket(column, option.bucket));
-    }
+  const handleChange = (bucket: Lib.Bucket) => {
+    onChange(Lib.withTemporalBucket(column, bucket));
   };
 
   return (
-    <Select
-      value={selectedOption?.value}
-      data={availableOptions}
-      onChange={handleChange}
-    />
+    <Menu>
+      <Menu.Target>
+        <Button rightIcon={<Icon name="chevrondown" />}>
+          {selectedItem ? selectedItem.displayName : t`Unbinned`}
+        </Button>
+      </Menu.Target>
+      <Menu.Dropdown>
+        {availableItems.map(option => (
+          <Menu.Item
+            key={option.shortName}
+            onClick={() => handleChange(option.bucket)}
+          >
+            {option.displayName}
+          </Menu.Item>
+        ))}
+      </Menu.Dropdown>
+    </Menu>
   );
 }

@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import { Popover, TextInput } from "metabase/ui";
+import { Button, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { Icon } from "metabase/core/components/Icon";
-import { FilterPicker } from "metabase/common/components/FilterPicker";
+import { FilterPickerBody } from "metabase/common/components/FilterPicker";
 
 export interface TemporalFilterSelectProps {
   query: Lib.Query;
@@ -27,19 +27,17 @@ export function TemporalFilterSelect({
   return (
     <Popover>
       <Popover.Target>
-        <TextInput
-          value={filterInfo ? filterInfo.displayName : t`All time`}
-          readOnly
-          rightSection={<Icon name="chevrondown" />}
-        />
+        <Button rightIcon={<Icon name="chevrondown" />}>
+          {filterInfo ? filterInfo.displayName : t`All time`}
+        </Button>
       </Popover.Target>
       <Popover.Dropdown>
-        <FilterPicker
+        <FilterPickerBody
           query={query}
           stageIndex={stageIndex}
           column={column}
           filter={filter}
-          onSelect={onChange}
+          onChange={onChange}
         />
       </Popover.Dropdown>
     </Popover>

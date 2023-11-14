@@ -1,25 +1,23 @@
 import * as Lib from "metabase-lib";
 
-export function getOption(
+export function getMenuItem(
   query: Lib.Query,
   stageIndex: number,
   bucket: Lib.Bucket,
 ) {
-  const bucketInfo = Lib.displayInfo(query, stageIndex, bucket);
   return {
-    value: bucketInfo.shortName,
-    label: bucketInfo.displayName,
     bucket,
+    ...Lib.displayInfo(query, stageIndex, bucket),
   };
 }
 
-export function getSelectedOption(
+export function getSelectedItem(
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,
 ) {
   const bucket = Lib.temporalBucket(column);
-  return bucket ? getOption(query, stageIndex, bucket) : undefined;
+  return bucket ? getMenuItem(query, stageIndex, bucket) : undefined;
 }
 
 export function getAvailableOptions(
@@ -28,5 +26,5 @@ export function getAvailableOptions(
   column: Lib.ColumnMetadata,
 ) {
   const buckets = Lib.availableTemporalBuckets(query, stageIndex, column);
-  return buckets.map(bucket => getOption(query, stageIndex, bucket));
+  return buckets.map(bucket => getMenuItem(query, stageIndex, bucket));
 }
