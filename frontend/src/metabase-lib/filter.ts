@@ -521,7 +521,7 @@ export function filterParts(
   );
 }
 
-export function isColumnFilter(
+export function isStandardFilter(
   query: Query,
   stageIndex: number,
   filter: FilterClause,

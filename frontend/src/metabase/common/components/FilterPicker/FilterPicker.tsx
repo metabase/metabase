@@ -168,7 +168,7 @@ function isExpressionEditorInitiallyOpen(
 ) {
   return (
     filter != null &&
-    !Lib.isColumnFilter(query, stageIndex, filter) &&
+    !Lib.isStandardFilter(query, stageIndex, filter) &&
     !Lib.isSegmentFilter(query, stageIndex, filter)
   );
 }
