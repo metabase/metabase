@@ -1,13 +1,16 @@
+import { t } from "ttag";
 import * as Lib from "metabase-lib";
+import type { BucketItem } from "./type";
 
-export function getMenuItem(
+export function getBucketItem(
   query: Lib.Query,
   stageIndex: number,
   bucket: Lib.Bucket,
-) {
+): BucketItem {
+  const bucketInfo = Lib.displayInfo(query, stageIndex, bucket);
   return {
+    name: bucketInfo.displayName,
     bucket,
-    ...Lib.displayInfo(query, stageIndex, bucket),
   };
 }
 
@@ -17,14 +20,17 @@ export function getSelectedItem(
   column: Lib.ColumnMetadata,
 ) {
   const bucket = Lib.temporalBucket(column);
-  return bucket ? getMenuItem(query, stageIndex, bucket) : undefined;
+  return bucket
+    ? getBucketItem(query, stageIndex, bucket)
+    : { name: t`Unbinned`, bucket: null };
 }
 
-export function getAvailableOptions(
+export function getAvailableItems(
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,
 ) {
-  const buckets = Lib.availableTemporalBuckets(query, stageIndex, column);
-  return buckets.map(bucket => getMenuItem(query, stageIndex, bucket));
+  return Lib.availableTemporalBuckets(query, stageIndex, column)
+    .map(bucket => getBucketItem(query, stageIndex, bucket))
+    .concat({ name: t`Don't bin`, bucket: null });
 }
