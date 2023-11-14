@@ -6,7 +6,7 @@ import type {
   ParameterId,
   ParameterTarget,
 } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
+import type { Dispatch, GetState, StoreDashcard } from "metabase-types/store";
 import {
   setDashCardAttributes,
   setMultipleDashCardAttributes,
@@ -127,7 +127,10 @@ export function autoWireParametersToNewCard({
       dashboardId,
     ).filter(dc => !disabledDashcards.includes(dc.id));
 
-    const targetDashcard = getDashCardById(getState(), dashcard_id);
+    const targetDashcard: StoreDashcard = getDashCardById(
+      getState(),
+      dashcard_id,
+    );
 
     if (!targetDashcard) {
       return;
@@ -137,6 +140,10 @@ export function autoWireParametersToNewCard({
       metadata,
       null,
       targetDashcard.card,
+      // TODO: mapping-options.js/getParameterMappingOptions needs to be converted to typescript as the TS
+      // checker thinks that this parameter should be (null | undefined), not (StoreDashcard/Dashcard | null | undefined)
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       targetDashcard,
     );
 
@@ -155,7 +162,11 @@ export function autoWireParametersToNewCard({
           ),
         );
 
-        if (param && !processedParameterIds.has(param.parameter_id)) {
+        if (
+          targetDashcard.card_id &&
+          param &&
+          !processedParameterIds.has(param.parameter_id)
+        ) {
           parametersToAutoApply.push(
             ...getParameterMappings(
               targetDashcard,
