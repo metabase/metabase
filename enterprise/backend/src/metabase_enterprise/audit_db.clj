@@ -97,24 +97,20 @@
 (defn- install-database!
   "Creates the audit db, a clone of the app db used for auditing purposes.
 
-  - This uses a weird ID because some tests are hardcoded to look for database with ID = 2, and inserting an extra db
-  throws that off since the IDs are sequential."
-  ([engine] (install-database! engine perms/audit-db-id))
-  ([engine id]
-   (if (t2/select-one Database :id id)
-     (install-database! engine (inc id))
-     (do
-       ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
-       (t2/delete! :permissions {:where [:like :object (str "%/db/" id "/%")]})
-       (t2/insert! Database {:is_audit         true
-                             :id               id
-                             :name             "Internal Metabase Database"
-                             :description      "Internal Audit DB used to power metabase analytics."
-                             :engine           engine
-                             :is_full_sync     true
-                             :is_on_demand     false
-                             :creator_id       nil
-                             :auto_run_queries true})))))
+  - This uses a weird ID because some tests were hardcoded to look for database with ID = 2, and inserting an extra db
+  throws that off since these IDs are sequential."
+  [engine id]
+  ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
+  (t2/delete! :permissions {:where [:like :object (str "%/db/" id "/%")]})
+  (t2/insert! Database {:is_audit         true
+                        :id               id
+                        :name             "Internal Metabase Database"
+                        :description      "Internal Audit DB used to power metabase analytics."
+                        :engine           engine
+                        :is_full_sync     true
+                        :is_on_demand     false
+                        :creator_id       nil
+                        :auto_run_queries true}))
 
 (defn- adjust-audit-db-to-source!
   [{audit-db-id :id}]
@@ -194,12 +190,12 @@
     (adjust-audit-db-to-source! audit-db)
     (log/info "Loading Analytics Content...")
     (ia-content->plugins)
-    (log/info (str "Loading Analytics Content from: plugins/instance_analytics"))
+    (log/info (str "Loading Analytics Content from: " instance-analytics-plugin-dir))
     ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
     (let [report (log/with-no-logs
-                   (serialization.cmd/v2-load-internal! "plugins/instance_analytics"
-                                                       {}
-                                                       :token-check? false))]
+                   (serialization.cmd/v2-load-internal! (str instance-analytics-plugin-dir)
+                                                        {}
+                                                        :token-check? false))]
       (if (not-empty (:errors report))
         (log/info (str "Error Loading Analytics Content: " (pr-str report)))
         (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))))
@@ -213,7 +209,7 @@
       (nil? audit-db)
       (u/prog1 ::installed
        (log/info "Installing Audit DB...")
-       (install-database! mdb.env/db-type))
+       (install-database! mdb.env/db-type perms/audit-db-id))
 
       (not= mdb.env/db-type (:engine audit-db))
       (u/prog1 ::updated
