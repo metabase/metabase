@@ -321,7 +321,7 @@
 
   ;; Find outdated versions of dependencies. Run with `clojure -M:outdated`
   :outdated {;; Note that it is `:deps`, not `:extra-deps`
-             :deps      {com.github.liquidz/antq {:mvn/version "RELEASE"}}
+             :deps {com.github.liquidz/antq {:mvn/version "RELEASE"}}
              :main-opts ["-m" "antq.core"]}
 
   :cljs
@@ -368,7 +368,7 @@
     "modules/drivers/sqlserver/test"
     "modules/drivers/vertica/test"]}
 
-  ;;; Linters
+;;; Linters
 
   ;; clojure -M:ee:drivers:check
   ;;
@@ -401,32 +401,32 @@
   {:exec-fn   metabase.linters.eastwood/eastwood
    :exec-args {;; manually specify the source paths for the time being (exclude test paths) until we fix Eastwood
                ;; errors in the test paths (once PR #17193 is merged)
-               :source-paths       ["src"
-                                    "shared/src"
-                                    "enterprise/backend/src"
-                                    "modules/drivers/athena/src"
-                                    "modules/drivers/bigquery-cloud-sdk/src"
-                                    "modules/drivers/druid/src"
-                                    "modules/drivers/googleanalytics/src"
-                                    "modules/drivers/mongo/src"
-                                    "modules/drivers/oracle/src"
-                                    "modules/drivers/presto-jdbc/src"
-                                    "modules/drivers/redshift/src"
-                                    "modules/drivers/snowflake/src"
-                                    "modules/drivers/sparksql/src"
-                                    "modules/drivers/sqlite/src"
-                                    "modules/drivers/sqlserver/src"
-                                    "modules/drivers/vertica/src"]
-               :exclude-linters    [;; Turn this off temporarily until we finish removing
-                                    ;; self-deprecated functions & macros
-                                    :deprecations
-                                    ;; this has a fit in libs that use Potemkin `import-vars` such
-                                    ;; as `java-time`
-                                    :implicit-dependencies
-                                    ;; too many false positives for now
-                                    :unused-ret-vals
-                                    ;; Kondo lints this for us anyway, and this isn't as easy to configure.
-                                    :wrong-arity]
+               :source-paths    ["src"
+                                 "shared/src"
+                                 "enterprise/backend/src"
+                                 "modules/drivers/athena/src"
+                                 "modules/drivers/bigquery-cloud-sdk/src"
+                                 "modules/drivers/druid/src"
+                                 "modules/drivers/googleanalytics/src"
+                                 "modules/drivers/mongo/src"
+                                 "modules/drivers/oracle/src"
+                                 "modules/drivers/presto-jdbc/src"
+                                 "modules/drivers/redshift/src"
+                                 "modules/drivers/snowflake/src"
+                                 "modules/drivers/sparksql/src"
+                                 "modules/drivers/sqlite/src"
+                                 "modules/drivers/sqlserver/src"
+                                 "modules/drivers/vertica/src"]
+               :exclude-linters [ ;; Turn this off temporarily until we finish removing
+                                 ;; self-deprecated functions & macros
+                                 :deprecations
+                                 ;; this has a fit in libs that use Potemkin `import-vars` such
+                                 ;; as `java-time`
+                                 :implicit-dependencies
+                                 ;; too many false positives for now
+                                 :unused-ret-vals
+                                 ;; Kondo lints this for us anyway, and this isn't as easy to configure.
+                                 :wrong-arity]
                ;; Snowplow has a dynamic dependency on okhttp3.CookieJar that we
                ;; don't use but eastwood detects. This is discussed in Slack here
                ;; https://clojurians.slack.com/archives/C03S1KBA2/p1667925853699669
@@ -504,16 +504,16 @@
                ["metabase\\.driver\\.mysql.*"
                 "metabase\\.driver\\.postgres.*"]}
    ;; different port from `:test` so you can run it at the same time as `:test`.
-   :jvm-opts  ["-Dmb.jetty.port=3002"
-               ;; default heap size is 1GB, we were getting OOM on CI so we need to bump this
-               "-Xmx4g"]}
+   :jvm-opts ["-Dmb.jetty.port=3002"
+              ;; default heap size is 1GB, we were getting OOM on CI so we need to bump this
+              "-Xmx4g"]}
 
   ;; clj -T:cljfmt fix '{:paths ["src/metabase/events/view_log.clj"]}'
   :cljfmt
   {:deps       {io.github.weavejester/cljfmt {:git/tag "0.11.2", :git/sha "fb26b22f569724b05c93eb2502592dfc2de898c3"}}
    :ns-default cljfmt.tool}
 
-  ;;; building Uberjar, build and release scripts
+;;; building Uberjar, build and release scripts
 
   :build
   {:extra-paths
@@ -619,7 +619,7 @@
    :exec-args {:only ["bin/build/test"]}}
 
 
-  ;;; Other misc convenience aliases
+;;; Other misc convenience aliases
 
   ;; Profile Metabase start time with clojure -M:profile
   :profile
@@ -644,7 +644,7 @@
    :main-opts  ["-m" "nrepl.cmdline" "-p" "50605"]}
 
   ;; - start a Socket REPL on port 50505 that you can connect your editor to:
-  :socket   {:jvm-opts ["-Dclojure.server.repl={:address,\"0.0.0.0\",:port,50505,:accept,clojure.core.server/repl}"]}
+  :socket {:jvm-opts ["-Dclojure.server.repl={:address,\"0.0.0.0\",:port,50505,:accept,clojure.core.server/repl}"]}
 
   ;; Liquibase CLI:
   ;;
@@ -690,5 +690,5 @@
 
 
 
-;; TODO -- consider creating an alias that includes the `./bin` build-drivers & release code as well so we can work
-;; on them all from a single REPL process.
+  ;; TODO -- consider creating an alias that includes the `./bin` build-drivers & release code as well so we can work
+  ;; on them all from a single REPL process.
