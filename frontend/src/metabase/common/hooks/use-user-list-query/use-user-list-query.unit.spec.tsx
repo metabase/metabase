@@ -1,4 +1,7 @@
-import { setupUsersEndpoints } from "__support__/server-mocks";
+import {
+  setupUserRecipientsEndpoint,
+  setupUsersEndpoints,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
@@ -12,8 +15,19 @@ import { useUserListQuery } from "./use-user-list-query";
 
 const TEST_USER = createMockUserInfo();
 
-function TestComponent() {
-  const { data = [], metadata, isLoading, error } = useUserListQuery();
+type TestComponentProps = { getRecipients?: boolean };
+
+function TestComponent({ getRecipients = false }: TestComponentProps) {
+  const {
+    data = [],
+    metadata,
+    isLoading,
+    error,
+  } = useUserListQuery({
+    query: {
+      recipients: getRecipients,
+    },
+  });
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -32,9 +46,17 @@ function TestComponent() {
   );
 }
 
-function setup() {
-  setupUsersEndpoints([TEST_USER]);
-  renderWithProviders(<TestComponent />);
+function setup({ getRecipients = false }: TestComponentProps = {}) {
+  const usersEndpoint = setupUsersEndpoints([TEST_USER]);
+  const userRecipientsEndpoint = setupUserRecipientsEndpoint({
+    users: [TEST_USER],
+  });
+  renderWithProviders(<TestComponent getRecipients={getRecipients} />);
+
+  return {
+    usersEndpoint,
+    userRecipientsEndpoint,
+  };
 }
 
 describe("useUserListQuery", () => {
@@ -55,5 +77,17 @@ describe("useUserListQuery", () => {
     expect(
       within(screen.getByTestId("metadata")).getByText("No metadata"),
     ).toBeInTheDocument();
+  });
+
+  it("should call /api/user when recipient isn't passed or is false", async () => {
+    const { usersEndpoint } = setup();
+
+    expect(usersEndpoint).toHaveBeenCalled();
+  });
+
+  it("should call /api/user/recipients when the `recipient` is passed", async () => {
+    const { userRecipientsEndpoint } = setup({ getRecipients: true });
+
+    expect(userRecipientsEndpoint).toHaveBeenCalled();
   });
 });

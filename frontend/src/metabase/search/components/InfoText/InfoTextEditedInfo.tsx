@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import { t } from "ttag";
 import { isNull } from "underscore";
-import { useUserRecipients } from "metabase/search/utils/use-user-recipients/use-user-recipients";
+import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import type { UserListResult } from "metabase-types/api";
 import Tooltip from "metabase/core/components/Tooltip";
 import { isNotNull } from "metabase/lib/types";
@@ -36,7 +36,9 @@ export const InfoTextEditedInfo = ({
   result: WrappedResult;
   isCompact?: boolean;
 }) => {
-  const { loading: isLoading, data, error } = useUserRecipients();
+  const { isLoading, data, error } = useUserListQuery({
+    query: { recipients: true },
+  });
 
   const users = data ?? [];
 
