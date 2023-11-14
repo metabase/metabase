@@ -261,6 +261,35 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     cy.findByText("463");
   });
 
+  it("should correctly apply breakout in query builder (metabase#14648)", () => {
+    const options = { timeout: 10000 };
+
+    cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
+
+    getDashboardCards().contains("18,760", options).click();
+
+    popover().within(() => {
+      cy.findByText("Break out by…").click();
+      cy.findByText("Category").click();
+      cy.findByText("Source").click();
+    });
+
+    cy.url().should("contain", "/question");
+
+    cy.findByTestId("viz-settings-button").click();
+    cy.findAllByTestId("chartsettings-field-picker")
+      .contains("User → Source")
+      .should("be.visible");
+
+    cy.get(".bar").should("have.length", 5);
+
+    cy.get(".bar").eq(0).realHover();
+    popover().within(() => {
+      cy.findByText("Affiliate").should("be.visible");
+      cy.findByText("3,520").should("be.visible");
+    });
+  });
+
   it("should be able to open x-ray on a dashcard from a dashboard with multiple tabs", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
