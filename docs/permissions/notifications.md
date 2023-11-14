@@ -40,7 +40,7 @@ Admins can add recipients without changing the permissions of the alert or subsc
 
 ## More control over email options
 
-On some plans, Admins can:
+On [Enterprise](https://www.metabase.com/product/enterprise) and [Pro](https://www.metabase.com/product/pro) plans, Admins can:
 
 - Limit email recipients to [approved domains for notifications](../configuring-metabase/email.md#approved-domains-for-notifications).
 - [Limit which recipients Metabase suggests](../configuring-metabase/email.md#suggest-recipients-on-dashboard-subscriptions-and-alerts) when people set up a subscription or alert.
