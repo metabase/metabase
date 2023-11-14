@@ -1,8 +1,8 @@
 {
   "teams": [
     {
-      "name": "Query",
-      "label": ".Team/Query",
+      "name": "Querying Components",
+      "label": ".Team/QueryingComponents",
       "members": [
         "ranquild",
         "uladzimirdev",
