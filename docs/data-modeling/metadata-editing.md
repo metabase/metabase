@@ -1,5 +1,5 @@
 ---
-title: "Metadata editing"
+title: "Table metadata admin settings"
 redirect_from:
   - /docs/latest/administration-guide/03-metadata-editing
 ---
@@ -238,8 +238,8 @@ If Metabase supports JSON unfolding for your database, you can decide whether to
 1. Go to **Admin settings** > **Table Metadata**.
 2. Find your database and table.
 3. Click the **gear** icon at the right of a column's settings box.
-4. Scroll to **Cached field values**.
-5. Select a cache action.
+4. Scroll to **Unfold JSON**.
+5. Toggle JSON unfolding.
 
 ## Further reading
 
