@@ -5,8 +5,8 @@ import { checkNotNull } from "metabase/lib/types";
 import { Icon } from "metabase/core/components/Icon";
 import { Box, Button, Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { FilterHeader } from "../FilterHeader";
-import { FilterFooter } from "../FilterFooter";
+import { FilterPickerHeader } from "../FilterPickerHeader";
+import { FilterPickerFooter } from "../FilterPickerFooter";
 import { MIN_WIDTH } from "../constants";
 import { getAvailableOperatorOptions } from "../utils";
 import type { FilterPickerWidgetProps } from "../types";
@@ -58,7 +58,7 @@ export function BooleanFilterPicker({
       data-testid="boolean-filter-picker"
       onSubmit={handleSubmit}
     >
-      <FilterHeader columnName={columnName} onBack={onBack} />
+      <FilterPickerHeader columnName={columnName} onBack={onBack} />
       <div>
         <Radio.Group value={optionType} onChange={handleOptionChange}>
           <Stack p="md" pb={isExpanded ? "md" : 0} spacing="sm">
@@ -84,7 +84,7 @@ export function BooleanFilterPicker({
             {t`More options`}
           </Button>
         )}
-        <FilterFooter isNew={isNew} canSubmit />
+        <FilterPickerFooter isNew={isNew} canSubmit />
       </div>
     </Box>
   );

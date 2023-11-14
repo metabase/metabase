@@ -1,18 +1,18 @@
 import type { ReactNode } from "react";
 import { BackButton } from "../BackButton";
-import { FilterHeaderRoot } from "./FilterHeader.styled";
+import { FilterHeaderRoot } from "./FilterPickerHeader.styled";
 
-interface FilterHeaderProps {
+interface FilterPickerHeaderProps {
   columnName: string;
   children?: ReactNode;
   onBack?: () => void;
 }
 
-export function FilterHeader({
+export function FilterPickerHeader({
   columnName,
   children,
   onBack,
-}: FilterHeaderProps) {
+}: FilterPickerHeaderProps) {
   return (
     <FilterHeaderRoot p="sm" justify="space-between">
       {onBack && <BackButton onClick={onBack}>{columnName}</BackButton>}
