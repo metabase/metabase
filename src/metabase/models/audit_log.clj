@@ -6,7 +6,6 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [metabase.api.common :as api]
-   [metabase.config :as config]
    [metabase.models.activity :as activity]
    [metabase.models.interface :as mi]
    [metabase.public-settings.premium-features :as premium-features]
