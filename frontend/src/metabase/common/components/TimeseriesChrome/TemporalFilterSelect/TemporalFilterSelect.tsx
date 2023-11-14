@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 import { Button, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -10,7 +10,7 @@ export interface TemporalFilterSelectProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
-  onChange: (newFilter: Lib.ExpressionClause | Lib.SegmentMetadata) => void;
+  onChange: (newFilter: Lib.ExpressionClause) => void;
 }
 
 export function TemporalFilterSelect({
@@ -20,14 +20,28 @@ export function TemporalFilterSelect({
   filter,
   onChange,
 }: TemporalFilterSelectProps) {
+  const [isOpened, setIsOpened] = useState(false);
+
   const filterInfo = useMemo(() => {
     return filter && Lib.displayInfo(query, stageIndex, filter);
   }, [query, stageIndex, filter]);
 
+  const handleButtonClick = () => {
+    setIsOpened(!isOpened);
+  };
+
+  const handleFilterChange = (newFilter: Lib.ExpressionClause) => {
+    onChange(newFilter);
+    setIsOpened(false);
+  };
+
   return (
-    <Popover>
+    <Popover opened={isOpened} onChange={setIsOpened}>
       <Popover.Target>
-        <Button rightIcon={<Icon name="chevrondown" />}>
+        <Button
+          rightIcon={<Icon name="chevrondown" />}
+          onClick={handleButtonClick}
+        >
           {filterInfo ? filterInfo.displayName : t`All time`}
         </Button>
       </Popover.Target>
@@ -37,7 +51,7 @@ export function TemporalFilterSelect({
           stageIndex={stageIndex}
           column={column}
           filter={filter}
-          onChange={onChange}
+          onChange={handleFilterChange}
         />
       </Popover.Dropdown>
     </Popover>
