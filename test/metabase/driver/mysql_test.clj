@@ -388,7 +388,7 @@
 (defn- pretty-sql [s]
   (str/replace s #"`" ""))
 
-(deftest do-not-cast-to-date-if-column-is-already-a-date-test
+(deftest ^:parallel do-not-cast-to-date-if-column-is-already-a-date-test
   (testing "Don't wrap Field in date() if it's already a DATE (#11502)"
     (mt/test-driver :mysql
       (mt/dataset attempted-murders

@@ -271,32 +271,35 @@
 (defn- extract [unit expr]
   [::h2x/extract unit expr])
 
+(defn- make-time [hour minute second]
+  (h2x/with-database-type-info [:make_time hour minute second] "time"))
+
+(defn- time-trunc [unit expr]
+  (let [hour   [::pg-conversion (extract :hour expr) :integer]
+        minute (if (#{:minute :second} unit)
+                 [::pg-conversion (extract :minute expr) :integer]
+                 [:inline 0])
+        second (if (= unit :second)
+                 [::pg-conversion (extract :second expr) ::double]
+                 [:inline 0.0])]
+    (make-time hour minute second)))
+
 (mu/defn ^:private date-trunc
   [unit :- ::lib.schema.temporal-bucketing/unit.date-time.truncate
    expr]
-  (letfn [(time-trunc [expr]
-            (let [hour   [::pg-conversion (extract :hour expr) :integer]
-                  minute (if (#{:minute :second} unit)
-                           [::pg-conversion (extract :minute expr) :integer]
-                           [:inline 0])
-                  second (if (= unit :second)
-                           [::pg-conversion (extract :second expr) ::double]
-                           [:inline 0.0])]
-              (-> [:make_time hour minute second]
-                  (h2x/with-database-type-info "time"))))]
-    (condp = (h2x/database-type expr)
-      ;; apparently there is no convenient way to truncate a TIME column in Postgres, you can try to use `date_trunc`
-      ;; but it returns an interval (??) and other insane things. This seems to be slightly less insane.
-      "time"
-      (time-trunc expr)
+  (condp = (h2x/database-type expr)
+    ;; apparently there is no convenient way to truncate a TIME column in Postgres, you can try to use `date_trunc`
+    ;; but it returns an interval (??) and other insane things. This seems to be slightly less insane.
+    "time"
+    (time-trunc unit expr)
 
-      "timetz"
-      (h2x/cast "timetz" (time-trunc expr))
+    "timetz"
+    (h2x/cast "timetz" (time-trunc unit expr))
 
-      #_else
-      (let [expr' (->timestamp expr)]
-        (-> [:date_trunc (h2x/literal unit) expr']
-            (h2x/with-database-type-info (h2x/database-type expr')))))))
+    #_else
+    (let [expr' (->timestamp expr)]
+      (-> [:date_trunc (h2x/literal unit) expr']
+          (h2x/with-database-type-info (h2x/database-type expr'))))))
 
 (defn- extract-from-timestamp [unit expr]
   (extract unit (->timestamp expr)))
