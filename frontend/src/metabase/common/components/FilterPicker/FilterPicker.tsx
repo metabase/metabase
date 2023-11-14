@@ -58,9 +58,7 @@ export function FilterPicker({
   const [
     isEditingExpression,
     { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
-  ] = useToggle(
-    isExpressionEditorInitiallyOpen(query, stageIndex, column, filter),
-  );
+  ] = useToggle(isExpressionEditorInitiallyOpen(query, stageIndex, filter));
 
   const isNewFilter = !initialFilter;
 
@@ -166,14 +164,13 @@ function getInitialColumn(
 function isExpressionEditorInitiallyOpen(
   query: Lib.Query,
   stageIndex: number,
-  column: Lib.ColumnMetadata | undefined,
   filter?: Lib.FilterClause,
 ) {
-  if (!filter || Lib.isSegmentFilter(query, stageIndex, filter)) {
-    return false;
-  }
-  const hasWidget = column && getFilterWidget(column) != null;
-  return Lib.isCustomFilter(query, stageIndex, filter) || !hasWidget;
+  return (
+    filter != null &&
+    !Lib.isColumnFilter(query, stageIndex, filter) &&
+    !Lib.isSegmentFilter(query, stageIndex, filter)
+  );
 }
 
 function getFilterWidget(column: Lib.ColumnMetadata) {
