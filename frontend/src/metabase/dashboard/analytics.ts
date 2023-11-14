@@ -29,10 +29,13 @@ export const trackCardCreated = (type: CardTypes, dashboard_id: number) => {
   });
 };
 
-export const trackDashboardSaved = (
-  duration_milliseconds: number,
-  dashboard_id: number,
-) => {
+export const trackDashboardSaved = ({
+  duration_milliseconds,
+  dashboard_id,
+}: {
+  dashboard_id: number;
+  duration_milliseconds: number;
+}) => {
   trackSchemaEvent("dashboard", DASHBOARD_SCHEMA_VERSION, {
     event: "dashboard_saved",
     dashboard_id,
