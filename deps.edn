@@ -504,7 +504,12 @@
               ;; default heap size is 1GB, we were getting OOM on CI so we need to bump this
               "-Xmx4g"]}
 
-;;; building Uberjar, build and release scripts
+  ;; clj -T:cljfmt fix '{:paths ["src/metabase/events/view_log.clj"]}'
+  :cljfmt
+  {:deps       {io.github.weavejester/cljfmt {:git/tag "0.11.2", :git/sha "fb26b22f569724b05c93eb2502592dfc2de898c3"}}
+   :ns-default cljfmt.tool}
+
+  ;;; building Uberjar, build and release scripts
 
   :build
   {:extra-paths

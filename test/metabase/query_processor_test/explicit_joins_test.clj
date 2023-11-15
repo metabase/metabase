@@ -378,8 +378,8 @@
                 (testing "suggested join condition references the FK by name"
                   (let [query (lib/query metadata-provider (lib.metadata/table metadata-provider (mt/id :people)))
                         card-meta (lib.metadata/card metadata-provider 3)]
-                    (is (=? [:= {} [:field {} (mt/id :people :id)] [:field {} cuser-id]]
-                            (lib/suggested-join-condition query card-meta))))))
+                    (is (=? [[:= {} [:field {} (mt/id :people :id)] [:field {} cuser-id]]]
+                            (lib/suggested-join-conditions query card-meta))))))
 
               (testing "the query runs and returns correct data"
                 (is (= {:columns [cid cid2 cuser-id ccount cuser-id2 ccount2]

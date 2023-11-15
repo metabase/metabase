@@ -12,7 +12,7 @@ In general, embedding works by displaying a Metabase URL inside an iframe in you
 
 You can can't use static embeds with [data sandboxes](../permissions/data-sandboxes.md), [drill-through](https://www.metabase.com/learn/questions/drill-through) or [auditing tools](../usage-and-performance-tools/audit.md) because signed JWTs don't create user sessions (server-side sessions). For those features, check out [interactive embedding](./interactive-embedding.md).
 
-To restrict data in static embeds for specific people or groups, set up [locked parameters](./static-embedding-parameters.md#restricting-data-in-a-signed-embed) instead.
+To restrict data in static embeds for specific people or groups, set up [locked parameters](./static-embedding-parameters.md#restricting-data-in-a-static-embed) instead.
 
 ## How static embedding works
 

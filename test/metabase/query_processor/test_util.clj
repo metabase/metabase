@@ -398,7 +398,7 @@
                    (assoc outer-query :query {:source-query (:query outer-query)}))]
       (recur nested (dec n-levels)))))
 
-(deftest nest-query-test
+(deftest ^:parallel nest-query-test
   (testing "MBQL"
     (is (= {:database 1, :type :query, :query {:source-table 2}}
            {:database 1, :type :query, :query {:source-table 2}}))

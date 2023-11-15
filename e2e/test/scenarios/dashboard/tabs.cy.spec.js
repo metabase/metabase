@@ -373,12 +373,14 @@ describeWithSnowplow("scenarios > dashboard > tabs", () => {
     editDashboard();
     createNewTab();
     saveDashboard();
-    expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 1); // dashboard_tab_created
+    expectGoodSnowplowEvent({ event: "dashboard_saved" }, 1);
+    expectGoodSnowplowEvent({ event: "dashboard_tab_created" }, 1);
 
     editDashboard();
     deleteTab("Tab 2");
     saveDashboard();
-    expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 2); // dashboard_tab_deleted
+    expectGoodSnowplowEvent({ event: "dashboard_saved" }, 2);
+    expectGoodSnowplowEvent({ event: "dashboard_tab_deleted" }, 1);
   });
 
   it("should send snowplow events when cards are moved between tabs", () => {
