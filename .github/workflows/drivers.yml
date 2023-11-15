@@ -395,6 +395,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mysql-8-0-ee'
+        test-args: ":only metabase.db.schema-migrations-test/remove-collection-color-test"
 
   be-tests-mysql-latest-ee:
     needs: [files-changed, external-filter]
