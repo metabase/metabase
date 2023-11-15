@@ -1,4 +1,4 @@
-(ns metabase-enterprise.advanced-config.models.pulse-channel
+(ns metabase-enterprise.advanced-config.models.subscription-channel
   (:require
    [clojure.string :as str]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -24,11 +24,11 @@
           not-empty))
 
 (defn validate-email-domains
-  "Check that `email-addresses` associated with a [[metabase.models.pulse-channel]] are allowed based on the value of
+  "Check that `email-addresses` associated with a [[metabase.models.subscription-channel]] are allowed based on the value of
   the [[subscription-allowed-domains]] Setting, if set. This function no-ops if `subscription-allowed-domains` is
   unset or if we do not have a premium token with the `:email-allow-list` feature.
 
-  This function is called by [[metabase.models.pulse-channel/validate-email-domains]] when Pulses are created and
+  This function is called by [[metabase.models.subscription-channel/validate-email-domains]] when Pulses are created and
   updated."
   [email-addresses]
   (when (premium-features/enable-email-allow-list?)

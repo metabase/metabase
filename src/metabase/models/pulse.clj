@@ -448,11 +448,11 @@
                          :schedule_frame (keyword (:schedule_frame new-channel))))]
     (cond
       ;; 1. in channels, NOT in db-channels = CREATE
-      (and channel (not existing-channel))  (subscription-channel/create-pulse-channel! channel)
+      (and channel (not existing-channel))  (subscription-channel/create-subscription-channel! channel)
       ;; 2. NOT in channels, in db-channels = DELETE
       (and (nil? channel) existing-channel) (t2/delete! :model/SubscriptionChannel :id (:id existing-channel))
       ;; 3. in channels, in db-channels = UPDATE
-      (and channel existing-channel)        (subscription-channel/update-pulse-channel! channel)
+      (and channel existing-channel)        (subscription-channel/update-subscription-channel! channel)
       ;; 4. NOT in channels, NOT in db-channels = NO-OP
       :else                                 nil)))
 

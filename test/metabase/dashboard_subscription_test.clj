@@ -43,17 +43,17 @@
                                          :row          0
                                          :card_id      (u/the-id card)}
                                         dashcard)
-                 :model/SubscriptionChannel  {pc-id :id} (case channel
-                                                           :email
-                                                           {:pulse_id pulse-id}
+                 :model/SubscriptionChannel {sc-id :id} (case channel
+                                                          :email
+                                                          {:pulse_id pulse-id}
 
-                                                           :slack
-                                                           {:pulse_id     pulse-id
-                                                            :channel_type "slack"
-                                                            :details      {:channel "#general"}})]
+                                                          :slack
+                                                          {:pulse_id     pulse-id
+                                                           :channel_type "slack"
+                                                           :details      {:channel "#general"}})]
     (if (= channel :email)
       (mt/with-temp [PulseChannelRecipient _ {:user_id                 (pulse.test-util/rasta-id)
-                                              :subscription_channel_id pc-id}]
+                                              :subscription_channel_id sc-id}]
         (f pulse))
       (f pulse))))
 

@@ -193,7 +193,7 @@
                     (mt/with-temp [Pulse                      alert (alert-test/basic-alert)
                                    Card                       card  {}
                                    PulseCard                  _     (alert-test/pulse-card alert card)
-                                   :model/SubscriptionChannel sc    (alert-test/pulse-channel alert)]
+                                   :model/SubscriptionChannel sc    (alert-test/subscription-channel alert)]
                       (testing (format "- add alert's recipient with %s user" (mt/user-descriptor req-user))
                         (mt/user-http-request req-user :put status (format "alert/%d" (:id alert))
                                               (alert-test/default-alert-req card sc)))))
@@ -202,7 +202,7 @@
                     (mt/with-temp [Pulse                      alert (alert-test/basic-alert)
                                    Card                       card  {}
                                    PulseCard                  _     (alert-test/pulse-card alert card)
-                                   :model/SubscriptionChannel sc    (alert-test/pulse-channel alert)]
+                                   :model/SubscriptionChannel sc    (alert-test/subscription-channel alert)]
                       (testing (format "- archive alert with %s user" (mt/user-descriptor req-user))
                         (mt/user-http-request req-user :put status (format "alert/%d" (:id alert))
                                               (-> (alert-test/default-alert-req card sc)
@@ -213,7 +213,7 @@
                     (mt/with-temp [Pulse                      alert (alert-test/basic-alert)
                                    Card                       card  {}
                                    PulseCard                  _     (alert-test/pulse-card alert card)
-                                   :model/SubscriptionChannel sc    (alert-test/pulse-channel alert)
+                                   :model/SubscriptionChannel sc    (alert-test/subscription-channel alert)
                                    PulseChannelRecipient _     (alert-test/recipient sc :rasta)]
                       (testing (format "- remove alert's recipient with %s user" (mt/user-descriptor req-user))
                         (mt/user-http-request req-user :put status (format "alert/%d" (:id alert))

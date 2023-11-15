@@ -1644,11 +1644,11 @@
                      PulseCard             _     {:pulse_id (u/the-id pulse)
                                                   :card_id  (u/the-id card)
                                                   :position 0}
-                     :model/SubscriptionChannel  pc    {:pulse_id (u/the-id pulse)}
+                     :model/SubscriptionChannel  sc    {:pulse_id (u/the-id pulse)}
                      PulseChannelRecipient _     {:user_id                 (mt/user->id :crowberto)
-                                                  :subscription_channel_id (u/the-id pc)}
+                                                  :subscription_channel_id (u/the-id sc)}
                      PulseChannelRecipient _     {:user_id                 (mt/user->id :rasta)
-                                                  :subscription_channel_id (u/the-id pc)}]
+                                                  :subscription_channel_id (u/the-id sc)}]
         (with-cards-in-writeable-collection card
           (mt/with-fake-inbox
             (when deleted?
@@ -1679,9 +1679,9 @@
                         PulseCard             _     {:pulse_id (u/the-id pulse)
                                                      :card_id  (u/the-id card)
                                                      :position 0}
-                        :model/SubscriptionChannel  pc    {:pulse_id (u/the-id pulse)}
+                        :model/SubscriptionChannel  sc    {:pulse_id (u/the-id pulse)}
                         PulseChannelRecipient _     {:user_id                 (mt/user->id :rasta)
-                                                     :subscription_channel_id (u/the-id pc)}]
+                                                     :subscription_channel_id (u/the-id sc)}]
            (with-cards-in-writeable-collection card
              (mt/with-fake-inbox
                (array-map

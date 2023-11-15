@@ -221,15 +221,15 @@
                      :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
-          (mt/with-temp [Card                 {card-id :id}  {:dataset_query query}
-                         Pulse                {pulse-id :id} {:name          "Pulse Name"
-                                                              :skip_if_empty false}
-                         PulseCard             _             {:pulse_id pulse-id
-                                                              :card_id  card-id
-                                                              :position 0}
-                         :model/SubscriptionChannel {pc-id :id}   {:pulse_id pulse-id}
-                         PulseChannelRecipient _             {:user_id                 (mt/user->id :rasta)
-                                                              :subscription_channel_id pc-id}]
+          (mt/with-temp [Card                      {card-id :id}  {:dataset_query query}
+                         Pulse                     {pulse-id :id} {:name          "Pulse Name"
+                                                                   :skip_if_empty false}
+                         PulseCard                  _             {:pulse_id pulse-id
+                                                                   :card_id  card-id
+                                                                   :position 0}
+                         :model/SubscriptionChannel {sc-id :id}   {:pulse_id pulse-id}
+                         PulseChannelRecipient      _             {:user_id                 (mt/user->id :rasta)
+                                                                   :subscription_channel_id sc-id}]
             (mt/with-fake-inbox
               (mt/with-test-user nil
                 (metabase.pulse/send-pulse! (pulse/retrieve-pulse pulse-id)))
@@ -245,10 +245,10 @@
 (deftest sandboxed-users-cant-read-pulse-recipients
   (testing "When sandboxed users fetch a pulse hydrated with recipients, they should only see themselves"
     (mt/with-temp [Pulse        {pulse-id :id} {:name "my pulse"}
-                   :model/SubscriptionChannel {pc-id :id} {:pulse_id     pulse-id
+                   :model/SubscriptionChannel {sc-id :id} {:pulse_id     pulse-id
                                                            :channel_type :email}
-                   PulseChannelRecipient _ {:subscription_channel_id pc-id :user_id (mt/user->id :crowberto)}
-                   PulseChannelRecipient _ {:subscription_channel_id pc-id :user_id (mt/user->id :rasta)}]
+                   PulseChannelRecipient _ {:subscription_channel_id sc-id :user_id (mt/user->id :crowberto)}
+                   PulseChannelRecipient _ {:subscription_channel_id sc-id :user_id (mt/user->id :rasta)}]
       (let [recipient-ids (fn [pulses]
                             (let [pulse      (first (filter #(= pulse-id (:id %)) pulses))
                                   recipients (-> pulse :channels first :recipients)]
@@ -278,17 +278,17 @@
   (testing "When sandboxed users update a pulse, Metabase users in the recipients list are not deleted, even if they
            are not included in the request."
     (mt/with-temp [Pulse        {pulse-id :id} {:name "my pulse"}
-                   :model/SubscriptionChannel {pc-id :id :as pc} {:pulse_id     pulse-id
+                   :model/SubscriptionChannel {sc-id :id :as sc} {:pulse_id     pulse-id
                                                                   :channel_type :email
                                                                   :details      {:emails "asdf@metabase.com"}}
-                   PulseChannelRecipient _ {:subscription_channel_id pc-id :user_id (mt/user->id :crowberto)}
-                   PulseChannelRecipient _ {:subscription_channel_id pc-id :user_id (mt/user->id :rasta)}]
+                   PulseChannelRecipient _ {:subscription_channel_id sc-id :user_id (mt/user->id :crowberto)}
+                   PulseChannelRecipient _ {:subscription_channel_id sc-id :user_id (mt/user->id :rasta)}]
 
       (mt/with-test-user :rasta
         (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
           ;; Rasta, a sandboxed user, updates the pulse, but does not include Crowberto in the recipients list
           (mt/user-http-request :rasta :put 200 (format "pulse/%d" pulse-id)
-                                {:channels [(assoc pc :recipients [{:id (mt/user->id :rasta)}])]}))
+                                {:channels [(assoc sc :recipients [{:id (mt/user->id :rasta)}])]}))
 
         ;; Check that both Rasta and Crowberto are still recipients
         (is (= (sort [(mt/user->id :rasta) (mt/user->id :crowberto)])
@@ -297,7 +297,7 @@
         (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly false)]
           ;; Rasta, a non-sandboxed user, updates the pulse, but does not include Crowberto in the recipients list
           (mt/user-http-request :rasta :put 200 (format "pulse/%d" pulse-id)
-                                {:channels [(assoc pc :recipients [{:id (mt/user->id :rasta)}])]})
+                                {:channels [(assoc sc :recipients [{:id (mt/user->id :rasta)}])]})
 
 
           ;; Crowberto should now be removed as a recipient

@@ -62,8 +62,8 @@
          (catch Throwable e
            (on-error pulse-id e)))))))
 
-; Clearing pulse channels is not done synchronously in order to support undoing feature.
-(s/defn ^:private clear-pulse-channels!
+; Clearing subscription channels is not done synchronously in order to support undoing feature.
+(s/defn ^:private clear-subscription-channels!
   []
   (when-let [ids-to-delete (seq
                             (for [channel (t2/select [:model/SubscriptionChannel :id :details]
@@ -104,14 +104,14 @@
                                  (time/to-time-zone (time/now) (time/time-zone-for-id reporting-timezone)))
             curr-hour          (time/hour now)
             ;; joda time produces values of 1-7 here (Mon -> Sun) and we subtract 1 from it to
-            ;; make the values zero based to correspond to the indexes in pulse-channel/days-of-week
+            ;; make the values zero based to correspond to the indexes in subscription-channel/days-of-week
             curr-weekday       (->> (dec (time/day-of-week now))
                                     (get subscription-channel/days-of-week)
                                     :id)
             curr-monthday      (monthday now)
             curr-monthweek     (monthweek now)]
         (send-pulses! curr-hour curr-weekday curr-monthday curr-monthweek))
-      (clear-pulse-channels!))
+      (clear-subscription-channels!))
     (catch Throwable e
       (log/error e (trs "SendPulses task failed")))))
 

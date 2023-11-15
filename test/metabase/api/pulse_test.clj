@@ -22,7 +22,7 @@
    [metabase.pulse.render.style :as style]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
-   [metabase.test.mock.util :refer [pulse-channel-defaults]]
+   [metabase.test.mock.util :refer [subscription-channel-defaults]]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -45,7 +45,7 @@
       (assoc :include_csv false, :include_xls false, :dashboard_card_id nil, :dashboard_id nil,
              :parameter_mappings nil)))
 
-(defn- pulse-channel-details [channel]
+(defn- subscription-channel-details [channel]
   (select-keys channel [:schedule_type :schedule_details :channel_type :updated_at :details :pulse_id :id :enabled
                         :created_at]))
 
@@ -57,7 +57,7 @@
      :skip_if_empty :dashboard_id :parameters])
    {:creator  (user-details (t2/select-one 'User :id (:creator_id pulse)))
     :cards    (map pulse-card-details (:cards pulse))
-    :channels (map pulse-channel-details (:channels pulse))}))
+    :channels (map subscription-channel-details (:channels pulse))}))
 
 (defn- pulse-response [{:keys [created_at updated_at], :as pulse}]
   (-> pulse
@@ -191,7 +191,7 @@
                      :cards         (for [card [card-1 card-2]]
                                       (assoc (pulse-card-details card)
                                              :collection_id true))
-                     :channels      [(merge pulse-channel-defaults
+                     :channels      [(merge subscription-channel-defaults
                                             {:channel_type  "email"
                                              :schedule_type "daily"
                                              :schedule_hour 12
@@ -244,7 +244,7 @@
                          :cards         (for [card [card-1 card-2]]
                                           (assoc (pulse-card-details card)
                                                  :collection_id true))
-                         :channels      [(merge pulse-channel-defaults
+                         :channels      [(merge subscription-channel-defaults
                                                 {:channel_type  "email"
                                                  :schedule_type "daily"
                                                  :schedule_hour 12
@@ -278,7 +278,7 @@
                        :cards         (for [card [card-1 card-2]]
                                         (assoc (pulse-card-details card)
                                                :collection_id true))
-                       :channels      [(merge pulse-channel-defaults
+                       :channels      [(merge subscription-channel-defaults
                                               {:channel_type  "email"
                                                :schedule_type "daily"
                                                :schedule_hour 12
@@ -316,7 +316,7 @@
                          :creator       (user-details (mt/fetch-user :rasta))
                          :cards         [(assoc (pulse-card-details card-1) :include_csv true, :include_xls true, :collection_id true, :dashboard_card_id nil)
                                          (assoc (pulse-card-details card-2) :collection_id true)]
-                         :channels      [(merge pulse-channel-defaults
+                         :channels      [(merge subscription-channel-defaults
                                                 {:channel_type  "email"
                                                  :schedule_type "daily"
                                                  :schedule_hour 12
@@ -413,10 +413,10 @@
 
 (deftest update-test
   (testing "PUT /api/pulse/:id"
-    (mt/with-temp [Pulse                 pulse {}
-                   :model/SubscriptionChannel          pc    {:pulse_id (u/the-id pulse)}
-                   PulseChannelRecipient _     {:subscription_channel_id (u/the-id pc) :user_id (mt/user->id :rasta)}
-                   Card                  card  {}]
+    (mt/with-temp [Pulse                       pulse {}
+                   :model/SubscriptionChannel  sc    {:pulse_id (u/the-id pulse)}
+                   PulseChannelRecipient       _     {:subscription_channel_id (u/the-id sc) :user_id (mt/user->id :rasta)}
+                   Card                        card  {}]
       (let [filter-params [{:id "123abc", :name "species", :type "string"}]]
         (with-pulses-in-writeable-collection [pulse]
           (api.card-test/with-cards-in-readable-collection [card]
@@ -427,7 +427,7 @@
                      :creator       (user-details (mt/fetch-user :rasta))
                      :cards         [(assoc (pulse-card-details card)
                                             :collection_id true)]
-                     :channels      [(merge pulse-channel-defaults
+                     :channels      [(merge subscription-channel-defaults
                                             {:channel_type  "slack"
                                              :schedule_type "hourly"
                                              :details       {:channels "#general"}
@@ -759,8 +759,8 @@
                    Pulse                 {pulse-3-id :id :as pulse-3} {:name         "MNOPQR"
                                                                        :dashboard_id dashboard-id
                                                                        :creator_id   (mt/user->id :crowberto)}
-                   :model/SubscriptionChannel          pc {:pulse_id pulse-3-id}
-                   PulseChannelRecipient _  {:subscription_channel_id (u/the-id pc)
+                   :model/SubscriptionChannel sc {:pulse_id pulse-3-id}
+                   PulseChannelRecipient _  {:subscription_channel_id (u/the-id sc)
                                              :user_id                 (mt/user->id :rasta)}]
       (with-pulses-in-writeable-collection [pulse-1 pulse-2 pulse-3]
         (testing "admins can see all pulses"
@@ -865,8 +865,8 @@
           (mt/user-http-request :rasta :get 200 (str "pulse/" (u/the-id pulse)))))
 
       (mt/with-temp [Pulse                 pulse {:creator_id (mt/user->id :crowberto)}
-                     :model/SubscriptionChannel          pc    {:pulse_id (u/the-id pulse)}
-                     PulseChannelRecipient _     {:subscription_channel_id (u/the-id pc)
+                     :model/SubscriptionChannel  sc    {:pulse_id (u/the-id pulse)}
+                     PulseChannelRecipient _     {:subscription_channel_id (u/the-id sc)
                                                   :user_id                 (mt/user->id :rasta)}]
         (with-pulses-in-nonreadable-collection [pulse]
           (mt/user-http-request :rasta :get 200 (str "pulse/" (u/the-id pulse))))))

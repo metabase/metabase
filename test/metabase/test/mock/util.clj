@@ -36,7 +36,7 @@
    :created_at         true
    :json_unfolding     false})
 
-(def pulse-channel-defaults
+(def subscription-channel-defaults
   {:schedule_frame nil
    :schedule_hour  nil
    :schedule_day   nil

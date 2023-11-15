@@ -131,7 +131,7 @@
 
 (mi/define-simple-hydration-method recipients
   :recipients
-  "Return the `PulseChannelRecipients` associated with this `pulse-channel`."
+  "Return the `PulseChannelRecipients` associated with this `subscription-channel`."
   [{subscription-channel-id :id, {:keys [emails]} :details}]
   (concat
    (for [email emails]
@@ -153,7 +153,7 @@
 
 (t2/define-before-delete :model/SubscriptionChannel
   [{pulse-id :pulse_id, subscription-channel-id :id}]
-  ;; This function is called by [[metabase.models.pulse-channel/pre-delete]] when the `SubscriptionChannel` is about to be
+  ;; This function is called by [[metabase.models.subscription-channel/pre-delete]] when the `SubscriptionChannel` is about to be
   ;; deleted. Archives `Pulse` if the channel being deleted is its last channel."
   (when *archive-parent-pulse-when-last-channel-is-deleted*
     (let [other-channels-count (t2/count :model/SubscriptionChannel :pulse_id pulse-id, :id [:not= subscription-channel-id])]
@@ -163,16 +163,16 @@
 ;; we want to load this at the top level so the Setting the namespace defines gets loaded
 (def ^:private ^{:arglists '([email-addresses])} validate-email-domains*
   (or (when config/ee-available?
-        (classloader/require 'metabase-enterprise.advanced-config.models.pulse-channel)
-        (resolve 'metabase-enterprise.advanced-config.models.pulse-channel/validate-email-domains))
+        (classloader/require 'metabase-enterprise.advanced-config.models.subscription-channel)
+        (resolve 'metabase-enterprise.advanced-config.models.subscription-channel/validate-email-domains))
       (constantly nil)))
 
 (defn validate-email-domains
   "For channels that are being sent to raw email addresses: check that the domains in the emails are allowed by
-  the [[metabase-enterprise.advanced-config.models.pulse-channel/subscription-allowed-domains]] Setting, if set. This
+  the [[metabase-enterprise.advanced-config.models.subscription-channel/subscription-allowed-domains]] Setting, if set. This
   will no-op if `subscription-allowed-domains` is unset or if we do not have a premium token with the
   `:advanced-config` feature."
-  [{{:keys [emails]} :details, :keys [recipients], :as pulse-channel}]
+  [{{:keys [emails]} :details, :keys [recipients], :as subscription-channel}]
   ;; Raw email addresses can be in either `[:details :emails]` or in `:recipients`, depending on who is invoking this
   ;; function. Make sure we handle both situations.
   ;;
@@ -182,7 +182,7 @@
   ;;
   ;;    {:recipients [{:email \"email@example.com\"} ...]}
   ;;
-  (u/prog1 pulse-channel
+  (u/prog1 subscription-channel
     (let [raw-email-recipients (remove :id recipients)
           user-recipients      (filter :id recipients)
           emails               (concat emails (map :email raw-email-recipients))]
@@ -204,15 +204,15 @@
                               {:status-code 403})))))))))
 
 (t2/define-before-insert :model/SubscriptionChannel
-  [pulse-channel]
-  (validate-email-domains pulse-channel))
+  [subscription-channel]
+  (validate-email-domains subscription-channel))
 
 (t2/define-before-update :model/SubscriptionChannel
-  [pulse-channel]
-  (validate-email-domains (mi/pre-update-changes pulse-channel)))
+  [subscription-channel]
+  (validate-email-domains (mi/pre-update-changes subscription-channel)))
 
 (defmethod serdes/hash-fields :model/SubscriptionChannel
-  [_pulse-channel]
+  [_subscription-channel]
   [(serdes/hydrated-hash :pulse) :channel_type :details :created_at])
 
 ;; ## Persistence Functions
@@ -260,7 +260,7 @@
 
 
 (defn update-recipients!
-  "Update the `PulseChannelRecipients` for `pulse-CHANNEL`.
+  "Update the `PulseChannelRecipients` for `subscription-channel`.
   `user-ids` should be a definitive collection of *all* IDs of users who should receive the pulse.
 
   *  If an ID in `user-ids` has no corresponding existing `PulseChannelRecipients` object, one will be created.
@@ -282,7 +282,7 @@
         :user_id                 [:in recipients-]))))
 
 
-(defn update-pulse-channel!
+(defn update-subscription-channel!
   "Updates an existing `SubscriptionChannel` along with all related data associated with the channel such as
   `PulseChannelRecipients`."
   [{:keys [id channel_type enabled details recipients schedule_type schedule_day schedule_hour schedule_frame]
@@ -311,7 +311,7 @@
       (update-recipients! id (or (get recipients-by-type true) [])))))
 
 
-(defn create-pulse-channel!
+(defn create-subscription-channel!
   "Create a new `SubscriptionChannel` along with all related data associated with the channel such as
   `PulseChannelRecipients`."
   [{:keys [channel_type details enabled pulse_id recipients schedule_type schedule_day schedule_hour schedule_frame]
@@ -346,8 +346,8 @@
 
 (methodical/defmethod mi/to-json :model/SubscriptionChannel
   "Don't include `:emails`, we use that purely internally"
-  [pulse-channel json-generator]
-  (next-method (m/dissoc-in pulse-channel [:details :emails]) json-generator))
+  [subscription-channel json-generator]
+  (next-method (m/dissoc-in subscription-channel [:details :emails]) json-generator))
 
 ; ----------------------------------------------------- Serialization -------------------------------------------------
 

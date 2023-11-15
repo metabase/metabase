@@ -172,7 +172,7 @@
 (s/def ::channel_type ::not-empty-string)
 (s/def ::schedule_type ::not-empty-string)
 
-(s/def ::pulse-channel (s/keys :req-un [::id ::channel_type ::details ::schedule_type]))
+(s/def ::subscription-channel (s/keys :req-un [::id ::channel_type ::details ::schedule_type]))
 (s/def ::pulse-channel-recipient (s/keys :req-un [::id]))
 
 (s/def ::icon           (s/and ::name #(< (count %) 100)))
@@ -288,15 +288,15 @@
                                   :relations {:pulse_id [:pulse :id]
                                               :card_id  [:card :id]
                                               :dashboard_card_id [:dashboard-card :id]}}
-   :pulse-channel                {:prefix    :pulse-channel
-                                  :spec      ::pulse-channel
+   :subscription-channel         {:prefix    :sc
+                                  :spec      ::subscription-channel
                                   :insert!   {:model :model/SubscriptionChannel}
                                   :relations {:pulse_id [:pulse :id]}}
    :pulse-channel-recipient      {:prefix    :pcr
                                   :spec      ::pulse-channel-recipient
                                   :insert!   {:model PulseChannelRecipient}
-                                  :relations {:subscription_channel_id [:pulse-channel :id]
-                                              :user_id          [:core-user     :id]}}
+                                  :relations {:subscription_channel_id [:subscription-channel :id]
+                                              :user_id                 [:core-user :id]}}
    :timeline                     {:prefix    :timeline
                                   :spec      ::timeline
                                   :insert!   {:model Timeline}

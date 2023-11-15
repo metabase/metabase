@@ -1,4 +1,4 @@
-(ns metabase.models.pulse-channel-test
+(ns metabase.models.subscription-channel-test
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
@@ -139,7 +139,7 @@
 ;; create a channel then select its details
 (defn- create-channel-then-select!
   [channel]
-  (when-let [new-channel-id (subscription-channel/create-pulse-channel! channel)]
+  (when-let [new-channel-id (subscription-channel/create-subscription-channel! channel)]
     (-> (t2/select-one :model/SubscriptionChannel :id new-channel-id)
         (t2/hydrate :recipients)
         (update :recipients #(sort-by :email %))
@@ -149,15 +149,15 @@
 
 (defn- update-channel-then-select!
   [{:keys [id] :as channel}]
-  (subscription-channel/update-pulse-channel! channel)
+  (subscription-channel/update-subscription-channel! channel)
   (-> (t2/select-one :model/SubscriptionChannel :id id)
       (t2/hydrate :recipients)
       (dissoc :id :pulse_id :created_at :updated_at)
       (update :entity_id boolean)
       (m/dissoc-in [:details :emails])))
 
-;; create-pulse-channel!
-(deftest create-pulse-channel!-test
+;; create-subscription-channel!
+(deftest create-subscription-channel!-test
   (premium-features-test/with-premium-features #{}
     (t2.with-temp/with-temp [Pulse {:keys [id]}]
       (mt/with-model-cleanup [Pulse]
@@ -222,7 +222,7 @@
                                    {:id (mt/user->id :rasta)}
                                    {:id (mt/user->id :crowberto)}]}))))))))
 
-(deftest update-pulse-channel!-test
+(deftest update-subscription-channel!-test
   (premium-features-test/with-premium-features #{}
     (t2.with-temp/with-temp [Pulse {pulse-id :id}]
       (testing "simple starting case where we modify the schedule hour and add a recipient"

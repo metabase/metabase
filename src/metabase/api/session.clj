@@ -356,10 +356,10 @@
    email    :string
    hash     :string}
   (check-hash pulse-id email hash (request.u/ip-address request))
-  (api/let-404 [pulse-channel (t2/select-one :model/SubscriptionChannel :pulse_id pulse-id :channel_type "email")]
-    (let [emails (get-in pulse-channel [:details :emails])]
+  (api/let-404 [subscription-channel (t2/select-one :model/SubscriptionChannel :pulse_id pulse-id :channel_type "email")]
+    (let [emails (get-in subscription-channel [:details :emails])]
       (if (some #{email} emails)
-        (t2/update! :model/SubscriptionChannel (:id pulse-channel) (assoc-in pulse-channel [:details :emails] (remove #{email} emails)))
+        (t2/update! :model/SubscriptionChannel (:id subscription-channel) (assoc-in subscription-channel [:details :emails] (remove #{email} emails)))
         (throw (ex-info (tru "Email for pulse-id doesn't exist.")
                         {:type        type
                          :status-code 400}))))
@@ -373,14 +373,14 @@
    email    :string
    hash     :string}
   (check-hash pulse-id email hash (request.u/ip-address request))
-  (api/let-404 [pulse-channel (t2/select-one :model/SubscriptionChannel :pulse_id pulse-id :channel_type "email")]
-    (let [emails       (get-in pulse-channel [:details :emails])
+  (api/let-404 [subscription-channel (t2/select-one :model/SubscriptionChannel :pulse_id pulse-id :channel_type "email")]
+    (let [emails       (get-in subscription-channel [:details :emails])
           given-email? #(= % email)]
       (if (some given-email? emails)
         (throw (ex-info (tru "Email for pulse-id already exists.")
                         {:type        type
                          :status-code 400}))
-        (t2/update! :model/SubscriptionChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] conj email))))
+        (t2/update! :model/SubscriptionChannel (:id subscription-channel) (update-in subscription-channel [:details :emails] conj email))))
     (events/publish-event! :event/subscription-unsubscribe-undo {:object {:email email}})
     {:status :success :title (:name (pulse/retrieve-notification pulse-id :archived false))}))
 

@@ -60,7 +60,7 @@
                                         :card_id  (u/the-id card)
                                         :position 0}
                                        pulse-card)
-                 :model/SubscriptionChannel {pc-id :id} (case channel
+                 :model/SubscriptionChannel {sc-id :id} (case channel
                                                          :email
                                                          {:pulse_id pulse-id}
 
@@ -70,7 +70,7 @@
                                                           :details      {:channel "#general"}})]
     (if (= channel :email)
       (t2.with-temp/with-temp [PulseChannelRecipient _ {:user_id                 (pulse.test-util/rasta-id)
-                                                        :subscription_channel_id pc-id}]
+                                                        :subscription_channel_id sc-id}]
         (f pulse))
       (f pulse))))
 
@@ -696,9 +696,9 @@
                    PulseCard             _ {:pulse_id pulse-id
                                             :card_id  card-id
                                             :dashboard_card_id dashboard-card-id}
-                   :model/SubscriptionChannel          {pc-id :id} {:pulse_id pulse-id}
+                   :model/SubscriptionChannel {sc-id :id} {:pulse_id pulse-id}
                    PulseChannelRecipient _ {:user_id                 (pulse.test-util/rasta-id)
-                                            :subscription_channel_id pc-id}]
+                                            :subscription_channel_id sc-id}]
         (pulse.test-util/email-test-setup
          (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
          (is (= (mt/email-to :rasta {:subject "Pulse Name"
@@ -712,10 +712,10 @@
                    Pulse                 {pulse-id :id} {:name "Pulse Name"}
                    PulseCard             _ {:pulse_id pulse-id
                                             :card_id  card-id}
-                   :model/SubscriptionChannel          {pc-id :id} {:pulse_id pulse-id
-                                                                    :details {:emails ["nonuser@metabase.com"]}}
+                   :model/SubscriptionChannel {sc-id :id} {:pulse_id pulse-id
+                                                           :details {:emails ["nonuser@metabase.com"]}}
                    PulseChannelRecipient _ {:user_id                (pulse.test-util/rasta-id)
-                                            :subscription_channel_id pc-id}]
+                                            :subscription_channel_id sc-id}]
       (pulse.test-util/email-test-setup
        (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
        (is (mt/received-email-body? :rasta #"Manage your subscriptions"))

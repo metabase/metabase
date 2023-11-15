@@ -12,7 +12,7 @@
    [metabase.models.pulse :as pulse]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
-   [metabase.test.mock.util :refer [pulse-channel-defaults]]
+   [metabase.test.mock.util :refer [subscription-channel-defaults]]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -84,7 +84,7 @@
                              :dashboard_card_id  nil
                              :dashboard_id       nil
                              :parameter_mappings nil}]
-               :channels   [(merge pulse-channel-defaults
+               :channels   [(merge subscription-channel-defaults
                                    {:schedule_type :daily
                                     :schedule_hour 15
                                     :channel_type  :email
@@ -133,7 +133,7 @@
                                                     :schedule_type :daily
                                                     :schedule_hour 4
                                                     :recipients    [{:email "foo@bar.com"} {:id (mt/user->id :rasta)}]}])
-    (is (= (merge pulse-channel-defaults
+    (is (= (merge subscription-channel-defaults
                   {:channel_type  :email
                    :schedule_type :daily
                    :schedule_hour 4
@@ -156,7 +156,7 @@
               {:creator_id (mt/user->id :rasta)
                :name       "Booyah!"
                :entity_id  true
-               :channels   [(merge pulse-channel-defaults
+               :channels   [(merge subscription-channel-defaults
                                    {:schedule_type :daily
                                     :schedule_hour 18
                                     :channel_type  :email
@@ -267,7 +267,7 @@
                                  :dashboard_card_id  nil
                                  :dashboard_id       nil
                                  :parameter_mappings nil}]
-                   :channels   [(merge pulse-channel-defaults
+                   :channels   [(merge subscription-channel-defaults
                                        {:schedule_type :daily
                                         :schedule_hour 18
                                         :channel_type  :email
@@ -326,13 +326,13 @@
   (letfn [(do-with-objects [f]
             (mt/with-temp [User                  {user-id :id} {}
                            Pulse                 {pulse-id :id} {}
-                           :model/SubscriptionChannel {pulse-channel-id :id} {:pulse_id pulse-id}
-                           PulseChannelRecipient _ {:subscription_channel_id pulse-channel-id :user_id user-id}]
-              (f {:user-id          user-id
-                  :pulse-id         pulse-id
-                  :pulse-channel-id pulse-channel-id
-                  :archived?        (fn []
-                                      (t2/select-one-fn :archived Pulse :id pulse-id))})))]
+                           :model/SubscriptionChannel {subscription-channel-id :id} {:pulse_id pulse-id}
+                           PulseChannelRecipient _ {:subscription_channel_id subscription-channel-id :user_id user-id}]
+              (f {:user-id                 user-id
+                  :pulse-id                pulse-id
+                  :subscription-channel-id subscription-channel-id
+                  :archived?               (fn []
+                                            (t2/select-one-fn :archived Pulse :id pulse-id))})))]
     (testing "automatically archive a Pulse when the last user unsubscribes"
       (testing "one subscriber"
         (do-with-objects
@@ -343,11 +343,11 @@
              (is (archived?))))))
       (testing "multiple subscribers"
         (do-with-objects
-         (fn [{:keys [archived? user-id pulse-channel-id]}]
+         (fn [{:keys [archived? user-id subscription-channel-id]}]
            ;; create a second user + subscription so we can verify that we don't archive the Pulse if a User unsubscribes
            ;; but there is still another subscription.
            (mt/with-temp [User                  {user-2-id :id} {}
-                          PulseChannelRecipient _ {:subscription_channel_id pulse-channel-id :user_id user-2-id}]
+                          PulseChannelRecipient _ {:subscription_channel_id subscription-channel-id :user_id user-2-id}]
              (is (not (archived?)))
              (testing "User 1 becomes inactive: Pulse should not be archived yet (because User 2 is still a recipient)"
                (is (pos? (t2/update! User user-id {:is_active false})))
@@ -356,8 +356,8 @@
                (is (t2/update! User user-2-id {:is_active false}))
                (is (archived?))
                (testing "SubscriptionChannel & PulseChannelRecipient rows should have been archived as well."
-                 (is (not (t2/exists? :model/SubscriptionChannel :id pulse-channel-id)))
-                 (is (not (t2/exists? PulseChannelRecipient :subscription_channel_id pulse-channel-id))))))))))
+                 (is (not (t2/exists? :model/SubscriptionChannel :id subscription-channel-id)))
+                 (is (not (t2/exists? PulseChannelRecipient :subscription_channel_id subscription-channel-id))))))))))
     (testing "Don't archive Pulse if it has still has recipients after deleting User subscription\n"
       (testing "another User subscription exists on a DIFFERENT channel\n"
         (do-with-objects
@@ -382,8 +382,8 @@
       (testing "still sent to email addresses\n"
         (testing "emails on the same channel as deleted User\n"
           (do-with-objects
-           (fn [{:keys [archived? user-id pulse-channel-id]}]
-             (t2/update! :model/SubscriptionChannel pulse-channel-id {:details {:emails ["foo@bar.com"]}})
+           (fn [{:keys [archived? user-id subscription-channel-id]}]
+             (t2/update! :model/SubscriptionChannel subscription-channel-id {:details {:emails ["foo@bar.com"]}})
              (testing "make the User inactive"
                (is (pos? (t2/update! User user-id {:is_active false}))))
              (testing "Pulse should not be archived"
@@ -482,8 +482,8 @@
           (mt/with-temp [Pulse                      subscription           {:collection_id (u/the-id collection)
                                                                             :dashboard_id  (u/the-id dashboard)
                                                                             :creator_id    (mt/user->id :crowberto)}
-                         :model/SubscriptionChannel {pulse-channel-id :id} {:pulse_id (u/the-id subscription)}
-                         PulseChannelRecipient      _                      {:subscription_channel_id pulse-channel-id
+                         :model/SubscriptionChannel {subscription-channel-id :id} {:pulse_id (u/the-id subscription)}
+                         PulseChannelRecipient      _                      {:subscription_channel_id subscription-channel-id
                                                                             :user_id                 (mt/user->id :rasta)}]
             (is (mi/can-read? subscription))
             (is (not (mi/can-write? subscription)))))
