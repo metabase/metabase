@@ -1,23 +1,18 @@
-(ns metabase.models.pulse-channel-recipient
+(ns metabase.models.subscription-channel-recipient
   (:require
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(def PulseChannelRecipient
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all these symbols in our codebase."
-  :model/PulseChannelRecipient)
+(methodical/defmethod t2/table-name :model/SubscriptionChannelRecipient [_model] :subscription_channel_recipient)
 
-(methodical/defmethod t2/table-name :model/PulseChannelRecipient [_model] :subscription_channel_recipient)
-
-(derive :model/PulseChannelRecipient :metabase/model)
+(derive :model/SubscriptionChannelRecipient :metabase/model)
 
 ;;; Deletes `SubscriptionChannel` if the recipient being deleted is its last recipient. (This only applies
-;;; to PulseChannels with User subscriptions; Slack PulseChannels and ones with email address subscriptions are not
+;;; to SubscriptionChannels with User subscriptions; Slack SubscriptionChannels and ones with email address subscriptions are not
 ;;; automatically deleted.
-(t2/define-before-delete :model/PulseChannelRecipient
-  [{channel-id :subscription_channel_id, subscription-channel-recipient-id :id}]
-  (let [other-recipients-count (t2/count PulseChannelRecipient
+(t2/define-before-delete :model/SubscriptionChannelRecipient
+  [{channel-id :subscription_channel_id subscription-channel-recipient-id :id}]
+  (let [other-recipients-count (t2/count :model/SubscriptionChannelRecipient
                                          :subscription_channel_id channel-id
                                          :id                      [:not= subscription-channel-recipient-id])
         last-recipient?        (zero? other-recipients-count)]

@@ -5,7 +5,6 @@
    [metabase.api.common :as api]
    [metabase.api.user :as api.user]
    [metabase.models.pulse :refer [Pulse]]
-   [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -15,9 +14,9 @@
   [id]
   {id ms/PositiveInt}
   (api.user/check-self-or-superuser id)
-  ;; delete all `PulseChannelRecipient` rows for this User, which means they will no longer receive any
+  ;; delete all `SubscriptionChannelRecipient` rows for this User, which means they will no longer receive any
   ;; Alerts/DashboardSubscriptions
-  (t2/delete! PulseChannelRecipient :user_id id)
+  (t2/delete! :model/SubscriptionChannelRecipient :user_id id)
   ;; archive anything they created.
   (t2/update! Pulse {:creator_id id, :archived false} {:archived true})
   api/generic-204-no-content)

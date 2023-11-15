@@ -29,7 +29,6 @@
             ModerationReview
             Pulse
             PulseCard
-            PulseChannelRecipient
             Table
             Timeline
             TimelineEvent
@@ -1635,20 +1634,20 @@
                                                                               [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
                                                                                                   [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}]]
     (testing message
-      (mt/with-temp [:model/Card           card  card
-                     Pulse                 pulse {:alert_condition  "rows"
-                                                  :alert_first_only false
-                                                  :creator_id       (mt/user->id :rasta)
-                                                  :name             "Original Alert Name"}
+      (mt/with-temp [:model/Card                         card  card
+                     Pulse                               pulse {:alert_condition  "rows"
+                                                                :alert_first_only false
+                                                                :creator_id       (mt/user->id :rasta)
+                                                                :name             "Original Alert Name"}
 
-                     PulseCard             _     {:pulse_id (u/the-id pulse)
-                                                  :card_id  (u/the-id card)
-                                                  :position 0}
-                     :model/SubscriptionChannel  sc    {:pulse_id (u/the-id pulse)}
-                     PulseChannelRecipient _     {:user_id                 (mt/user->id :crowberto)
-                                                  :subscription_channel_id (u/the-id sc)}
-                     PulseChannelRecipient _     {:user_id                 (mt/user->id :rasta)
-                                                  :subscription_channel_id (u/the-id sc)}]
+                     PulseCard                           _     {:pulse_id (u/the-id pulse)
+                                                                :card_id  (u/the-id card)
+                                                                :position 0}
+                     :model/SubscriptionChannel         sc    {:pulse_id (u/the-id pulse)}
+                     :model/SubscriptionChannelRecipient _    {:user_id                 (mt/user->id :crowberto)
+                                                               :subscription_channel_id (u/the-id sc)}
+                     :model/SubscriptionChannelRecipient _    {:user_id                 (mt/user->id :rasta)
+                                                               :subscription_channel_id (u/the-id sc)}]
         (with-cards-in-writeable-collection card
           (mt/with-fake-inbox
             (when deleted?
@@ -1670,18 +1669,18 @@
           :pulse-1  true
           :emails-2 {}
           :pulse-2  true}
-         (mt/with-temp [:model/Card           card  {:display                :line
-                                                     :visualization_settings {:graph.goal_value 10}}
-                        Pulse                 pulse {:alert_condition  "goal"
-                                                     :alert_first_only false
-                                                     :creator_id       (mt/user->id :rasta)
-                                                     :name             "Original Alert Name"}
-                        PulseCard             _     {:pulse_id (u/the-id pulse)
-                                                     :card_id  (u/the-id card)
-                                                     :position 0}
-                        :model/SubscriptionChannel  sc    {:pulse_id (u/the-id pulse)}
-                        PulseChannelRecipient _     {:user_id                 (mt/user->id :rasta)
-                                                     :subscription_channel_id (u/the-id sc)}]
+         (mt/with-temp [:model/Card                         card  {:display                :line
+                                                                   :visualization_settings {:graph.goal_value 10}}
+                        Pulse                               pulse {:alert_condition  "goal"
+                                                                   :alert_first_only false
+                                                                   :creator_id       (mt/user->id :rasta)
+                                                                   :name             "Original Alert Name"}
+                        PulseCard                           _     {:pulse_id (u/the-id pulse)
+                                                                   :card_id  (u/the-id card)
+                                                                   :position 0}
+                        :model/SubscriptionChannel          sc    {:pulse_id (u/the-id pulse)}
+                        :model/SubscriptionChannelRecipient _    {:user_id                 (mt/user->id :rasta)
+                                                                  :subscription_channel_id (u/the-id sc)}]
            (with-cards-in-writeable-collection card
              (mt/with-fake-inbox
                (array-map

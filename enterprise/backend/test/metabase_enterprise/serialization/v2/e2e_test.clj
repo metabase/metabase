@@ -220,8 +220,8 @@
                                               (many-random-fks 15 {} {:pulse_id  [:pulse 10]})
                                                ;; 15 channels for the dashboard subs
                                               (many-random-fks 15 {} {:pulse_id  [:pulse 10 20]})))
-               :pulse-channel-recipient (many-random-fks 40 {} {:subscription_channel_id [:sc 30]
-                                                                :user_id                 [:u 100]})}))
+               :subscription-channel-recipient (many-random-fks 40 {} {:subscription_channel_id [:sc 30]
+                                                                       :user_id                 [:u 100]})}))
 
           (is (= 100 (count (t2/select-fn-set :email 'User))))
 

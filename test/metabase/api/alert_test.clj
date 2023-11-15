@@ -6,9 +6,7 @@
    [metabase.email-test :as et]
    [metabase.events.audit-log-test :as audit-log-test]
    [metabase.http-client :as client]
-   [metabase.models
-    :refer [Card Collection Pulse PulseCard PulseChannelRecipient
-            User]]
+   [metabase.models :refer [Card Collection Pulse PulseCard User]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
@@ -177,7 +175,7 @@
             (t2/update! Pulse (u/the-id other-alert) {:name "Other"})
             (mt/with-temp [User uninvolved-user {}
                            :model/SubscriptionChannel subscription-channel {:pulse_id (u/the-id recipient-alert)}
-                           PulseChannelRecipient _ {:subscription_channel_id (u/the-id subscription-channel) :user_id (mt/user->id :lucky)}]
+                           :model/SubscriptionChannelRecipient _ {:subscription_channel_id (u/the-id subscription-channel) :user_id (mt/user->id :lucky)}]
               (testing "Admin can see any alerts"
                 (is (= #{"LuckyCreator" "LuckyRecipient" "Other"}
                        (set (map :name (mt/user-http-request :crowberto :get 200 "alert")))))
@@ -497,7 +495,7 @@
                    Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    :model/SubscriptionChannel  sc    (subscription-channel alert)
-                   PulseChannelRecipient _     (recipient sc :rasta)]
+                   :model/SubscriptionChannelRecipient _     (recipient sc :rasta)]
       (is (= (default-alert card)
              (mt/with-model-cleanup [Pulse]
                (alert-response
@@ -509,7 +507,7 @@
                    Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    :model/SubscriptionChannel  sc    (subscription-channel alert)
-                   PulseChannelRecipient _     (recipient sc :rasta)]
+                   :model/SubscriptionChannelRecipient _     (recipient sc :rasta)]
       (is (= (assoc (default-alert card)
                     :alert_first_only true
                     :alert_above_goal true
@@ -525,7 +523,7 @@
                    Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    :model/SubscriptionChannel  sc    (subscription-channel alert)
-                   PulseChannelRecipient _     (recipient sc :crowberto)]
+                   :model/SubscriptionChannelRecipient _     (recipient sc :crowberto)]
       (is (= [(-> (default-alert card)
                   (assoc-in [:channels 0 :recipients] (set (map recipient-details [:crowberto :rasta]))))
               (et/email-to :rasta {:subject "Crowberto Corv added you to an alert"
@@ -546,7 +544,7 @@
                    Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    :model/SubscriptionChannel  sc    (subscription-channel alert)
-                   PulseChannelRecipient _     (recipient sc :rasta)]
+                   :model/SubscriptionChannelRecipient _     (recipient sc :rasta)]
       (is (= (-> (default-alert card)
                  (assoc-in [:card :collection_id] true))
              (with-alerts-in-writeable-collection [alert]
@@ -560,7 +558,7 @@
                    Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    :model/SubscriptionChannel  sc    (subscription-channel alert)
-                   PulseChannelRecipient _     (recipient sc :rasta)]
+                   :model/SubscriptionChannelRecipient _     (recipient sc :rasta)]
       (is (= (str "Non-admin users without monitoring or subscription permissions "
                   "are not allowed to modify the channels for an alert")
              (with-alerts-in-writeable-collection [alert]
@@ -574,8 +572,8 @@
                    Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    :model/SubscriptionChannel  sc    (subscription-channel alert)
-                   PulseChannelRecipient _     (recipient sc :crowberto)
-                   PulseChannelRecipient _     (recipient sc :rasta)]
+                   :model/SubscriptionChannelRecipient _     (recipient sc :crowberto)
+                   :model/SubscriptionChannelRecipient _     (recipient sc :rasta)]
       (with-alert-setup
         (testing "API response"
           (is (= (-> (default-alert card)
@@ -599,7 +597,7 @@
                           Card                  card  {}
                           PulseCard             _     (pulse-card alert card)
                           :model/SubscriptionChannel  sc    (subscription-channel alert)
-                          PulseChannelRecipient _     (recipient sc :rasta)]
+                          :model/SubscriptionChannelRecipient _     (recipient sc :rasta)]
              (mt/with-non-admin-groups-no-root-collection-perms
                (with-alert-setup
                  ((alert-client :rasta) :put 403 (alert-url alert)
@@ -612,7 +610,7 @@
                             Card                  card  {}
                             PulseCard             _     (pulse-card alert card)
                             :model/SubscriptionChannel  sc    (subscription-channel alert)
-                            PulseChannelRecipient _     (recipient sc :crowberto)]
+                            :model/SubscriptionChannelRecipient _     (recipient sc :crowberto)]
                (with-alert-setup
                  ((alert-client :rasta) :put 403 (alert-url alert)
                   (default-alert-req card sc))))))))
@@ -703,7 +701,7 @@
                                              :name             nil}
                  PulseCard             _    (pulse-card alert card)
                  :model/SubscriptionChannel sc   (subscription-channel alert)
-                 PulseChannelRecipient _    (recipient sc :rasta)]
+                 :model/SubscriptionChannelRecipient _    (recipient sc :rasta)]
     (is (= [(-> (default-alert card)
                 (assoc :can_write false)
                 (update-in [:channels 0] merge {:schedule_hour 15, :schedule_type "daily"})
@@ -721,14 +719,14 @@
                           Pulse                 alert (assoc (basic-alert) :alert_above_goal true)
                           PulseCard             _     (pulse-card alert card)
                           :model/SubscriptionChannel  sc    (subscription-channel alert)
-                          PulseChannelRecipient pcr   (recipient sc :rasta)
-                          PulseChannelRecipient _     (recipient sc :crowberto)]
+                          :model/SubscriptionChannelRecipient scr   (recipient sc :rasta)
+                          :model/SubscriptionChannelRecipient _     (recipient sc :crowberto)]
              (with-alerts-in-readable-collection [alert]
                (with-alert-setup
                  (array-map
                   :count-1 (count ((alert-client :rasta) :get 200 (alert-question-url card)))
                   :count-2 (do
-                             (t2/delete! PulseChannelRecipient :id (u/the-id pcr))
+                             (t2/delete! :model/SubscriptionChannelRecipient :id (u/the-id scr))
                              (api:alert-question-count :rasta card)))))))))
 
   (testing "Non-admin users should not see others alerts, admins see all alerts"
@@ -739,14 +737,14 @@
                                                                :alert_above_goal false)
                           PulseCard             _       (pulse-card alert-1 card)
                           :model/SubscriptionChannel          sc-1    (subscription-channel alert-1)
-                          PulseChannelRecipient _       (recipient sc-1 :rasta)
+                          :model/SubscriptionChannelRecipient _       (recipient sc-1 :rasta)
                           ;; A separate admin created alert
                           Pulse                 alert-2 (assoc (basic-alert)
                                                                :alert_above_goal false
                                                                :creator_id       (mt/user->id :crowberto))
                           PulseCard             _       (pulse-card alert-2 card)
                           :model/SubscriptionChannel          sc-2    (subscription-channel alert-2)
-                          PulseChannelRecipient _       (recipient sc-2 :crowberto)
+                          :model/SubscriptionChannelRecipient _       (recipient sc-2 :crowberto)
                           :model/SubscriptionChannel          _       (assoc (subscription-channel alert-2) :channel_type "slack")]
              (with-alerts-in-readable-collection [alert-1 alert-2]
                (with-alert-setup
@@ -761,7 +759,7 @@
                                                         :archived         true)
                    PulseCard             _       (pulse-card alert-1 card)
                    :model/SubscriptionChannel    sc-1    (subscription-channel alert-1)
-                   PulseChannelRecipient _       (recipient sc-1 :rasta)
+                   :model/SubscriptionChannelRecipient _       (recipient sc-1 :rasta)
                    ;; A separate admin created alert
                    Pulse                 alert-2 (assoc (basic-alert)
                                                         :alert_above_goal false
@@ -769,7 +767,7 @@
                                                         :creator_id       (mt/user->id :crowberto))
                    PulseCard             _       (pulse-card alert-2 card)
                    :model/SubscriptionChannel    sc-2    (subscription-channel alert-2)
-                   PulseChannelRecipient _       (recipient sc-2 :crowberto)
+                   :model/SubscriptionChannelRecipient _       (recipient sc-2 :crowberto)
                    :model/SubscriptionChannel          _       (assoc (subscription-channel alert-2) :channel_type "slack")]
       (with-alerts-in-readable-collection [alert-1 alert-2]
         (with-alert-setup
@@ -812,8 +810,8 @@
                           Pulse                 alert (basic-alert)
                           PulseCard             _     (pulse-card alert card)
                           :model/SubscriptionChannel  sc    (subscription-channel alert)
-                          PulseChannelRecipient _     (recipient sc :rasta)
-                          PulseChannelRecipient _     (recipient sc :crowberto)]
+                          :model/SubscriptionChannelRecipient _     (recipient sc :rasta)
+                          :model/SubscriptionChannelRecipient _     (recipient sc :crowberto)]
              (with-alerts-in-readable-collection [alert]
                (with-alert-setup
                  (array-map
@@ -835,8 +833,8 @@
                           Pulse                 alert (basic-alert)
                           PulseCard             _     (pulse-card alert card)
                           :model/SubscriptionChannel  sc    (subscription-channel alert)
-                          PulseChannelRecipient _     (recipient sc :rasta)
-                          PulseChannelRecipient _     (recipient sc :crowberto)]
+                          :model/SubscriptionChannelRecipient _     (recipient sc :rasta)
+                          :model/SubscriptionChannelRecipient _     (recipient sc :crowberto)]
              (with-alerts-in-readable-collection [alert]
                (with-alert-setup
                  (array-map
@@ -855,7 +853,7 @@
                           Pulse                 alert (basic-alert)
                           PulseCard             _     (pulse-card alert card)
                           :model/SubscriptionChannel  sc    (subscription-channel alert)
-                          PulseChannelRecipient _     (recipient sc :rasta)]
+                          :model/SubscriptionChannelRecipient _     (recipient sc :rasta)]
              (with-alerts-in-readable-collection [alert]
                (with-alert-setup
                  (et/with-expected-messages 1 (api:unsubscribe! :rasta 204 alert))
@@ -872,7 +870,7 @@
                           PulseCard             _     (pulse-card alert card)
                           :model/SubscriptionChannel          sc  (assoc (subscription-channel alert) :channel_type :email)
                           :model/SubscriptionChannel          _     (assoc (subscription-channel alert) :channel_type :slack)
-                          PulseChannelRecipient _     (recipient sc :rasta)]
+                          :model/SubscriptionChannelRecipient _     (recipient sc :rasta)]
              (with-alerts-in-readable-collection [alert]
                (with-alert-setup
                  (et/with-expected-messages 1 (api:unsubscribe! :rasta 204 alert))
@@ -891,7 +889,7 @@
                           PulseCard             _     (pulse-card alert card)
                           :model/SubscriptionChannel  sc-1  (assoc (subscription-channel alert) :channel_type :email)
                           :model/SubscriptionChannel  _sc-2 (assoc (subscription-channel alert) :channel_type :slack)
-                          PulseChannelRecipient _     (recipient sc-1 :rasta)]
+                          :model/SubscriptionChannelRecipient _     (recipient sc-1 :rasta)]
              (with-alerts-in-readable-collection [alert]
                (with-alert-setup
                  (et/with-expected-messages 1
@@ -912,7 +910,7 @@
                           PulseCard             _     (pulse-card alert card)
                           :model/SubscriptionChannel  sc-1  (assoc (subscription-channel alert) :channel_type :email, :enabled false)
                           :model/SubscriptionChannel  _sc-2 (assoc (subscription-channel alert) :channel_type :slack)
-                          PulseChannelRecipient _     (recipient sc-1 :rasta)]
+                          :model/SubscriptionChannelRecipient _     (recipient sc-1 :rasta)]
              (with-alerts-in-readable-collection [alert]
                (with-alert-setup
                  (et/with-expected-messages 1
@@ -932,7 +930,7 @@
                      Pulse                 alert (basic-alert)
                      PulseCard             _     (pulse-card alert card)
                      :model/SubscriptionChannel   sc    (subscription-channel alert)
-                     PulseChannelRecipient _     (recipient sc :rasta)]
+                     :model/SubscriptionChannelRecipient _     (recipient sc :rasta)]
         (api:unsubscribe! :rasta 204 alert)
         (is (= {:topic    :alert-unsubscribe
                 :user_id  (mt/user->id :rasta)

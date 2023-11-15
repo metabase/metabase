@@ -4,7 +4,6 @@
    [medley.core :as m]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.pulse :refer [Pulse]]
-   [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [metabase.models.serialization :as serdes]
    [metabase.models.subscription-channel :as subscription-channel]
    [metabase.models.user :refer [User]]
@@ -328,7 +327,7 @@
                  :model/SubscriptionChannel {channel-id :id} {:pulse_id pulse-id}]
     (letfn [(upd-recipients! [recipients]
               (subscription-channel/update-recipients! channel-id recipients)
-              (t2/select-fn-set :user_id PulseChannelRecipient :subscription_channel_id channel-id))]
+              (t2/select-fn-set :user_id :model/SubscriptionChannelRecipient :subscription_channel_id channel-id))]
       (doseq [[new-recipients expected] {[]                  nil
                                          [:rasta]            [:rasta]
                                          [:crowberto]        [:crowberto]
@@ -424,13 +423,13 @@
 (deftest inactive-users-test
   (testing "Inactive users shouldn't get Pulses"
     (premium-features-test/with-premium-features #{}
-      (mt/with-temp [Pulse                 {pulse-id :id} {}
-                     :model/SubscriptionChannel          {channel-id :id :as channel} {:pulse_id pulse-id
-                                                                                       :details  {:emails ["cam@test.com"]}}
-                     User                  {inactive-user-id :id} {:is_active false}
-                     PulseChannelRecipient _ {:subscription_channel_id channel-id :user_id inactive-user-id}
-                     PulseChannelRecipient _ {:subscription_channel_id channel-id :user_id (mt/user->id :rasta)}
-                     PulseChannelRecipient _ {:subscription_channel_id channel-id :user_id (mt/user->id :lucky)}]
+      (mt/with-temp [Pulse                        {pulse-id :id}               {}
+                     :model/SubscriptionChannel   {channel-id :id :as channel} {:pulse_id pulse-id
+                                                                                :details  {:emails ["cam@test.com"]}}
+                     User                         {inactive-user-id :id}       {:is_active false}
+                     :model/SubscriptionChannelRecipient _                            {:subscription_channel_id channel-id :user_id inactive-user-id}
+                     :model/SubscriptionChannelRecipient _                            {:subscription_channel_id channel-id :user_id (mt/user->id :rasta)}
+                     :model/SubscriptionChannelRecipient _                            {:subscription_channel_id channel-id :user_id (mt/user->id :lucky)}]
         (is (= (cons
                 {:email "cam@test.com"}
                 (sort-by

@@ -7,7 +7,7 @@
    [metabase.models :refer [Action Activity Card Collection Dashboard
                             DashboardCard DashboardCardSeries Database Dimension Field
                             HTTPAction ImplicitAction Metric NativeQuerySnippet PermissionsGroup
-                            PermissionsGroupMembership Pulse PulseCard PulseChannelRecipient QueryAction
+                            PermissionsGroupMembership Pulse PulseCard QueryAction
                             Segment Table Timeline TimelineEvent User]]
    [metabase.util.log :as log]
    [reifyhealth.specmonstah.core :as rs]
@@ -173,7 +173,7 @@
 (s/def ::schedule_type ::not-empty-string)
 
 (s/def ::subscription-channel (s/keys :req-un [::id ::channel_type ::details ::schedule_type]))
-(s/def ::pulse-channel-recipient (s/keys :req-un [::id]))
+(s/def ::subscription-channel-recipient (s/keys :req-un [::id]))
 
 (s/def ::icon           (s/and ::name #(< (count %) 100)))
 (s/def ::time_matters   boolean?)
@@ -292,11 +292,11 @@
                                   :spec      ::subscription-channel
                                   :insert!   {:model :model/SubscriptionChannel}
                                   :relations {:pulse_id [:pulse :id]}}
-   :pulse-channel-recipient      {:prefix    :pcr
-                                  :spec      ::pulse-channel-recipient
-                                  :insert!   {:model PulseChannelRecipient}
-                                  :relations {:subscription_channel_id [:subscription-channel :id]
-                                              :user_id                 [:core-user :id]}}
+   :subscription-channel-recipient {:prefix    :scr
+                                    :spec      ::subscription-channel-recipient
+                                    :insert!   {:model :model/SubscriptionChannelRecipient}
+                                    :relations {:subscription_channel_id [:subscription-channel :id]
+                                                :user_id                 [:core-user :id]}}
    :timeline                     {:prefix    :timeline
                                   :spec      ::timeline
                                   :insert!   {:model Timeline}

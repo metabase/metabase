@@ -14,7 +14,6 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as pulse]
-   [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
@@ -253,8 +252,8 @@
     (api/read-check alert)
     (api/let-404 [alert-id (u/the-id alert)
                   sc-id    (t2/select-one-pk :model/SubscriptionChannel :pulse_id alert-id :channel_type "email")
-                  pcr-id   (t2/select-one-pk PulseChannelRecipient :subscription_channel_id sc-id :user_id api/*current-user-id*)]
-                 (t2/delete! PulseChannelRecipient :id pcr-id))
+                  scr-id   (t2/select-one-pk :model/SubscriptionChannelRecipient :subscription_channel_id sc-id :user_id api/*current-user-id*)]
+                 (t2/delete! :model/SubscriptionChannelRecipient :id scr-id))
     ;; Send emails letting people know they have been unsubscribed
     (let [user @api/*current-user*]
       (when (email/email-configured?)

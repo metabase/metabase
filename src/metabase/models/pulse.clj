@@ -218,7 +218,7 @@
 
 (mi/define-simple-hydration-method channels
   :channels
-  "Return the PulseChannels associated with this `notification`."
+  "Return the SubscriptionChannels associated with this `notification`."
   [notification-or-id]
   (t2/select :model/SubscriptionChannel, :pulse_id (u/the-id notification-or-id)))
 
@@ -437,7 +437,7 @@
   channel."
   [notification-or-id new-channel existing-channel]
   ;; NOTE that we force the :id of the channel being updated to the :id we *know* from our
-  ;;      existing list of PulseChannels pulled from the db to ensure we affect the right record
+  ;; existing list of SubscriptionChannels pulled from the db to ensure we affect the right record
   (let [channel (when new-channel
                   (assoc new-channel
                          :pulse_id       (u/the-id notification-or-id)
@@ -457,7 +457,7 @@
       :else                                 nil)))
 
 (mu/defn update-notification-channels!
-  "Update the PulseChannels for a given `notification-or-id`. `channels` should be a definitive collection of *all* of
+  "Update the SubscriptionChannels for a given `notification-or-id`. `channels` should be a definitive collection of *all* of
   the channels for the Notification.
 
    * If a channel in the list has no existing `SubscriptionChannel` object, one will be created.
@@ -493,7 +493,7 @@
 
 (mu/defn create-pulse!
   "Create a new Pulse by inserting it into the database along with all associated pieces of data such as:
-  PulseCards, PulseChannels, and PulseChannelRecipients.
+  PulseCards, SubscriptionChannels, and SubscriptionChannelRecipients
 
   Returns the newly created Pulse, or throws an Exception."
   {:style/indent 2}
@@ -564,8 +564,8 @@
     (update-notification-channels! notification (:channels notification))))
 
 (defn update-pulse!
-  "Update an existing Pulse, including all associated data such as: PulseCards, PulseChannels, and
-  PulseChannelRecipients.
+  "Update an existing Pulse, including all associated data such as: PulseCards, SubscriptionChannels, and
+  SubscriptionChannelRecipients.
 
   Returns the updated Pulse or throws an Exception."
   [pulse]

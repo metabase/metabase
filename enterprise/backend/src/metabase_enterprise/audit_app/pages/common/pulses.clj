@@ -83,7 +83,7 @@
 
 (defn- describe-recipients
   "Return the number of recipients for email `SubscriptionChannel`s. Includes both User recipients (represented by
-  `PulseChannelRecipient` rows) and plain email recipients (stored directly in the `SubscriptionChannel` `:details`). Returns
+  `SubscriptionChannelRecipient` rows) and plain email recipients (stored directly in the `SubscriptionChannel` `:details`). Returns
   `nil` for Slack channels."
   [{subscription-type :subscription_type
     channel-details   :channel_details

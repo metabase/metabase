@@ -8,7 +8,7 @@
    [metabase.integrations.google]
    [metabase.models
     :refer [Collection Database PermissionsGroup PermissionsGroupMembership
-            Pulse PulseChannelRecipient Session Table User]]
+            Pulse Session Table User]]
    [metabase.models.collection :as collection]
    [metabase.models.collection-test :as collection-test]
    [metabase.models.permissions :as perms]
@@ -466,12 +466,12 @@
 
 (deftest delete-pulse-subscriptions-when-archived-test
   (testing "Delete a User's Pulse/Alert/Dashboard Subscription subscriptions when they get archived"
-    (t2.with-temp/with-temp [User                  {user-id :id}          {}
-                             Pulse                 {pulse-id :id}         {}
+    (t2.with-temp/with-temp [User  {user-id :id} {}
+                             Pulse {pulse-id :id} {}
                              :model/SubscriptionChannel {subscription-channel-id :id} {:pulse_id pulse-id}
-                             PulseChannelRecipient _ {:subscription_channel_id subscription-channel-id :user_id user-id}]
+                             :model/SubscriptionChannelRecipient _ {:subscription_channel_id subscription-channel-id :user_id user-id}]
       (letfn [(subscription-exists? []
-                (t2/exists? PulseChannelRecipient :subscription_channel_id subscription-channel-id :user_id user-id))]
+                (t2/exists? :model/SubscriptionChannelRecipient :subscription_channel_id subscription-channel-id :user_id user-id))]
         (testing "Sanity check: subscription should exist"
           (is (subscription-exists?)))
         (testing "user is updated but not archived: don't delete the subscription"

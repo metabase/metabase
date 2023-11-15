@@ -13,8 +13,7 @@
             Dashboard
             DashboardCard
             Pulse
-            PulseCard
-            PulseChannelRecipient]]
+            PulseCard]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse-test :as pulse-test]
@@ -413,10 +412,10 @@
 
 (deftest update-test
   (testing "PUT /api/pulse/:id"
-    (mt/with-temp [Pulse                       pulse {}
-                   :model/SubscriptionChannel  sc    {:pulse_id (u/the-id pulse)}
-                   PulseChannelRecipient       _     {:subscription_channel_id (u/the-id sc) :user_id (mt/user->id :rasta)}
-                   Card                        card  {}]
+    (mt/with-temp [Pulse                               pulse {}
+                   :model/SubscriptionChannel          sc    {:pulse_id (u/the-id pulse)}
+                   :model/SubscriptionChannelRecipient _     {:subscription_channel_id (u/the-id sc) :user_id (mt/user->id :rasta)}
+                   Card                                card  {}]
       (let [filter-params [{:id "123abc", :name "species", :type "string"}]]
         (with-pulses-in-writeable-collection [pulse]
           (api.card-test/with-cards-in-readable-collection [card]
@@ -578,18 +577,18 @@
 
   (testing "Does unarchiving a Pulse affect its Cards & Recipients? It shouldn't. This should behave as a PATCH-style endpoint!"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [Collection                 collection {}
-                     Pulse                      pulse {:collection_id (u/the-id collection)}
-                     :model/SubscriptionChannel sc    {:pulse_id (u/the-id pulse)}
-                     PulseChannelRecipient      pcr   {:subscription_channel_id (u/the-id sc) :user_id (mt/user->id :rasta)}
-                     Card                       _     {}]
-        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+      (mt/with-temp [Collection                          coll  {}
+                     Pulse                               pulse {:collection_id (u/the-id coll)}
+                     :model/SubscriptionChannel          sc    {:pulse_id (u/the-id pulse)}
+                     :model/SubscriptionChannelRecipient scr   {:subscription_channel_id (u/the-id sc) :user_id (mt/user->id :rasta)}
+                     Card                                _     {}]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll)
         (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                               {:archived true})
         (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                               {:archived false})
         (is (t2/exists? :model/SubscriptionChannel :id (u/the-id sc)))
-        (is (t2/exists? PulseChannelRecipient :id (u/the-id pcr)))))))
+        (is (t2/exists? :model/SubscriptionChannelRecipient :id (u/the-id scr)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -760,8 +759,8 @@
                                                                        :dashboard_id dashboard-id
                                                                        :creator_id   (mt/user->id :crowberto)}
                    :model/SubscriptionChannel sc {:pulse_id pulse-3-id}
-                   PulseChannelRecipient _  {:subscription_channel_id (u/the-id sc)
-                                             :user_id                 (mt/user->id :rasta)}]
+                   :model/SubscriptionChannelRecipient _  {:subscription_channel_id (u/the-id sc)
+                                                           :user_id                 (mt/user->id :rasta)}]
       (with-pulses-in-writeable-collection [pulse-1 pulse-2 pulse-3]
         (testing "admins can see all pulses"
           (let [results (-> (mt/user-http-request :crowberto :get 200 "pulse")
@@ -864,10 +863,10 @@
         (with-pulses-in-nonreadable-collection [pulse]
           (mt/user-http-request :rasta :get 200 (str "pulse/" (u/the-id pulse)))))
 
-      (mt/with-temp [Pulse                 pulse {:creator_id (mt/user->id :crowberto)}
-                     :model/SubscriptionChannel  sc    {:pulse_id (u/the-id pulse)}
-                     PulseChannelRecipient _     {:subscription_channel_id (u/the-id sc)
-                                                  :user_id                 (mt/user->id :rasta)}]
+      (mt/with-temp [Pulse                               pulse {:creator_id (mt/user->id :crowberto)}
+                     :model/SubscriptionChannel          sc    {:pulse_id (u/the-id pulse)}
+                     :model/SubscriptionChannelRecipient _     {:subscription_channel_id (u/the-id sc)
+                                                                :user_id                 (mt/user->id :rasta)}]
         (with-pulses-in-nonreadable-collection [pulse]
           (mt/user-http-request :rasta :get 200 (str "pulse/" (u/the-id pulse))))))
 
@@ -1109,11 +1108,11 @@
                                                                 :details       {:other  "stuff"
                                                                                 :emails ["foo@bar.com"]}}]
       (testing "Should be able to delete your own subscription"
-        (t2.with-temp/with-temp [PulseChannelRecipient _ {:subscription_channel_id channel-id :user_id (mt/user->id :rasta)}]
+        (t2.with-temp/with-temp [:model/SubscriptionChannelRecipient _ {:subscription_channel_id channel-id :user_id (mt/user->id :rasta)}]
           (is (= nil
                  (mt/user-http-request :rasta :delete 204 (str "pulse/" pulse-id "/subscription"))))))
 
       (testing "Users can't delete someone else's pulse subscription"
-        (t2.with-temp/with-temp [PulseChannelRecipient _ {:subscription_channel_id channel-id :user_id (mt/user->id :rasta)}]
+        (t2.with-temp/with-temp [:model/SubscriptionChannelRecipient _ {:subscription_channel_id channel-id :user_id (mt/user->id :rasta)}]
           (is (= "Not found."
                  (mt/user-http-request :lucky :delete 404 (str "pulse/" pulse-id "/subscription")))))))))

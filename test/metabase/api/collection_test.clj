@@ -19,7 +19,6 @@
             PermissionsGroupMembership
             Pulse
             PulseCard
-            PulseChannelRecipient
             Revision
             Timeline
             TimelineEvent
@@ -1569,9 +1568,9 @@
                                                                           :card_id  card-id
                                                                           :position 0}
                                :model/SubscriptionChannel {sc-id :id}         {:pulse_id pulse-id}
-                               PulseChannelRecipient _                   {:user_id                 (mt/user->id :crowberto)
+                               :model/SubscriptionChannelRecipient _     {:user_id                 (mt/user->id :crowberto)
                                                                           :subscription_channel_id sc-id}
-                               PulseChannelRecipient _                   {:user_id                 (mt/user->id :rasta)
+                               :model/SubscriptionChannelRecipient _     {:user_id                 (mt/user->id :rasta)
                                                                           :subscription_channel_id sc-id}]
         (mt/with-fake-inbox
           (mt/with-expected-messages 2

@@ -9,8 +9,7 @@
    [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.events.audit-log-test :as audit-log-test]
-   [metabase.models
-    :refer [Card Pulse PulseCard PulseChannelRecipient]]
+   [metabase.models :refer [Card Pulse PulseCard]]
    [metabase.models.pulse :as pulse]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.pulse]
@@ -40,14 +39,14 @@
 (defn- pulse-results
   "Results for creating and running a Pulse."
   [query]
-  (mt/with-temp [Card                       pulse-card {:dataset_query query}
-                 Pulse                      pulse {:name "Test Pulse"}
-                 PulseCard                  _ {:pulse_id (:id pulse), :card_id (:id pulse-card)}
-                 :model/SubscriptionChannel sc {:channel_type :email
-                                                :pulse_id     (:id pulse)
-                                                :enabled      true}
-                 PulseChannelRecipient      _ {:subscription_channel_id (:id sc)
-                                               :user_id                 (mt/user->id :rasta)}]
+  (mt/with-temp [Card                                pulse-card {:dataset_query query}
+                 Pulse                               pulse {:name "Test Pulse"}
+                 PulseCard                           _ {:pulse_id (:id pulse), :card_id (:id pulse-card)}
+                 :model/SubscriptionChannel          sc {:channel_type :email
+                                                         :pulse_id     (:id pulse)
+                                                         :enabled      true}
+                 :model/SubscriptionChannelRecipient _  {:subscription_channel_id (:id sc)
+                                                         :user_id                 (mt/user->id :rasta)}]
     (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
       (mt/with-fake-inbox
         (with-redefs [messages/render-pulse-email (fn [_ _ _ [{:keys [result]}] _]
@@ -63,14 +62,14 @@
 
 (deftest bcc-enabled-pulse-test
   (testing "When bcc is not enabled, return an email that uses to:"
-    (mt/with-temp [Card                       pulse-card {}
-                   Pulse                      pulse {:name "Test Pulse"}
-                   PulseCard                  _ {:pulse_id (:id pulse), :card_id (:id pulse-card)}
-                   :model/SubscriptionChannel sc {:channel_type :email
-                                                  :pulse_id     (:id pulse)
-                                                  :enabled      true}
-                   PulseChannelRecipient _ {:subscription_channel_id (:id sc)
-                                            :user_id                 (mt/user->id :rasta)}]
+    (mt/with-temp [Card                                pulse-card {}
+                   Pulse                               pulse      {:name "Test Pulse"}
+                   PulseCard                           _          {:pulse_id (:id pulse), :card_id (:id pulse-card)}
+                   :model/SubscriptionChannel          sc         {:channel_type :email
+                                                                   :pulse_id     (:id pulse)
+                                                                   :enabled      true}
+                   :model/SubscriptionChannelRecipient _          {:subscription_channel_id (:id sc)
+                                                                   :user_id                 (mt/user->id :rasta)}]
       (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
         (mt/with-fake-inbox
           (with-redefs [messages/render-pulse-email  (fn [_ _ _ [{:keys [result]}] _]
@@ -88,16 +87,16 @@
 (deftest pulse-send-event-test
   (testing "When we send a pulse, we also log the event:"
     (mt/with-model-cleanup [:model/AuditLog]
-      (t2.with-temp/with-temp [Card                  pulse-card {}
-                               Pulse                 pulse {:creator_id (mt/user->id :crowberto)
-                                                            :name "Test Pulse"}
-                               PulseCard             _ {:pulse_id (:id pulse)
-                                                        :card_id (:id pulse-card)}
-                               :model/SubscriptionChannel sc {:channel_type :email
-                                                              :pulse_id     (:id pulse)
-                                                              :enabled      true}
-                               PulseChannelRecipient _ {:subscription_channel_id (:id sc)
-                                                        :user_id                 (mt/user->id :rasta)}]
+      (t2.with-temp/with-temp [Card                                pulse-card {}
+                               Pulse                               pulse {:creator_id (mt/user->id :crowberto)
+                                                                          :name "Test Pulse"}
+                               PulseCard                           _ {:pulse_id (:id pulse)
+                                                                      :card_id (:id pulse-card)}
+                               :model/SubscriptionChannel          sc {:channel_type :email
+                                                                       :pulse_id     (:id pulse)
+                                                                       :enabled      true}
+                               :model/SubscriptionChannelRecipient _ {:subscription_channel_id (:id sc)
+                                                                      :user_id                 (mt/user->id :rasta)}]
         (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
           (mt/with-fake-inbox
             (with-redefs [messages/render-pulse-email  (fn [_ _ _ [{:keys [result]}] _]
@@ -124,8 +123,8 @@
                                :model/SubscriptionChannel sc {:channel_type :email
                                                               :pulse_id     (:id pulse)
                                                               :enabled      true}
-                               PulseChannelRecipient _ {:subscription_channel_id (:id sc)
-                                                        :user_id                 (mt/user->id :rasta)}]
+                               :model/SubscriptionChannelRecipient _ {:subscription_channel_id (:id sc)
+                                                                      :user_id                 (mt/user->id :rasta)}]
         (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
           (mt/with-fake-inbox
             (with-redefs [messages/render-pulse-email  (fn [_ _ _ [{:keys [result]}] _]
@@ -221,15 +220,15 @@
                      :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
-          (mt/with-temp [Card                      {card-id :id}  {:dataset_query query}
-                         Pulse                     {pulse-id :id} {:name          "Pulse Name"
-                                                                   :skip_if_empty false}
-                         PulseCard                  _             {:pulse_id pulse-id
-                                                                   :card_id  card-id
-                                                                   :position 0}
-                         :model/SubscriptionChannel {sc-id :id}   {:pulse_id pulse-id}
-                         PulseChannelRecipient      _             {:user_id                 (mt/user->id :rasta)
-                                                                   :subscription_channel_id sc-id}]
+          (mt/with-temp [Card                                {card-id :id}  {:dataset_query query}
+                         Pulse                               {pulse-id :id} {:name          "Pulse Name"
+                                                                             :skip_if_empty false}
+                         PulseCard                           _              {:pulse_id pulse-id
+                                                                             :card_id  card-id
+                                                                             :position 0}
+                         :model/SubscriptionChannel          {sc-id :id}    {:pulse_id pulse-id}
+                         :model/SubscriptionChannelRecipient _              {:user_id                 (mt/user->id :rasta)
+                                                                             :subscription_channel_id sc-id}]
             (mt/with-fake-inbox
               (mt/with-test-user nil
                 (metabase.pulse/send-pulse! (pulse/retrieve-pulse pulse-id)))
@@ -247,8 +246,8 @@
     (mt/with-temp [Pulse        {pulse-id :id} {:name "my pulse"}
                    :model/SubscriptionChannel {sc-id :id} {:pulse_id     pulse-id
                                                            :channel_type :email}
-                   PulseChannelRecipient _ {:subscription_channel_id sc-id :user_id (mt/user->id :crowberto)}
-                   PulseChannelRecipient _ {:subscription_channel_id sc-id :user_id (mt/user->id :rasta)}]
+                   :model/SubscriptionChannelRecipient _ {:subscription_channel_id sc-id :user_id (mt/user->id :crowberto)}
+                   :model/SubscriptionChannelRecipient _ {:subscription_channel_id sc-id :user_id (mt/user->id :rasta)}]
       (let [recipient-ids (fn [pulses]
                             (let [pulse      (first (filter #(= pulse-id (:id %)) pulses))
                                   recipients (-> pulse :channels first :recipients)]
@@ -281,8 +280,8 @@
                    :model/SubscriptionChannel {sc-id :id :as sc} {:pulse_id     pulse-id
                                                                   :channel_type :email
                                                                   :details      {:emails "asdf@metabase.com"}}
-                   PulseChannelRecipient _ {:subscription_channel_id sc-id :user_id (mt/user->id :crowberto)}
-                   PulseChannelRecipient _ {:subscription_channel_id sc-id :user_id (mt/user->id :rasta)}]
+                   :model/SubscriptionChannelRecipient _ {:subscription_channel_id sc-id :user_id (mt/user->id :crowberto)}
+                   :model/SubscriptionChannelRecipient _ {:subscription_channel_id sc-id :user_id (mt/user->id :rasta)}]
 
       (mt/with-test-user :rasta
         (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]

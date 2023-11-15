@@ -630,7 +630,7 @@
         (log/error e (trs "Error sending notification!"))))))
 
 (defn send-pulse!
-  "Execute and Send a `Pulse`, optionally specifying the specific `PulseChannels`.  This includes running each
+  "Execute and Send a `Pulse`, optionally specifying the specific `SubscriptionChannels`.  This includes running each
    `PulseCard`, formatting the content, and sending the content to any specified destination.
 
   `channel-ids` is the set of channel IDs to send to *now* -- this may be a subset of the full set of channels for

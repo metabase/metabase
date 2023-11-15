@@ -9,7 +9,6 @@
             Database
             Pulse
             PulseCard
-            PulseChannelRecipient
             Table
             User]]
    [metabase.models.permissions :as perms]
@@ -52,8 +51,8 @@
                                                            :channel_type "slack"
                                                            :details      {:channel "#general"}})]
     (if (= channel :email)
-      (mt/with-temp [PulseChannelRecipient _ {:user_id                 (pulse.test-util/rasta-id)
-                                              :subscription_channel_id sc-id}]
+      (mt/with-temp [:model/SubscriptionChannelRecipient _ {:user_id                 (pulse.test-util/rasta-id)
+                                                            :subscription_channel_id sc-id}]
         (f pulse))
       (f pulse))))
 

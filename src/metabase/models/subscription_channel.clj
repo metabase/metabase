@@ -5,7 +5,6 @@
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
-   [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [metabase.models.serialization :as serdes]
    [metabase.models.user :as user :refer [User]]
    [metabase.plugins.classloader :as classloader]
@@ -131,7 +130,7 @@
 
 (mi/define-simple-hydration-method recipients
   :recipients
-  "Return the `PulseChannelRecipients` associated with this `subscription-channel`."
+  "Return the `SubscriptionChannelRecipients` associated with this `subscription-channel`."
   [{subscription-channel-id :id, {:keys [emails]} :details}]
   (concat
    (for [email emails]
@@ -218,7 +217,7 @@
 ;; ## Persistence Functions
 
 (s/defn retrieve-scheduled-channels
-  "Fetch all `PulseChannels` that are scheduled to run at a given time described by `hour`, `weekday`, `monthday`, and
+  "Fetch all `SubscriptionChannels` that are scheduled to run at a given time described by `hour`, `weekday`, `monthday`, and
   `monthweek`.
 
   Examples:
@@ -226,7 +225,7 @@
     (retrieve-scheduled-channels 14 \"mon\" :first :first)  -  2pm on the first Monday of the month
     (retrieve-scheduled-channels 8 \"wed\" :other :last)    -  8am on Wednesday of the last week of the month
 
-  Based on the given input the appropriate `PulseChannels` are returned:
+  Based on the given input the appropriate `SubscriptionChannels` are returned:
 
   *  `hourly` scheduled channels are always included.
   *  `daily` scheduled channels are included if the `hour` matches.
@@ -260,31 +259,31 @@
 
 
 (defn update-recipients!
-  "Update the `PulseChannelRecipients` for `subscription-channel`.
+  "Update the `SubscriptionChannelRecipients` for `subscription-channel`.
   `user-ids` should be a definitive collection of *all* IDs of users who should receive the pulse.
 
-  *  If an ID in `user-ids` has no corresponding existing `PulseChannelRecipients` object, one will be created.
-  *  If an existing `PulseChannelRecipients` has no corresponding ID in USER-IDs, it will be deleted."
+  *  If an ID in `user-ids` has no corresponding existing `SubscriptionChannelRecipients` object, one will be created.
+  *  If an existing `SubscriptionChannelRecipients` has no corresponding ID in USER-IDs, it will be deleted."
   [id user-ids]
   {:pre [(integer? id)
          (coll? user-ids)
          (every? integer? user-ids)]}
-  (let [recipients-old (set (t2/select-fn-set :user_id PulseChannelRecipient :subscription_channel_id id))
+  (let [recipients-old (set (t2/select-fn-set :user_id :model/SubscriptionChannelRecipient :subscription_channel_id id))
         recipients-new (set user-ids)
         recipients+    (set/difference recipients-new recipients-old)
         recipients-    (set/difference recipients-old recipients-new)]
     (when (seq recipients+)
       (let [vs (map #(assoc {:subscription_channel_id id} :user_id %) recipients+)]
-        (t2/insert! PulseChannelRecipient vs)))
+        (t2/insert! :model/SubscriptionChannelRecipient vs)))
     (when (seq recipients-)
-      (t2/delete! (t2/table-name PulseChannelRecipient)
+      (t2/delete! (t2/table-name :model/SubscriptionChannelRecipient)
         :subscription_channel_id id
         :user_id                 [:in recipients-]))))
 
 
 (defn update-subscription-channel!
   "Updates an existing `SubscriptionChannel` along with all related data associated with the channel such as
-  `PulseChannelRecipients`."
+  `SubscriptionChannelRecipients`."
   [{:keys [id channel_type enabled details recipients schedule_type schedule_day schedule_hour schedule_frame]
     :or   {details          {}
            recipients       []}}]
@@ -313,7 +312,7 @@
 
 (defn create-subscription-channel!
   "Create a new `SubscriptionChannel` along with all related data associated with the channel such as
-  `PulseChannelRecipients`."
+  `SubscriptionChannelRecipients`."
   [{:keys [channel_type details enabled pulse_id recipients schedule_type schedule_day schedule_hour schedule_frame]
     :or   {details          {}
            recipients       []}}]
@@ -376,7 +375,7 @@
                                   :let [id (t2/select-one-pk 'User :email email)]]
                               (or id
                                   (:id (user/serdes-synthesize-user! {:email email})))))
-        current-users  (set (t2/select-fn-set :user_id PulseChannelRecipient :subscription_channel_id channel-id))
+        current-users  (set (t2/select-fn-set :user_id :model/SubscriptionChannelRecipient :subscription_channel_id channel-id))
         combined       (set/union incoming-users current-users)]
     (when-not (empty? combined)
       (update-recipients! channel-id combined))))

@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.pages.dashboard-subscriptions :as audit.dashboard-subscriptions]
-   [metabase.models :refer [Collection Dashboard Pulse PulseChannelRecipient]]
+   [metabase.models :refer [Collection Dashboard Pulse]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -30,23 +30,23 @@
                                                         {:collection-id   nil
                                                          :collection-name "Our analytics"}]]
          (testing (format "Collection = %d %s" collection-id collection-name)
-           (mt/with-temp! [Dashboard                  {dashboard-id :id} {:name          dashboard-name
-                                                                          :collection_id collection-id}
-                           Pulse                      {pulse-id :id}     {:dashboard_id  dashboard-id
-                                                                          :collection_id collection-id}
-                           :model/SubscriptionChannel {channel-id :id}   {:pulse_id       pulse-id
-                                                                          :channel_type   "email"
-                                                                          :details        {:emails ["amazing@fake.com"]}
-                                                                          :schedule_type  "monthly"
-                                                                          :schedule_frame "first"
-                                                                          :schedule_day   "mon"
-                                                                          :schedule_hour  8}
-                           PulseChannelRecipient      _                  {:subscription_channel_id channel-id
-                                                                          :user_id                 (mt/user->id :rasta)}
-                           :model/SubscriptionChannel {channel-2-id :id} {:pulse_id      pulse-id
-                                                                          :channel_type  "slack"
-                                                                          :details       {:channel "#wow"}
-                                                                          :schedule_type "hourly"}]
+           (mt/with-temp! [Dashboard                           {dashboard-id :id} {:name          dashboard-name
+                                                                                   :collection_id collection-id}
+                           Pulse                               {pulse-id :id}     {:dashboard_id  dashboard-id
+                                                                                   :collection_id collection-id}
+                           :model/SubscriptionChannel          {channel-id :id}   {:pulse_id       pulse-id
+                                                                                   :channel_type   "email"
+                                                                                   :details        {:emails ["amazing@fake.com"]}
+                                                                                   :schedule_type  "monthly"
+                                                                                   :schedule_frame "first"
+                                                                                   :schedule_day   "mon"
+                                                                                   :schedule_hour  8}
+                           :model/SubscriptionChannelRecipient _                  {:subscription_channel_id channel-id
+                                                                                   :user_id                 (mt/user->id :rasta)}
+                           :model/SubscriptionChannel          {channel-2-id :id} {:pulse_id      pulse-id
+                                                                                   :channel_type  "slack"
+                                                                                   :details       {:channel "#wow"}
+                                                                                   :schedule_type "hourly"}]
              (is (= {:columns ["dashboard_id"
                                "dashboard_name"
                                "pulse_id"

@@ -106,7 +106,7 @@
                      :model/TaskHistory
                      :model/Setting
                      :model/Activity
-                     :model/PulseChannelRecipient
+                     :model/SubscriptionChannelRecipient
                      :model/TablePrivileges
                      :model/TimelineEvent
                      :model/PersistedInfo

@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.pages.alerts :as audit.alerts]
-   [metabase.models :refer [Card Collection Pulse PulseCard PulseChannelRecipient]]
+   [metabase.models :refer [Card Collection Pulse PulseCard]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -42,8 +42,8 @@
                                                                         :schedule_frame "first"
                                                                         :schedule_day   "mon"
                                                                         :schedule_hour  8}
-                         PulseChannelRecipient      _                  {:subscription_channel_id channel-id
-                                                                        :user_id                 (mt/user->id :rasta)}
+                         :model/SubscriptionChannelRecipient _ {:subscription_channel_id channel-id
+                                                                :user_id                 (mt/user->id :rasta)}
                          :model/SubscriptionChannel {channel-2-id :id} {:pulse_id      pulse-id
                                                                         :channel_type  "slack"
                                                                         :details       {:channel "#wow"}

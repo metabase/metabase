@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.api.alert :as api.alert]
    [metabase.api.alert-test :as alert-test]
-   [metabase.models :refer [Card Collection Pulse PulseCard PulseChannelRecipient]]
+   [metabase.models :refer [Card Collection Pulse PulseCard]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
@@ -91,15 +91,15 @@
                         (testing (format "- add pulse's recipients with %s user" (mt/user-descriptor req-user))
                           (mt/user-http-request req-user :put status (format "pulse/%d" (:id the-pulse)) new-pulse)))))
 
-                  (remove-pulse-recipient [req-user status]
+                  (remove-subscription-recipient [req-user status]
                     (pulse-test/with-pulse-for-card [the-pulse {:card    card-id
                                                                 :pulse   {:creator_id (u/the-id user)}
                                                                 :channel :email}]
                       ;; manually add another user as recipient
-                      (t2.with-temp/with-temp [PulseChannelRecipient _ {:user_id (:id user)
-                                                                        :subscription_channel_id
-                                                                        (t2/select-one-pk
-                                                                         :model/SubscriptionChannel :channel_type "email" :pulse_id (:id the-pulse))}]
+                      (t2.with-temp/with-temp [:model/SubscriptionChannelRecipient _ {:user_id (:id user)
+                                                                                      :subscription_channel_id
+                                                                                      (t2/select-one-pk
+                                                                                       :model/SubscriptionChannel :channel_type "email" :pulse_id (:id the-pulse))}]
                         (let [the-pulse   (pulse/retrieve-pulse (:id the-pulse))
                               channel     (api.alert/email-channel the-pulse)
                               new-channel (update channel :recipients rest)
@@ -109,19 +109,19 @@
             (testing "anyone could add/remove pulse's recipients if advanced-permissions is disabled"
               (premium-features-test/with-premium-features #{}
                 (add-pulse-recipient user 200)
-                (remove-pulse-recipient user 200)
+                (remove-subscription-recipient user 200)
                 (add-pulse-recipient :crowberto 200)
-                (remove-pulse-recipient :crowberto 200)))
+                (remove-subscription-recipient :crowberto 200)))
 
             (testing "non-admin can't modify recipients if advanced-permissions is enabled"
               (premium-features-test/with-premium-features #{:advanced-permissions}
                 (add-pulse-recipient user 403)
-                (remove-pulse-recipient user 403)
+                (remove-subscription-recipient user 403)
 
                 (testing "what if they have monitoring permissions?"
                   (perms/grant-application-permissions! group :monitoring)
                   (testing "they can remove recipients"
-                    (remove-pulse-recipient user 200))
+                    (remove-subscription-recipient user 200))
 
                   (testing "they can't add recipients"
                     (add-pulse-recipient user 403)))
@@ -210,11 +210,11 @@
                                                   (assoc-in [:channels 0 :recipients] []))))))
 
                   (remove-alert-recipient [req-user status]
-                    (mt/with-temp [Pulse                      alert (alert-test/basic-alert)
-                                   Card                       card  {}
-                                   PulseCard                  _     (alert-test/pulse-card alert card)
-                                   :model/SubscriptionChannel sc    (alert-test/subscription-channel alert)
-                                   PulseChannelRecipient _     (alert-test/recipient sc :rasta)]
+                    (mt/with-temp [Pulse                               alert (alert-test/basic-alert)
+                                   Card                                card  {}
+                                   PulseCard                           _     (alert-test/pulse-card alert card)
+                                   :model/SubscriptionChannel          sc    (alert-test/subscription-channel alert)
+                                   :model/SubscriptionChannelRecipient _    (alert-test/recipient sc :rasta)]
                       (testing (format "- remove alert's recipient with %s user" (mt/user-descriptor req-user))
                         (mt/user-http-request req-user :put status (format "alert/%d" (:id alert))
                                               (assoc-in (alert-test/default-alert-req card sc) [:channels 0 :recipients] [])))))]

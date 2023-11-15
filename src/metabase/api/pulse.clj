@@ -16,7 +16,6 @@
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as pulse :refer [Pulse]]
-   [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [metabase.models.subscription-channel :as subscription-channel :refer [channel-types]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
@@ -191,7 +190,7 @@
     (collection/check-allowed-to-change-collection pulse-before-update pulse-updates)
 
     ;; if advanced-permissions is enabled, only superuser or non-admin with subscription permission can
-    ;; update pulse's recipients
+    ;; update subscription's recipients
     (when (premium-features/enable-advanced-permissions?)
       (let [to-add-recipients (difference (set (map :id (:recipients (api.alert/email-channel pulse-updates))))
                                           (set (map :id (:recipients (api.alert/email-channel pulse-before-update)))))
@@ -326,8 +325,8 @@
   {id ms/PositiveInt}
   (api/let-404 [pulse-id (t2/select-one-pk Pulse :id id)
                 sc-id    (t2/select-one-pk :model/SubscriptionChannel :pulse_id pulse-id :channel_type "email")
-                pcr-id   (t2/select-one-pk PulseChannelRecipient :subscription_channel_id sc-id :user_id api/*current-user-id*)]
-    (t2/delete! PulseChannelRecipient :id pcr-id))
+                scr-id   (t2/select-one-pk :model/SubscriptionChannelRecipient :subscription_channel_id sc-id :user_id api/*current-user-id*)]
+    (t2/delete! :model/SubscriptionChannelRecipient :id scr-id))
   api/generic-204-no-content)
 
 (api/define-routes)

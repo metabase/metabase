@@ -71,8 +71,6 @@
     :model/Activity
     :model/Pulse
     :model/PulseCard
-    :model/SubscriptionChannel
-    :model/PulseChannelRecipient
     :model/PermissionsGroup
     :model/PermissionsGroupMembership
     :model/Permissions
@@ -85,6 +83,8 @@
     :model/Timeline
     :model/TimelineEvent
     :model/Secret
+    :model/SubscriptionChannel
+    :model/SubscriptionChannelRecipient
     :model/ParameterCard
     :model/Action
     :model/ImplicitAction

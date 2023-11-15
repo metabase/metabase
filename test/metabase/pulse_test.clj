@@ -6,8 +6,7 @@
    [medley.core :as m]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
-   [metabase.models
-    :refer [Card Collection Pulse PulseCard PulseChannelRecipient]]
+   [metabase.models :refer [Card Collection Pulse PulseCard]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.permissions :as perms]
@@ -69,8 +68,8 @@
                                                           :channel_type "slack"
                                                           :details      {:channel "#general"}})]
     (if (= channel :email)
-      (t2.with-temp/with-temp [PulseChannelRecipient _ {:user_id                 (pulse.test-util/rasta-id)
-                                                        :subscription_channel_id sc-id}]
+      (t2.with-temp/with-temp [:model/SubscriptionChannelRecipient _ {:user_id                 (pulse.test-util/rasta-id)
+                                                                      :subscription_channel_id sc-id}]
         (f pulse))
       (f pulse))))
 
@@ -374,8 +373,8 @@
 
       :fixture
       (fn [{:keys [pulse-id]} thunk]
-        (t2.with-temp/with-temp [PulseChannelRecipient _ {:user_id                 (mt/user->id :crowberto)
-                                                          :subscription_channel_id (t2/select-one-pk :model/SubscriptionChannel :pulse_id pulse-id)}]
+        (t2.with-temp/with-temp [:model/SubscriptionChannelRecipient _ {:user_id                 (mt/user->id :crowberto)
+                                                                        :subscription_channel_id (t2/select-one-pk :model/SubscriptionChannel :pulse_id pulse-id)}]
           (thunk)))
 
       :assert
@@ -697,8 +696,8 @@
                                             :card_id  card-id
                                             :dashboard_card_id dashboard-card-id}
                    :model/SubscriptionChannel {sc-id :id} {:pulse_id pulse-id}
-                   PulseChannelRecipient _ {:user_id                 (pulse.test-util/rasta-id)
-                                            :subscription_channel_id sc-id}]
+                   :model/SubscriptionChannelRecipient _ {:user_id                 (pulse.test-util/rasta-id)
+                                                          :subscription_channel_id sc-id}]
         (pulse.test-util/email-test-setup
          (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
          (is (= (mt/email-to :rasta {:subject "Pulse Name"
@@ -714,8 +713,8 @@
                                             :card_id  card-id}
                    :model/SubscriptionChannel {sc-id :id} {:pulse_id pulse-id
                                                            :details {:emails ["nonuser@metabase.com"]}}
-                   PulseChannelRecipient _ {:user_id                (pulse.test-util/rasta-id)
-                                            :subscription_channel_id sc-id}]
+                   :model/SubscriptionChannelRecipient _ {:user_id                (pulse.test-util/rasta-id)
+                                                          :subscription_channel_id sc-id}]
       (pulse.test-util/email-test-setup
        (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
        (is (mt/received-email-body? :rasta #"Manage your subscriptions"))
