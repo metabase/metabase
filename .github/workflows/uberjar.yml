@@ -266,8 +266,8 @@ jobs:
         if: ${{ github.ref_name == 'master' }}
         run: regctl registry set --tls disabled localhost:5000
       - name: Retag and push ubuntu-based images if master (ee)
-        if: matrix.edition == 'ee' && github.ref_name == 'master'
+        if: ${{ (matrix.edition == 'ee') && (github.ref_name == 'master') }}
         run: regctl image copy localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee-ubuntu ${{ github.repository_owner }}/metabase-enterprise-head:latest-ubuntu
       - name: Retag and push ubuntu-based images if master (oss)
-        if: matrix.edition == 'oss' && github.ref_name == 'master'
+        if: ${{ (matrix.edition == 'oss') && (github.ref_name == 'master') }}
         run: regctl image copy localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-oss-ubuntu ${{ github.repository_owner }}/metabase-head:latest-ubuntu
