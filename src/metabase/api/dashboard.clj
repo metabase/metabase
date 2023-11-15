@@ -195,7 +195,7 @@
                        :attributes {:dashboard/id id}}
                       (t2/hydrate dashboard [:dashcards
                                              [:card [:moderation_reviews :moderator_details]]
-                   [:card :can_write]
+                                             [:card :can_write]
                                              :series
                                              :dashcard/action
                                              :dashcard/linkcard-info]
