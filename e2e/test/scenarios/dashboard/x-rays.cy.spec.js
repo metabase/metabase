@@ -264,12 +264,17 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
   it("should correctly apply breakout in query builder (metabase#14648)", () => {
     cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
 
-    // wait for data from all dashcards to be sure data is loaded
-    const NUMBER_OF_DASHCARDS = 16;
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.wait(Cypress._.times(NUMBER_OF_DASHCARDS, () => "@dataset"));
-    // in case number of dashcards is changed in the future
-    cy.wait("@dataset.all").should("have.length", NUMBER_OF_DASHCARDS);
+    // canceled requests will still increment intercept counter
+    const NUMBER_OF_DATASET_REQUESTS = 8 * 2;
+    cy.intercept("POST", "/api/dataset").as("ordersDataset");
+
+    cy.log("wait for dashcard with 18,760 dataset");
+
+    waitForSatisfyingResponse(
+      "@ordersDataset",
+      { body: { data: { rows: [[18760]] } } },
+      NUMBER_OF_DATASET_REQUESTS,
+    );
 
     getDashboardCards().contains("18,760").click();
 
@@ -326,3 +331,21 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       });
   });
 });
+
+function waitForSatisfyingResponse(
+  alias,
+  partialResponse,
+  maxRequests,
+  level = 0,
+) {
+  if (level === maxRequests) {
+    throw `${maxRequests} requests exceeded`; // fail the test
+  }
+
+  cy.wait(alias).then(interception => {
+    const isMatch = Cypress._.isMatch(interception.response, partialResponse);
+    if (!isMatch) {
+      waitForSatisfyingResponse(alias, partialResponse, maxRequests, level + 1);
+    }
+  });
+}
