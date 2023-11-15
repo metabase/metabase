@@ -1,6 +1,7 @@
 (ns ^:mb/once metabase-enterprise.serialization.v2.extract-test
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.serialization.test-util :as ts]
@@ -1459,7 +1460,30 @@
                                                                                  :values_source_config {:card_id     c1-2-id
                                                                                                         :value_field [:field field-id nil]}}]}
                        DashboardCard _                       {:card_id      c4-id
-                                                              :dashboard_id dash4-id}]
+                                                              :dashboard_id dash4-id}
+
+                       ;; Fifth dashboard which has :click_behavior defined.
+                       Collection    {coll5-id      :id}        {:name          "Fifth collection"}
+                       Dashboard     {clickdash-id  :id
+                                      clickdash-eid :entity_id} {:name          "Dashboard with click behavior"
+                                                                 :collection_id coll5-id
+                                                                 :creator_id    mark-id}
+                       DashboardCard _                          {:card_id c3-1-id
+                                                                 :dashboard_id clickdash-id
+                                                                 :visualization_settings
+                                                                 ;; Top-level click behavior for the card.
+                                                                 {:click_behavior {:type "link"
+                                                                                   :linkType "question"
+                                                                                   :targetId c3-2-id
+                                                                                   :parameterMapings {}}}}
+                       DashboardCard _                          {:card_id c3-1-id
+                                                                 :dashboard_id clickdash-id
+                                                                 :visualization_settings
+                                                                 {:column_settings
+                                                                  {(str "[\"ref\",[\"field\"," field-id ",null]]")
+                                                                   {:click_behavior {:type     "link"
+                                                                                     :linkType "dashboard"
+                                                                                     :targetId dash4-id}}}}}]
 
       (testing "selecting a collection includes settings and data model by default"
         (is (= #{"Card" "Collection" "Dashboard" "Database" "Setting"}
@@ -1503,6 +1527,18 @@
                (->> (extract/extract {:targets [["Dashboard" dash4-id]] :no-settings true :no-data-model true})
                     (map serdes/path)
                     set)))))
+
+      (testing "selecting a dashboard gets any dashboards or cards it links to when clicked"
+        (is (=? #{[{:model "Dashboard"       :id clickdash-eid :label "dashboard_with_click_behavior"}]
+                  [{:model "Card"            :id c3-1-eid      :label "question_3_1"}]    ; Visualized card
+                  [{:model "Dashboard"       :id dash4-eid     :label "dashboard_4"}]     ; Linked dashboard
+                  [{:model "Card"            :id c3-2-eid      :label "question_3_2"}]    ; Linked card
+                  [{:model "Card"            :id c4-eid        :label "question_4_1"}]    ; Transitive via dash4
+                  [{:model "Card"            :id c1-1-eid      :label "question_1_1"}]    ; Linked by c4
+                  [{:model "Card"            :id c1-2-eid      :label "question_1_2"}]}   ; Linked by dash4
+                (->> (extract/extract {:targets [["Dashboard" clickdash-id]] :no-settings true :no-data-model true})
+                     (map serdes/path)
+                     set))))
 
       (testing "selecting a collection gets all its contents"
         (let [grandchild-paths  #{[{:model "Collection"    :id coll3-eid :label "grandchild_collection"}]
@@ -1566,3 +1602,32 @@
                (->> (t2/select-one Field :id fk-id)
                     (serdes/extract-one "Field" {})
                     :fk_target_field_id)))))))
+
+(deftest escape-report-test
+  (mt/with-empty-h2-app-db
+    (ts/with-temp-dpc [Collection    {coll1-id :id} {:name "Some Collection"}
+                       Collection    {coll2-id :id} {:name "Other Collection"}
+                       Dashboard     {dash-id :id}  {:name "A Dashboard" :collection_id coll1-id}
+                       Card          {card1-id :id} {:name "Some Card"}
+                       DashboardCard _              {:card_id card1-id :dashboard_id dash-id}
+                       Card          _              {:name          "Dependent Card"
+                                                     :collection_id coll2-id
+                                                     :dataset_query {:query {:source-table (str "card__" card1-id)
+                                                                             :aggregation  [[:count]]}}}]
+      (testing "Complain about card to available for exporting"
+        (is (some #(str/starts-with? % "Failed to export Dashboard")
+                  (into #{}
+                        (map (fn [[_log-level _error message]] message))
+                        (mt/with-log-messages-for-level ['metabase-enterprise :warn]
+                          (extract/extract {:targets       [["Collection" coll1-id]]
+                                            :no-settings   true
+                                            :no-data-model true}))))))
+
+      (testing "Complain about card depending on a card"
+        (is (some #(str/starts-with? % "Failed to export Cards")
+                  (into #{}
+                        (map (fn [[_log-level _error message]] message))
+                        (mt/with-log-messages-for-level ['metabase-enterprise :warn]
+                          (extract/extract {:targets       [["Collection" coll2-id]]
+                                            :no-settings   true
+                                            :no-data-model true})))))))))
