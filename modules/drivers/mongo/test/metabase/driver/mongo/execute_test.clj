@@ -74,45 +74,41 @@
 
 (deftest kill-an-in-flight-query-method-validation-test
   (testing "Confirm that method used to kill in-flight queries on mongo works"
-    (mt/with-driver :mongo
-      (mt/dataset
-       sample-dataset
-       (let [;; Following query runs on my m2 ~ 10 seconds.
-             pipeline-document-raw
-             (m.util/into-array-list
-              (m.conversion/to-db-object
-               [{"$lookup"
-                 {"from" "people",
-                  "let" {"let_user_id_164439" "$user_id"},
-                  "pipeline" [{"$match" {"$expr" {"$eq" ["$$let_user_id_164439" "$id"]}}}],
-                  "as" "join_alias_People - User"}}
-                {"$unwind" {"path" "$join_alias_People - User", "preserveNullAndEmptyArrays" true}}
-                {"$group"
-                 {"_id"
-                  {"created_at"
-                   {"$dateTrunc" {"date" "$created_at", "unit" "month", "timezone" "UTC", "startOfWeek" "sunday"}}},
-                  "sum" {"$sum" "$total"}}}
-                {"$sort" {"_id" 1}}
-                {"$project" {"_id" false, "created_at" "$_id.created_at", "sum" true}}]))]
-         (mongo.util/with-mongo-connection [connection (mt/id)]
-           (let [client-database ^MongoDatabase (#'mongo.execute/connection->database connection)
-                 collection ^MongoCollection (. client-database (getCollection "orders"))]
-             (with-open [session ^ClientSession (#'mongo.execute/start-session! connection)]
-               (let [aggregate (.aggregate collection session ^java.util.ArrayList pipeline-document-raw)
-                     ;; Manually tested: if session is closed before aggregation execution takes place (call to 
-                     ;; eg. either `.into` or `.cursor`) aggregation is then executed.
-                     ;; TODO: Find workaround!
-                     result-ch (a/thread (try (.into aggregate (java.util.ArrayList.))
-                                              (catch MongoCommandException ex
-                                                (if (interrupt-ex? ex)
-                                                  :interrupted
-                                                  :unrecognized-failure))))]
-                 (future (Thread/sleep 100)
-                         (#'mongo.execute/kill-session! client-database session))
+    (mt/test-driver
+     :mongo
+     (mt/dataset
+      sample-dataset
+      (let [;; Following query runs on my m2 ~ 50 seconds.
+            query (mt/mbql-query orders
+                                 {:aggregation [[:sum $total]],
+                                  :breakout [!month.created_at],
+                                  :order-by [[:asc !month.created_at]],
+                                  :joins [{:alias "People_User",
+                                           :strategy :left-join,
+                                           :condition
+                                           [:!= $user_id &People_User.people.id],
+                                           :source-table $$people}]})
+            compiled (-> query qp/compile :query)
+            pipeline (m.util/into-array-list (m.conversion/to-db-object compiled))]
+        (mongo.util/with-mongo-connection [connection (mt/id)]
+          (let [client-database ^MongoDatabase (#'mongo.execute/connection->database connection)
+                collection ^MongoCollection (. client-database (getCollection "orders"))]
+            (with-open [session ^ClientSession (#'mongo.execute/start-session! connection)]
+              (let [aggregate (.aggregate collection session ^java.util.ArrayList pipeline)
+                    ;; Manually tested: if session is closed before aggregation execution takes place (call to 
+                    ;; eg. either `.into` or `.cursor`) aggregation is then executed.
+                    ;; TODO: Find workaround!
+                    result-ch (a/thread (try (.into aggregate (java.util.ArrayList.))
+                                             (catch MongoCommandException ex
+                                               (if (interrupt-ex? ex)
+                                                 :interrupted
+                                                 ex))))]
+                (future (Thread/sleep 100)
+                        (#'mongo.execute/kill-session! client-database session))
                  ;; Using 15k timeout to handle unforseen circumstances.
-                 (let [result (a/alt!! (a/timeout 15000) :timeout
-                                       result-ch ([v] v))]
-                   (is (= :interrupted result))))))))))))
+                (let [result (a/alt!! (a/timeout 60000) :timeout
+                                      result-ch ([v] v))]
+                  (is (= :interrupted result))))))))))))
 
 (deftest kill-an-in-flight-query-test
   (mt/test-driver
@@ -121,26 +117,19 @@
     sample-dataset
     (let [canceled-chan (a/chan)]
       (with-redefs [qp.context/canceled-chan (constantly canceled-chan)]
-        (let [native-query
-              {:database (mt/id)
-               :type :native
-               :native {:collection "orders"
-                        :query [{"$lookup"
-                                 {"from" "people",
-                                  "let" {"let_user_id_164439" "$user_id"},
-                                  "pipeline" [{"$match" {"$expr" {"$eq" ["$$let_user_id_164439" "$id"]}}}],
-                                  "as" "join_alias_People - User"}}
-                                {"$unwind" {"path" "$join_alias_People - User", "preserveNullAndEmptyArrays" true}}
-                                {"$group"
-                                 {"_id"
-                                  {"created_at"
-                                   {"$dateTrunc"
-                                    {"date" "$created_at", "unit" "month", "timezone" "UTC", "startOfWeek" "sunday"}}},
-                                  "sum" {"$sum" "$total"}}}
-                                {"$sort" {"_id" 1}}
-                                {"$project" {"_id" false, "created_at" "$_id.created_at", "sum" true}}]}}]
+        (let [query (mt/mbql-query orders
+                                   {:aggregation [[:sum $total]],
+                                    :breakout [!month.created_at],
+                                    :order-by [[:asc !month.created_at]],
+                                    :joins [{:alias "People_User",
+                                             :strategy :left-join,
+                                             :condition
+                                             [:!= $user_id &People_User.people.id],
+                                             :source-table $$people}]})]
           (future (Thread/sleep 100)
                   (a/>!! canceled-chan ::streaming-response/request-canceled))
           (testing "Cancel signal kills the in progress query"
-            (is (thrown? MongoCommandException
-                         (qp/process-query native-query))))))))))
+            (is (re-find #"Command failed with error 11601.*operation was interrupted"
+                         (try (qp/process-query query)
+                              (catch Throwable e
+                                (ex-message e))))))))))))

@@ -168,17 +168,17 @@
                 (remaining-rows-thunk)))]
       (qp.reducible/reducible-rows row-thunk (qp.context/canceled-chan context)))))
 
-(defn- reduce-results [native-query query context aggregate respond]
-  (with-open [cursor ^MongoCursor (.cursor ^AggregateIterable aggregate)]
-    (let [first-row                        (when (.hasNext cursor)
-                                             (.next cursor))
-          {row-col-names       :row
-           unescaped-col-names :unescaped} (result-col-names native-query query (row-keys first-row))]
-      (log/tracef "Renaming columns in results %s -> %s" (pr-str row-col-names) (pr-str unescaped-col-names))
-      (respond (result-metadata unescaped-col-names)
-               (if-not first-row
-                 []
-                 (reducible-rows context cursor first-row (post-process-row row-col-names)))))))
+(defn- reduce-results [native-query query context ^MongoCursor cursor respond]
+  (let [first-row (when (.hasNext cursor)
+                    (.next cursor))
+        {row-col-names :row
+         unescaped-col-names :unescaped} (result-col-names native-query query (row-keys first-row))]
+    (log/tracef "Renaming columns in results %s -> %s" (pr-str row-col-names) (pr-str unescaped-col-names))
+    (respond (result-metadata unescaped-col-names)
+             (if-not first-row
+               []
+               (reducible-rows context cursor first-row (post-process-row row-col-names))))))
+
 
 (defn- connection->database
   ^MongoDatabase
@@ -214,4 +214,12 @@
                                                       session
                                                       query
                                                       (qp.context/timeout context))]
-        (reduce-results native-query query context aggregate respond)))))
+        (with-open [^MongoCursor cursor (try (.cursor ^AggregateIterable aggregate)
+                                             (catch Throwable e
+                                               (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
+                                                               {:driver :mongo
+                                                                :native native-query
+                                                                :type   qp.error-type/invalid-query}
+                                                               e))))]
+          (reduce-results native-query query context cursor respond))))))
+
