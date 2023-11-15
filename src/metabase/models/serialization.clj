@@ -16,6 +16,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.db.connection :as mdb.connection]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
@@ -510,7 +511,7 @@
 
 (def ^:private fields-for-table
   "Given a table name, returns a map of column_name -> column_type"
-  (memoize
+  (mdb.connection/memoize-for-application-db
    (fn fields-for-table [table-name]
      (t2/with-connection [conn]
        (u.conn/app-db-column-types conn table-name)))))
