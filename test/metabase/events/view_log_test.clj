@@ -26,7 +26,7 @@
             :model    "card"
             :model_id (u/id card)
             :has_access true
-            :context    nil}
+            :context    "question"}
            (latest-view (u/id user) (u/id card)))))))
 
 (deftest table-read-test

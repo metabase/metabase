@@ -36,6 +36,7 @@
   (try
     (-> event
         generate-view
+        (assoc :context "question")
         record-views!)
     (catch Throwable e
       (log/warnf e "Failed to process view_log event. %s" topic))))
