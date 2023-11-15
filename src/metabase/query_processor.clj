@@ -110,10 +110,7 @@
    (qp.setup/with-qp-setup [query query]
      (let [rff     (or rff qp.reducible/default-rff)
            context (or context (qp.context/sync-context))]
-       (try
-         (process-query* query rff context)
-         (catch Throwable e
-           (qp.context/raisef context e)))))))
+       (process-query* query rff context)))))
 
 (mu/defn userland-query :- ::qp.schema/query
   "Add middleware options and `:info` to a `query` so it is ran as a 'userland' query, which slightly changes the QP

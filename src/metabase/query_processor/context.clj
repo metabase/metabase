@@ -39,9 +39,6 @@
 (set! *warn-on-reflection* true)
 
 (p/defprotocol+ Context
-  (raisef [context e]
-    "Raise an Exception.")
-
   (runf [context query rff]
     "Normally, this simply calls [[executef]], but you can override this for test purposes. The result of this function is
   ignored.")
@@ -101,11 +98,6 @@
   [:=>
    [:cat ::qp.schema/metadata ::reducible-rows]
    :some])
-
-(mu/defn ^:private -raisef :- :any
-  [context :- ::context
-   e       :- (ms/InstanceOfClass Throwable)]
-  ((:raisef context) context e))
 
 (mu/defn ^:private -runf :- :some
   [context :- ::context
@@ -167,8 +159,6 @@
 
 (p/defrecord+ SyncContextImpl [-deferred-canceled-chan]
   Context
-  (raisef [this e]
-    (-raisef this e))
   (runf [this query rff]
     (-runf this query rff))
   (executef [this driver query respond]
@@ -192,11 +182,6 @@
      20
      3)))
 
-(mu/defn ^:private default-raisef
-  [context :- ::context
-   e       :- (ms/InstanceOfClass Throwable)]
-  (resultf context e))
-
 (mu/defn ^:private canceled? [context :- ::context]
   (a/poll! (canceled-chan context)))
 
@@ -208,13 +193,10 @@
   (when-not (canceled? context)
     (letfn [(respond [metadata reducible-rows]
               (reducef context rff metadata reducible-rows))]
-      (try
-        (executef context driver/*driver* query respond)
-        (catch InterruptedException e
-          (log/tracef e "Caught InterruptedException when executing query, this means the query was canceled. Ignoring exception.")
-          ::cancel)
-        (catch Throwable e
-          (raisef context e))))))
+      (executef context driver/*driver* query respond)
+      (catch InterruptedException e
+        (log/tracef e "Caught InterruptedException when executing query, this means the query was canceled. Ignoring exception.")
+        ::cancel))))
 
 (mu/defn ^:private default-executef :- :some
   [context :- ::context
@@ -245,7 +227,7 @@
                                                   e)])))]
       (case status
         ::success (resultf context result)
-        ::error   (raisef context result)))))
+        ::error   (throw result)))))
 
 (mu/defn ^:private sync-resultf :- :some
   [context :- ::context
@@ -257,7 +239,6 @@
 
 (def ^:private base-sync-context-impl
   {:timeout       query-timeout-ms
-   :raisef        #'default-raisef
    :runf          #'sync-runf
    :executef      #'default-executef
    :reducef       #'default-reducef

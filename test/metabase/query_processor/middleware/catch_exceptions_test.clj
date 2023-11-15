@@ -122,20 +122,19 @@
               (catch-exceptions (fn run [])
                                 {}
                                 (qp.context/sync-context
-                                 {:runf (fn [context _query _rff]
-                                          (qp.context/raisef context
-                                                             (ex-info "Something went wrong."
-                                                                      {:query-execution {:a            100
-                                                                                         :b            200
-                                                                                         :card_id      300
-                                                                                         ;; these keys should all get removed
-                                                                                         :result_rows  400
-                                                                                         :hash         500
-                                                                                         :executor_id  500
-                                                                                         :dashboard_id 700
-                                                                                         :pulse_id     800
-                                                                                         :native       900}}
-                                                                      (Exception. "Something went wrong"))))})))))))
+                                 {:runf (fn [_context _query _rff]
+                                          (throw (ex-info "Something went wrong."
+                                                          {:query-execution {:a            100
+                                                                             :b            200
+                                                                             :card_id      300
+                                                                             ;; these keys should all get removed
+                                                                             :result_rows  400
+                                                                             :hash         500
+                                                                             :executor_id  500
+                                                                             :dashboard_id 700
+                                                                             :pulse_id     800
+                                                                             :native       900}}
+                                                          (Exception. "Something went wrong"))))})))))))
 
 (deftest ^:parallel catch-exceptions-test-2
   (testing "Should always include :error (#23258, #23281)"

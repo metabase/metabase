@@ -161,19 +161,17 @@
                                           ((requiring-resolve 'metabase.query-processor.compile/compile) query))
                           :preprocessed (u/ignore-exceptions
                                           ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query))})]
-        (letfn [(raisef* [context e]
-                  ;; format the Exception and return it
-                  (let [formatted-exception (format-exception* query e @extra-info)]
-                    (log/error (str (trs "Error processing query: {0}"
-                                         (or (:error formatted-exception)
-                                             ;; log in server locale, respond in user locale
-                                             (trs "Error running query")))
-                                    "\n" (u/pprint-to-str formatted-exception)))
-                    ;; ensure always a message on the error otherwise FE thinks query was successful. (#23258, #23281)
-                    (qp.context/resultf context
-                                        (update formatted-exception
-                                                :error (fnil identity (trs "Error running query"))))))]
-          (try
-            (qp query rff (assoc context :raisef raisef*))
-            (catch Throwable e
-              (raisef* context e))))))))
+        (try
+          (qp query rff context)
+          (catch Throwable e
+            ;; format the Exception and return it
+            (let [formatted-exception (format-exception* query e @extra-info)]
+              (log/error (str (trs "Error processing query: {0}"
+                                   (or (:error formatted-exception)
+                                       ;; log in server locale, respond in user locale
+                                       (trs "Error running query")))
+                              "\n" (u/pprint-to-str formatted-exception)))
+              ;; ensure always a message on the error otherwise FE thinks query was successful. (#23258, #23281)
+              (qp.context/resultf context
+                                  (update formatted-exception
+                                          :error (fnil identity (trs "Error running query")))))))))))

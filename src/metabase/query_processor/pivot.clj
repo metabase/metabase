@@ -194,14 +194,13 @@
                            (fn multiple-reducing [context rff [orig-executef driver] query]
                              (let [respond (fn [metadata reducible-rows]
                                              (let [rf (rff metadata)]
-                                               (assert (fn? rf))
+                                               (assert (ifn? rf))
                                                (try
                                                  (transduce identity (completing rf) reducible-rows)
                                                  (catch Throwable e
-                                                   (qp.context/raisef context
-                                                                      (ex-info (tru "Error reducing result rows")
-                                                                               {:type qp.error-type/qp}
-                                                                               e))))))
+                                                   (throw (ex-info (tru "Error reducing result rows")
+                                                                   {:type qp.error-type/qp}
+                                                                   e))))))
                                    acc     (-> (orig-executef context driver query respond)
                                                (process-queries-append-results more-queries @vrf info context))]
                                ;; completion arity can't be threaded because the value is derefed too early

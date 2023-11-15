@@ -98,9 +98,8 @@
            clojure.lang.ExceptionInfo
            #"Oops!"
            (process-userland-query query (qp.context/sync-context
-                                          {:runf (fn [context _query _rff]
-                                                   (qp.context/raisef context
-                                                                      (ex-info "Oops!" {:type qp.error-type/qp})))}))))
+                                          {:runf (fn [_context _query _rff]
+                                                   (throw (ex-info "Oops!" {:type qp.error-type/qp})))}))))
       (is (=? {:hash         "8d5080dfc63b7f1c46537cf9ec915a4353b2aa9ca6069c6d5db56e087f027209"
                :database_id  nil
                :error        "Oops!"
