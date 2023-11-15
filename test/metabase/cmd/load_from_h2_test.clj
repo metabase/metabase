@@ -73,7 +73,7 @@
   [h2-filename version]
   (str h2-filename "-" version))
 
-(defn- parse-major-version
+(defn- liquibase-latest-major-version
   []
   (t2.conn/with-connection [conn]
     (liquibase/with-liquibase [liquibase conn]
@@ -90,7 +90,7 @@
 
 (def ^:private current-major-version
   (delay (or (config/current-major-version)
-             (parse-major-version))))
+             (liquibase-latest-major-version))))
 
 (defn- migrate-down-then-up-and-create-dump
   [db-name h2-filename version]
