@@ -859,7 +859,7 @@ describe("scenarios > dashboard > parameters", () => {
 
         undoToast()
           .findByText(
-            "This filter has been auto-connected with questions with the same field.",
+            "Orders Model has been auto-connected with filters with the same field.",
           )
           .should("be.visible");
       });
@@ -908,7 +908,7 @@ describe("scenarios > dashboard > parameters", () => {
 
         undoToast()
           .findByText(
-            "This filter has been auto-connected with questions with the same field.",
+            "Orders Model has been auto-connected with filters with the same field.",
           )
           .should("be.visible");
       });
