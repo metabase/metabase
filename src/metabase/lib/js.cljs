@@ -998,7 +998,7 @@
     (js->clj options :keywordize-keys true)))
 
 (defn ^:export find-matching-column
-  "Given `a-ref` and a list of `columns`, finds the column that best matches this ref.
+  "Given `a-ref-or-column` and a list of `columns`, finds the column that best matches this ref or column.
 
    Matching is based on finding the basically plausible matches first. There is often zero or one plausible matches, and
    this can return quickly.
@@ -1021,8 +1021,8 @@
    - The same disambiguation (by `:join-alias` etc.) is applied if there are multiple plausible matches.
 
    Returns the matching column, or nil if no match is found."
-  [a-ref columns]
-  (lib.core/find-matching-column a-ref columns))
+  [a-query stage-number a-ref columns]
+  (lib.core/find-matching-column a-query stage-number a-ref columns))
 
 (defn ^:export stage-count
   "Returns the count of stages in query"
