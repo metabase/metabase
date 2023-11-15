@@ -12,9 +12,9 @@
    [metabase.models :refer [Card Pulse PulseCard]]
    [metabase.models.pulse :as pulse]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.pulse]
-   [metabase.pulse.test-util :as pulse.tu]
    [metabase.query-processor :as qp]
+   [metabase.subscription.core :as subscription]
+   [metabase.subscription.test-util :as pulse.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -52,7 +52,7 @@
         (with-redefs [messages/render-pulse-email (fn [_ _ _ [{:keys [result]}] _]
                                                     [{:result result}])]
           (mt/with-test-user nil
-            (metabase.pulse/send-pulse! pulse)))
+            (subscription/send-pulse! pulse)))
         (let [results @mt/inbox]
           (is (= {"rasta@metabase.com" [{:from    "metamailman@metabase.com"
                                          :bcc     ["rasta@metabase.com"]
@@ -76,7 +76,7 @@
                                                        [{:result result}])
                         email/bcc-enabled? (constantly false)]
             (mt/with-test-user nil
-              (metabase.pulse/send-pulse! pulse)))
+              (subscription/send-pulse! pulse)))
           (let [results @mt/inbox]
             (is (= {"rasta@metabase.com" [{:from    "metamailman@metabase.com"
                                            :to      ["rasta@metabase.com"]
@@ -102,7 +102,7 @@
             (with-redefs [messages/render-pulse-email  (fn [_ _ _ [{:keys [result]}] _]
                                                          [{:result result}])]
               (mt/with-test-user :lucky
-                (metabase.pulse/send-pulse! pulse)))
+                (subscription/send-pulse! pulse)))
             (is (= {:topic    :subscription-send
                     :user_id  (mt/user->id :crowberto)
                     :model    "Pulse"
@@ -130,7 +130,7 @@
             (with-redefs [messages/render-pulse-email  (fn [_ _ _ [{:keys [result]}] _]
                                                          [{:result result}])]
               (mt/with-test-user :lucky
-                (metabase.pulse/send-pulse! pulse)))
+                (subscription/send-pulse! pulse)))
             (is (= {:topic    :alert-send
                     :user_id  (mt/user->id :crowberto)
                     :model    "Pulse"
@@ -231,7 +231,7 @@
                                                                              :subscription_channel_id sc-id}]
             (mt/with-fake-inbox
               (mt/with-test-user nil
-                (metabase.pulse/send-pulse! (pulse/retrieve-pulse pulse-id)))
+                (subscription/send-pulse! (pulse/retrieve-pulse pulse-id)))
               (let [email-results                           @mt/inbox
                     [{html :content} {_icon :attachment} {attachment :content}] (get-in email-results ["rasta@metabase.com" 0 :body])]
                 (testing "email"

@@ -6,7 +6,7 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-card :refer [PulseCard]]
-   [metabase.pulse.test-util :refer [checkins-query-card]]
+   [metabase.subscription.test-util :refer [checkins-query-card]]
    [metabase.task.send-pulses :as send-pulses]
    [metabase.test :as mt]
    [toucan2.core :as t2]))

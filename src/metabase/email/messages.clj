@@ -20,18 +20,18 @@
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.pulse.markdown :as markdown]
-   [metabase.pulse.parameters :as params]
-   [metabase.pulse.render :as render]
-   [metabase.pulse.render.body :as body]
-   [metabase.pulse.render.image-bundle :as image-bundle]
-   [metabase.pulse.render.js-svg :as js-svg]
-   [metabase.pulse.render.style :as style]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.subscription.markdown :as markdown]
+   [metabase.subscription.parameters :as params]
+   [metabase.subscription.render :as render]
+   [metabase.subscription.render.body :as body]
+   [metabase.subscription.render.image-bundle :as image-bundle]
+   [metabase.subscription.render.js-svg :as js-svg]
+   [metabase.subscription.render.style :as style]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
@@ -68,7 +68,7 @@
 
       :else nil)))
       ;; NOTE: disabling whitelabeled URLs for now since some email clients don't render them correctly
-      ;; We need to extract them and embed as attachments like we do in metabase.pulse.render.image-bundle
+      ;; We need to extract them and embed as attachments like we do in metabase.subscription.render.image-bundle
       ;; (data-uri-svg? url)               (themed-image-url url color)
       ;; :else                             url
 

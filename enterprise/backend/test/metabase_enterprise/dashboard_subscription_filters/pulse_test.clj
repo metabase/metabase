@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.public-settings.premium-features-test :as premium-features-test]
-   [metabase.pulse.parameters :as params]))
+   [metabase.subscription.parameters :as params]))
 
 (deftest parameters-test
   (testing "Get params from both pulse and dashboard if :dashboard-subscription-filters feature is enabled"

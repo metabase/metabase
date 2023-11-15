@@ -259,22 +259,22 @@ Ran 33 tests containing 195 assertions.
 0 failures, 0 errors.
 {:test 33, :pass 195, :fail 0, :error 0, :type :summary}
 
-;; run tests for a set of namespaces related to a feature you are working on (eg pulses)
-some-ns=> (let [namespaces '[metabase.pulse.markdown-test metabase.pulse.parameters-test]]
+;; run tests for a set of namespaces related to a feature you are working on (eg subscriptions)
+some-ns=> (let [namespaces '[metabase.subscription.markdown-test metabase.subscription.parameters-test]]
             (apply require namespaces) ;; make sure the test namespaces are loaded
             (apply clojure.test/run-tests namespaces))
 
-Testing metabase.pulse.markdown-test
+Testing metabase.subscription.markdown-test
 
-Testing metabase.pulse.parameters-test
+Testing metabase.subscription.parameters-test
 
 Ran 5 tests containing 147 assertions.
 0 failures, 0 errors.
 {:test 5, :pass 147, :fail 0, :error 0, :type :summary}
 
 ;; but we also have a lovely test runner with lots of cool options
-some-ns=> (metabase.test-runner/find-and-run-tests-repl {:namespace-pattern ".*pulse.*"})
-Running tests with options {:mode :repl, :namespace-pattern ".*pulse.*", :exclude-directories ["classes" "dev" "enterprise/backend/src" "local" "resources" "resources-ee" "shared/src" "src" "target" "test_config" "test_resources"], :test-warn-time 3000}
+some-ns=> (metabase.test-runner/find-and-run-tests-repl {:namespace-pattern ".*subscription.*"})
+Running tests with options {:mode :repl, :namespace-pattern ".*subscription.*", :exclude-directories ["classes" "dev" "enterprise/backend/src" "local" "resources" "resources-ee" "shared/src" "src" "target" "test_config" "test_resources"], :test-warn-time 3000}
 Excluding directory "dev/src"
 Excluding directory "local/src"
 Looking for test namespaces in directory test
@@ -290,10 +290,10 @@ Running 159 tests
 ...
 
 ;; you can even specify a directory if you're working on a subfeature like that
-some-ns=> (metabase.test-runner/find-and-run-tests-repl {:only "test/metabase/pulse/"})
-Running tests with options {:mode :repl, :namespace-pattern #"^metabase.*", :exclude-directories ["classes" "dev" "enterprise/backend/src" "local" "resources" "resources-ee" "shared/src" "src" "target" "test_config" "test_resources"], :test-warn-time 3000, :only "test/metabase/pulse/"}
-Running tests in "test/metabase/pulse/"
-Looking for test namespaces in directory test/metabase/pulse
+some-ns=> (metabase.test-runner/find-and-run-tests-repl {:only "test/metabase/subscription/"})
+Running tests with options {:mode :repl, :namespace-pattern #"^metabase.*", :exclude-directories ["classes" "dev" "enterprise/backend/src" "local" "resources" "resources-ee" "shared/src" "src" "target" "test_config" "test_resources"], :test-warn-time 3000, :only "test/metabase/subscription/"}
+Running tests in "test/metabase/subscription/"
+Looking for test namespaces in directory test/metabase/subscription
 Finding tests took 37.0 ms.
 Running 65 tests
 ...

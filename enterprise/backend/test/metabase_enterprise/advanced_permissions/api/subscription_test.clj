@@ -9,7 +9,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
    [metabase.public-settings.premium-features-test :as premium-features-test]
-   [metabase.pulse-test :as pulse-test]
+   [metabase.subscription.core-test :as subscription-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -81,9 +81,9 @@
          user  [group]]
         (mt/with-temp [Card {card-id :id} {}]
           (letfn [(add-pulse-recipient [req-user status]
-                    (pulse-test/with-pulse-for-card [the-pulse {:card    card-id
-                                                                :pulse   {:creator_id (u/the-id user)}
-                                                                :channel :email}]
+                    (subscription-test/with-pulse-for-card [the-pulse {:card    card-id
+                                                                       :pulse   {:creator_id (u/the-id user)}
+                                                                       :channel :email}]
                       (let [the-pulse   (pulse/retrieve-pulse (:id the-pulse))
                             channel     (api.alert/email-channel the-pulse)
                             new-channel (assoc channel :recipients (conj (:recipients channel) (mt/fetch-user :lucky)))
@@ -92,9 +92,9 @@
                           (mt/user-http-request req-user :put status (format "pulse/%d" (:id the-pulse)) new-pulse)))))
 
                   (remove-subscription-recipient [req-user status]
-                    (pulse-test/with-pulse-for-card [the-pulse {:card    card-id
-                                                                :pulse   {:creator_id (u/the-id user)}
-                                                                :channel :email}]
+                    (subscription-test/with-pulse-for-card [the-pulse {:card    card-id
+                                                                       :pulse   {:creator_id (u/the-id user)}
+                                                                       :channel :email}]
                       ;; manually add another user as recipient
                       (t2.with-temp/with-temp [:model/SubscriptionChannelRecipient _ {:user_id (:id user)
                                                                                       :subscription_channel_id

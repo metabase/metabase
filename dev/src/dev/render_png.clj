@@ -7,9 +7,9 @@
    [hiccup.core :as hiccup]
    [metabase.models.card :as card]
    [metabase.models.user :as user]
-   [metabase.pulse :as pulse]
-   [metabase.pulse.render :as render]
-   [metabase.pulse.render.test-util :as render.tu]
+   [metabase.subscription.core :as pulse]
+   [metabase.subscription.render :as render]
+   [metabase.subscription.render.test-util :as render.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]))
 

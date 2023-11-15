@@ -10,7 +10,7 @@
    [metabase.models.pulse :as pulse]
    [metabase.models.subscription-channel :as subscription-channel]
    [metabase.models.task-history :as task-history]
-   [metabase.pulse]
+   [metabase.subscription.core :as subscription]
    [metabase.task :as task]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -57,7 +57,7 @@
                                           :task_details {:pulse-id pulse-id}}
            (log/debug (trs "Starting Pulse Execution: {0}" pulse-id))
            (when-let [pulse (pulse/retrieve-notification pulse-id :archived false)]
-             (metabase.pulse/send-pulse! pulse :channel-ids (map :id channels)))
+             (subscription/send-pulse! pulse :channel-ids (map :id channels)))
            (log/debug (trs "Finished Pulse Execution: {0}" pulse-id)))
          (catch Throwable e
            (on-error pulse-id e)))))))

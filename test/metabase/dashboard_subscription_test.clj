@@ -15,9 +15,9 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
    [metabase.public-settings :as public-settings]
-   [metabase.pulse]
-   [metabase.pulse.render.body :as body]
-   [metabase.pulse.test-util :as pulse.test-util]
+   [metabase.subscription.core :as subscription]
+   [metabase.subscription.render.body :as body]
+   [metabase.subscription.test-util :as pulse.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -103,7 +103,7 @@
                     (f {:dashboard-id dashboard-id,
                         :card-id card-id,
                         :pulse-id pulse-id}
-                       (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))))
+                       (subscription/send-pulse! (pulse/retrieve-notification pulse-id))))
                   (thunk []
                     (if fixture
                       (fixture {:dashboard-id dashboard-id,
@@ -226,7 +226,7 @@
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1}
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2}
                    User {user-id :id} {}]
-      (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
+      (let [result (@#'subscription/execute-dashboard {:creator_id user-id} dashboard)]
         (is (malli= [:sequential
                      {:min 2, :max 2}
                      [:map
@@ -244,7 +244,7 @@
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1}
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2 :visualization_settings {:card.hide_empty true}}
                    User {user-id :id} {}]
-      (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
+      (let [result (@#'subscription/execute-dashboard {:creator_id user-id} dashboard)]
         (is (= (count result) 1))))))
 
 (deftest ^:parallel execute-dashboard-test-3
@@ -257,7 +257,7 @@
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2 :row 0 :col 1}
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-3 :row 0 :col 0}
                    User {user-id :id} {}]
-      (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
+      (let [result (@#'subscription/execute-dashboard {:creator_id user-id} dashboard)]
         (is (= [card-id-3 card-id-2 card-id-1]
                (map #(-> % :card :id) result)))))))
 
@@ -270,7 +270,7 @@
                                     :visualization_settings {:virtual_card {}, :text "test"}}
                    User {user-id :id} {}]
       (is (= [{:virtual_card {} :text "test" :type :text}]
-             (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard))))))
+             (@#'subscription/execute-dashboard {:creator_id user-id} dashboard))))))
 
 (deftest basic-table-test
   (tests {:pulse {:skip_if_empty false} :display :table}
@@ -441,7 +441,7 @@
                       (pulse.test-util/thunk->boolean pulse-results)))))}}))
 
 (deftest dashboard-filter-test
-  (with-redefs [metabase.pulse/attachment-text-length-limit 15]
+  (with-redefs [subscription/attachment-text-length-limit 15]
     (tests {:pulse     {:skip_if_empty false}
             :dashboard pulse.test-util/test-dashboard}
       "Dashboard subscription that includes a dashboard filters"
@@ -588,7 +588,7 @@
                (pulse.test-util/thunk->boolean pulse-results))))}}))
 
 (deftest mrkdwn-length-limit-test
-  (with-redefs [metabase.pulse/block-text-length-limit 10]
+  (with-redefs [subscription/block-text-length-limit 10]
     (tests {:pulse {:skip_if_empty false}, :dashcard {:row 0, :col 0}}
       "Dashboard subscription that includes a Markdown card that exceeds Slack's length limit when converted to mrkdwn"
       {:card (pulse.test-util/checkins-query-card {})
@@ -646,7 +646,7 @@
                                                                 :target       [:dimension [:field (mt/id :products :category) nil]]}]
                                           :card_id            mbql-card-id
                                           :dashboard_id       dashboard-id}]
-            (let [[mbql-results] (map :result (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))]
+            (let [[mbql-results] (map :result (@#'subscription/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))]
               (is (= [[2 "Small Marble Shoes"        "Doohickey"]
                       [3 "Synergistic Granite Chair" "Doohickey"]]
                      (mt/rows mbql-results))))))
@@ -673,7 +673,7 @@
                                                                 :target       [:dimension [:template-tag "category"]]}]
                                           :card_id            sql-card-id
                                           :dashboard_id       dashboard-id}]
-            (let [[results] (map :result (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))]
+            (let [[results] (map :result (@#'subscription/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))]
               (is (= [[1  "Rustic Paper Wallet"   "Gizmo"]
                       [10 "Mediocre Wooden Table" "Gizmo"]]
                      (mt/rows results))))))))))
@@ -691,7 +691,7 @@
                                     :dashboard_id       dashboard-id
                                     :visualization_settings {:text "{{foo}}"}}]
       (is (= [{:text "Doohickey and Gizmo" :type :text}]
-             (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
+             (@#'subscription/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
 
 (deftest no-native-perms-test
   (testing "A native query on a dashboard executes succesfully even if the subscription creator does not have native
@@ -707,7 +707,7 @@
                                         :card_id      card-id}]
           (perms/update-data-perms-graph! (assoc-in (perms/data-perms-graph) native-perm-path :none))
           (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]]
-                 (-> (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)
+                 (-> (@#'subscription/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)
                      first :result :data :rows))))
         (finally
           (perms/update-data-perms-graph! (assoc-in (perms/data-perms-graph) native-perm-path original-native-perm)))))))
@@ -729,7 +729,7 @@
                                         :row                    3}]
       (is (=? [{:text "Markdown"}
                {:text "### [https://metabase.com](https://metabase.com)"}]
-             (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)))))
+             (@#'subscription/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)))))
 
   (testing "Link cards are returned and info should be newly fetched"
     (t2.with-temp/with-temp [Dashboard dashboard {:name "Test Dashboard"}]
@@ -756,13 +756,13 @@
                      {:text (format "### [New Card name](%s/question/%d)\nLinked card desc" site-url card-id)}
                      {:text (format "### [New Card name](%s/question/%d)\nLinked model desc" site-url model-id)}
                      {:text (format "### [https://metabase.com](https://metabase.com)")}]
-                    (@#'metabase.pulse/execute-dashboard {:creator_id collection-owner-id} dashboard))))
+                    (@#'subscription/execute-dashboard {:creator_id collection-owner-id} dashboard))))
 
           (testing "it should filter out models that current users does not have permission to read"
             (is (=? [{:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
                      {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
                      {:text (format "### [https://metabase.com](https://metabase.com)")}]
-                    (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :lucky)} dashboard)))))))))
+                    (@#'subscription/execute-dashboard {:creator_id (mt/user->id :lucky)} dashboard)))))))))
 
 (deftest execute-dashboard-with-tabs-test
   (t2.with-temp/with-temp
@@ -797,7 +797,7 @@
               {:text "The second tab", :type :tab-title}
               {:text "Card 1 tab-2", :type :text}
               {:text "Card 2 tab-2", :type :text}]
-             (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
+             (@#'subscription/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
 
 (deftest render-dashboard-with-tabs-test
   (tests {:pulse     {:skip_if_empty false}

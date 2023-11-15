@@ -19,10 +19,10 @@
    [metabase.models.subscription-channel :as subscription-channel :refer [channel-types]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.pulse]
-   [metabase.pulse.render :as render]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.subscription.core :as subscription]
+   [metabase.subscription.render :as render]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
@@ -270,7 +270,7 @@
                [:body {:style "margin: 0;"}
                 (binding [render/*include-title*   true
                           render/*include-buttons* true]
-                  (render/render-pulse-card-for-display (metabase.pulse/defaulted-timezone card) card result))]])}))
+                  (render/render-pulse-card-for-display (subscription/defaulted-timezone card) card result))]])}))
 
 (api/defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a Card with `id` and other information."
@@ -281,7 +281,7 @@
         data      (:data result)
         card-type (render/detect-pulse-chart-type card nil data)
         card-html (html (binding [render/*include-title* true]
-                          (render/render-pulse-card-for-display (metabase.pulse/defaulted-timezone card) card result)))]
+                          (render/render-pulse-card-for-display (subscription/defaulted-timezone card) card result)))]
     {:id              id
      :pulse_card_type card-type
      :pulse_card_html card-html
@@ -299,7 +299,7 @@
   (let [card   (api/read-check Card id)
         result (pulse-card-query-results card)
         ba     (binding [render/*include-title* true]
-                 (render/render-pulse-card-to-png (metabase.pulse/defaulted-timezone card) card result preview-card-width))]
+                 (render/render-pulse-card-to-png (subscription/defaulted-timezone card) card result preview-card-width))]
     {:status 200, :headers {"Content-Type" "image/png"}, :body (ByteArrayInputStream. ba)}))
 
 (api/defendpoint POST "/test"
@@ -316,7 +316,7 @@
   ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
   (doseq [channel channels]
     (subscription-channel/validate-email-domains channel))
-  (metabase.pulse/send-pulse! (assoc body :creator_id api/*current-user-id*))
+  (subscription/send-pulse! (assoc body :creator_id api/*current-user-id*))
   {:ok true})
 
 (api/defendpoint DELETE "/:id/subscription"

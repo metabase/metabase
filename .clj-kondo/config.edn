@@ -329,13 +329,13 @@
     metabase.plugins.initialize                                     plugins.init
     metabase.public-settings                                        public-settings
     metabase.public-settings.premium-features                       premium-features
-    metabase.pulse                                                  pulse ; NB some conflicts with metabase.models.pulse
-    metabase.pulse.markdown                                         markdown
-    metabase.pulse.render                                           render
-    metabase.pulse.render.body                                      body
-    metabase.pulse.render.common                                    common
-    metabase.pulse.render.style                                     style
-    metabase.pulse.parameters                                       params
+    metabase.subscription                                           subscription
+    metabase.subscription.markdown                                  markdown
+    metabase.subscription.render                                    render
+    metabase.subscription.render.body                               body
+    metabase.subscription.render.common                             common
+    metabase.subscription.render.style                              style
+    metabase.subscription.parameters                                params
     metabase.query-processor-test                                   qp.test
     metabase.query-processor.context                                qp.context
     metabase.query-processor.error-type                             qp.error-type
@@ -479,7 +479,7 @@
   metabase.models.setting/defsetting                                                   clj-kondo.lint-as/def-catch-all
   metabase.public-settings.premium-features/defenterprise-schema                       clj-kondo.lint-as/def-catch-all
   metabase.public-settings.premium-features/define-premium-feature                     clojure.core/def
-  metabase.pulse-test/with-pulse-for-card                                              clojure.core/let
+  metabase.subscription.core-test/with-pulse-for-card                                  clojure.core/let
   metabase.query-processor.error-type/deferror                                         clojure.core/def
   metabase.query-processor.middleware.cache.impl/with-reducible-deserialized-results   clojure.core/let
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution clojure.core/let
@@ -573,7 +573,7 @@
    metabase.models.setting.multi-setting/define-multi-setting                                                                hooks.metabase.models.setting/defsetting
    metabase.models.setting/defsetting                                                                                        hooks.metabase.models.setting/defsetting
    metabase.public-settings.premium-features/defenterprise                                                                   hooks.metabase.public-settings.premium-features/defenterprise
-   metabase.pulse.test-util/checkins-query-card                                                                              hooks.metabase.test.data/$ids
+   metabase.subscription.test-util/checkins-query-card                                                                       hooks.metabase.test.data/$ids
    metabase.query-processor-test.expressions-test/calculate-bird-scarcity                                                    hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
    metabase.query-processor-test.filter-test/count-with-filter-clause                                                        hooks.metabase.test.data/$ids
    metabase.query-processor.middleware.cache-test/with-mock-cache                                                            hooks.common/with-two-bindings
