@@ -1,12 +1,15 @@
 (ns ^:mb/once metabase-enterprise.serialization.v2.storage-test
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.storage :as storage]
-   [metabase.models :refer [Card Collection Dashboard Database Field FieldValues NativeQuerySnippet Table]]
+   [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field FieldValues NativeQuerySnippet
+                            Table]]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util.date-2 :as u.date]
@@ -72,7 +75,7 @@
                          Card        c3          {:name "parent card"      :collection_id (:id parent)}
                          Card        c4          {:name "child card"       :collection_id (:id child)}
                          Dashboard   d1          {:name "parent dash"      :collection_id (:id parent)}]
-        (let [export          (into [] (extract/extract nil))]
+        (let [export (into [] (extract/extract nil))]
           (storage/store! export dump-dir)
           (testing "the right files in the right places"
             (let [gp-dir (str (:entity_id grandparent) "_grandparent_collection")
@@ -87,6 +90,7 @@
                        [gp-dir p-dir c-dir "cards" (str (:entity_id c4) "_child_card.yaml")]  ; Child card
                        [gp-dir p-dir "dashboards" (str (:entity_id d1) "_parent_dash.yaml")]} ; Parent dashboard
                      (file-set (io/file dump-dir "collections")))))))))))
+
 
 (deftest snippets-collections-nesting-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -150,3 +154,54 @@
                                                 "fields"    "Company__SLASH__organization website.yaml"))
                        (update :visibility_type keyword)
                        (update :base_type       keyword))))))))))
+
+(deftest yaml-sorted-test
+  (mt/with-empty-h2-app-db
+    (ts/with-temp-dpc [Database           db  {:name "My Company Data"}
+                       Table              t   {:name "Customers" :db_id (:id db)}
+                       Field              w   {:name "Company/organization website" :table_id (:id t)}
+                       FieldValues        _   {:field_id (:id w)}
+                       Collection         col {:name "Some Collection"}
+                       Card               c1  {:name "some card" :collection_id nil}
+                       Card               c2  {:name "other card" :collection_id (:id col)}
+                       Dashboard          d1  {:name "some dash" :collection_id (:id col)}
+                       DashboardCard      _   {:card_id (:id c1) :dashboard_id (:id d1)}
+                       DashboardCard      _   {:card_id (:id c2) :dashboard_id (:id d1)}
+                       NativeQuerySnippet _   {:name "root snippet" :collection_id nil}]
+      (let [export     (extract/extract nil)
+            check-sort (fn [coll order]
+                         (loop [[k :as ks] (keys coll)
+                                idx        -1]
+                           (let [new-idx (get order k)]
+                             (if (nil? new-idx)
+                               ;; rest are sorted alphabetically
+                               (is (= (not-empty (sort ks))
+                                      (not-empty ks)))
+                               (do
+                                 ;; check every present key is sorted in a monotone increasing order
+                                 (is (< idx (get order k)))
+                                 (recur (rest ks)
+                                        (long new-idx)))))))
+            descend    (fn descend
+                         ([coll]
+                          (let [model (-> (:serdes/meta coll) last :model)]
+                            (is model)
+                            (descend coll [(keyword model)])))
+                         ([coll path]
+                          (let [order (or (get @@#'dump/serialization-order path)
+                                          (get @@#'dump/serialization-order (last path)))]
+                            (testing (str "Path = " path)
+                              (is order)
+                              (check-sort coll order))
+                            (doseq [[k v] coll]
+                              (cond
+                                (map? v)               (descend v (conj path k))
+                                (and (sequential? v)
+                                     (map? (first v))) (run! #(descend % (conj path k)) v))))))]
+        (with-redefs [spit (fn [fname yaml-data]
+                             (testing (format "File %s\n" fname)
+                               (let [coll (yaml/parse-string yaml-data)]
+                                 (if (str/ends-with? fname "settings.yaml")
+                                   (descend coll [:settings])
+                                   (descend coll)))))]
+          (storage/store! export "/non-existent"))))))

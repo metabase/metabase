@@ -192,7 +192,7 @@ describe("scenarios > models metadata", () => {
     // Check that the relation is automatically suggested in the notebook once it is implemented.
   });
 
-  it("should keep metadata in sync with the query", () => {
+  it("should keep metadata in sync with the query", { tags: "@flaky" }, () => {
     cy.createNativeQuestion(
       {
         name: "Native Model",

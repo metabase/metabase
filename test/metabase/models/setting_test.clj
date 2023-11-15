@@ -16,7 +16,6 @@
    [metabase.util :as u]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -979,17 +978,16 @@
            [metabase.util.i18n :as i18n :refer [deferred-tru]]))
         (defsetting foo (deferred-tru "A testing setting") :visibility :public)
         (catch Exception e
-          (is (schema= {:existing-setting
-                        {:description (s/eq (deferred-tru "A testing setting"))
-                         :name        (s/eq :foo)
-                         :munged-name (s/eq "foo")
-                         :type        (s/eq :string)
-                         :sensitive?  (s/eq false)
-                         :tag         (s/eq 'java.lang.String)
-                         :namespace   (s/eq current-ns)
-                         :visibility  (s/eq :public)
-                         s/Keyword s/Any}}
-                       (ex-data e)))
+          (is (=? {:existing-setting
+                   {:description (deferred-tru "A testing setting")
+                    :name        :foo
+                    :munged-name "foo"
+                    :type        :string
+                    :sensitive?  false
+                    :tag         'java.lang.String
+                    :namespace   current-ns
+                    :visibility  :public}}
+                  (ex-data e)))
           (is (= (str "Setting :foo already registered in " current-ns)
                  (ex-message e))))
         (finally (in-ns current-ns))))))

@@ -2,7 +2,6 @@ import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addOrUpdateDashboardCard,
-  deleteTab,
   editDashboard,
   getActionCardDetails,
   getBrokenUpTextMatcher,
@@ -349,38 +348,107 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           );
         });
       });
+    });
 
-      cy.log("click behavior should still work after removing target tab");
+    it("should show error and disable the form after target dashboard tab has been removed and there is more than 1 tab left", () => {
+      cy.createDashboard(TARGET_DASHBOARD, {
+        wrapId: true,
+        idAlias: "targetDashboardId",
+      });
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        cy.request("PUT", `/api/dashboard/${targetDashboardId}/cards`, {
+          cards: [],
+          tabs: [FIRST_TAB, SECOND_TAB, THIRD_TAB],
+        });
+        const inexistingTabId = 999;
+        const cardDetails = {
+          visualization_settings: {
+            click_behavior: {
+              parameterMapping: {},
+              targetId: targetDashboardId,
+              tabId: inexistingTabId,
+              linkType: "dashboard",
+              type: "link",
+            },
+          },
+        };
+        cy.createQuestionAndDashboard({
+          questionDetails,
+          cardDetails,
+        }).then(({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+        });
+      });
+
       editDashboard();
-      deleteTab(SECOND_TAB.name);
+      getDashboardCard().realHover().icon("click").click();
+
+      cy.get("aside")
+        .findByText("The selected tab is no longer available")
+        .should("exist");
+      cy.button("Done").should("be.disabled");
+
+      cy.get("aside")
+        .findByLabelText("Select a dashboard tab")
+        .should("not.have.value")
+        .click();
+      cy.findByRole("listbox").findByText(SECOND_TAB.name).click();
+
+      cy.get("aside")
+        .findByText("The selected tab is no longer available")
+        .should("not.exist");
+      cy.button("Done").should("be.enabled").click();
+
       saveDashboard();
 
-      cy.get("@dashboardId").then(dashboardId => {
-        visitDashboard(dashboardId);
+      clickLineChartPoint();
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        cy.location().should(({ pathname, search }) => {
+          expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+          expect(search).to.equal(`?tab=${SECOND_TAB_SLUG}`);
+        });
+      });
+    });
+
+    it("should fall back to the first tab after target dashboard tab has been removed and there is only 1 tab left", () => {
+      cy.createDashboard(TARGET_DASHBOARD, {
+        wrapId: true,
+        idAlias: "targetDashboardId",
+      });
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        const inexistingTabId = 999;
+        const cardDetails = {
+          visualization_settings: {
+            click_behavior: {
+              parameterMapping: {},
+              targetId: targetDashboardId,
+              tabId: inexistingTabId,
+              linkType: "dashboard",
+              type: "link",
+            },
+          },
+        };
+        cy.createQuestionAndDashboard({
+          questionDetails,
+          cardDetails,
+        }).then(({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+        });
       });
 
       editDashboard();
       getDashboardCard().realHover().icon("click").click();
       cy.get("aside")
         .findByLabelText("Select a dashboard tab")
-        .should("have.value", FIRST_TAB.name)
-        .click();
-      cy.findByRole("listbox").findByText(SECOND_TAB.name).should("not.exist");
-      cy.get("header").button("Cancel").click();
-      // migrateDeletedTab causes detection of changes even though user did not change anything
-      modal().button("Discard changes").click();
-      cy.button("Cancel").should("not.exist");
+        .should("not.exist");
+      cy.button("Done").should("be.enabled").click();
+      saveDashboard();
 
       clickLineChartPoint();
-      cy.findAllByTestId("field-set")
-        .should("have.length", 1)
-        .should("contain.text", POINT_COUNT);
       cy.get("@targetDashboardId").then(targetDashboardId => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
-          expect(search).to.equal(
-            `?tab=${FIRST_TAB_SLUG}&${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}`,
-          );
+          expect(search).to.equal("");
         });
       });
     });
@@ -857,129 +925,135 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("have.text", "Open the drill-through menu");
     });
 
-    it("should allow setting dashboard and saved question as custom destination for different columns", () => {
-      cy.createQuestion(TARGET_QUESTION);
-      cy.createDashboard(
-        {
-          ...TARGET_DASHBOARD,
-          parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
-        },
-        {
-          wrapId: true,
-          idAlias: "targetDashboardId",
-        },
-      );
-      cy.createQuestionAndDashboard({ questionDetails }).then(
-        ({ body: card }) => {
-          visitDashboard(card.dashboard_id);
-        },
-      );
-
-      editDashboard();
-
-      getDashboardCard().realHover().icon("click").click();
-
-      (function addCustomDashboardDestination() {
-        cy.log("custom destination (dashboard) behavior for 'Count' column");
-
-        getCountToDashboardMapping().should("not.exist");
-        cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
-        addDashboardDestination();
-        cy.get("aside")
-          .findByText("Select a dashboard tab")
-          .should("not.exist");
-        cy.get("aside").findByText("No available targets").should("not.exist");
-        addTextParameter();
-        addTimeParameter();
-        cy.get("aside")
-          .findByRole("textbox")
-          .type(`Count: {{${COUNT_COLUMN_ID}}}`, {
-            parseSpecialCharSequences: false,
-          });
-
-        cy.icon("chevronleft").click();
-
-        getCountToDashboardMapping().should("exist");
-        getDashboardCard()
-          .button()
-          .should("have.text", "1 column has custom behavior");
-      })();
-
-      (function addCustomQuestionDestination() {
-        cy.log(
-          "custom destination (question) behavior for 'Created at' column",
+    it(
+      "should allow setting dashboard and saved question as custom destination for different columns",
+      { tags: "@flaky" },
+      () => {
+        cy.createQuestion(TARGET_QUESTION);
+        cy.createDashboard(
+          {
+            ...TARGET_DASHBOARD,
+            parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
+          },
+          {
+            wrapId: true,
+            idAlias: "targetDashboardId",
+          },
+        );
+        cy.createQuestionAndDashboard({ questionDetails }).then(
+          ({ body: card }) => {
+            visitDashboard(card.dashboard_id);
+          },
         );
 
-        getCreatedAtToQuestionMapping().should("not.exist");
-        cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
-        /**
-         * TODO: remove the next line when metabase#34845 is fixed
-         * @see https://github.com/metabase/metabase/issues/34845
-         */
-        cy.get("aside").findByText("Unknown").click();
-        addSavedQuestionDestination();
-        addSavedQuestionCreatedAtParameter();
-        addSavedQuestionQuantityParameter();
-        cy.get("aside")
-          .findByRole("textbox")
-          .type(`Created at: {{${CREATED_AT_COLUMN_ID}}}`, {
-            parseSpecialCharSequences: false,
+        editDashboard();
+
+        getDashboardCard().realHover().icon("click").click();
+
+        (function addCustomDashboardDestination() {
+          cy.log("custom destination (dashboard) behavior for 'Count' column");
+
+          getCountToDashboardMapping().should("not.exist");
+          cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
+          addDashboardDestination();
+          cy.get("aside")
+            .findByText("Select a dashboard tab")
+            .should("not.exist");
+          cy.get("aside")
+            .findByText("No available targets")
+            .should("not.exist");
+          addTextParameter();
+          addTimeParameter();
+          cy.get("aside")
+            .findByRole("textbox")
+            .type(`Count: {{${COUNT_COLUMN_ID}}}`, {
+              parseSpecialCharSequences: false,
+            });
+
+          cy.icon("chevronleft").click();
+
+          getCountToDashboardMapping().should("exist");
+          getDashboardCard()
+            .button()
+            .should("have.text", "1 column has custom behavior");
+        })();
+
+        (function addCustomQuestionDestination() {
+          cy.log(
+            "custom destination (question) behavior for 'Created at' column",
+          );
+
+          getCreatedAtToQuestionMapping().should("not.exist");
+          cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
+          /**
+           * TODO: remove the next line when metabase#34845 is fixed
+           * @see https://github.com/metabase/metabase/issues/34845
+           */
+          cy.get("aside").findByText("Unknown").click();
+          addSavedQuestionDestination();
+          addSavedQuestionCreatedAtParameter();
+          addSavedQuestionQuantityParameter();
+          cy.get("aside")
+            .findByRole("textbox")
+            .type(`Created at: {{${CREATED_AT_COLUMN_ID}}}`, {
+              parseSpecialCharSequences: false,
+            });
+
+          cy.icon("chevronleft").click();
+
+          getCreatedAtToQuestionMapping().should("exist");
+          getDashboardCard()
+            .button()
+            .should("have.text", "2 columns have custom behavior");
+        })();
+
+        cy.get("aside").button("Done").click();
+        saveDashboard();
+
+        (function testDashboardDestinationClick() {
+          cy.log("it handles 'Count' column click");
+
+          getTableCell(COLUMN_INDEX.COUNT)
+            .should("have.text", `Count: ${POINT_COUNT}`)
+            .click();
+          cy.findAllByTestId("field-set")
+            .should("have.length", 2)
+            .should("contain.text", POINT_COUNT)
+            .should("contain.text", POINT_CREATED_AT_FORMATTED);
+          cy.get("@targetDashboardId").then(targetDashboardId => {
+            cy.location().should(({ pathname, search }) => {
+              expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+              expect(search).to.equal(
+                `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.slug}=${POINT_CREATED_AT}`,
+              );
+            });
           });
+        })();
 
-        cy.icon("chevronleft").click();
+        cy.go("back");
 
-        getCreatedAtToQuestionMapping().should("exist");
-        getDashboardCard()
-          .button()
-          .should("have.text", "2 columns have custom behavior");
-      })();
+        (function testQuestionDestinationClick() {
+          cy.log("it handles 'Created at' column click");
 
-      cy.get("aside").button("Done").click();
-      saveDashboard();
-
-      (function testDashboardDestinationClick() {
-        cy.log("it handles 'Count' column click");
-
-        getTableCell(COLUMN_INDEX.COUNT)
-          .should("have.text", `Count: ${POINT_COUNT}`)
-          .click();
-        cy.findAllByTestId("field-set")
-          .should("have.length", 2)
-          .should("contain.text", POINT_COUNT)
-          .should("contain.text", POINT_CREATED_AT_FORMATTED);
-        cy.get("@targetDashboardId").then(targetDashboardId => {
-          cy.location().should(({ pathname, search }) => {
-            expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
-            expect(search).to.equal(
-              `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.slug}=${POINT_CREATED_AT}`,
-            );
+          getTableCell(COLUMN_INDEX.CREATED_AT)
+            .should("have.text", `Created at: ${POINT_CREATED_AT_FORMATTED}`)
+            .click();
+          cy.findByTestId("qb-filters-panel")
+            .should("contain.text", "Created At is August 1–31, 2022")
+            .should("contain.text", "Quantity is equal to 79");
+          cy.location().should(({ hash, pathname }) => {
+            expect(pathname).to.equal("/question");
+            const card = deserializeCardFromUrl(hash);
+            expect(card.name).to.deep.equal(TARGET_QUESTION.name);
+            expect(card.display).to.deep.equal(TARGET_QUESTION.display);
+            expect(card.dataset_query.query).to.deep.equal({
+              ...TARGET_QUESTION.query,
+              filter: ["and", QUERY_FILTER_CREATED_AT, QUERY_FILTER_QUANTITY],
+            });
           });
-        });
-      })();
-
-      cy.go("back");
-
-      (function testQuestionDestinationClick() {
-        cy.log("it handles 'Created at' column click");
-
-        getTableCell(COLUMN_INDEX.CREATED_AT)
-          .should("have.text", `Created at: ${POINT_CREATED_AT_FORMATTED}`)
-          .click();
-        cy.findByTestId("qb-filters-panel")
-          .should("contain.text", "Created At is August 1–31, 2022")
-          .should("contain.text", "Quantity is equal to 79");
-        cy.location().should(({ hash, pathname }) => {
-          expect(pathname).to.equal("/question");
-          const card = deserializeCardFromUrl(hash);
-          expect(card.name).to.deep.equal(TARGET_QUESTION.name);
-          expect(card.display).to.deep.equal(TARGET_QUESTION.display);
-          expect(card.dataset_query.query).to.deep.equal({
-            ...TARGET_QUESTION.query,
-            filter: ["and", QUERY_FILTER_CREATED_AT, QUERY_FILTER_QUANTITY],
-          });
-        });
-      })();
-    });
+        })();
+      },
+    );
 
     it("should allow setting dashboard tab with parameter for a column", () => {
       cy.createQuestion(TARGET_QUESTION);

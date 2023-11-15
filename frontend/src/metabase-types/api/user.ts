@@ -54,3 +54,7 @@ export type UserInfo = Pick<
   | "is_superuser"
   | "is_qbnewb"
 >;
+
+export type UserListQuery = {
+  recipients: boolean;
+};

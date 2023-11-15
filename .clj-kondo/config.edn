@@ -446,7 +446,8 @@
 
   :metabase/validate-deftest                                           {:level :warning}
   :metabase/missing-test-expr-requires-in-cljs                         {:level :warning}
-  :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests {:level :warning}}
+  :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests {:level :warning}
+  :metabase/warn-about-schema=                                         {:level :warning}}
 
  :lint-as
  {clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
@@ -496,6 +497,7 @@
   metabase.test/with-single-admin-user                                                 clojure.core/fn
 
   metabase.test/with-temp-dir                                                          clojure.core/let
+  metabase.test/with-temp-empty-app-db                                                 clojure.core/let
   metabase.test/with-temp-file                                                         clojure.core/let
   metabase.test/with-user-in-groups                                                    clojure.core/let
   metabase.util.files/with-open-path-to-resource                                       clojure.core/let

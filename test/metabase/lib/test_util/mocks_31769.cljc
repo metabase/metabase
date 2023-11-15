@@ -22,10 +22,10 @@
     (as-> (lib/query metadata-provider orders) q
       (lib/join q (let [products (lib.metadata/table metadata-provider (id-fn :products))]
                     (-> (lib/join-clause products)
-                        (lib/with-join-conditions [(lib/suggested-join-condition q products)]))))
+                        (lib/with-join-conditions (lib/suggested-join-conditions q products)))))
       (lib/join q (let [people (lib.metadata/table metadata-provider (id-fn :people))]
                     (-> (lib/join-clause people)
-                        (lib/with-join-conditions [(lib/suggested-join-condition q people)]))))
+                        (lib/with-join-conditions (lib/suggested-join-conditions q people)))))
       (lib/breakout q (let [breakout (m/find-first #(and (= (:id %) (id-fn :products :category))
                                                          (not= (:lib/source %) :source/implicitly-joinable))
                                                    (lib/breakoutable-columns q))]
