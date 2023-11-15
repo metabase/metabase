@@ -1,42 +1,56 @@
-import { restore, typeAndBlurUsingLabel } from "__support__/e2e/helpers";
+import {
+  restore,
+  popover,
+  typeAndBlurUsingLabel,
+  isEE,
+} from "__support__/e2e/helpers";
 import {
   QA_MONGO_PORT,
   QA_MYSQL_PORT,
   QA_POSTGRES_PORT,
 } from "__support__/e2e/cypress_data";
 
-describe(
-  "admin > database > add > external databases",
-  { tags: "@external" },
-  () => {
-    beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
+describe("admin > database > add", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
 
-      cy.intercept("POST", "/api/database").as("createDatabase");
+    cy.intercept("POST", "/api/database").as("createDatabase");
+    cy.intercept("GET", "/api/database").as("getDatabases");
 
-      cy.visit("/admin/databases/create");
-      cy.contains("Database type").closest(".Form-field").find("a").click();
-    });
+    cy.visit("/admin/databases/create");
+    // should display a setup help card
+    cy.findByText("Need help connecting?");
+    cy.get("#formField-engine").findByText("PostgreSQL").click();
+  });
 
+  describe("external databases", { tags: "@external" }, () => {
     it("should add Postgres database and redirect to listing (metabase#12972, metabase#14334, metabase#17450)", () => {
-      cy.contains("PostgreSQL").click({ force: true });
+      popover().within(() => {
+        if (isEE) {
+          // EE should ship with Oracle and Vertica as options
+          cy.findByText("Oracle");
+          cy.findByText("Vertica");
+        }
+      });
+
+      popover().contains("PostgreSQL").click({ force: true });
 
       cy.findByText("Show advanced options").click();
-
-      // Reproduces (metabase#14334)
       cy.findByLabelText("Rerun queries for simple explorations").should(
         "have.attr",
         "aria-checked",
         "true",
       );
-      cy.contains("Additional JDBC connection string options");
+      // Reproduces (metabase#14334)
+      cy.findByText("Additional JDBC connection string options");
       // Reproduces (metabase#17450)
       cy.findByLabelText("Choose when syncs and scans happen")
         .click()
         .should("have.attr", "aria-checked", "true");
-
-      isSyncOptionSelected("Never, I'll do this manually if I need to");
+      cy.findByText("Never, I'll do this manually if I need to")
+        .parent()
+        .should("have.class", "text-brand");
 
       // make sure fields needed to connect to the database are properly trimmed (metabase#12972)
       typeAndBlurUsingLabel("Display name", "QA Postgres12");
@@ -56,11 +70,12 @@ describe(
 
       cy.url().should("match", /\/admin\/databases\?created=true$/);
 
+      waitForDbSync();
+
       cy.findByText("We're taking a look at your database!");
-      cy.findByLabelText("close icon").click();
+      cy.icon("close").click();
 
       cy.findByRole("status").within(() => {
-        cy.findByText("Syncing…");
         cy.findByText("Done!");
       });
 
@@ -74,7 +89,9 @@ describe(
         "true",
       );
 
-      isSyncOptionSelected("Never, I'll do this manually if I need to");
+      cy.findByText("Never, I'll do this manually if I need to")
+        .parent()
+        .should("have.class", "text-brand");
     });
 
     it("should add Mongo database and redirect to listing", () => {
@@ -89,12 +106,14 @@ describe(
       typeAndBlurUsingLabel("Username", "metabase");
       typeAndBlurUsingLabel("Password", "metasample123");
       typeAndBlurUsingLabel("Authentication database (optional)", "admin");
-
       cy.findByText("Save").should("not.be.disabled").click();
 
       cy.wait("@createDatabase");
 
       cy.url().should("match", /\/admin\/databases\?created=true$/);
+
+      cy.findByText("We're taking a look at your database!");
+      cy.findByLabelText("close icon").click();
 
       cy.findByRole("table").within(() => {
         cy.findByText("QA Mongo4");
@@ -107,22 +126,43 @@ describe(
     });
 
     it("should add Mongo database via the connection string", () => {
-      const connectionString = `mongodb://metabase:metasample123@localhost:${QA_MONGO_PORT}/sample?authSource=admin`;
+      const badDBString = `mongodb://metabase:metasample123@localhost:${QA_MONGO_PORT}`;
+      const badPasswordString = `mongodb://metabase:wrongPassword@localhost:${QA_MONGO_PORT}/sample?authSource=admin`;
+      const validConnectionString = `mongodb://metabase:metasample123@localhost:${QA_MONGO_PORT}/sample?authSource=admin`;
 
-      cy.contains("MongoDB").click({ force: true });
+      popover().findByText("MongoDB").click({ force: true });
+
       cy.findByText("Paste a connection string").click();
       typeAndBlurUsingLabel("Display name", "QA Mongo4");
       cy.findByLabelText("Port").should("not.exist");
-      cy.findByLabelText("Paste your connection string").type(
-        connectionString,
-        { delay: 0 },
-      );
+      cy.findByLabelText("Paste your connection string").type(badDBString, {
+        delay: 0,
+      });
 
-      cy.findByText("Save").should("not.be.disabled").click();
+      cy.button("Save").should("not.be.disabled").click();
+      cy.findByText(/No database name specified/);
+      cy.button("Failed");
+
+      cy.findByLabelText("Paste your connection string")
+        .clear()
+        .type(badPasswordString);
+
+      cy.button("Save", { timeout: 7000 }).should("not.be.disabled").click();
+      cy.findByText(/Exception authenticating MongoCredential/);
+      cy.button("Failed");
+
+      cy.findByLabelText("Paste your connection string")
+        .clear()
+        .type(validConnectionString);
+
+      cy.button("Save", { timeout: 7000 }).should("not.be.disabled").click();
 
       cy.wait("@createDatabase");
 
       cy.url().should("match", /\/admin\/databases\?created=true$/);
+
+      cy.findByText("We're taking a look at your database!");
+      cy.findByLabelText("close icon").click();
 
       cy.findByRole("table").within(() => {
         cy.findByText("QA Mongo4");
@@ -152,12 +192,14 @@ describe(
         "Additional JDBC connection string options",
         "allowPublicKeyRetrieval=true",
       );
-
       cy.findByText("Save").should("not.be.disabled").click();
 
       cy.wait("@createDatabase");
 
       cy.url().should("match", /\/admin\/databases\?created=true$/);
+
+      cy.findByText("We're taking a look at your database!");
+      cy.findByLabelText("close icon").click();
 
       cy.findByRole("table").within(() => {
         cy.findByText("QA MySQL8");
@@ -168,10 +210,83 @@ describe(
         cy.findByText("Done!");
       });
     });
-  },
-);
+  });
 
-function isSyncOptionSelected(option) {
-  // This is a really bad way to assert that the text element is selected/active. Can it be fixed in the FE code?
-  cy.findByText(option).parent().should("have.class", "text-brand");
+  describe("Google service account JSON upload", () => {
+    const serviceAccountJSON = '{"foo": 123}';
+
+    it("should work for BigQuery", () => {
+      cy.visit("/admin/databases/create");
+
+      chooseDatabase("BigQuery");
+      typeAndBlurUsingLabel("Display name", "BQ");
+      cy.findByText("All").click();
+      popover().findByText("Only these...").click();
+      cy.findByPlaceholderText("E.x. public,auth*").type("some-dataset");
+
+      mockUploadServiceAccountJSON(serviceAccountJSON);
+      mockSuccessfulDatabaseSave().then(({ request: { body } }) => {
+        expect(body.details["service-account-json"]).to.equal(
+          serviceAccountJSON,
+        );
+      });
+    });
+
+    it("should work for Google Analytics", () => {
+      cy.visit("/admin/databases/create");
+
+      chooseDatabase("Google Analytics");
+      typeAndBlurUsingLabel("Display name", "GA");
+      typeAndBlurUsingLabel("Google Analytics Account ID", " 9  ");
+
+      mockUploadServiceAccountJSON(serviceAccountJSON);
+      mockSuccessfulDatabaseSave().then(({ request: { body } }) => {
+        expect(body.details["service-account-json"]).to.equal(
+          serviceAccountJSON,
+        );
+      });
+    });
+  });
+});
+
+function chooseDatabase(database) {
+  cy.get("#formField-engine").findByText("PostgreSQL").click();
+  popover().findByText(database).click();
+}
+
+function mockUploadServiceAccountJSON(fileContents) {
+  // create blob to act as selected file
+  cy.get("input[type=file]")
+    .then(async input => {
+      const blob = await Cypress.Blob.binaryStringToBlob(fileContents);
+      const file = new File([blob], "service-account.json");
+      const dataTransfer = new DataTransfer();
+
+      dataTransfer.items.add(file);
+      input[0].files = dataTransfer.files;
+      return input;
+    })
+    .trigger("change", { force: true })
+    .trigger("blur", { force: true });
+}
+
+function mockSuccessfulDatabaseSave() {
+  cy.intercept("POST", "/api/database", req => {
+    req.reply({ statusCode: 200, body: { id: 42 }, delay: 100 });
+  }).as("createDatabase");
+
+  cy.button("Save").click();
+  return cy.wait("@createDatabase");
+}
+
+// we need to check for an indefinite number of these requests because we don't know how many polls it's going to take
+function waitForDbSync(maxRetries = 10) {
+  if (maxRetries === 0) {
+    throw new Error("Timed out waiting for database sync");
+  }
+  cy.wait("@getDatabases").then(({ response }) => {
+    if (response.body.data.some(db => db.initial_sync_status !== "complete")) {
+      waitForDbSync(maxRetries - 1);
+    }
+  });
 }

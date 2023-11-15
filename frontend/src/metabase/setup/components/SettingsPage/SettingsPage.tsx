@@ -25,7 +25,7 @@ const SettingsPage = ({
   }, [step, onStepShow]);
 
   return (
-    <div>
+    <div data-testid="setup-forms">
       <PageHeader>
         <LogoIcon height={51} />
       </PageHeader>

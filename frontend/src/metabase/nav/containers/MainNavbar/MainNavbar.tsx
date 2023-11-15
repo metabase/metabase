@@ -90,7 +90,7 @@ function MainNavbar({
 
   return (
     <Sidebar className="Nav" isOpen={isOpen} aria-hidden={!isOpen}>
-      <NavRoot isOpen={isOpen}>
+      <NavRoot isOpen={isOpen} data-testid="main-navbar-root">
         {Urls.isLaunchedDataAppPath(location.pathname) ? (
           <DataAppNavbarContainer
             isOpen={isOpen}
