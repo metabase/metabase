@@ -3,8 +3,10 @@ import { t } from "ttag";
 import { Group, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
+import { TimeseriesBucketPicker } from "./TimeseriesBucketPicker";
 import { TimeseriesFilterPicker } from "./TimeseriesFilterPicker";
 import {
+  findBreakoutClause,
   findBreakoutColumn,
   findFilterClause,
   findFilterColumn,
@@ -56,6 +58,19 @@ function TimeseriesControls({
     [query, stageIndex],
   );
 
+  const breakout = useMemo(
+    () =>
+      breakoutColumn && findBreakoutClause(query, stageIndex, breakoutColumn),
+    [query, stageIndex, breakoutColumn],
+  );
+
+  const isTemporalBucketable = useMemo(
+    () =>
+      breakoutColumn &&
+      Lib.isTemporalBucketable(query, stageIndex, breakoutColumn),
+    [query, stageIndex, breakoutColumn],
+  );
+
   const filterColumn = useMemo(
     () => breakoutColumn && findFilterColumn(query, stageIndex, breakoutColumn),
     [query, stageIndex, breakoutColumn],
@@ -65,6 +80,12 @@ function TimeseriesControls({
     () => filterColumn && findFilterClause(query, stageIndex, filterColumn),
     [query, stageIndex, filterColumn],
   );
+
+  const handleBreakoutChange = (newBreakout: Lib.ColumnMetadata) => {
+    if (breakout) {
+      onChange(Lib.replaceClause(query, stageIndex, breakout, newBreakout));
+    }
+  };
 
   const handleFilterChange = (newFilter: Lib.ExpressionClause | undefined) => {
     if (filter && newFilter) {
@@ -90,6 +111,17 @@ function TimeseriesControls({
         filter={filter}
         onChange={handleFilterChange}
       />
+      {isTemporalBucketable && (
+        <>
+          <Text>{t`by`}</Text>
+          <TimeseriesBucketPicker
+            query={query}
+            stageIndex={stageIndex}
+            column={breakoutColumn}
+            onChange={handleBreakoutChange}
+          />
+        </>
+      )}
     </Group>
   );
 }
