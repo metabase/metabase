@@ -366,24 +366,26 @@
     (testing "can group on TIME columns (#12846)"
       (mt/with-temporary-setting-values [report-timezone "UTC"]
         (mt/dataset attempted-murders
-          (let [now-date-str (u.date/format (t/local-date (t/zone-id "UTC")))
-                add-date-fn  (fn [t] [(str now-date-str "T" t)])]
-            (testing "by minute"
-              (let [query (mt/mbql-query attempts
-                            {:breakout [!minute.time]
-                             :order-by [[:asc !minute.time]]
-                             :limit    3})]
-                (mt/with-native-query-testing-context query
-                  (is (= (map add-date-fn ["00:14:00Z" "00:23:00Z" "00:35:00Z"])
-                         (mt/rows (qp/process-query query)))))))
-            (testing "by hour"
-              (let [query (mt/mbql-query attempts
-                            {:breakout [!hour.time]
-                             :order-by [[:desc !hour.time]]
-                             :limit    3})]
-                (mt/with-native-query-testing-context query
-                  (is (= (map add-date-fn ["23:00:00Z" "20:00:00Z" "19:00:00Z"])
-                         (mt/rows (qp/process-query query)))))))))))))
+          (testing "by minute"
+            (let [query (mt/mbql-query attempts
+                          {:breakout [!minute.time]
+                           :order-by [[:asc !minute.time]]
+                           :limit    3})]
+              (mt/with-native-query-testing-context query
+                (is (= [["00:14:00Z"]
+                        ["00:23:00Z"]
+                        ["00:35:00Z"]]
+                       (mt/rows (qp/process-query query)))))))
+          (testing "by hour"
+            (let [query (mt/mbql-query attempts
+                          {:breakout [!hour.time]
+                           :order-by [[:desc !hour.time]]
+                           :limit    3})]
+              (mt/with-native-query-testing-context query
+                (is (= [["23:00:00Z"]
+                        ["20:00:00Z"]
+                        ["19:00:00Z"]]
+                       (mt/rows (qp/process-query query))))))))))))
 
 (defn- pretty-sql [s]
   (str/replace s #"`" ""))
