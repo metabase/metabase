@@ -33,7 +33,7 @@ const FilterPill = (props: ViewPillProps) => (
 
 interface FilterHeaderToggleProps {
   className?: string;
-  question: Question;
+  query: Lib.Query;
   expanded: boolean;
   onExpand: () => void;
   onCollapse: () => void;
@@ -41,15 +41,12 @@ interface FilterHeaderToggleProps {
 
 export function FilterHeaderToggle({
   className,
-  question,
+  query,
   expanded,
   onExpand,
   onCollapse,
 }: FilterHeaderToggleProps) {
-  const query = question._getMLv2Query();
-  const legacyQuery = question.query() as LegacyQuery;
-
-  const stageCount = legacyQuery.queries().length;
+  const stageCount = Lib.stageCount(query);
   const lastStageIndex = stageCount - 1;
 
   const lastStageFilters = Lib.filters(query, lastStageIndex);
@@ -93,7 +90,7 @@ export function FilterHeader({
   const query = question._getMLv2Query();
   const legacyQuery = question.query() as LegacyQuery;
 
-  const stageCount = legacyQuery.queries().length;
+  const stageCount = Lib.stageCount(query);
   const lastStageIndex = stageCount - 1;
 
   const lastStageFilters = Lib.filters(query, lastStageIndex);
