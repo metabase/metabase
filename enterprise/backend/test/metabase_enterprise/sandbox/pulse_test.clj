@@ -8,7 +8,6 @@
    [metabase.api.alert :as api.alert]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
-   [metabase.events.audit-log-test :as audit-log-test]
    [metabase.models
     :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.models.pulse :as pulse]
