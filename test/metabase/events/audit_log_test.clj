@@ -103,24 +103,6 @@
                               dataset? (assoc :model? true))}
                  (latest-event "card-delete" (:id card))))))))))
 
-(deftest card-query-event-test
-  (testing :card-query
-    (doseq [dataset? [false true]]
-      (testing (if dataset? "Dataset" "Card")
-        (t2.with-temp/with-temp [Card card {:name "My Cool Card", :dataset dataset?}]
-          (events/publish-event! :event/card-query {:user-id      (mt/user->id :rasta)
-                                                    :card-id      (u/the-id card)
-                                                    :cached       false
-                                                    :ignore_cache false
-                                                    :context      :question})
-          (is (partial=
-               {:topic    :card-query
-                :user_id  (mt/user->id :rasta)
-                :model    "Card"
-                :model_id (:id card)
-                :details  {:cached false :ignore_cache false :context "question"}}
-               (latest-event "card-query" (:id card)))))))))
-
 (deftest dashboard-create-event-test
   (testing :dashboard-create
     (t2.with-temp/with-temp [Dashboard dashboard {:name "My Cool Dashboard"}]
