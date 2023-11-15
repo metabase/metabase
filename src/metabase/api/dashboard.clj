@@ -785,6 +785,7 @@
         :let  [ttag      (get-template-tag dimension card)
                dimension (condp mbql.u/is-clause? dimension
                            :field        dimension
+                           :expression   dimension
                            :template-tag (:dimension ttag)
                            (log/error "cannot handle this dimension" {:dimension dimension}))
                field-id  (or
