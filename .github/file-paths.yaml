@@ -3,11 +3,16 @@ default: &default
   - "bin/**/!(*.md)"
 
 shared_sources: &shared_sources
-  - "shared/src/**"
   - "src/metabase/lib/**"
+  - "src/metabase/mbql/**"
+  - "src/metabase/shared/**"
+  - "src/metabase/types/**"
 
 shared_specs: &shared_specs
-  - "shared/test/**"
+  - "test/metabase/lib/**"
+  - "test/metabase/mbql/**"
+  - "test/metabase/shared/**"
+  - "test/metabase/types/**"
 
 frontend_ci: &frontend_ci
   - ".github/actions/prepare-frontend/**"
