@@ -1,14 +1,17 @@
 import { useMemo } from "react";
-import type { RelativeDatePickerValue } from "metabase/common/components/DatePicker";
 import { Select } from "metabase/ui";
+import type { RelativeDatePickerValue } from "../../../types";
 import { getUnitOptions } from "./utils";
 
-interface CurrentDatePickerProps {
+interface SimpleCurrentDatePickerProps {
   value: RelativeDatePickerValue;
   onChange: (value: RelativeDatePickerValue) => void;
 }
 
-export function CurrentDatePicker({ value, onChange }: CurrentDatePickerProps) {
+export function SimpleCurrentDatePicker({
+  value,
+  onChange,
+}: SimpleCurrentDatePickerProps) {
   const options = useMemo(() => getUnitOptions(), []);
 
   const handleChange = (unitValue: string | null) => {
