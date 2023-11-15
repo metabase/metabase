@@ -44,6 +44,7 @@ describe("issue 18976, 18817", () => {
             ["field", PEOPLE.NAME],
             ["field", PEOPLE.SOURCE],
           ],
+          limit: 5,
         },
         database: SAMPLE_DB_ID,
         display: "table",
