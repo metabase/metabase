@@ -26,7 +26,6 @@
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-card :refer [PulseCard]]
-   [metabase.models.pulse-channel :refer [PulseChannel]]
    [metabase.models.segment :refer [Segment]]
    [metabase.models.setting :as setting]
    [metabase.models.table :refer [Table]]
@@ -561,7 +560,7 @@
         process     (get grouped true)
         revisit     (get grouped false)]
     (maybe-upsert-many! context PulseCard (map #(dissoc % ::pulse-index ::pulse-name) process))
-    (maybe-upsert-many! context PulseChannel
+    (maybe-upsert-many! context :model/SubscriptionChannel
       (for [[channels pulse-id] (map vector channels pulse-ids)
             channel             channels
             :when pulse-id]

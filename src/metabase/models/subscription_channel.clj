@@ -1,4 +1,4 @@
-(ns metabase.models.pulse-channel
+(ns metabase.models.subscription-channel
   (:require
    [clojure.set :as set]
    [medley.core :as m]
@@ -41,7 +41,7 @@
   (and (integer? hour) (<= 0 hour 23)))
 
 (def ^:private schedule-frames
-  "Set of possible schedule-frames allow for a PulseChannel."
+  "Set of possible schedule-frames allow for a SubscriptionChannel."
   #{:first :mid :last})
 
 (defn schedule-frame?
@@ -50,11 +50,11 @@
   (contains? schedule-frames frame))
 
 (def ^:private schedule-types
-  "Set of the possible schedule-types allowed for a PulseChannel."
+  "Set of the possible schedule-types allowed for a SubscriptionChannel."
   #{:hourly :daily :weekly :monthly})
 
 (defn schedule-type?
-  "Is `schedule-type` a valid PulseChannel schedule type?"
+  "Is `schedule-type` a valid SubscriptionChannel schedule type?"
   [schedule-type]
   (contains? schedule-types schedule-type))
 
@@ -113,22 +113,17 @@
 
 ;; ## Entity
 
-(def PulseChannel
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all these symbols in our codebase."
-  :model/PulseChannel)
+(methodical/defmethod t2/table-name :model/SubscriptionChannel [_model] :subscription_channel)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :pulse_channel] [_original-model _k] :model/SubscriptionChannel)
 
-(methodical/defmethod t2/table-name :model/PulseChannel [_model] :subscription_channel)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :pulse_channel] [_original-model _k] :model/PulseChannel)
-
-(doto :model/PulseChannel
+(doto :model/SubscriptionChannel
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive ::mi/read-policy.always-allow)
   (derive ::mi/write-policy.superuser))
 
-(t2/deftransforms :model/PulseChannel
+(t2/deftransforms :model/SubscriptionChannel
  {:details mi/transform-json
   :channel_type mi/transform-keyword
   :schedule_type mi/transform-keyword
@@ -152,16 +147,16 @@
      :order-by [[:u.id :asc]]})))
 
 (def ^:dynamic *archive-parent-pulse-when-last-channel-is-deleted*
-  "Should we automatically archive a Pulse when its last `PulseChannel` is deleted? Normally we do, but this is disabled
+  "Should we automatically archive a Pulse when its last `SubscriptionChannel` is deleted? Normally we do, but this is disabled
   in [[update-notification-channels!]] which creates/deletes/updates several channels sequentially."
   true)
 
-(t2/define-before-delete :model/PulseChannel
+(t2/define-before-delete :model/SubscriptionChannel
   [{pulse-id :pulse_id, subscription-channel-id :id}]
-  ;; This function is called by [[metabase.models.pulse-channel/pre-delete]] when the `PulseChannel` is about to be
+  ;; This function is called by [[metabase.models.pulse-channel/pre-delete]] when the `SubscriptionChannel` is about to be
   ;; deleted. Archives `Pulse` if the channel being deleted is its last channel."
   (when *archive-parent-pulse-when-last-channel-is-deleted*
-    (let [other-channels-count (t2/count PulseChannel :pulse_id pulse-id, :id [:not= subscription-channel-id])]
+    (let [other-channels-count (t2/count :model/SubscriptionChannel :pulse_id pulse-id, :id [:not= subscription-channel-id])]
       (when (zero? other-channels-count)
         (t2/update! :model/Pulse pulse-id {:archived true})))))
 
@@ -208,15 +203,15 @@
               (throw (ex-info (tru "Wrong email address for User {0}." id)
                               {:status-code 403})))))))))
 
-(t2/define-before-insert :model/PulseChannel
+(t2/define-before-insert :model/SubscriptionChannel
   [pulse-channel]
   (validate-email-domains pulse-channel))
 
-(t2/define-before-update :model/PulseChannel
+(t2/define-before-update :model/SubscriptionChannel
   [pulse-channel]
   (validate-email-domains (mi/pre-update-changes pulse-channel)))
 
-(defmethod serdes/hash-fields PulseChannel
+(defmethod serdes/hash-fields :model/SubscriptionChannel
   [_pulse-channel]
   [(serdes/hydrated-hash :pulse) :channel_type :details :created_at])
 
@@ -248,7 +243,7 @@
                                       :else                "invalid")
         monthly-schedule-day-or-nil (when (= :other monthday)
                                       weekday)]
-    (t2/select [PulseChannel :id :pulse_id :schedule_type :channel_type]
+    (t2/select [:model/SubscriptionChannel :id :pulse_id :schedule_type :channel_type]
       {:where [:and [:= :enabled true]
                [:or [:= :schedule_type "hourly"]
                 [:and [:= :schedule_type "daily"]
@@ -288,7 +283,7 @@
 
 
 (defn update-pulse-channel!
-  "Updates an existing `PulseChannel` along with all related data associated with the channel such as
+  "Updates an existing `SubscriptionChannel` along with all related data associated with the channel such as
   `PulseChannelRecipients`."
   [{:keys [id channel_type enabled details recipients schedule_type schedule_day schedule_hour schedule_frame]
     :or   {details          {}
@@ -301,7 +296,7 @@
          (coll? recipients)
          (every? map? recipients)]}
   (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))]
-    (t2/update! PulseChannel id
+    (t2/update! :model/SubscriptionChannel id
                 {:details        (cond-> details
                                    (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
                  :enabled        enabled
@@ -317,7 +312,7 @@
 
 
 (defn create-pulse-channel!
-  "Create a new `PulseChannel` along with all related data associated with the channel such as
+  "Create a new `SubscriptionChannel` along with all related data associated with the channel such as
   `PulseChannelRecipients`."
   [{:keys [channel_type details enabled pulse_id recipients schedule_type schedule_day schedule_hour schedule_frame]
     :or   {details          {}
@@ -331,7 +326,7 @@
          (every? map? recipients)]}
   (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))
         {:keys [id]}       (first (t2/insert-returning-instances!
-                                    PulseChannel
+                                    :model/SubscriptionChannel
                                     :pulse_id       pulse_id
                                     :channel_type   channel_type
                                     :details        (cond-> details
@@ -349,29 +344,29 @@
     ;; return the id of our newly created channel
     id))
 
-(methodical/defmethod mi/to-json PulseChannel
+(methodical/defmethod mi/to-json :model/SubscriptionChannel
   "Don't include `:emails`, we use that purely internally"
   [pulse-channel json-generator]
   (next-method (m/dissoc-in pulse-channel [:details :emails]) json-generator))
 
 ; ----------------------------------------------------- Serialization -------------------------------------------------
 
-(defmethod serdes/generate-path "PulseChannel"
+(defmethod serdes/generate-path "SubscriptionChannel"
   [_ {:keys [pulse_id] :as channel}]
   [(serdes/infer-self-path "Pulse" (t2/select-one 'Pulse :id pulse_id))
-   (serdes/infer-self-path "PulseChannel" channel)])
+   (serdes/infer-self-path "SubscriptionChannel" channel)])
 
-(defmethod serdes/extract-one "PulseChannel"
+(defmethod serdes/extract-one "SubscriptionChannel"
   [_model-name _opts channel]
   (let [recipients (mapv :email (mdb.query/query {:select [:user.email]
                                                   :from   [[:subscription_channel_recipient :scr]]
                                                   :join   [[:core_user :user] [:= :user.id :scr.user_id]]
                                                   :where  [:= :scr.subscription_channel_id (:id channel)]}))]
-    (-> (serdes/extract-one-basics "PulseChannel" channel)
+    (-> (serdes/extract-one-basics "SubscriptionChannel" channel)
         (update :pulse_id   serdes/*export-fk* 'Pulse)
         (assoc  :recipients recipients))))
 
-(defmethod serdes/load-xform "PulseChannel" [channel]
+(defmethod serdes/load-xform "SubscriptionChannel" [channel]
   (-> channel
       serdes/load-xform-basics
       (update :pulse_id serdes/*import-fk* 'Pulse)))
@@ -387,18 +382,18 @@
       (update-recipients! channel-id combined))))
 
 ;; Customized load-insert! and load-update! to handle the embedded recipients field - it's really a separate table.
-(defmethod serdes/load-insert! "PulseChannel" [_ ingested]
+(defmethod serdes/load-insert! "SubscriptionChannel" [_ ingested]
   (let [;; Call through to the default load-insert!
-        chan ((get-method serdes/load-insert! "") "PulseChannel" (dissoc ingested :recipients))]
+        chan ((get-method serdes/load-insert! "") "SubscriptionChannel" (dissoc ingested :recipients))]
     (import-recipients (:id chan) (:recipients ingested))
     chan))
 
-(defmethod serdes/load-update! "PulseChannel" [_ ingested local]
+(defmethod serdes/load-update! "SubscriptionChannel" [_ ingested local]
   ;; Call through to the default load-update!
-  (let [chan ((get-method serdes/load-update! "") "PulseChannel" (dissoc ingested :recipients) local)]
+  (let [chan ((get-method serdes/load-update! "") "SubscriptionChannel" (dissoc ingested :recipients) local)]
     (import-recipients (:id local) (:recipients ingested))
     chan))
 
 ;; Depends on the Pulse.
-(defmethod serdes/dependencies "PulseChannel" [{:keys [pulse_id]}]
+(defmethod serdes/dependencies "SubscriptionChannel" [{:keys [pulse_id]}]
   [[{:model "Pulse" :id pulse_id}]])

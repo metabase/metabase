@@ -21,7 +21,6 @@
             NativeQuerySnippet
             Pulse
             PulseCard
-            PulseChannel
             Segment
             Table
             User]]
@@ -56,7 +55,7 @@
 (defn- world-snapshot
   []
   (into {} (for [model [Database Table Field Metric Segment Collection Dashboard DashboardCard Pulse
-                        Card DashboardCardSeries FieldValues Dimension PulseCard PulseChannel User
+                        Card DashboardCardSeries FieldValues Dimension PulseCard User
                         NativeQuerySnippet]]
              [model (t2/select-fn-set :id model)])))
 
@@ -328,7 +327,7 @@
       (premium-features-test/with-premium-features #{:serialization}
         (let [fingerprint (ts/with-world
                             (v1-dump! dump-dir {:user        (:email (test.users/fetch-user :crowberto))
-                                               :only-db-ids #{db-id}})
+                                                :only-db-ids #{db-id}})
                             {:query-results (gather-orig-results [card-id
                                                                   card-arch-id
                                                                   card-id-root

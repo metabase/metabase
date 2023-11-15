@@ -12021,7 +12021,7 @@ databaseChangeLog:
   - changeSet:
       id: v44.00-041
       author: braden
-      comment: Added 0.44.0 - add entity_id column to PulseCard, PulseChannel
+      comment: Added 0.44.0 - add entity_id column to PulseCard, :model/SubscriptionChannel
       changes:
         - addColumn:
             columns:
@@ -12037,7 +12037,7 @@ databaseChangeLog:
   - changeSet:
       id: v44.00-042
       author: braden
-      comment: Added 0.44.0 - add entity_id column to PulseCard, PulseChannel
+      comment: Added 0.44.0 - add entity_id column to PulseCard, :model/SubscriptionChannel
       changes:
         - addColumn:
             columns:

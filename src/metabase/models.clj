@@ -31,7 +31,6 @@
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.pulse :as pulse]
    [metabase.models.pulse-card :as pulse-card]
-   [metabase.models.pulse-channel :as pulse-channel]
    [metabase.models.pulse-channel-recipient :as pulse-channel-recipient]
    [metabase.models.query-cache :as query-cache]
    [metabase.models.query-execution :as query-execution]
@@ -40,6 +39,7 @@
    [metabase.models.segment :as segment]
    [metabase.models.session :as session]
    [metabase.models.setting :as setting]
+   [metabase.models.subscription-channel :as subscription-channel]
    [metabase.models.table :as table]
    [metabase.models.table-privileges]
    [metabase.models.task-history :as task-history]
@@ -83,7 +83,7 @@
          persisted-info/keep-me
          pulse-card/keep-me
          pulse-channel-recipient/keep-me
-         pulse-channel/keep-me
+         subscription-channel/keep-me
          pulse/keep-me
          query-cache/keep-me
          query-execution/keep-me
@@ -131,7 +131,6 @@
  [persisted-info PersistedInfo]
  [pulse Pulse]
  [pulse-card PulseCard]
- [pulse-channel PulseChannel]
  [pulse-channel-recipient PulseChannelRecipient]
  [query-cache QueryCache]
  [query-execution QueryExecution]

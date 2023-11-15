@@ -320,10 +320,10 @@
     metabase.models.permissions-revision                            perms-revision
     metabase.models.permissions.parse                               perms-parse
     metabase.models.pulse                                           pulse
-    metabase.models.pulse-channel                                   pulse-channel
     metabase.models.pulse-channel-recipient                         pulse-channel-recipient
     metabase.models.query.permissions                               query-perms
     metabase.models.setting.cache                                   setting.cache
+    metabase.models.subscription-channel                            subscription-channel
     metabase.models.timeline                                        timeline
     metabase.models.timeline-event                                  timeline-event
     metabase.plugins.initialize                                     plugins.init

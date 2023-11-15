@@ -71,7 +71,7 @@
     :model/Activity
     :model/Pulse
     :model/PulseCard
-    :model/PulseChannel
+    :model/SubscriptionChannel
     :model/PulseChannelRecipient
     :model/PermissionsGroup
     :model/PermissionsGroupMembership

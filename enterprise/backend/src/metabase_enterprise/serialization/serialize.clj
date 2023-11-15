@@ -19,7 +19,6 @@
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-card :refer [PulseCard]]
-   [metabase.models.pulse-channel :refer [PulseChannel]]
    [metabase.models.segment :refer [Segment]]
    [metabase.models.table :refer [Table]]
    [metabase.models.user :refer [User]]
@@ -222,7 +221,7 @@
                 (-> card
                     (dissoc :id :pulse_id)
                     (update :card_id (partial fully-qualified-name Card))))
-    :channels (for [channel (t2/select PulseChannel :pulse_id (u/the-id pulse))]
+    :channels (for [channel (t2/select :model/SubscriptionChannel :pulse_id (u/the-id pulse))]
                 (strip-crud channel))))
 
 (defmethod serialize-one User

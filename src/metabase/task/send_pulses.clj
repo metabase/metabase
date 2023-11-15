@@ -7,9 +7,8 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.driver :as driver]
-   [metabase.models :refer [PulseChannel]]
    [metabase.models.pulse :as pulse]
-   [metabase.models.pulse-channel :as pulse-channel]
+   [metabase.models.subscription-channel :as subscription-channel]
    [metabase.models.task-history :as task-history]
    [metabase.pulse]
    [metabase.task :as task]
@@ -32,7 +31,7 @@
    "valid hour"))
 
 (def ^:private Weekday
-  (s/pred pulse-channel/day-of-week? "valid day of week"))
+  (s/pred subscription-channel/day-of-week? "valid day of week"))
 
 (def ^:private MonthDay
   (s/enum :first :last :mid :other))
@@ -51,7 +50,7 @@
 
   ([hour :- Hour, weekday :- Weekday, monthday :- MonthDay, monthweek :- MonthWeek, on-error]
    (log/info (trs "Sending scheduled pulses..."))
-   (let [pulse-id->channels (group-by :pulse_id (pulse-channel/retrieve-scheduled-channels hour weekday monthday monthweek))]
+   (let [pulse-id->channels (group-by :pulse_id (subscription-channel/retrieve-scheduled-channels hour weekday monthday monthweek))]
      (doseq [[pulse-id channels] pulse-id->channels]
        (try
          (task-history/with-task-history {:task         "send-pulse"
@@ -67,7 +66,7 @@
 (s/defn ^:private clear-pulse-channels!
   []
   (when-let [ids-to-delete (seq
-                            (for [channel (t2/select [PulseChannel :id :details]
+                            (for [channel (t2/select [:model/SubscriptionChannel :id :details]
                                                      :id [:not-in {:select   [[:subscription_channel_id :id]]
                                                                    :from     :subscription_channel_recipient
                                                                    :group-by [:subscription_channel_id]
@@ -75,7 +74,7 @@
                               (when (and (empty? (get-in channel [:details :emails]))
                                          (not (get-in channel [:details :channel])))
                                 (:id channel))))]
-   (t2/delete! PulseChannel :id [:in ids-to-delete])))
+   (t2/delete! :model/SubscriptionChannel :id [:in ids-to-delete])))
 
 ;;; ------------------------------------------------------ Task ------------------------------------------------------
 
@@ -107,7 +106,7 @@
             ;; joda time produces values of 1-7 here (Mon -> Sun) and we subtract 1 from it to
             ;; make the values zero based to correspond to the indexes in pulse-channel/days-of-week
             curr-weekday       (->> (dec (time/day-of-week now))
-                                    (get pulse-channel/days-of-week)
+                                    (get subscription-channel/days-of-week)
                                     :id)
             curr-monthday      (monthday now)
             curr-monthweek     (monthweek now)]

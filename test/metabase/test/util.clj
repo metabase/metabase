@@ -200,7 +200,7 @@
             :include_csv false
             :include_xls false})
 
-   :model/PulseChannel
+   :model/SubscriptionChannel
    (fn [_] (default-timestamped
              {:channel_type  :email
               :details       {}

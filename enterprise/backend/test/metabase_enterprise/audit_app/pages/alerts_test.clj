@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.pages.alerts :as audit.alerts]
-   [metabase.models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
+   [metabase.models :refer [Card Collection Pulse PulseCard PulseChannelRecipient]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -29,25 +29,25 @@
                                                        {:collection-id   nil
                                                         :collection-name "Our analytics"}]]
         (testing (format "Collection = %d %s" collection-id collection-name)
-          (mt/with-temp [Card                  {card-id :id}      {:name          card-name
-                                                                   :collection_id collection-id}
-                         Pulse                 {pulse-id :id}     {:collection_id   collection-id
-                                                                   :alert_condition "rows"}
-                         PulseCard             _                  {:card_id  card-id
-                                                                   :pulse_id pulse-id}
-                         PulseChannel          {channel-id :id}   {:pulse_id       pulse-id
-                                                                   :channel_type   "email"
-                                                                   :details        {:emails ["amazing@metabase.com"]}
-                                                                   :schedule_type  "monthly"
-                                                                   :schedule_frame "first"
-                                                                   :schedule_day   "mon"
-                                                                   :schedule_hour  8}
-                         PulseChannelRecipient _                  {:subscription_channel_id channel-id
-                                                                   :user_id                 (mt/user->id :rasta)}
-                         PulseChannel          {channel-2-id :id} {:pulse_id      pulse-id
-                                                                   :channel_type  "slack"
-                                                                   :details       {:channel "#wow"}
-                                                                   :schedule_type "hourly"}]
+          (mt/with-temp [Card                       {card-id :id}      {:name          card-name
+                                                                        :collection_id collection-id}
+                         Pulse                      {pulse-id :id}     {:collection_id   collection-id
+                                                                        :alert_condition "rows"}
+                         PulseCard                  _                  {:card_id  card-id
+                                                                        :pulse_id pulse-id}
+                         :model/SubscriptionChannel {channel-id :id}   {:pulse_id       pulse-id
+                                                                        :channel_type   "email"
+                                                                        :details        {:emails ["amazing@metabase.com"]}
+                                                                        :schedule_type  "monthly"
+                                                                        :schedule_frame "first"
+                                                                        :schedule_day   "mon"
+                                                                        :schedule_hour  8}
+                         PulseChannelRecipient      _                  {:subscription_channel_id channel-id
+                                                                        :user_id                 (mt/user->id :rasta)}
+                         :model/SubscriptionChannel {channel-2-id :id} {:pulse_id      pulse-id
+                                                                        :channel_type  "slack"
+                                                                        :details       {:channel "#wow"}
+                                                                        :schedule_type "hourly"}]
             (is (= {:columns ["card_id"
                               "card_name"
                               "pulse_id"
@@ -71,7 +71,7 @@
                                "Every hour"
                                (mt/user->id :rasta)
                                "Rasta Toucan"
-                               (t2/select-one-fn :created_at PulseChannel :id channel-2-id)
+                               (t2/select-one-fn :created_at :model/SubscriptionChannel :id channel-2-id)
                                0]
                               [card-id
                                card-name
@@ -83,7 +83,7 @@
                                "At 8:00 AM, on the first Tuesday of the month"
                                (mt/user->id :rasta)
                                "Rasta Toucan"
-                               (t2/select-one-fn :created_at PulseChannel :id channel-id)
+                               (t2/select-one-fn :created_at :model/SubscriptionChannel :id channel-id)
                                0]]}
                    (mt/rows+column-names
                     (alerts (str/join (rest (butlast card-name)))))))))))))

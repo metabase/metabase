@@ -7,7 +7,7 @@
    [metabase.models :refer [Action Activity Card Collection Dashboard
                             DashboardCard DashboardCardSeries Database Dimension Field
                             HTTPAction ImplicitAction Metric NativeQuerySnippet PermissionsGroup
-                            PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient QueryAction
+                            PermissionsGroupMembership Pulse PulseCard PulseChannelRecipient QueryAction
                             Segment Table Timeline TimelineEvent User]]
    [metabase.util.log :as log]
    [reifyhealth.specmonstah.core :as rs]
@@ -290,7 +290,7 @@
                                               :dashboard_card_id [:dashboard-card :id]}}
    :pulse-channel                {:prefix    :pulse-channel
                                   :spec      ::pulse-channel
-                                  :insert!   {:model PulseChannel}
+                                  :insert!   {:model :model/SubscriptionChannel}
                                   :relations {:pulse_id [:pulse :id]}}
    :pulse-channel-recipient      {:prefix    :pcr
                                   :spec      ::pulse-channel-recipient

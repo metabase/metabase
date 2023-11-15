@@ -28,8 +28,8 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.pulse-card :refer [PulseCard]]
-   [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
    [metabase.models.serialization :as serdes]
+   [metabase.models.subscription-channel :as subscription-channel]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -220,7 +220,7 @@
   :channels
   "Return the PulseChannels associated with this `notification`."
   [notification-or-id]
-  (t2/select PulseChannel, :pulse_id (u/the-id notification-or-id)))
+  (t2/select :model/SubscriptionChannel, :pulse_id (u/the-id notification-or-id)))
 
 (mu/defn ^:private cards* :- [:sequential HybridPulseCard]
   [notification-or-id]
@@ -448,11 +448,11 @@
                          :schedule_frame (keyword (:schedule_frame new-channel))))]
     (cond
       ;; 1. in channels, NOT in db-channels = CREATE
-      (and channel (not existing-channel))  (pulse-channel/create-pulse-channel! channel)
+      (and channel (not existing-channel))  (subscription-channel/create-pulse-channel! channel)
       ;; 2. NOT in channels, in db-channels = DELETE
-      (and (nil? channel) existing-channel) (t2/delete! PulseChannel :id (:id existing-channel))
+      (and (nil? channel) existing-channel) (t2/delete! :model/SubscriptionChannel :id (:id existing-channel))
       ;; 3. in channels, in db-channels = UPDATE
-      (and channel existing-channel)        (pulse-channel/update-pulse-channel! channel)
+      (and channel existing-channel)        (subscription-channel/update-pulse-channel! channel)
       ;; 4. NOT in channels, NOT in db-channels = NO-OP
       :else                                 nil)))
 
@@ -460,25 +460,25 @@
   "Update the PulseChannels for a given `notification-or-id`. `channels` should be a definitive collection of *all* of
   the channels for the Notification.
 
-   * If a channel in the list has no existing `PulseChannel` object, one will be created.
+   * If a channel in the list has no existing `SubscriptionChannel` object, one will be created.
 
-   * If an existing `PulseChannel` has no corresponding entry in `channels`, it will be deleted.
+   * If an existing `SubscriptionChannel` has no corresponding entry in `channels`, it will be deleted.
 
    * All previously existing channels will be updated with their most recent information."
   [notification-or-id channels :- [:sequential :map]]
   (let [new-channels   (group-by (comp keyword :channel_type) channels)
-        old-channels   (group-by (comp keyword :channel_type) (t2/select PulseChannel
+        old-channels   (group-by (comp keyword :channel_type) (t2/select :model/SubscriptionChannel
                                                                 :pulse_id (u/the-id notification-or-id)))
         handle-channel #(create-update-delete-channel! (u/the-id notification-or-id)
                                                        (first (get new-channels %))
                                                        (first (get old-channels %)))]
     (assert (zero? (count (get new-channels nil)))
       "Cannot have channels without a :channel_type attribute")
-    ;; don't automatically archive this Pulse if we end up deleting its last PulseChannel -- we're probably replacing
+    ;; don't automatically archive this Pulse if we end up deleting its last SubscriptionChannel -- we're probably replacing
     ;; it with a new one immediately thereafter.
-    (binding [pulse-channel/*archive-parent-pulse-when-last-channel-is-deleted* false]
+    (binding [subscription-channel/*archive-parent-pulse-when-last-channel-is-deleted* false]
       ;; for each of our possible channel types call our handler function
-      (doseq [[channel-type] pulse-channel/channel-types]
+      (doseq [[channel-type] subscription-channel/channel-types]
         (handle-channel channel-type)))))
 
 (mu/defn ^:private create-notification-and-add-cards-and-channels!

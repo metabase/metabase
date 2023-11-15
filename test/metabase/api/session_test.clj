@@ -11,7 +11,7 @@
    [metabase.http-client :as client]
    [metabase.models
     :refer [LoginHistory PermissionsGroup PermissionsGroupMembership Pulse
-            PulseChannel Session User]]
+            Session User]]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features-test :as premium-features-test]
@@ -580,18 +580,18 @@
                                                                  :hash     "fake-hash"}))))
 
       (testing "Valid hash but not email"
-        (mt/with-temp [Pulse        {pulse-id :id} {}
-                       PulseChannel _              {:pulse_id pulse-id}]
+        (mt/with-temp [Pulse                      {pulse-id :id} {}
+                       :model/SubscriptionChannel _              {:pulse_id pulse-id}]
           (is (= "Email for pulse-id doesnt exist."
                  (mt/client :post 400 "session/pulse/unsubscribe" {:pulse-id pulse-id
                                                                    :email    email
                                                                    :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)})))))
 
       (testing "Valid hash and email"
-        (mt/with-temp [Pulse        {pulse-id :id} {:name "title"}
-                       PulseChannel _              {:pulse_id     pulse-id
-                                                    :channel_type "email"
-                                                    :details      {:emails [email]}}]
+        (mt/with-temp [Pulse                      {pulse-id :id} {:name "title"}
+                       :model/SubscriptionChannel _              {:pulse_id     pulse-id
+                                                                  :channel_type "email"
+                                                                  :details      {:emails [email]}}]
           (is (= {:status "success" :title "title"}
                  (mt/client :post 200 "session/pulse/unsubscribe" {:pulse-id pulse-id
                                                                    :email    email
@@ -601,10 +601,10 @@
   (reset-throttlers!)
   (mt/with-model-cleanup [:model/Activity :model/AuditLog :model/User]
     (testing "Valid hash and email returns event."
-      (t2.with-temp/with-temp [Pulse        {pulse-id :id} {}
-                               PulseChannel _              {:pulse_id     pulse-id
-                                                            :channel_type "email"
-                                                            :details      {:emails ["test@metabase.com"]}}]
+      (t2.with-temp/with-temp [Pulse                      {pulse-id :id} {}
+                               :model/SubscriptionChannel _              {:pulse_id     pulse-id
+                                                                          :channel_type "email"
+                                                                          :details      {:emails ["test@metabase.com"]}}]
         (mt/client :post 200 "session/pulse/unsubscribe" {:pulse-id pulse-id
                                                           :email    "test@metabase.com"
                                                           :hash     (messages/generate-pulse-unsubscribe-hash pulse-id "test@metabase.com")})
@@ -626,18 +626,18 @@
                                                                       :hash     "fake-hash"}))))
 
       (testing "Valid hash and email doesn't exist"
-        (mt/with-temp [Pulse        {pulse-id :id} {:name "title"}
-                       PulseChannel _              {:pulse_id pulse-id}]
+        (mt/with-temp [Pulse                     {pulse-id :id} {:name "title"}
+                       :model/SubscriptionChannel _              {:pulse_id pulse-id}]
           (is (= {:status "success" :title "title"}
                  (mt/client :post 200 "session/pulse/unsubscribe/undo" {:pulse-id pulse-id
                                                                         :email    email
                                                                         :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)})))))
 
       (testing "Valid hash and email already exists"
-        (mt/with-temp [Pulse        {pulse-id :id} {}
-                       PulseChannel _              {:pulse_id     pulse-id
-                                                    :channel_type "email"
-                                                    :details      {:emails [email]}}]
+        (mt/with-temp [Pulse                      {pulse-id :id} {}
+                       :model/SubscriptionChannel _              {:pulse_id     pulse-id
+                                                                  :channel_type "email"
+                                                                  :details      {:emails [email]}}]
           (is (= "Email for pulse-id already exists."
                  (mt/client :post 400 "session/pulse/unsubscribe/undo" {:pulse-id pulse-id
                                                                         :email    email
@@ -647,8 +647,8 @@
   (reset-throttlers!)
   (mt/with-model-cleanup [:model/Activity :model/AuditLog :model/User]
     (testing "Undoing valid hash and email returns event"
-      (t2.with-temp/with-temp [Pulse        {pulse-id :id} {}
-                               PulseChannel _              {:pulse_id pulse-id}]
+      (t2.with-temp/with-temp [Pulse                     {pulse-id :id} {}
+                               :model/SubscriptionChannel _              {:pulse_id pulse-id}]
         (mt/client :post 200 "session/pulse/unsubscribe/undo" {:pulse-id pulse-id
                                                                :email    "test@metabase.com"
                                                                :hash     (messages/generate-pulse-unsubscribe-hash pulse-id "test@metabase.com")})

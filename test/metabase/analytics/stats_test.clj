@@ -8,7 +8,6 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-card :refer [PulseCard]]
-   [metabase.models.pulse-channel :refer [PulseChannel]]
    [metabase.models.query-execution :refer [QueryExecution]]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
@@ -142,9 +141,9 @@
                            Pulse        p1 {}
                            Pulse        p2 {}
                            Pulse        p3 {}
-                           PulseChannel _ {:pulse_id (u/the-id p1), :schedule_type "daily", :channel_type "email"}
-                           PulseChannel _ {:pulse_id (u/the-id p1), :schedule_type "weekly", :channel_type "email"}
-                           PulseChannel _ {:pulse_id (u/the-id p2), :schedule_type "daily", :channel_type "slack"}
+                           :model/SubscriptionChannel _ {:pulse_id (u/the-id p1), :schedule_type "daily", :channel_type "email"}
+                           :model/SubscriptionChannel _ {:pulse_id (u/the-id p1), :schedule_type "weekly", :channel_type "email"}
+                           :model/SubscriptionChannel _ {:pulse_id (u/the-id p2), :schedule_type "daily", :channel_type "slack"}
                            ;; Pulse 1 gets 2 Cards (1 CSV)
                            PulseCard    _ {:pulse_id (u/the-id p1), :card_id (u/the-id c)}
                            PulseCard    _ {:pulse_id (u/the-id p1), :card_id (u/the-id c), :include_csv true}
@@ -164,10 +163,10 @@
                            Pulse        a3 {:alert_condition "goal", :alert_first_only false}
                            Pulse        _  {:alert_condition "goal", :alert_first_only false, :alert_above_goal true}
                            ;; Alert 1 is Email, Alert 2 is Email & Slack, Alert 3 is Slack-only
-                           PulseChannel _ {:pulse_id (u/the-id a1), :channel_type "email"}
-                           PulseChannel _ {:pulse_id (u/the-id a1), :channel_type "email"}
-                           PulseChannel _ {:pulse_id (u/the-id a2), :channel_type "slack"}
-                           PulseChannel _ {:pulse_id (u/the-id a3), :channel_type "slack"}
+                           :model/SubscriptionChannel _ {:pulse_id (u/the-id a1), :channel_type "email"}
+                           :model/SubscriptionChannel _ {:pulse_id (u/the-id a1), :channel_type "email"}
+                           :model/SubscriptionChannel _ {:pulse_id (u/the-id a2), :channel_type "slack"}
+                           :model/SubscriptionChannel _ {:pulse_id (u/the-id a3), :channel_type "slack"}
                            ;; Alert 1 gets 2 Cards (1 CSV)
                            PulseCard    _ {:pulse_id (u/the-id a1), :card_id (u/the-id c)}
                            PulseCard    _ {:pulse_id (u/the-id a1), :card_id (u/the-id c), :include_csv true}

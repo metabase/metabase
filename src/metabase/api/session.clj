@@ -11,7 +11,6 @@
    [metabase.events :as events]
    [metabase.integrations.google :as google]
    [metabase.integrations.ldap :as ldap]
-   [metabase.models :refer [PulseChannel]]
    [metabase.models.login-history :refer [LoginHistory]]
    [metabase.models.pulse :as pulse]
    [metabase.models.session :refer [Session]]
@@ -357,10 +356,10 @@
    email    :string
    hash     :string}
   (check-hash pulse-id email hash (request.u/ip-address request))
-  (api/let-404 [pulse-channel (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
+  (api/let-404 [pulse-channel (t2/select-one :model/SubscriptionChannel :pulse_id pulse-id :channel_type "email")]
     (let [emails (get-in pulse-channel [:details :emails])]
       (if (some #{email} emails)
-        (t2/update! PulseChannel (:id pulse-channel) (assoc-in pulse-channel [:details :emails] (remove #{email} emails)))
+        (t2/update! :model/SubscriptionChannel (:id pulse-channel) (assoc-in pulse-channel [:details :emails] (remove #{email} emails)))
         (throw (ex-info (tru "Email for pulse-id doesn't exist.")
                         {:type        type
                          :status-code 400}))))
@@ -374,14 +373,14 @@
    email    :string
    hash     :string}
   (check-hash pulse-id email hash (request.u/ip-address request))
-  (api/let-404 [pulse-channel (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
+  (api/let-404 [pulse-channel (t2/select-one :model/SubscriptionChannel :pulse_id pulse-id :channel_type "email")]
     (let [emails       (get-in pulse-channel [:details :emails])
           given-email? #(= % email)]
       (if (some given-email? emails)
         (throw (ex-info (tru "Email for pulse-id already exists.")
                         {:type        type
                          :status-code 400}))
-        (t2/update! PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] conj email))))
+        (t2/update! :model/SubscriptionChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] conj email))))
     (events/publish-event! :event/subscription-unsubscribe-undo {:object {:email email}})
     {:status :success :title (:name (pulse/retrieve-notification pulse-id :archived false))}))
 

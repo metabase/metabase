@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.models.pulse-channel :as advanced-config.models.pulse-channel]
-   [metabase.models :refer [Pulse PulseChannel]]
+   [metabase.models :refer [Pulse]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -32,13 +32,13 @@
                         (format "\nEmails = %s" (pr-str emails)))
             (let [thunk (case operation
                           :create
-                          #(first (t2/insert-returning-instances! PulseChannel
-                                                                  (merge (t2.with-temp/with-temp-defaults PulseChannel)
+                          #(first (t2/insert-returning-instances! :model/SubscriptionChannel
+                                                                  (merge (t2.with-temp/with-temp-defaults :model/SubscriptionChannel)
                                                                          {:pulse_id pulse-id, :details {:emails emails}})))
 
                           :update
-                          #(t2.with-temp/with-temp [PulseChannel {pulse-channel-id :id} {:pulse_id pulse-id}]
-                             (t2/update! PulseChannel pulse-channel-id {:details {:emails emails}})))]
+                          #(t2.with-temp/with-temp [:model/SubscriptionChannel {subscription-channel-id :id} {:pulse_id pulse-id}]
+                             (t2/update! :model/SubscriptionChannel subscription-channel-id {:details {:emails emails}})))]
               (if fail?
                 (testing "should fail"
                   (is (thrown-with-msg?

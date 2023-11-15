@@ -6,7 +6,7 @@
    [metabase.events.audit-log-test :as audit-log-test]
    [metabase.models
     :refer [Card Collection Dashboard DashboardCard Database Pulse PulseCard
-            PulseChannel PulseChannelRecipient Table User]]
+            PulseChannelRecipient Table User]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :as pulse]
@@ -63,9 +63,9 @@
 (deftest retrieve-pulse-test
   (testing "this should cover all the basic Pulse attributes"
     (t2.with-temp/with-temp [Pulse        {pulse-id :id}   {:name "Lodi Dodi"}
-                             PulseChannel {channel-id :id} {:pulse_id pulse-id
-                                                            :details  {:other  "stuff"
-                                                                       :emails ["foo@bar.com"]}}
+                             :model/SubscriptionChannel {channel-id :id} {:pulse_id pulse-id
+                                                                          :details  {:other  "stuff"
+                                                                                     :emails ["foo@bar.com"]}}
                              Card         {card-id :id}    {:name "Test Card"}]
       (t2/insert! PulseCard, :pulse_id pulse-id, :card_id card-id, :position 0)
       (t2/insert! PulseChannelRecipient, :subscription_channel_id channel-id, :user_id (mt/user->id :rasta))
@@ -139,7 +139,7 @@
                    :schedule_hour 4
                    :recipients    [{:email "foo@bar.com"}
                                    (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]})
-           (-> (t2/select-one PulseChannel :pulse_id id)
+           (-> (t2/select-one :model/SubscriptionChannel :pulse_id id)
                (t2/hydrate :recipients)
                (dissoc :id :pulse_id :created_at :updated_at)
                (update :entity_id boolean)
@@ -326,7 +326,7 @@
   (letfn [(do-with-objects [f]
             (mt/with-temp [User                  {user-id :id} {}
                            Pulse                 {pulse-id :id} {}
-                           PulseChannel          {pulse-channel-id :id} {:pulse_id pulse-id}
+                           :model/SubscriptionChannel {pulse-channel-id :id} {:pulse_id pulse-id}
                            PulseChannelRecipient _ {:subscription_channel_id pulse-channel-id :user_id user-id}]
               (f {:user-id          user-id
                   :pulse-id         pulse-id
@@ -355,16 +355,16 @@
              (testing "User 2 becomes inactive: Pulse should now be archived because it has no more recipients"
                (is (t2/update! User user-2-id {:is_active false}))
                (is (archived?))
-               (testing "PulseChannel & PulseChannelRecipient rows should have been archived as well."
-                 (is (not (t2/exists? PulseChannel :id pulse-channel-id)))
+               (testing "SubscriptionChannel & PulseChannelRecipient rows should have been archived as well."
+                 (is (not (t2/exists? :model/SubscriptionChannel :id pulse-channel-id)))
                  (is (not (t2/exists? PulseChannelRecipient :subscription_channel_id pulse-channel-id))))))))))
     (testing "Don't archive Pulse if it has still has recipients after deleting User subscription\n"
       (testing "another User subscription exists on a DIFFERENT channel\n"
         (do-with-objects
          (fn [{:keys [archived? user-id pulse-id]}]
-           (mt/with-temp [User                  {user-2-id :id} {}
-                          PulseChannel          {channel-2-id :id} {:pulse_id pulse-id}
-                          PulseChannelRecipient _ {:subscription_channel_id channel-2-id :user_id user-2-id}]
+           (mt/with-temp [User                       {user-2-id :id} {}
+                          :model/SubscriptionChannel {channel-2-id :id} {:pulse_id pulse-id}
+                          PulseChannelRecipient      _ {:subscription_channel_id channel-2-id :user_id user-2-id}]
              (testing "make User 1 inactive"
                (is (t2/update! User user-id {:is_active false})))
              (testing "Pulse should not be archived"
@@ -372,9 +372,9 @@
       (testing "still sent to a Slack channel"
         (do-with-objects
          (fn [{:keys [archived? user-id pulse-id]}]
-           (t2.with-temp/with-temp [PulseChannel _ {:channel_type "slack"
-                                                    :details      {:channel "#general"}
-                                                    :pulse_id     pulse-id}]
+           (t2.with-temp/with-temp [:model/SubscriptionChannel _ {:channel_type "slack"
+                                                                  :details      {:channel "#general"}
+                                                                  :pulse_id     pulse-id}]
              (testing "make the User inactive"
                (is (pos? (t2/update! User user-id {:is_active false}))))
              (testing "Pulse should not be archived"
@@ -383,7 +383,7 @@
         (testing "emails on the same channel as deleted User\n"
           (do-with-objects
            (fn [{:keys [archived? user-id pulse-channel-id]}]
-             (t2/update! PulseChannel pulse-channel-id {:details {:emails ["foo@bar.com"]}})
+             (t2/update! :model/SubscriptionChannel pulse-channel-id {:details {:emails ["foo@bar.com"]}})
              (testing "make the User inactive"
                (is (pos? (t2/update! User user-id {:is_active false}))))
              (testing "Pulse should not be archived"
@@ -391,9 +391,9 @@
         (testing "emails on a different channel\n"
           (do-with-objects
            (fn [{:keys [archived? user-id pulse-id]}]
-             (t2.with-temp/with-temp [PulseChannel _ {:channel_type "email"
-                                                      :details      {:emails ["foo@bar.com"]}
-                                                      :pulse_id     pulse-id}]
+             (t2.with-temp/with-temp [:model/SubscriptionChannel _ {:channel_type "email"
+                                                                    :details      {:emails ["foo@bar.com"]}
+                                                                    :pulse_id     pulse-id}]
                (testing "make the User inactive"
                  (is (pos? (t2/update! User user-id {:is_active false}))))
                (testing "Pulse should not be archived"
@@ -479,12 +479,12 @@
 
         (testing "A non-admin has read-only access to a subscription they are a recipient of"
           ;; Create a new Dashboard Subscription with an admin creator but non-admin recipient
-          (mt/with-temp [Pulse                subscription            {:collection_id (u/the-id collection)
-                                                                       :dashboard_id  (u/the-id dashboard)
-                                                                       :creator_id    (mt/user->id :crowberto)}
-                         PulseChannel          {pulse-channel-id :id} {:pulse_id (u/the-id subscription)}
-                         PulseChannelRecipient _                      {:subscription_channel_id pulse-channel-id
-                                                                       :user_id                 (mt/user->id :rasta)}]
+          (mt/with-temp [Pulse                      subscription           {:collection_id (u/the-id collection)
+                                                                            :dashboard_id  (u/the-id dashboard)
+                                                                            :creator_id    (mt/user->id :crowberto)}
+                         :model/SubscriptionChannel {pulse-channel-id :id} {:pulse_id (u/the-id subscription)}
+                         PulseChannelRecipient      _                      {:subscription_channel_id pulse-channel-id
+                                                                            :user_id                 (mt/user->id :rasta)}]
             (is (mi/can-read? subscription))
             (is (not (mi/can-write? subscription)))))
 

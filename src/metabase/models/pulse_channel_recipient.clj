@@ -12,7 +12,7 @@
 
 (derive :model/PulseChannelRecipient :metabase/model)
 
-;;; Deletes `PulseChannel` if the recipient being deleted is its last recipient. (This only applies
+;;; Deletes `SubscriptionChannel` if the recipient being deleted is its last recipient. (This only applies
 ;;; to PulseChannels with User subscriptions; Slack PulseChannels and ones with email address subscriptions are not
 ;;; automatically deleted.
 (t2/define-before-delete :model/PulseChannelRecipient
@@ -23,7 +23,7 @@
         last-recipient?        (zero? other-recipients-count)]
     (when last-recipient?
       ;; make sure this channel doesn't have any email-address (non-User) recipients.
-      (let [details              (t2/select-one-fn :details :model/PulseChannel :id channel-id)
+      (let [details              (t2/select-one-fn :details :model/SubscriptionChannel :id channel-id)
             has-email-addresses? (seq (:emails details))]
         (when-not has-email-addresses?
-          (t2/delete! :model/PulseChannel :id channel-id))))))
+          (t2/delete! :model/SubscriptionChannel :id channel-id))))))

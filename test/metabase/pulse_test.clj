@@ -7,7 +7,7 @@
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
    [metabase.models
-    :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
+    :refer [Card Collection Pulse PulseCard PulseChannelRecipient]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.permissions :as perms]
@@ -60,14 +60,14 @@
                                         :card_id  (u/the-id card)
                                         :position 0}
                                        pulse-card)
-                 PulseChannel {pc-id :id} (case channel
-                                            :email
-                                            {:pulse_id pulse-id}
+                 :model/SubscriptionChannel {pc-id :id} (case channel
+                                                         :email
+                                                         {:pulse_id pulse-id}
 
-                                            :slack
-                                            {:pulse_id     pulse-id
-                                             :channel_type "slack"
-                                             :details      {:channel "#general"}})]
+                                                         :slack
+                                                         {:pulse_id     pulse-id
+                                                          :channel_type "slack"
+                                                          :details      {:channel "#general"}})]
     (if (= channel :email)
       (t2.with-temp/with-temp [PulseChannelRecipient _ {:user_id                 (pulse.test-util/rasta-id)
                                                         :subscription_channel_id pc-id}]
@@ -375,7 +375,7 @@
       :fixture
       (fn [{:keys [pulse-id]} thunk]
         (t2.with-temp/with-temp [PulseChannelRecipient _ {:user_id                 (mt/user->id :crowberto)
-                                                          :subscription_channel_id (t2/select-one-pk PulseChannel :pulse_id pulse-id)}]
+                                                          :subscription_channel_id (t2/select-one-pk :model/SubscriptionChannel :pulse_id pulse-id)}]
           (thunk)))
 
       :assert
@@ -696,7 +696,7 @@
                    PulseCard             _ {:pulse_id pulse-id
                                             :card_id  card-id
                                             :dashboard_card_id dashboard-card-id}
-                   PulseChannel          {pc-id :id} {:pulse_id pulse-id}
+                   :model/SubscriptionChannel          {pc-id :id} {:pulse_id pulse-id}
                    PulseChannelRecipient _ {:user_id                 (pulse.test-util/rasta-id)
                                             :subscription_channel_id pc-id}]
         (pulse.test-util/email-test-setup
@@ -712,8 +712,8 @@
                    Pulse                 {pulse-id :id} {:name "Pulse Name"}
                    PulseCard             _ {:pulse_id pulse-id
                                             :card_id  card-id}
-                   PulseChannel          {pc-id :id} {:pulse_id pulse-id
-                                                      :details {:emails ["nonuser@metabase.com"]}}
+                   :model/SubscriptionChannel          {pc-id :id} {:pulse_id pulse-id
+                                                                    :details {:emails ["nonuser@metabase.com"]}}
                    PulseChannelRecipient _ {:user_id                (pulse.test-util/rasta-id)
                                             :subscription_channel_id pc-id}]
       (pulse.test-util/email-test-setup
@@ -735,9 +735,9 @@
                    PulseCard    _               {:pulse_id pulse-id
                                                  :card_id  card-id-2
                                                  :position 1}
-                   PulseChannel _               {:pulse_id     pulse-id
-                                                 :channel_type "slack"
-                                                 :details      {:channel "#general"}}]
+                   :model/SubscriptionChannel _               {:pulse_id     pulse-id
+                                                               :channel_type "slack"
+                                                               :details      {:channel "#general"}}]
       (pulse.test-util/slack-test-setup
        (let [[slack-data] (metabase.pulse/send-pulse! (pulse/retrieve-pulse pulse-id))]
          (is (= {:channel-id "#general",
@@ -810,9 +810,9 @@
       ;; create a Pulse with an email channel
       (with-pulse-for-card [{pulse-id :id} {:card card-id, :pulse {:skip_if_empty false}}]
         ;; add additional Slack channel
-        (t2.with-temp/with-temp [PulseChannel _ {:pulse_id     pulse-id
-                                                 :channel_type "slack"
-                                                 :details      {:channel "#general"}}]
+        (t2.with-temp/with-temp [:model/SubscriptionChannel _ {:pulse_id     pulse-id
+                                                               :channel_type "slack"
+                                                               :details      {:channel "#general"}}]
           (pulse.test-util/slack-test-setup
            (let [pulse-data (metabase.pulse/send-pulse! (pulse/retrieve-pulse pulse-id))
                  slack-data (m/find-first map? pulse-data)

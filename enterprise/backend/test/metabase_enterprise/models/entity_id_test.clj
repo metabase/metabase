@@ -57,7 +57,7 @@
     :model/PermissionsRevision
     :model/PersistedInfo
     :model/PulseCard
-    :model/PulseChannel
+    :model/:model/SubscriptionChannel
     :model/PulseChannelRecipient
     :model/Query
     :model/QueryCache

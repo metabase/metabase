@@ -14,12 +14,11 @@
             DashboardCard
             Pulse
             PulseCard
-            PulseChannel
             PulseChannelRecipient]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.pulse-channel :as pulse-channel]
    [metabase.models.pulse-test :as pulse-test]
+   [metabase.models.subscription-channel :as subscription-channel]
    [metabase.pulse.render.style :as style]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
@@ -415,7 +414,7 @@
 (deftest update-test
   (testing "PUT /api/pulse/:id"
     (mt/with-temp [Pulse                 pulse {}
-                   PulseChannel          pc    {:pulse_id (u/the-id pulse)}
+                   :model/SubscriptionChannel          pc    {:pulse_id (u/the-id pulse)}
                    PulseChannelRecipient _     {:subscription_channel_id (u/the-id pc) :user_id (mt/user->id :rasta)}
                    Card                  card  {}]
       (let [filter-params [{:id "123abc", :name "species", :type "string"}]]
@@ -579,17 +578,17 @@
 
   (testing "Does unarchiving a Pulse affect its Cards & Recipients? It shouldn't. This should behave as a PATCH-style endpoint!"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [Collection            collection {}
-                     Pulse                 pulse {:collection_id (u/the-id collection)}
-                     PulseChannel          pc    {:pulse_id (u/the-id pulse)}
-                     PulseChannelRecipient pcr   {:subscription_channel_id (u/the-id pc) :user_id (mt/user->id :rasta)}
-                     Card                  _     {}]
+      (mt/with-temp [Collection                 collection {}
+                     Pulse                      pulse {:collection_id (u/the-id collection)}
+                     :model/SubscriptionChannel sc    {:pulse_id (u/the-id pulse)}
+                     PulseChannelRecipient      pcr   {:subscription_channel_id (u/the-id sc) :user_id (mt/user->id :rasta)}
+                     Card                       _     {}]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                               {:archived true})
         (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                               {:archived false})
-        (is (t2/exists? PulseChannel :id (u/the-id pc)))
+        (is (t2/exists? :model/SubscriptionChannel :id (u/the-id sc)))
         (is (t2/exists? PulseChannelRecipient :id (u/the-id pcr)))))))
 
 
@@ -760,7 +759,7 @@
                    Pulse                 {pulse-3-id :id :as pulse-3} {:name         "MNOPQR"
                                                                        :dashboard_id dashboard-id
                                                                        :creator_id   (mt/user->id :crowberto)}
-                   PulseChannel          pc {:pulse_id pulse-3-id}
+                   :model/SubscriptionChannel          pc {:pulse_id pulse-3-id}
                    PulseChannelRecipient _  {:subscription_channel_id (u/the-id pc)
                                              :user_id                 (mt/user->id :rasta)}]
       (with-pulses-in-writeable-collection [pulse-1 pulse-2 pulse-3]
@@ -866,7 +865,7 @@
           (mt/user-http-request :rasta :get 200 (str "pulse/" (u/the-id pulse)))))
 
       (mt/with-temp [Pulse                 pulse {:creator_id (mt/user->id :crowberto)}
-                     PulseChannel          pc    {:pulse_id (u/the-id pulse)}
+                     :model/SubscriptionChannel          pc    {:pulse_id (u/the-id pulse)}
                      PulseChannelRecipient _     {:subscription_channel_id (u/the-id pc)
                                                   :user_id                 (mt/user->id :rasta)}]
         (with-pulses-in-nonreadable-collection [pulse]
@@ -909,10 +908,10 @@
                      (mt/regex-email-bodies #"Daily Sad Toucans"))))))))))
 
 (deftest send-test-pulse-validate-emails-test
-  (testing (str "POST /api/pulse/test should call " `pulse-channel/validate-email-domains)
+  (testing (str "POST /api/pulse/test should call " `subscription-channel/validate-email-domains)
     (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues)}]
-      (with-redefs [pulse-channel/validate-email-domains (fn [& _]
-                                                           (throw (ex-info "Nope!" {:status-code 403})))]
+      (with-redefs [subscription-channel/validate-email-domains (fn [& _]
+                                                                  (throw (ex-info "Nope!" {:status-code 403})))]
         ;; make sure we validate raw emails whether they're part of `:details` or part of `:recipients` -- we
         ;; technically allow either right now
         (doseq [channel [{:details {:emails ["test@metabase.com"]}}
@@ -1104,11 +1103,11 @@
 (deftest delete-subscription-test
   (testing "DELETE /api/pulse/:id/subscription"
     (mt/with-temp [Pulse        {pulse-id :id}   {:name "Lodi Dodi" :creator_id (mt/user->id :crowberto)}
-                   PulseChannel {channel-id :id} {:pulse_id      pulse-id
-                                                  :channel_type  "email"
-                                                  :schedule_type "daily"
-                                                  :details       {:other  "stuff"
-                                                                  :emails ["foo@bar.com"]}}]
+                   :model/SubscriptionChannel {channel-id :id} {:pulse_id      pulse-id
+                                                                :channel_type  "email"
+                                                                :schedule_type "daily"
+                                                                :details       {:other  "stuff"
+                                                                                :emails ["foo@bar.com"]}}]
       (testing "Should be able to delete your own subscription"
         (t2.with-temp/with-temp [PulseChannelRecipient _ {:subscription_channel_id channel-id :user_id (mt/user->id :rasta)}]
           (is (= nil

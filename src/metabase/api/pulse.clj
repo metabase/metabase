@@ -16,10 +16,8 @@
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as pulse :refer [Pulse]]
-   [metabase.models.pulse-channel
-    :as pulse-channel
-    :refer [channel-types PulseChannel]]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+   [metabase.models.subscription-channel :as subscription-channel :refer [channel-types]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.pulse]
@@ -318,7 +316,7 @@
   (check-card-read-permissions cards)
   ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
   (doseq [channel channels]
-    (pulse-channel/validate-email-domains channel))
+    (subscription-channel/validate-email-domains channel))
   (metabase.pulse/send-pulse! (assoc body :creator_id api/*current-user-id*))
   {:ok true})
 
@@ -327,7 +325,7 @@
   [id]
   {id ms/PositiveInt}
   (api/let-404 [pulse-id (t2/select-one-pk Pulse :id id)
-                pc-id    (t2/select-one-pk PulseChannel :pulse_id pulse-id :channel_type "email")
+                pc-id    (t2/select-one-pk :model/SubscriptionChannel :pulse_id pulse-id :channel_type "email")
                 pcr-id   (t2/select-one-pk PulseChannelRecipient :subscription_channel_id pc-id :user_id api/*current-user-id*)]
     (t2/delete! PulseChannelRecipient :id pcr-id))
   api/generic-204-no-content)

@@ -29,7 +29,6 @@
             ModerationReview
             Pulse
             PulseCard
-            PulseChannel
             PulseChannelRecipient
             Table
             Timeline
@@ -1645,7 +1644,7 @@
                      PulseCard             _     {:pulse_id (u/the-id pulse)
                                                   :card_id  (u/the-id card)
                                                   :position 0}
-                     PulseChannel          pc    {:pulse_id (u/the-id pulse)}
+                     :model/SubscriptionChannel  pc    {:pulse_id (u/the-id pulse)}
                      PulseChannelRecipient _     {:user_id                 (mt/user->id :crowberto)
                                                   :subscription_channel_id (u/the-id pc)}
                      PulseChannelRecipient _     {:user_id                 (mt/user->id :rasta)
@@ -1680,7 +1679,7 @@
                         PulseCard             _     {:pulse_id (u/the-id pulse)
                                                      :card_id  (u/the-id card)
                                                      :position 0}
-                        PulseChannel          pc    {:pulse_id (u/the-id pulse)}
+                        :model/SubscriptionChannel  pc    {:pulse_id (u/the-id pulse)}
                         PulseChannelRecipient _     {:user_id                 (mt/user->id :rasta)
                                                      :subscription_channel_id (u/the-id pc)}]
            (with-cards-in-writeable-collection card

@@ -19,7 +19,6 @@
             PermissionsGroupMembership
             Pulse
             PulseCard
-            PulseChannel
             PulseChannelRecipient
             Revision
             Timeline
@@ -1569,7 +1568,7 @@
                                PulseCard             _                   {:pulse_id pulse-id
                                                                           :card_id  card-id
                                                                           :position 0}
-                               PulseChannel          {pc-id :id}         {:pulse_id pulse-id}
+                               :model/SubscriptionChannel {pc-id :id}         {:pulse_id pulse-id}
                                PulseChannelRecipient _                   {:user_id                 (mt/user->id :crowberto)
                                                                           :subscription_channel_id pc-id}
                                PulseChannelRecipient _                   {:user_id                 (mt/user->id :rasta)

@@ -25,7 +25,6 @@
             PermissionsGroup
             Pulse
             PulseCard
-            PulseChannel
             QueryCache
             Segment
             Table
@@ -264,8 +263,8 @@
     {:pulses               (t2/count Pulse :alert_condition nil)
      ;; "Table Cards" are Cards that include a Table you can download
      :with_table_cards     (num-notifications-with-xls-or-csv-cards [:= :alert_condition nil])
-     :pulse_types          (db-frequencies PulseChannel :channel_type  pulse-conditions)
-     :pulse_schedules      (db-frequencies PulseChannel :schedule_type pulse-conditions)
+     :pulse_types          (db-frequencies :model/SubscriptionChannel :channel_type  pulse-conditions)
+     :pulse_schedules      (db-frequencies :model/SubscriptionChannel :schedule_type pulse-conditions)
      :num_pulses_per_user  (medium-histogram (vals (db-frequencies Pulse     :creator_id (dissoc pulse-conditions :left-join))))
      :num_pulses_per_card  (medium-histogram (vals (db-frequencies PulseCard :card_id    pulse-conditions)))
      :num_cards_per_pulses (medium-histogram (vals (db-frequencies PulseCard :pulse_id   pulse-conditions)))}))
@@ -276,7 +275,7 @@
      :with_table_cards     (num-notifications-with-xls-or-csv-cards [:not= :alert_condition nil])
      :first_time_only      (t2/count Pulse :alert_condition [:not= nil], :alert_first_only true)
      :above_goal           (t2/count Pulse :alert_condition [:not= nil], :alert_above_goal true)
-     :alert_types          (db-frequencies PulseChannel :channel_type alert-conditions)
+     :alert_types          (db-frequencies :model/SubscriptionChannel :channel_type alert-conditions)
      :num_alerts_per_user  (medium-histogram (vals (db-frequencies Pulse     :creator_id (dissoc alert-conditions :left-join))))
      :num_alerts_per_card  (medium-histogram (vals (db-frequencies PulseCard :card_id    alert-conditions)))
      :num_cards_per_alerts (medium-histogram (vals (db-frequencies PulseCard :pulse_id   alert-conditions)))}))
