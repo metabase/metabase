@@ -4070,9 +4070,9 @@ databaseChangeLog:
         - sql: DELETE FROM core_user WHERE id = 13371338;
 
   - changeSet:
-      id: v48.00-055
-      author: adam-james
-      comment: 'Added 0.48.0 - Adjust view_log schema for Audit Log v2'
+      id: v48.00-056
+      author: noahmoss
+      comment: 'Adjust view_log schema for Audit Log v2'
       changes:
         - addColumn:
             tableName: view_log
@@ -4086,8 +4086,8 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-057
-      author: adam-james
-      comment: 'Added 0.48.0 - Adjust view_log schema for Audit Log v2'
+      author: noahmoss
+      comment: 'Adjust view_log schema for Audit Log v2'
       changes:
         - addColumn:
             tableName: view_log
@@ -4098,6 +4098,18 @@ databaseChangeLog:
                   constraints:
                     nullable: true
                   remarks: 'The context of the view, can be collection, question, or dashboard. Only for cards.'
+
+  - changeSet:
+      id: v48.00-058
+      author: noahmoss
+      comment: 'Increase length of `view_log.model` to fit longer model names'
+      changes:
+        - modifyDataType:
+            tableName: view_log
+            columnName: model
+            newDataType: VARCHAR(32)
+      rollback: # not necessary
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
