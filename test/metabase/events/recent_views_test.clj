@@ -4,7 +4,6 @@
    [metabase.events :as events]
    [metabase.models :refer [Card Dashboard Table]]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn- most-recent-view
@@ -16,10 +15,8 @@
 (deftest card-query-test
   (mt/with-temp [Card card {:creator_id (mt/user->id :rasta)}]
     (mt/with-test-user :rasta
-      (events/publish-event! :event/card-query {:card-id      (u/id card)
-                                                :user-id      (mt/user->id :rasta)
-                                                :cached       false
-                                                :ignore_cache true})
+      (events/publish-event! :event/card-read {:object  card
+                                               :user-id (mt/user->id :rasta)})
       (is (= {:user_id  (mt/user->id :rasta)
               :model    "card"
               :model_id (:id card)}

@@ -41,8 +41,8 @@
     (catch Throwable e
       (log/warnf e "Failed to process view_log event. %s" topic))))
 
-(derive ::dashcard-read :metabase/event)
-(derive :event/dashboard-read ::dashcard-read)
+(derive ::dashboard-read :metabase/event)
+(derive :event/dashboard-read ::dashboard-read)
 
 (defn- readable-dashcard?
   "Returns true if the dashcard's card was readable by the current user, and false otherwise. Unreadable cards are
@@ -51,7 +51,7 @@
   (let [card (:card dashcard)]
     (not= (set (keys card)) #{:id})))
 
-(m/defmethod events/publish-event! ::dashboard-read-event
+(m/defmethod events/publish-event! ::dashboard-read
   "Handle processing for the dashboard read event. Logs the dashboard view as well as card views for each card on the
   dashboard."
   [topic {:keys [object user-id] :as event}]
@@ -60,7 +60,7 @@
           user-id   (or user-id api/*current-user-id*)
           views     (map (fn [dashcard]
                            {:model      "Card"
-                            :model_id   (u/id dashcard)
+                            :model_id   (u/id (:card_id dashcard))
                             :user_id    user-id
                             :has_access (readable-dashcard? dashcard)
                             :context    "Dashboard"})
