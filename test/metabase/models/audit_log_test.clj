@@ -1,6 +1,7 @@
 (ns metabase.models.audit-log-test
   (:require [clojure.test :refer :all]
             [metabase.models.audit-log :as audit-log]
+            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
             [toucan2.core :as t2]
             [toucan2.tools.with-temp :as t2.with-temp]))
@@ -8,7 +9,7 @@
 (derive :event/test-event :metabase/event)
 
 (deftest basic-record-event-test
-  (mt/with-model-cleanup [:model/AuditLog]
+  (premium-features-test/with-premium-features #{:audit-app}
     (mt/with-test-user :rasta
       (testing "Test that `record-event!` succesfully records basic card events"
         (t2.with-temp/with-temp [:model/Card {card-id :id :as card} {:name "Test card"}]

@@ -1171,14 +1171,12 @@
   :audit      :raw-value)
 
 (deftest user-local-settings-audit-test
-  (let [last-audit-event-fn #(t2/select-one [:model/AuditLog :topic :user_id :model :details]
-                                            :topic :setting-update
-                                            {:order-by [[:id :desc]]})]
+  (premium-features-test/with-premium-features #{:audit-app}
     (testing "User-local settings are not audited by default"
       (mt/with-test-user :rasta
         (test-user-local-only-setting! "DON'T AUDIT"))
       (is (not= "test-user-local-only-setting"
-                (-> (last-audit-event-fn) :details :key))))
+                (-> (mt/latest-audit-log-entry :setting-update) :details :key))))
 
     (testing "User-local settings can be audited"
       (mt/with-test-user :rasta
@@ -1186,8 +1184,9 @@
           (test-user-local-only-audited-setting! "AUDIT ME")
           (is (= {:topic   :setting-update
                   :user_id  (mt/user->id :rasta)
+                  :model_id nil
                   :model   "Setting"
                   :details {:key            "test-user-local-only-audited-setting"
                             :previous-value nil
                             :new-value      "AUDIT ME"}}
-                 (last-audit-event-fn))))))))
+                 (mt/latest-audit-log-entry :setting-update))))))))
