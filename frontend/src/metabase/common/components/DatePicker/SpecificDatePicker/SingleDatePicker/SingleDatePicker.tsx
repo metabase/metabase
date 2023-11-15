@@ -71,14 +71,12 @@ export function SingleDatePicker({
             onChange={handleTimeChange}
           />
         )}
-        <Stack align="center">
-          <DatePicker
-            value={value}
-            date={date}
-            onChange={handleDateChange}
-            onDateChange={setDate}
-          />
-        </Stack>
+        <DatePicker
+          value={value}
+          date={date}
+          onChange={handleDateChange}
+          onDateChange={setDate}
+        />
       </Stack>
       <Divider />
       <Group p="sm" position="apart">
