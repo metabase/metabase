@@ -34,8 +34,6 @@ jobs:
 
   files-changed:
     name: Check which files changed
-    needs: external-filter
-    if: needs.external-filter.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
@@ -50,8 +48,6 @@ jobs:
           filters: .github/file-paths.yaml
 
   e2e-matrix-builder:
-    needs: external-filter
-    if: needs.external-filter.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     outputs:
@@ -214,10 +210,10 @@ jobs:
           if-no-files-found: ignore
 
   e2e-tests-skipped-stub:
-    needs: [e2e-tests, e2e-matrix-builder, external-filter]
+    needs: [e2e-tests, e2e-matrix-builder]
     if: |
       !cancelled() &&
-      needs.e2e-tests.result == 'skipped' && needs.external-filter.result == 'success'
+      needs.e2e-tests.result == 'skipped'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 5
     name: e2e-tests-${{ matrix.name }}-${{ matrix.edition }}
