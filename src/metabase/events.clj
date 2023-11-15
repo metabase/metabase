@@ -159,23 +159,3 @@
    ;; and is important for distinguishing view events triggered when pinned cards are 'viewed'
    ;; when a user opens a collection.
    :context      (:context object)})
-
-(def ^:private async-publish-event-timeout 10000)
-
-(defn publish-event-async!
-  ;; TODO - per team discussions, this will give us a short-term fix to performance issues related to blocking DB
-  ;; operations from resource contention. However, we'd still prefer to minimize resource contention.
-  "Publish an event asynchronously with an optional timeout (default is 10s).
-  If the event fails, will log a warning."
-  ([topic event]
-   (publish-event-async! topic event async-publish-event-timeout))
-  ([topic event timeout]
-   (let [event-thread (future (publish-event! topic event))]
-     (future (Thread/sleep ^long timeout)
-             (when-not (future-done? event-thread)
-               (log/warnf "%s event %s event in %sms:\n\n%s"
-                          (u/colorize :red "Failed to publish async event")
-                          (u/colorize :yellow (pr-str topic))
-                          async-publish-event-timeout
-                          (u/pprint-to-str event))
-               (future-cancel event-thread))))))
