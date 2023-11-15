@@ -42,10 +42,10 @@
 
 (derive ::read-permission-failure :metabase/event)
 (derive :event/read-permission-failure ::read-permission-failure)
+
 (m/defmethod events/publish-event! ::read-permission-failure
   "Handle processing for a generic read event notification"
   [topic {:keys [object] :as event}]
-  (def object object)
   (try
     (when (#{:model/Card :model/Dashboard} (t2/model object))
      (-> event

@@ -4099,17 +4099,6 @@ databaseChangeLog:
                     nullable: true
                   remarks: 'The context of the view, can be collection, question, or dashboard. Only for cards.'
 
-  - changeSet:
-      id: v48.00-058
-      author: noahmoss
-      comment: 'Increase length of `view_log.model` to fit longer model names'
-      changes:
-        - modifyDataType:
-            tableName: view_log
-            columnName: model
-            newDataType: VARCHAR(32)
-      rollback: # not necessary
-
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
