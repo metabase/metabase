@@ -1441,18 +1441,16 @@
   ;; We're actually testing `v48.00-024`, but we want the `migrate!` function to run all the migrations in 48
   ;; after rolling back to 47, so we're using `v48.00-000` as the start of the migration range in `test-migrations`
   (impl/test-migrations ["v48.00-000"] [migrate!]
-    (let [throw-err             (fn [& _args]
-                                  (throw (ex-info "This shouldn't be called ever" {})))]
-      (testing "we can migrate even if data_migrations is empty"
-        ;; 0 because we removed them and fresh db won't trigger any
-        (is (= 0 (t2/count :data_migrations)))
-        (migrate!))
+    (testing "we can migrate even if data_migrations is empty"
+      ;; 0 because we removed them and fresh db won't trigger any
+      (is (= 0 (t2/count :data_migrations)))
+      (migrate!))
 
-      (testing "no data_migrations table after v.48.00-024"
-        (is (thrown? ExceptionInfo
-                     (t2/count :data_migrations))))
+    (testing "no data_migrations table after v.48.00-024"
+      (is (thrown? ExceptionInfo
+                   (t2/count :data_migrations))))
 
-      (testing "rollback causes all known data_migrations to reappear"
-        (migrate! :down 47)
-        ;; 34 because there was a total of 34 data migrations (which are filled on rollback)
-        (is (= 34 (t2/count :data_migrations)))))))
+    (testing "rollback causes all known data_migrations to reappear"
+      (migrate! :down 47)
+      ;; 34 because there was a total of 34 data migrations (which are filled on rollback)
+      (is (= 34 (t2/count :data_migrations))))))
