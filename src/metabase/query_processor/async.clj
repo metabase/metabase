@@ -6,14 +6,12 @@
    [metabase.api.common :as api]
    [metabase.async.util :as async.u]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -30,10 +28,6 @@
     ;; technically a userland query -- we don't want to save a QueryExecution -- so we need to add `executed-by`
     ;; and `query-hash` ourselves so the remark gets added)
     (assoc-in query [:info :query-hash] (qp.util/query-hash query))))
-
-(defn- async-result-metdata-raisef [context e]
-  (log/error e (trs "Error running query to determine Card result metadata:"))
-  (qp.context/resultf context []))
 
 (mu/defn ^:private result-metadata-rff :- ::qp.schema/rff
   [metadata]
@@ -59,8 +53,19 @@
         (a/close! chan)
         chan)
       ;; for *native* queries we actually have to run it.
-      (let [query (query-for-result-metadata query)]
-        (qp/process-query query
-                          result-metadata-rff
-                          (qp.context/async-context
-                           {:raisef async-result-metdata-raisef}))))))
+      (let [query (query-for-result-metadata query)
+            chan  (a/promise-chan)
+            futur (future
+                    (let [result (try
+                                   (qp/process-query query result-metadata-rff)
+                                   (catch Throwable e
+                                     (log/error e "Error running query to determine Card result metadata")
+                                     []))]
+                      (a/put! chan result)
+                      (a/close! chan)))]
+        ;; if the result channel gets closed before the metadata is returned, then cancel the future so it's not running
+        ;; despite the fact it will never return a result.
+        (a/go
+          (when (nil? (a/<! chan))
+            (future-cancel futur)))
+        chan))))

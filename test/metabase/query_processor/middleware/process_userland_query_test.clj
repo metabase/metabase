@@ -179,21 +179,21 @@
                                                                  (reset! saved-query-execution? info))]
       (mt/with-open-channels [canceled-chan (a/promise-chan)]
         (future
-          (let [status   (atom ::not-started)
-                out-chan (process-userland-query
+          (let [status (atom ::not-started)
+                futur  (future
+                         (process-userland-query
                           {:type :query}
-                          (qp.context/async-context
+                          (qp.context/sync-context
                            {:canceled-chan canceled-chan
                             :reducef       (fn [context _rff _metadata rows]
                                              (reset! status ::started)
                                              (Thread/sleep 1000)
                                              (reset! status ::done)
-                                             (qp.context/resultf context rows))}))]
-            (is (async.u/promise-chan? out-chan))
+                                             (qp.context/resultf context rows))})))]
             (is (not= ::done
                       @status))
             (Thread/sleep 100)
-            (a/close! out-chan)))
+            (future-cancel futur)))
         (testing "canceled-chan should get get a :cancel message"
           (let [[val port] (a/alts!! [canceled-chan (a/timeout 500)])]
             (is (= 'canceled-chan

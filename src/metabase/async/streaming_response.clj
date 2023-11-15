@@ -79,8 +79,8 @@
       nil)))
 
 (defn- do-f-async
-  "Runs `f` asynchronously on the streaming response `thread-pool`, returning immediately. When `f` finishes, completes (i.e., closes) Jetty
-  `async-context`."
+  "Runs `f` asynchronously on the streaming response `thread-pool`, returning immediately. When `f` finishes,
+  completes (i.e., closes) Jetty `async-context`."
   [^AsyncContext async-context f ^OutputStream os finished-chan canceled-chan]
   {:pre [(some? os)]}
   (let [task (^:once fn* []

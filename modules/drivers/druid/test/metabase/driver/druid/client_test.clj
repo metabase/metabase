@@ -24,11 +24,11 @@
                                                 (Thread/sleep 5000)
                                                 (throw (Exception. "Don't actually run!")))]
 
-            (let [out-chan (qp/process-query query (qp.context/async-context))]
-              ;; wait for query to start running, then close `out-chan`
+            (let [futur (future (qp/process-query query))]
+              ;; wait for query to start running, then kill the thread running the query
               (a/go
                 (a/<! running-chan)
-                (a/close! out-chan)))
+                (future-cancel futur)))
             (is (= ::cancel
                    (mt/wait-for-result cancel-chan 2000)))))))))
 

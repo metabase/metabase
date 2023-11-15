@@ -106,25 +106,6 @@
              :data       {:cols []}}
             (catch-exceptions (fn [] (throw (Exception. "Something went wrong"))))))))
 
-(deftest ^:parallel async-exception-test
-  (testing "if an Exception is returned asynchronously by `raise`, should format it the same way"
-    (let [out-chan (catch-exceptions (fn run [])
-                                     {}
-                                     (qp.context/async-context
-                                      {:runf (fn [context _query _rff]
-                                               (future
-                                                 (qp.context/raisef context (Exception. "Something went wrong")))
-                                               (qp.context/out-chan context))}))]
-      (is (async.u/promise-chan? out-chan))
-      (is (=? {:status     :failed
-               :class      (partial = java.lang.Exception)
-               :error      "Something went wrong"
-               :stacktrace vector?
-               :json_query {}
-               :row_count  0
-               :data       {:cols []}}
-              (mt/wait-for-result out-chan 1000))))))
-
 (deftest ^:parallel catch-exceptions-test
   (testing "include-query-execution-info-test"
     (testing "Should include info from QueryExecution if added to the thrown/raised Exception"
