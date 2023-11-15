@@ -1,4 +1,3 @@
-import { t } from "ttag";
 import type { Drill } from "metabase/visualizations/types";
 import type { ZoomTimeseriesDrillThruInfo } from "metabase-lib";
 
@@ -16,7 +15,7 @@ export const ZoomTimeseriesDrill: Drill<ZoomTimeseriesDrillThruInfo> = ({
   return [
     {
       name: "timeseries-zoom",
-      title: t`${displayName}`,
+      title: displayName,
       section: "zoom",
       icon: "zoom_in",
       buttonType: "horizontal",

@@ -377,6 +377,109 @@ describe("ClickActionsPopover", function () {
         },
       );
     });
+
+    describe("ZoomTimeseriesDrill", () => {
+      it.each([
+        {
+          column: AGGREGATED_ORDERS_COLUMNS_MAP.CREATED_AT,
+          columnName: AGGREGATED_ORDERS_COLUMNS_MAP.CREATED_AT.name,
+          cellValue: AGGREGATED_ORDERS_ROW_VALUES.CREATED_AT,
+          drillTitle: "See this month by week",
+          expectedCard: {
+            dataset_query: {
+              ...AGGREGATED_ORDERS_DATASET_QUERY,
+              query: {
+                ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+                breakout: [
+                  [
+                    "field",
+                    ORDERS.PRODUCT_ID,
+                    {
+                      "base-type": "type/Integer",
+                    },
+                  ],
+                  [
+                    "field",
+                    ORDERS.CREATED_AT,
+                    {
+                      "base-type": "type/DateTime",
+                      "temporal-unit": "week",
+                    },
+                  ],
+                ],
+              },
+            },
+            display: "table",
+          },
+        },
+        {
+          column: AGGREGATED_ORDERS_COLUMNS_MAP.count,
+          columnName: AGGREGATED_ORDERS_COLUMNS_MAP.count.name,
+          cellValue: AGGREGATED_ORDERS_ROW_VALUES.count,
+          drillTitle: "See this month by week",
+          expectedCard: {
+            dataset_query: {
+              ...AGGREGATED_ORDERS_DATASET_QUERY,
+              query: {
+                ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+                filter: [
+                  "=",
+                  [
+                    "field",
+                    AGGREGATED_ORDERS_COLUMNS_MAP.CREATED_AT.id,
+                    { "base-type": "type/DateTime", "temporal-unit": "month" },
+                  ],
+                  AGGREGATED_ORDERS_ROW_VALUES.CREATED_AT,
+                ],
+                breakout: [
+                  [
+                    "field",
+                    ORDERS.PRODUCT_ID,
+                    {
+                      "base-type": "type/Integer",
+                    },
+                  ],
+                  [
+                    "field",
+                    ORDERS.CREATED_AT,
+                    {
+                      "base-type": "type/DateTime",
+                      "temporal-unit": "week",
+                    },
+                  ],
+                ],
+              },
+            },
+            display: "table",
+          },
+        },
+      ])(
+        "should apply drill on $columnName cell click",
+        async ({ column, cellValue, drillTitle, expectedCard }) => {
+          const { props } = await setup({
+            question: AGGREGATED_ORDERS_QUESTION,
+            clicked: {
+              column,
+              value: cellValue,
+            },
+            columns: AGGREGATED_ORDERS_COLUMNS,
+            rowValues: AGGREGATED_ORDERS_ROW_VALUES,
+          });
+
+          const drill = screen.getByText(drillTitle);
+          expect(drill).toBeInTheDocument();
+
+          userEvent.click(drill);
+
+          expect(props.onChangeCardAndRun).toHaveBeenCalledTimes(1);
+          expect(props.onChangeCardAndRun).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+              nextCard: expect.objectContaining(expectedCard),
+            }),
+          );
+        },
+      );
+    });
   });
 });
 
@@ -406,9 +509,28 @@ async function setup({
       checkNotNull(clicked?.column),
     );
 
+  const clickedData = columns?.map(column => ({
+    col: column,
+    value: rowValues[column.name],
+  }));
+
+  const hasAggregations = (
+    question?.query() as StructuredQuery
+  ).canRemoveAggregation();
+  const dimensions = hasAggregations
+    ? clickedData
+        .filter(
+          ({ col }) =>
+            col?.source === "breakout" && col?.name !== clicked?.column?.name,
+        )
+        .map(({ value, col }) => ({ value, column: col }))
+    : undefined;
+
   clicked = {
     ...clicked,
     dimension: dimension || undefined,
+    data: clickedData,
+    dimensions,
   };
 
   const clickActions = mode.actionsForClick(
