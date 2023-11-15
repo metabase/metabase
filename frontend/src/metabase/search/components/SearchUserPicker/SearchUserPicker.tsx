@@ -1,8 +1,7 @@
-import { useAsync } from "react-use";
 import { without } from "underscore";
 import { useState } from "react";
 import { t } from "ttag";
-import { UserApi } from "metabase/services";
+import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import type { UserId, UserListResult } from "metabase-types/api";
 import { Center, Text } from "metabase/ui";
 import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchFilterPopoverWrapper";
@@ -24,11 +23,11 @@ export const SearchUserPicker = ({
   value: UserId[];
   onChange: (value: UserId[]) => void;
 }) => {
-  const { loading: isLoading, value: userApiReturnValue } = useAsync<
-    () => Promise<{ data: UserListResult[] }>
-  >(UserApi.list);
+  const { isLoading, data } = useUserListQuery({
+    query: { recipients: true },
+  });
 
-  const users = userApiReturnValue?.data ?? [];
+  const users = data ?? [];
 
   const [userFilter, setUserFilter] = useState("");
   const [selectedUserIds, setSelectedUserIds] = useState(value);

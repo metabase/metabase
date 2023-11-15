@@ -698,13 +698,13 @@
   ([a-query stage-number expression-position]
    (to-array (lib.core/expressionable-columns a-query stage-number expression-position))))
 
-(defn ^:export suggested-join-condition
-  "Return a suggested default join condition when constructing a join against `joinable`, e.g. a Table, Saved
-  Question, or another query. A suggested condition will be returned if the source Table has a foreign key to the
+(defn ^:export suggested-join-conditions
+  "Return suggested default join conditions when constructing a join against `joinable`, e.g. a Table, Saved
+  Question, or another query. Suggested conditions will be returned if the source Table has a foreign key to the
   primary key of the thing we're joining (see #31175 for more info); otherwise this will return `nil` if no default
-  condition is suggested."
+  conditions are suggested."
   [a-query stage-number joinable]
-  (lib.core/suggested-join-condition a-query stage-number joinable))
+  (to-array (lib.core/suggested-join-conditions a-query stage-number joinable)))
 
 (defn ^:export join-fields
   "Get the `:fields` associated with a join."
@@ -1023,3 +1023,8 @@
    Returns the matching column, or nil if no match is found."
   [a-ref columns]
   (lib.core/find-matching-column a-ref columns))
+
+(defn ^:export stage-count
+  "Returns the count of stages in query"
+  [a-query]
+  (lib.core/stage-count a-query))

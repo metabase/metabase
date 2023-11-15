@@ -183,12 +183,13 @@
   "Get Dashboard with ID."
   [id]
   (-> (t2/select-one :model/Dashboard :id id)
-      api/check-404
+      api/read-check
       ;; i'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
       ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
       ;; cannot be in this situation
       (t2/hydrate [:dashcards
                    [:card [:moderation_reviews :moderator_details]]
+                   [:card :can_write]
                    :series
                    :dashcard/action
                    :dashcard/linkcard-info]
@@ -199,7 +200,6 @@
                   :param_values
                   [:collection :is_personal])
       collection.root/hydrate-root-collection
-      api/read-check
       api/check-not-archived
       hide-unreadable-cards
       add-query-average-durations))
