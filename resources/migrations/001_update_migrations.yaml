@@ -4076,19 +4076,19 @@ databaseChangeLog:
       changes:
         - sqlFile:
             dbms: postgresql
-            path: instance_analytics_views/view_log/v1/postgres-tasks.sql
+            path: instance_analytics_views/tasks/v1/postgres-tasks.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: mysql,mariadb
-            path: instance_analytics_views/view_log/v1/mysql-tasks.sql
+            path: instance_analytics_views/tasks/v1/mysql-tasks.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: h2
-            path: instance_analytics_views/view_log/v1/h2-tasks.sql
+            path: instance_analytics_views/tasks/v1/h2-tasks.sql
             relativeToChangelogFile: true
       rollback:
         - sql:
-            sql: drop view if exists v_view_log;
+            sql: drop view if exists v_tasks;
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
