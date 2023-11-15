@@ -196,12 +196,12 @@ export function joinConditionOperators(
   return ML.join_condition_operators(query, stageIndex, lhsColumn, rhsColumn);
 }
 
-export function suggestedJoinCondition(
+export function suggestedJoinConditions(
   query: Query,
   stageIndex: number,
   joinable: Joinable,
-): JoinCondition | null {
-  return ML.suggested_join_condition(query, stageIndex, joinable);
+): JoinCondition[] {
+  return ML.suggested_join_conditions(query, stageIndex, joinable);
 }
 
 export type JoinFields = ColumnMetadata[] | "all" | "none";

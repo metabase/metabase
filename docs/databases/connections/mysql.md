@@ -42,7 +42,9 @@ See our [guide to SSH tunneling](../ssh-tunnel.md).
 
 ### Unfold JSON Columns
 
-In some databases, Metabase can unfold JSON columns into component fields to yield a table where each JSON key becomes a column. JSON unfolding is on by default, but you can turn off JSON unfolding if performance is slow.
+For MySQL databases, Metabase can unfold JSON columns into component fields to yield a table where each JSON key becomes a column. JSON unfolding is on by default, but you can turn off JSON unfolding if performance is slow.
+
+If you turn on JSON unfolding, you can also toggle the unfolding for individual columns in [table metadata](../../data-modeling/metadata-editing.md#unfold-json).
 
 ### Additional JDBC connection string options
 

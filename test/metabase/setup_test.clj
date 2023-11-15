@@ -3,8 +3,7 @@
    [clojure.test :refer :all]
    [metabase.core :as mbc]
    [metabase.db :as mdb]
-   [metabase.db.schema-migrations-test.impl
-    :as schema-migrations-test.impl]
+   [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.setup :as setup]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -34,7 +33,7 @@
       (is (contains? #{0 1} (call-count)))))
   (testing "Return falsey for an empty instance. Values should be cached for current app DB to support swapping in tests/REPL"
     ;; create a new completely empty database.
-    (schema-migrations-test.impl/with-temp-empty-app-db [_conn :h2]
+    (mt/with-temp-empty-app-db [_conn :h2]
       ;; make sure the DB is setup (e.g., run all the Liquibase migrations)
       (mdb/setup-db!)
       (t2/with-call-count [call-count]
