@@ -4,40 +4,31 @@
    [metabase.api.common :as api]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
+   [metabase.models.query.permissions :as query-perms]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as m]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
-(defn- record-view!
+(defn- record-views!
   "Simple base function for recording a view of a given `model` and `model-id` by a certain `user`."
-  [{:keys [model model-id user-id metadata context has-access]}]
+  [view-or-views]
   (span/with-span!
-    {:name       "record-view!"
-     :attributes {:model/id   model-id
-                  :user/id    user-id
-                  :model/name (u/lower-case-en model)}}
-    (t2/insert! :model/ViewLog
-                :user_id    user-id
-                :model      model
-                :model_id   model-id
-                :context    context
-                :has_access has-access
-                :metadata   metadata)))
+    {:name "record-view!"}
+    (t2/insert! :model/ViewLog view-or-views)))
 
 (defn- generate-view
   "Generates a view, given an event map."
   [{:keys [object user-id has-access]
     :or   {has-access true}}]
-  {:model-name (audit-log/model-name object)
-   :user-id    (or user-id api/*current-user-id*)
-   :model-id   (u/id object)
+  {:model      (audit-log/model-name object)
+   :user_id    (or user-id api/*current-user-id*)
+   :model_id   (u/id object)
    :has_access has-access})
 
 (derive ::read-event :metabase/event)
 (derive :event/card-read ::read-event)
-(derive :event/table-read ::read-event)
 (derive :event/read-permission-failure ::read-event)
 
 (m/defmethod events/publish-event! ::read-event
@@ -46,7 +37,7 @@
   (try
     (-> event
         generate-view
-        record-view!)
+        record-views!)
     (catch Throwable e
       (log/warnf e "Failed to process view_log event. %s" topic))))
 
@@ -75,6 +66,25 @@
                             :context    "Dashboard"})
                          dashcards)
           dash-view (generate-view event)]
-      (t2/insert! :model/ViewLog (cons dash-view views)))
+      (record-views! (cons dash-view views)))
     (catch Throwable e
        (log/warnf e "Failed to process view_log event. %s" topic))))
+
+(derive ::table-read :metabase/event)
+(derive :event/table-read ::table-read)
+
+(m/defmethod events/publish-event! ::table-read
+  "Handle processing for the table read event. Does a basic permissions check to see if the the user has data perms for
+  the table."
+  [topic {:keys [object user-id] :as event}]
+  (try
+    (let [table-id    (u/id object)
+          database-id (:db_id object)
+          has-access? (when (= api/*current-user-id* user-id)
+                        (query-perms/can-query-table? database-id table-id))]
+      (-> event
+          (assoc :has-access has-access?)
+          generate-view
+          record-views!))
+    (catch Throwable e
+      (log/warnf e "Failed to process view_log event. %s" topic))))
