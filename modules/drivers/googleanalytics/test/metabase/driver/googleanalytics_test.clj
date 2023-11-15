@@ -13,7 +13,7 @@
    [metabase.models :refer [Card Database Field Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -285,17 +285,17 @@
                                                                :base_type    :type/Text})]
             (do-with-some-fields
              (fn [objects]
-               (let [query   (query-with-some-fields objects)
-                     cols    (for [col [{:name "ga:eventLabel"}
-                                        {:name "ga:totalEvents", :base_type :type/Text}]]
-                               (#'ga.execute/add-col-metadata query col))
-                     rows    [["Toucan Sighting" 1000]]
-                     context {:timeout (u/seconds->ms 2)
-                              :runf    (fn [context _query rff]
-                                         (let [metadata {:cols cols}]
-                                           (qp.context/reducef context rff metadata rows)))}
-                     qp      (fn [query]
-                               (qp/process-query query context))]
+               (let [query (query-with-some-fields objects)
+                     cols  (for [col [{:name "ga:eventLabel"}
+                                      {:name "ga:totalEvents", :base_type :type/Text}]]
+                             (#'ga.execute/add-col-metadata query col))
+                     rows  [["Toucan Sighting" 1000]]
+                     qp    (fn [query]
+                             (binding [qp.pipeline/*query-timeout-ms* (u/seconds->ms 2)
+                                       qp.pipeline/*run*              (fn [_query rff]
+                                                                        (let [metadata {:cols cols}]
+                                                                          (qp.pipeline/*reduce* rff metadata rows)))]
+                               (qp/process-query query)))]
                  (is (partial=
                       {:row_count 1
                        :status    :completed
@@ -314,12 +314,12 @@
                                                        :base_type         :type/Text
                                                        :effective_type    :type/Text
                                                        :coercion_strategy nil}
-                                                      {:name         "metric"
-                                                       :display_name "ga:totalEvents"
-                                                       :source       :aggregation
-                                                       :description  "This is ga:totalEvents"
-                                                       :base_type    :type/Text
-                                                       :effective_type    :type/Text}]
+                                                      {:name           "metric"
+                                                       :display_name   "ga:totalEvents"
+                                                       :source         :aggregation
+                                                       :description    "This is ga:totalEvents"
+                                                       :base_type      :type/Text
+                                                       :effective_type :type/Text}]
                                    :results_timezone system-timezone-id}}
                       (-> (tu/doall-recursive (qp query))
                           (update-in [:data :cols] #(for [col %]

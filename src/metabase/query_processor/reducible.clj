@@ -1,6 +1,7 @@
 (ns metabase.query-processor.reducible
   (:require
    [clojure.core.async :as a]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -34,24 +35,27 @@
 
   `row-thunk` is a function that, when called, should return the next row in the results, or falsey if no more rows
   exist."
-  [row-thunk canceled-chan]
-  (reify
-    clojure.lang.IReduceInit
-    (reduce [_ rf init]
-      (loop [acc init]
-        (cond
-          (reduced? acc)
-          @acc
+  ([row-thunk]
+   (reducible-rows row-thunk qp.pipeline/*canceled-chan*))
 
-          (a/poll! canceled-chan)
-          acc
+  ([row-thunk canceled-chan]
+   (reify
+     clojure.lang.IReduceInit
+     (reduce [_ rf init]
+       (loop [acc init]
+         (cond
+           (reduced? acc)
+           @acc
 
-          :else
-          (if-let [row (row-thunk)]
-            (recur (rf acc row))
-            (do
-              (log/trace "All rows consumed.")
-              acc)))))))
+           (some-> canceled-chan a/poll!)
+           acc
+
+           :else
+           (if-let [row (row-thunk)]
+             (recur (rf acc row))
+             (do
+               (log/trace "All rows consumed.")
+               acc))))))))
 
 (defn combine-additional-reducing-fns
   "Utility function for creating a reducing function that reduces results using `primary-rf` and some number of

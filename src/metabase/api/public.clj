@@ -38,7 +38,8 @@
    [metabase.util.malli.schema :as ms]
    [schema.core :as s]
    [throttle.core :as throttle]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [metabase.query-processor.pipeline :as qp.pipeline])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -126,28 +127,14 @@
    (when-not (qp.error-type/show-in-embeds? error-type)
      {:error (tru "An error occurred while running the query.")})))
 
-(defn- public-resultf
-  [orig-resultf]
-  (fn resultf [context result]
-    (orig-resultf context (transform-qp-result result))))
-
 (defn- process-query-for-card-with-id-run-fn
   "Create the `:run` function used for [[process-query-for-card-with-id]] and [[process-query-for-dashcard]]."
   [qp export-format]
   (fn run [query info]
-    (qp.streaming/streaming-response [{:keys [rff context]} export-format (u/slugify (:card-name info))]
-      (let [context' (update context :resultf public-resultf)
-            #_rff'     #_(fn rff' [metadata]
-                       (let [rf (rff metadata)]
-                         (fn rf'
-                           ([]
-                            (rf))
-                           ([result]
-                            (transform-qp-result (rf result)))
-                           ([acc row]
-                            (rf acc row)))))]
+    (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
+      (binding [qp.pipeline/*result* (comp qp.pipeline/*result* transform-qp-result)]
         (mw.session/as-admin
-          (qp (update query :info merge info) rff #_rff' context'))))))
+          (qp (update query :info merge info) rff))))))
 
 (mu/defn process-query-for-card-with-id
   "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`).

@@ -14,12 +14,12 @@
    [metabase.models.query :as query :refer [Query]]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
    [metabase.query-processor.middleware.process-userland-query
     :as process-userland-query]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.util :as qp.util]
@@ -119,9 +119,7 @@
   ;; clear out stale values in save/purge channels
   (while (a/poll! *save-chan*))
   (while (a/poll! *purge-chan*))
-  (let [qp       (cache/maybe-return-cached-results
-                  (fn [query rff context]
-                    (qp.context/runf context query rff)))
+  (let [qp       (cache/maybe-return-cached-results qp.pipeline/*run*)
         metadata {}
         rows     [[:toucan      71]
                   [:bald-eagle  92]
@@ -131,15 +129,14 @@
                   [:robin       96]
                   [:osprey      72]
                   [:flamingo    70]]
-        query    (test-query query-kvs)
-        context  (qp.context/sync-context
-                  {:timeout  2000
-                   :executef (fn [_context _driver _query respond]
-                               (Thread/sleep *query-execution-delay-ms*)
-                               (respond metadata rows))})]
-    (driver/with-driver :h2
-      (-> (qp query qp.reducible/default-rff context)
-          (assoc :data {})))))
+        query    (test-query query-kvs)]
+    (binding [qp.pipeline/*query-timeout-ms* 2000
+              qp.pipeline/*execute*          (fn [_driver _query respond]
+                                               (Thread/sleep *query-execution-delay-ms*)
+                                               (respond metadata rows))]
+      (driver/with-driver :h2
+        (-> (qp query qp.reducible/default-rff)
+            (assoc :data {}))))))
 
 (defn- run-query [& args]
   (let [result (apply run-query* args)]
@@ -381,8 +378,10 @@
       (let [query (assoc (mt/mbql-query venues {:order-by [[:asc $id]], :limit 6})
                          :cache-ttl 100)]
         (with-open [os (java.io.ByteArrayOutputStream.)]
-          (let [{:keys [context rff]} (qp.streaming/streaming-context-and-rff :csv os)]
-            (qp/process-query query rff context))
+          (qp.streaming/do-with-streaming-rff
+           :csv os
+           (fn [rff]
+             (qp/process-query query rff)))
           (mt/wait-for-result save-chan))
         (is (= true
                (:cached (qp/process-query query)))
@@ -390,16 +389,20 @@
         (let [uncached-results (with-open [ostream (java.io.PipedOutputStream.)
                                            istream (java.io.PipedInputStream. ostream)
                                            reader  (java.io.InputStreamReader. istream)]
-                                 (let [{:keys [context rff]} (qp.streaming/streaming-context-and-rff :csv ostream)]
-                                   (qp/process-query (dissoc query :cache-ttl) rff context))
+                                 (qp.streaming/do-with-streaming-rff
+                                  :csv ostream
+                                  (fn [rff]
+                                    (qp/process-query (dissoc query :cache-ttl) rff)))
                                  (vec (csv/read-csv reader)))]
           (with-redefs [sql-jdbc.execute/execute-reducible-query (fn [& _]
                                                                    (throw (Exception. "Should be cached!")))]
             (with-open [ostream (java.io.PipedOutputStream.)
                         istream (java.io.PipedInputStream. ostream)
                         reader  (java.io.InputStreamReader. istream)]
-              (let [{:keys [context rff]} (qp.streaming/streaming-context-and-rff :csv ostream)]
-                (qp/process-query query rff context))
+              (qp.streaming/do-with-streaming-rff
+               :csv ostream
+               (fn [rff]
+                 (qp/process-query query rff)))
               (is (= uncached-results
                      (vec (csv/read-csv reader)))
                   "CSV results should match results when caching isn't in play"))))))))
@@ -414,10 +417,11 @@
       (with-mock-cache [save-chan]
         (let [query (assoc query :cache-ttl 100)]
           (with-open [os (java.io.ByteArrayOutputStream.)]
-            (let [{:keys [rff context]} (qp.streaming/streaming-context-and-rff :csv os)]
-              (is (= false
-                     (boolean (:cached (qp/process-query query rff context))))
-                  "Query shouldn't be cached after first run with the mock cache in place"))
+            (qp.streaming/do-with-streaming-rff
+             :csv os
+             (fn [rff]
+               (is (false? (:cached (qp/process-query query rff)))
+                   "Query shouldn't be cached after first run with the mock cache in place")))
             (mt/wait-for-result save-chan))
           (is (= (-> (assoc normal-results :cached true)
                      (dissoc :updated_at)
@@ -427,7 +431,7 @@
                      (m/dissoc-in [:data :results_metadata :checksum])))
               "Query should be cached and results should match those ran without cache"))))))
 
-(deftest caching-big-resultsets
+(deftest ^:parallel caching-big-resultsets
   (testing "Make sure we can save large result sets without tripping over internal async buffers"
     (is (= 10000 (count (transduce identity
                                    (#'cache/save-results-xform 0 {} (byte 0) conj)

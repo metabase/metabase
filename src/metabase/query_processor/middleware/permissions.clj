@@ -138,9 +138,9 @@
   be checked separately before allowing the relevant objects to be create (e.g., when saving a new Pulse or
   'publishing' a Card)."
   [qp]
-  (fn [query rff context]
+  (fn [query rff]
     (check-query-permissions* query)
-    (qp query rff context)))
+    (qp query rff)))
 
 (defn remove-permissions-key
   "Pre-processing middleware. Removes the `::perms` key from the query. This is where we store important permissions
@@ -165,9 +165,9 @@
 (defn check-query-action-permissions
   "Middleware that check that the current user has permissions to run the current query action."
   [qp]
-  (fn [query rff context]
+  (fn [query rff]
     (check-query-action-permissions* query)
-    (qp query rff context)))
+    (qp query rff)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

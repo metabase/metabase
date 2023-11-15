@@ -11,7 +11,6 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
-   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.streaming-test :as streaming-test]
    [metabase.test :as mt]
@@ -52,9 +51,9 @@
 
   ([table-name]
    (-> {:database (mt/id)
-        :type :query
-        :query {:source-table (mt/id table-name)}
-        :info {:context (api.dataset/export-format->context :csv)}})))
+        :type     :query
+        :query    {:source-table (mt/id table-name)}
+        :info     {:context (api.dataset/export-format->context :csv)}})))
 
 (defn- native-download-query []
   {:database (mt/id)
@@ -118,9 +117,9 @@
 
 (defn- check-download-permisions [query]
   (let [qp (ee.qp.perms/check-download-permissions
-            (fn [query _rff _context]
+            (fn [query _rff]
               query))]
-    (qp query qp.reducible/default-rff (qp.context/sync-context))))
+    (qp query qp.reducible/default-rff)))
 
 (def ^:private download-perms-error-msg #"You do not have permissions to download the results of this query\.")
 

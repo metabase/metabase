@@ -8,7 +8,7 @@
    [metabase.driver :as driver]
    [metabase.http-client :as client]
    [metabase.models :refer [Database]]
-   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.server.protocols :as server.protocols]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -66,7 +66,7 @@
          (reset! start-execution-chan nil)))))
 
 (defmethod driver/execute-reducible-query ::test-driver
-  [_driver {{{:keys [sleep]} :query} :native, database-id :database} context respond]
+  [_driver {{{:keys [sleep]} :query} :native, database-id :database} _context respond]
   {:pre [(integer? sleep) (integer? database-id)]}
   (let [futur (future
                 (try
@@ -77,10 +77,11 @@
                   (catch InterruptedException e
                     (reset! canceled? ::interrupted-exception)
                     (throw e))))]
-    (a/go
-      (when (a/<! (qp.context/canceled-chan context))
-        (reset! canceled? ::canceled-chan-message)
-        (future-cancel futur)))))
+    (when-let [canceled-chan qp.pipeline/*canceled-chan*]
+      (a/go
+        (when (a/<! canceled-chan)
+          (reset! canceled? ::canceled-chan-message)
+          (future-cancel futur))))))
 
 (defmethod driver/connection-properties ::test-driver
   [& _]

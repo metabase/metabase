@@ -6,7 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -43,32 +43,27 @@
               "ROW 3 -> [3 \"The Apple Pan\" 11 34.0406 -118.428 2]"]
              output)))))
 
-(defn- print-rows-to-writer-rff-and-context [filename]
-  (letfn [(reducef* [context rff metadata reducible-rows]
-            (with-open [w (io/writer filename)]
-              (binding [*out* w]
-                (#'qp.context/default-reducef context rff metadata reducible-rows))))]
-    {:rff     print-rows-rff
-     :context (qp.context/sync-context {:reducef reducef*})}))
-
 (deftest ^:parallel write-rows-to-file-test
   (mt/with-temp-file [filename]
     (try
-      (let [{:keys [rff context]} (print-rows-to-writer-rff-and-context filename)]
+      (binding [qp.pipeline/*reduce* (let [orig qp.pipeline/*reduce*]
+                                       (fn [rff metadata reducible-rows]
+                                         (with-open [w (io/writer filename)]
+                                           (binding [*out* w]
+                                             (orig rff metadata reducible-rows)))))]
         (is (= 3
                (qp/process-query
                 {:database (mt/id)
                  :type     :query
                  :query    {:source-table (mt/id :venues), :limit 3}}
-                rff
-                context))))
+                print-rows-rff))))
       (is (= ["ROW 1 -> [1 \"Red Medicine\" 4 10.0646 -165.374 3]"
               "ROW 2 -> [2 \"Stout Burgers & Beers\" 11 34.0996 -118.329 2]"
               "ROW 3 -> [3 \"The Apple Pan\" 11 34.0406 -118.428 2]"]
              (str/split-lines (slurp filename))))
       (finally
         (u/ignore-exceptions
-         (.delete (io/file filename)))))))
+          (.delete (io/file filename)))))))
 
 (defn- maps-rff [metadata]
   (let [ks (mapv (comp keyword :name) (:cols metadata))]

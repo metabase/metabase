@@ -430,7 +430,7 @@
     (log/debugf "Chain filter MBQL query:\n%s" (u/pprint-to-str 'magenta mbql-query))
     (try
       (let [query-limit (get-in mbql-query [:query :limit])
-            values      (qp/process-query mbql-query (constantly conj) nil)]
+            values      (qp/process-query mbql-query (constantly conj))]
         {:values          values
          ;; It's unlikely that we don't have a query-limit, but better safe than sorry and default it true
          ;; so that calling chain-filter-search on the same field will search from DB.

@@ -8,7 +8,7 @@
    [metabase.api.embed-test :as embed-test]
    [metabase.models :refer [Card Dashboard DashboardCard]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.query-processor.streaming.xlsx-test :as xlsx-test]
@@ -80,10 +80,10 @@
   (testing "Bindings established outside the `streaming-response` should be preserved inside the body"
     (with-open [os (java.io.ByteArrayOutputStream.)]
       (let [streaming-response (binding [*number-of-cans* 2]
-                                 (qp.streaming/streaming-response [{:keys [rff context]} :json]
+                                 (qp.streaming/streaming-response [rff :json]
                                    (let [metadata {:cols [{:name "num_cans", :base_type :type/Integer}]}
                                          rows     [[*number-of-cans*]]]
-                                     (qp.context/reducef context rff metadata rows))))
+                                     (qp.pipeline/*reduce* rff metadata rows))))
             complete-promise   (promise)]
         (server.protocols/respond streaming-response
                                   {:response      (reify HttpServletResponse

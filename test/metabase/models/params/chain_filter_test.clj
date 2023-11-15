@@ -11,7 +11,6 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-
 (defn shorthand->constraint [field-id v]
   (if-not (vector? v)
     {:field-id field-id
@@ -53,7 +52,7 @@
   [n result]
   (update result :values #(take n %)))
 
-(deftest chain-filter-test
+(deftest ^:parallel chain-filter-test
   (testing "Show me expensive restaurants"
     (is (= {:values          [["Dal Rae Restaurant"]
                               ["Lawry's The Prime Rib"]
@@ -98,7 +97,7 @@
            (chain-filter venues.name {venues.price [:between 2 3]
                                       venues.name  [:starts-with "f" {:case-sensitive false}]})))))
 
-(deftest multiple-values-test
+(deftest ^:parallel multiple-values-test
   (testing "Chain filtering should support multiple values for a single parameter (as a vector or set of values)"
     (testing "Show me restaurants with price = 1 or 2 with the word 'BBQ' in their name (case-sensitive)"
       (is (= {:values          [["Baby Blues BBQ"] ["Beachwood BBQ & Brewing"] ["Bludso's BBQ"]]
@@ -109,13 +108,13 @@
               :has_more_values false}
              (chain-filter venues.price {categories.name ["Bakery" "BBQ"]}))))))
 
-(deftest auto-parse-string-params-test
+(deftest ^:parallel auto-parse-string-params-test
   (testing "Parameters that come in as strings (i.e., all of them that come in via the API) should work as intended"
     (is (= {:values          [["Baby Blues BBQ"] ["Beachwood BBQ & Brewing"] ["Bludso's BBQ"]]
             :has_more_values false}
            (chain-filter venues.name {venues.price ["1" "2"], venues.name [:contains "BBQ"]})))))
 
-(deftest unrelated-params-test
+(deftest ^:parallel unrelated-params-test
   (testing "Parameters that are completely unrelated (don't apply to this Table) should just get ignored entirely"
     ;; there is no way to join from venues -> users so users.id should get ignored
     (binding [chain-filter/*enable-reverse-joins* false]
@@ -166,7 +165,7 @@
               {90  {200 [[90 200]]}
                200 {:end [[200 :end]]}}))
 
-(deftest traverse-graph-test
+(deftest ^:parallel traverse-graph-test
   (testing "If no need to join, returns immediately"
     (is (nil? (#'chain-filter/traverse-graph {} :start :start 5))))
   (testing "Finds a simple hop"
@@ -207,7 +206,7 @@
         (testing "But will not exceed the max depth"
           (is (nil? (#'chain-filter/traverse-graph graph :start :end 2))))))))
 
-(deftest find-joins-test
+(deftest ^:parallel find-joins-test
   (mt/dataset airports
     (mt/$ids nil
       (testing "airport -> municipality"
@@ -236,7 +235,7 @@
                    :rhs {:table $$airport, :field %airport.municipality_id}}]
                  (#'chain-filter/find-joins (mt/id) $$country $$airport))))))))
 
-(deftest find-all-joins-test
+(deftest ^:parallel find-all-joins-test
   (testing "With reverse joins disabled"
     (binding [chain-filter/*enable-reverse-joins* false]
       (mt/$ids nil
@@ -252,7 +251,7 @@
                    :rhs {:table $$region, :field %region.id}}]
                  (#'chain-filter/find-all-joins $$airport #{%region.name %municipality.name %region.id}))))))))
 
-(deftest multi-hop-test
+(deftest ^:parallel multi-hop-test
   (mt/dataset airports
     (testing "Should be able to filter against other tables with that require multiple joins\n"
       (testing "single direct join: Airport -> Municipality"
@@ -295,7 +294,7 @@
                   :has_more_values false}
                  (chain-filter continent.name {airport.name ["San Francisco International Airport"]}))))))))
 
-(deftest filterable-field-ids-test
+(deftest ^:parallel filterable-field-ids-test
   (mt/$ids
     (testing (format "venues.price = %d categories.name = %d users.id = %d\n" %venues.price %categories.name %users.id)
       (is (= #{%categories.name %users.id}
@@ -308,7 +307,7 @@
         (is (= nil
                (chain-filter/filterable-field-ids %venues.price #{})))))))
 
-(deftest chain-filter-search-test
+(deftest ^:parallel chain-filter-search-test
   (testing "Show me categories containing 'eak' (case-insensitive) that have expensive restaurants"
     (is (= {:values          [["Steakhouse"]]
             :has_more_values false}
@@ -342,7 +341,7 @@
 (defmacro with-human-readable-values-remapping {:style/indent 0} [& body]
   `(do-with-human-readable-values-remapping (fn [] ~@body)))
 
-(deftest human-readable-values-remapped-chain-filter-test
+(deftest ^:parallel human-readable-values-remapped-chain-filter-test
   (with-human-readable-values-remapping
     (testing "Show me category IDs for categories"
       ;; there are no restaurants with category 1
@@ -361,7 +360,7 @@
               :has_more_values false}
              (take-n-values 3 (chain-filter venues.category_id {venues.category_id 40})))))))
 
-(deftest human-readable-values-remapped-chain-filter-search-test
+(deftest ^:parallel human-readable-values-remapped-chain-filter-search-test
   (with-human-readable-values-remapping
     (testing "Show me category IDs [whose name] contains 'bar'"
       (testing "\nconstraints = {}"
@@ -384,11 +383,11 @@
               :has_more_values false}
              (chain-filter-search venues.category_id {venues.price 4} "zzzzz"))))))
 
-(deftest field-to-field-remapped-field-id-test
+(deftest ^:parallel field-to-field-remapped-field-id-test
   (is (= (mt/id :venues :name)
          (#'chain-filter/remapped-field-id (mt/id :venues :id)))))
 
-(deftest field-to-field-remapped-chain-filter-test
+(deftest ^:parallel field-to-field-remapped-chain-filter-test
   (testing "Field-to-field remapping: venues.category_id -> categories.name\n"
     (testing "Show me venue IDs (names)"
       (is (= {:values [[29 "20th Century Cafe"]
@@ -403,7 +402,7 @@
               :has_more_values false}
              (take-n-values 3 (chain-filter venues.id {venues.price 4})))))))
 
-(deftest field-to-field-remapped-chain-filter-search-test
+(deftest ^:parallel field-to-field-remapped-chain-filter-search-test
   (testing "Field-to-field remapping: venues.category_id -> categories.name\n"
     (testing "Show me venue IDs that [have a remapped name that] contains 'sushi'"
       (is (= {:values          [[76 "Beyond Sushi"]
@@ -426,12 +425,12 @@
   `(mt/with-column-remappings [~'venues.category_id ~'categories.name]
      ~@body))
 
-(deftest fk-field-to-field-remapped-field-id-test
+(deftest ^:parallel fk-field-to-field-remapped-field-id-test
   (with-fk-field-to-field-remapping
     (is (= (mt/id :categories :name)
            (#'chain-filter/remapped-field-id (mt/id :venues :category_id))))))
 
-(deftest fk-field-to-field-remapped-chain-filter-test
+(deftest ^:parallel fk-field-to-field-remapped-chain-filter-test
   (with-fk-field-to-field-remapping
     (testing "Show me category IDs for categories"
       ;; there are no restaurants with category 1
@@ -450,7 +449,7 @@
               :has_more_values false}
              (chain-filter venues.category_id {venues.category_id 40}))))))
 
-(deftest fk-field-to-field-remapped-chain-filter-search-test
+(deftest ^:parallel fk-field-to-field-remapped-chain-filter-search-test
   (with-fk-field-to-field-remapping
     (testing "Show me categories containing 'ar'"
       (testing "\nconstraints = {}"
@@ -553,7 +552,7 @@
                 :has_more_values false}
                (chain-filter/chain-filter-search (mt/id :venues :category_id) nil "sian")))))))
 
-(deftest time-interval-test
+(deftest ^:parallel time-interval-test
   (testing "chain-filter should accept time interval strings like `past32weeks` for temporal Fields"
     (mt/$ids
       (is (= [:time-interval $checkins.date -32 :week {:include-current false}]
@@ -597,7 +596,7 @@
                   (is (#'chain-filter/use-cached-field-values? %myfield)))
                 (thunk)))))))))
 
-(defn- do-with-clean-field-values-for-field
+(defn- do-with-clean-field-values-for-field!
   [field-or-field-id thunk]
   (mt/with-model-cleanup [FieldValues]
     (let [field-id         (u/the-id field-or-field-id)
@@ -613,18 +612,18 @@
          (t2/update! Field field-id {:has_field_values has_field_values})
          (t2/insert! FieldValues fvs))))))
 
-(defmacro ^:private with-clean-field-values-for-field
+(defmacro ^:private with-clean-field-values-for-field!
   "Run `body` with all FieldValues for `field-id` deleted.
   Restores the deleted FieldValues when we're done."
   {:style/indent 1}
   [field-or-field-id & body]
-  `(do-with-clean-field-values-for-field ~field-or-field-id (fn [] ~@body)))
+  `(do-with-clean-field-values-for-field! ~field-or-field-id (fn [] ~@body)))
 
 (deftest chain-filter-has-more-values-test
   (testing "the `has_more_values` property should be correct\n"
     (testing "for cached fields"
       (testing "without contraints"
-        (with-clean-field-values-for-field (mt/id :categories :name)
+        (with-clean-field-values-for-field! (mt/id :categories :name)
           (testing "`false` for field has values less than [[field-values/*total-max-length*]] threshold"
             (is (= false
                    (:has_more_values (chain-filter categories.name {})))))
@@ -637,13 +636,13 @@
                    (:has_more_values (chain-filter categories.name {} :limit Integer/MAX_VALUE))))))
 
         (testing "`true` if the values of a field exceeds our [[field-values/*total-max-length*]] limit"
-          (with-clean-field-values-for-field (mt/id :categories :name)
+          (with-clean-field-values-for-field! (mt/id :categories :name)
             (binding [field-values/*total-max-length* 10]
               (is (= true
                      (:has_more_values (chain-filter categories.name {}))))))))
 
       (testing "with contraints"
-        (with-clean-field-values-for-field (mt/id :categories :name)
+        (with-clean-field-values-for-field! (mt/id :categories :name)
           (testing "`false` for field has values less than [[field-values/*total-max-length*]] threshold"
             (is (= false
                    (:has_more_values (chain-filter categories.name {venues.price 4})))))
@@ -655,7 +654,7 @@
             (is (= false
                    (:has_more_values (chain-filter categories.name {venues.price 4} :limit Integer/MAX_VALUE))))))
 
-        (with-clean-field-values-for-field (mt/id :categories :name)
+        (with-clean-field-values-for-field! (mt/id :categories :name)
           (testing "`true` if the values of a field exceeds our [[field-values/*total-max-length*]] limit"
               (binding [field-values/*total-max-length* 10]
                 (is (= true
@@ -663,7 +662,7 @@
 
     (testing "for non-cached fields"
       (testing "with contraints"
-        (with-clean-field-values-for-field (mt/id :venues :latitude)
+        (with-clean-field-values-for-field! (mt/id :venues :latitude)
           (testing "`false` if we don't specify limit"
             (is (= false
                    (:has_more_values (chain-filter venues.latitude {venues.price 4})))))

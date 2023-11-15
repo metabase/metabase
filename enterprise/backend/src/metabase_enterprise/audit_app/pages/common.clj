@@ -1,7 +1,6 @@
 (ns metabase-enterprise.audit-app.pages.common
   "Shared functions used by audit internal queries across different namespaces."
   (:require
-   [clojure.core.async :as a]
    [clojure.core.memoize :as memoize]
    [clojure.walk :as walk]
    [honey.sql :as sql]
@@ -16,7 +15,6 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
@@ -115,12 +113,10 @@
 
 (mu/defn ^:private reduce-results* :- :some
   [honeysql-query :- :map
-   context        :- ::qp.context/context
    rff            :- ::qp.schema/rff
    init]
   (let [driver         (mdb/db-type)
-        [sql & params] (compile-honeysql driver honeysql-query)
-        canceled-chan  (qp.context/canceled-chan context)]
+        [sql & params] (compile-honeysql driver honeysql-query)]
     ;; MySQL driver normalizies timestamps. Setting `*results-timezone-id-override*` is a shortcut
     ;; instead of mocking up a chunk of regular QP pipeline.
     (binding [qp.timezone/*results-timezone-id-override* (application-db-default-timezone)]
@@ -133,10 +129,7 @@
                            (update col :name u/lower-case-en))
                 metadata {:cols cols}
                 rf       (rff metadata)]
-            (reduce rf init (sql-jdbc.execute/reducible-rows driver rs rsmeta canceled-chan))))
-        (catch InterruptedException e
-          (a/>!! canceled-chan :cancel)
-          (throw e))
+            (reduce rf init (sql-jdbc.execute/reducible-rows driver rs rsmeta))))
         (catch Throwable e
           (throw (ex-info (tru "Error running audit query: {0}" (ex-message e))
                           {:driver         driver
@@ -148,30 +141,25 @@
 (defn reducible-query
   "Return a function with the signature
 
-    (f context) -> IReduceInit
+    (thunk) -> IReduceInit
 
   that, when reduced, runs `honeysql-query` against the application DB, automatically including limits and offsets for
   paging."
   [honeysql-query]
-  (bound-fn reducible-query-fn [context]
+  (bound-fn reducible-query-thunk []
     (reify clojure.lang.IReduceInit
-      (reduce [_ rf init]
-        (reduce-results* honeysql-query context (constantly rf) init)))))
+      (reduce [_this rf init]
+        (reduce-results* honeysql-query (constantly rf) init)))))
 
 (defn query
   "Run a internal audit query, automatically including limits and offsets for paging. This function returns results
   directly as a series of maps (the 'legacy results' format as described in
   `metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries.internal-queries`)"
   [honeysql-query]
-  (let [context (qp.context/sync-context)
-        rff     (fn [{:keys [cols]}]
-                  (let [col-names (mapv (comp keyword :name) cols)]
-                    ((map (partial zipmap col-names)) conj)))]
-    (try
-      (reduce-results* honeysql-query context rff [])
-      (catch InterruptedException e
-        (a/>!! (:canceled-chan context) ::cancel)
-        (throw e)))))
+  (let [rff (fn rff [{:keys [cols]}]
+              (let [col-names (mapv (comp keyword :name) cols)]
+                ((map (partial zipmap col-names)) conj)))]
+    (reduce-results* honeysql-query rff [])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Helper Fns                                                   |

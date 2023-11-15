@@ -1,12 +1,12 @@
 (ns metabase.query-processor.execute
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.enterprise
     :as qp.middleware.enterprise]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util.i18n :as i18n]
@@ -14,10 +14,10 @@
    [metabase.util.malli :as mu]))
 
 (defn- add-native-form-to-result-metadata [qp]
-  (fn [query rff context]
+  (fn [query rff]
     (letfn [(rff* [metadata]
               (rff (assoc metadata :native_form (:native query))))]
-      (qp query rff* context))))
+      (qp query rff*))))
 
 (def ^:private middleware
   "Middleware that happens after compilation, AROUND query execution itself. Has the form
@@ -26,7 +26,7 @@
 
   e.g.
 
-    (f (f query rff context)) -> (f query rff context)"
+    (f (f query rff)) -> (f query rff)"
   [#'add-native-form-to-result-metadata
    #'cache/maybe-return-cached-results
    #'qp.perms/check-query-permissions
@@ -40,8 +40,8 @@
                               (reduce
                                (fn [qp middleware-fn]
                                  (middleware-fn qp))
-                               (fn qp [query rff context]
-                                 (qp.context/runf context query rff))
+                               (fn qp [query rff]
+                                 (qp.pipeline/*run* query rff))
                                middleware))))
 
 (rebuild-execute-fn!)
@@ -52,17 +52,14 @@
                              (rebuild-execute-fn!))))
 
 (mu/defn execute :- :some
-  "Execute a compiled query, then reduce the results. Return value of this depends on `context`; a synchronous context
-  will block and return reduced results, while an async context will return a core.async promise channel immediately
-  that can be polled for the reduced results."
+  "Execute a compiled query, then reduce the results."
   [compiled-query :- [:map
                       [:database ::lib.schema.id/database]
                       [:native :map]]
-   rff            :- ::qp.schema/rff
-   context        :- ::qp.context/context]
+   rff            :- ::qp.schema/rff]
   (qp.setup/with-qp-setup [compiled-query compiled-query]
     (try
-      (execute* compiled-query rff context)
+      (execute* compiled-query rff)
       (catch Throwable e
         (throw (ex-info (i18n/tru "Error executing query: {0}" (ex-message e))
                         {:query compiled-query, :type qp.error-type/db}

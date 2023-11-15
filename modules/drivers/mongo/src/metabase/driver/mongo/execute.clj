@@ -5,8 +5,8 @@
    [clojure.string :as str]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :refer [*mongo-connection*]]
-   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -146,7 +146,7 @@
         pipe     (m.util/into-array-list (m.conversion/to-db-object stages))]
     (.aggregate coll pipe agg-opts)))
 
-(defn- reducible-rows [context ^Cursor cursor first-row post-process]
+(defn- reducible-rows [^Cursor cursor first-row post-process]
   {:pre [(fn? post-process)]}
   (let [has-returned-first-row? (volatile! false)]
     (letfn [(first-row-thunk []
@@ -159,9 +159,9 @@
                 (do (vreset! has-returned-first-row? true)
                     (first-row-thunk))
                 (remaining-rows-thunk)))]
-      (qp.reducible/reducible-rows row-thunk (qp.context/canceled-chan context)))))
+      (qp.reducible/reducible-rows row-thunk qp.pipeline/*canceled-chan*))))
 
-(defn- reduce-results [native-query query context ^Cursor cursor respond]
+(defn- reduce-results [native-query query ^Cursor cursor respond]
   (try
     (let [first-row                        (when (.hasNext cursor)
                                              (.next cursor))
@@ -171,20 +171,21 @@
       (respond (result-metadata unescaped-col-names)
                (if-not first-row
                  []
-                 (reducible-rows context cursor first-row (post-process-row row-col-names)))))
+                 (reducible-rows cursor first-row (post-process-row row-col-names)))))
     (finally
       (.close cursor))))
 
 (defn execute-reducible-query
-  "Process and run a native MongoDB query."
-  [{{:keys [collection query], :as native-query} :native} context respond]
+  "Process and run a native MongoDB query. MongoDB implementation of [[metabase.driver/execute-reducible-query]]."
+  [{{:keys [collection query], :as native-query} :native} _context respond]
   {:pre [(string? collection) (fn? respond)]}
   (let [query  (cond-> query
                  (string? query) mongo.qp/parse-query-string)
-        cursor (*aggregate* *mongo-connection* collection query (qp.context/timeout context))]
-    (a/go
-      (when (a/<! (qp.context/canceled-chan context))
-        ;; Eastwood seems to get confused here and not realize there's already a tag on `cursor` (returned by
-        ;; `aggregate`)
-        (.close ^Cursor cursor)))
-    (reduce-results native-query query context cursor respond)))
+        cursor (*aggregate* *mongo-connection* collection query qp.pipeline/*query-timeout-ms*)]
+    (when-let [canceled-chan qp.pipeline/*canceled-chan*]
+      (a/go
+        (when (a/<! canceled-chan)
+          ;; Eastwood seems to get confused here and not realize there's already a tag on `cursor` (returned by
+          ;; `aggregate`)
+          (.close ^Cursor cursor))))
+    (reduce-results native-query query cursor respond)))

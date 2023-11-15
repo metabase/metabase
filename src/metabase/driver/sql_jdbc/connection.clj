@@ -10,7 +10,7 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting]
-   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
@@ -95,7 +95,7 @@
   :type       :integer
   :getter     (fn []
                 (or (setting/get-value-of-type :integer :jdbc-data-warehouse-unreturned-connection-timeout-seconds)
-                    (long (/ qp.context/query-timeout-ms 1000))))
+                    (long (/ qp.pipeline/*query-timeout-ms* 1000))))
   :setter     :none)
 
 (defmethod data-warehouse-connection-pool-properties :default

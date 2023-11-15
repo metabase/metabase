@@ -1,16 +1,15 @@
 (ns metabase.query-processor.pivot
   "Pivot table actions for the query processor"
   (:require
-   [clojure.core.async :as a]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.setup :as qp.setup]
@@ -141,78 +140,87 @@
                       {:type qp.error-type/qp, :query query}
                       e)))))
 
-(defn- process-query-append-results
+(def ^:private ^:dynamic ^{:arglists '([query])} *column-mapping-fn*
+  nil)
+
+(def ^:private ^:dynamic ^{:arglists '([row])} *row-mapping-fn*
+  identity)
+
+(def ^:private ^:dynamic *pivot-column-mapping*
+  nil)
+
+(mu/defn ^:private process-query-append-results
   "Reduce the results of a single `query` using `rf` and initial value `init`."
-  [query rf init info context]
-  (if (a/poll! (qp.context/canceled-chan context))
+  [query :- map?
+   rf    :- ifn?
+   init  :- :any
+   info  :- map?]
+  (if (qp.pipeline/canceled?)
     (ensure-reduced init)
     (let [rff (fn [_metadata]
                 (fn
                   ([]        init)
                   ([acc]     acc)
-                  ([acc row] (rf acc ((:row-mapping-fn context) row context)))))
-          context (qp.context/sync-context
-                   {:canceled-chan (qp.context/canceled-chan context)})]
+                  ([acc row] (rf acc (*row-mapping-fn* row)))))]
       (try
         (let [query (cond-> query
                       (seq info) (qp/userland-query info))]
-          (qp/process-query query rff context))
+          (qp/process-query query rff))
         (catch Throwable e
           (log/error e (trs "Error processing additional pivot table query"))
           (throw e))))))
 
 (defn- process-queries-append-results
   "Reduce the results of a sequence of `queries` using `rf` and initial value `init`."
-  [init queries rf info context]
+  [init queries rf info]
   (reduce
    (fn [acc query]
-     (process-query-append-results query rf acc info (assoc context
-                                                            :pivot-column-mapping ((:column-mapping-fn context) query))))
+     (binding [*pivot-column-mapping* (*column-mapping-fn* query)]
+       (process-query-append-results query rf acc info)))
    init
    queries))
 
-(defn- append-queries-rff-and-context
-  "Update Query Processor `context` so it appends the rows fetched when running `more-queries`."
-  [info rff context more-queries]
+(defn- append-queries-rff-and-fns
+  "RFF and QP pipeline functions to use when executing pivot queries."
+  [info rff more-queries]
   (let [vrf (volatile! nil)]
-    {:rff     (fn [metadata]
+    {:rff     (fn rff* [metadata]
                 (u/prog1 (rff metadata)
                   ;; this captures the reducing function before composed with limit and other middleware
                   (vreset! vrf <>)))
-     :context (cond-> context
-                (seq more-queries)
-                (-> (update :executef
-                            (fn [orig]
-                              ;; execute holds open a connection from [[execute-reducible-query]] so we need to manage
-                              ;; connections in the reducing part reducef. The default runf is what orchestrates this
-                              ;; together and we just pass the original executef to the reducing part so we can control
-                              ;; our multiple connections.
-                              (fn multiple-executef [_context driver query respond]
-                                (respond [orig driver] query))))
-                    (assoc :reducef
-                           ;; signature usually has metadata in place of driver but we are hijacking
-                           (fn multiple-reducing [context rff [orig-executef driver] query]
-                             (let [respond (fn [metadata reducible-rows]
-                                             (let [rf (rff metadata)]
-                                               (assert (ifn? rf))
-                                               (try
-                                                 (transduce identity (completing rf) reducible-rows)
-                                                 (catch Throwable e
-                                                   (throw (ex-info (tru "Error reducing result rows")
-                                                                   {:type qp.error-type/qp}
-                                                                   e))))))
-                                   acc     (-> (orig-executef context driver query respond)
-                                               (process-queries-append-results more-queries @vrf info context))]
-                               ;; completion arity can't be threaded because the value is derefed too early
-                               (qp.context/resultf context (@vrf acc)))))))}))
+     :execute (when (seq more-queries)
+                (let [orig-execute qp.pipeline/*execute*]
+                  ;; execute holds open a connection from [[execute-reducible-query]] so we need to manage connections
+                  ;; in the reducing part reduce fn. The default run fn is what orchestrates this together and we just
+                  ;; pass the original execute fn to the reducing part so we can control our multiple connections.
+                  (fn multiple-execute [driver query respond]
+                    (respond [orig-execute driver] query))))
+     :reduce   (when (seq more-queries)
+                 ;; signature usually has metadata in place of driver but we are hijacking
+                 (fn multiple-reducing [rff [orig-execute driver] query]
+                   (let [respond (fn [metadata reducible-rows]
+                                   (let [rf (rff metadata)]
+                                     (assert (ifn? rf))
+                                     (try
+                                       (transduce identity (completing rf) reducible-rows)
+                                       (catch Throwable e
+                                         (throw (ex-info (tru "Error reducing result rows")
+                                                         {:type qp.error-type/qp}
+                                                         e))))))
+                         acc     (-> (orig-execute driver query respond)
+                                     (process-queries-append-results more-queries @vrf info))]
+                     ;; completion arity can't be threaded because the value is derefed too early
+                     (qp.pipeline/*result* (@vrf acc)))))}))
 
 (defn- process-multiple-queries
   "Allows the query processor to handle multiple queries, stitched together to appear as one"
-  [[{:keys [info], :as first-query} & more-queries] rff context]
-  (let [{:keys [rff context]} (append-queries-rff-and-context info rff context more-queries)
-        first-query           (cond-> first-query
-                                (seq info) qp/userland-query-with-default-constraints)]
-    (qp/process-query first-query rff context)))
+  [[{:keys [info], :as first-query} & more-queries] rff]
+  (let [{:keys [rff execute reduce]} (append-queries-rff-and-fns info rff more-queries)
+        first-query                  (cond-> first-query
+                                       (seq info) qp/userland-query-with-default-constraints)]
+    (binding [qp.pipeline/*execute* (or execute qp.pipeline/*execute*)
+              qp.pipeline/*reduce*  (or reduce qp.pipeline/*reduce*)]
+      (qp/process-query first-query rff))))
 
 (mu/defn ^:private pivot-options :- [:map
                                      [:pivot-rows [:maybe [:sequential [:int {:min 0}]]]]
@@ -253,21 +261,15 @@
      :pivot-cols pivot-cols}))
 
 (defn run-pivot-query
-  "Run the pivot query. Unlike many query execution functions, this takes `context` as the first parameter to support
-   its application via `partial`.
-
-   You are expected to wrap this call in [[metabase.query-processor.streaming/streaming-response]] yourself."
+  "Run the pivot query. You are expected to wrap this call in [[metabase.query-processor.streaming/streaming-response]]
+  yourself."
   ([query]
    (run-pivot-query query nil))
 
-  ([query context]
-   (run-pivot-query query nil context))
-
-  ([query rff context]
+  ([query rff]
    (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
      (qp.setup/with-qp-setup [query query]
-       (let [context                 (qp.context/sync-context context)
-             rff                     (or rff qp.reducible/default-rff)
+       (let [rff                     (or rff qp.reducible/default-rff)
              query                   (mbql.normalize/normalize query)
              pivot-options           (or
                                       (not-empty (select-keys query [:pivot-rows :pivot-cols]))
@@ -276,25 +278,22 @@
              col-determination-query (add-grouping-field query main-breakout 0)
              all-expected-cols       (qp.preprocess/query->expected-cols col-determination-query)
              all-queries             (generate-queries query pivot-options)]
-         (process-multiple-queries
-          all-queries
-          rff
-          (assoc context
-                 ;; this function needs to be executed at the start of every new query to
-                 ;; determine the mapping for maintaining query shape
-                 :column-mapping-fn (fn [query]
-                                      (let [query-cols (map-indexed vector (qp.preprocess/query->expected-cols query))]
-                                        (map (fn [item]
-                                               (some #(when (= (:name item) (:name (second %)))
-                                                        (first %)) query-cols))
-                                             all-expected-cols)))
-                 ;; this function needs to be called for each row so that it can actually
-                 ;; shape the row according to the `:column-mapping-fn` above
-                 :row-mapping-fn (fn [row context]
-                                   ;; the first query doesn't need any special mapping, it already has all the columns
-                                   (if-let [col-mapping (:pivot-column-mapping context)]
-                                     (map (fn [mapping]
-                                            (when mapping
-                                              (nth row mapping)))
-                                          col-mapping)
-                                     row)))))))))
+         (binding [ ;; this function needs to be executed at the start of every new query to
+                   ;; determine the mapping for maintaining query shape
+                   *column-mapping-fn* (fn [query]
+                                         (let [query-cols (map-indexed vector (qp.preprocess/query->expected-cols query))]
+                                           (map (fn [item]
+                                                  (some #(when (= (:name item) (:name (second %)))
+                                                           (first %)) query-cols))
+                                                all-expected-cols)))
+                   ;; this function needs to be called for each row so that it can actually
+                   ;; shape the row according to the `:column-mapping-fn` above
+                   *row-mapping-fn* (fn [row]
+                                      ;; the first query doesn't need any special mapping, it already has all the columns
+                                      (if *pivot-column-mapping*
+                                        (map (fn [mapping]
+                                               (when mapping
+                                                 (nth row mapping)))
+                                             *pivot-column-mapping*)
+                                        row))]
+           (process-multiple-queries all-queries rff)))))))

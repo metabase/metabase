@@ -2,16 +2,15 @@
   "There are additional tests in [[metabase.query-processor-test.failure-test]]."
   (:require
    [clojure.test :refer :all]
-   [metabase.async.util :as async.u]
    [metabase.driver :as driver]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.catch-exceptions
     :as catch-exceptions]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.test :as mt]
@@ -60,22 +59,17 @@
    (catch-exceptions run {}))
 
   ([run query]
-   (catch-exceptions run query nil))
-
-  ([run query context]
    (let [query    (merge {:type :query} query)
          metadata {}
          rows     []
-         context  (merge
-                   (or context (qp.context/sync-context))
-                   {:executef (fn [_context _driver _query respond]
-                                (respond metadata rows))})
-         qp       (fn [_query rff context]
+         qp       (fn [query rff]
                     (run)
-                    (qp.context/runf context query rff))
+                    (binding [qp.pipeline/*execute* (fn [_driver _query respond]
+                                                      (respond metadata rows))]
+                      (qp.pipeline/*run* query rff)))
          qp       (catch-exceptions/catch-exceptions qp)
          result   (driver/with-driver :h2
-                    (qp (qp/userland-query query) qp.reducible/default-rff context))]
+                    (qp (qp/userland-query query) qp.reducible/default-rff))]
      (cond-> result
        (map? result) (update :data dissoc :rows)))))
 
@@ -109,32 +103,30 @@
 (deftest ^:parallel catch-exceptions-test
   (testing "include-query-execution-info-test"
     (testing "Should include info from QueryExecution if added to the thrown/raised Exception"
-      (is (=? {:status     :failed
-               :class      (partial = java.lang.Exception)
-               :error      "Something went wrong"
-               :stacktrace vector?
-               :card_id    300
-               :json_query {}
-               :row_count  0
-               :data       {:cols []}
-               :a          100
-               :b          200}
-              (catch-exceptions (fn run [])
-                                {}
-                                (qp.context/sync-context
-                                 {:runf (fn [_context _query _rff]
-                                          (throw (ex-info "Something went wrong."
-                                                          {:query-execution {:a            100
-                                                                             :b            200
-                                                                             :card_id      300
-                                                                             ;; these keys should all get removed
-                                                                             :result_rows  400
-                                                                             :hash         500
-                                                                             :executor_id  500
-                                                                             :dashboard_id 700
-                                                                             :pulse_id     800
-                                                                             :native       900}}
-                                                          (Exception. "Something went wrong"))))})))))))
+      (binding [qp.pipeline/*run* (fn [_query _rff]
+                                    (throw (ex-info "Something went wrong."
+                                                    {:query-execution {:a            100
+                                                                       :b            200
+                                                                       :card_id      300
+                                                                       ;; these keys should all get removed
+                                                                       :result_rows  400
+                                                                       :hash         500
+                                                                       :executor_id  500
+                                                                       :dashboard_id 700
+                                                                       :pulse_id     800
+                                                                       :native       900}}
+                                                    (Exception. "Something went wrong"))))]
+        (is (=? {:status     :failed
+                 :class      (partial = java.lang.Exception)
+                 :error      "Something went wrong"
+                 :stacktrace vector?
+                 :card_id    300
+                 :json_query {}
+                 :row_count  0
+                 :data       {:cols []}
+                 :a          100
+                 :b          200}
+                (catch-exceptions (fn run []) {})))))))
 
 (deftest ^:parallel catch-exceptions-test-2
   (testing "Should always include :error (#23258, #23281)"

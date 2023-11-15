@@ -24,5 +24,5 @@
 
 (mr/def ::qp
   [:=>
-   [:cat ::query ::rff :metabase.query-processor.context/context]
+   [:cat ::query ::rff]
    :some])

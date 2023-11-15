@@ -18,7 +18,6 @@
     :as premium-features
     :refer [defenterprise]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -186,17 +185,16 @@
 
 (mu/defn process-query-for-card-default-qp :- :some
   "Default value of the `:qp` option for [[process-query-for-card]]."
-  [query   :- ::qp.schema/query
-   rff     :- ::qp.schema/rff
-   context :- ::qp.context/context]
-  (qp/process-query (qp/userland-query query) rff context))
+  [query :- ::qp.schema/query
+   rff   :- ::qp.schema/rff]
+  (qp/process-query (qp/userland-query query) rff))
 
 (defn- process-query-for-card-default-run-fn
   "Create the default `:run` function for [[process-query-for-card]]."
   [qp export-format]
   (^:once fn* [query info]
-   (qp.streaming/streaming-response [{:keys [rff context]} export-format (u/slugify (:card-name info))]
-     (qp (update query :info merge info) rff context))))
+   (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
+     (qp (update query :info merge info) rff))))
 
 (mu/defn process-query-for-card
   "Run the query for Card with `parameters` and `constraints`. By default, returns results in a

@@ -12,7 +12,6 @@
    [metabase.models.query-execution
     :as query-execution
     :refer [QueryExecution]]
-   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.i18n :refer [trs]]
@@ -140,12 +139,6 @@
    :result_rows       0
    :start_time_millis (System/currentTimeMillis)})
 
-(defn- merge-ex-data [^Throwable e m]
-  (if (instance? clojure.lang.ExceptionInfo e)
-    (doto ^clojure.lang.ExceptionInfo (ex-info (ex-message e) (merge (ex-data e) m))
-      (.setStackTrace (.getStackTrace e)))
-    (ex-info (ex-message e) m e)))
-
 (mu/defn process-userland-query-middleware :- ::qp.schema/qp
   "Around middleware.
 
@@ -157,21 +150,22 @@
 
   3. Add extra info like `running_time` and `started_at` to the results"
   [qp :- ::qp.schema/qp]
-  (mu/fn [query   :- ::qp.schema/query
-          rff     :- ::qp.schema/rff
-          context :- ::qp.context/context]
+  (mu/fn [query :- ::qp.schema/query
+          rff   :- ::qp.schema/rff]
     (if-not (get-in query [:middleware :userland-query?])
-      (qp query rff context)
+      (qp query rff)
       (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
             execution-info (query-execution-info query)]
         (letfn [(rff* [metadata]
                   (add-and-save-execution-info-xform! execution-info (rff metadata)))]
           (try
-            (qp query rff* context)
+            (qp query rff*)
             (catch Throwable e
               (save-failed-query-execution!
                execution-info
                (or
                 (some-> e ex-cause ex-message)
                 (ex-message e)))
-              (throw (merge-ex-data e {:query-execution execution-info})))))))))
+              (throw (ex-info (ex-message e)
+                              {:query-execution execution-info}
+                              e)))))))))

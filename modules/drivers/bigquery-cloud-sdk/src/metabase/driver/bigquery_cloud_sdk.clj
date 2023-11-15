@@ -15,8 +15,8 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models :refer [Database]]
    [metabase.models.table :as table]
-   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
@@ -365,14 +365,14 @@
     "UTC"))
 
 (defmethod driver/execute-reducible-query :bigquery-cloud-sdk
-  [_ {{sql :query, :keys [params]} :native, :as outer-query} context respond]
+  [_driver {{sql :query, :keys [params]} :native, :as outer-query} _context respond]
   (let [database (lib.metadata/database (qp.store/metadata-provider))]
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
       (let [sql (if (get-in database [:details :include-user-id-and-hash] true)
                   (str "-- " (qp.util/query->remark :bigquery-cloud-sdk outer-query) "\n" sql)
                   sql)]
-        (*process-native* respond database sql params (qp.context/canceled-chan context))))))
+        (*process-native* respond database sql params qp.pipeline/*canceled-chan*)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Other Driver Method Impls                                            |

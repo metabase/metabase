@@ -10,7 +10,6 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.execute :as qp.execute]
    [metabase.query-processor.middleware.catch-exceptions :as catch-exceptions]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
@@ -41,7 +40,7 @@
 
   Where `qp` has the form
 
-    (f query rff context)"
+    (f query rff)"
   ;; think of the direction stuff happens in as if you were throwing a ball up in the air; as the query-ball goes up the
   ;; around middleware pre-processing stuff happens; then the query is executed, as the "ball of results" comes back
   ;; down any post-processing these around middlewares might do happens in reversed order.
@@ -58,13 +57,13 @@
    #'catch-exceptions/catch-exceptions])
 ;; ↑↑↑ PRE-PROCESSING ↑↑↑ happens from BOTTOM TO TOP
 
-(defn- process-query** [query rff context]
+(defn- process-query** [query rff]
   (let [preprocessed (qp.preprocess/preprocess query)
         compiled     (assoc preprocessed :native (qp.compile/compile-preprocessed preprocessed))
         rff          (qp.postprocess/post-processing-rff preprocessed rff)]
-    (qp.execute/execute compiled rff context)))
+    (qp.execute/execute compiled rff)))
 
-(def ^:private ^{:arglists '([query rff context])} process-query* nil)
+(def ^:private ^{:arglists '([query rff])} process-query* nil)
 
 (defn- rebuild-process-query-fn! []
   (alter-var-root #'process-query* (constantly
@@ -85,32 +84,15 @@
                              (rebuild-process-query-fn!))))
 
 (mu/defn process-query :- [:fn {:error/message "process-query unexpectedly returned nil."} some?]
-  "Process an MBQL query. This is the main entrypoint to the magical realm of the Query Processor. What this returns
-  depends on the `context`:
-
-  * A synchronous context will return results in the standard map format with `:status`, `:data`, etc. This is the
-    default context used if `context` is not explicitly specified.
-
-  * An async context will return a core.async promise channel. If this core.async channel is closed at any time before
-    the query finishes running, the query will be canceled.
-
-  * Some other contexts like those used in streaming API endpoints or CSV/XLSX/JSON downloads might return something
-    different... refer to those usages for more information."
+  "Process an MBQL query. This is the main entrypoint to the magical realm of the Query Processor."
   ([query]
-   (process-query query nil nil))
+   (process-query query nil))
 
-  ([query context]
-   (process-query query nil context))
-
-  ([query   :- ::qp.schema/query
-    rff     :- [:maybe ::qp.schema/rff]
-    context :- [:maybe ::qp.context/context]]
-   (when (contains? query :async?)
-     (log/warn ":async? as an query option is deprecated and ignored; pass an explicit async context."))
+  ([query :- ::qp.schema/query
+    rff   :- [:maybe ::qp.schema/rff]]
    (qp.setup/with-qp-setup [query query]
-     (let [rff     (or rff qp.reducible/default-rff)
-           context (or context (qp.context/sync-context))]
-       (process-query* query rff context)))))
+     (let [rff (or rff qp.reducible/default-rff)]
+       (process-query* query rff)))))
 
 (mu/defn userland-query :- ::qp.schema/query
   "Add middleware options and `:info` to a `query` so it is ran as a 'userland' query, which slightly changes the QP

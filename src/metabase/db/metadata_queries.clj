@@ -149,7 +149,7 @@
     opts   :- TableRowsSampleOptions]
    (let [query (table-rows-sample-query table fields opts)
          qp    (requiring-resolve 'metabase.query-processor/process-query)]
-     (qp query rff nil))))
+     (qp query rff))))
 
 (defmethod driver/table-rows-sample :default
   [_driver table fields rff opts]

@@ -72,8 +72,8 @@
                          (:dataset source-card)
                          (assoc :metadata/dataset-metadata (:result_metadata source-card)))]
     (binding [qp.perms/*card-id* source-card-id]
-      (qp.streaming/streaming-response [{:keys [rff context]} export-format]
-        (qp/process-query (update query :info merge info) rff context)))))
+      (qp.streaming/streaming-response [rff export-format]
+        (qp/process-query (update query :info merge info) rff)))))
 
 (api/defendpoint POST "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
@@ -82,7 +82,7 @@
   (run-streaming-query
    (-> query
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
-       qp/userland-query-with-default-constraints )))
+       qp/userland-query-with-default-constraints)))
 
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
@@ -181,12 +181,11 @@
   (api/read-check Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
-    (qp.streaming/streaming-response [{:keys [rff context]} :api]
+    (qp.streaming/streaming-response [rff :api]
       (qp.pivot/run-pivot-query (assoc query
                                        :constraints (qp.constraints/default-query-constraints)
                                        :info        info)
-                                rff
-                                context))))
+                                rff))))
 
 (defn- parameter-field-values
   [field-ids query]

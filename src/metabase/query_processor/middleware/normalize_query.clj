@@ -51,5 +51,5 @@
   into standard `lisp-case` ones, removing/rewriting legacy clauses, removing empty ones, etc. This is done to
   simplifiy the logic in the QP steps following this."
   [qp]
-  (fn [query rff context]
-    (qp (normalize-preprocessing-middleware query) rff context)))
+  (fn [query rff]
+    (qp (normalize-preprocessing-middleware query) rff)))

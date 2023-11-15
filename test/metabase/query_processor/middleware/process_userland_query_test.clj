@@ -4,14 +4,13 @@
    [clojure.core.async :as a]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.async.util :as async.u]
    [metabase.driver :as driver]
    [metabase.events :as events]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.process-userland-query
     :as process-userland-query]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
@@ -40,22 +39,17 @@
   `(do-with-query-execution ~query (fn [~qe-result-binding] ~@body)))
 
 (defn- process-userland-query
-  ([query]
-   (process-userland-query query nil))
-
-  ([query context]
-   (let [query    (qp/userland-query query)
-         metadata {}
-         rows     []
-         context  (merge
-                   (or context (qp.context/sync-context))
-                   {:executef (fn [_context _driver _query respond]
-                                (respond metadata rows))})
-         qp       (process-userland-query/process-userland-query-middleware
-                   (fn [query rff context]
-                     (qp.context/runf context query rff)))]
-     (binding [driver/*driver* :h2]
-       (qp query qp.reducible/default-rff context)))))
+  [query]
+  (let [query    (qp/userland-query query)
+        metadata {}
+        rows     []
+        qp       (process-userland-query/process-userland-query-middleware
+                  (fn [query rff]
+                    (binding [qp.pipeline/*execute* (fn [_driver _query respond]
+                                                      (respond metadata rows))]
+                      (qp.pipeline/*run* query rff))))]
+    (binding [driver/*driver* :h2]
+      (qp query qp.reducible/default-rff))))
 
 (deftest success-test
   (let [query {:type ::success-test}]
@@ -94,12 +88,12 @@
 (deftest failure-test
   (let [query {:type ::failure-test}]
     (with-query-execution [qe query]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Oops!"
-           (process-userland-query query (qp.context/sync-context
-                                          {:runf (fn [_context _query _rff]
-                                                   (throw (ex-info "Oops!" {:type qp.error-type/qp})))}))))
+      (binding [qp.pipeline/*run* (fn [_query _rff]
+                                    (throw (ex-info "Oops!" {:type qp.error-type/qp})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Oops!"
+             (process-userland-query query))))
       (is (=? {:hash         "8d5080dfc63b7f1c46537cf9ec915a4353b2aa9ca6069c6d5db56e087f027209"
                :database_id  nil
                :error        "Oops!"
@@ -177,28 +171,27 @@
     (with-redefs [process-userland-query/save-query-execution! (fn [info]
                                                                  (reset! saved-query-execution? info))]
       (mt/with-open-channels [canceled-chan (a/promise-chan)]
-        (future
-          (let [status (atom ::not-started)
-                futur  (future
-                         (process-userland-query
-                          {:type :query}
-                          (qp.context/sync-context
-                           {:canceled-chan canceled-chan
-                            :reducef       (fn [context _rff _metadata rows]
-                                             (reset! status ::started)
-                                             (Thread/sleep 1000)
-                                             (reset! status ::done)
-                                             (qp.context/resultf context rows))})))]
-            (is (not= ::done
-                      @status))
-            (Thread/sleep 100)
-            (future-cancel futur)))
+        (let [status (atom ::not-started)]
+          (binding [qp.pipeline/*canceled-chan* canceled-chan
+                    qp.pipeline/*reduce*        (fn [_rff _metadata rows]
+                                                  (reset! status ::started)
+                                                  (Thread/sleep 1000)
+                                                  (reset! status ::done)
+                                                  (qp.pipeline/*result* rows))]
+            (future
+              (let [futur (future
+                            (process-userland-query
+                             {:type :query}))]
+                (is (not= ::done
+                          @status))
+                (Thread/sleep 100)
+                (future-cancel futur)))))
         (testing "canceled-chan should get get a :cancel message"
           (let [[val port] (a/alts!! [canceled-chan (a/timeout 500)])]
             (is (= 'canceled-chan
                    (if (= port canceled-chan) 'canceled-chan 'timeout))
                 "port")
-            (is (= ::qp.context/cancel
+            (is (= ::qp.pipeline/cancel
                    val)
                 "val")))
         (testing "No QueryExecution should get saved when a query is canceled"

@@ -5,7 +5,7 @@
    [metabase.driver.druid.client :as druid.client]
    [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]))
 
@@ -41,7 +41,7 @@
                                                                 (reset! executed-query query)
                                                                 [])]
           (qp/process-query query)
-          (is (partial= {:context {:timeout qp.context/query-timeout-ms}}
+          (is (partial= {:context {:timeout qp.pipeline/*query-timeout-ms*}}
                         @executed-query)))))))
 
 (deftest ssh-tunnel-test

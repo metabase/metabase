@@ -1,5 +1,6 @@
 (ns metabase.query-processor.setup
   (:require
+   [clojure.core.async :as a]
    [clojure.core.async.impl.dispatch :as a.impl.dispatch]
    [clojure.set :as set]
    [metabase.driver :as driver]
@@ -11,6 +12,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.models.setting :as setting]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :as i18n]
@@ -95,7 +97,7 @@
         (throw (ex-info (i18n/tru "Invalid query: missing or invalid Database ID (:database)")
                         {:query query, :type qp.error-type/invalid-query}))))))
 
-(mu/defn ^:private do-with-resolved-database
+(mu/defn ^:private do-with-resolved-database :- fn?
   [f :- [:=> [:cat ::qp.schema/query] :any]]
   (mu/fn
     [query :- ::qp.schema/query]
@@ -111,9 +113,9 @@
     (assoc query :lib/metadata (qp.store/metadata-provider))
     query))
 
-(mu/defn ^:private do-with-metadata-provider
+(mu/defn ^:private do-with-metadata-provider :- fn?
   [f :- [:=> [:cat ::qp.schema/query] :any]]
-  (mu/fn [query :- ::qp.schema/query]
+  (fn [query]
     (cond
       (qp.store/initialized?)
       (f (maybe-attach-metadata-provider-to-query query))
@@ -129,9 +131,9 @@
       (qp.store/with-metadata-provider (:database query)
         (f (maybe-attach-metadata-provider-to-query query))))))
 
-(mu/defn ^:private do-with-driver
+(mu/defn ^:private do-with-driver :- fn?
   [f :- [:=> [:cat ::qp.schema/query] :any]]
-  (mu/fn [query :- ::qp.schema/query]
+  (fn [query]
     (cond
       driver/*driver*
       (f query)
@@ -143,9 +145,9 @@
       (driver/with-driver (driver.u/database->driver (:database query))
         (f query)))))
 
-(mu/defn ^:private do-with-database-local-settings
+(mu/defn ^:private do-with-database-local-settings :- fn?
   [f :- [:=> [:cat ::qp.schema/query] :any]]
-  (mu/fn [query :- ::qp.schema/query]
+  (fn [query]
     (cond
       setting/*database-local-values*
       (f query)
@@ -157,6 +159,14 @@
       (let [{:keys [settings]} (lib.metadata/database (qp.store/metadata-provider))]
         (binding [setting/*database-local-values* (or settings {})]
           (f query))))))
+
+(mu/defn ^:private do-with-canceled-chan :- fn?
+  [f :- [:=> [:cat ::qp.schema/query] :any]]
+  (fn [query]
+    (if qp.pipeline/*canceled-chan*
+      (f query)
+      (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
+        (f query)))))
 
 (def ^:private setup-middleware
   "Setup middleware has the signature
@@ -170,7 +180,8 @@
   i.e.
 
     (middleware (f query)) => (f query)"
-  [#'do-with-database-local-settings
+  [#'do-with-canceled-chan
+   #'do-with-database-local-settings
    #'do-with-driver
    #'do-with-metadata-provider
    #'do-with-resolved-database])
