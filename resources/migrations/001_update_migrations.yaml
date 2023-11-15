@@ -4085,21 +4085,6 @@ databaseChangeLog:
                   remarks: 'Whether the user who initiated the view had read access to the item being viewed.'
 
   - changeSet:
-      id: v48.00-056
-      author: adam-james
-      comment: 'Added 0.48.0 - Adjust view_log schema for Audit Log v2'
-      changes:
-        - addColumn:
-            tableName: view_log
-            columns:
-              - column:
-                  name: error_message
-                  type: ${text.type}
-                  constraints:
-                    nullable: true
-                  remarks: 'An error message in the case of a failure or error when a user tried to view something.'
-
-  - changeSet:
       id: v48.00-057
       author: adam-james
       comment: 'Added 0.48.0 - Adjust view_log schema for Audit Log v2'

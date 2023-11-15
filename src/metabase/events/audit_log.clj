@@ -18,17 +18,6 @@
   [topic event]
   (audit-log/record-event! topic event))
 
-; (derive ::card-query-event ::event)
-; (derive :event/card-query ::card-query-event)
-
-; (methodical/defmethod events/publish-event! ::card-query-event
-;   [topic {:keys [user-id card-id] :as object}]
-;   (let [details (select-keys object [:cached :ignore_cache :context])]
-;     (audit-log/record-event! topic {:details    details
-;                                     :user-id    user-id
-;                                     :model      :model/Card
-;                                     :model-id   card-id})))
-
 (derive ::dashboard-event ::event)
 (derive :event/dashboard-create ::dashboard-event)
 (derive :event/dashboard-delete ::dashboard-event)
