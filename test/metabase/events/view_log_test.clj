@@ -1,12 +1,12 @@
 (ns metabase.events.view-log-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.events :as events]
+   [metabase.models.permissions :as perms]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [metabase.api.common :as api]
-   [metabase.models.permissions :as perms]))
+   [toucan2.core :as t2]))
 
 (defn- latest-view
   [user-id model-id]
