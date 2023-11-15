@@ -34,7 +34,10 @@ export function TimeseriesBucketPicker({
   return (
     <Menu>
       <Menu.Target>
-        <Button rightIcon={<Icon name="chevrondown" />}>
+        <Button
+          rightIcon={<Icon name="chevrondown" />}
+          data-testid="timeseries-bucket-button"
+        >
           {selectedItem.name}
         </Button>
       </Menu.Target>

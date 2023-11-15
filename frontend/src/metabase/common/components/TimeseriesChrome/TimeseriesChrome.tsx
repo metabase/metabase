@@ -102,7 +102,12 @@ function TimeseriesControls({
   }
 
   return (
-    <Group p="md" position="center" spacing="sm">
+    <Group
+      p="md"
+      position="center"
+      spacing="sm"
+      data-testid="timeseries-chrome"
+    >
       <Text>{t`View`}</Text>
       <TimeseriesFilterPicker
         query={query}

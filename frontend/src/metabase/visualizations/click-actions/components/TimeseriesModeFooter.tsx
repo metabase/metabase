@@ -26,7 +26,7 @@ export const TimeseriesModeFooter = (props: Props): JSX.Element | null => {
   const hasTimeSeriesGroupingWidget = !breakout.dimension().isExpression();
 
   return (
-    <div className="flex layout-centered" data-testid="time-series-mode-footer">
+    <div className="flex layout-centered" data-testid="timeseries-chrome">
       <span className="mr1">{t`View`}</span>
       <TimeseriesFilterWidget {...props} card={props.lastRunCard} />
       {hasTimeSeriesGroupingWidget && (
