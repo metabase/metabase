@@ -3064,6 +3064,6 @@
         (mt/user-http-request :crowberto :get 200 (format "card/%s" (u/id card)))
         (is (partial=
              {:user_id  (mt/user->id :crowberto)
-              :model    "Card"
+              :model    "card"
               :model_id (u/id card)}
              (view-log-test/latest-view (mt/user->id :crowberto) (u/id card))))))))

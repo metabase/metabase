@@ -27,10 +27,10 @@
    :model_id   (u/id object)
    :has_access has-access})
 
-(derive ::read-event :metabase/event)
-(derive :event/card-read ::read-event)
+(derive ::card-read-event :metabase/event)
+(derive :event/card-read ::card-read-event)
 
-(m/defmethod events/publish-event! ::read-event
+(m/defmethod events/publish-event! ::card-read-event
   "Handle processing for a generic read event notification"
   [topic event]
   (try
@@ -47,6 +47,8 @@
   "Handle processing for a generic read event notification"
   [topic {:keys [object] :as event}]
   (try
+    ;; Only log permission check failures for Cards and Dashboards. This set can be expanded if we add view logging of
+    ;; other models.
     (when (#{:model/Card :model/Dashboard} (t2/model object))
      (-> event
          generate-view
