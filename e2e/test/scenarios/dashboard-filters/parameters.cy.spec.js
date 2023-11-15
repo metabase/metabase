@@ -849,7 +849,6 @@ describe("scenarios > dashboard > parameters", () => {
 
         getDashboardCard(0).findByText("User.Name").should("exist");
 
-        goToTab("Tab 1");
 
         for (let i = 0; i < cards.length; i++) {
           getDashboardCard(i).findByText("User.Name").should("exist");
