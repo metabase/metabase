@@ -416,7 +416,7 @@
   (testing "PUT /api/pulse/:id"
     (mt/with-temp [Pulse                 pulse {}
                    PulseChannel          pc    {:pulse_id (u/the-id pulse)}
-                   PulseChannelRecipient _     {:pulse_channel_id (u/the-id pc) :user_id (mt/user->id :rasta)}
+                   PulseChannelRecipient _     {:subscription_channel_id (u/the-id pc) :user_id (mt/user->id :rasta)}
                    Card                  card  {}]
       (let [filter-params [{:id "123abc", :name "species", :type "string"}]]
         (with-pulses-in-writeable-collection [pulse]
@@ -582,7 +582,7 @@
       (mt/with-temp [Collection            collection {}
                      Pulse                 pulse {:collection_id (u/the-id collection)}
                      PulseChannel          pc    {:pulse_id (u/the-id pulse)}
-                     PulseChannelRecipient pcr   {:pulse_channel_id (u/the-id pc) :user_id (mt/user->id :rasta)}
+                     PulseChannelRecipient pcr   {:subscription_channel_id (u/the-id pc) :user_id (mt/user->id :rasta)}
                      Card                  _     {}]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
@@ -761,8 +761,8 @@
                                                                        :dashboard_id dashboard-id
                                                                        :creator_id   (mt/user->id :crowberto)}
                    PulseChannel          pc {:pulse_id pulse-3-id}
-                   PulseChannelRecipient _  {:pulse_channel_id (u/the-id pc)
-                                             :user_id          (mt/user->id :rasta)}]
+                   PulseChannelRecipient _  {:subscription_channel_id (u/the-id pc)
+                                             :user_id                 (mt/user->id :rasta)}]
       (with-pulses-in-writeable-collection [pulse-1 pulse-2 pulse-3]
         (testing "admins can see all pulses"
           (let [results (-> (mt/user-http-request :crowberto :get 200 "pulse")
@@ -867,8 +867,8 @@
 
       (mt/with-temp [Pulse                 pulse {:creator_id (mt/user->id :crowberto)}
                      PulseChannel          pc    {:pulse_id (u/the-id pulse)}
-                     PulseChannelRecipient _     {:pulse_channel_id (u/the-id pc)
-                                                  :user_id          (mt/user->id :rasta)}]
+                     PulseChannelRecipient _     {:subscription_channel_id (u/the-id pc)
+                                                  :user_id                 (mt/user->id :rasta)}]
         (with-pulses-in-nonreadable-collection [pulse]
           (mt/user-http-request :rasta :get 200 (str "pulse/" (u/the-id pulse))))))
 
@@ -1110,11 +1110,11 @@
                                                   :details       {:other  "stuff"
                                                                   :emails ["foo@bar.com"]}}]
       (testing "Should be able to delete your own subscription"
-        (t2.with-temp/with-temp [PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
+        (t2.with-temp/with-temp [PulseChannelRecipient _ {:subscription_channel_id channel-id :user_id (mt/user->id :rasta)}]
           (is (= nil
                  (mt/user-http-request :rasta :delete 204 (str "pulse/" pulse-id "/subscription"))))))
 
       (testing "Users can't delete someone else's pulse subscription"
-        (t2.with-temp/with-temp [PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
+        (t2.with-temp/with-temp [PulseChannelRecipient _ {:subscription_channel_id channel-id :user_id (mt/user->id :rasta)}]
           (is (= "Not found."
                  (mt/user-http-request :lucky :delete 404 (str "pulse/" pulse-id "/subscription")))))))))

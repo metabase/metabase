@@ -16073,6 +16073,35 @@ databaseChangeLog:
       rollback:
         - sql: DELETE FROM core_user WHERE id = 13371338;
 
+  - changeSet:
+      id: v49.00-000
+      author: qnkhuat
+      comment: Rename pulse_channel to subscription_channel
+      changes:
+        - renameTable:
+            oldTableName: pulse_channel
+            newTableName: subscription_channel
+
+  - changeSet:
+      id: v49.00-001
+      author: qnkhuat
+      comment: Rename pulse_channel_recipient to subscription_channel_recipient
+      changes:
+        - renameTable:
+            oldTableName: pulse_channel_recipient
+            newTableName: subscription_channel_recipient
+
+  - changeSet:
+      id: v49.00-002
+      author: qnkhuat
+      comment: Rename subscription_channel_recipient.pulse_channel_id to subscription_channel_recipient.subscription_channel_id
+      changes:
+        - renameColumn:
+            tableName: subscription_channel_recipient
+            columnDataType: int
+            oldColumnName: pulse_channel_id
+            newColumnName: subscription_channel_id
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

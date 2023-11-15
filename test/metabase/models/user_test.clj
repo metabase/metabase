@@ -469,9 +469,9 @@
     (t2.with-temp/with-temp [User                  {user-id :id}          {}
                              Pulse                 {pulse-id :id}         {}
                              PulseChannel          {pulse-channel-id :id} {:pulse_id pulse-id}
-                             PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id, :user_id user-id}]
+                             PulseChannelRecipient _ {:subscription_channel_id pulse-channel-id :user_id user-id}]
       (letfn [(subscription-exists? []
-                (t2/exists? PulseChannelRecipient :pulse_channel_id pulse-channel-id, :user_id user-id))]
+                (t2/exists? PulseChannelRecipient :subscription_channel_id pulse-channel-id :user_id user-id))]
         (testing "Sanity check: subscription should exist"
           (is (subscription-exists?)))
         (testing "user is updated but not archived: don't delete the subscription"

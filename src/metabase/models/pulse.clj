@@ -317,11 +317,11 @@
                                          (when user-id
                                            [:or
                                             [:= :p.creator_id user-id]
-                                            [:= :pcr.user_id user-id]])]
+                                            [:= :scr.user_id user-id]])]
                        :order-by        [[:lower-name :asc]]}
                       (when user-id
-                        {:left-join [[:pulse_channel :pchan] [:= :p.id :pchan.pulse_id]
-                                     [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]}))]
+                        {:left-join [[:subscription_channel :schan] [:= :p.id :schan.pulse_id]
+                                     [:subscription_channel_recipient :scr] [:= :schan.id :scr.subscription_channel_id]]}))]
      (for [alert (hydrate-notifications (query-as Pulse query))
            :let  [alert (notification->alert alert)]
            ;; if for whatever reason the Alert doesn't have a Card associated with it (e.g. the Card was deleted) don't
@@ -340,8 +340,8 @@
                :left-join       (concat
                                  [[:report_dashboard :d] [:= :p.dashboard_id :d.id]]
                                  (when user-id
-                                   [[:pulse_channel :pchan]         [:= :p.id :pchan.pulse_id]
-                                    [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]))
+                                   [[:subscription_channel :schan]  [:= :p.id :schan.pulse_id]
+                                    [:subscription_channel_recipient :scr] [:= :schan.id :scr.subscription_channel_id]]))
                :where           [:and
                                  [:= :p.alert_condition nil]
                                  [:= :p.archived archived?]
@@ -358,7 +358,7 @@
                                     [:not= :p.dashboard_id nil]
                                     [:or
                                      [:= :p.creator_id user-id]
-                                     [:= :pcr.user_id user-id]]])]
+                                     [:= :scr.user_id user-id]]])]
                :order-by        [[:lower-name :asc]]}]
     (for [pulse (query-as Pulse query)]
       (-> pulse
@@ -376,12 +376,12 @@
                  {:select [:p.*]
                   :from   [[:pulse :p]]
                   :join   [[:pulse_card :pc] [:= :p.id :pc.pulse_id]
-                           [:pulse_channel :pchan] [:= :pchan.pulse_id :p.id]
-                           [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]
+                           [:subscription_channel :schan] [:= :schan.pulse_id :p.id]
+                           [:subscription_channel_recipient :scr] [:= :schan.id :scr.subscription_channel_id]]
                   :where  [:and
                            [:not= :p.alert_condition nil]
                            [:= :pc.card_id card-id]
-                           [:= :pcr.user_id user-id]
+                           [:= :scr.user_id user-id]
                            [:= :p.archived archived?]]})))
 
 (defn retrieve-alerts-for-cards

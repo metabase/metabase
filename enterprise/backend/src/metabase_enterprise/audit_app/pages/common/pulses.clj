@@ -48,9 +48,9 @@
   "Common HoneySQL base query for both the [[metabase-enterprise.audit-app.pages.dashboard-subscriptions]]
   and [[metabase-enterprise.audit-app.pages.alerts]] audit queries. (The respective implementations tweak this query and
   add additional columns, filters, and order-by clauses.)"
-  {:with      [[:user_recipients {:select   [[:recipient.pulse_channel_id :channel_id]
+  {:with      [[:user_recipients {:select   [[:recipient.subscription_channel_id :channel_id]
                                              [:%count.* :count]]
-                                  :from     [[:pulse_channel_recipient :recipient]]
+                                  :from     [[:subscription_channel_recipient :recipient]]
                                   :group-by [:channel_id]}]]
    :select    [[:pulse.id :pulse_id]
                [:user_recipients.count :num_user_recipients]
@@ -67,7 +67,7 @@
                [(h2x/concat :creator.first_name (h2x/literal " ") :creator.last_name) :creator_name]
                [:channel.created_at :created_at]
                [:pulse.parameters :pulse_parameters]]
-   :from      [[:pulse_channel :channel]]
+   :from      [[:subscription_channel :channel]]
    :left-join [:pulse                         [:= :channel.pulse_id :pulse.id]
                :collection                    [:= :pulse.collection_id :collection.id]
                [:core_user :creator]          [:= :pulse.creator_id :creator.id]

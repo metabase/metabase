@@ -177,7 +177,7 @@
             (t2/update! Pulse (u/the-id other-alert) {:name "Other"})
             (mt/with-temp [User uninvolved-user {}
                            PulseChannel pulse-channel {:pulse_id (u/the-id recipient-alert)}
-                           PulseChannelRecipient _ {:pulse_channel_id (u/the-id pulse-channel), :user_id (mt/user->id :lucky)}]
+                           PulseChannelRecipient _ {:subscription_channel_id (u/the-id pulse-channel), :user_id (mt/user->id :lucky)}]
               (testing "Admin can see any alerts"
                 (is (= #{"LuckyCreator" "LuckyRecipient" "Other"}
                        (set (map :name (mt/user-http-request :crowberto :get 200 "alert")))))
@@ -477,8 +477,8 @@
 
 (defn recipient [pulse-channel-or-id username-keyword]
   (let [user (mt/fetch-user username-keyword)]
-    {:user_id          (u/the-id user)
-     :pulse_channel_id (u/the-id pulse-channel-or-id)}))
+    {:user_id                 (u/the-id user)
+     :subscription_channel_id (u/the-id pulse-channel-or-id)}))
 
 (defn pulse-card [alert-or-id card-or-id]
   {:pulse_id (u/the-id alert-or-id)

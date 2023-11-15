@@ -8,7 +8,7 @@
   We'll keep this till we replace all these symbols in our codebase."
   :model/PulseChannelRecipient)
 
-(methodical/defmethod t2/table-name :model/PulseChannelRecipient [_model] :pulse_channel_recipient)
+(methodical/defmethod t2/table-name :model/PulseChannelRecipient [_model] :subscription_channel_recipient)
 
 (derive :model/PulseChannelRecipient :metabase/model)
 
@@ -16,10 +16,10 @@
 ;;; to PulseChannels with User subscriptions; Slack PulseChannels and ones with email address subscriptions are not
 ;;; automatically deleted.
 (t2/define-before-delete :model/PulseChannelRecipient
-  [{channel-id :pulse_channel_id, pulse-channel-recipient-id :id}]
+  [{channel-id :subscription_channel_id, subscription-channel-recipient-id :id}]
   (let [other-recipients-count (t2/count PulseChannelRecipient
-                                         :pulse_channel_id channel-id
-                                         :id               [:not= pulse-channel-recipient-id])
+                                         :subscription_channel_id channel-id
+                                         :id                      [:not= subscription-channel-recipient-id])
         last-recipient?        (zero? other-recipients-count)]
     (when last-recipient?
       ;; make sure this channel doesn't have any email-address (non-User) recipients.

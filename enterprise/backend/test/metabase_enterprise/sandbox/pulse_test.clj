@@ -46,8 +46,8 @@
                  PulseChannel          pc {:channel_type :email
                                            :pulse_id     (:id pulse)
                                            :enabled      true}
-                 PulseChannelRecipient _ {:pulse_channel_id (:id pc)
-                                          :user_id          (mt/user->id :rasta)}]
+                 PulseChannelRecipient _ {:subscription_channel_id (:id pc)
+                                          :user_id                 (mt/user->id :rasta)}]
     (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
       (mt/with-fake-inbox
         (with-redefs [messages/render-pulse-email (fn [_ _ _ [{:keys [result]}] _]
@@ -69,8 +69,8 @@
                    PulseChannel          pc {:channel_type :email
                                              :pulse_id     (:id pulse)
                                              :enabled      true}
-                   PulseChannelRecipient _ {:pulse_channel_id (:id pc)
-                                            :user_id          (mt/user->id :rasta)}]
+                   PulseChannelRecipient _ {:subscription_channel_id (:id pc)
+                                            :user_id                 (mt/user->id :rasta)}]
       (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
         (mt/with-fake-inbox
           (with-redefs [messages/render-pulse-email  (fn [_ _ _ [{:keys [result]}] _]
@@ -96,8 +96,8 @@
                                PulseChannel          pc {:channel_type :email
                                                          :pulse_id     (:id pulse)
                                                          :enabled      true}
-                               PulseChannelRecipient _ {:pulse_channel_id (:id pc)
-                                                        :user_id          (mt/user->id :rasta)}]
+                               PulseChannelRecipient _ {:subscription_channel_id (:id pc)
+                                                        :user_id                 (mt/user->id :rasta)}]
         (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
           (mt/with-fake-inbox
             (with-redefs [messages/render-pulse-email  (fn [_ _ _ [{:keys [result]}] _]
@@ -124,8 +124,8 @@
                                PulseChannel          pc {:channel_type :email
                                                          :pulse_id     (:id pulse)
                                                          :enabled      true}
-                               PulseChannelRecipient _ {:pulse_channel_id (:id pc)
-                                                        :user_id          (mt/user->id :rasta)}]
+                               PulseChannelRecipient _ {:subscription_channel_id (:id pc)
+                                                        :user_id                 (mt/user->id :rasta)}]
         (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
           (mt/with-fake-inbox
             (with-redefs [messages/render-pulse-email  (fn [_ _ _ [{:keys [result]}] _]
@@ -228,8 +228,8 @@
                                                               :card_id  card-id
                                                               :position 0}
                          PulseChannel          {pc-id :id}   {:pulse_id pulse-id}
-                         PulseChannelRecipient _             {:user_id          (mt/user->id :rasta)
-                                                              :pulse_channel_id pc-id}]
+                         PulseChannelRecipient _             {:user_id                 (mt/user->id :rasta)
+                                                              :subscription_channel_id pc-id}]
             (mt/with-fake-inbox
               (mt/with-test-user nil
                 (metabase.pulse/send-pulse! (pulse/retrieve-pulse pulse-id)))
@@ -247,8 +247,8 @@
     (mt/with-temp [Pulse        {pulse-id :id} {:name "my pulse"}
                    PulseChannel {pc-id :id} {:pulse_id     pulse-id
                                              :channel_type :email}
-                   PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :crowberto)}
-                   PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :rasta)}]
+                   PulseChannelRecipient _ {:subscription_channel_id pc-id :user_id (mt/user->id :crowberto)}
+                   PulseChannelRecipient _ {:subscription_channel_id pc-id :user_id (mt/user->id :rasta)}]
       (let [recipient-ids (fn [pulses]
                             (let [pulse      (first (filter #(= pulse-id (:id %)) pulses))
                                   recipients (-> pulse :channels first :recipients)]
@@ -281,8 +281,8 @@
                    PulseChannel {pc-id :id :as pc} {:pulse_id     pulse-id
                                                     :channel_type :email
                                                     :details      {:emails "asdf@metabase.com"}}
-                   PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :crowberto)}
-                   PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :rasta)}]
+                   PulseChannelRecipient _ {:subscription_channel_id pc-id :user_id (mt/user->id :crowberto)}
+                   PulseChannelRecipient _ {:subscription_channel_id pc-id :user_id (mt/user->id :rasta)}]
 
       (mt/with-test-user :rasta
         (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]

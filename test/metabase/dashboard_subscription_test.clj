@@ -53,8 +53,8 @@
                                               :channel_type "slack"
                                               :details      {:channel "#general"}})]
     (if (= channel :email)
-      (mt/with-temp [PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
-                                              :pulse_channel_id pc-id}]
+      (mt/with-temp [PulseChannelRecipient _ {:user_id                 (pulse.test-util/rasta-id)
+                                              :subscription_channel_id pc-id}]
         (f pulse))
       (f pulse))))
 

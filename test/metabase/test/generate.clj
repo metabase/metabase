@@ -295,7 +295,7 @@
    :pulse-channel-recipient      {:prefix    :pcr
                                   :spec      ::pulse-channel-recipient
                                   :insert!   {:model PulseChannelRecipient}
-                                  :relations {:pulse_channel_id [:pulse-channel :id]
+                                  :relations {:subscription_channel_id [:pulse-channel :id]
                                               :user_id          [:core-user     :id]}}
    :timeline                     {:prefix    :timeline
                                   :spec      ::timeline

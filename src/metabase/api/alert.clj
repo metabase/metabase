@@ -254,7 +254,7 @@
     (api/read-check alert)
     (api/let-404 [alert-id (u/the-id alert)
                   pc-id    (t2/select-one-pk PulseChannel :pulse_id alert-id :channel_type "email")
-                  pcr-id   (t2/select-one-pk PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
+                  pcr-id   (t2/select-one-pk PulseChannelRecipient :subscription_channel_id pc-id :user_id api/*current-user-id*)]
                  (t2/delete! PulseChannelRecipient :id pcr-id))
     ;; Send emails letting people know they have been unsubscribed
     (let [user @api/*current-user*]

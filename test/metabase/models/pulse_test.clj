@@ -68,7 +68,7 @@
                                                                        :emails ["foo@bar.com"]}}
                              Card         {card-id :id}    {:name "Test Card"}]
       (t2/insert! PulseCard, :pulse_id pulse-id, :card_id card-id, :position 0)
-      (t2/insert! PulseChannelRecipient, :pulse_channel_id channel-id, :user_id (mt/user->id :rasta))
+      (t2/insert! PulseChannelRecipient, :subscription_channel_id channel-id, :user_id (mt/user->id :rasta))
       (is (= (merge
               pulse-defaults
               {:creator_id (mt/user->id :rasta)
@@ -327,7 +327,7 @@
             (mt/with-temp [User                  {user-id :id} {}
                            Pulse                 {pulse-id :id} {}
                            PulseChannel          {pulse-channel-id :id} {:pulse_id pulse-id}
-                           PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id :user_id user-id}]
+                           PulseChannelRecipient _ {:subscription_channel_id pulse-channel-id :user_id user-id}]
               (f {:user-id          user-id
                   :pulse-id         pulse-id
                   :pulse-channel-id pulse-channel-id
@@ -347,7 +347,7 @@
            ;; create a second user + subscription so we can verify that we don't archive the Pulse if a User unsubscribes
            ;; but there is still another subscription.
            (mt/with-temp [User                  {user-2-id :id} {}
-                          PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id :user_id user-2-id}]
+                          PulseChannelRecipient _ {:subscription_channel_id pulse-channel-id :user_id user-2-id}]
              (is (not (archived?)))
              (testing "User 1 becomes inactive: Pulse should not be archived yet (because User 2 is still a recipient)"
                (is (pos? (t2/update! User user-id {:is_active false})))
@@ -357,14 +357,14 @@
                (is (archived?))
                (testing "PulseChannel & PulseChannelRecipient rows should have been archived as well."
                  (is (not (t2/exists? PulseChannel :id pulse-channel-id)))
-                 (is (not (t2/exists? PulseChannelRecipient :pulse_channel_id pulse-channel-id))))))))))
+                 (is (not (t2/exists? PulseChannelRecipient :subscription_channel_id pulse-channel-id))))))))))
     (testing "Don't archive Pulse if it has still has recipients after deleting User subscription\n"
       (testing "another User subscription exists on a DIFFERENT channel\n"
         (do-with-objects
          (fn [{:keys [archived? user-id pulse-id]}]
            (mt/with-temp [User                  {user-2-id :id} {}
                           PulseChannel          {channel-2-id :id} {:pulse_id pulse-id}
-                          PulseChannelRecipient _ {:pulse_channel_id channel-2-id :user_id user-2-id}]
+                          PulseChannelRecipient _ {:subscription_channel_id channel-2-id :user_id user-2-id}]
              (testing "make User 1 inactive"
                (is (t2/update! User user-id {:is_active false})))
              (testing "Pulse should not be archived"
@@ -483,8 +483,8 @@
                                                                        :dashboard_id  (u/the-id dashboard)
                                                                        :creator_id    (mt/user->id :crowberto)}
                          PulseChannel          {pulse-channel-id :id} {:pulse_id (u/the-id subscription)}
-                         PulseChannelRecipient _                      {:pulse_channel_id pulse-channel-id
-                                                                       :user_id (mt/user->id :rasta)}]
+                         PulseChannelRecipient _                      {:subscription_channel_id pulse-channel-id
+                                                                       :user_id                 (mt/user->id :rasta)}]
             (is (mi/can-read? subscription))
             (is (not (mi/can-write? subscription)))))
 

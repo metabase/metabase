@@ -1570,10 +1570,10 @@
                                                                           :card_id  card-id
                                                                           :position 0}
                                PulseChannel          {pc-id :id}         {:pulse_id pulse-id}
-                               PulseChannelRecipient _                   {:user_id          (mt/user->id :crowberto)
-                                                                          :pulse_channel_id pc-id}
-                               PulseChannelRecipient _                   {:user_id          (mt/user->id :rasta)
-                                                                          :pulse_channel_id pc-id}]
+                               PulseChannelRecipient _                   {:user_id                 (mt/user->id :crowberto)
+                                                                          :subscription_channel_id pc-id}
+                               PulseChannelRecipient _                   {:user_id                 (mt/user->id :rasta)
+                                                                          :subscription_channel_id pc-id}]
         (mt/with-fake-inbox
           (mt/with-expected-messages 2
             (mt/user-http-request :crowberto :put 200 (str "collection/" collection-id)

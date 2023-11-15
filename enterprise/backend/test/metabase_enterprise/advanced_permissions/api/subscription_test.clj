@@ -97,7 +97,7 @@
                                                                 :channel :email}]
                       ;; manually add another user as recipient
                       (t2.with-temp/with-temp [PulseChannelRecipient _ {:user_id (:id user)
-                                                                        :pulse_channel_id
+                                                                        :subscription_channel_id
                                                                         (t2/select-one-pk
                                                                          PulseChannel :channel_type "email" :pulse_id (:id the-pulse))}]
                         (let [the-pulse   (pulse/retrieve-pulse (:id the-pulse))

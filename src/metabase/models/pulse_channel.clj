@@ -118,7 +118,7 @@
   We'll keep this till we replace all these symbols in our codebase."
   :model/PulseChannel)
 
-(methodical/defmethod t2/table-name :model/PulseChannel [_model] :pulse_channel)
+(methodical/defmethod t2/table-name :model/PulseChannel [_model] :subscription_channel)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :pulse_channel] [_original-model _k] :model/PulseChannel)
 
 (doto :model/PulseChannel
@@ -137,7 +137,7 @@
 (mi/define-simple-hydration-method recipients
   :recipients
   "Return the `PulseChannelRecipients` associated with this `pulse-channel`."
-  [{pulse-channel-id :id, {:keys [emails]} :details}]
+  [{subscription-channel-id :id, {:keys [emails]} :details}]
   (concat
    (for [email emails]
      {:email email})
@@ -145,9 +145,9 @@
     [User :id :email :first_name :last_name]
     {:select    [:u.id :u.email :u.first_name :u.last_name]
      :from      [[:core_user :u]]
-     :left-join [[:pulse_channel_recipient :pcr] [:= :u.id :pcr.user_id]]
+     :left-join [[:subscription_channel_recipient :scr] [:= :u.id :scr.user_id]]
      :where     [:and
-                 [:= :pcr.pulse_channel_id pulse-channel-id]
+                 [:= :scr.subscription_channel_id subscription-channel-id]
                  [:= :u.is_active true]]
      :order-by [[:u.id :asc]]})))
 
@@ -157,11 +157,11 @@
   true)
 
 (t2/define-before-delete :model/PulseChannel
-  [{pulse-id :pulse_id, pulse-channel-id :id}]
+  [{pulse-id :pulse_id, subscription-channel-id :id}]
   ;; This function is called by [[metabase.models.pulse-channel/pre-delete]] when the `PulseChannel` is about to be
   ;; deleted. Archives `Pulse` if the channel being deleted is its last channel."
   (when *archive-parent-pulse-when-last-channel-is-deleted*
-    (let [other-channels-count (t2/count PulseChannel :pulse_id pulse-id, :id [:not= pulse-channel-id])]
+    (let [other-channels-count (t2/count PulseChannel :pulse_id pulse-id, :id [:not= subscription-channel-id])]
       (when (zero? other-channels-count)
         (t2/update! :model/Pulse pulse-id {:archived true})))))
 
@@ -274,17 +274,17 @@
   {:pre [(integer? id)
          (coll? user-ids)
          (every? integer? user-ids)]}
-  (let [recipients-old (set (t2/select-fn-set :user_id PulseChannelRecipient, :pulse_channel_id id))
+  (let [recipients-old (set (t2/select-fn-set :user_id PulseChannelRecipient :subscription_channel_id id))
         recipients-new (set user-ids)
         recipients+    (set/difference recipients-new recipients-old)
         recipients-    (set/difference recipients-old recipients-new)]
     (when (seq recipients+)
-      (let [vs (map #(assoc {:pulse_channel_id id} :user_id %) recipients+)]
+      (let [vs (map #(assoc {:subscription_channel_id id} :user_id %) recipients+)]
         (t2/insert! PulseChannelRecipient vs)))
     (when (seq recipients-)
       (t2/delete! (t2/table-name PulseChannelRecipient)
-        :pulse_channel_id id
-        :user_id          [:in recipients-]))))
+        :subscription_channel_id id
+        :user_id                 [:in recipients-]))))
 
 
 (defn update-pulse-channel!
@@ -364,9 +364,9 @@
 (defmethod serdes/extract-one "PulseChannel"
   [_model-name _opts channel]
   (let [recipients (mapv :email (mdb.query/query {:select [:user.email]
-                                                  :from   [[:pulse_channel_recipient :pcr]]
-                                                  :join   [[:core_user :user] [:= :user.id :pcr.user_id]]
-                                                  :where  [:= :pcr.pulse_channel_id (:id channel)]}))]
+                                                  :from   [[:subscription_channel_recipient :scr]]
+                                                  :join   [[:core_user :user] [:= :user.id :scr.user_id]]
+                                                  :where  [:= :scr.subscription_channel_id (:id channel)]}))]
     (-> (serdes/extract-one-basics "PulseChannel" channel)
         (update :pulse_id   serdes/*export-fk* 'Pulse)
         (assoc  :recipients recipients))))
@@ -381,7 +381,7 @@
                                   :let [id (t2/select-one-pk 'User :email email)]]
                               (or id
                                   (:id (user/serdes-synthesize-user! {:email email})))))
-        current-users  (set (t2/select-fn-set :user_id PulseChannelRecipient :pulse_channel_id channel-id))
+        current-users  (set (t2/select-fn-set :user_id PulseChannelRecipient :subscription_channel_id channel-id))
         combined       (set/union incoming-users current-users)]
     (when-not (empty? combined)
       (update-recipients! channel-id combined))))

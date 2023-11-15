@@ -328,7 +328,7 @@
                  PulseChannel {channel-id :id} {:pulse_id pulse-id}]
     (letfn [(upd-recipients! [recipients]
               (pulse-channel/update-recipients! channel-id recipients)
-              (t2/select-fn-set :user_id PulseChannelRecipient, :pulse_channel_id channel-id))]
+              (t2/select-fn-set :user_id PulseChannelRecipient :subscription_channel_id channel-id))]
       (doseq [[new-recipients expected] {[]                  nil
                                          [:rasta]            [:rasta]
                                          [:crowberto]        [:crowberto]
@@ -428,9 +428,9 @@
                      PulseChannel          {channel-id :id :as channel} {:pulse_id pulse-id
                                                                          :details  {:emails ["cam@test.com"]}}
                      User                  {inactive-user-id :id} {:is_active false}
-                     PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id inactive-user-id}
-                     PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}
-                     PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :lucky)}]
+                     PulseChannelRecipient _ {:subscription_channel_id channel-id :user_id inactive-user-id}
+                     PulseChannelRecipient _ {:subscription_channel_id channel-id :user_id (mt/user->id :rasta)}
+                     PulseChannelRecipient _ {:subscription_channel_id channel-id :user_id (mt/user->id :lucky)}]
         (is (= (cons
                 {:email "cam@test.com"}
                 (sort-by

@@ -41,8 +41,8 @@
                                                                      :schedule_frame "first"
                                                                      :schedule_day   "mon"
                                                                      :schedule_hour  8}
-                           PulseChannelRecipient _                  {:pulse_channel_id channel-id
-                                                                     :user_id          (mt/user->id :rasta)}
+                           PulseChannelRecipient _                  {:subscription_channel_id channel-id
+                                                                     :user_id                 (mt/user->id :rasta)}
                            PulseChannel          {channel-2-id :id} {:pulse_id      pulse-id
                                                                      :channel_type  "slack"
                                                                      :details       {:channel "#wow"}

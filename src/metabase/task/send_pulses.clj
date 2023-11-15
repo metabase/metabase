@@ -68,14 +68,14 @@
   []
   (when-let [ids-to-delete (seq
                             (for [channel (t2/select [PulseChannel :id :details]
-                                                     :id [:not-in {:select   [[:pulse_channel_id :id]]
-                                                                   :from     :pulse_channel_recipient
-                                                                   :group-by [:pulse_channel_id]
+                                                     :id [:not-in {:select   [[:subscription_channel_id :id]]
+                                                                   :from     :subscription_channel_recipient
+                                                                   :group-by [:subscription_channel_id]
                                                                    :having   [:>= :%count.* [:raw 1]]}])]
                               (when (and (empty? (get-in channel [:details :emails]))
                                          (not (get-in channel [:details :channel])))
                                 (:id channel))))]
-  (t2/delete! PulseChannel :id [:in ids-to-delete])))
+   (t2/delete! PulseChannel :id [:in ids-to-delete])))
 
 ;;; ------------------------------------------------------ Task ------------------------------------------------------
 

@@ -25,8 +25,8 @@
                                                       :schedule_hour nil
                                                       :schedule_type "hourly"
                                                       :channel_type  :email}
-                 PulseChannelRecipient _             {:user_id          (mt/user->id :rasta)
-                                                      :pulse_channel_id pc-id}]
+                 PulseChannelRecipient _             {:user_id                 (mt/user->id :rasta)
+                                                      :subscription_channel_id pc-id}]
     (et/with-fake-inbox
       (let [exceptions (atom [])
             on-error   (fn [_ exception]
@@ -56,8 +56,8 @@
                                                           :schedule_hour nil
                                                           :schedule_type "hourly"
                                                           :channel_type  :email}
-                   PulseChannelRecipient _               {:user_id          (mt/user->id :rasta)
-                                                          :pulse_channel_id pc-id}]
+                   PulseChannelRecipient _               {:user_id                 (mt/user->id :rasta)
+                                                          :subscription_channel_id pc-id}]
       (et/with-fake-inbox
         (let [exceptions (atom [])
               on-error   (fn [_ exception]
@@ -95,8 +95,8 @@
     (mt/with-temp [Pulse                 {pulse-id :id} {}
                    PulseChannel          {pc-id :id} {:pulse_id     pulse-id
                                                       :channel_type :email}
-                   PulseChannelRecipient _           {:user_id          (mt/user->id :rasta)
-                                                      :pulse_channel_id pc-id}]
+                   PulseChannelRecipient _           {:user_id                 (mt/user->id :rasta)
+                                                      :subscription_channel_id pc-id}]
       (#'send-pulses/clear-pulse-channels!)
       (is (= 1
              (t2/count PulseChannel)))))
