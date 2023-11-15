@@ -841,3 +841,18 @@
   [xs]
   (or (empty? xs)
       (apply distinct? xs)))
+
+(defn seek
+  "(seek #(pos? (:value %)) [{:value -1} {:value 2}]) ; => {:value 2}"
+  ([pred coll] (seek pred coll nil))
+  ([pred coll not-found]
+   (reduce (fn [_ x]
+             (if (pred x)
+               (reduced x)
+               not-found))
+     not-found coll)))
+
+(defn seek=
+  "(seek= :idx 1 [{:idx 0} {:idx 1}]) ; => {:idx 1}"
+  [key value items]
+  (seek #(= (get % key) value) items))

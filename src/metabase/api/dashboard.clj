@@ -780,27 +780,31 @@
 (mu/defn ^:private param->fields
   [{:keys [mappings] :as param} :- mbql.s/Parameter]
   (for [{:keys [target] {:keys [card]} :dashcard} mappings
+
         :let  [[_ dimension] (->> (mbql.normalize/normalize-tokens target :ignore-path)
                                   (mbql.u/check-clause :dimension))]
         :when dimension
-        :let  [ttag      (get-template-tag dimension card)
-               dimension (condp mbql.u/is-clause? dimension
-                           :field        dimension
-                           :template-tag (:dimension ttag)
-                           (log/error "cannot handle this dimension" {:dimension dimension}))
-               field-id  (or
-                          ;; Get the field id from the field-clause if it contains it. This is the common case
-                          ;; for mbql queries.
-                          (mbql.u/match-one dimension [:field (id :guard integer?) _] id)
-                          ;; Attempt to get the field clause from the model metadata corresponding to the field.
-                          ;; This is the common case for native queries in which mappings from original columns
-                          ;; have been performed using model metadata.
-                          (:id (qp.util/field->field-info dimension (:result_metadata card))))]
-        :when field-id]
-    {:field-id field-id
-     :op       (param-type->op (:type param))
-     :options  (merge (:options ttag)
-                      (:options param))}))
+        :let  [ttag         (get-template-tag dimension card)
+               dimension    (condp mbql.u/is-clause? dimension
+                              :field        dimension
+                              :template-tag (:dimension ttag)
+                              (log/error "cannot handle this dimension" {:dimension dimension}))
+               field-ref (or
+                          ;; In MBQL queries dimension will contain field id
+                          (when (and (mbql.u/is-clause? :field dimension)
+                                     (int? (second dimension)))
+                            dimension)
+                          ;; In other case, get the field from model metadata. This is the common case for native
+                          ;; queries in which mappings from original columns have been performed using model metadata.
+                          (:field_ref
+                           (qp.util/field->field-info dimension (:result_metadata card))))]
+        :when (int? (second field-ref))]
+    {:field-ref field-ref
+     :query     (-> card :dataset_query :query)
+     :op        (param-type->op (:type param))
+     :options   (merge (:options ttag)
+                       (:options param))
+     :value     nil}))
 
 (mu/defn ^:private chain-filter-constraints :- chain-filter/Constraints
   [dashboard constraint-param-key->value]
@@ -810,30 +814,46 @@
              field             (param->fields param)]
          (assoc field :value value))))
 
-(defn filter-values-from-field-refs
+(defn- nested-card-results
   "Get filter values when only field-refs (e.g. `[:field \"SOURCE\" {:base-type :type/Text}]`)
   are provided (rather than field-ids). This is a common case for nested queries."
-  [dashboard param-key]
+  [param]
+  (for [{:keys [target] {:keys [card]} :dashcard} (:mappings param)
+        :let  [[_ dimension] (->> (mbql.normalize/normalize-tokens target :ignore-path)
+                                  (mbql.u/check-clause :dimension))]
+        :when dimension]
+    (custom-values/values-from-card card dimension)))
+
+(defn- -chain-filter
+  [dashboard param-key constraint-param-key->value query]
   (let [dashboard       (t2/hydrate dashboard :resolved-params)
+        constraints     (chain-filter-constraints dashboard constraint-param-key->value)
         param           (get-in dashboard [:resolved-params param-key])
-        results         (for [{:keys [target] {:keys [card]} :dashcard} (:mappings param)
-                              :let [[_ dimension] (->> (mbql.normalize/normalize-tokens target :ignore-path)
-                                                       (mbql.u/check-clause :dimension))]
-                              :when dimension]
-                          (custom-values/values-from-card card dimension))]
-    (when-some [values (seq (distinct (mapcat :values results)))]
-      (let [has_more_values (boolean (some true? (map :has_more_values results)))]
-        {:values          (cond->> values
-                                   (seq values)
-                                   (sort-by (case (count (first values))
-                                              2 second
-                                              1 first)))
-         :has_more_values has_more_values}))))
+        fields          (param->fields param)
+        results         (if (seq fields)
+                          (map (if (seq query)
+                                 #(chain-filter/chain-filter-search % constraints query :limit result-limit)
+                                 #(chain-filter/chain-filter % constraints :limit result-limit))
+                               fields)
+                          (nested-card-results param))
+        values          (distinct (mapcat :values results))
+        has_more_values (boolean (some true? (map :has_more_values results)))]
+    (if (seq values)
+      ;; results can come back as [[v] ...] *or* as [[orig remapped] ...]. Sort by remapped value if it's there
+      {:values          (cond->> values
+                          (seq values)
+                          (sort-by (case (count (first values))
+                                     2 second
+                                     1 first)))
+       :has_more_values has_more_values}
+      (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
+                      {:param       (get (:resolved-params dashboard) param-key)
+                       :status-code 400})))))
 
 (mu/defn chain-filter :- ms/FieldValuesResult
-  "C H A I N filters!
+  "Chain Filters!
 
-  Used to query for values that populate chained filter dropdowns and text search boxes."
+   Used to query for values that populate chained filter dropdowns and text search boxes."
   ([dashboard param-key constraint-param-key->value]
    (chain-filter dashboard param-key constraint-param-key->value nil))
 
@@ -841,33 +861,12 @@
     param-key                   :- ms/NonBlankString
     constraint-param-key->value :- ms/Map
     query                       :- [:maybe ms/NonBlankString]]
-   (let [dashboard   (t2/hydrate dashboard :resolved-params)
-         constraints (chain-filter-constraints dashboard constraint-param-key->value)
-         param       (get-in dashboard [:resolved-params param-key])
-         field-ids   (map :field-id (param->fields param))]
-     (if (empty? field-ids)
-       (or (filter-values-from-field-refs dashboard param-key)
-           (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
-                           {:param       (get (:resolved-params dashboard) param-key)
-                            :status-code 400})))
-       (try
-         (let [results         (map (if (seq query)
-                                      #(chain-filter/chain-filter-search % constraints query :limit result-limit)
-                                      #(chain-filter/chain-filter % constraints :limit result-limit))
-                                    field-ids)
-               values          (distinct (mapcat :values results))
-               has_more_values (boolean (some true? (map :has_more_values results)))]
-           ;; results can come back as [[v] ...] *or* as [[orig remapped] ...]. Sort by remapped value if it's there
-           {:values          (cond->> values
-                                      (seq values)
-                                      (sort-by (case (count (first values))
-                                                 2 second
-                                                 1 first)))
-            :has_more_values has_more_values})
-         (catch clojure.lang.ExceptionInfo e
-           (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
-             (api/throw-403 e)
-             (throw e))))))))
+   (try
+     (-chain-filter dashboard param-key constraint-param-key->value query)
+     (catch clojure.lang.ExceptionInfo e
+       (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+         (api/throw-403 e)
+         (throw e))))))
 
 (mu/defn param-values
   "Fetch values for a parameter.

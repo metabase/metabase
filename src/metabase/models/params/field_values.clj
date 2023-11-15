@@ -68,14 +68,13 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- fetch-advanced-field-values
-  [fv-type field constraints]
+  [fv-type field cache-fn]
   {:pre [(field-values/advanced-field-values-types fv-type)]}
   (case fv-type
     :linked-filter
     (do
-      (classloader/require 'metabase.models.params.chain-filter)
-      (let [{:keys [values has_more_values]} ((resolve 'metabase.models.params.chain-filter/unremapped-chain-filter)
-                                              (:id field) constraints {})
+      (assert cache-fn "Linked filters should pass `cache-fn` to execute the fetch")
+      (let [{:keys [values has_more_values]} (cache-fn field)
             ;; we have a hard limit for how many values we want to store in FieldValues,
             ;; let's make sure we respect that limit here.
             ;; For a more detailed docs on this limt check out [[field-values/distinct-values]]
@@ -104,9 +103,9 @@
   "Fetch and create a FieldValues for `field` with type `fv-type`.
   The human_readable_values of Advanced FieldValues will be automatically fixed up based on the
   list of values and human_readable_values of the full FieldValues of the same field."
-  [fv-type field hash-key constraints]
+  [fv-type field hash-key cache-fn]
   (when-let [{wrapped-values :values
-              :keys [has_more_values]} (fetch-advanced-field-values fv-type field constraints)]
+              :keys [has_more_values]} (fetch-advanced-field-values fv-type field cache-fn)]
     (let [;; each value in `wrapped-values` is a 1-tuple, so unwrap the raw values for storage
           values                (map first wrapped-values)
           ;; If the full FieldValues of this field has a human-readable-values, fix it with the new values
@@ -129,19 +128,20 @@
   ([fv-type field]
    (get-or-create-advanced-field-values! fv-type field nil))
 
-  ([fv-type field constraints]
+  ;; constraints and cache-fn used for :linked-filter
+  ([fv-type field {:keys [constraints cache-fn] :as opts}]
    (let [hash-key (hash-key-for-advanced-field-values fv-type (:id field) constraints)
          fv       (or (t2/select-one FieldValues :field_id (:id field)
                                      :type fv-type
                                      :hash_key hash-key)
-                      (create-advanced-field-values! fv-type field hash-key constraints))]
+                      (create-advanced-field-values! fv-type field hash-key cache-fn))]
      (cond
        (nil? fv) nil
 
        ;; If it's expired, delete then try to re-create it
        (field-values/advanced-field-values-expired? fv) (do
                                                           (t2/delete! FieldValues :id (:id fv))
-                                                          (recur fv-type field constraints))
+                                                          (recur fv-type field opts))
        :else fv))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -176,6 +176,6 @@
     {:values           [[value]]
      :field_id         field-id
      :has_field_values boolean}"
-  [field constraints]
-  (-> (get-or-create-advanced-field-values! :linked-filter field constraints)
+  [field opts]
+  (-> (get-or-create-advanced-field-values! :linked-filter field opts)
       (postprocess-field-values field)))
