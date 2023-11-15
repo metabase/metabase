@@ -140,7 +140,7 @@
                                       {:parameters [{:id    "_FAKE_"
                                                      :name  "fake"
                                                      :type  :date/single
-                                                     :value "2016-01-01"}]})))))
+                                                     :value "2016-01-01"}]})))))))
 
 (deftest ^:parallel validate-card-parameters-test-3
   (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (field-filter-query)}]
