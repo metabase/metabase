@@ -16,7 +16,11 @@ concurrency:
 
 jobs:
   external-filter:
-    if: github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success'
+    # 1. within the organization OR
+    # 2. fork
+    if: |
+      github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 3
     steps:

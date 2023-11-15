@@ -134,29 +134,23 @@
       (format "%d: %s" coll-id names))
     "[no collection]"))
 
+(defn- card-label [card-id]
+  (let [card (t2/select-one [Card :collection_id :name] :id card-id)]
+    (format "Card %d (%s from collection %s)" card-id (:name card) (collection-label (:collection_id card)))))
+
 (defn- escape-report
   "Given the analysis map from [[escape-analysis]], report the results in a human-readable format with Card titles etc."
   [{:keys [escaped-dashcards escaped-questions]}]
   (when-not (empty? escaped-dashcards)
-    (log/info "Dashboard cards outside the collection")
-    (log/info "======================================")
     (doseq [[dash-id card-ids] escaped-dashcards
             :let [dash-name (t2/select-one-fn :name Dashboard :id dash-id)]]
-      (log/infof "Dashboard %d: %s\n" dash-id dash-name)
-      (doseq [card_id card-ids
-              :let [card (t2/select-one [Card :collection_id :name] :id card_id)]]
-        (log/infof "          \tCard %d: %s\n"    card_id (:name card))
-        (log/infof "        from collection %s\n" (collection-label (:collection_id card))))))
+      (log/warnf "Failed to export Dashboard %d (%s) containing Cards saved outside requested collections: %s"
+                 dash-id dash-name (str/join ", " (map card-label card-ids)))))
 
   (when-not (empty? escaped-questions)
-    (log/info "Questions based on outside questions")
-    (log/info "====================================")
-    (doseq [[curated-id alien-id] escaped-questions
-            :let [curated-card (t2/select-one [Card :collection_id :name] :id curated-id)
-                  alien-card   (t2/select-one [Card :collection_id :name] :id alien-id)]]
-      (log/infof "%-4d      %s    (%s)\n  -> %-4d %s    (%s)\n"
-                 curated-id (:name curated-card) (collection-label (:collection_id curated-card))
-                 alien-id   (:name alien-card)   (collection-label (:collection_id alien-card))))))
+    (log/warnf "Failed to export Cards based on questions outside requested collections: %s"
+               (str/join ", " (for [[curated-id alien-id] escaped-questions]
+                                (str (card-label curated-id) " -> " (card-label alien-id)))))))
 
 (defn- extract-subtrees
   "Extracts the targeted entities and all their descendants into a reducible stream of extracted maps.

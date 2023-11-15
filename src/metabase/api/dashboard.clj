@@ -189,6 +189,7 @@
       ;; cannot be in this situation
       (t2/hydrate [:dashcards
                    [:card [:moderation_reviews :moderator_details]]
+                   [:card :can_write]
                    :series
                    :dashcard/action
                    :dashcard/linkcard-info]

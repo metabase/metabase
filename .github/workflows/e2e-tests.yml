@@ -17,7 +17,11 @@ concurrency:
 
 jobs:
   external-filter:
-    if: github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success'
+    # 1. within the organization OR
+    # 2. fork
+    if: |
+      github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 3
     steps:
@@ -30,8 +34,6 @@ jobs:
 
   files-changed:
     name: Check which files changed
-    needs: external-filter
-    if: needs.external-filter.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
@@ -46,8 +48,6 @@ jobs:
           filters: .github/file-paths.yaml
 
   e2e-matrix-builder:
-    needs: external-filter
-    if: needs.external-filter.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     outputs:
@@ -173,11 +173,19 @@ jobs:
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
+      - name: Run Flaky Cypress tests
+        if: matrix.name == 'flaky' && github.event_name != 'schedule'
+        run: |
+          yarn run test-cypress-run \
+          --env grepTags="@flaky",grepOmitFiltered=true \
+          --spec './e2e/test/scenarios/**/*.cy.spec.js' \
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+
       - name: Run EE Cypress tests on ${{ matrix.name }}
         if: matrix.context == 'folder' && github.event_name != 'schedule'
         run: |
           yarn run test-cypress-run \
-          --env grepTags="-@slow+-@mongo --@quarantine",grepOmitFiltered=true \
+          --env grepTags="-@slow+-@mongo+-@flaky --@quarantine",grepOmitFiltered=true \
           --folder ${{ matrix.name }} \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
@@ -202,10 +210,10 @@ jobs:
           if-no-files-found: ignore
 
   e2e-tests-skipped-stub:
-    needs: [e2e-tests, e2e-matrix-builder, external-filter]
+    needs: [e2e-tests, e2e-matrix-builder]
     if: |
       !cancelled() &&
-      needs.e2e-tests.result == 'skipped' && needs.external-filter.result == 'success'
+      needs.e2e-tests.result == 'skipped'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 5
     name: e2e-tests-${{ matrix.name }}-${{ matrix.edition }}

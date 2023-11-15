@@ -9,6 +9,7 @@
    [metabase.api.table :as api.table]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
@@ -20,6 +21,7 @@
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.sync :as sync]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as field-values]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -34,7 +36,11 @@
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import
+   (java.sql Connection)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
@@ -513,6 +519,42 @@
                                                (format "database/%s" db-id)
                                                {:settings {:database-enable-actions true}})
                          [:settings :database-enable-actions]))))))
+
+(deftest update-database-enable-actions-open-connection-test
+  (testing "Updating a database's `database-enable-actions` setting shouldn't close existing connections (metabase#27877)"
+    (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :actions))
+      (let [;; 1. create a database and sync
+            database-name      (name (gensym))
+            empty-dbdef        {:database-name database-name}
+            _                  (tx/create-db! driver/*driver* empty-dbdef)
+            connection-details (tx/dbdef->connection-details driver/*driver* :db empty-dbdef)
+            db                 (first (t2/insert-returning-instances! :model/Database {:name    database-name
+                                                                                       :engine  (u/qualified-name driver/*driver*)
+                                                                                       :details connection-details}))
+            _                  (sync/sync-database! db)]
+        (let [;; 2. start a long running process on another thread that uses a connection
+              connections-stay-open? (future
+                                       (sql-jdbc.execute/do-with-connection-with-options
+                                        driver/*driver*
+                                        db
+                                        nil
+                                        (fn [^Connection conn]
+                                          ;; sleep long enough to make sure the PUT request below finishes processing,
+                                          ;; including any async operations that it might trigger
+                                          (Thread/sleep 1000)
+                                          ;; test the connection is open by executing a query
+                                          (try
+                                            (let [stmt      (.createStatement conn)
+                                                  resultset (.executeQuery stmt "SELECT 1")]
+                                              (.next resultset))
+                                            (catch Exception _e
+                                              false)))))]
+          ;; 3. update the database's `database-enable-actions` setting
+          (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
+                                {:settings {:database-enable-actions true}})
+          ;; 4. test the connection was still open at the end of it of the long running process
+          (is (true? @connections-stay-open?))
+          (tx/destroy-db! driver/*driver* empty-dbdef))))))
 
 (deftest fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"

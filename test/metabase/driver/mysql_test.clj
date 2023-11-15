@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
-   [java-time.api :as t]
    [metabase.actions.error :as actions.error]
    [metabase.config :as config]
    [metabase.db.metadata-queries :as metadata-queries]
@@ -31,7 +30,6 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
@@ -366,29 +364,31 @@
     (testing "can group on TIME columns (#12846)"
       (mt/with-temporary-setting-values [report-timezone "UTC"]
         (mt/dataset attempted-murders
-          (let [now-date-str (u.date/format (t/local-date (t/zone-id "UTC")))
-                add-date-fn  (fn [t] [(str now-date-str "T" t)])]
-            (testing "by minute"
-              (let [query (mt/mbql-query attempts
-                            {:breakout [!minute.time]
-                             :order-by [[:asc !minute.time]]
-                             :limit    3})]
-                (mt/with-native-query-testing-context query
-                  (is (= (map add-date-fn ["00:14:00Z" "00:23:00Z" "00:35:00Z"])
-                         (mt/rows (qp/process-query query)))))))
-            (testing "by hour"
-              (let [query (mt/mbql-query attempts
-                            {:breakout [!hour.time]
-                             :order-by [[:desc !hour.time]]
-                             :limit    3})]
-                (mt/with-native-query-testing-context query
-                  (is (= (map add-date-fn ["23:00:00Z" "20:00:00Z" "19:00:00Z"])
-                         (mt/rows (qp/process-query query)))))))))))))
+          (testing "by minute"
+            (let [query (mt/mbql-query attempts
+                          {:breakout [!minute.time]
+                           :order-by [[:asc !minute.time]]
+                           :limit    3})]
+              (mt/with-native-query-testing-context query
+                (is (= [["00:14:00Z"]
+                        ["00:23:00Z"]
+                        ["00:35:00Z"]]
+                       (mt/rows (qp/process-query query)))))))
+          (testing "by hour"
+            (let [query (mt/mbql-query attempts
+                          {:breakout [!hour.time]
+                           :order-by [[:desc !hour.time]]
+                           :limit    3})]
+              (mt/with-native-query-testing-context query
+                (is (= [["23:00:00Z"]
+                        ["20:00:00Z"]
+                        ["19:00:00Z"]]
+                       (mt/rows (qp/process-query query))))))))))))
 
 (defn- pretty-sql [s]
   (str/replace s #"`" ""))
 
-(deftest do-not-cast-to-date-if-column-is-already-a-date-test
+(deftest ^:parallel do-not-cast-to-date-if-column-is-already-a-date-test
   (testing "Don't wrap Field in date() if it's already a DATE (#11502)"
     (mt/test-driver :mysql
       (mt/dataset attempted-murders
