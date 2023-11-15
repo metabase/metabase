@@ -4060,6 +4060,15 @@ databaseChangeLog:
             newDataType: VARCHAR(32)
       rollback: # not necessary
 
+  - changeSet:
+      id: v48.00-054
+      author: escherize
+      comment: Added 0.48.0 - no-op migration to remove Internal Metabase User on downgrade
+      changes:
+        - comment: "No operation performed for this changeset on execution."
+      rollback:
+        - sql: DELETE FROM core_user WHERE id = 13371338;
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 

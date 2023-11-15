@@ -90,3 +90,8 @@
                                                  "CC"]]]}]}]}
 
               (lib/query meta/metadata-provider converted-query))))))
+
+(deftest ^:parallel stage-count-test
+  (is (= 1 (lib/stage-count lib.tu/venues-query)))
+  (is (= 2 (lib/stage-count (lib/append-stage lib.tu/venues-query))))
+  (is (= 3 (lib/stage-count (lib/append-stage (lib/append-stage lib.tu/venues-query))))))

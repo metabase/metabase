@@ -219,7 +219,10 @@ const PeopleList = ({
       </table>
 
       {hasUsers && (
-        <div className="flex align-center justify-between p2">
+        <div
+          className="flex align-center justify-between p2"
+          data-testid="people-list-footer"
+        >
           <div className="text-medium text-bold">
             {ngettext(
               msgid`${total} person found`,
