@@ -22,7 +22,7 @@
   "Generates a view, given an event map."
   [{:keys [object user-id has-access]
     :or   {has-access true}}]
-  {:model      (audit-log/model-name object)
+  {:model      (u/lower-case-en (audit-log/model-name object))
    :user_id    (or user-id api/*current-user-id*)
    :model_id   (u/id object)
    :has_access has-access})
@@ -72,11 +72,11 @@
     (let [dashcards (filter :card_id (:dashcards object)) ;; filter out link/text cards wtih no card_id
           user-id   (or user-id api/*current-user-id*)
           views     (map (fn [dashcard]
-                           {:model      "Card"
+                           {:model      "card"
                             :model_id   (u/id (:card_id dashcard))
                             :user_id    user-id
                             :has_access (readable-dashcard? dashcard)
-                            :context    "Dashboard"})
+                            :context    "dashboard"})
                          dashcards)
           dash-view (generate-view event)]
       (record-views! (cons dash-view views)))

@@ -23,7 +23,7 @@
       (events/publish-event! :event/card-read {:object card :user-id (u/the-id user)})
       (is (partial=
            {:user_id  (u/id user)
-            :model    "Card"
+            :model    "card"
             :model_id (u/id card)
             :has_access true
             :context    nil}
@@ -36,7 +36,7 @@
         (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
         (is (partial=
              {:user_id  (u/id user)
-              :model    "Table"
+              :model    "table"
               :model_id (u/id table)
               :has_access nil
               :context    nil}
@@ -62,7 +62,7 @@
         (events/publish-event! :event/dashboard-read {:object dashboard :user-id (u/id user)})
         (is (partial=
              {:user_id    (u/id user)
-              :model      "Dashboard"
+              :model      "dashboard"
               :model_id   (u/id dashboard)
               :has_access true
               :context    nil}
@@ -70,8 +70,8 @@
 
         (is (partial=
              {:user_id    (u/id user)
-              :model      "Card"
+              :model      "card"
               :model_id   (u/id card)
               :has_access true
-              :context    "Dashboard"}
+              :context    "dashboard"}
              (latest-view (u/id user) (u/id card))))))))
