@@ -95,7 +95,7 @@
                 collection ^MongoCollection (. client-database (getCollection "orders"))]
             (with-open [session ^ClientSession (#'mongo.execute/start-session! connection)]
               (let [aggregate (.aggregate collection session ^java.util.ArrayList pipeline)
-                    ;; Manually tested: if session is closed before aggregation execution takes place (call to 
+                    ;; Manually tested: if session is closed before aggregation execution takes place (call to
                     ;; eg. either `.into` or `.cursor`) aggregation is then executed.
                     ;; TODO: Find workaround!
                     result-ch (a/thread (try (.into aggregate (java.util.ArrayList.))
@@ -103,7 +103,7 @@
                                                (if (interrupt-ex? ex)
                                                  :interrupted
                                                  ex))))]
-                (future (Thread/sleep 100)
+                (future (Thread/sleep 500)
                         (#'mongo.execute/kill-session! client-database session))
                  ;; Using 15k timeout to handle unforseen circumstances.
                 (let [result (a/alt!! (a/timeout 60000) :timeout
@@ -126,7 +126,7 @@
                                              :condition
                                              [:!= $user_id &People_User.people.id],
                                              :source-table $$people}]})]
-          (future (Thread/sleep 100)
+          (future (Thread/sleep 500)
                   (a/>!! canceled-chan ::streaming-response/request-canceled))
           (testing "Cancel signal kills the in progress query"
             (is (re-find #"Command failed with error 11601.*operation was interrupted"
