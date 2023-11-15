@@ -56,7 +56,7 @@
   dashboard."
   [topic {:keys [object user-id] :as event}]
   (try
-    (let [dashcards (:dashcards object)
+    (let [dashcards (filter :card_id (:dashcards object)) ;; filter out link/text cards wtih no card_id
           user-id   (or user-id api/*current-user-id*)
           views     (map (fn [dashcard]
                            {:model      "Card"
