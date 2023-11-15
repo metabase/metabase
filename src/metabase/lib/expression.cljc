@@ -29,7 +29,7 @@
   (let [options {:lib/uuid       (str (random-uuid))
                  :base-type      (:base-type metadata)
                  :effective-type ((some-fn :effective-type :base-type) metadata)}]
-    [:expression options (:name metadata)]))
+    [:expression options ((some-fn :expression-name :name) metadata)]))
 
 (mu/defn resolve-expression :- ::lib.schema.expression/expression
   "Find the expression with `expression-name` in a given stage of a `query`, or throw an Exception if it doesn't

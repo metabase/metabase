@@ -1518,3 +1518,12 @@
                (lib/legacy-card-or-table-id (first (lib/returned-columns (-> query
                                                                              (lib/breakout (first (lib/returned-columns query)))
                                                                              lib/append-stage))))))))))
+
+(deftest ^:parallel expression-ref-when-metadata-has-expression-name-test
+  (testing (str "column metadata with :expression-name should generate :expression refs regardless of :lib/source. "
+                "Prefer :expression-name over :name (#34957)")
+    (let [metadata (-> (meta/field-metadata :venues :name)
+                       (assoc :lib/source :source/fields
+                              :expression-name "Custom Venue Name"))]
+      (is (=? [:expression {} "Custom Venue Name"]
+              (lib/ref metadata))))))

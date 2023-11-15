@@ -433,25 +433,32 @@
                            metadata)]
     [:field options id-or-name]))
 
+(defn- expression?
+  "Whether this `column-metadata` is referring to an expression (calculated column) introduced at this stage of the
+  query."
+  [column-metadata]
+  ;; for whatever dumb reason the `:source` returned by the [[metabase.query-processor.middleware.annotate]]
+  ;; middleware for expressions is generally where they are used e.g. `:source/fields` or `:source/breakouts` rather
+  ;; than `:source/expressions` as we would expect in MLv2 world, however we can distinguish "custom columns" from
+  ;; other ones by whether or not they have an `:expression-name` key. So anything with that should generate an
+  ;; `:expression` ref regardless of their source. See #34957
+  ;;
+  ;; Oh yeah, also MLv2 adds the `:lib/expression-name` key sometimes just to make things extra confusing. Yay not
+  ;; confusing at all
+  (or ((some-fn :expression-name :lib/expression-name) column-metadata)
+      (= (:lib/source column-metadata) :source/expressions)))
+
 (defmethod lib.ref/ref-method :metadata/column
   [{source :lib/source, :as metadata}]
-  (case source
-    :source/aggregations (lib.aggregation/column-metadata->aggregation-ref metadata)
-    :source/expressions  (lib.expression/column-metadata->expression-ref metadata)
-    ;; :source/breakouts hides the true origin of the column. Since it's impossible to
-    ;; break out by aggregation references at the current stage, we only have to check
-    ;; if we break out by an expression reference. :expression-name is only set for
-    ;; expression references, so if it's set, we have to generate an expression ref,
-    ;; otherwise we generate a normal field ref.
-    :source/breakouts    (if (contains? metadata :lib/expression-name)
-                           (lib.expression/column-metadata->expression-ref metadata)
-                           (column-metadata->field-ref metadata))
-    (column-metadata->field-ref metadata)))
+  (cond
+    (= source :source/aggregations) (lib.aggregation/column-metadata->aggregation-ref metadata)
+    (expression? metadata)          (lib.expression/column-metadata->expression-ref metadata)
+    :else                           (column-metadata->field-ref metadata)))
 
 (defn- expression-columns
   "Return the [[lib.metadata/ColumnMetadata]] for all the expressions in a stage of a query."
   [query stage-number]
-  (filter #(= (:lib/source %) :source/expressions)
+  (filter expression?
           (lib.metadata.calculation/visible-columns
            query
            stage-number
