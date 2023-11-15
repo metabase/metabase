@@ -27,9 +27,9 @@ jobs:
     steps:
       - run: |
           if ${{ github.event.pull_request.head.repo.full_name == github.repository }}; then
-            echo 'Running Chromatic workflow within the organization.'
+            echo 'Running Drivers tests within the organization.'
           elif ${{ github.event.workflow_run.conclusion == 'success' }}; then
-            echo "Running Chromatic workflow for the external contributor. Thank you!"
+            echo "Running Drivers tests for the external contributor. Thank you!"
           fi
 
   files-changed:
