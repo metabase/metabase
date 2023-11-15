@@ -19,12 +19,15 @@
   [topic {database :object, previous-database :previous-object :as _event}]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
-    ;; notify the appropriate driver about the updated database to release any resources it may be holding onto.
-    ;; don't notify the driver if the changes should not impact the state of any resource.
-    (let [paths-that-dont-impact-resource-state [[:updated_at]
-                                                 [:settings :database-enable-actions]]]
-      (when (not= (reduce m/dissoc-in database paths-that-dont-impact-resource-state)
-                  (reduce m/dissoc-in previous-database paths-that-dont-impact-resource-state))
+    ;; notify the appropriate driver about the updated database to release any related resources, such as connections.
+    ;; avoid notifying if the changes shouldn't impact the observable behaviour of any resource, otherwise drivers might
+    ;; close connections or other resources unnecessarily (metabase#27877).
+    (let [;; remove data that should not impact the observable state of any resource before comparing
+          remove-irrelevant-data (fn [db]
+                                   (reduce m/dissoc-in db [[:updated_at]
+                                                           [:settings :database-enable-actions]]))]
+      (when (not= (remove-irrelevant-data database)
+                  (remove-irrelevant-data previous-database))
         (driver/notify-database-updated (:engine database) database)))
     (catch Throwable e
       (log/warnf e "Failed to process driver notifications event. %s" topic))))
