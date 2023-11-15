@@ -2,9 +2,8 @@ import { t } from "ttag";
 import _ from "underscore";
 import type {
   DashboardCard,
-  DashboardId,
+  DashboardParameterMapping,
   DashCardId,
-  ParameterId,
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 import {
@@ -16,14 +15,16 @@ import { addUndo, dismissUndo } from "metabase/redux/undo";
 export const AUTO_WIRE_TOAST_ID = _.uniqueId();
 
 type ShowAutoWireParametersToastType = {
-  dashboardId: DashboardId;
-  parameter_id: ParameterId;
-  sourceDashcardId: DashCardId;
-  modifiedDashcards: DashboardCard[];
+  dashcardAttributes: {
+    id: DashCardId;
+    attributes: {
+      parameter_mappings: DashboardParameterMapping[] | null | undefined;
+    };
+  }[];
 };
 
 export const showAutoWireParametersToast =
-  ({ modifiedDashcards }: ShowAutoWireParametersToastType) =>
+  ({ dashcardAttributes }: ShowAutoWireParametersToastType) =>
   (dispatch: Dispatch) => {
     dispatch(
       addUndo({
@@ -34,12 +35,7 @@ export const showAutoWireParametersToast =
         action: () => {
           dispatch(
             setMultipleDashCardAttributes({
-              dashcards: modifiedDashcards.map(dc => ({
-                id: dc.id,
-                attributes: {
-                  parameter_mappings: dc.parameter_mappings,
-                },
-              })),
+              dashcards: dashcardAttributes,
             }),
           );
         },

@@ -19,12 +19,12 @@ import type Metadata from "metabase-lib/metadata/Metadata";
 export function getAllDashboardCardsWithUnmappedParameters({
   dashboardState,
   dashboardId,
-  parameter_id,
+  parameterId,
   excludeDashcardIds = [],
 }: {
   dashboardState: DashboardState;
   dashboardId: DashboardId;
-  parameter_id: ParameterId;
+  parameterId: ParameterId;
   excludeDashcardIds?: DashCardId[];
 }) {
   const cards = getExistingDashCards(
@@ -36,7 +36,7 @@ export function getAllDashboardCardsWithUnmappedParameters({
     return (
       !excludeDashcardIds.includes(dashcard.id) &&
       !dashcard.parameter_mappings?.some(
-        mapping => mapping.parameter_id === parameter_id,
+        mapping => mapping.parameter_id === parameterId,
       )
     );
   });
@@ -47,7 +47,9 @@ export function getMatchingParameterOption(
   targetDimension: ParameterTarget,
   targetDashcard: DashboardCard,
   metadata: Metadata,
-): { target: ParameterTarget } | null {
+): {
+  target: ParameterTarget;
+} | null {
   if (!dashcardToCheck) {
     return null;
   }
@@ -57,10 +59,6 @@ export function getMatchingParameterOption(
       metadata,
       null,
       dashcardToCheck.card,
-      // TODO: mapping-options.js/getParameterMappingOptions needs to be converted to typescript as the TS
-      // checker thinks that this parameter should be (null | undefined), not (DashboardCard | null | undefined)
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
       dashcardToCheck,
     ).find((param: { target: ParameterTarget }) =>
       compareMappingOptionTargets(
@@ -95,13 +93,14 @@ export function getAutoWiredMappingsForDashcards(
   const targetDashcardMappings: DashCardAttribute[] = [];
 
   for (const targetDashcard of targetDashcards) {
-    const selectedMappingOption: { target: ParameterTarget } | null =
-      getMatchingParameterOption(
-        targetDashcard,
-        target,
-        sourceDashcard,
-        metadata,
-      );
+    const selectedMappingOption: {
+      target: ParameterTarget;
+    } | null = getMatchingParameterOption(
+      targetDashcard,
+      target,
+      sourceDashcard,
+      metadata,
+    );
 
     if (selectedMappingOption && targetDashcard.card_id) {
       targetDashcardMappings.push({

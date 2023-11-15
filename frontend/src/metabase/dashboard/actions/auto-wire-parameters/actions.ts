@@ -43,7 +43,7 @@ export function autoWireDashcardsWithMatchingParameters(
     const dashcardsToAutoApply = getAllDashboardCardsWithUnmappedParameters({
       dashboardState: dashboard_state,
       dashboardId: dashboard_state.dashboardId,
-      parameter_id: parameter_id,
+      parameterId: parameter_id,
       excludeDashcardIds: [dashcard.id],
     });
 
@@ -65,12 +65,16 @@ export function autoWireDashcardsWithMatchingParameters(
       }),
     );
 
+    const originalDashcardAttributes = dashcardsToAutoApply.map(dashcard => ({
+      id: dashcard.id,
+      attributes: {
+        parameter_mappings: dashcard.parameter_mappings,
+      },
+    }));
+
     dispatch(
       showAutoWireParametersToast({
-        dashboardId: dashboard_state.dashboardId,
-        parameter_id,
-        sourceDashcardId: dashcard.id,
-        modifiedDashcards: dashcardsToAutoApply,
+        dashcardAttributes: originalDashcardAttributes,
       }),
     );
   };
@@ -111,10 +115,6 @@ export function autoWireParametersToNewCard({
       metadata,
       null,
       targetDashcard.card,
-      // TODO: mapping-options.js/getParameterMappingOptions needs to be converted to typescript as the TS
-      // checker thinks that this parameter should be (null | undefined), not (StoreDashcard/Dashcard | null | undefined)
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
       targetDashcard,
     );
 

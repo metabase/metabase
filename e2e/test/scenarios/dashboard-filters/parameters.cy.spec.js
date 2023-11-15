@@ -13,6 +13,7 @@ import {
   goToTab,
   createNewTab,
   undoToast,
+  setFilter,
 } from "e2e/support/helpers";
 import {
   ORDERS_DASHBOARD_ID,
@@ -626,16 +627,11 @@ describe("scenarios > dashboard > parameters", () => {
           },
         ]).then(dashboardId => {
           visitDashboard(dashboardId);
-          cy.wait("@dashboard");
         });
 
-        cy.icon("pencil").click();
+        editDashboard();
 
-        cy.findByTestId("dashboard-header").icon("filter").click();
-        popover().within(() => {
-          cy.contains("Text or Category").click();
-          cy.findByText("Is").click();
-        });
+        setFilter("Text or Category", "Is");
 
         selectDashboardFilter(getDashboardCard(0), "Name");
 
@@ -672,16 +668,11 @@ describe("scenarios > dashboard > parameters", () => {
           },
         ]).then(dashboardId => {
           visitDashboard(dashboardId);
-          cy.wait("@dashboard");
         });
 
-        cy.icon("pencil").click();
+        editDashboard();
 
-        cy.findByTestId("dashboard-header").icon("filter").click();
-        popover().within(() => {
-          cy.contains("Text or Category").click();
-          cy.findByText("Is").click();
-        });
+        setFilter("Text or Category", "Is");
 
         selectDashboardFilter(getDashboardCard(0), "Name");
 
@@ -734,17 +725,12 @@ describe("scenarios > dashboard > parameters", () => {
             },
           ]).then(dashboardId => {
             visitDashboard(dashboardId);
-            cy.wait("@dashboard");
           });
         });
 
-        cy.icon("pencil").click();
+        editDashboard();
 
-        cy.findByTestId("dashboard-header").icon("filter").click();
-        popover().within(() => {
-          cy.contains("Text or Category").click();
-          cy.findByText("Is").click();
-        });
+        setFilter("Text or Category", "Is");
 
         selectDashboardFilter(getDashboardCard(0), "Name");
 
@@ -782,14 +768,9 @@ describe("scenarios > dashboard > parameters", () => {
             dashboardId,
             save: false,
           });
-          cy.wait("@dashboard");
         });
 
-        cy.findByTestId("dashboard-header").icon("filter").click();
-        popover().within(() => {
-          cy.contains("Text or Category").click();
-          cy.findByText("Is").click();
-        });
+        setFilter("Text or Category", "Is");
 
         addCardToDashboard();
         goToFilterMapping();
@@ -831,17 +812,11 @@ describe("scenarios > dashboard > parameters", () => {
 
         createDashboardWithCards(cards).then(dashboardId => {
           visitDashboard(dashboardId);
-          cy.wait("@dashboard");
         });
 
-        cy.icon("pencil").click();
+        editDashboard();
 
-        cy.findByTestId("dashboard-header").icon("filter").click();
-        popover().within(() => {
-          cy.contains("Text or Category").click();
-          cy.findByText("Is").click();
-        });
-
+        setFilter("Text or Category", "Is");
         addCardToDashboard();
         goToFilterMapping();
 
@@ -884,16 +859,11 @@ describe("scenarios > dashboard > parameters", () => {
 
         createDashboardWithCards(cards).then(dashboardId => {
           visitDashboard(dashboardId);
-          cy.wait("@dashboard");
         });
 
-        cy.icon("pencil").click();
+        editDashboard();
 
-        cy.findByTestId("dashboard-header").icon("filter").click();
-        popover().within(() => {
-          cy.contains("Text or Category").click();
-          cy.findByText("Is").click();
-        });
+        setFilter("Text or Category", "Is");
 
         selectDashboardFilter(getDashboardCard(0), "Name");
 
@@ -935,16 +905,11 @@ describe("scenarios > dashboard > parameters", () => {
 
         createDashboardWithCards(cards).then(dashboardId => {
           visitDashboard(dashboardId);
-          cy.wait("@dashboard");
         });
 
-        cy.icon("pencil").click();
+        editDashboard();
 
-        cy.findByTestId("dashboard-header").icon("filter").click();
-        popover().within(() => {
-          cy.contains("Text or Category").click();
-          cy.findByText("Is").click();
-        });
+        setFilter("Text or Category", "Is");
 
         selectDashboardFilter(getDashboardCard(0), "Name");
         for (let i = 0; i < cards.length; i++) {
@@ -984,16 +949,11 @@ describe("scenarios > dashboard > parameters", () => {
 
         createDashboardWithCards(cards).then(dashboardId => {
           visitDashboard(dashboardId);
-          cy.wait("@dashboard");
         });
 
-        cy.icon("pencil").click();
+        editDashboard();
 
-        cy.findByTestId("dashboard-header").icon("filter").click();
-        popover().within(() => {
-          cy.contains("Text or Category").click();
-          cy.findByText("Is").click();
-        });
+        setFilter("Text or Category", "Is");
 
         selectDashboardFilter(getDashboardCard(0), "Name");
 
