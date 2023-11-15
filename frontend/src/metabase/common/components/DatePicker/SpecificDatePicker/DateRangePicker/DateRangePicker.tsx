@@ -1,7 +1,15 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { t } from "ttag";
-import { Button, DatePicker, Divider, Group, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  DatePicker,
+  Divider,
+  Group,
+  Stack,
+  Text,
+} from "metabase/ui";
 import type { DateValue, DatesRangeValue } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import {
@@ -20,14 +28,87 @@ interface DateRangePickerProps {
 }
 
 export function DateRangePicker({
-  value: [startDate, endDate],
+  value,
   isNew,
   onChange,
   onSubmit,
 }: DateRangePickerProps) {
+  const [startDate, endDate] = value;
   const [hasTime, setHasTime] = useState(
     hasTimeParts(startDate) || hasTimeParts(endDate),
   );
+
+  const handleTimeToggle = () => {
+    setHasTime(!hasTime);
+    onChange([clearTimePart(startDate), clearTimePart(endDate)]);
+  };
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    onSubmit();
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <Box p="md">
+        <DatePickerBody value={value} hasTime={hasTime} onChange={onChange} />
+      </Box>
+      <Divider />
+      <Group p="sm" position="apart">
+        <Button
+          c="text.1"
+          variant="subtle"
+          leftIcon={<Icon name="clock" />}
+          onClick={handleTimeToggle}
+        >
+          {hasTime ? t`Remove time` : t`Add time`}
+        </Button>
+        <Button variant="filled" type="submit">
+          {isNew ? t`Add filter` : t`Update filter`}
+        </Button>
+      </Group>
+    </form>
+  );
+}
+
+interface SimpleDateRangePickerProps {
+  value: [Date, Date];
+  onChange: (value: [Date, Date]) => void;
+}
+
+export function SimpleDateRangePicker({
+  value,
+  onChange,
+}: SimpleDateRangePickerProps) {
+  const [startDate, endDate] = value;
+  const [hasTime, setHasTime] = useState(
+    hasTimeParts(startDate) || hasTimeParts(endDate),
+  );
+
+  const handleTimeToggle = () => {
+    setHasTime(!hasTime);
+    onChange([clearTimePart(startDate), clearTimePart(endDate)]);
+  };
+
+  return (
+    <Stack>
+      <DatePickerBody value={value} hasTime={hasTime} onChange={onChange} />
+      <DatePickerToggle hasTime={hasTime} onToggle={handleTimeToggle} />
+    </Stack>
+  );
+}
+
+interface DatePickerBodyProps {
+  value: [Date, Date];
+  hasTime: boolean;
+  onChange: (value: [Date, Date]) => void;
+}
+
+function DatePickerBody({
+  value: [startDate, endDate],
+  hasTime,
+  onChange,
+}: DatePickerBodyProps) {
   const [hasEndDate, setHasEndDate] = useState(true);
 
   const handleRangeChange = ([newStartDate, newEndDate]: DatesRangeValue) => {
@@ -56,72 +137,64 @@ export function DateRangePicker({
     onChange([startDate, setTimePart(endDate, newTime)]);
   };
 
-  const handleTimeToggle = () => {
-    setHasTime(!hasTime);
-    onChange([clearTimePart(startDate), clearTimePart(endDate)]);
-  };
-
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    onSubmit();
-  };
-
   return (
-    <form onSubmit={handleSubmit}>
-      <Stack p="md">
+    <Stack>
+      <Group align="center">
+        <FlexDateInput
+          value={startDate}
+          popoverProps={{ opened: false }}
+          aria-label={t`Start date`}
+          onChange={handleStartDateChange}
+        />
+        <Text c="text.0">{t`and`}</Text>
+        <FlexDateInput
+          value={endDate}
+          popoverProps={{ opened: false }}
+          aria-label={t`End date`}
+          onChange={handleEndDateChange}
+        />
+      </Group>
+      {hasTime && (
         <Group align="center">
-          <FlexDateInput
+          <FlexTimeInput
             value={startDate}
-            popoverProps={{ opened: false }}
-            aria-label={t`Start date`}
-            onChange={handleStartDateChange}
+            aria-label={t`Start time`}
+            onChange={handleStartTimeChange}
           />
           <Text c="text.0">{t`and`}</Text>
-          <FlexDateInput
+          <FlexTimeInput
             value={endDate}
-            popoverProps={{ opened: false }}
-            aria-label={t`End date`}
-            onChange={handleEndDateChange}
+            aria-label={t`End time`}
+            onChange={handleEndTimeChange}
           />
         </Group>
-        {hasTime && (
-          <Group align="center">
-            <FlexTimeInput
-              value={startDate}
-              aria-label={t`Start time`}
-              onChange={handleStartTimeChange}
-            />
-            <Text c="text.0">{t`and`}</Text>
-            <FlexTimeInput
-              value={endDate}
-              aria-label={t`End time`}
-              onChange={handleEndTimeChange}
-            />
-          </Group>
-        )}
-        <DatePicker
-          type="range"
-          value={[startDate, hasEndDate ? endDate : null]}
-          defaultDate={startDate}
-          numberOfColumns={2}
-          allowSingleDateInRange
-          onChange={handleRangeChange}
-        />
-      </Stack>
-      <Divider />
-      <Group p="sm" position="apart">
-        <Button
-          c="text.1"
-          variant="subtle"
-          leftIcon={<Icon name="clock" />}
-          onClick={handleTimeToggle}
-        >
-          {hasTime ? t`Remove time` : t`Add time`}
-        </Button>
-        <Button variant="filled" type="submit">
-          {isNew ? t`Add filter` : t`Update filter`}
-        </Button>
-      </Group>
-    </form>
+      )}
+      <DatePicker
+        type="range"
+        value={[startDate, hasEndDate ? endDate : null]}
+        defaultDate={startDate}
+        numberOfColumns={2}
+        allowSingleDateInRange
+        onChange={handleRangeChange}
+      />
+    </Stack>
+  );
+}
+
+interface DatePickerToggleProps {
+  hasTime: boolean;
+  onToggle: () => void;
+}
+
+function DatePickerToggle({ hasTime, onToggle }: DatePickerToggleProps) {
+  return (
+    <Button
+      c="text.1"
+      variant="subtle"
+      leftIcon={<Icon name="clock" />}
+      onClick={onToggle}
+    >
+      {hasTime ? t`Remove time` : t`Add time`}
+    </Button>
   );
 }
