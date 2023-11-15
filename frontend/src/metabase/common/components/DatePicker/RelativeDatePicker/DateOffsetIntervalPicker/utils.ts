@@ -67,6 +67,5 @@ function getOffsetUnitText(
   interval: number,
 ) {
   const unitText = Lib.describeTemporalUnit(unit, interval).toLowerCase();
-  const directionText = direction === "last" ? t`ago` : t`from now`;
-  return `${unitText} ${directionText}`;
+  return direction === "last" ? t`${unitText} ago` : t`${unitText} from now`;
 }
