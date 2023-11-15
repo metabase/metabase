@@ -89,12 +89,10 @@ function assertOnTableValues(values) {
 }
 
 function assertOnTimeSeriesFooter(str) {
-  cy.findAllByTestId("select-button-content")
-    .first()
+  cy.findByTestId("timeseries-filter-button")
     .invoke("text")
     .should("eq", "All time");
-  cy.findAllByTestId("select-button-content")
-    .last()
+  cy.findByTestId("timeseries-bucket-button")
     .invoke("text")
     .should("contain", str);
 }

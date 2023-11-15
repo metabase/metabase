@@ -40,6 +40,7 @@ export function TimeseriesFilterPicker({
       <Popover.Target>
         <Button
           rightIcon={<Icon name="chevrondown" />}
+          data-testid="timeseries-filter-button"
           onClick={handleButtonClick}
         >
           {filterInfo ? filterInfo.displayName : t`All time`}

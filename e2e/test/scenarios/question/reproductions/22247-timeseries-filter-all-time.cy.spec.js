@@ -25,9 +25,7 @@ describe("time-series filter widget", () => {
 
     popover().within(() => {
       // Implicit assertion: there is only one select button
-      cy.findByTestId("select-button-content")
-        .invoke("text")
-        .should("eq", "All time");
+      cy.findByRole("combobox").invoke("text").should("eq", "All time");
 
       cy.button("Apply").should("not.be.disabled");
     });
