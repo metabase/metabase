@@ -25,7 +25,7 @@ export function isOffsetIntervalValue(
 }
 
 export function getDirectionDefaultValue(direction: RelativeIntervalDirection) {
-  return setDirection(DEFAULT_VALUE, direction);
+  return setDirectionAndCoerceUnit(DEFAULT_VALUE, direction);
 }
 
 export function getDirection(

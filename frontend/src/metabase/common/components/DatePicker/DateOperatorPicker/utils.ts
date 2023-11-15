@@ -47,25 +47,25 @@ export function getOptionType(value: DatePickerValue | undefined): OptionType {
 
 export function setOptionType(
   value: DatePickerValue | undefined,
-  operatorType: OptionType,
+  optionType: OptionType,
 ): DatePickerValue | undefined {
-  switch (operatorType) {
+  switch (optionType) {
     case "=":
     case ">":
     case "<":
     case "between":
       return value?.type === "specific"
-        ? setOperator(value, operatorType)
-        : getOperatorDefaultValue(operatorType);
+        ? setOperator(value, optionType)
+        : getOperatorDefaultValue(optionType);
     case "last":
     case "next":
     case "current":
       return value?.type === "relative"
-        ? setDirectionAndCoerceUnit(value, operatorType)
-        : getDirectionDefaultValue(operatorType);
+        ? setDirectionAndCoerceUnit(value, optionType)
+        : getDirectionDefaultValue(optionType);
     case "is-null":
     case "not-null":
-      return getExcludeOperatorValue(operatorType);
+      return getExcludeOperatorValue(optionType);
     default:
       return undefined;
   }
