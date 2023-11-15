@@ -29,25 +29,27 @@
     (premium-features-test/with-premium-features #{:serialization}
       (mt/with-empty-h2-app-db
         ;; create a single dummy User to own a Card and a Database for it to reference
-        (let [user (t2/insert! (t2/table-name User)
-                               :email        "nobody@nowhere.com"
-                               :first_name   (mt/random-name)
-                               :last_name    (mt/random-name)
-                               :password     (str (random-uuid))
-                               :date_joined  :%now
-                               :is_active    true
-                               :is_superuser true)
-              db   (t2/insert! (t2/table-name Database)
-                               :name       "Test Database"
-                               :engine     "h2"
-                               :details    "{}"
-                               :created_at :%now
-                               :updated_at :%now)]
+        (let [user  (t2/insert! (t2/table-name User)
+                                :email        "nobody@nowhere.com"
+                                :first_name   (mt/random-name)
+                                :last_name    (mt/random-name)
+                                :password     (str (random-uuid))
+                                :date_joined  :%now
+                                :is_active    true
+                                :is_superuser true)
+              db-id (first (t2/insert-returning-pks!
+                            (t2/table-name Database)
+                            :name       "Test Database"
+                            :engine     "h2"
+                            :details    "{}"
+                            :created_at :%now
+                            :updated_at :%now))]
           ;; then the card itself
+
           (t2/insert! (t2/table-name Card)
                       :name                   "Single Card"
                       :display                "Single Card"
-                      :database_id            (u/the-id db)
+                      :database_id            db-id
                       :dataset_query          "{}"
                       :creator_id             (u/the-id user)
                       :visualization_settings "{}"

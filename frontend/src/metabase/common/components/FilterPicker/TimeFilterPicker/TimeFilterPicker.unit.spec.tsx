@@ -129,6 +129,21 @@ describe("TimeFilterPicker", () => {
       expect(getNextFilterColumnName()).toBe("Time");
     });
 
+    it("should add a filter with one value via keyboard", async () => {
+      const { getNextFilterParts, getNextFilterColumnName } = setup();
+
+      await setOperator("After");
+      const input = screen.getByDisplayValue("00:00");
+      userEvent.type(input, "11:15{enter}");
+
+      expect(getNextFilterParts()).toMatchObject({
+        operator: ">",
+        column: expect.anything(),
+        values: [dayjs("11:15", "HH:mm").toDate()],
+      });
+      expect(getNextFilterColumnName()).toBe("Time");
+    });
+
     it("should add a filter with two values", async () => {
       const { getNextFilterParts, getNextFilterColumnName } = setup();
 
@@ -141,6 +156,25 @@ describe("TimeFilterPicker", () => {
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
+        operator: "between",
+        column: expect.anything(),
+        values: [
+          dayjs("11:15", "HH:mm").toDate(),
+          dayjs("12:30", "HH:mm").toDate(),
+        ],
+      });
+      expect(getNextFilterColumnName()).toBe("Time");
+    });
+
+    it("should add a filter with two values via keyboard", async () => {
+      const { getNextFilterParts, getNextFilterColumnName } = setup();
+
+      await setOperator("Between");
+      const [leftInput, rightInput] = screen.getAllByDisplayValue("00:00");
+      userEvent.type(leftInput, "11:15");
+      userEvent.type(rightInput, "12:30{enter}");
+
+      expect(getNextFilterParts()).toMatchObject({
         operator: "between",
         column: expect.anything(),
         values: [

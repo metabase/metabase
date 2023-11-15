@@ -3,6 +3,14 @@ import moment from "moment-timezone";
 import * as ML from "cljs/metabase.lib.js";
 
 import {
+  isBoolean,
+  isTime,
+  isDate,
+  isCoordinate,
+  isString,
+  isNumeric,
+} from "./column_types";
+import {
   BOOLEAN_FILTER_OPERATORS,
   COORDINATE_FILTER_OPERATORS,
   EXCLUDE_DATE_BUCKETS,
@@ -109,7 +117,11 @@ export function stringFilterParts(
   }
 
   const [column, ...values] = args;
-  if (!isColumnMetadata(column) || !isStringLiteralArray(values)) {
+  if (
+    !isColumnMetadata(column) ||
+    !isString(column) ||
+    !isStringLiteralArray(values)
+  ) {
     return null;
   }
 
@@ -148,7 +160,11 @@ export function numberFilterParts(
   }
 
   const [column, ...values] = args;
-  if (!isColumnMetadata(column) || !isNumberLiteralArray(values)) {
+  if (
+    !isColumnMetadata(column) ||
+    !isNumeric(column) ||
+    !isNumberLiteralArray(values)
+  ) {
     return null;
   }
 
@@ -191,7 +207,7 @@ export function coordinateFilterParts(
   }
 
   const [column, ...otherArgs] = args;
-  if (!isColumnMetadata(column)) {
+  if (!isColumnMetadata(column) || !isCoordinate(column)) {
     return null;
   }
 
@@ -237,7 +253,11 @@ export function booleanFilterParts(
   }
 
   const [column, ...values] = args;
-  if (!isColumnMetadata(column) || !isBooleanLiteralArray(values)) {
+  if (
+    !isColumnMetadata(column) ||
+    !isBoolean(column) ||
+    !isBooleanLiteralArray(values)
+  ) {
     return null;
   }
 
@@ -291,7 +311,11 @@ export function specificDateFilterParts(
   }
 
   const [column, ...serializedValues] = args;
-  if (!isColumnMetadata(column) || !isStringLiteralArray(serializedValues)) {
+  if (
+    !isColumnMetadata(column) ||
+    !isDate(column) ||
+    !isStringLiteralArray(serializedValues)
+  ) {
     return null;
   }
 
@@ -393,7 +417,7 @@ export function excludeDateFilterParts(
   }
 
   const [column, ...serializedValues] = args;
-  if (!isColumnMetadata(column)) {
+  if (!isColumnMetadata(column) || !isDate(column)) {
     return null;
   }
 
@@ -452,7 +476,11 @@ export function timeFilterParts(
   }
 
   const [column, ...serializedValues] = args;
-  if (!isColumnMetadata(column) || !isStringLiteralArray(serializedValues)) {
+  if (
+    !isColumnMetadata(column) ||
+    !isTime(column) ||
+    !isStringLiteralArray(serializedValues)
+  ) {
     return null;
   }
 
@@ -493,15 +521,12 @@ export function filterParts(
   );
 }
 
-export function isCustomFilter(
+export function isStandardFilter(
   query: Query,
   stageIndex: number,
   filter: FilterClause,
 ) {
-  return (
-    !filterParts(query, stageIndex, filter) &&
-    !isSegmentFilter(query, stageIndex, filter)
-  );
+  return filterParts(query, stageIndex, filter) != null;
 }
 
 export function isSegmentFilter(
@@ -509,7 +534,7 @@ export function isSegmentFilter(
   stageIndex: number,
   filter: FilterClause,
 ) {
-  const { operator } = ML.expression_parts(query, stageIndex, filter);
+  const { operator } = expressionParts(query, stageIndex, filter);
   return operator === "segment";
 }
 
@@ -689,6 +714,7 @@ function relativeDateFilterPartsWithoutOffset(
   const [column, value, bucket] = args;
   if (
     !isColumnMetadata(column) ||
+    !isDate(column) ||
     !isNumberOrCurrentLiteral(value) ||
     !isStringLiteral(bucket) ||
     !isRelativeDateBucket(bucket)
@@ -733,6 +759,7 @@ function relativeDateFilterPartsWithOffset(
   const [column, intervalParts] = offsetParts.args;
   if (
     !isColumnMetadata(column) ||
+    !isDate(column) ||
     !isExpression(intervalParts) ||
     intervalParts.operator !== "interval"
   ) {

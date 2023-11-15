@@ -1,10 +1,11 @@
 import { useState, useMemo } from "react";
+import type { FormEvent } from "react";
 import { t } from "ttag";
 import { Box, Flex, NumberInput, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import type { FilterPickerWidgetProps } from "../types";
-import { MAX_WIDTH } from "../constants";
+import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import { getAvailableOperatorOptions } from "../utils";
 import { ColumnValuesWidget } from "../ColumnValuesWidget";
 import { FilterHeader } from "../FilterHeader";
@@ -72,14 +73,21 @@ export function CoordinateFilterPicker({
     setValues(getDefaultValues(operator, values));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
     if (isValid) {
       onChange(getFilterClause(operator, column, secondColumn, values));
     }
   };
 
   return (
-    <Box maw={MAX_WIDTH} data-testid="coordinate-filter-picker">
+    <Box
+      component="form"
+      miw={MIN_WIDTH}
+      maw={MAX_WIDTH}
+      data-testid="coordinate-filter-picker"
+      onSubmit={handleSubmit}
+    >
       <FilterHeader columnName={columnInfo.longDisplayName} onBack={onBack}>
         <FilterOperatorPicker
           value={operator}
@@ -105,11 +113,7 @@ export function CoordinateFilterPicker({
           hasMultipleValues={hasMultipleValues}
           onChange={setValues}
         />
-        <FilterFooter
-          isNew={isNew}
-          canSubmit={isValid}
-          onSubmit={handleSubmit}
-        />
+        <FilterFooter isNew={isNew} canSubmit={isValid} />
       </Box>
     </Box>
   );

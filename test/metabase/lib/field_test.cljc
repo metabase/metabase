@@ -746,8 +746,7 @@
     (let [query  (as-> (meta/table-metadata :orders) <>
                    (lib/query meta/metadata-provider <>)
                    (lib/join <> -1 (->> (meta/table-metadata :people)
-                                        (lib/suggested-join-condition <> -1)
-                                        vector
+                                        (lib/suggested-join-conditions <> -1)
                                         (lib/join-clause (meta/table-metadata :people)))))
           fields [[:field {} (meta/id :orders :id)]
                   [:field {} (meta/id :orders :subtotal)]
@@ -835,8 +834,7 @@
     (let [query  (as-> (meta/table-metadata :orders) <>
                    (lib/query meta/metadata-provider <>)
                    (lib/join <> -1 (->> (meta/table-metadata :people)
-                                        (lib/suggested-join-condition <> -1)
-                                        vector
+                                        (lib/suggested-join-conditions <> -1)
                                         (lib/join-clause (meta/table-metadata :people)))))
           all-columns   (lib/returned-columns query)
           table-columns (lib/fieldable-columns query -1)
@@ -992,8 +990,7 @@
     (let [query  (as-> (meta/table-metadata :orders) <>
                    (lib/query meta/metadata-provider <>)
                    (lib/join <> -1 (->> (meta/table-metadata :people)
-                                        (lib/suggested-join-condition <> -1)
-                                        vector
+                                        (lib/suggested-join-conditions <> -1)
                                         (lib/join-clause (meta/table-metadata :people)))))
           all-columns   (lib/returned-columns query)
           table-columns (lib/fieldable-columns query -1)

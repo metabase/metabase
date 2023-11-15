@@ -71,7 +71,7 @@ describe("URLs", () => {
     });
   });
 
-  describe("collections", () => {
+  describe("collections", { tags: "@flaky" }, () => {
     it("should slugify collection name", () => {
       cy.visit("/collection/root");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

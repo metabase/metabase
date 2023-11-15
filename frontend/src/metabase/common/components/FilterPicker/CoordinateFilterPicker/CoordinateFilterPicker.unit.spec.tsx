@@ -143,6 +143,25 @@ describe("CoordinateFilterPicker", () => {
           expect(getNextFilterColumnNames().column).toBe("User → Latitude");
         },
       );
+
+      it("should add a filter via keyboard", async () => {
+        const { onChange, getNextFilterParts, getNextFilterColumnNames } =
+          setup();
+
+        await setOperator("Greater than");
+        const input = screen.getByPlaceholderText("Enter a number");
+        userEvent.type(input, "{enter}");
+        expect(onChange).not.toHaveBeenCalled();
+
+        userEvent.type(input, "15{enter}");
+        expect(onChange).toHaveBeenCalled();
+        expect(getNextFilterParts()).toMatchObject({
+          operator: ">",
+          column: expect.anything(),
+          values: [15],
+        });
+        expect(getNextFilterColumnNames().column).toBe("User → Latitude");
+      });
     });
 
     describe("with two values", () => {
@@ -198,6 +217,26 @@ describe("CoordinateFilterPicker", () => {
         });
         expect(getNextFilterColumnNames().column).toBe("User → Latitude");
       });
+
+      it("should add a filter via keyboard", async () => {
+        const { onChange, getNextFilterParts, getNextFilterColumnNames } =
+          setup();
+
+        await setOperator("Between");
+        const [leftInput, rightInput] =
+          screen.getAllByPlaceholderText("Enter a number");
+        userEvent.type(leftInput, "5{enter}");
+        expect(onChange).not.toHaveBeenCalled();
+
+        userEvent.type(rightInput, "-10.5{enter}");
+        expect(onChange).toHaveBeenCalled();
+        expect(getNextFilterParts()).toMatchObject({
+          operator: "between",
+          column: expect.anything(),
+          values: [-10.5, 5],
+        });
+        expect(getNextFilterColumnNames().column).toBe("User → Latitude");
+      });
     });
 
     describe("with four values", () => {
@@ -243,6 +282,28 @@ describe("CoordinateFilterPicker", () => {
 
         const filterParts = getNextFilterParts();
         expect(filterParts).toMatchObject({
+          operator: "inside",
+          values: [42, -20, -40, 24],
+          column: expect.anything(),
+        });
+        expect(getNextFilterColumnNames()).toEqual({
+          column: "User → Latitude",
+          longitudeColumn: "User → Longitude",
+        });
+      });
+
+      it("should add a filter via keyboard", async () => {
+        const { onChange, getNextFilterParts, getNextFilterColumnNames } =
+          setup();
+
+        await setOperator("Inside");
+        userEvent.type(screen.getByLabelText("Upper latitude"), "-40");
+        userEvent.type(screen.getByLabelText("Lower latitude"), "42{enter}");
+        expect(onChange).not.toHaveBeenCalled();
+
+        userEvent.type(screen.getByLabelText("Left longitude"), "24");
+        userEvent.type(screen.getByLabelText("Right longitude"), "-20{enter}");
+        expect(getNextFilterParts()).toMatchObject({
           operator: "inside",
           values: [42, -20, -40, 24],
           column: expect.anything(),

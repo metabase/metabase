@@ -1,3 +1,4 @@
+import type { FormEvent } from "react";
 import { t } from "ttag";
 import { Icon } from "metabase/core/components/Icon";
 import {
@@ -66,8 +67,13 @@ export function DateIntervalPicker({
     onChange(setIncludeCurrent(value, !includeCurrent));
   };
 
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    onSubmit();
+  };
+
   return (
-    <div>
+    <form onSubmit={handleSubmit}>
       <Flex p="md">
         <NumberInput
           value={interval}
@@ -79,11 +85,10 @@ export function DateIntervalPicker({
           data={unitOptions}
           value={value.unit}
           aria-label={t`Unit`}
-          withinPortal={false}
           ml="md"
           onChange={handleUnitChange}
         />
-        <Menu withinPortal={false}>
+        <Menu>
           <Menu.Target>
             <Button
               c="text.2"
@@ -118,10 +123,10 @@ export function DateIntervalPicker({
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>
-        <Button variant="filled" onClick={onSubmit}>
+        <Button variant="filled" type="submit">
           {isNew ? t`Add filter` : t`Update filter`}
         </Button>
       </Group>
-    </div>
+    </form>
   );
 }
