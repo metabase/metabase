@@ -38,7 +38,7 @@ describe("issue 21979", () => {
     queryBuilderMain().findByText("Enormous Marble Wallet").should("not.exist");
 
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At excludes Monday")
+      .findByText("Created At excludes Mondays")
       .click();
 
     popover().within(() => {
@@ -53,7 +53,7 @@ describe("issue 21979", () => {
       .should("be.visible");
 
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At excludes Thursday")
+      .findByText("Created At excludes Thursdays")
       .should("be.visible");
   });
 });

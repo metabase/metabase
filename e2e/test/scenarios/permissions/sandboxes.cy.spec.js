@@ -363,7 +363,7 @@ describeEE("formatting > sandboxes", () => {
           expect(xhr.response.body.error).not.to.exist;
         });
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Category is Doohickey");
+        cy.findByText("Product → Category is Doohickey");
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("97.44"); // Subtotal for order #10
       });
@@ -438,7 +438,7 @@ describeEE("formatting > sandboxes", () => {
       cy.wait("@dataset");
       cy.log("Reported failing on v1.36.4");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Category is Doohickey");
+      cy.findByText("Products → Category is Doohickey");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("97.44"); // Subtotal for order #10
     });
