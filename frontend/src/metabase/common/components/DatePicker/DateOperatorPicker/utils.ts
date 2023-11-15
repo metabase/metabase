@@ -2,20 +2,22 @@ import type {
   DatePickerOperator,
   DatePickerValue,
 } from "metabase/common/components/DatePicker";
-import { OPTIONS } from "./constants";
-import type { Option, OptionType } from "./types";
+import { OPERATOR_OPTIONS } from "./constants";
+import type { OperatorOption, OperatorType } from "./types";
 
-export function getAvailableOptions(
+export function getAvailableOperators(
   availableOperators: ReadonlyArray<DatePickerOperator>,
-): Option[] {
-  return OPTIONS.filter(
+): OperatorOption[] {
+  return OPERATOR_OPTIONS.filter(
     option =>
       option.operators.length === 0 ||
       option.operators.some(operator => availableOperators.includes(operator)),
   );
 }
 
-export function getOptionType(value: DatePickerValue | undefined): OptionType {
+export function getOperatorType(
+  value: DatePickerValue | undefined,
+): OperatorType {
   switch (value?.type) {
     case "specific":
       return value.operator;
