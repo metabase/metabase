@@ -7,11 +7,12 @@
    [hiccup.core :as hiccup]
    [metabase.models.card :as card]
    [metabase.models.user :as user]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.subscription.core :as pulse]
    [metabase.subscription.render :as render]
    [metabase.subscription.render.test-util :as render.tu]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.permissions :as qp.perms]))
+   [toucan2.core :as t2]))
 
 ;; taken from https://github.com/aysylu/loom/blob/master/src/loom/io.clj
 (defn- os
