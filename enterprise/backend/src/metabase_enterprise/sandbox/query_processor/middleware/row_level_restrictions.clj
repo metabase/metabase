@@ -337,20 +337,6 @@
 (def ^:private default-recursion-limit 20)
 (def ^:private ^:dynamic *recursion-limit* default-recursion-limit)
 
-(defenterprise is-sandboxed?
-  "Pre-processing for the query execution table. Needs to fetch if a query will be sandboxed before middleware
-  has been run."
-  :feature :sandboxes
-  [query]
-  (let [user-id   (get-in query [:info :executed-by])
-        table-ids (all-table-ids query)
-        group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)
-        sandboxes (when (seq group-ids)
-                    (t2/select :model/GroupTableAccessPolicy :group_id [:in group-ids]
-                               :table_id [:in table-ids]))
-        enforced-sandboxes (mt.api.u/enforced-sandboxes sandboxes group-ids)]
-    (boolean (seq enforced-sandboxes))))
-
 (defenterprise apply-sandboxing
   "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
   restrict the rows returned, based on presence of sandboxes."
@@ -379,20 +365,22 @@
 (defn- merge-metadata
   "Merge column metadata from the non-sandboxed version of the query into the sandboxed results `metadata`. This way the
   final results metadata coming back matches what we'd get if the query was not running in a sandbox."
-  [original-metadata metadata]
+  [{::keys [original-metadata] :as query} metadata]
   (letfn [(merge-cols [cols]
             (let [col-name->expected-col (m/index-by :name original-metadata)]
               (for [col cols]
                 (merge
                  col
                  (get col-name->expected-col (:name col))))))]
-    (update metadata :cols merge-cols)))
+    (-> metadata
+        (update :cols merge-cols)
+        (assoc :is_sandboxed (some? (get-in query [::qp.perms/perms :gtaps]))))))
 
 (defenterprise merge-sandboxing-metadata
   "Post-processing middleware. Merges in column metadata from the original, unsandboxed version of the query."
   :feature :sandboxes
-  [{::keys [original-metadata]} rff]
+  [{::keys [original-metadata] :as query} rff]
   (if original-metadata
     (fn merge-sandboxing-metadata-rff* [metadata]
-      (rff (merge-metadata original-metadata metadata)))
+      (rff (merge-metadata query metadata)))
     rff))

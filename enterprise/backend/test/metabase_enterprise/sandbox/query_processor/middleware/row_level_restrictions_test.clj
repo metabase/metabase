@@ -225,15 +225,6 @@
                                    :strategy     :left-join
                                    :condition    [:= $venue_id &v.venues.id]}]}))))))))
 
-(deftest is-sandboxed-test
-  (testing (str "Adding a GTAP to the all users group to a table makes it such that is-sandboxed? returns true.")
-    (premium-features-test/with-premium-features #{:sandboxes}
-      (t2.with-temp/with-temp [Table                  {table-id :id} {}
-                               GroupTableAccessPolicy _              {:table_id table-id
-                                                                      :group_id (u/the-id (perms-group/all-users))}]
-        (is (row-level-restrictions/is-sandboxed? {:info {:executed-by (mt/user->id :rasta)}
-                                                   :source-table table-id}))))))
-
 (deftest middleware-native-query-test
   (testing "Make sure the middleware does the correct transformation given the GTAPs we have"
     (testing "Should substitute appropriate value in native query"

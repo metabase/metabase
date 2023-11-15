@@ -9,7 +9,6 @@
    [metabase.models.query-execution
     :as query-execution
     :refer [QueryExecution]]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -60,8 +59,11 @@
                                                              (catch Throwable e
                                                                (log/error e (trs "Error saving query execution info"))))))))
 
-(defn- save-successful-query-execution! [cached? query-execution result-rows]
-  (let [qe-map (assoc query-execution :cache_hit (boolean cached?) :result_rows result-rows)]
+(defn- save-successful-query-execution! [cached? is_sandboxed? query-execution result-rows]
+  (let [qe-map (assoc query-execution
+                      :cache_hit (boolean cached?)
+                      :result_rows result-rows
+                      :is_sandboxed is_sandboxed?)]
     (save-query-execution! qe-map)))
 
 (defn- save-failed-query-execution! [query-execution message]
@@ -99,7 +101,7 @@
                                                    :context      (:context execution-info)
                                                    :ignore_cache (get-in execution-info
                                                                          [:json_query :middleware :ignore-cached-results?])}))
-       (save-successful-query-execution! (:cached acc) execution-info @row-count)
+       (save-successful-query-execution! (:cached acc) (get-in acc [:data :is_sandboxed]) execution-info @row-count)
        (rf (if (map? acc)
              (success-response execution-info acc)
              acc)))
@@ -107,13 +109,6 @@
       ([result row]
        (vswap! row-count inc)
        (rf result row)))))
-
-(defenterprise is-sandboxed?
-  "Pre-processing for the query execution table. Needs to fetch if a query will be sandboxed before middleware
-  has been run. Returns false if feature flag is not present."
-  metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
-  [_]
-  false)
 
 (defn- query-execution-info
   "Return the info for the QueryExecution entry for this `query`."
@@ -137,8 +132,7 @@
    :started_at        (t/zoned-date-time)
    :running_time      0
    :result_rows       0
-   :start_time_millis (System/currentTimeMillis)
-   :is_sandboxed      (is-sandboxed? query)})
+   :start_time_millis (System/currentTimeMillis)})
 
 (defn process-userland-query
   "Do extra handling 'userland' queries (i.e. ones ran as a result of a user action, e.g. an API call, scheduled Pulse,
