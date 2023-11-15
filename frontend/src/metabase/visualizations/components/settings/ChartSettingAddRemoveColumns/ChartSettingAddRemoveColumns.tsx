@@ -5,7 +5,7 @@ import { Checkbox, TextInput, Box, Flex, Text } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import type { TableColumnOrderSetting } from "metabase-types/api";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { StackedCheckBox } from "metabase/components/StackedCheckBox/StackedCheckBox";
+
 import type * as Lib from "metabase-lib";
 import type {
   ColumnSetting,
@@ -187,7 +187,9 @@ export const ChartSettingAddRemoveColumns = ({
             {showAddRemoveAll(columnGroup.columns) && (
               <Box mb="1rem">
                 {areAllColumnsInQuery(columnGroup.columns) ? (
-                  <StackedCheckBox
+                  <Checkbox
+                    variant="stacked"
+                    size="xs"
                     label={
                       <Text
                         fw={700}
@@ -201,7 +203,9 @@ export const ChartSettingAddRemoveColumns = ({
                     }
                   />
                 ) : (
-                  <StackedCheckBox
+                  <Checkbox
+                    variant="stacked"
+                    size="xs"
                     label={
                       <Text
                         fw={700}

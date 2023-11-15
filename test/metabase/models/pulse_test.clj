@@ -14,7 +14,6 @@
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -216,25 +215,22 @@
                      Dashboard     {dashboard-id :id} {:collection_id collection-id}
                      Card          {card-id :id :as card} {}
                      DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id :card_id card-id}]
-        (is (schema= {:name          (s/eq "Abnormal Pulse")
-                      :dashboard_id  (s/eq dashboard-id)
-                      :collection_id (s/eq collection-id)
-                      :cards         [(s/one {:dashboard_id      (s/eq dashboard-id)
-                                              :dashboard_card_id (s/eq dashcard-id)
-                                              s/Keyword          s/Any}
-                                             "pulse card")]
-                      s/Keyword      s/Any}
-                     (create-pulse-then-select!
-                      "Abnormal Pulse"
-                      (mt/user->id :rasta)
-                      [(assoc (pulse/card->ref card) :dashboard_card_id dashcard-id)]
-                      [{:channel_type  :email
-                        :schedule_type :daily
-                        :schedule_hour 18
-                        :enabled       true
-                        :recipients    [{:email "foo@bar.com"}]}]
-                      false
-                      dashboard-id)))))))
+        (is (=? {:name          "Abnormal Pulse"
+                 :dashboard_id  dashboard-id
+                 :collection_id collection-id
+                 :cards         [{:dashboard_id      dashboard-id
+                                  :dashboard_card_id dashcard-id}]}
+                (create-pulse-then-select!
+                 "Abnormal Pulse"
+                 (mt/user->id :rasta)
+                 [(assoc (pulse/card->ref card) :dashboard_card_id dashcard-id)]
+                 [{:channel_type  :email
+                   :schedule_type :daily
+                   :schedule_hour 18
+                   :enabled       true
+                   :recipients    [{:email "foo@bar.com"}]}]
+                 false
+                 dashboard-id)))))))
 
 ;; update-pulse!
 ;; basic update.  we are testing several things here

@@ -22,7 +22,6 @@
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -230,12 +229,14 @@
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2}
                    User {user-id :id} {}]
       (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
-        (is (= (count result) 2))
-        (is (schema= [{:card     (s/pred map?)
-                       :dashcard (s/pred map?)
-                       :result   (s/pred map?)
-                       :type     (s/eq :card)}]
-                     result))))))
+        (is (malli= [:sequential
+                     {:min 2, :max 2}
+                     [:map
+                      [:card     :map]
+                      [:dashcard :map]
+                      [:result   :map]
+                      [:type     [:= :card]]]]
+                    result))))))
 
 (deftest ^:parallel execute-dashboard-test-2
   (testing "hides empty card when card.hide_empty is true"

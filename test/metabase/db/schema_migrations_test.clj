@@ -799,17 +799,17 @@
                                                                                  :updated_at :%now
                                                                                  :active     true}))
             field-1-id  (first (t2/insert-returning-pks! (t2/table-name Field) {:name          "F1"
-                                                                                 :table_id      table-id
-                                                                                 :base_type     "type/Text"
-                                                                                 :database_type "TEXT"
-                                                                                 :created_at    :%now
-                                                                                 :updated_at    :%now}))
+                                                                                :table_id      table-id
+                                                                                :base_type     "type/Text"
+                                                                                :database_type "TEXT"
+                                                                                :created_at    :%now
+                                                                                :updated_at    :%now}))
             field-2-id  (first (t2/insert-returning-pks! (t2/table-name Field) {:name          "F2"
-                                                                                 :table_id      table-id
-                                                                                 :base_type     "type/Text"
-                                                                                 :database_type "TEXT"
-                                                                                 :created_at    :%now
-                                                                                 :updated_at    :%now}))
+                                                                                :table_id      table-id
+                                                                                :base_type     "type/Text"
+                                                                                :database_type "TEXT"
+                                                                                :created_at    :%now
+                                                                                :updated_at    :%now}))
             _           (t2/insert! (t2/table-name Dimension) {:field_id   field-1-id
                                                                :name       "F1 D1"
                                                                :type       "internal"
@@ -1235,9 +1235,9 @@
                  (t2/query (str "SELECT 1 FROM " view-name))))))))))
 
 (deftest activity-data-migration-test
-  (testing "Migration v48.00-034"
+  (testing "Migration v48.00-049"
     (mt/test-drivers [:postgres :mysql]
-     (impl/test-migrations ["v48.00-034"] [migrate!]
+     (impl/test-migrations "v48.00-049" [migrate!]
        (create-raw-user! "noah@metabase.com")
        (let [_activity-1 (t2/insert-returning-pks! (t2/table-name :model/Activity)
                                                    {:topic       "card-create"
@@ -1268,7 +1268,7 @@
                 (t2/select-one :model/AuditLog)))))))
 
     (mt/test-drivers [:h2]
-     (impl/test-migrations ["v48.00-034"] [migrate!]
+     (impl/test-migrations "v48.00-049" [migrate!]
        (create-raw-user! "noah@metabase.com")
        (let [_activity-1 (t2/insert-returning-pks! (t2/table-name :model/Activity)
                                                    {:topic       "card-create"
@@ -1298,3 +1298,90 @@
                  :details {:database_id 1
                            :table_id 6}}
                 (t2/select-one :model/AuditLog)))))))))
+
+(deftest inactive-fields-fk-migration-test
+  (testing "Migration v48.00-051"
+    (impl/test-migrations ["v48.00-051"] [migrate!]
+      (let [database-id (first (t2/insert-returning-pks! (t2/table-name Database) {:details   "{}"
+                                                                                   :engine    "h2"
+                                                                                   :is_sample false
+                                                                                   :name      "populate-collection-created-at-test-db"}))
+            table-1-id  (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      database-id
+                                                                                :name       "Table 1"
+                                                                                :created_at :%now
+                                                                                :updated_at :%now
+                                                                                :active     true}))
+            table-2-id  (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      database-id
+                                                                                :name       "Table 2"
+                                                                                :created_at :%now
+                                                                                :updated_at :%now
+                                                                                :active     true}))
+            field-1-id  (first (t2/insert-returning-pks! (t2/table-name Field) {:name          "F1"
+                                                                                :table_id      table-1-id
+                                                                                :base_type     "type/Text"
+                                                                                :database_type "TEXT"
+                                                                                :created_at    :%now
+                                                                                :updated_at    :%now
+                                                                                :active        false}))
+            field-2-id  (first (t2/insert-returning-pks! (t2/table-name Field) {:name               "F2"
+                                                                                :table_id           table-2-id
+                                                                                :base_type          "type/Text"
+                                                                                :database_type      "TEXT"
+                                                                                :created_at         :%now
+                                                                                :updated_at         :%now
+                                                                                :active             true
+                                                                                :fk_target_field_id field-1-id
+                                                                                :semantic_type      "type/FK"}))]
+        (migrate!)
+        (is (=? {:fk_target_field_id nil
+                 :semantic_type      nil}
+                (t2/select-one (t2/table-name :model/Field) :id field-2-id)))))))
+
+(deftest audit-v2-downgrade-test
+  (testing "Migration v48.00-050, and v48.00-54"
+    (impl/test-migrations "v48.00-054" [migrate!]
+      (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
+            _db-audit-id (first (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                          {:name       "Audit DB"
+                                                           :is_audit   true
+                                                           :details    "{}"
+                                                           :engine     "postgres"}))
+            _db-normal-id (first (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                           {:name       "Normal DB"
+                                                            :is_audit   false
+                                                            :details    "{}"
+                                                            :engine     "postgres"}))
+            _coll-analytics-id (first (t2/insert-returning-pks! (t2/table-name :model/Collection)
+                                                                {:name       "Metabase Analytics"
+                                                                 :type       "instance_analytics"
+                                                                 :slug       "metabase_analytics"}))
+            _coll-normal-id (first (t2/insert-returning-pks! (t2/table-name :model/Collection)
+                                                             {:name       "Normal Collection"
+                                                              :type       nil
+                                                              :slug       "normal_collection"}))
+            _internal-user-id (first (t2/insert-returning-pks! :model/User
+                                                               {:id 13371338
+                                                                :first_name "Metabase Internal User"
+                                                                :email "internal@metabase.com"
+                                                                :password (str (random-uuid))}))
+            original-db (t2/query {:datasource data-source} "SELECT * FROM metabase_database")
+            original-collections (t2/query {:datasource data-source}    "SELECT * FROM collection")
+            check-before (fn []
+                           (is (partial= (set (map :name original-db))
+                                         (set (map :name (t2/query {:datasource data-source} "SELECT name FROM metabase_database")))))
+                           (is (partial= (set (map :name original-collections))
+                                         (set (map :name (t2/query {:datasource data-source} "SELECT name FROM collection")))))
+                           (is (= 1 (count (t2/query "SELECT * FROM core_user WHERE id = 13371338")))))]
+
+        (check-before) ;; Verify that data is inserted correctly
+        (migrate!) ;; no-op forward migration
+        (check-before) ;; Verify that forward migration did not change data
+
+        (db.setup/migrate! db-type data-source :down 47)
+
+        ;; Verify that rollback deleted the correct rows
+        (is (= 1 (count (t2/query "SELECT * FROM metabase_database"))))
+        (is (= 1 (count (t2/query "SELECT * FROM collection"))))
+        (is (= 0 (count (t2/query "SELECT * FROM metabase_database WHERE is_audit = TRUE"))))
+        (is (= 0 (count (t2/query "SELECT * FROM collection WHERE type = 'instance_analytics'"))))
+        (is (= 0 (count (t2/query "SELECT * FROM core_user WHERE id = 13371338"))))))))

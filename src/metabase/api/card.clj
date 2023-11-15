@@ -195,6 +195,7 @@
    ignore_view [:maybe :boolean]}
   (let [raw-card (t2/select-one Card :id id)
         card (-> raw-card
+                 api/read-check
                  (t2/hydrate :creator
                              :dashboard_count
                              :parameter_usage_count
@@ -206,7 +207,6 @@
                  collection.root/hydrate-root-collection
                  (cond-> ;; card
                    (:dataset raw-card) (t2/hydrate :persisted))
-                 api/read-check
                  (last-edit/with-last-edit-info :card))]
     (u/prog1 card
       (when-not ignore_view
@@ -762,7 +762,10 @@ saved later when it is ready."
 
   (let [card (t2/select-one Card :id id)]
     (delete-alerts-if-needed! card-before-update card)
-    (events/publish-event! :event/card-update {:object card :user-id api/*current-user-id*})
+    ;; skip publishing the event if it's just a change in its collection position
+    (when-not (= #{:collection_position}
+                 (set (keys card-updates)))
+      (events/publish-event! :event/card-update {:object card :user-id api/*current-user-id*}))
     ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
     ;; has with returned one -- See #4142
     (-> card

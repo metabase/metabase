@@ -6,6 +6,7 @@
    [metabase.config :as config]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
+   [metabase.events :as events]
    [metabase.integrations.slack :as slack]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
@@ -485,6 +486,14 @@
 (defn- parts->notifications [{:keys [channels channel-ids], pulse-id :id, :as pulse} parts]
   (let [channel-ids (or channel-ids (mapv :id channels))]
     (when (should-send-notification? pulse parts)
+      (let [event-type (if (= :pulse (alert-or-pulse pulse))
+                         :event/subscription-send
+                         :event/alert-send)]
+        (events/publish-event! event-type {:id      (:id pulse)
+                                           :user-id (:creator_id pulse)
+                                           :object  {:recipients (map :recipients (:channels pulse))
+                                                     :filters    (:parameters pulse)}}))
+
       (when (:alert_first_only pulse)
         (t2/delete! Pulse :id pulse-id))
       ;; `channel-ids` is the set of channels to send to now, so only send to those. Note the whole set of channels

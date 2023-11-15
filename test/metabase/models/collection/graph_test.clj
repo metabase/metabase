@@ -17,7 +17,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -385,14 +384,10 @@
                        (nice-graph (graph/graph :currency)))))
 
               (testing "A CollectionPermissionGraphRevision recording the *changes* to the perms graph should be saved."
-                (is (schema= {:before   {:namespace (s/eq nil)
-                                         :groups    {(keyword (str group-id)) {:root     (s/eq "none")
-                                                                               s/Keyword s/Any}
-                                                     s/Keyword                s/Any}
-                                         s/Keyword  s/Any}
-                              :after    {(keyword (str group-id)) {:root (s/eq "read")}}
-                              s/Keyword s/Any}
-                             (t2/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]})))))
+                (is (=? {:before {:namespace nil
+                                  :groups    {(keyword (str group-id)) {:root "none"}}}
+                         :after  {(keyword (str group-id)) {:root "read"}}}
+                        (t2/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]})))))
 
             (testing "should be able to update permissions for Root Collection in non-default namespace"
               (graph/update-graph! :currency (assoc (graph/graph :currency) :groups {group-id {:root :write}}))
@@ -404,14 +399,10 @@
                        (nice-graph (graph/graph)))))
 
               (testing "A CollectionPermissionGraphRevision recording the *changes* to the perms graph should be saved."
-                (is (schema= {:before   {:namespace (s/eq "currency")
-                                         :groups    {(keyword (str group-id)) {:root     (s/eq "none")
-                                                                               s/Keyword s/Any}
-                                                     s/Keyword                s/Any}
-                                         s/Keyword  s/Any}
-                              :after    {(keyword (str group-id)) {:root (s/eq "write")}}
-                              s/Keyword s/Any}
-                             (t2/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]})))))))))))
+                (is (=? {:before {:namespace "currency"
+                                  :groups    {(keyword (str group-id)) {:root "none"}}}
+                         :after  {(keyword (str group-id)) {:root "write"}}}
+                        (t2/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]})))))))))))
 
 (defn- do-with-n-temp-users-with-personal-collections! [num-users thunk]
   (mt/with-model-cleanup [User Collection]

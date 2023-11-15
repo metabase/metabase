@@ -33,7 +33,6 @@
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -629,8 +628,8 @@
                                       :checkins {}}
                          :attributes {"venue_id" 1}})
         (let [venues-gtap-card-id (t2/select-one-fn :card_id GroupTableAccessPolicy
-                                                       :group_id (:id &group)
-                                                       :table_id (mt/id :venues))]
+                                                    :group_id (:id &group)
+                                                    :table_id (mt/id :venues))]
           (is (integer? venues-gtap-card-id))
           (testing "GTAP Card should not yet current have result_metadata"
             (is (= nil
@@ -647,17 +646,13 @@
                        :order-by [[:asc $id]]
                        :limit    3})))))
           (testing "After running the query the first time, result_metadata should have been saved for the GTAP Card"
-            (is (schema= [(s/one {:name         (s/eq "ID")
-                                  :base_type    (s/eq :type/BigInteger)
-                                  :display_name (s/eq "ID")
-                                  s/Keyword     s/Any}
-                                 "ID col")
-                          (s/one {:name         (s/eq "NAME")
-                                  :base_type    (s/eq :type/Text)
-                                  :display_name (s/eq "Name")
-                                  s/Keyword     s/Any}
-                                 "NAME col")]
-                         (t2/select-one-fn :result_metadata Card :id venues-gtap-card-id)))))))))
+            (is (=? [{:name         "ID"
+                      :base_type    :type/BigInteger
+                      :display_name "ID"}
+                     {:name         "NAME"
+                      :base_type    :type/Text
+                      :display_name "Name"}]
+                    (t2/select-one-fn :result_metadata Card :id venues-gtap-card-id)))))))))
 
 (defn- do-with-sql-gtap [sql f]
   (met/with-gtaps (mt/$ids
@@ -794,10 +789,9 @@
           (testing "Ok, add remapping and it should still work"
             (mt/with-column-remappings [reviews.product_id products.title]
               (let [result (mt/run-mbql-query reviews {:order-by [[:asc $id]]})]
-                (is (schema= {:status    (s/eq :completed)
-                              :row_count (s/eq 8)
-                              s/Keyword  s/Any}
-                             result))
+                (is (=? {:status    :completed
+                         :row_count 8}
+                        result))
                 (is (= [1
                         1
                         "christ"
@@ -840,22 +834,18 @@
                                       :alias        "products"}]
                        :limit       10})]
           (testing "Should be able to run the query"
-            (is (schema= {:data      {:rows     (s/eq [[nil 5] ["Widget" 6]])
-                                      s/Keyword s/Any}
-                          :status    (s/eq :completed)
-                          :row_count (s/eq 2)
-                          s/Keyword  s/Any}
-                         (qp/process-query query))))
+            (is (=? {:data      {:rows     [[nil 5] ["Widget" 6]]}
+                     :status    :completed
+                     :row_count 2}
+                    (qp/process-query query))))
           (testing "should be able to save the query as a Card and run it"
             (mt/with-temp [Collection {collection-id :id} {}
                            Card       {card-id :id} {:dataset_query query, :collection_id collection-id}]
               (perms/grant-collection-read-permissions! &group collection-id)
-              (is (schema= {:data      {:rows     (s/eq [[nil 5] ["Widget" 6]])
-                                        s/Keyword s/Any}
-                            :status    (s/eq "completed")
-                            :row_count (s/eq 2)
-                            s/Keyword  s/Any}
-                           (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))))))
+              (is (=? {:data      {:rows     [[nil 5] ["Widget" 6]]}
+                       :status    "completed"
+                       :row_count 2}
+                      (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))))))
           (letfn [(test-drill-thru []
                     (testing "Drill-thru question should work"
                       (let [drill-thru-query
@@ -883,16 +873,14 @@
                         (testing "As an admin"
                           (mt/with-test-user :crowberto
                             (test-preprocessing)
-                            (is (schema= {:status    (s/eq :completed)
-                                          :row_count (s/eq 10)
-                                          s/Keyword  s/Any}
-                                         (qp/process-query drill-thru-query)))))
+                            (is (=? {:status    :completed
+                                     :row_count 10}
+                                    (qp/process-query drill-thru-query)))))
                         (testing "As a sandboxed user"
                           (test-preprocessing)
-                          (is (schema= {:status    (s/eq :completed)
-                                        :row_count (s/eq 6)
-                                        s/Keyword  s/Any}
-                                       (qp/process-query drill-thru-query)))))))]
+                          (is (=? {:status    :completed
+                                   :row_count 6}
+                                  (qp/process-query drill-thru-query)))))))]
             (test-drill-thru)
             (mt/with-column-remappings [orders.product_id products.title]
               (test-drill-thru))))))))
@@ -915,20 +903,13 @@
                                    :order-by    [[:asc $product_id->products.category]]
                                    :limit       5})]
                       (letfn [(test-metadata []
-                                (is (schema= {:status   (s/eq :completed)
-                                              :data     {:results_metadata
-                                                         {:columns  [(s/one {:name      (s/eq "CATEGORY")
-                                                                             :field_ref (s/eq (mt/$ids $orders.product_id->products.category))
-                                                                             s/Keyword  s/Any}
-                                                                            "results metadata for products.category")
-                                                                     (s/one {:name      (s/eq "count")
-                                                                             :field_ref (s/eq [:aggregation 0])
-                                                                             s/Keyword  s/Any}
-                                                                            "results metadata for count aggregation")]
-                                                          s/Keyword s/Any}
-                                                         s/Keyword s/Any}
-                                              s/Keyword s/Any}
-                                             (qp/process-query query))))]
+                                (is (=? {:status :completed
+                                         :data   {:results_metadata
+                                                  {:columns [{:name      "CATEGORY"
+                                                              :field_ref (mt/$ids $orders.product_id->products.category)}
+                                                             {:name      "count"
+                                                              :field_ref [:aggregation 0]}]}}}
+                                        (qp/process-query query))))]
                         (testing "as an admin"
                           (mt/with-test-user :crowberto
                             (test-metadata)))
@@ -936,12 +917,11 @@
                           (test-metadata)))))
                   (testing "Drill-thru question should work"
                     (letfn [(test-drill-thru-query []
-                              (is (schema= {:status   (s/eq :completed)
-                                            s/Keyword s/Any}
-                                           (mt/run-mbql-query orders
-                                             {:filter   [:= $product_id->products.category "Doohickey"]
-                                              :order-by [[:asc $product_id->products.category]]
-                                              :limit    5}))))]
+                              (is (=? {:status :completed}
+                                      (mt/run-mbql-query orders
+                                        {:filter   [:= $product_id->products.category "Doohickey"]
+                                         :order-by [[:asc $product_id->products.category]]
+                                         :limit    5}))))]
                       (testing "as admin"
                         (mt/with-test-user :crowberto
                           (test-drill-thru-query)))

@@ -11,7 +11,6 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn run-query-for-card
@@ -134,15 +133,14 @@
   (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (field-filter-query)}]
     (testing "Should disallow parameters that aren't actually part of the Card"
       (testing "As an API request"
-        (is (schema= {:message            #"Invalid parameter: Card [\d,]+ does not have a template tag named \"fake\".+"
-                      :invalid-parameter  (s/eq {:id "_FAKE_", :name "fake", :type "date/single", :value "2016-01-01"})
-                      :allowed-parameters (s/eq ["date"])
-                      s/Keyword           s/Any}
-                     (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
-                                           {:parameters [{:id    "_FAKE_"
-                                                          :name  "fake"
-                                                          :type  :date/single
-                                                          :value "2016-01-01"}]})))))))
+        (is (=? {:message            #"Invalid parameter: Card [\d,]+ does not have a template tag named \"fake\".+"
+                 :invalid-parameter  {:id "_FAKE_", :name "fake", :type "date/single", :value "2016-01-01"}
+                 :allowed-parameters ["date"]}
+                (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
+                                      {:parameters [{:id    "_FAKE_"
+                                                     :name  "fake"
+                                                     :type  :date/single
+                                                     :value "2016-01-01"}]})))))
 
 (deftest ^:parallel validate-card-parameters-test-3
   (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (field-filter-query)}]

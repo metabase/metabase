@@ -15,7 +15,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -109,7 +108,7 @@
      :num_by_latency (frequencies (for [{latency :running_time} executions]
                                     (#'stats/bin-large-number (/ latency 1000))))}))
 
-(def ^:private query-execution-defaults
+(def query-execution-defaults
   {:hash         (qp.util/query-hash {})
    :running_time 1
    :result_rows  1
@@ -186,33 +185,36 @@
                            PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}
                            PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}
                            PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}]
-    (letfn [(>= [n]
-              (s/pred #(clojure.core/>= % n) (format ">= %s" n)))]
-      (is (schema= {:pulses               (>= 3)
-                    :with_table_cards     (>= 2)
-                    :pulse_types          {(s/required-key "slack") (>= 1)
-                                           (s/required-key "email") (>= 2)}
-                    :pulse_schedules      {(s/required-key "daily")  (>= 2)
-                                           (s/required-key "weekly") (>= 1)}
-                    :num_pulses_per_user  {(s/required-key "1-5") (>= 1)
-                                           s/Str                  s/Any}
-                    :num_pulses_per_card  {(s/required-key "6-10") (>= 1)
-                                           s/Str                   s/Any}
-                    :num_cards_per_pulses {(s/required-key "1-5")  (>= 1)
-                                           (s/required-key "6-10") (>= 1)
-                                           s/Str                   s/Any}}
-                   (#'stats/pulse-metrics)))
-      (is (schema= {:alerts               (>= 4)
-                    :with_table_cards     (>= 2)
-                    :first_time_only      (>= 1)
-                    :above_goal           (>= 1)
-                    :alert_types          {(s/required-key "slack") (>= 2)
-                                           (s/required-key "email") (>= 2)}
-                    :num_alerts_per_user  {(s/required-key "1-5") (>= 1)
-                                           s/Str                  s/Any}
-                    :num_alerts_per_card  {(s/required-key "11-25") (>= 1)
-                                           s/Str                    s/Any}
-                    :num_cards_per_alerts {(s/required-key "1-5")  (>= 1)
-                                           (s/required-key "6-10") (>= 1)
-                                           s/Str                   s/Any}}
-                   (#'stats/alert-metrics))))))
+    (is (malli= [:map
+                 [:pulses               [:int {:min 3}]]
+                 [:with_table_cards     [:int {:min 2}]]
+                 [:pulse_types          [:map
+                                         ["slack" [:int {:min 1}]]
+                                         ["email" [:int {:min 2}]]]]
+                 [:pulse_schedules      [:map
+                                         ["daily"  [:int {:min 2}]]
+                                         ["weekly" [:int {:min 1}]]]]
+                 [:num_pulses_per_user  [:map
+                                         ["1-5" [:int {:min 1}]]]]
+                 [:num_pulses_per_card  [:map
+                                         ["6-10" [:int {:min 1}]]]]
+                 [:num_cards_per_pulses [:map
+                                         ["1-5"  [:int {:min 1}]]
+                                         ["6-10" [:int {:min 1}]]]]]
+                (#'stats/pulse-metrics)))
+    (is (malli= [:map
+                 [:alerts               [:int {:min 4}]]
+                 [:with_table_cards     [:int {:min 2}]]
+                 [:first_time_only      [:int {:min 1}]]
+                 [:above_goal           [:int {:min 1}]]
+                 [:alert_types          [:map
+                                         ["slack" [:int {:min 2}]]
+                                         ["email" [:int {:min 2}]]]]
+                 [:num_alerts_per_user  [:map
+                                         ["1-5" [:int {:min 1}]]]]
+                 [:num_alerts_per_card  [:map
+                                         ["11-25" [:int {:min 1}]]]]
+                 [:num_cards_per_alerts [:map
+                                         ["1-5"  [:int {:min 1}]]
+                                         ["6-10" [:int {:min 1}]]]]]
+                (#'stats/alert-metrics)))))

@@ -4,7 +4,7 @@
    [clojure.data :as data]
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [metabase-enterprise.serialization.cmd :refer [v1-dump v1-load]]
+   [metabase-enterprise.serialization.cmd :refer [v1-dump! v1-load!]]
    [metabase-enterprise.serialization.load :as load]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase.models
@@ -327,7 +327,7 @@
                                :bigquery-cloud-sdk))
       (premium-features-test/with-premium-features #{:serialization}
         (let [fingerprint (ts/with-world
-                            (v1-dump dump-dir {:user        (:email (test.users/fetch-user :crowberto))
+                            (v1-dump! dump-dir {:user        (:email (test.users/fetch-user :crowberto))
                                                :only-db-ids #{db-id}})
                             {:query-results (gather-orig-results [card-id
                                                                   card-arch-id
@@ -407,7 +407,7 @@
                                              [Card               (t2/select-one Card :id card-join-card-id)]
                                              [Card               (t2/select-one Card :id card-id-pivot-table)]]})]
           (with-world-cleanup
-            (v1-load dump-dir {:on-error :continue :mode :skip})
+            (v1-load! dump-dir {:on-error :continue :mode :skip})
             (mt/with-db (t2/select-one Database :name ts/temp-db-name)
               (doseq [[model entity] (:entities fingerprint)]
                 (testing (format "%s \"%s\"" (type model) (:name entity))

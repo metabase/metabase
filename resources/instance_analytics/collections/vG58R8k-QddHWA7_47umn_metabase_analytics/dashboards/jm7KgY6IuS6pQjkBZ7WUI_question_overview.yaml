@@ -113,7 +113,7 @@ dashcards:
   entity_id: d6fgUU6_hAqWj_ngoJea_
   visualization_settings:
     column_settings: null
-  size_y: 6
+  size_y: 12
   created_at: '2023-11-01T02:47:47.57613Z'
   row: 13
 - size_x: 24

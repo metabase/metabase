@@ -175,24 +175,20 @@
     (perms/grant-permissions! (perms-group/all-users) (mt/id) "PUBLIC" (mt/id :venues))
     (testing (str "If someone doesn't have native query execution permissions, they shouldn't see the native version of "
                   "the query in the error response")
-      (is (malli= [:map
-                   [:native       :nil]
-                   [:preprocessed :map]]
-                  (test.users/with-test-user :rasta
-                    (qp/process-query
-                     (qp/userland-query
-                      (mt/mbql-query venues {:fields [!month.id]})))))))
+      (is (=? {:native nil, :preprocessed map?}
+              (test.users/with-test-user :rasta
+                (qp/process-query
+                 (qp/userland-query
+                  (mt/mbql-query venues {:fields [!month.id]})))))))
 
     (testing "They should see it if they have ad-hoc native query perms"
       (perms/grant-native-readwrite-permissions! (perms-group/all-users) (mt/id))
       ;; this is not actually a valid query
-      (is (malli= [:map
-                   [:native       [:map
-                                   [:query  [:= (str "SELECT DATE_TRUNC('month', \"PUBLIC\".\"VENUES\".\"ID\") AS \"ID\""
-                                                     " FROM \"PUBLIC\".\"VENUES\" LIMIT 1048575")]]
-                                   [:params :nil]]]
-                   [:preprocessed :map]]
-                  (test.users/with-test-user :rasta
-                    (qp/process-query
-                     (qp/userland-query
-                      (mt/mbql-query venues {:fields [!month.id]})))))))))
+      (is (=? {:native       {:query  (str "SELECT DATE_TRUNC('month', \"PUBLIC\".\"VENUES\".\"ID\") AS \"ID\""
+                                           " FROM \"PUBLIC\".\"VENUES\" LIMIT 1048575")
+                              :params nil}
+               :preprocessed map?}
+              (test.users/with-test-user :rasta
+                (qp/process-query
+                 (qp/userland-query
+                  (mt/mbql-query venues {:fields [!month.id]})))))))))

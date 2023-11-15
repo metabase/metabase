@@ -5,6 +5,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -124,10 +125,30 @@
            ["My favorite number is 86"   "My favorite number is 86"   vchar-type]
            ;; Date-related
            [" 2022-01-01 "                    #t "2022-01-01"             date-type]
+           [" 2022-01-01T01:00 "              #t "2022-01-01T01:00"       datetime-type]
+           [" 2022-01-01t01:00 "              #t "2022-01-01T01:00"       datetime-type]
+           [" 2022-01-01 01:00 "              #t "2022-01-01T01:00"       datetime-type]
            [" 2022-01-01T01:00:00 "           #t "2022-01-01T01:00"       datetime-type]
+           [" 2022-01-01t01:00:00 "           #t "2022-01-01T01:00"       datetime-type]
+           [" 2022-01-01 01:00:00 "           #t "2022-01-01T01:00"       datetime-type]
            [" 2022-01-01T01:00:00.00 "        #t "2022-01-01T01:00"       datetime-type]
+           [" 2022-01-01t01:00:00.00 "        #t "2022-01-01T01:00"       datetime-type]
+           [" 2022-01-01 01:00:00.00 "        #t "2022-01-01T01:00"       datetime-type]
            [" 2022-01-01T01:00:00.000000000 " #t "2022-01-01T01:00"       datetime-type]
-           [" 2022-01-01T01:00:00.00-07:00 "  #t "2022-01-01T01:00-07:00" offset-dt-type]]]
+           [" 2022-01-01t01:00:00.000000000 " #t "2022-01-01T01:00"       datetime-type]
+           [" 2022-01-01 01:00:00.000000000 " #t "2022-01-01T01:00"       datetime-type]
+           [" 2022-01-01T01:00:00.00-07 "     #t "2022-01-01T01:00-07:00" offset-dt-type]
+           [" 2022-01-01t01:00:00.00-07 "     #t "2022-01-01T01:00-07:00" offset-dt-type]
+           [" 2022-01-01 01:00:00.00-07 "     #t "2022-01-01T01:00-07:00" offset-dt-type]
+           [" 2022-01-01T01:00:00.00-07:00 "  #t "2022-01-01T01:00-07:00" offset-dt-type]
+           [" 2022-01-01t01:00:00.00-07:00 "  #t "2022-01-01T01:00-07:00" offset-dt-type]
+           [" 2022-01-01 01:00:00.00-07:00 "  #t "2022-01-01T01:00-07:00" offset-dt-type]
+           [" 2022-01-01T01:00:00.00-07:00 "  #t "2022-01-01T01:00-07:00" offset-dt-type]
+           [" 2022-01-01t01:00:00.00-07:00 "  #t "2022-01-01T01:00-07:00" offset-dt-type]
+           [" 2022-01-01 01:00:00.00-07:00 "  #t "2022-01-01T01:00-07:00" offset-dt-type]
+           [" 2022-01-01T01:00:00.00Z "       (t/offset-date-time "2022-01-01T01:00+00:00") offset-dt-type]
+           [" 2022-01-01t01:00:00.00Z "       (t/offset-date-time "2022-01-01T01:00+00:00") offset-dt-type]
+           [" 2022-01-01 01:00:00.00Z "       (t/offset-date-time "2022-01-01T01:00+00:00") offset-dt-type]]]
     (mt/with-temporary-setting-values [custom-formatting (when seps {:type/Number {:number_separators seps}})]
       (let [type   (upload/value->type string-value)
             parser (#'upload-parsing/upload-type->parser type)]
@@ -431,7 +452,9 @@
            "upload_test"
            (csv-file-with ["datetime"
                            "2022-01-01"
-                           "2022-01-01T00:00:00"])))
+                           "2022-01-01 00:00"
+                           "2022-01-01T00:00:00"
+                           "2022-01-01T00:00"])))
         (testing "Fields exists after sync"
           (sync/sync-database! (mt/db))
           (let [table (t2/select-one Table :db_id (mt/id))]

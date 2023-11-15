@@ -5,8 +5,7 @@
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.test :as mt]
-   [schema.core :as s]))
+   [metabase.test :as mt]))
 
 (deftest preprocess-caching-test
   (testing "`preprocess` should work the same even if query has cached results (#18579)"
@@ -23,9 +22,8 @@
                                     :num-rows (count (mt/rows results))}))
               expected-results (qp.preprocess/preprocess query)]
           (testing "Check preprocess before caching to make sure results make sense"
-            (is (schema= {:database (s/eq (mt/id))
-                          s/Keyword s/Any}
-                         expected-results)))
+            (is (=? {:database (mt/id)}
+                    expected-results)))
           (testing "Run the query a few of times so we know it's cached"
             (testing "first run"
               (is (= {:cached?  false
