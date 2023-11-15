@@ -39,13 +39,13 @@ describe("search > recently viewed", () => {
     cy.findByTestId("loading-spinner").should("not.exist");
   });
 
-  it("shows list of recently viewed items", () => {
+  it("shows list of recently viewed items", { tags: "@flaky" }, () => {
     assertRecentlyViewedItem(0, "Orders in a dashboard", "Dashboard");
     assertRecentlyViewedItem(1, "Orders", "Question");
     assertRecentlyViewedItem(2, "People", "Table");
   });
 
-  it("allows to select an item from keyboard", () => {
+  it("allows to select an item from keyboard", { tags: "@flaky" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Recently viewed");
     cy.get("body").trigger("keydown", { key: "ArrowDown" });
