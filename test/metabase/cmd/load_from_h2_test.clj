@@ -89,8 +89,12 @@
           (throw (ex-info "no changesets found" {})))))))
 
 (def ^:private current-major-version
-  (delay (or (config/current-major-version)
-             (liquibase-latest-major-version))))
+  ;; We are interested in the latest version we started preparing
+  ;; and we assume that every version has database migrations.
+  ;; (Downgrading and upgrading between versions with identical
+  ;; databases is trivial, so the difference is probably not really
+  ;; interesting.)
+  (delay (liquibase-latest-major-version)))
 
 (defn- migrate-down-then-up-and-create-dump
   [db-name h2-filename version]
@@ -102,7 +106,7 @@
     (create-current-database db-type db-def data-source)
     (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source)]
       (mt/dataset bird-flocks
-          ;; make sure the data is there
+        ;; make sure the data is there
         (is (= 18 (ffirst (mt/formatted-rows [int]
                                              (mt/run-mbql-query bird
                                                {:aggregation [[:count]]})))))
@@ -113,9 +117,9 @@
               (liquibase/with-liquibase [liquibase conn]
                 (liquibase/rollback-major-version db-type conn liquibase version))))
           (log/info "creating dump" filename)
-            ;; this migrates the DB back to the newest and creates a dump
+          ;; this migrates the DB back to the newest and creates a dump
           (dump-to-h2/dump-to-h2! filename)
-            ;; check if after a down and up migration we can still run a query
+          ;; check if after a down and up migration we can still run a query
           (is (= 18 (ffirst (mt/formatted-rows [int]
                                                (mt/run-mbql-query bird
                                                  {:aggregation [[:count]]}))))))))))
@@ -144,7 +148,8 @@
       (let [h2-filename (str dir "/dump")
             current-version (or @current-major-version
                                 (throw (ex-info "Couldn't determine current major version" {})))
-            versions (range current-version (- current-version 4) -1)]
+            supported-downgrades 4
+            versions (range current-version (- current-version supported-downgrades) -1)]
         (doseq [version versions]
           (migrate-down-then-up-and-create-dump "load-test-source" h2-filename version)
           (load-dump "load-test-target" h2-filename version))))))
