@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase.api.user :as api.user]
    [metabase.config :as config]
-   [metabase.events.audit-log-test :as audit-log-test]
    [metabase.http-client :as client]
    [metabase.models
     :refer [Card Collection Dashboard LoginHistory PermissionsGroup

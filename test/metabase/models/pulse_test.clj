@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.events.audit-log-test :as audit-log-test]
    [metabase.models
     :refer [Card Collection Dashboard DashboardCard Database Pulse PulseCard
             PulseChannel PulseChannelRecipient Table User]]

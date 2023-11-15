@@ -5,7 +5,6 @@
    [environ.core :as env]
    [medley.core :as m]
    [metabase.db.query :as mdb.query]
-   [metabase.models.audit-log :as audit-log]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
    [metabase.models.setting.cache :as setting.cache]
