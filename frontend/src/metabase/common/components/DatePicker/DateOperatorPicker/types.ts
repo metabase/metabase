@@ -1,9 +1,9 @@
-import type { DatePickerIntervalDirection, DatePickerOperator } from "../types";
+import type { RelativeIntervalDirection, DatePickerOperator } from "../types";
 
 export type OperatorType =
   | "none"
   | DatePickerOperator
-  | DatePickerIntervalDirection;
+  | RelativeIntervalDirection;
 
 export interface OperatorOption {
   label: string;

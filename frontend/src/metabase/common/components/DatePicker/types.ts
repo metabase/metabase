@@ -57,4 +57,4 @@ export type DatePickerValue =
 
 export type DatePickerValueType = DatePickerValue["type"];
 
-export type DatePickerIntervalDirection = "last" | "current" | "next";
+export type RelativeIntervalDirection = "last" | "current" | "next";
