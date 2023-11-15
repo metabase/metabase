@@ -1319,4 +1319,3 @@
                   :topic    topic
                   :model_id model-id
                   {:order-by [[:id :desc]]})))
-
