@@ -262,11 +262,16 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
   });
 
   it("should correctly apply breakout in query builder (metabase#14648)", () => {
-    const options = { timeout: 10000 };
-
     cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
 
-    getDashboardCards().contains("18,760", options).click();
+    // wait for data from all dashcards to be sure data is loaded
+    const NUMBER_OF_DASHCARDS = 16;
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.wait(Cypress._.times(NUMBER_OF_DASHCARDS, () => "@dataset"));
+    // in case number of dashcards is changed in the future
+    cy.wait("@dataset.all").should("have.length", NUMBER_OF_DASHCARDS);
+
+    getDashboardCards().contains("18,760").click();
 
     popover().within(() => {
       cy.findByText("Break out by…").click();
