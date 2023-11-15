@@ -1,6 +1,7 @@
 (ns ^:mb/once metabase-enterprise.serialization.v2.extract-test
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.serialization.test-util :as ts]
@@ -1574,16 +1575,24 @@
                        Dashboard     {dash-id :id}  {:name "A Dashboard" :collection_id coll1-id}
                        Card          {card1-id :id} {:name "Some Card"}
                        DashboardCard _              {:card_id card1-id :dashboard_id dash-id}
-                       Card          _              {:name "Dependent Card" :collection_id coll2-id
+                       Card          _              {:name          "Dependent Card"
+                                                     :collection_id coll2-id
                                                      :dataset_query {:query {:source-table (str "card__" card1-id)
-                                                                             :aggregation [[:count]]}}}]
+                                                                             :aggregation  [[:count]]}}}]
       (testing "Complain about card to available for exporting"
-        (is (= 1
-               (count
-                (mt/with-log-messages-for-level ['metabase-enterprise :warn]
-                  (extract/extract {:targets [["Collection" coll1-id]] :no-settings true :no-data-model true}))))))
+        (is (some #(str/starts-with? % "Failed to export Dashboard")
+                  (into #{}
+                        (map (fn [[_log-level _error message]] message))
+                        (mt/with-log-messages-for-level ['metabase-enterprise :warn]
+                          (extract/extract {:targets       [["Collection" coll1-id]]
+                                            :no-settings   true
+                                            :no-data-model true}))))))
+
       (testing "Complain about card depending on a card"
-        (is (= 1
-               (count
-                (mt/with-log-messages-for-level ['metabase-enterprise :warn]
-                  (extract/extract {:targets [["Collection" coll2-id]] :no-settings true :no-data-model true})))))))))
+        (is (some #(str/starts-with? % "Failed to export Cards")
+                  (into #{}
+                        (map (fn [[_log-level _error message]] message))
+                        (mt/with-log-messages-for-level ['metabase-enterprise :warn]
+                          (extract/extract {:targets       [["Collection" coll2-id]]
+                                            :no-settings   true
+                                            :no-data-model true})))))))))
