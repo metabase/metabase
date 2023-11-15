@@ -463,7 +463,9 @@
   (-> (assoc (collection/effective-children-query
               collection
               [:= :archived archived?]
-              [:= :namespace (u/qualified-name collection-namespace)]
+              [:or
+               [:= :namespace "analytics"]
+               [:= :namespace (u/qualified-name collection-namespace)]]
               (snippets-collection-filter-clause))
              ;; We get from the effective-children-query a normal set of columns selected:
              ;; want to make it fit the others to make UNION ALL work
