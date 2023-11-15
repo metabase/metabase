@@ -1,20 +1,12 @@
-import type {
-  ColumnDisplayInfo,
-  ColumnMetadata,
-  FilterClause,
-  ExpressionClause,
-  SegmentDisplayInfo,
-  SegmentMetadata,
-  Query,
-} from "metabase-lib/types";
+import type * as Lib from "metabase-lib/types";
 
 export interface FilterPickerWidgetProps {
-  query: Query;
+  query: Lib.Query;
   stageIndex: number;
-  column: ColumnMetadata;
-  filter?: FilterClause;
+  column: Lib.ColumnMetadata;
+  filter?: Lib.FilterClause;
   isNew: boolean;
-  onChange: (filter: ExpressionClause) => void;
+  onChange: (filter: Lib.ExpressionClause) => void;
   onBack: () => void;
 }
 
@@ -26,10 +18,10 @@ export interface PickerOperatorOption<Operator> {
   name?: string;
 }
 
-export type ColumnListItem = ColumnDisplayInfo & {
-  column: ColumnMetadata;
+export type ColumnListItem = Lib.ColumnDisplayInfo & {
+  column: Lib.ColumnMetadata;
 };
 
-export type SegmentListItem = SegmentDisplayInfo & {
-  segment: SegmentMetadata;
+export type SegmentListItem = Lib.SegmentDisplayInfo & {
+  segment: Lib.SegmentMetadata;
 };

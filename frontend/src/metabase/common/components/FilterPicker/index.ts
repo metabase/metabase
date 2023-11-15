@@ -1,1 +1,2 @@
-export * from "./FilterPicker";
+export { FilterPicker } from "./FilterPicker";
+export { SimpleDateFilterPicker } from "./DateFilterPicker";
