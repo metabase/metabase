@@ -84,7 +84,9 @@
   (as-> (t2/select Collection
                    {:where    [:and
                                [:= :archived archived]
-                               [:= :namespace namespace]
+                               [:or
+                                [:= :namespace namespace]
+                                [:= :namespace "analytics"]]
                                (collection/visible-collection-ids->honeysql-filter-clause
                                 :id
                                 (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
@@ -109,6 +111,7 @@
     (for [collection collections]
       (-> collection
           (dissoc ::collection.root/is-root?)
+          (dissoc :namespace)
           collection/personal-collection-with-ui-details))))
 
 (api/defendpoint GET "/tree"
@@ -150,7 +153,9 @@
                   {:where [:and
                            (when exclude-archived?
                              [:= :archived false])
-                           [:= :namespace namespace]
+                           [:or
+                            [:= :namespace "analytics"]
+                            [:= :namespace namespace]]
                            (collection/visible-collection-ids->honeysql-filter-clause
                             :id
                             (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
