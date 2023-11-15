@@ -3902,6 +3902,21 @@ databaseChangeLog:
             sql: drop view if exists v_view_log;
 
   - changeSet:
+      id: v48.00-045
+      author: qwef
+      comment: Added 0.48.0 - add is_sandboxed to query_execution
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: is_sandboxed
+                  type: boolean
+                  remarks: "Is query from a sandboxed user"
+                  constraints:
+                    nullable: true
+
+  - changeSet:
       id: v48.00-046
       author: noahmoss
       comment: Added 0.48.0 - new indexes to optimize audit v2 queries
