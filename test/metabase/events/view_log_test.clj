@@ -8,7 +8,8 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(defn- latest-view
+(defn latest-view
+  "Returns the most recent view for a given user and model ID"
   [user-id model-id]
   (t2/select-one :model/ViewLog
                  :user_id user-id

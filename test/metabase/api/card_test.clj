@@ -19,6 +19,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
+   [metabase.events.view-log-test :as view-log-test]
    [metabase.http-client :as client]
    [metabase.models
     :refer [CardBookmark
@@ -40,7 +41,8 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
@@ -3118,3 +3120,14 @@
                              "event"       "csv_upload_failed"}
                       :user-id (str (mt/user->id :rasta))}
                      (last (snowplow-test/pop-event-data-and-user-id!)))))))))))
+
+(deftest card-read-event-test
+  (testing "Card reads (views) via the API are recorded in the view_log"
+    (t2.with-temp/with-temp [:model/Card card {:name "My Cool Card" :dataset false}]
+      (testing "GET /api/card/:id"
+        (mt/user-http-request :crowberto :get 200 (format "card/%s" (u/id card)))
+        (is (partial=
+             {:user_id  (mt/user->id :crowberto)
+              :model    "Card"
+              :model_id (u/id card)}
+             (view-log-test/latest-view (mt/user->id :crowberto) (u/id card))))))))
