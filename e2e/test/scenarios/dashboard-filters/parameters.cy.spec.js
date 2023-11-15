@@ -837,7 +837,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       it("in case of two autowiring undo toast, the second one should last the default timeout of 5s", () => {
-        // The autowiring undo toasts use th same id, a bug caused the second toast to be dismissed by the
+        // The autowiring undo toasts use the same id, a bug in the undo logic caused the second toast to be dismissed by the
         // timeout set by the first. See https://github.com/metabase/metabase/pull/35461#pullrequestreview-1731776862
         const cardTemplate = {
           card_id: ORDERS_BY_YEAR_QUESTION_ID,
