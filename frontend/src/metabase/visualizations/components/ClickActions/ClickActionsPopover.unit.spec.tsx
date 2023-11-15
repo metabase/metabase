@@ -470,6 +470,15 @@ describe("ClickActionsPopover", function () {
     describe("ObjectDetailsZoomDrill", () => {
       it.each([
         {
+          column: ORDERS_COLUMNS.ID,
+          columnName: ORDERS_COLUMNS.ID.name,
+          cellValue: ORDERS_ROW_VALUES.ID,
+          expectedAction: {
+            type: ZOOM_IN_ROW,
+            payload: { objectId: ORDERS_ROW_VALUES.ID },
+          },
+        },
+        {
           column: ORDERS_COLUMNS.TOTAL,
           columnName: ORDERS_COLUMNS.TOTAL.name,
           cellValue: ORDERS_ROW_VALUES.TOTAL,
@@ -592,6 +601,54 @@ describe("ClickActionsPopover", function () {
         columnName: keyof typeof ORDERS_COLUMNS_WITH_MULTIPLE_PK;
         expectedCard: Partial<Card>;
       }>([
+        {
+          columnName: "USER_ID",
+          expectedCard: {
+            dataset_query: {
+              database: SAMPLE_DB_ID,
+              query: {
+                filter: [
+                  "=",
+                  [
+                    "field",
+                    ORDERS.USER_ID,
+                    {
+                      "base-type": "type/Integer",
+                    },
+                  ],
+                  ORDERS_ROW_VALUES.USER_ID,
+                ],
+                "source-table": ORDERS_ID,
+              },
+              type: "query",
+            },
+            display: "table",
+          },
+        },
+        {
+          columnName: "PRODUCT_ID",
+          expectedCard: {
+            dataset_query: {
+              database: SAMPLE_DB_ID,
+              query: {
+                filter: [
+                  "=",
+                  [
+                    "field",
+                    ORDERS.PRODUCT_ID,
+                    {
+                      "base-type": "type/Integer",
+                    },
+                  ],
+                  ORDERS_ROW_VALUES.PRODUCT_ID,
+                ],
+                "source-table": ORDERS_ID,
+              },
+              type: "query",
+            },
+            display: "table",
+          },
+        },
         {
           columnName: "CREATED_AT",
           expectedCard: {
