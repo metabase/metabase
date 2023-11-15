@@ -56,3 +56,5 @@ export type DatePickerValue =
   | ExcludeDatePickerValue;
 
 export type DatePickerValueType = DatePickerValue["type"];
+
+export type DatePickerIntervalDirection = "last" | "current" | "next";

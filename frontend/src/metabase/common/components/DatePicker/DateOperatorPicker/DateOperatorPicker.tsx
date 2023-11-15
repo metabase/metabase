@@ -16,18 +16,18 @@ export function DateOperatorPicker({
   availableOperators,
   onChange,
 }: DateOperatorPickerProps) {
-  const options = useMemo(() => {
+  const operators = useMemo(() => {
     return getAvailableOperators(availableOperators);
   }, [availableOperators]);
 
-  const optionType = useMemo(() => {
+  const operatorType = useMemo(() => {
     return getOperatorType(value);
   }, [value]);
 
   return (
     <Stack>
       <Group>
-        <Select data={options} value={optionType} />
+        <Select data={operators} value={operatorType} />
         {value?.type === "relative" && (
           <SimpleRelativeDatePicker value={value} onChange={onChange} />
         )}

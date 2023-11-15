@@ -1,12 +1,11 @@
 import * as Lib from "metabase-lib";
 import { DATE_PICKER_TRUNCATION_UNITS } from "../constants";
-import type { RelativeDatePickerValue } from "../types";
-import { DEFAULT_VALUE } from "./constants";
 import type {
-  IntervalDirection,
-  DateIntervalValue,
-  DateOffsetIntervalValue,
-} from "./types";
+  DatePickerIntervalDirection,
+  RelativeDatePickerValue,
+} from "../types";
+import { DEFAULT_VALUE } from "./constants";
+import type { DateIntervalValue, DateOffsetIntervalValue } from "./types";
 
 export function isIntervalValue(
   value: RelativeDatePickerValue,
@@ -24,9 +23,15 @@ export function isOffsetIntervalValue(
   );
 }
 
+export function getDirectionDefaultValue(
+  direction: DatePickerIntervalDirection,
+) {
+  return setDirection(DEFAULT_VALUE, direction);
+}
+
 export function getDirection(
   value: RelativeDatePickerValue,
-): IntervalDirection {
+): DatePickerIntervalDirection {
   if (value.value === "current") {
     return "current";
   } else {
@@ -36,7 +41,7 @@ export function getDirection(
 
 export function setDirection(
   value: RelativeDatePickerValue,
-  direction: IntervalDirection,
+  direction: DatePickerIntervalDirection,
 ): RelativeDatePickerValue {
   if (direction === "current") {
     return { type: "relative", value: "current", unit: "hour" };

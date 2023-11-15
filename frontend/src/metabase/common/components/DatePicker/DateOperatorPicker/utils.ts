@@ -2,6 +2,15 @@ import type {
   DatePickerOperator,
   DatePickerValue,
 } from "metabase/common/components/DatePicker";
+import {
+  setOperator,
+  getOperatorDefaultValue,
+} from "../SpecificDatePicker/utils";
+import {
+  getDirectionDefaultValue,
+  setDirection,
+} from "../RelativeDatePicker/utils";
+import { getExcludeOperatorValue } from "../ExcludeDatePicker/utils";
 import { OPERATOR_OPTIONS } from "./constants";
 import type { OperatorOption, OperatorType } from "./types";
 
@@ -35,5 +44,31 @@ export function getOperatorType(
       }
     default:
       return "none";
+  }
+}
+
+export function setOperatorType(
+  value: DatePickerValue | undefined,
+  operatorType: OperatorType,
+): DatePickerValue | undefined {
+  switch (operatorType) {
+    case "=":
+    case ">":
+    case "<":
+    case "between":
+      return value?.type === "specific"
+        ? setOperator(value, operatorType)
+        : getOperatorDefaultValue(operatorType);
+    case "last":
+    case "next":
+    case "current":
+      return value?.type === "relative"
+        ? setDirection(value, operatorType)
+        : getDirectionDefaultValue(operatorType);
+    case "is-null":
+    case "not-null":
+      return getExcludeOperatorValue(operatorType);
+    default:
+      return undefined;
   }
 }

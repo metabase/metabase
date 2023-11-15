@@ -1,13 +1,12 @@
 import type {
+  DatePickerIntervalDirection,
   DatePickerTruncationUnit,
   RelativeDatePickerValue,
 } from "../types";
 
-export type IntervalDirection = "last" | "current" | "next";
-
 export interface Tab {
   label: string;
-  direction: IntervalDirection;
+  direction: DatePickerIntervalDirection;
 }
 
 export interface DateIntervalValue extends RelativeDatePickerValue {

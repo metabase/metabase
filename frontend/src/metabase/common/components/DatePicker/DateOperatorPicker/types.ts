@@ -1,11 +1,9 @@
-import type { DatePickerOperator } from "../types";
+import type { DatePickerIntervalDirection, DatePickerOperator } from "../types";
 
 export type OperatorType =
-  | DatePickerOperator
   | "none"
-  | "last"
-  | "next"
-  | "current";
+  | DatePickerOperator
+  | DatePickerIntervalDirection;
 
 export interface OperatorOption {
   label: string;
