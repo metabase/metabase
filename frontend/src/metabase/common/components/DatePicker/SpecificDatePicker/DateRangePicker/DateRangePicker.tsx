@@ -10,7 +10,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import type { DateValue, DatesRangeValue } from "metabase/ui";
+import type { ButtonProps, DateValue, DatesRangeValue } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import {
   clearTimePart,
@@ -55,14 +55,7 @@ export function DateRangePicker({
       </Box>
       <Divider />
       <Group p="sm" position="apart">
-        <Button
-          c="text.1"
-          variant="subtle"
-          leftIcon={<Icon name="clock" />}
-          onClick={handleTimeToggle}
-        >
-          {hasTime ? t`Remove time` : t`Add time`}
-        </Button>
+        <DatePickerToggle hasTime={hasTime} onClick={handleTimeToggle} />
         <Button variant="filled" type="submit">
           {isNew ? t`Add filter` : t`Update filter`}
         </Button>
@@ -93,7 +86,9 @@ export function SimpleDateRangePicker({
   return (
     <Stack>
       <DatePickerBody value={value} hasTime={hasTime} onChange={onChange} />
-      <DatePickerToggle hasTime={hasTime} onToggle={handleTimeToggle} />
+      <Box>
+        <DatePickerToggle pl={0} hasTime={hasTime} onClick={handleTimeToggle} />
+      </Box>
     </Stack>
   );
 }
@@ -181,18 +176,18 @@ function DatePickerBody({
   );
 }
 
-interface DatePickerToggleProps {
+interface DatePickerToggleProps extends ButtonProps {
   hasTime: boolean;
-  onToggle: () => void;
+  onClick?: () => void;
 }
 
-function DatePickerToggle({ hasTime, onToggle }: DatePickerToggleProps) {
+function DatePickerToggle({ hasTime, ...props }: DatePickerToggleProps) {
   return (
     <Button
       c="text.1"
       variant="subtle"
       leftIcon={<Icon name="clock" />}
-      onClick={onToggle}
+      {...props}
     >
       {hasTime ? t`Remove time` : t`Add time`}
     </Button>

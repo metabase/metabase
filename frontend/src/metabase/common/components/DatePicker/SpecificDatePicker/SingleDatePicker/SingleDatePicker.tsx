@@ -1,7 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { t } from "ttag";
-import type { DateValue } from "metabase/ui";
 import {
   Box,
   Button,
@@ -12,6 +11,7 @@ import {
   Stack,
   TimeInput,
 } from "metabase/ui";
+import type { ButtonProps, DateValue } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import {
   clearTimePart,
@@ -52,7 +52,7 @@ export function SingleDatePicker({
       </Box>
       <Divider />
       <Group p="sm" position="apart">
-        <DatePickerToggle hasTime={hasTime} onToggle={handleTimeToggle} />
+        <DatePickerToggle hasTime={hasTime} onClick={handleTimeToggle} />
         <Button variant="filled" type="submit">
           {isNew ? t`Add filter` : t`Update filter`}
         </Button>
@@ -80,7 +80,9 @@ export function SimpleSingleDatePicker({
   return (
     <Stack>
       <DatePickerBody value={value} hasTime={hasTime} onChange={onChange} />
-      <DatePickerToggle hasTime={hasTime} onToggle={handleTimeToggle} />
+      <Box>
+        <DatePickerToggle pl={0} hasTime={hasTime} onClick={handleTimeToggle} />
+      </Box>
     </Stack>
   );
 }
@@ -129,18 +131,18 @@ function DatePickerBody({ value, hasTime, onChange }: DatePickerBodyProps) {
   );
 }
 
-interface DatePickerToggleProps {
+interface DatePickerToggleProps extends ButtonProps {
   hasTime: boolean;
-  onToggle: () => void;
+  onClick?: () => void;
 }
 
-function DatePickerToggle({ hasTime, onToggle }: DatePickerToggleProps) {
+function DatePickerToggle({ hasTime, ...props }: DatePickerToggleProps) {
   return (
     <Button
       c="text.1"
       variant="subtle"
       leftIcon={<Icon name="clock" />}
-      onClick={onToggle}
+      {...props}
     >
       {hasTime ? t`Remove time` : t`Add time`}
     </Button>
