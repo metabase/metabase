@@ -92,7 +92,7 @@ function assertOnTimeSeriesFooter(str) {
   cy.findAllByTestId("select-button-content")
     .first()
     .invoke("text")
-    .should("eq", "All Time");
+    .should("eq", "All time");
   cy.findAllByTestId("select-button-content")
     .last()
     .invoke("text")

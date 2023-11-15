@@ -14,27 +14,27 @@ describe("time-series filter widget", () => {
     openProductsTable();
   });
 
-  it("should properly display All Time as the initial filtering (metabase#22247)", () => {
+  it("should properly display All time as the initial filtering (metabase#22247)", () => {
     summarize();
 
     sidebar().contains("Created At").click();
     cy.wait("@dataset");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("All Time").click();
+    cy.findByText("All time").click();
 
     popover().within(() => {
       // Implicit assertion: there is only one select button
       cy.findByTestId("select-button-content")
         .invoke("text")
-        .should("eq", "All Time");
+        .should("eq", "All time");
 
       cy.button("Apply").should("not.be.disabled");
     });
   });
 
   // Skip the rest of the tests until https://github.com/metabase/metabase/issues/22973 gets resolved
-  it.skip("should allow switching from All Time filter", () => {
+  it.skip("should allow switching from All time filter", () => {
     cy.findAllByText("Summarize").first().click();
     cy.findAllByText("Created At").last().click();
     cy.wait("@dataset");
@@ -43,9 +43,9 @@ describe("time-series filter widget", () => {
 
     // switch to previous 30 quarters
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("All Time").click();
+    cy.findByText("All time").click();
     popover().within(() => {
-      cy.findByText("All Time").click();
+      cy.findByText("All time").click();
     });
     cy.findByTextEnsureVisible("Previous").click();
     cy.findByTextEnsureVisible("days").click();
@@ -85,21 +85,21 @@ describe("time-series filter widget", () => {
     cy.findByText("Previous 3 Years").click();
     popover().within(() => {
       cy.findByText("Previous").should("be.visible");
-      cy.findByText("All Time").should("not.exist");
+      cy.findByText("All time").should("not.exist");
       cy.findByText("Next").should("not.exist");
     });
 
-    // switch to All Time filter
+    // switch to All time filter
     popover().within(() => {
       cy.findByText("Previous").click();
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("All Time").click();
+    cy.findByText("All time").click();
     cy.button("Apply").click();
     cy.wait("@dataset");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Created At Previous 3 Years").should("not.exist");
-    cy.findByTextEnsureVisible("All Time");
+    cy.findByTextEnsureVisible("All time");
   });
 });
