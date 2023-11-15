@@ -523,7 +523,7 @@
       (let [;; 1. create a database and sync
             database-name      (name (gensym))
             empty-dbdef        {:database-name database-name}
-            _                  (tx/create-db! :postgres empty-dbdef)
+            _                  (tx/create-db! driver/*driver* empty-dbdef)
             connection-details (tx/dbdef->connection-details driver/*driver* :db empty-dbdef)
             db                 (first (t2/insert-returning-instances! :model/Database {:name    database-name
                                                                                        :engine  (u/qualified-name driver/*driver*)
