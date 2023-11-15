@@ -9,7 +9,6 @@
    [metabase.config :as config]
    [metabase.driver.h2 :as h2]
    [metabase.events :as events]
-   [metabase.events.audit-log-test :as audit-log-test]
    [metabase.http-client :as client]
    [metabase.models :refer [Database Table User]]
    [metabase.models.setting :as setting]
