@@ -9,8 +9,14 @@ import {
   isOffsetIntervalValue,
   setDirection,
 } from "./utils";
-import { CurrentDatePicker } from "./CurrentDatePicker";
-import { DateIntervalPicker } from "./DateIntervalPicker";
+import {
+  CurrentDatePicker,
+  SimpleCurrentDatePicker,
+} from "./CurrentDatePicker";
+import {
+  DateIntervalPicker,
+  SimpleDateIntervalPicker,
+} from "./DateIntervalPicker";
 import { DateOffsetIntervalPicker } from "./DateOffsetIntervalPicker";
 import { TabList } from "./RelativeDatePicker.styled";
 
@@ -79,5 +85,21 @@ export function RelativeDatePicker({
         </Tabs.Panel>
       ))}
     </Tabs>
+  );
+}
+
+interface SimpleRelativeDatePickerProps {
+  value: RelativeDatePickerValue;
+  onChange: (value: RelativeDatePickerValue) => void;
+}
+
+export function SimpleRelativeDatePicker({
+  value,
+  onChange,
+}: SimpleRelativeDatePickerProps) {
+  return isIntervalValue(value) ? (
+    <SimpleDateIntervalPicker value={value} onChange={onChange} />
+  ) : (
+    <SimpleCurrentDatePicker value={value} onChange={onChange} />
   );
 }
