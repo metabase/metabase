@@ -1,12 +1,11 @@
 import { t } from "ttag";
 import * as Lib from "metabase-lib";
-import type { DatePickerTruncationUnit } from "../../types";
-import { DATE_PICKER_TRUNCATION_UNITS } from "../../constants";
 import type {
-  DateIntervalValue,
-  DateOffsetIntervalValue,
-  IntervalDirection,
-} from "../types";
+  DatePickerTruncationUnit,
+  RelativeIntervalDirection,
+} from "../../types";
+import { DATE_PICKER_TRUNCATION_UNITS } from "../../constants";
+import type { DateIntervalValue, DateOffsetIntervalValue } from "../types";
 import { getDirection } from "../utils";
 
 export function getDirectionText(value: DateOffsetIntervalValue): string {
@@ -64,7 +63,7 @@ export function getOffsetUnitOptions(value: DateOffsetIntervalValue) {
 
 function getOffsetUnitText(
   unit: DatePickerTruncationUnit,
-  direction: IntervalDirection,
+  direction: RelativeIntervalDirection,
   interval: number,
 ) {
   const unitText = Lib.describeTemporalUnit(unit, interval).toLowerCase();
