@@ -11,8 +11,6 @@ import {
   setDashCardAttributes,
   setMultipleDashCardAttributes,
 } from "metabase/dashboard/actions";
-// import { disableAutoWireForParameterTarget } from "metabase/dashboard/actions/auto-wire-parameters/actions";
-import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 
 export const AUTO_WIRE_TOAST_ID = _.uniqueId();
@@ -25,7 +23,7 @@ type ShowAutoWireParametersToastType = {
 };
 
 export const showAutoWireParametersToast =
-  ({ parameter_id, modifiedDashcards }: ShowAutoWireParametersToastType) =>
+  ({ modifiedDashcards }: ShowAutoWireParametersToastType) =>
   (dispatch: Dispatch) => {
     dispatch(
       addUndo({
@@ -39,12 +37,7 @@ export const showAutoWireParametersToast =
               dashcards: modifiedDashcards.map(dc => ({
                 id: dc.id,
                 attributes: {
-                  parameter_mappings: getParameterMappings(
-                    dc,
-                    parameter_id,
-                    dc.card.id,
-                    null,
-                  ),
+                  parameter_mappings: dc.parameter_mappings,
                 },
               })),
             }),
