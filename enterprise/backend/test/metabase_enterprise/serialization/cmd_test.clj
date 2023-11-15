@@ -2,6 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
+   [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase-enterprise.serialization.load :as load]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase.cmd :as cmd]
@@ -59,6 +60,23 @@
                       :updated_at             :%now)
           ;; serialize "everything" (which should just be the card and user), which should succeed if #16931 is fixed
           (is (nil? (cmd/dump (ts/random-dump-dir "serdes-")))))))))
+
+(defmacro with-file-updated [[path f] & body]
+  `(let [original# (slurp ~path)]
+     (try
+       (spit ~path (~f original#))
+       ~@body
+       (finally
+         (spit ~path original#)))))
+
+(deftest loading-does-not-fail-on-extra-yaml-keys
+  (testing "an extra key does not break loading"
+    (premium-features-test/with-premium-features #{:serialization}
+      (is (serialization.cmd/v2-load-internal! "resources/instance_analytics/" {} :token-check? false))
+
+      (let [path "resources/instance_analytics/collections/vG58R8k-QddHWA7_47umn_metabase_analytics/vG58R8k-QddHWA7_47umn_metabase_analytics.yaml"]
+        (with-file-updated [path #(-> % yaml/parse-string (assoc :foo? "bar") yaml/generate-string)]
+          (is (serialization.cmd/v2-load-internal! "resources/instance_analytics/" {} :token-check? false)))))))
 
 (deftest blank-target-db-test
   (testing "Loading a dump into an empty app DB still works (#16639)"

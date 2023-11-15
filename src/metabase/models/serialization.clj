@@ -22,6 +22,7 @@
    [metabase.models.interface :as mi]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
+   [metabase.util.connection :as u.conn]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
@@ -507,6 +508,33 @@
   {:arglists '([ingested])}
   ingested-model)
 
+(def ^:private fields-for-table
+  "Given a table name, returns a map of column_name -> column_type"
+  (memoize
+   (fn fields-for-table [table-name]
+     (t2/with-connection [conn]
+       (u.conn/app-db-column-types conn table-name)))))
+
+(defn- ->table-name
+  "Returns the table name that a particular ingested entity should finally be inserted into."
+  [ingested]
+  (->> ingested ingested-model (keyword "model") t2/table-name name))
+
+(defn- model-field-cover
+  "Returns exhaustive list of fields for an ingested-model. Fields that aren't in this list will produce errors if
+  they get inserted."
+  [ingested]
+  (let [field-cover (keys (fields-for-table (->table-name ingested)))]
+    (set (map keyword field-cover))))
+
+(defn- drop-excess-keys
+  "Given an ingested entity, removes keys that will not 'fit' into the current schema, because the column no longer
+  exists. This can happen when serialization dumps generated on an earlier version of Metabase are loaded into a
+  later version of Metabase, when a column gets removed. (At the time of writing I am seeing this happen with
+  color on collections)."
+  [ingested]
+  (select-keys ingested (model-field-cover ingested)))
+
 (defn load-xform-basics
   "Performs the usual steps for an incoming entity:
   - Drop :serdes/meta
@@ -515,7 +543,7 @@
 
   This is a mirror (but not precise inverse) of [[extract-one-basics]]."
   [ingested]
-  (dissoc ingested :serdes/meta))
+  (-> ingested drop-excess-keys (dissoc :serdes/meta)))
 
 (defmethod load-xform :default [ingested]
   (load-xform-basics ingested))
