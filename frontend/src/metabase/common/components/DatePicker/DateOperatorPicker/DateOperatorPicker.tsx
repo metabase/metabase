@@ -3,7 +3,7 @@ import { Group, Select, Stack } from "metabase/ui";
 import { SimpleRelativeDatePicker } from "../RelativeDatePicker";
 import { SimpleSpecificDatePicker } from "../SpecificDatePicker";
 import type { DatePickerOperator, DatePickerValue } from "../types";
-import { getAvailableOperators, getOperatorType } from "./utils";
+import { getAvailableOptions, getOptionType, setOptionType } from "./utils";
 
 interface DateOperatorPickerProps {
   value?: DatePickerValue;
@@ -16,18 +16,25 @@ export function DateOperatorPicker({
   availableOperators,
   onChange,
 }: DateOperatorPickerProps) {
-  const operators = useMemo(() => {
-    return getAvailableOperators(availableOperators);
+  const options = useMemo(() => {
+    return getAvailableOptions(availableOperators);
   }, [availableOperators]);
 
-  const operatorType = useMemo(() => {
-    return getOperatorType(value);
+  const optionType = useMemo(() => {
+    return getOptionType(value);
   }, [value]);
+
+  const handleChange = (inputValue: string | null) => {
+    const option = options.find(option => option.value === inputValue);
+    if (option) {
+      onChange(setOptionType(value, option.value));
+    }
+  };
 
   return (
     <Stack>
       <Group>
-        <Select data={operators} value={operatorType} />
+        <Select data={options} value={optionType} onChange={handleChange} />
         {value?.type === "relative" && (
           <SimpleRelativeDatePicker value={value} onChange={onChange} />
         )}

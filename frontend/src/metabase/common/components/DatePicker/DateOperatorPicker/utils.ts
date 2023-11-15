@@ -12,9 +12,9 @@ import {
 } from "../RelativeDatePicker/utils";
 import { getExcludeOperatorValue } from "../ExcludeDatePicker/utils";
 import { OPERATOR_OPTIONS } from "./constants";
-import type { OperatorOption, OperatorType } from "./types";
+import type { OperatorOption, OptionType } from "./types";
 
-export function getAvailableOperators(
+export function getAvailableOptions(
   availableOperators: ReadonlyArray<DatePickerOperator>,
 ): OperatorOption[] {
   return OPERATOR_OPTIONS.filter(
@@ -24,9 +24,7 @@ export function getAvailableOperators(
   );
 }
 
-export function getOperatorType(
-  value: DatePickerValue | undefined,
-): OperatorType {
+export function getOptionType(value: DatePickerValue | undefined): OptionType {
   switch (value?.type) {
     case "specific":
       return value.operator;
@@ -47,9 +45,9 @@ export function getOperatorType(
   }
 }
 
-export function setOperatorType(
+export function setOptionType(
   value: DatePickerValue | undefined,
-  operatorType: OperatorType,
+  operatorType: OptionType,
 ): DatePickerValue | undefined {
   switch (operatorType) {
     case "=":
