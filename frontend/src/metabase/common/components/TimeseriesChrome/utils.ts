@@ -11,12 +11,7 @@ export function findBreakoutColumn(
     }
 
     const { breakoutPosition } = Lib.displayInfo(query, stageIndex, column);
-    if (breakoutPosition == null) {
-      return false;
-    }
-
-    const buckets = Lib.availableTemporalBuckets(query, stageIndex, column);
-    return buckets.length !== 0;
+    return breakoutPosition != null;
   });
 }
 
