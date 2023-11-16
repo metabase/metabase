@@ -1524,6 +1524,6 @@
                 "Prefer :expression-name over :name (#34957)")
     (let [metadata (-> (meta/field-metadata :venues :name)
                        (assoc :lib/source :source/fields
-                              :expression-name "Custom Venue Name"))]
+                              :lib/expression-name "Custom Venue Name"))]
       (is (=? [:expression {} "Custom Venue Name"]
               (lib/ref metadata))))))
