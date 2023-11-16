@@ -9,7 +9,6 @@
    [clojure.tools.macro :as tools.macro]
    [clojurewerkz.quartzite.scheduler :as qs]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
-   [java-time.api :as t]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.card :as api.card]
@@ -19,6 +18,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
+   [metabase.events.view-log-test :as view-log-test]
    [metabase.http-client :as client]
    [metabase.models
     :refer [CardBookmark
@@ -33,14 +33,14 @@
             PulseChannelRecipient
             Table
             Timeline
-            TimelineEvent
-            ViewLog]]
+            TimelineEvent]]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
@@ -242,68 +242,6 @@
 (deftest ^:parallel model_id-requied-when-f-is-table
   (is (= {:errors {:model_id "model_id is a required parameter when filter mode is 'table'"}}
          (mt/user-http-request :crowberto :get 400 "card", :f :table))))
-
-(defn- do-with-card-views [card-or-id+username f]
-  (let [[f] (reduce
-             (fn [[f timestamp] [card-or-id username]]
-               [(fn []
-                  (let [card-id   (u/the-id card-or-id)
-                        card-name (t2/select-one-fn :name :model/Card :id card-id)]
-                    (testing (format "\nCard %d %s viewed by %s on %s" card-id (pr-str card-name) username timestamp)
-                      (t2.with-temp/with-temp [ViewLog _ {:model     "card"
-                                                          :model_id  card-id
-                                                          :user_id   (mt/user->id username)
-                                                          :timestamp timestamp}]
-                        (f)))))
-                (t/plus timestamp (t/days 1))])
-             [f (t/zoned-date-time)]
-             card-or-id+username)]
-    (f)))
-
-(defmacro ^:private with-card-views [card-or-id+username & body]
-  `(do-with-card-views ~(mapv vec (partition 2 card-or-id+username)) (fn [] ~@body)))
-
-(deftest filter-by-recent-test
-  (testing "GET /api/card?f=recent"
-    (mt/with-temp [:model/Card card-1 {:name "Card 1"}
-                   :model/Card card-2 {:name "Card 2"}
-                   :model/Card card-3 {:name "Card 3"}
-                   :model/Card card-4 {:name "Card 4"}]
-      ;; 3 was viewed most recently, followed by 4, then 1. Card 2 was viewed by a different user so shouldn't be
-      ;; returned
-      (with-card-views [card-1 :rasta
-                        card-2 :trashbird
-                        card-3 :rasta
-                        card-4 :rasta
-                        card-3 :rasta]
-        (with-cards-in-readable-collection [card-1 card-2 card-3 card-4]
-          (testing "\nShould return cards that were recently viewed by current user only"
-            (let [recent-card-names (->> (mt/user-http-request :rasta :get 200 "card", :f :recent)
-                                         (map :name)
-                                         (filter #{"Card 1" "Card 2" "Card 3" "Card 4"}))]
-              (is (= ["Card 3" "Card 4" "Card 1"]
-                     recent-card-names)))))))))
-
-(deftest filter-by-popular-test
-  (testing "GET /api/card?f=popular"
-    (mt/with-temp [:model/Card card-1 {:name "Card 1"}
-                   :model/Card card-2 {:name "Card 2"}
-                   :model/Card card-3 {:name "Card 3"}]
-      ;; 3 entries for card 3, 2 for card 2, none for card 1,
-      (with-card-views [card-3 :rasta
-                        card-2 :trashbird
-                        card-2 :rasta
-                        card-3 :crowberto
-                        card-3 :rasta]
-        (with-cards-in-readable-collection [card-1 card-2 card-3]
-          (testing (str "`f=popular` should return cards sorted by number of ViewLog entries for all users; cards with "
-                        "no entries should be excluded")
-            (let [popular-card-names (->> (mt/user-http-request :rasta :get 200 "card", :f :popular)
-                                          (map :name)
-                                          (filter #{"Card 1" "Card 2" "Card 3"}))]
-              (is (= ["Card 3"
-                      "Card 2"]
-                     popular-card-names)))))))))
 
 (deftest filter-by-archived-test
   (testing "GET /api/card?f=archived"
@@ -3118,3 +3056,14 @@
                              "event"       "csv_upload_failed"}
                       :user-id (str (mt/user->id :rasta))}
                      (last (snowplow-test/pop-event-data-and-user-id!)))))))))))
+
+(deftest card-read-event-test
+  (testing "Card reads (views) via the API are recorded in the view_log"
+    (t2.with-temp/with-temp [:model/Card card {:name "My Cool Card" :dataset false}]
+      (testing "GET /api/card/:id"
+        (mt/user-http-request :crowberto :get 200 (format "card/%s" (u/id card)))
+        (is (partial=
+             {:user_id  (mt/user->id :crowberto)
+              :model    "card"
+              :model_id (u/id card)}
+             (view-log-test/latest-view (mt/user->id :crowberto) (u/id card))))))))
