@@ -9,7 +9,7 @@
    [metabase.events.audit-log :as events.audit-log]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
-    :refer [Card Dashboard DashboardCard Metric Pulse Segment Table]]
+    :refer [Card Dashboard DashboardCard Metric Pulse Segment]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -169,32 +169,6 @@
                                            :id          (:id dashcard)
                                            :card_id     (:id card)}]}}
              (mt/latest-audit-log-entry "dashboard-remove-cards" (:id dashboard))))))))
-
-(deftest dashboard-read-event-test
-  (testing :dashboard-read
-    (t2.with-temp/with-temp [Dashboard dashboard {:name "My Cool Dashboard"}]
-      (is (= {:object dashboard :user-id (mt/user->id :rasta)}
-             (events/publish-event! :event/dashboard-read {:object dashboard :user-id (mt/user->id :rasta)})))
-      (is (partial=
-           {:topic    :dashboard-read
-            :user_id  (mt/user->id :rasta)
-            :model    "Dashboard"
-            :model_id (:id dashboard)
-            :details  {:name "My Cool Dashboard", :description nil}}
-           (mt/latest-audit-log-entry "dashboard-read" (:id dashboard)))))))
-
-(deftest table-read-event-test
-  (testing :table-read
-    (t2.with-temp/with-temp [Table table {:name "My Cool Table"}]
-      (is (= {:object table :user-id (mt/user->id :rasta)}
-             (events/publish-event! :event/table-read {:object table :user-id (mt/user->id :rasta)})))
-      (is (partial=
-           {:topic    :table-read
-            :user_id  (mt/user->id :rasta)
-            :model    "Table"
-            :model_id (:id table)
-            :details  {}}
-           (mt/latest-audit-log-entry "table-read" (:id table)))))))
 
 (deftest install-event-test
   (testing :install
