@@ -867,6 +867,8 @@ describe("scenarios > dashboard > parameters", () => {
 
         editDashboard();
 
+        cy.clock();
+
         setFilter("Text or Category", "Is");
 
         selectDashboardFilter(getDashboardCard(0), "Name");
@@ -874,14 +876,18 @@ describe("scenarios > dashboard > parameters", () => {
         removeFilterFromDashCard(0);
         removeFilterFromDashCard(1);
 
-        cy.wait(2000);
+        cy.tick(2000);
 
         selectDashboardFilter(getDashboardCard(0), "Name");
 
         // since we waited 2 seconds earlier, if the toast is still visible after this other delay of 4s,
         // it means the first timeout of 5s was cleared correctly
-        cy.wait(4000);
+        cy.tick(4000);
         undoToast().should("exist");
+
+        cy.tick(2000);
+
+        undoToast().should("not.exist");
       });
     });
 
