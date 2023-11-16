@@ -20,6 +20,8 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (comment
@@ -109,4 +111,6 @@
     stage-number :- :int
     drill        :- ::lib.schema.drill-thru/drill-thru
     & args]
+   (log/infof "Applying drill thru: %s"
+              (u/pprint-to-str {:query query, :stage-number stage-number, :drill drill, :args args}))
    (apply lib.drill-thru.common/drill-thru-method query stage-number drill args)))
