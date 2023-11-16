@@ -1,5 +1,5 @@
 import type { MantineThemeOverride } from "@mantine/core";
-import { px, rem } from "@mantine/core";
+import { px, rem, getSize } from "@mantine/core";
 import { SelectItem } from "./SelectItem";
 
 export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
@@ -11,7 +11,11 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
       itemComponent: SelectItem,
       maxDropdownHeight: 512,
     },
-    styles: theme => ({
+    styles: (theme, _, { size = "md" }) => ({
+      label: {
+        color: theme.colors.text[1],
+        fontSize: getSize({ size, sizes: theme.fontSizes }),
+      },
       rightSection: {
         svg: {
           color: theme.colors.text[2],
