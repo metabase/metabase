@@ -10,6 +10,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
    [metabase.search.filter :as search.filter]
@@ -24,8 +25,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]
-   [toucan2.realize :as t2.realize]
-   [metabase.models.permissions :as perms]))
+   [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
 
