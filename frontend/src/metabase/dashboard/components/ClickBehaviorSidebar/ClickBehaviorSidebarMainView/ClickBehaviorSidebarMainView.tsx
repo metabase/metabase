@@ -50,7 +50,6 @@ function ClickBehaviorOptions({
       />
     );
   }
-
   return null;
 }
 
