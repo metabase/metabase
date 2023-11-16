@@ -39,7 +39,7 @@ describe("search > recently viewed", () => {
     cy.findByTestId("loading-spinner").should("not.exist");
   });
 
-  it("shows list of recently viewed items", { tags: "@flaky" }, () => {
+  it("shows list of recently viewed items", () => {
     assertRecentlyViewedItem(0, "Orders in a dashboard", "Dashboard");
     assertRecentlyViewedItem(1, "Orders", "Question");
     assertRecentlyViewedItem(2, "People", "Table");
