@@ -118,16 +118,25 @@
         (initialize-events!)
         (publish-event! topic event))
       (do
-        (log/debugf "Publishing %s event:\n\n%s" (u/colorize :yellow (pr-str topic)) (u/pprint-to-str event))
-        (assert (and (qualified-keyword? topic)
-                     (isa? topic :metabase/event))
-                (format "Invalid event topic %s: events must derive from :metabase/event" (pr-str topic)))
-        (assert (map? event)
-                (format "Invalid event %s: event must be a map." (pr-str event)))
+        (span/with-span!
+          {:name       "publish-event!.logging"
+           :attributes {}}
+          (log/debugf "Publishing %s event:\n\n%s" (u/colorize :yellow (pr-str topic)) (u/pprint-to-str event))
+          (assert (and (qualified-keyword? topic)
+                       (isa? topic :metabase/event))
+                  (format "Invalid event topic %s: events must derive from :metabase/event" (pr-str topic)))
+          (assert (map? event)
+                  (format "Invalid event %s: event must be a map." (pr-str event))))
         (try
-          (when-let [schema (events.schema/topic->schema topic)]
-            (mu/validate-throw schema event))
-          (next-method topic event)
+          (span/with-span!
+            {:name       "publish-event!.schema-validation"
+             :attributes {}}
+            (when-let [schema (events.schema/topic->schema topic)]
+              (mu/validate-throw schema event)))
+          (span/with-span!
+            {:name       "publish-event!.next-method"
+             :attributes {}}
+            (next-method topic event))
           (catch Throwable e
             (throw (ex-info (i18n/tru "Error publishing {0} event: {1}" topic (ex-message e))
                             {:topic topic, :event event}
