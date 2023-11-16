@@ -412,6 +412,7 @@
 (deftest dashboard-card-test
   ;; DashboardCard.parameter_mappings and Card.parameter_mappings are JSON-encoded lists of parameter maps, which
   ;; contain field IDs - these need to be converted to a portable form and read back in.
+  ;; DashboardCard.visualization_settings contains JSON with several places where IDs are embedded.
   ;; This test has a database, table and fields, that exist on both sides with different IDs, and expects a Card and
   ;; DashboardCard to be correctly loaded with the dest IDs.
   (testing "parameter_mappings are portable"
@@ -422,6 +423,7 @@
           field1s    (atom nil)
           field2s    (atom nil)
           dash1s     (atom nil)
+          dash2s     (atom nil)
           card1s     (atom nil)
           dashcard1s (atom nil)
           user1s     (atom nil)
@@ -448,6 +450,7 @@
             (reset! field2s  (ts/create! Field :name "invoice" :table_id (:id @table1s)))
             (reset! user1s   (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             (reset! dash1s   (ts/create! Dashboard :name "My Dashboard" :collection_id (:id @coll1s) :creator_id (:id @user1s)))
+            (reset! dash2s   (ts/create! Dashboard :name "Linked dashboard" :collection_id (:id @coll1s) :creator_id (:id @user1s)))
             (reset! card1s   (ts/create! Card :name "The Card" :database_id (:id @db1s) :table_id (:id @table1s)
                                          :collection_id (:id @coll1s) :creator_id (:id @user1s)
                                          :visualization_settings
@@ -488,7 +491,14 @@
                                               :fieldRef [:field "Average order total" {:base-type :type/Float}]
                                               :enabled true}]
                                             :column_settings
-                                            {(str "[\"ref\",[\"field\"," (:id @field2s) ",null]]") {:column_title "Locus"}}}
+                                            {(str "[\"ref\",[\"field\"," (:id @field2s) ",null]]") {:column_title "Locus"}
+                                             (str "[\"ref\",[\"field\"," (:id @field1s) ",null]]")
+                                             {:click_behavior {:type     "link"
+                                                               :linkType "dashboard"
+                                                               :targetId (:id @dash2s)}}}
+                                            :click_behavior {:type     "link"
+                                                             :linkType "question"
+                                                             :targetId (:id @card1s)}}
                                            :parameter_mappings [{:parameter_id "deadbeef"
                                                                  :card_id (:id @card1s)
                                                                  :target [:dimension [:field (:id @field1s) {:source-field (:id @field2s)}]]}]))
@@ -509,7 +519,7 @@
                        (:ordered_cards dash))))
 
               (testing "exported :visualization_settings are properly converted"
-                (let [expected {:table.pivot_column "SOURCE"
+                (let [exp-card {:table.pivot_column "SOURCE"
                                 :table.cell_column "sum"
                                 :table.columns
                                 [{:name "SOME_FIELD"
@@ -525,10 +535,19 @@
                                   :fieldRef [:field "Average order total" {:base-type :type/Float}]
                                   :enabled true}]
                                 :column_settings
-                                {"[\"ref\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],null]]" {:column_title "Locus"}}}]
-                  (is (= expected
+                                {"[\"ref\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],null]]" {:column_title "Locus"}}}
+                      exp-dashcard (-> exp-card
+                                       (assoc :click_behavior {:type     "link"
+                                                               :linkType "question"
+                                                               :targetId (:entity_id @card1s)})
+                                       (assoc-in [:column_settings
+                                                  "[\"ref\",[\"field\",[\"my-db\",null,\"orders\",\"subtotal\"],null]]"]
+                                                 {:click_behavior {:type     "link"
+                                                                   :linkType "dashboard"
+                                                                   :targetId (:entity_id @dash2s)}}))]
+                  (is (= exp-card
                          (:visualization_settings card)))
-                  (is (= expected
+                  (is (= exp-dashcard
                          (-> dash :ordered_cards first :visualization_settings))))))))
 
 
