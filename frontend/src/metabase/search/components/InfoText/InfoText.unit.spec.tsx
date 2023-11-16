@@ -71,6 +71,8 @@ async function setup({
   isCompact?: boolean;
   resultProps?: Partial<SearchResult>;
 } = {}) {
+  jest.spyOn(Date, "now").mockReturnValue(new Date(2023, 10, 1).getTime());
+
   setupTableEndpoints(MOCK_TABLE);
   setupDatabaseEndpoints(MOCK_DATABASE);
   setupUsersEndpoints([MOCK_USER, MOCK_OTHER_USER]);
@@ -107,7 +109,6 @@ async function setup({
     ).not.toBeInTheDocument(),
   );
 
-  // await waitforAssetLinkLoadingTextToBeRemoved()
   await waitForLoadingTextToBeRemoved();
 
   return {
