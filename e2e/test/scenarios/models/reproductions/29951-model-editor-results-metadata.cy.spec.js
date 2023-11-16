@@ -1,9 +1,4 @@
-import {
-  getNotebookStep,
-  openQuestionActions,
-  popover,
-  restore,
-} from "e2e/support/helpers";
+import { getNotebookStep, restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
@@ -33,11 +28,11 @@ describe("issue 29951", { requestTimeout: 10000 }, () => {
   });
 
   it("should allow to run the model query after changing custom columns (metabase#29951)", () => {
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    cy.createQuestion(questionDetails).then(({ body: { id } }) => {
+      cy.visit(`/model/${id}/query`);
+      cy.wait("@publicShema");
+    });
 
-    openQuestionActions();
-    popover().findByText("Edit query definition").click();
-    cy.wait("@publicShema");
     removeExpression("CC2");
     // The UI shows us the "play" icon, indicating we should refresh the query,
     // but the point of this repro is to save without refreshing
