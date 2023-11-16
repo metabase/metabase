@@ -12,6 +12,7 @@ import {
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
+  FormTextarea,
   FormTextInput,
 } from "metabase/forms";
 import { Stack } from "metabase/ui";
@@ -122,10 +123,9 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
               required
               autoFocus
             />
-            <FormTextInput
+            <FormTextarea
               {...fields["saml-identity-provider-certificate"]}
               label={t`SAML Identity Provider Certificate`}
-              // TODO: make FormTextArea by copying FormTextInput and replacing TextInput -> Textarea
               required
               monospaceText
             />

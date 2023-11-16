@@ -8,3 +8,4 @@ export * from "./FormRadioGroup";
 export * from "./FormSelect";
 export * from "./FormSubmitButton";
 export * from "./FormTextInput";
+export * from "./FormTextarea";
