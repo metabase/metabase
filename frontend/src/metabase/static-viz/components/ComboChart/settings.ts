@@ -168,5 +168,35 @@ export const computeStaticComboChartSettings = (
 
   fillWithDefaultValue(settings, "graph.y_axis.axis_enabled", true);
 
+  fillWithDefaultValue(
+    settings,
+    "graph.y_axis.title_text",
+    getDefaultYAxisTitle(
+      seriesModels.map(seriesModel => seriesModel.column.display_name),
+    ),
+  );
+
+  fillWithDefaultValue(
+    settings,
+    "graph.y_axis.labels_enabled",
+    getIsYAxisLabelEnabledDefault(),
+  );
+
+  fillWithDefaultValue(
+    settings,
+    "graph.x_axis.labels_enabled",
+    getIsXAxisLabelEnabledDefault(),
+  );
+
+  fillWithDefaultValue(
+    settings,
+    "graph.x_axis.title_text",
+    getDefaultXAxisTitle(dimensionModel.column),
+  );
+
+  fillWithDefaultValue(settings, "graph.x_axis.axis_enabled", true);
+
+  fillWithDefaultValue(settings, "graph.y_axis.axis_enabled", true);
+
   return settings;
 };
