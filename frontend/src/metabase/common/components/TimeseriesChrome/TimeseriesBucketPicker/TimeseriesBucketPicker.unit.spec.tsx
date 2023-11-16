@@ -10,7 +10,8 @@ import { TimeseriesBucketPicker } from "./TimeseriesBucketPicker";
 
 function findBreakoutColumn(query: Lib.Query) {
   const columns = Lib.breakoutableColumns(query, 0);
-  return columnFinder(query, columns)("ORDERS", "CREATED_AT");
+  const findColumn = columnFinder(query, columns);
+  return findColumn("ORDERS", "CREATED_AT");
 }
 
 function findMonthBucket(query: Lib.Query, column: Lib.ColumnMetadata) {
