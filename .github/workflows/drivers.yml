@@ -46,6 +46,7 @@ jobs:
         with:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
+          base: ${{ github.ref_name }}
 
   be-tests-athena-ee:
     needs: [files-changed, external-filter]

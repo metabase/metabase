@@ -22,6 +22,7 @@ jobs:
         with:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
+          base: ${{ github.ref_name }}
 
   yaml-linter:
     runs-on: ubuntu-22.04

@@ -46,6 +46,7 @@ jobs:
         with:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
+          base: ${{ github.ref_name }}
 
   e2e-matrix-builder:
     runs-on: ubuntu-22.04

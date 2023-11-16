@@ -25,6 +25,7 @@ jobs:
         with:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
+          base: ${{ github.ref_name }}
 
   run-presto-kerberos-test:
     needs: files-changed

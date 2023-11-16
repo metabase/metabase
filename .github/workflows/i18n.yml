@@ -26,6 +26,7 @@ jobs:
         with:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
+          base: ${{ github.ref_name }}
 
   verify-i18n-files:
     needs: files-changed

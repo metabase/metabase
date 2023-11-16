@@ -31,6 +31,7 @@ jobs:
         with:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
+          base: ${{ github.ref_name }}
 
   static-viz-files-changed:
     needs: files-changed
@@ -62,6 +63,7 @@ jobs:
         with:
           token: ${{ github.token }}
           filters: .github/static-viz-sources.yaml
+          base: ${{ github.ref_name }}
 
   be-linter-cloverage:
     needs: files-changed

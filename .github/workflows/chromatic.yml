@@ -46,6 +46,7 @@ jobs:
         with:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
+          base: ${{ github.ref_name }}
 
   fe-chromatic:
     needs: [files-changed, external-filter]

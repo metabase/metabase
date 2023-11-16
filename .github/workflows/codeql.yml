@@ -22,6 +22,7 @@ jobs:
         with:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
+          base: ${{ github.ref_name }}
   analyze:
     needs: files-changed
     if: needs.files-changed.outputs.codeql == 'true'
