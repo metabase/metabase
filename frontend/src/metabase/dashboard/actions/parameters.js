@@ -15,6 +15,7 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { updateDashboard } from "metabase/dashboard/actions/save";
 import { autoWireDashcardsWithMatchingParameters } from "metabase/dashboard/actions/auto-wire-parameters/actions";
 import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
+import { closeAutoWireParameterToast } from "metabase/dashboard/actions/auto-wire-parameters/toasts";
 import {
   isParameterValueEmpty,
   PULSE_PARAM_EMPTY,
@@ -116,6 +117,8 @@ export const setParameterMapping = createThunkAction(
   SET_PARAMETER_MAPPING,
   (parameter_id, dashcard_id, card_id, target) => {
     return (dispatch, getState) => {
+      dispatch(closeAutoWireParameterToast());
+
       const dashcard = getDashCardById(getState(), dashcard_id);
 
       if (target !== null) {

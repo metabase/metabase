@@ -5,10 +5,16 @@ import type {
   ParameterId,
   ParameterTarget,
 } from "metabase-types/api";
+import type { Dispatch, GetState, StoreDashcard } from "metabase-types/store";
 import {
   setDashCardAttributes,
   setMultipleDashCardAttributes,
 } from "metabase/dashboard/actions";
+import {
+  closeAutoWireParameterToast,
+  showAddedCardAutoWireParametersToast,
+  showAutoWireParametersToast,
+} from "metabase/dashboard/actions/auto-wire-parameters/toasts";
 import {
   getAllDashboardCardsWithUnmappedParameters,
   getAutoWiredMappingsForDashcards,
@@ -19,7 +25,6 @@ import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 import { getDashCardById } from "metabase/dashboard/selectors";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { Dispatch, GetState } from "metabase-types/store";
 import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
 
 export function autoWireDashcardsWithMatchingParameters(
@@ -35,11 +40,12 @@ export function autoWireDashcardsWithMatchingParameters(
       return;
     }
 
-    const dashcardsToAutoApply = getAllDashboardCardsWithUnmappedParameters(
-      dashboard_state,
-      dashboard_state.dashboardId,
-      parameter_id,
-    );
+    const dashcardsToAutoApply = getAllDashboardCardsWithUnmappedParameters({
+      dashboardState: dashboard_state,
+      dashboardId: dashboard_state.dashboardId,
+      parameterId: parameter_id,
+      excludeDashcardIds: [dashcard.id],
+    });
 
     const dashcardAttributes = getAutoWiredMappingsForDashcards(
       dashcard,
@@ -49,9 +55,26 @@ export function autoWireDashcardsWithMatchingParameters(
       metadata,
     );
 
+    if (dashcardAttributes.length === 0) {
+      return;
+    }
+
     dispatch(
       setMultipleDashCardAttributes({
         dashcards: dashcardAttributes,
+      }),
+    );
+
+    const originalDashcardAttributes = dashcardsToAutoApply.map(dashcard => ({
+      id: dashcard.id,
+      attributes: {
+        parameter_mappings: dashcard.parameter_mappings,
+      },
+    }));
+
+    dispatch(
+      showAutoWireParametersToast({
+        dashcardAttributes: originalDashcardAttributes,
       }),
     );
   };
@@ -63,6 +86,8 @@ export function autoWireParametersToNewCard({
   dashcard_id: DashCardId;
 }) {
   return function (dispatch: Dispatch, getState: GetState) {
+    dispatch(closeAutoWireParameterToast());
+
     const metadata = getMetadata(getState());
     const dashboardState = getState().dashboard;
     const dashboardId = dashboardState.dashboardId;
@@ -77,7 +102,10 @@ export function autoWireParametersToNewCard({
       dashboardId,
     );
 
-    const targetDashcard = getDashCardById(getState(), dashcard_id);
+    const targetDashcard: StoreDashcard = getDashCardById(
+      getState(),
+      dashcard_id,
+    );
 
     if (!targetDashcard) {
       return;
@@ -105,7 +133,11 @@ export function autoWireParametersToNewCard({
           ),
         );
 
-        if (param && !processedParameterIds.has(param.parameter_id)) {
+        if (
+          targetDashcard.card_id &&
+          param &&
+          !processedParameterIds.has(param.parameter_id)
+        ) {
           parametersToAutoApply.push(
             ...getParameterMappings(
               targetDashcard,
@@ -119,15 +151,24 @@ export function autoWireParametersToNewCard({
       }
     }
 
-    if (parametersToAutoApply.length > 0) {
-      dispatch(
-        setDashCardAttributes({
-          id: dashcard_id,
-          attributes: {
-            parameter_mappings: parametersToAutoApply,
-          },
-        }),
-      );
+    if (parametersToAutoApply.length === 0) {
+      return;
     }
+
+    dispatch(
+      setDashCardAttributes({
+        id: dashcard_id,
+        attributes: {
+          parameter_mappings: parametersToAutoApply,
+        },
+      }),
+    );
+
+    dispatch(
+      showAddedCardAutoWireParametersToast({
+        targetDashcard,
+        dashcard_id,
+      }),
+    );
   };
 }

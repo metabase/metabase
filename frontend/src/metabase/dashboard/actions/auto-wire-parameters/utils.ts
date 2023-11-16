@@ -16,12 +16,17 @@ import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-op
 import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
-export function getAllDashboardCardsWithUnmappedParameters(
-  dashboardState: DashboardState,
-  dashboardId: DashboardId,
-  parameter_id: ParameterId,
-  excludeDashcardIds: DashCardId[] = [],
-) {
+export function getAllDashboardCardsWithUnmappedParameters({
+  dashboardState,
+  dashboardId,
+  parameterId,
+  excludeDashcardIds = [],
+}: {
+  dashboardState: DashboardState;
+  dashboardId: DashboardId;
+  parameterId: ParameterId;
+  excludeDashcardIds?: DashCardId[];
+}) {
   const cards = getExistingDashCards(
     dashboardState.dashboards,
     dashboardState.dashcards,
@@ -31,7 +36,7 @@ export function getAllDashboardCardsWithUnmappedParameters(
     return (
       !excludeDashcardIds.includes(dashcard.id) &&
       !dashcard.parameter_mappings?.some(
-        mapping => mapping.parameter_id === parameter_id,
+        mapping => mapping.parameter_id === parameterId,
       )
     );
   });
@@ -42,7 +47,9 @@ export function getMatchingParameterOption(
   targetDimension: ParameterTarget,
   targetDashcard: DashboardCard,
   metadata: Metadata,
-): { target: ParameterTarget } | null {
+): {
+  target: ParameterTarget;
+} | null {
   if (!dashcardToCheck) {
     return null;
   }
@@ -52,10 +59,6 @@ export function getMatchingParameterOption(
       metadata,
       null,
       dashcardToCheck.card,
-      // TODO: mapping-options.js/getParameterMappingOptions needs to be converted to typescript as the TS
-      // checker thinks that this parameter should be (null | undefined), not (DashboardCard | null | undefined)
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
       dashcardToCheck,
     ).find((param: { target: ParameterTarget }) =>
       compareMappingOptionTargets(
@@ -83,16 +86,21 @@ export function getAutoWiredMappingsForDashcards(
   target: ParameterTarget,
   metadata: Metadata,
 ): DashCardAttribute[] {
+  if (targetDashcards.length === 0) {
+    return [];
+  }
+
   const targetDashcardMappings: DashCardAttribute[] = [];
 
   for (const targetDashcard of targetDashcards) {
-    const selectedMappingOption: { target: ParameterTarget } | null =
-      getMatchingParameterOption(
-        targetDashcard,
-        target,
-        sourceDashcard,
-        metadata,
-      );
+    const selectedMappingOption: {
+      target: ParameterTarget;
+    } | null = getMatchingParameterOption(
+      targetDashcard,
+      target,
+      sourceDashcard,
+      metadata,
+    );
 
     if (selectedMappingOption && targetDashcard.card_id) {
       targetDashcardMappings.push({
@@ -115,7 +123,7 @@ export function getParameterMappings(
   dashcard: DashboardCard,
   parameter_id: ParameterId,
   card_id: CardId,
-  target: ParameterTarget,
+  target: ParameterTarget | null,
 ) {
   const isVirtual = isVirtualDashCard(dashcard);
   const isAction = isActionDashCard(dashcard);
