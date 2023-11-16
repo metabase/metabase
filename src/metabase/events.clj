@@ -110,7 +110,8 @@
   [topic event]
   (span/with-span!
     {:name       "publish-event!"
-     :attributes {:event/topic topic}}
+     :attributes {:event/topic topic
+                  :events/initialized (some? @events-initialized?)}}
     (assert (not *compile-files*) "Calls to publish-event! are not allowed in the top level.")
     (if-not @events-initialized?
       ;; if the event namespaces aren't initialized yet, make sure they're all loaded up before trying to do dispatch.
