@@ -90,6 +90,7 @@
 
 ;; A percent value (generally 0-100)
 
+(derive :type/Percentage :Semantic/*)
 (derive :type/Percentage :type/Decimal)
 
 ;; `:type/Currency` -- an actual currency data type, for example Postgres `money`.
