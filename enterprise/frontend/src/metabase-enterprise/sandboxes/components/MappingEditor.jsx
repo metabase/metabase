@@ -16,8 +16,8 @@ const DefaultRenderInput = ({ value, onChange, placeholder }) => (
 const MappingEditor = ({
   value,
   onChange,
-  className,
-  style,
+  className = "",
+  style = {},
   keyHeader,
   valueHeader,
   keyPlaceholder = t`Key`,
