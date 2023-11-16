@@ -4069,6 +4069,16 @@ databaseChangeLog:
       rollback:
         - sql: DELETE FROM core_user WHERE id = 13371338;
 
+  - changeSet:
+      id: v49.00-000
+      author: qnkhuat
+      comment: Remove leagcy pulses
+      changes:
+        - sql: DELETE FROM pulse where dashboard_id is null and alert_condition is null;
+      # pulse has been deprecated in v38(~2.5 years ago), even the UI to view it is broken
+      # so we don't need to worry about recovering it on rollback
+      rollback:
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 
