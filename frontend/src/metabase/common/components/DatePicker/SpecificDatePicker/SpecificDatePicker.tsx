@@ -2,8 +2,8 @@ import { useMemo, useState } from "react";
 import { Divider, Flex, Tabs } from "metabase/ui";
 import { BackButton } from "../BackButton";
 import type { DatePickerOperator, SpecificDatePickerValue } from "../types";
-import { SimpleSingleDatePicker, SingleDatePicker } from "./SingleDatePicker";
-import { DateRangePicker, SimpleDateRangePicker } from "./DateRangePicker";
+import { SingleDatePicker } from "./SingleDatePicker";
+import { DateRangePicker } from "./DateRangePicker";
 import {
   coerceValue,
   getDate,
@@ -89,35 +89,5 @@ export function SpecificDatePicker({
         </Tabs.Panel>
       ))}
     </Tabs>
-  );
-}
-
-interface SimpleSpecificDatePickerProps {
-  value: SpecificDatePickerValue;
-  onChange: (value: SpecificDatePickerValue) => void;
-}
-
-export function SimpleSpecificDatePicker({
-  value,
-  onChange,
-}: SimpleSpecificDatePickerProps) {
-  const handleDateChange = (date: Date) => {
-    onChange(setDate(value, date));
-  };
-
-  const handleDateRangeChange = (dates: [Date, Date]) => {
-    onChange(setDateRange(value, dates));
-  };
-
-  return isDateRange(value.values) ? (
-    <SimpleDateRangePicker
-      value={value.values}
-      onChange={handleDateRangeChange}
-    />
-  ) : (
-    <SimpleSingleDatePicker
-      value={getDate(value)}
-      onChange={handleDateChange}
-    />
   );
 }
