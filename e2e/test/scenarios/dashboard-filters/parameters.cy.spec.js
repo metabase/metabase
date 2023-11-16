@@ -835,7 +835,56 @@ describe("scenarios > dashboard > parameters", () => {
           getDashboardCard(i).findByText("Select…").should("exist");
         }
       });
+
+      it("in case of two autowiring undo toast, the second one should last the default timeout of 5s", () => {
+        // The autowiring undo toasts use the same id, a bug in the undo logic caused the second toast to be dismissed by the
+        // timeout set by the first. See https://github.com/metabase/metabase/pull/35461#pullrequestreview-1731776862
+        const cardTemplate = {
+          card_id: ORDERS_BY_YEAR_QUESTION_ID,
+          row: 0,
+          col: 0,
+          size_x: 5,
+          size_y: 4,
+        };
+        const cards = [
+          {
+            ...cardTemplate,
+            col: 0,
+          },
+          {
+            ...cardTemplate,
+            col: 5,
+          },
+          {
+            ...cardTemplate,
+            col: 10,
+          },
+        ];
+
+        createDashboardWithCards(cards).then(dashboardId => {
+          visitDashboard(dashboardId);
+        });
+
+        editDashboard();
+
+        setFilter("Text or Category", "Is");
+
+        selectDashboardFilter(getDashboardCard(0), "Name");
+
+        removeFilterFromDashCard(0);
+        removeFilterFromDashCard(1);
+
+        cy.wait(2000);
+
+        selectDashboardFilter(getDashboardCard(0), "Name");
+
+        // since we waited 2 seconds earlier, if the toast is still visible after this other delay of 4s,
+        // it means the first timeout of 5s was cleared correctly
+        cy.wait(4000);
+        undoToast().should("exist");
+      });
     });
+
     describe("wiring parameters when adding a card", () => {
       it("should automatically wire a parameters to cards that are added to the dashboard", () => {
         const cards = [
@@ -1004,4 +1053,8 @@ function goToFilterMapping(name = "Text") {
   cy.findByTestId("edit-dashboard-parameters-widget-container")
     .findByText("Text")
     .click();
+}
+
+function removeFilterFromDashCard(dashcardIndex = 0) {
+  getDashboardCard(dashcardIndex).icon("close").click();
 }
