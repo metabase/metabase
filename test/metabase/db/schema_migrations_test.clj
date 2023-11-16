@@ -763,7 +763,7 @@
                                                                           :parameters      "[]"
                                                                           :created_at      :%now
                                                                           :updated_at      :%now}))
-            legacy-pulse-id (first (t2/insert-returning-pks! :pulse {:name            "A leagcy pulse"
+            legacy-pulse-id (first (t2/insert-returning-pks! :pulse {:name            "A legacy pulse"
                                                                      :creator_id      user-id
                                                                      :collection_id   nil
                                                                      :alert_condition nil
