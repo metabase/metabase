@@ -24,7 +24,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.realize :as t2.realize]
+   [metabase.models.permissions :as perms]))
 
 (set! *warn-on-reflection* true)
 
@@ -116,7 +117,7 @@
                                   visible-collections)]
     (cond-> honeysql-query
       true
-      (sql.helpers/where  collection-filter-clause [:= :collection.namespace nil])
+      (sql.helpers/where collection-filter-clause (perms/audit-namespace-clause :collection.namespace nil))
       ;; add a JOIN against Collection *unless* the source table is already Collection
       (not= collection-id-column :collection.id)
       (sql.helpers/left-join [:collection :collection]
