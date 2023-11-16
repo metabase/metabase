@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -104,7 +103,6 @@ const mapStateToProps = (state, props) => {
     user: getUser(state, props),
     canManageSubscriptions: canManageSubscriptions(state, props),
     isAdmin: getUserIsAdmin(state, props),
-    fromUrl: props.location.query?.from,
 
     mode: getMode(state),
 
@@ -188,7 +186,6 @@ const mapStateToProps = (state, props) => {
 const mapDispatchToProps = {
   ...actions,
   closeNavbar,
-  onChangeLocation: push,
   createBookmark: id => Bookmark.actions.create({ id, type: "card" }),
   deleteBookmark: id => Bookmark.actions.delete({ id, type: "card" }),
 };
@@ -199,7 +196,6 @@ function QueryBuilder(props) {
     originalQuestion,
     location,
     params,
-    fromUrl,
     uiControls,
     isNativeEditorOpen,
     isAnySidebarOpen,
@@ -209,7 +205,6 @@ function QueryBuilder(props) {
     apiUpdateQuestion,
     updateUrl,
     locationChanged,
-    onChangeLocation,
     setUIControls,
     cancelQuery,
     isBookmarked,
@@ -307,18 +302,12 @@ function QueryBuilder(props) {
           await updateUrl(updatedQuestion, { dirty: false });
         }
 
-        if (fromUrl) {
-          onChangeLocation(fromUrl);
-        } else {
-          setRecentlySaved("updated");
-        }
+        setRecentlySaved("updated");
       });
     },
     [
-      fromUrl,
       apiUpdateQuestion,
       updateUrl,
-      onChangeLocation,
       setRecentlySaved,
       setUIControls,
       scheduleCallback,
