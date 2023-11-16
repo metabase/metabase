@@ -119,6 +119,14 @@
               [:model-id        {:optional true} [:maybe pos-int?]]
               [:details         {:optional true} [:maybe :map]]]]
   (span/with-span!
+    {:name       "record-event!"
+     :attributes (cond-> {}
+                   (:model-id params)
+                   (assoc :model/id (:model-id params))
+                   (:user-id params)
+                   (assoc :user/id (:user-id params))
+                   (:model params)
+                   (assoc :model/name (u/lower-case-en (:model params))))}
     (let [unqualified-topic (keyword (name topic))
           object            (:object params)
           previous-object   (:previous-object params)
