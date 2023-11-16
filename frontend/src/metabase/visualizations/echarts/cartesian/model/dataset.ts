@@ -335,7 +335,7 @@ export const getNullReplacerFunction = (
 const getNumericValue = (value: RowValue): number =>
   typeof value === "number" ? value : 0;
 
-const computeTotal = (
+export const computeTotal = (
   row: Record<DataKey, RowValue>,
   keys: DataKey[],
 ): number => keys.reduce((total, key) => total + getNumericValue(row[key]), 0);

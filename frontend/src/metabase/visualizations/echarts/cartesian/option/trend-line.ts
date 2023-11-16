@@ -1,6 +1,7 @@
 import d3 from "d3";
 // eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
+import _ from "underscore";
 import type { RegisteredSeriesOption, EChartsOption } from "echarts";
 
 import { getTrendDataPointsFromInsight } from "metabase/visualizations/lib/trends";
@@ -10,52 +11,55 @@ import type {
 } from "metabase/visualizations/types";
 
 import { checkNotNull } from "metabase/lib/types";
-import type { CartesianChartModel } from "../model/types";
+import type { CartesianChartModel, GroupedDataset } from "../model/types";
 
 const TREND_LINE_DATA_KEY = "trend-line";
 
-function getSingleSeriesTrendOptionAndDataset(
+function getSingleSeriesTrendDataset(
   index: number,
   chartModel: CartesianChartModel,
-  renderingContext: RenderingContext,
-): {
-  option: RegisteredSeriesOption["line"];
-  dataset: EChartsOption["dataset"];
-} {
-  const insights = checkNotNull(chartModel.insights);
+): GroupedDataset {
+  const insights = checkNotNull(chartModel.insights); // TODO just make this a param?
 
   const xValues = chartModel.dataset.map(row =>
     moment(row[chartModel.dimensionModel.dataKey]),
   );
-
   const trendDataPoints = getTrendDataPointsFromInsight(
     insights[index],
     d3.extent(xValues),
     xValues.length,
   );
-  // TODO handle normalized stacking
 
-  const option: RegisteredSeriesOption["line"] = {
-    // TODO styles
-    type: "line",
-    datasetIndex: index + 2, // TODO make this a constant somehow
-    yAxisIndex: 0, // TODO can we remove this?
-    encode: {
-      x: chartModel.dimensionModel.dataKey,
-      y: TREND_LINE_DATA_KEY,
-    },
-  };
+  return trendDataPoints.map(([x, y], i) => ({
+    [chartModel.dimensionModel.dataKey]:
+      chartModel.dataset[i][chartModel.dimensionModel.dataKey],
+    [TREND_LINE_DATA_KEY]: y,
+  }));
+}
 
-  const dataset: EChartsOption["dataset"] = {
-    dimensions: [chartModel.dimensionModel.dataKey, TREND_LINE_DATA_KEY],
-    source: trendDataPoints.map(([x, y], i) => ({
-      [chartModel.dimensionModel.dataKey]:
-        chartModel.dataset[i][chartModel.dimensionModel.dataKey],
-      [TREND_LINE_DATA_KEY]: y,
+function normalizeTrendDatasets(
+  trendDatasets: GroupedDataset[],
+  settings: ComputedVisualizationSettings,
+): GroupedDataset[] {
+  if (settings["stackable.stack_type"] !== "normalized") {
+    return trendDatasets;
+  }
+
+  const totals = _.range(trendDatasets[0].length).map(rowIndex =>
+    trendDatasets.reduce(
+      (total, trendDataset) =>
+        total + (trendDataset[rowIndex][TREND_LINE_DATA_KEY] as number), // TODO better typesafety?
+      0,
+    ),
+  );
+
+  return trendDatasets.map(trendDataset =>
+    trendDataset.map((row, rowIndex) => ({
+      ...row,
+      [TREND_LINE_DATA_KEY]:
+        (row[TREND_LINE_DATA_KEY] as number) / totals[rowIndex],
     })),
-  };
-
-  return { option, dataset };
+  );
 }
 
 export function getTrendLineOptionsAndDatasets(
@@ -73,12 +77,29 @@ export function getTrendLineOptionsAndDatasets(
     throw Error("Number of insight objects does not match number of series");
   }
 
-  // TODO maybe rewrite as for-loop?
-  const optionsAndDatasets = chartModel.insights.map((_insight, index) =>
-    getSingleSeriesTrendOptionAndDataset(index, chartModel, renderingContext),
+  const options: RegisteredSeriesOption["line"][] = chartModel.insights.map(
+    (_, index) => ({
+      // TODO styles
+      type: "line",
+      datasetIndex: index + 2, // TODO make this a constant somehow
+      yAxisIndex: 0, // TODO can we remove this?
+      encode: {
+        x: chartModel.dimensionModel.dataKey,
+        y: TREND_LINE_DATA_KEY,
+      },
+    }),
   );
+
+  const rawDatasets = chartModel.insights.map((_, index) =>
+    getSingleSeriesTrendDataset(index, chartModel),
+  );
+  const datasets = normalizeTrendDatasets(rawDatasets, settings);
+
   return {
-    options: optionsAndDatasets.map(({ option }) => option),
-    datasets: optionsAndDatasets.map(({ dataset }) => dataset),
+    options,
+    datasets: datasets.map(dataset => ({
+      dimensions: [chartModel.dimensionModel.dataKey, TREND_LINE_DATA_KEY],
+      source: dataset,
+    })),
   };
 }
