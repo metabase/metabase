@@ -126,7 +126,7 @@ export function ClickBehaviorSidebar({
       }
 
       const changedType =
-        // nextClickBehavior is `null` for drill-through menu
+        // nextClickBehavior is `undefined` for drill-through menu
         !!nextClickBehavior && nextClickBehavior.type !== clickBehavior?.type;
       if (changedType) {
         // move to next screen
