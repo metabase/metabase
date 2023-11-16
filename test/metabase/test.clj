@@ -10,6 +10,7 @@
    [mb.hawk.parallel]
    [metabase.actions.test-util :as actions.test-util]
    [metabase.config :as config]
+   [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
@@ -292,6 +293,8 @@
 
  [tx.env
   set-test-drivers!
-  with-test-drivers])
+  with-test-drivers]
+ [schema-migrations-test.impl
+  with-temp-empty-app-db])
 
 (alter-meta! #'with-temp update :doc #(str % "\n\nNote: this version of [[with-temp]] will execute body in a transaction, for cases where that's not desired, use [[mt/with-temp!]]\n"))

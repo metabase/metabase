@@ -30,6 +30,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
@@ -51,29 +52,31 @@
       :or   {context       :ad-hoc
              export-format :api
              qp-runner     qp/process-query-and-save-with-max-results-constraints!}}]
-  (when (and (not= (:type query) "internal")
-             (not= database lib.schema.id/saved-questions-virtual-database-id))
-    (when-not database
-      (throw (ex-info (tru "`database` is required for all queries whose type is not `internal`.")
-                      {:status-code 400, :query query})))
-    (api/read-check Database database))
-  ;; store table id trivially iff we get a query with simple source-table
-  (let [table-id (get-in query [:query :source-table])]
-    (when (int? table-id)
-      (events/publish-event! :event/table-read {:object (t2/select-one Table :id table-id)
-                                                :user-id api/*current-user-id*})))
-  ;; add sensible constraints for results limits on our query
-  (let [source-card-id (query->source-card-id query)
-        source-card    (when source-card-id
-                         (t2/select-one [Card :result_metadata :dataset] :id source-card-id))
-        info           (cond-> {:executed-by api/*current-user-id*
-                                :context     context
-                                :card-id     source-card-id}
-                         (:dataset source-card)
-                         (assoc :metadata/dataset-metadata (:result_metadata source-card)))]
-    (binding [qp.perms/*card-id* source-card-id]
-      (qp.streaming/streaming-response [{:keys [rff context]} export-format]
-        (qp-runner query info rff context)))))
+  (span/with-span!
+    {:name "run-query-async"}
+    (when (and (not= (:type query) "internal")
+               (not= database lib.schema.id/saved-questions-virtual-database-id))
+      (when-not database
+        (throw (ex-info (tru "`database` is required for all queries whose type is not `internal`.")
+                        {:status-code 400, :query query})))
+      (api/read-check Database database))
+    ;; store table id trivially iff we get a query with simple source-table
+    (let [table-id (get-in query [:query :source-table])]
+      (when (int? table-id)
+        (events/publish-event! :event/table-read {:object  (t2/select-one Table :id table-id)
+                                                  :user-id api/*current-user-id*})))
+    ;; add sensible constraints for results limits on our query
+    (let [source-card-id (query->source-card-id query)
+          source-card    (when source-card-id
+                           (t2/select-one [Card :result_metadata :dataset] :id source-card-id))
+          info           (cond-> {:executed-by api/*current-user-id*
+                                  :context     context
+                                  :card-id     source-card-id}
+                           (:dataset source-card)
+                           (assoc :metadata/dataset-metadata (:result_metadata source-card)))]
+      (binding [qp.perms/*card-id* source-card-id]
+        (qp.streaming/streaming-response [{:keys [rff context]} export-format]
+                                         (qp-runner query info rff context))))))
 
 (api/defendpoint POST "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
