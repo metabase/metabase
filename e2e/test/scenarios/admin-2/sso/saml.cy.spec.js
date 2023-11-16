@@ -116,7 +116,10 @@ const setupSaml = () => {
 
 const enterSamlSettings = () => {
   getSamlCertificate().then(certificate => {
-    typeAndBlurUsingLabel("SAML Identity Provider URL", "https://example.test");
-    typeAndBlurUsingLabel("SAML Identity Provider Certificate", certificate);
+    typeAndBlurUsingLabel(
+      "SAML Identity Provider URL *",
+      "https://example.test",
+    );
+    typeAndBlurUsingLabel("SAML Identity Provider Certificate *", certificate);
   });
 };
