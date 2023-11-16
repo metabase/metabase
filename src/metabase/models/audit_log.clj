@@ -13,6 +13,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as m]
+   [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -112,24 +113,33 @@
   were updated."
   [topic :- :keyword
    params :- ::event-params]
-  (let [{:keys [user-id model-name model-id details unqualified-topic object]}
-        (construct-event topic params api/*current-user-id*)]
-    (t2/insert! :model/AuditLog
-                :topic    unqualified-topic
-                :details  details
-                :model    model-name
-                :model_id model-id
-                :user_id  user-id)
-    ;; TODO: temporarily double-writing to the `activity` table, delete this in Metabase v48
-    ;; TODO figure out set of events to actually continue recording in activity
-    (when-not (#{:card-read :dashboard-read :table-read :card-query :setting-update} unqualified-topic)
-      (activity/record-activity!
-       {:topic    topic
-        :object   object
-        :details  details
-        :model    model-name
-        :model-id model-id
-        :user-id  user-id}))))
+  (span/with-span!
+    {:name       "record-event!"
+     :attributes (cond-> {}
+                   (:model-id params)
+                   (assoc :model/id (:model-id params))
+                   (:user-id params)
+                   (assoc :user/id (:user-id params))
+                   (:model params)
+                   (assoc :model/name (u/lower-case-en (:model params))))}
+    (let [{:keys [user-id model-name model-id details unqualified-topic object]}
+          (construct-event topic params api/*current-user-id*)]
+      (t2/insert! :model/AuditLog
+                  :topic    unqualified-topic
+                  :details  details
+                  :model    model-name
+                  :model_id model-id
+                  :user_id  user-id)
+      ;; TODO: temporarily double-writing to the `activity` table, delete this in Metabase v48
+      ;; TODO figure out set of events to actually continue recording in activity
+      (when-not (#{:card-read :dashboard-read :table-read :card-query :setting-update} unqualified-topic)
+        (activity/record-activity!
+          {:topic    topic
+           :object   object
+           :details  details
+           :model    model-name
+           :model-id model-id
+           :user-id  user-id})))))
 
 (t2/define-before-insert :model/AuditLog
   [activity]
