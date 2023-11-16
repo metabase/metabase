@@ -8,6 +8,12 @@ export type LegacySeriesSettingsObjectKey = {
   };
 };
 
+export type LegacySeriesSettingsObjectKey = {
+  card: {
+    _seriesKey: string;
+  };
+};
+
 export type RegularSeriesModel = {
   name: string;
   color: string;
