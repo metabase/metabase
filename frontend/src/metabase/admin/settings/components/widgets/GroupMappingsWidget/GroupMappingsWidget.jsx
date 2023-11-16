@@ -8,8 +8,8 @@ import { isDefaultGroup } from "metabase/lib/groups";
 
 import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
+import { FormSwitch } from "metabase/forms/components/FormSwitch";
 
-import SettingToggle from "../SettingToggle";
 import AddMappingRow from "./AddMappingRow";
 import {
   GroupMappingsWidgetAndErrorRoot as WidgetAndErrorRoot,
@@ -105,7 +105,7 @@ function GroupMappingsWidget({
         <Header>
           <ToggleRoot>
             <span>{t`Synchronize Group Memberships`}</span>
-            <SettingToggle {...props} hideLabel />
+            <FormSwitch name={props.setting.key}></FormSwitch>
           </ToggleRoot>
           <About>
             <Tooltip

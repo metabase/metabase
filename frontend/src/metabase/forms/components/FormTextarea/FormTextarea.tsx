@@ -12,13 +12,13 @@ export interface FormTextareaProps
 
 export const FormTextarea = forwardRef(function FormTextarea(
   { name, nullable, onChange, onBlur, ...props }: FormTextareaProps,
-  ref: Ref<HTMLInputElement>,
+  ref: Ref<HTMLTextAreaElement>,
 ) {
   const [{ value }, { error, touched }, { setValue, setTouched }] =
     useField(name);
 
   const handleChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
+    (event: ChangeEvent<HTMLTextAreaElement>) => {
       const newValue = event.target.value;
       if (newValue === "") {
         setValue(nullable ? null : undefined);
@@ -31,7 +31,7 @@ export const FormTextarea = forwardRef(function FormTextarea(
   );
 
   const handleBlur = useCallback(
-    (event: FocusEvent<HTMLInputElement>) => {
+    (event: FocusEvent<HTMLTextAreaElement>) => {
       setTouched(true);
       onBlur?.(event);
     },
