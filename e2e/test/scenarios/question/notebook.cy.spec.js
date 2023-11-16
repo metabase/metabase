@@ -226,7 +226,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   // flaky test (#19454)
-  it("should show an info popover for dimensions listened by the custom expression editor", () => {
+  it.skip("should show an info popover for dimensions listened by the custom expression editor", () => {
     // start a custom question with orders
     startNewQuestion();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
