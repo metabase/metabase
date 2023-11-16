@@ -605,7 +605,7 @@ describe("scenarios > question > custom column", () => {
       cy.findByText("Past").click();
       cy.findByDisplayValue("days").click();
     });
-    popover().last().findByText("years").click();
+    cy.findByRole("listbox").findByText("years").click();
 
     popover().findByLabelText("Options").click();
     popover().last().findByText("Include this year").click();
