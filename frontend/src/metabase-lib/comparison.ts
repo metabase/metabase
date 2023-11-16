@@ -20,7 +20,7 @@ export function findMatchingColumn(
   column: ColumnMetadata,
   columns: ColumnMetadata[],
 ): ColumnMetadata | null {
-  return ML.find_matching_column(column, columns);
+  return ML.find_matching_column(query, stageIndex, column, columns);
 }
 
 export function findColumnIndexesFromLegacyRefs(
