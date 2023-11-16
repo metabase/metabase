@@ -9,6 +9,7 @@ import { createEntity } from "metabase/lib/entities";
 import { UserApi, SessionApi } from "metabase/services";
 import { generatePassword } from "metabase/lib/security";
 
+import { GET } from "metabase/lib/api";
 import forms from "./users/forms";
 
 export const DEACTIVATE = "metabase/entities/users/DEACTIVATE";
@@ -24,12 +25,20 @@ function loadMemberships() {
   return require("metabase/admin/people/people").loadMemberships();
 }
 
+const getUserList = GET("/api/user");
+const getRecipientsList = GET("/api/user/recipients");
+
 const Users = createEntity({
   name: "users",
   nameOne: "user",
   schema: UserSchema,
 
   path: "/api/user",
+
+  api: {
+    list: ({ recipients = false, ...args }) =>
+      recipients ? getRecipientsList() : getUserList(args),
+  },
 
   objectSelectors: {
     getName: user => user.common_name,

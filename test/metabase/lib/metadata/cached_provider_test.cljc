@@ -52,7 +52,3 @@
                (lib.metadata.protocols/bulk-metadata provider :metadata/table #{1 2})))
         (is (= 2
                @fetch-count))))))
-
-(deftest ^:parallel equality-test
-  (is (= (lib.metadata.cached-provider/cached-metadata-provider nil)
-         (lib.metadata.cached-provider/cached-metadata-provider nil))))

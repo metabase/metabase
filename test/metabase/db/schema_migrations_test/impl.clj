@@ -14,6 +14,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.data-source :as mdb.data-source]
    [metabase.db.liquibase :as liquibase]
+   [metabase.db.setup :as mdb.setup]
    [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -196,11 +197,25 @@
                   (str "'Empty' application DB is not actually empty. Found tables:\n"
                        (u/pprint-to-str tables))))))
     (log/debugf "Finding and running migrations before %s..." start-id)
-    (run-migrations-in-range! conn [1 start-id] {:inclusive-end? false})
-    (f
-     (fn migrate! []
-       (log/debugf "Finding and running migrations between %s and %s (inclusive)" start-id (or end-id "end"))
-       (run-migrations-in-range! conn [start-id end-id]))))
+    (run-migrations-in-range! conn ["v00.00-000" start-id] {:inclusive-end? false})
+    (letfn [(migrate
+              ([]
+               (migrate :up nil))
+              ([direction]
+               (migrate direction nil))
+
+              ([direction version]
+               (case direction
+                 :up
+                 (do
+                  (log/debugf "Finding and running migrations between %s and %s (inclusive)" start-id (or end-id "end"))
+                  (run-migrations-in-range! conn [start-id end-id]))
+
+                 :down
+                 (do
+                  (assert (int? version), "Downgrade requires a version")
+                  (mdb.setup/migrate! driver (mdb.connection/data-source) :down version)))))]
+     (f migrate)))
   (log/debug (u/format-color 'green "Done testing migrations for driver %s." driver)))
 
 (defn do-test-migrations
