@@ -105,27 +105,19 @@ Note that your interactive embed must be compatible with Safari to run on _any_ 
 
 > Skip this section if your Metabase and embedding app are already in the same top-level domain (TLD).
 
-If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you tell Metabase to set the session cookie's SameSite value to "none". 
+If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you can tell Metabase to set the session cookie's SameSite value to "none". 
+
+You can set session cookie's SameSite value in **Admin settings** > **Embedding** > **Interactive embedding** > **SameSite cookie setting**. 
 
 SameSite values include:
 
 - **Lax** (default): Allows cookies to be sent when someone navigates to the origin site from an external site (like when following a link). 
-- **None**: Allows all cross-site requests. Incompatible with most Safari and iOS browsers, such as Chrome on iOS). If you set this environment variable to "None", you must use HTTPS in Metabase to prevent browsers from rejecting the request. 
+- **None**: Allows all cross-site requests. Incompatible with most Safari and iOS browsers, such as Chrome on iOS. If you set this environment variable to "None", you must use HTTPS in Metabase to prevent browsers from rejecting the request. 
 - **Strict** (not recommended): Never allows cookies to be sent on a cross-site request. Warning: this will prevent users from following external links to Metabase.
 
-Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
-
-### Setting the session cookie's SameSite value
-
-There are two ways you can set the SameSite value:
-
-#### In Metabase's admin settings
-
-You can set session cookie's SameSite value in **Admin settings** > **Embedding** > **Interactive embedding** > **SameSite cookie setting**. 
-
-#### With an environment variable
-
 You can also set the the [`MB_SESSION_COOKIE_SAMESITE` environment variable](../configuring-metabase/environment-variables.md#mb_session_cookie_samesite).
+
+Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
 
 ## Securing interactive embeds
 
