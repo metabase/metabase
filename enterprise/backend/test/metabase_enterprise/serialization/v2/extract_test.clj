@@ -1033,8 +1033,8 @@
                  (by-model "FieldValues" (extract/extract {})))))
         (testing "with :include-field-values true"
           (let [models (->> {:include-field-values true} extract/extract (map (comp :model last :serdes/meta)))]
-            ;; why 6?
-            (is (= 6 (count (filter #{"FieldValues"} models))))))))))
+            ;; why 14?
+            (is (= 14 (count (filter #{"FieldValues"} models))))))))))
 
 (deftest pulses-test
   (mt/with-empty-h2-app-db

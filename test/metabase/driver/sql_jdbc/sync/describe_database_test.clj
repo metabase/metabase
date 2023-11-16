@@ -56,7 +56,7 @@
     (descendants driver/hierarchy :sql-jdbc))))
 
 (deftest fast-active-tables-test
-  (is (= ["CATEGORIES" "CHECKINS" "USERS" "VENUES"]
+  (is (= ["CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS" "USERS" "VENUES"]
          (sql-jdbc.execute/do-with-connection-with-options
           (or driver/*driver* :h2)
           (mt/db)
@@ -69,7 +69,7 @@
                    sort)))))))
 
 (deftest post-filtered-active-tables-test
-  (is (= ["CATEGORIES" "CHECKINS" "USERS" "VENUES"]
+  (is (= ["CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS" "USERS" "VENUES"]
          (sql-jdbc.execute/do-with-connection-with-options
           :h2
           (mt/db)
@@ -83,7 +83,11 @@
   (is (= {:tables #{{:name "USERS", :schema "PUBLIC", :description nil}
                     {:name "VENUES", :schema "PUBLIC", :description nil}
                     {:name "CATEGORIES", :schema "PUBLIC", :description nil}
-                    {:name "CHECKINS", :schema "PUBLIC", :description nil}}}
+                    {:name "CHECKINS", :schema "PUBLIC", :description nil}
+                    {:name "ORDERS", :schema "PUBLIC", :description nil}
+                    {:name "PEOPLE", :schema "PUBLIC", :description nil}
+                    {:name "PRODUCTS", :schema "PUBLIC", :description nil}
+                    {:name "REVIEWS", :schema "PUBLIC", :description nil}}}
          (sql-jdbc.describe-database/describe-database :h2 (mt/id)))))
 
 (defn- describe-database-with-open-resultset-count

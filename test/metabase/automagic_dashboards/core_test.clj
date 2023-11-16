@@ -186,7 +186,7 @@
     (automagic-dashboards.test/with-dashboard-cleanup
       (doseq [[table cardinality] (map vector
                                        (t2/select Table :db_id (mt/id) {:order-by [[:id :asc]]})
-                                       [7 5 8 2])]
+                                       [15 11 7 5])]
         (test-automagic-analysis table cardinality)))
 
     (automagic-dashboards.test/with-dashboard-cleanup
@@ -906,7 +906,7 @@
       (mt/with-test-user :rasta
         (is (malli= [:cat
                      [:map
-                      [:tables [:sequential {:min 4, :max 4} :any]]]
+                      [:tables [:sequential {:min 8, :max 8} :any]]]
                      [:* :any]]
                     (magic/candidate-tables (mt/db))))))
 

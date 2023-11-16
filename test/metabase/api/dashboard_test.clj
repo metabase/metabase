@@ -3837,7 +3837,7 @@
 
 (deftest param-values-expression-test
   (testing "Ensure param value lookup works for when the value is an expression"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp-copy-of-db
         (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
         (perms/grant-permissions! (perms-group/all-users) (perms/table-read-path (mt/id :products)))

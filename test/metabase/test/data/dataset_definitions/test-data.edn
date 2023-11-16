@@ -21,6 +21,42 @@
 ;;    *  user_id
 ;;    *  venue_id
 ;;    *  date
+;; *  products - 200 rows
+;;    *  ean
+;;    *  title
+;;    *  category
+;;    *  vendor
+;;    *  price
+;;    *  rating
+;;    *  created_at
+;; *  people - 2500 rows
+;;    *  address
+;;    *  email
+;;    *  password
+;;    *  name
+;;    *  city
+;;    *  longitude
+;;    *  state
+;;    *  source
+;;    *  birth_date
+;;    *  zip
+;;    *  latitude
+;;    *  created_at
+;; *  reviews - 1112 rows
+;;    *  product_id
+;;    *  reviewer
+;;    *  rating
+;;    *  body
+;;    *  created_at
+;; *  orders - 18760 rows
+;;    *  user_id
+;;    *  product_id
+;;    *  subtotal
+;;    *  tax
+;;    *  total
+;;    *  discount
+;;    *  created_at
+;;    *  quantity
 
 [["users" [{:field-name "name"
             :base-type  :type/Text}
@@ -1244,13 +1280,7 @@
    [#t "2015-04-16" 12 5]
    [#t "2015-02-07" 7 67]
    [#t "2014-06-03" 2 92]]]
-
-;; products = 200 rows
-;; people = 2500 rows
-;; reviews = 1112 rows
-;; orders = 18760 rows
-
-["products"
+ ["products"
   [{:field-name "ean", :base-type :type/Text}
    {:field-name "title", :base-type :type/Text}
    {:field-name "category", :base-type :type/Text}
@@ -1458,7 +1488,6 @@
    ["7153630876392" "Enormous Copper Shirt" "Gizmo" "Considine, Schamberger and Schiller" 46.76 4.1 #t "2017-09-06T19:28:16.574Z"]
    ["5522456328132" "Mediocre Leather Coat" "Widget" "Gulgowski, Grimes and Mayer" 76.95 3.6 #t "2016-08-19T01:21:25.232Z"]
    ["7317365230007" "Intelligent Steel Car" "Gadget" "Pouros, Nitzsche and Mayer" 48.8 4.0 #t "2018-06-12T06:08:53.212Z"]]]
-
  ["people"
   [{:field-name "address", :base-type :type/Text}
    {:field-name "email", :base-type :type/Text}
@@ -29866,7 +29895,6 @@
     "41092"
     38.821582
     #t "2018-03-30T18:16:16.900Z"]]]
-
  ["reviews"
   [{:field-name "product_id", :base-type :type/Integer, :fk :products}
    {:field-name "reviewer", :base-type :type/Text}
@@ -34193,7 +34221,6 @@
     "Eligendi id adipisci quis quaerat est dolorem nisi est. In aperiam maiores sed. Vero pariatur iusto aut pariatur repellat aut et assumenda. Ut aliquam iusto at sit voluptatem. Officiis assumenda iure cumque aut fugit consequatur error."
     #t "2019-01-23T14:49:01.779Z"]
    [200 "terrell" 4 "Eligendi cumque et quam qui. Quo facilis veniam minus ab nobis aut delectus. Fugiat iste deserunt inventore est eius." #t "2018-09-01T23:23:23.486Z"]]]
-
  ["orders"
   [{:field-name "user_id", :base-type :type/Integer, :fk :people}
    {:field-name "product_id", :base-type :type/Integer, :fk :products}
