@@ -1,4 +1,8 @@
-import { getNotebookStep, restore } from "e2e/support/helpers";
+import {
+  getNotebookStep,
+  restore,
+  saveMetadataChanges,
+} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
@@ -37,8 +41,7 @@ describe("issue 29951", { requestTimeout: 10000 }, () => {
     // The UI shows us the "play" icon, indicating we should refresh the query,
     // but the point of this repro is to save without refreshing
     cy.button("Get Answer").should("be.visible");
-    cy.button("Save changes").click();
-    cy.wait(["@updateCard", "@dataset"]);
+    saveMetadataChanges();
 
     dragColumn(0, 100);
     cy.findByTestId("qb-header").button("Refresh").click();
