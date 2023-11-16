@@ -372,8 +372,7 @@
                 (merge
                  col
                  (get col-name->expected-col (:name col))))))]
-    (-> metadata
-        (update :cols merge-cols))))
+    (update metadata :cols merge-cols)))
 
 (defenterprise merge-sandboxing-metadata
   "Post-processing middleware. Merges in column metadata from the original, unsandboxed version of the query."
