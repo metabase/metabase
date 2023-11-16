@@ -91,9 +91,9 @@ interface SuccessEmbedDataset {
 }
 
 export interface ErrorEmbedDataset {
-  status: string;
-  error: string;
   error_type: string;
+  error: string;
+  status: string;
 }
 
 export interface NativeQueryForm {
