@@ -26,11 +26,27 @@ interface BulkFilterModalProps {
   onClose: () => void;
 }
 
-const STAGE_INDEX = -1;
+interface ColumnGroupListItem {
+  group: Lib.ColumnGroup;
+  stageIndex: number;
+  displayInfo: Lib.ColumnGroupDisplayInfo;
+}
 
 // Computed column groups have an empty `name`,
 // tab navigation components don't accept an empty `value` prop.
 const COMPUTED_COLUMN_GROUP_ID = "COMPUTED";
+
+function toGroupListItem(
+  query: Lib.Query,
+  stageIndex: number,
+  group: Lib.ColumnGroup,
+) {
+  return {
+    group,
+    stageIndex,
+    displayInfo: Lib.displayInfo(query, stageIndex, group),
+  };
+}
 
 export function BulkFilterModal({
   query: initialQuery,
@@ -40,15 +56,30 @@ export function BulkFilterModal({
 }: BulkFilterModalProps) {
   const [query] = useState(initialQuery);
 
-  const columnGroups = useMemo(() => {
-    const columns = Lib.filterableColumns(query, STAGE_INDEX);
-    return Lib.groupColumns(columns);
-  }, [query]);
+  const columnGroups: ColumnGroupListItem[] = useMemo(() => {
+    const stageCount = Lib.stageCount(query);
+    const lastStageIndex = stageCount - 1;
+    const hasPreviousStage = stageCount > 1;
 
-  const defaultGroupInfo = useMemo(() => {
-    const [firstGroup] = columnGroups;
-    return Lib.displayInfo(query, STAGE_INDEX, firstGroup);
-  }, [query, columnGroups]);
+    const lastStageColumns = Lib.filterableColumns(query, lastStageIndex);
+    const previousStageColumns = hasPreviousStage
+      ? Lib.filterableColumns(query, lastStageIndex - 1)
+      : [];
+
+    const lastStageGroups = Lib.groupColumns(lastStageColumns);
+    const previousStageGroups = hasPreviousStage
+      ? Lib.groupColumns(previousStageColumns)
+      : [];
+
+    return [
+      ...previousStageGroups.map(group =>
+        toGroupListItem(query, lastStageIndex - 1, group),
+      ),
+      ...lastStageGroups.map(group =>
+        toGroupListItem(query, lastStageIndex, group),
+      ),
+    ];
+  }, [query]);
 
   const handleSubmit = useCallback(() => {
     onSubmit(query);
@@ -60,12 +91,14 @@ export function BulkFilterModal({
   const unsafeModalWidth = hasNavigation ? "70rem" : "55rem";
   const modalWidth = `min(98vw, ${unsafeModalWidth})`;
 
+  const [defaultGroup] = columnGroups;
+
   const modalTitle =
     columnGroups.length === 1
-      ? t`Filter ${defaultGroupInfo.displayName} by`
+      ? t`Filter ${defaultGroup.displayInfo.displayName} by`
       : t`Filter by`;
 
-  const initialTab = defaultGroupInfo.name || COMPUTED_COLUMN_GROUP_ID;
+  const initialTab = defaultGroup.displayInfo.name || COMPUTED_COLUMN_GROUP_ID;
 
   return (
     <Modal.Root opened={opened} size={modalWidth} onClose={onClose}>
@@ -78,9 +111,7 @@ export function BulkFilterModal({
         <ModalBody p={0}>
           <Tabs defaultValue={initialTab} orientation="vertical" h="100%">
             <Flex direction="row" w="100%">
-              {hasNavigation && (
-                <ColumnGroupNavigation query={query} groups={columnGroups} />
-              )}
+              {hasNavigation && <ColumnGroupNavigation groups={columnGroups} />}
               {columnGroups.map((group, index) => (
                 <FilterableColumnGroup
                   key={index}
@@ -104,18 +135,16 @@ export function BulkFilterModal({
 }
 
 interface ColumnGroupNavigationProps {
-  query: Lib.Query;
-  groups: Lib.ColumnGroup[];
+  groups: ColumnGroupListItem[];
 }
 
-function ColumnGroupNavigation({ query, groups }: ColumnGroupNavigationProps) {
+function ColumnGroupNavigation({ groups }: ColumnGroupNavigationProps) {
   return (
     <Tabs.List w="20%" pt="sm" pl="md">
-      {groups.map(group => {
-        const groupInfo = Lib.displayInfo(query, STAGE_INDEX, group);
-        const groupName = getColumnGroupName(groupInfo);
-        const groupIcon = getColumnGroupIcon(groupInfo);
-        const value = groupInfo.name || COMPUTED_COLUMN_GROUP_ID;
+      {groups.map(item => {
+        const groupName = getColumnGroupName(item.displayInfo) || t`Summaries`;
+        const groupIcon = getColumnGroupIcon(item.displayInfo) ?? "sum";
+        const value = item.displayInfo.name || COMPUTED_COLUMN_GROUP_ID;
         return (
           <Tabs.Tab
             key={value}
@@ -133,28 +162,27 @@ function ColumnGroupNavigation({ query, groups }: ColumnGroupNavigationProps) {
 
 interface FilterableColumnGroupProps {
   query: Lib.Query;
-  group: Lib.ColumnGroup;
+  group: ColumnGroupListItem;
 }
 
-function FilterableColumnGroup({ query, group }: FilterableColumnGroupProps) {
-  const groupInfo = Lib.displayInfo(query, STAGE_INDEX, group);
-  const groupColumns = Lib.getColumnsFromColumnGroup(group);
-  const value = groupInfo.name || COMPUTED_COLUMN_GROUP_ID;
+function FilterableColumnGroup({
+  query,
+  group: item,
+}: FilterableColumnGroupProps) {
+  const groupColumns = Lib.getColumnsFromColumnGroup(item.group);
+  const value = item.displayInfo.name || COMPUTED_COLUMN_GROUP_ID;
   return (
     <ScrollableTabPanel key={value} value={value}>
       <ul>
-        {groupColumns.map(column => {
-          const columnInfo = Lib.displayInfo(query, STAGE_INDEX, column);
-          return (
-            <ColumnFilterListItem key={columnInfo.name} pr="md">
-              <ColumnFilterSection
-                query={query}
-                stageIndex={STAGE_INDEX}
-                column={column}
-              />
-            </ColumnFilterListItem>
-          );
-        })}
+        {groupColumns.map((column, i) => (
+          <ColumnFilterListItem key={`col-${i}`} pr="md">
+            <ColumnFilterSection
+              query={query}
+              stageIndex={item.stageIndex}
+              column={column}
+            />
+          </ColumnFilterListItem>
+        ))}
       </ul>
     </ScrollableTabPanel>
   );
