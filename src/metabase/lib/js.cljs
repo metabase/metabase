@@ -8,6 +8,7 @@
    :exclude
    [filter])
   (:require
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [goog.object :as gobject]
    [medley.core :as m]
@@ -146,9 +147,18 @@
 ;; In contrast, the CLJS -> JS conversion doesn't know about queries, so it can use `=`-based LRU caches.
 (declare ^:private display-info->js)
 
+(defn- cljs-key->js-key [cljs-key]
+  (let [key-str (u/qualified-name cljs-key)
+        ;; if the key is something like `many-pks?` convert it to something that is more JS-friendly (remove the
+        ;; question mark), `:is-many-pks`, which becomes `isManyPks`
+        key-str (if (str/ends-with? key-str "?")
+                  (str "is-" (str/replace key-str #"\?$" ""))
+                  key-str)]
+    (u/->camelCaseEn key-str)))
+
 (defn- display-info-map->js* [x]
   (reduce (fn [obj [cljs-key cljs-val]]
-            (let [js-key (-> cljs-key u/qualified-name u/->camelCaseEn)
+            (let [js-key (cljs-key->js-key cljs-key)
                   js-val (display-info->js cljs-val)] ;; Recursing through the cache
               (gobject/set obj js-key js-val)
               obj))
