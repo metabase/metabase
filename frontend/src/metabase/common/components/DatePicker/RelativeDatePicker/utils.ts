@@ -1,12 +1,12 @@
 import * as Lib from "metabase-lib";
 import { DATE_PICKER_TRUNCATION_UNITS } from "../constants";
-import type { RelativeDatePickerValue } from "../types";
-import { DEFAULT_VALUE } from "./constants";
 import type {
-  IntervalDirection,
-  DateIntervalValue,
-  DateOffsetIntervalValue,
-} from "./types";
+  RelativeIntervalDirection,
+  RelativeDatePickerValue,
+  DatePickerTruncationUnit,
+} from "../types";
+import { DEFAULT_VALUE } from "./constants";
+import type { DateIntervalValue, DateOffsetIntervalValue } from "./types";
 
 export function isIntervalValue(
   value: RelativeDatePickerValue,
@@ -24,9 +24,13 @@ export function isOffsetIntervalValue(
   );
 }
 
+export function getDirectionDefaultValue(direction: RelativeIntervalDirection) {
+  return setDirectionAndCoerceUnit(DEFAULT_VALUE, direction);
+}
+
 export function getDirection(
   value: RelativeDatePickerValue,
-): IntervalDirection {
+): RelativeIntervalDirection {
   if (value.value === "current") {
     return "current";
   } else {
@@ -36,17 +40,18 @@ export function getDirection(
 
 export function setDirection(
   value: RelativeDatePickerValue,
-  direction: IntervalDirection,
+  direction: RelativeIntervalDirection,
+  fallbackUnit: DatePickerTruncationUnit = "hour",
 ): RelativeDatePickerValue {
   if (direction === "current") {
-    return { type: "relative", value: "current", unit: "hour" };
+    return { type: "relative", value: "current", unit: fallbackUnit };
   }
 
   const sign = direction === "last" ? -1 : 1;
 
   if (!isIntervalValue(value)) {
     return {
-      ...DEFAULT_VALUE,
+      ...value,
       value: Math.abs(DEFAULT_VALUE.value) * sign,
     };
   }
@@ -59,6 +64,18 @@ export function setDirection(
         ? Math.abs(value.offsetValue) * sign
         : undefined,
   };
+}
+
+export function setDirectionAndCoerceUnit(
+  value: RelativeDatePickerValue,
+  direction: RelativeIntervalDirection,
+) {
+  const fallbackUnit =
+    value.unit !== "hour" && value.unit !== "minute"
+      ? value.unit
+      : DEFAULT_VALUE.unit;
+
+  return setDirection(value, direction, fallbackUnit);
 }
 
 export function getInterval(value: DateIntervalValue): number {

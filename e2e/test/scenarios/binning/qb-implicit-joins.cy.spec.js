@@ -41,7 +41,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
       });
 
       // Make sure time series assertQueryBuilderState works as well
-      cy.findAllByTestId("select-button-content").contains("Year").click();
+      cy.findByTestId("timeseries-bucket-button").contains("Year").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Month").click();
 
@@ -106,7 +106,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
       });
 
       // Make sure time series assertQueryBuilderStateter works as well
-      cy.findAllByTestId("select-button-content").contains("Year").click();
+      cy.findByTestId("timeseries-bucket-button").contains("Year").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Month").click();
 

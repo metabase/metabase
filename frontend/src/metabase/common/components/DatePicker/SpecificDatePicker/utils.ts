@@ -13,15 +13,32 @@ export function getTabs(
   return TABS.filter(tab => availableOperators.includes(tab.operator));
 }
 
-export function getDefaultValue(): SpecificDatePickerValue {
+export function getDefaultValue() {
+  return getOperatorDefaultValue("between");
+}
+
+export function getOperatorDefaultValue(
+  operator: SpecificDatePickerOperator,
+): SpecificDatePickerValue {
   const today = dayjs().startOf("date").toDate();
   const past30Days = dayjs(today).subtract(30, "day").toDate();
 
-  return {
-    type: "specific",
-    operator: "between",
-    values: [past30Days, today],
-  };
+  switch (operator) {
+    case "between":
+      return {
+        type: "specific",
+        operator,
+        values: [past30Days, today],
+      };
+    case "=":
+    case "<":
+    case ">":
+      return {
+        type: "specific",
+        operator,
+        values: [today],
+      };
+  }
 }
 
 export function setOperator(
