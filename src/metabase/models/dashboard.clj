@@ -52,7 +52,7 @@
 (defmethod mi/can-write? Dashboard
   ([instance]
    ;; Dashboards in audit collection should be read only
-   (if (perms/is-parent-collection-audit? instance)
+   (if (= (:id (perms/default-audit-collection)) (:collection_id instance))
      false
      (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :write))))
   ([_ pk]
