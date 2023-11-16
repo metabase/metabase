@@ -77,7 +77,6 @@
    "local"
    "resources"
    "resources-ee"
-   "shared/src"
    "src"
    "target"
    "test_config"
