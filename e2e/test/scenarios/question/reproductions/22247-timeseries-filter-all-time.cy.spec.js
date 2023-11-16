@@ -67,7 +67,6 @@ describe("time-series filter widget", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Created At is in the previous 3 months").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByDisplayValue("months").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("years").click();
@@ -84,7 +83,6 @@ describe("time-series filter widget", () => {
       .findByText("Created At is in the previous 3 years")
       .should("be.visible");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByTestId("timeseries-filter-button").click();
     popover().within(() => {
       cy.findByDisplayValue("Previous").should("be.visible");
