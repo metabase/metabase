@@ -100,7 +100,6 @@
               :native       false
               :pulse_id     nil
               :action_id    nil
-              :is_sandboxed false
               :card_id      nil
               :context      nil
               :running_time true

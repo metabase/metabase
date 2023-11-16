@@ -103,7 +103,7 @@
                   :native       false
                   :pulse_id     nil
                   :card_id      nil
-                  :is_sandboxed false
+                  :is_sandboxed nil
                   :dashboard_id nil
                   :error        nil
                   :id           true

@@ -63,7 +63,7 @@
   (let [qe-map (assoc query-execution
                       :cache_hit (boolean cached?)
                       :result_rows result-rows
-                      :is_sandboxed is_sandboxed?)]
+                      :is_sandboxed (boolean is_sandboxed?))]
     (save-query-execution! qe-map)))
 
 (defn- save-failed-query-execution! [query-execution message]
