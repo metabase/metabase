@@ -97,7 +97,7 @@
          (events/publish-event! :event/card-query {:user-id      (:executor_id execution-info)
                                                    :card-id      (:card_id execution-info)
                                                    :context      (:context execution-info)}))
-       (save-successful-query-execution! (:cached acc) execution-info @row-count)
+       (save-successful-query-execution! (:cached acc) (get-in acc [:data :is_sandboxed]) execution-info @row-count)
        (rf (if (map? acc)
              (success-response execution-info acc)
              acc)))
