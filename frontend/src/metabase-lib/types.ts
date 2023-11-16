@@ -130,7 +130,6 @@ export type ColumnDisplayInfo = {
   displayName: string;
   longDisplayName: string;
 
-  fkReferenceName?: string;
   isCalculated: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
@@ -140,6 +139,10 @@ export type ColumnDisplayInfo = {
   filterPositions?: number[];
   orderByPosition?: number;
   selected?: boolean; // used in aggregation and field clauses
+};
+
+export type ColumnGroupDisplayInfo = TableDisplayInfo & {
+  fkReferenceName?: string;
 };
 
 export type SegmentDisplayInfo = {
