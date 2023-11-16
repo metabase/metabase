@@ -318,7 +318,7 @@ describe("availableDrillThrus", () => {
         {
           type: "drill-thru/zoom",
           objectId: ORDERS_ROW_VALUES.ID as string,
-          "manyPks?": false,
+          isManyPks: false,
         },
       ],
     },
@@ -333,7 +333,7 @@ describe("availableDrillThrus", () => {
         {
           type: "drill-thru/fk-details",
           objectId: ORDERS_ROW_VALUES.USER_ID as string,
-          "manyPks?": false,
+          isManyPks: false,
         },
       ],
     },
@@ -345,7 +345,7 @@ describe("availableDrillThrus", () => {
         {
           type: "drill-thru/zoom",
           objectId: ORDERS_ROW_VALUES.ID as string,
-          "manyPks?": false,
+          isManyPks: false,
         },
         {
           type: "drill-thru/quick-filter",
@@ -361,7 +361,7 @@ describe("availableDrillThrus", () => {
         {
           type: "drill-thru/zoom",
           objectId: ORDERS_ROW_VALUES.ID as string,
-          "manyPks?": false,
+          isManyPks: false,
         },
         {
           type: "drill-thru/quick-filter",
@@ -507,7 +507,7 @@ describe("availableDrillThrus", () => {
     //     {
     //       type: "drill-thru/fk-details",
     //       objectId: AGGREGATED_ORDERS_ROW_VALUES.PRODUCT_ID as number,
-    //       "manyPks?": false,
+    //       isManyPks: false,
     //     },
     //     {
     //       rowCount: 2, // FIXME: (metabase#32108) this should return real count of rows
@@ -1189,7 +1189,7 @@ describe("availableDrillThrus", () => {
       expectedParameters: {
         type: "drill-thru/zoom",
         objectId: ORDERS_ROW_VALUES.ID as string,
-        "manyPks?": false,
+        isManyPks: false,
       },
     },
     {
@@ -1200,7 +1200,7 @@ describe("availableDrillThrus", () => {
       expectedParameters: {
         type: "drill-thru/zoom",
         objectId: ORDERS_ROW_VALUES.ID as string,
-        "manyPks?": false,
+        isManyPks: false,
       },
     },
     {
@@ -1211,7 +1211,7 @@ describe("availableDrillThrus", () => {
       expectedParameters: {
         type: "drill-thru/zoom",
         objectId: ORDERS_ROW_VALUES.ID as string,
-        "manyPks?": false,
+        isManyPks: false,
       },
     },
     {
@@ -1222,7 +1222,7 @@ describe("availableDrillThrus", () => {
       expectedParameters: {
         type: "drill-thru/zoom",
         objectId: ORDERS_ROW_VALUES.ID as string,
-        "manyPks?": false,
+        isManyPks: false,
       },
     },
     {
@@ -1233,7 +1233,7 @@ describe("availableDrillThrus", () => {
       expectedParameters: {
         type: "drill-thru/zoom",
         objectId: ORDERS_ROW_VALUES.ID as string,
-        "manyPks?": false,
+        isManyPks: false,
       },
     },
     // endregion
@@ -1251,7 +1251,7 @@ describe("availableDrillThrus", () => {
       expectedParameters: {
         type: "drill-thru/fk-details",
         objectId: ORDERS_ROW_VALUES.PRODUCT_ID as string,
-        "manyPks?": false,
+        isManyPks: false,
       },
     },
     {
@@ -1262,7 +1262,7 @@ describe("availableDrillThrus", () => {
       expectedParameters: {
         type: "drill-thru/fk-details",
         objectId: ORDERS_ROW_VALUES.USER_ID as string,
-        "manyPks?": false,
+        isManyPks: false,
       },
     },
     // endregion
