@@ -6,13 +6,15 @@ import _ from "underscore";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import CopyWidget from "metabase/components/CopyWidget";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { FormSection } from "metabase/containers/FormikForm";
 import {
-  FormField,
-  FormSubmit,
-  FormMessage,
-  FormSection,
-} from "metabase/containers/FormikForm";
-import { Form, FormProvider } from "metabase/forms";
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+} from "metabase/forms";
+import { Stack } from "metabase/ui";
 import MetabaseSettings from "metabase/lib/settings";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 
@@ -56,7 +58,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
 
   return (
     <FormProvider
-      initialValues={{ ...settingValues, ...attributeValues }}
+      initialValues={attributeValues}
       onSubmit={handleSubmit}
       enableReinitialize
       // disablePristineSubmit
@@ -90,66 +92,72 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
           <p className="mb3 mt1 text-medium">{t`In most IdPs, you'll need to put each of these in an input box labeled
                         "Name" in the attribute statements section.`}</p>
 
-          <FormField
-            {...fields["saml-attribute-email"]}
-            title={t`User's email attribute`}
-            type={({ field }) => <CopyWidget {...field} />}
-          />
-          <FormField
-            {...fields["saml-attribute-firstname"]}
-            title={t`User's first name attribute`}
-            type={({ field }) => <CopyWidget {...field} />}
-          />
-          <FormField
-            {...fields["saml-attribute-lastname"]}
-            title={t`User's last name attribute`}
-            type={({ field }) => <CopyWidget {...field} />}
-          />
+          <Stack gap="md">
+            <FormTextInput
+              label={t`User's email attribute`}
+              {...fields["saml-attribute-email"]}
+              // TODO: make <CopyWidget {...field} />
+            />
+            <FormTextInput
+              {...fields["saml-attribute-firstname"]}
+              label={t`User's first name attribute`}
+              // TODO: make <CopyWidget {...field} />
+            />
+            <FormTextInput
+              {...fields["saml-attribute-lastname"]}
+              label={t`User's last name attribute`}
+              // TODO: make <CopyWidget {...field} />
+            />
+          </Stack>
         </SAMLFormSection>
 
         <SAMLFormSection>
           <h3 className="mb0">{t`Tell Metabase about your identity provider`}</h3>
           <p className="mb4 mt1 text-medium">{t`Metabase will need the following info about your provider.`}</p>
-          <FormField
-            {...fields["saml-identity-provider-uri"]}
-            title={t`SAML Identity Provider URL`}
-            placeholder="https://your-org-name.yourIDP.com"
-            required
-            autoFocus
-          />
-          <FormField
-            {...fields["saml-identity-provider-certificate"]}
-            title={t`SAML Identity Provider Certificate`}
-            type="text"
-            required
-            monospaceText
-          />
-          <FormField
-            {...fields["saml-application-name"]}
-            title={t`SAML Application Name`}
-          />
-          <FormField
-            {...fields["saml-identity-provider-issuer"]}
-            title={t`SAML Identity Provider Issuer`}
-          />
+          <Stack gap="md">
+            <FormTextInput
+              {...fields["saml-identity-provider-uri"]}
+              label={t`SAML Identity Provider URL`}
+              placeholder="https://your-org-name.yourIDP.com"
+              required
+              autoFocus
+            />
+            <FormTextInput
+              {...fields["saml-identity-provider-certificate"]}
+              label={t`SAML Identity Provider Certificate`}
+              // TODO: make FormTextArea by copying FormTextInput and replacing TextInput -> Textarea
+              required
+              monospaceText
+            />
+            <FormTextInput
+              {...fields["saml-application-name"]}
+              label={t`SAML Application Name`}
+            />
+            <FormTextInput
+              {...fields["saml-identity-provider-issuer"]}
+              label={t`SAML Identity Provider Issuer`}
+            />
+          </Stack>
         </SAMLFormSection>
 
         <SAMLFormSection isSSLSection={true}>
           <FormSection title={t`Sign SSO requests (optional)`} collapsible>
-            <FormField
-              {...fields["saml-keystore-path"]}
-              title={t`SAML Keystore Path`}
-            />
-            <FormField
-              {...fields["saml-keystore-password"]}
-              title={t`SAML Keystore Password`}
-              type="password"
-              placeholder={t`Shh...`}
-            />
-            <FormField
-              {...fields["saml-keystore-alias"]}
-              title={t`SAML Keystore Alias`}
-            />
+            <Stack gap="md">
+              <FormTextInput
+                {...fields["saml-keystore-path"]}
+                label={t`SAML Keystore Path`}
+              />
+              <FormTextInput
+                {...fields["saml-keystore-password"]}
+                label={t`SAML Keystore Password`}
+                type="password"
+                placeholder={t`Shh...`}
+              />
+              <FormTextInput
+                {...fields["saml-keystore-alias"]}
+                label={t`SAML Keystore Alias`}
+              />
+            </Stack>
           </FormSection>
         </SAMLFormSection>
 
@@ -159,33 +167,37 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
             {t`To enable this, you'll need to create mappings to tell Metabase which group(s) your users should
                be added to based on the SSO group they're in.`}
           </p>
-          <FormField
-            {...fields["saml-group-sync"]}
-            type={({ field: { value, onChange } }) => (
-              <GroupMappingsWidget
-                // map to legacy setting props
-                setting={{ key: "saml-group-sync", value }}
-                onChange={onChange}
-                settingValues={settingValues}
-                mappingSetting="saml-group-mappings"
-                groupHeading={t`Group Name`}
-                groupPlaceholder={t`Group Name`}
-              />
-            )}
-          />
-          <FormField
-            {...fields["saml-attribute-group"]}
-            title={t`Group attribute name`}
-          />
+          {/*{...fields["saml-group-sync"]}*/}
+          {/*type={({ field: { value, onChange } }) => (*/}
+          <Stack gap="md">
+            <GroupMappingsWidget
+              // map to legacy setting props
+              setting={{
+                key: "saml-group-sync",
+                value: fields["saml-group-sync"],
+              }}
+              onChange={handleSubmit}
+              settingValues={settingValues}
+              mappingSetting="saml-group-mappings"
+              groupHeading={t`Group Name`}
+              groupPlaceholder={t`Group Name`}
+            />
+            {/*)}*/}
+            <FormTextInput
+              {...fields["saml-attribute-group"]}
+              label={t`Group attribute name`}
+            />
+          </Stack>
         </SAMLFormSection>
 
         <div>
-          <FormMessage />
+          <FormErrorMessage />
         </div>
         <SAMLFormFooter>
-          <FormSubmit>
-            {isEnabled ? t`Save changes` : t`Save and enable`}
-          </FormSubmit>
+          <FormSubmitButton
+            label={isEnabled ? t`Save changes` : t`Save and enable`}
+            variant="filled"
+          ></FormSubmitButton>
         </SAMLFormFooter>
       </Form>
     </FormProvider>
@@ -200,6 +212,12 @@ const SAML_ATTRS = [
   "saml-identity-provider-issuer",
   "saml-identity-provider-certificate",
   "saml-application-name",
+  "saml-keystore-password",
+  "saml-attribute-group",
+  "saml-group-sync",
+  "saml-keystore-alias",
+  "saml-keystore-path",
+  "saml-enabled",
 ];
 
 const getAttributeValues = (values, defaults) => {
