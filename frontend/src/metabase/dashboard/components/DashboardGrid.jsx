@@ -157,9 +157,13 @@ class DashboardGrid extends Component {
     const changes = [];
 
     layout.forEach(layoutItem => {
-      const dashboardCard = this.getVisibleCards().find(
-        card => String(card.id) === layoutItem.i,
-      );
+      const dashboardCard = this.getVisibleCards().find(card => {
+        return String(card.id) === layoutItem.i;
+      }) || {
+        id: null,
+        card: {},
+        series: [],
+      };
 
       const keys = ["h", "w", "x", "y"];
       const changed = !_.isEqual(

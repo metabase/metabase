@@ -48,10 +48,12 @@ export function QuestionList({
   const [queryOffset, setQueryOffset] = useState(0);
   const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
 
+  const [isAdding] = useState(false);
+
   useEffect(() => {
     setQueryOffset(0);
     setPage(0);
-  }, [searchText, collectionId, setPage]);
+  }, [searchText, collectionId, setPage, isAdding]);
 
   if (collectionId === "personal" && !searchText) {
     return null;
@@ -106,6 +108,12 @@ export function QuestionList({
         return (
           <>
             <SelectList>
+              <div
+                draggable={true}
+                onDragStart={e => e.dataTransfer.setData("text/plain", "")}
+              >
+                Add me
+              </div>
               {list.map(item => (
                 <QuestionListItem
                   key={item.id}

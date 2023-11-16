@@ -124,10 +124,15 @@ function GridLayout({
       isDraggable={isEditing && !isMobile}
       isResizable={isEditing && !isMobile}
       {...props}
-      autoSize={false}
+      autoSize={true}
       onLayoutChange={onLayoutChangeWrapped}
       onBreakpointChange={onBreakpointChange}
       style={style}
+      isDroppable={true}
+      onDrop={v => {
+        alert("Dropped");
+      }}
+      droppingItem={{ i: "dropping", w: 4, h: 2 }}
     >
       {children}
     </ReactGridLayout>
