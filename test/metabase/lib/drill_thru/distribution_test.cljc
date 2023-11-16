@@ -1,4 +1,5 @@
 (ns metabase.lib.drill-thru.distribution-test
+  "See also [[metabase.query-processor-test.drill-thru-e2e-test/distribution-drill-on-longitude-from-sql-source-card-test]]"
   (:require
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]

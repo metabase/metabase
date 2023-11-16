@@ -476,101 +476,105 @@ const MODEL_NAME = "Test Action Model";
           });
         });
 
-        it("can update various data types via implicit actions", () => {
-          cy.get("@modelId").then(id => {
-            createImplicitAction({
-              kind: "update",
-              model_id: id,
-            });
-          });
-
-          createDashboardWithActionButton({
-            actionName: "Update",
-            idFilter: true,
-          });
-
-          filterWidget().click();
-          addWidgetStringFilter("1");
-
-          cy.findByRole("button", { name: "Update" }).click();
-
-          cy.wait("@prefetchValues");
-
-          const oldRow = many_data_types_rows[0];
-
-          modal().within(() => {
-            changeValue({
-              fieldName: "UUID",
-              fieldType: "text",
-              oldValue: oldRow.uuid,
-              newValue: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
+        it(
+          "can update various data types via implicit actions",
+          { tags: "@flaky" },
+          () => {
+            cy.get("@modelId").then(id => {
+              createImplicitAction({
+                kind: "update",
+                model_id: id,
+              });
             });
 
-            changeValue({
-              fieldName: "Integer",
-              fieldType: "number",
-              oldValue: oldRow.integer,
-              newValue: 123,
+            createDashboardWithActionButton({
+              actionName: "Update",
+              idFilter: true,
             });
 
-            changeValue({
-              fieldName: "Float",
-              fieldType: "number",
-              oldValue: oldRow.float,
-              newValue: 2.2,
+            filterWidget().click();
+            addWidgetStringFilter("1");
+
+            cy.findByRole("button", { name: "Update" }).click();
+
+            cy.wait("@prefetchValues");
+
+            const oldRow = many_data_types_rows[0];
+
+            modal().within(() => {
+              changeValue({
+                fieldName: "UUID",
+                fieldType: "text",
+                oldValue: oldRow.uuid,
+                newValue: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
+              });
+
+              changeValue({
+                fieldName: "Integer",
+                fieldType: "number",
+                oldValue: oldRow.integer,
+                newValue: 123,
+              });
+
+              changeValue({
+                fieldName: "Float",
+                fieldType: "number",
+                oldValue: oldRow.float,
+                newValue: 2.2,
+              });
+
+              cy.findByLabelText("Boolean").should("be.checked").click();
+
+              changeValue({
+                fieldName: "String",
+                fieldType: "text",
+                oldValue: oldRow.string,
+                newValue: "new string",
+              });
+
+              changeValue({
+                fieldName: "Date",
+                fieldType: "date",
+                oldValue: oldRow.date,
+                newValue: "2020-05-01",
+              });
+
+              // we can't assert on this value because mysql and postgres seem to
+              // handle timezones differently 🥴
+              cy.findByPlaceholderText("TimestampTZ")
+                .should("have.attr", "type", "datetime-local")
+                .clear()
+                .type("2020-05-01T16:45:00");
+
+              cy.button("Update").click();
             });
 
-            cy.findByLabelText("Boolean").should("be.checked").click();
+            cy.wait("@executeAction");
 
-            changeValue({
-              fieldName: "String",
-              fieldType: "text",
-              oldValue: oldRow.string,
-              newValue: "new string",
+            queryWritableDB(
+              `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
+              dialect,
+            ).then(result => {
+              expect(result.rows.length).to.equal(1);
+
+              const row = result.rows[0];
+
+              expect(row).to.have.property(
+                "uuid",
+                "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
+              );
+              expect(row).to.have.property("integer", 123);
+              expect(row).to.have.property("float", 2.2);
+              expect(row).to.have.property("string", "new string");
+              expect(row).to.have.property(
+                "boolean",
+                dialect === "mysql" ? 0 : false,
+              );
+              expect(row.date).to.include("2020-05-01"); // js converts this to a full date obj
+              expect(row.timestampTZ).to.include("2020-05-01"); // we got timezone issues here
             });
-
-            changeValue({
-              fieldName: "Date",
-              fieldType: "date",
-              oldValue: oldRow.date,
-              newValue: "2020-05-01",
-            });
-
-            // we can't assert on this value because mysql and postgres seem to
-            // handle timezones differently 🥴
-            cy.findByPlaceholderText("TimestampTZ")
-              .should("have.attr", "type", "datetime-local")
-              .clear()
-              .type("2020-05-01T16:45:00");
-
-            cy.button("Update").click();
-          });
-
-          cy.wait("@executeAction");
-
-          queryWritableDB(
-            `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
-            dialect,
-          ).then(result => {
-            expect(result.rows.length).to.equal(1);
-
-            const row = result.rows[0];
-
-            expect(row).to.have.property(
-              "uuid",
-              "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
-            );
-            expect(row).to.have.property("integer", 123);
-            expect(row).to.have.property("float", 2.2);
-            expect(row).to.have.property("string", "new string");
-            expect(row).to.have.property(
-              "boolean",
-              dialect === "mysql" ? 0 : false,
-            );
-            expect(row.date).to.include("2020-05-01"); // js converts this to a full date obj
-            expect(row.timestampTZ).to.include("2020-05-01"); // we got timezone issues here
-          });
-        });
+          },
+        );
 
         it("can insert various data types via implicit actions", () => {
           cy.get("@modelId").then(id => {

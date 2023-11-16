@@ -388,7 +388,9 @@ const loadingDashCards = handleActions(
     },
     [FETCH_CARD_DATA_PENDING]: {
       next: (state, { payload: { dashcard_id } }) => {
-        const loadingIds = state.loadingIds.concat(dashcard_id);
+        const loadingIds = !state.loadingIds.includes(dashcard_id)
+          ? state.loadingIds.concat(dashcard_id)
+          : state.loadingIds;
         return {
           ...state,
           loadingIds,

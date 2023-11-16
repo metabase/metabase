@@ -1,4 +1,5 @@
 (ns metabase.lib.drill-thru.quick-filter-test
+  "See also [[metabase.query-processor-test.drill-thru-e2e-test/quick-filter-on-bucketed-date-test]]"
   (:require
    [clojure.test :refer [deftest testing]]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]

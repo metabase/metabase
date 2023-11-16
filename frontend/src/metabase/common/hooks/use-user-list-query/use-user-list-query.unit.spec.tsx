@@ -1,4 +1,8 @@
-import { setupUsersEndpoints } from "__support__/server-mocks";
+import fetchMock from "fetch-mock";
+import {
+  setupUserRecipientsEndpoint,
+  setupUsersEndpoints,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
@@ -12,8 +16,19 @@ import { useUserListQuery } from "./use-user-list-query";
 
 const TEST_USER = createMockUserInfo();
 
-function TestComponent() {
-  const { data = [], metadata, isLoading, error } = useUserListQuery();
+type TestComponentProps = { getRecipients?: boolean };
+
+function TestComponent({ getRecipients = false }: TestComponentProps) {
+  const {
+    data = [],
+    metadata,
+    isLoading,
+    error,
+  } = useUserListQuery({
+    query: {
+      recipients: getRecipients,
+    },
+  });
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -32,9 +47,12 @@ function TestComponent() {
   );
 }
 
-function setup() {
+function setup({ getRecipients = false }: TestComponentProps = {}) {
   setupUsersEndpoints([TEST_USER]);
-  renderWithProviders(<TestComponent />);
+  setupUserRecipientsEndpoint({
+    users: [TEST_USER],
+  });
+  renderWithProviders(<TestComponent getRecipients={getRecipients} />);
 }
 
 describe("useUserListQuery", () => {
@@ -55,5 +73,19 @@ describe("useUserListQuery", () => {
     expect(
       within(screen.getByTestId("metadata")).getByText("No metadata"),
     ).toBeInTheDocument();
+  });
+
+  it("should call /api/user when recipient isn't passed or is false", () => {
+    setup();
+
+    expect(fetchMock.calls("path:/api/user")).toHaveLength(1);
+    expect(fetchMock.calls("path:/api/user/recipients")).toHaveLength(0);
+  });
+
+  it("should call /api/user/recipients when the `recipient` is passed", () => {
+    setup({ getRecipients: true });
+
+    expect(fetchMock.calls("path:/api/user")).toHaveLength(0);
+    expect(fetchMock.calls("path:/api/user/recipients")).toHaveLength(1);
   });
 });
