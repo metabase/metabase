@@ -10,6 +10,7 @@ import {
 
 import * as Lib from "metabase-lib";
 
+import { findFilterClause } from "./utils";
 import { ColumnFilterSection } from "./ColumnFilterSection";
 import {
   ColumnFilterListItem,
@@ -54,7 +55,7 @@ export function BulkFilterModal({
   onSubmit,
   onClose,
 }: BulkFilterModalProps) {
-  const [query] = useState(initialQuery);
+  const [query, setQuery] = useState(initialQuery);
 
   const columnGroups: ColumnGroupListItem[] = useMemo(() => {
     const stageCount = Lib.stageCount(query);
@@ -80,6 +81,11 @@ export function BulkFilterModal({
       ),
     ];
   }, [query]);
+
+  const canSubmit = useMemo(
+    () => !Lib.areQueriesEqual(initialQuery, query),
+    [initialQuery, query],
+  );
 
   const handleSubmit = useCallback(() => {
     onSubmit(query);
@@ -117,6 +123,7 @@ export function BulkFilterModal({
                   key={index}
                   query={query}
                   group={group}
+                  onChangeQuery={setQuery}
                 />
               ))}
             </Flex>
@@ -125,7 +132,7 @@ export function BulkFilterModal({
         <ModalFooter justify="flex-end">
           <Button
             variant="filled"
-            disabled
+            disabled={!canSubmit}
             onClick={handleSubmit}
           >{t`Apply filters`}</Button>
         </ModalFooter>
@@ -163,26 +170,50 @@ function ColumnGroupNavigation({ groups }: ColumnGroupNavigationProps) {
 interface FilterableColumnGroupProps {
   query: Lib.Query;
   group: ColumnGroupListItem;
+  onChangeQuery: (nextQuery: Lib.Query) => void;
 }
 
 function FilterableColumnGroup({
   query,
   group: item,
+  onChangeQuery,
 }: FilterableColumnGroupProps) {
+  const { stageIndex } = item;
   const groupColumns = Lib.getColumnsFromColumnGroup(item.group);
   const value = item.displayInfo.name || COMPUTED_COLUMN_GROUP_ID;
+
   return (
     <ScrollableTabPanel key={value} value={value}>
       <ul>
-        {groupColumns.map((column, i) => (
-          <ColumnFilterListItem key={`col-${i}`} pr="md">
-            <ColumnFilterSection
-              query={query}
-              stageIndex={item.stageIndex}
-              column={column}
-            />
-          </ColumnFilterListItem>
-        ))}
+        {groupColumns.map((column, i) => {
+          const filter = findFilterClause(query, stageIndex, column);
+
+          const handleFilterChange = (
+            newFilter: Lib.ExpressionClause | undefined,
+          ) => {
+            if (filter && newFilter) {
+              onChangeQuery(
+                Lib.replaceClause(query, stageIndex, filter, newFilter),
+              );
+            } else if (newFilter) {
+              onChangeQuery(Lib.filter(query, stageIndex, newFilter));
+            } else if (filter) {
+              onChangeQuery(Lib.removeClause(query, stageIndex, filter));
+            }
+          };
+
+          return (
+            <ColumnFilterListItem key={`col-${i}`} pr="md">
+              <ColumnFilterSection
+                query={query}
+                stageIndex={stageIndex}
+                column={column}
+                filter={filter}
+                onChange={handleFilterChange}
+              />
+            </ColumnFilterListItem>
+          );
+        })}
       </ul>
     </ScrollableTabPanel>
   );
