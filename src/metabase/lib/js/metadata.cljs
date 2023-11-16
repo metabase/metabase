@@ -211,9 +211,10 @@
 
 (defmethod rename-key-fn :field
   [_object-type]
-  {:source       :lib/source
-   :unit         :metabase.lib.field/temporal-unit
-   :binning-info :metabase.lib.field/binning})
+  {:source          :lib/source
+   :unit            :metabase.lib.field/temporal-unit
+   :expression-name :lib/expression-name
+   :binning-info    :metabase.lib.field/binning})
 
 (defn- parse-field-id
   [id]
