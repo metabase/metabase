@@ -365,7 +365,7 @@
 (defn- merge-metadata
   "Merge column metadata from the non-sandboxed version of the query into the sandboxed results `metadata`. This way the
   final results metadata coming back matches what we'd get if the query was not running in a sandbox."
-  [{::keys [original-metadata] :as query} metadata]
+  [{::keys [original-metadata]} metadata]
   (letfn [(merge-cols [cols]
             (let [col-name->expected-col (m/index-by :name original-metadata)]
               (for [col cols]
@@ -373,14 +373,15 @@
                  col
                  (get col-name->expected-col (:name col))))))]
     (-> metadata
-        (update :cols merge-cols)
-        (assoc :is_sandboxed (some? (get-in query [::qp.perms/perms :gtaps]))))))
+        (update :cols merge-cols))))
 
 (defenterprise merge-sandboxing-metadata
   "Post-processing middleware. Merges in column metadata from the original, unsandboxed version of the query."
   :feature :sandboxes
   [{::keys [original-metadata] :as query} rff]
-  (if original-metadata
-    (fn merge-sandboxing-metadata-rff* [metadata]
-      (rff (merge-metadata query metadata)))
-    rff))
+  (fn merge-sandboxing-metadata-rff* [metadata]
+    (let [metadata (assoc metadata :is_sandboxed (some? (get-in query [::qp.perms/perms :gtaps])))
+          metadata (if original-metadata
+                     (merge-metadata original-metadata metadata)
+                     metadata)]
+      (rff metadata))))
