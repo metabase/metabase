@@ -129,8 +129,7 @@
                                  :source-card (:id (lib.tu/mock-cards :orders))}]}
           own-fields (for [field (lib.metadata/fields lib.tu/metadata-provider-with-mock-cards (meta/id :orders))]
                        (-> field
-                           (assoc :lib/source :source/card)
-                           (dissoc :id :table-id)))]
+                           (assoc :lib/source :source/card)))]
       (testing "implicitly joinable columns"
         (testing "are included by visible-columns"
           (is (=? (->> (concat own-fields
@@ -142,7 +141,24 @@
                   (sort-by (juxt :name :id) (lib.metadata.calculation/visible-columns query)))))
         (testing "are not included by returned-columns"
           (is (=? (sort-by (juxt :name :id) own-fields)
-                  (sort-by (juxt :name :id) (lib.metadata.calculation/returned-columns query)))))))))
+                  (sort-by (juxt :name :id) (lib.metadata.calculation/returned-columns query))))))
+      (testing "multi-stage implicitly joinable columns"
+        (let [own-fields (mapv #(-> %
+                                    (dissoc :id :table-id)
+                                    (assoc :lib/source :source/previous-stage))
+                               own-fields)
+              query (lib/append-stage query)]
+          (testing "are included by visible-columns"
+            (is (=? (->> (concat own-fields
+                                 (for [field (lib.metadata/fields lib.tu/metadata-provider-with-mock-cards (meta/id :people))]
+                                   (assoc field :lib/source :source/implicitly-joinable))
+                                 (for [field (lib.metadata/fields lib.tu/metadata-provider-with-mock-cards (meta/id :products))]
+                                   (assoc field :lib/source :source/implicitly-joinable)))
+                         (sort-by (juxt :lib/source :name :id)))
+                    (sort-by (juxt :lib/source :name :id) (lib.metadata.calculation/visible-columns query)))))
+          (testing "are not included by returned-columns"
+            (is (=? (sort-by (juxt :name :id) own-fields)
+                    (sort-by (juxt :name :id) (lib.metadata.calculation/returned-columns query))))))))))
 
 (deftest ^:parallel self-join-visible-columns-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))

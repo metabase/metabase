@@ -412,7 +412,7 @@ export function clipPathReference(id) {
   return `url(${url})`;
 }
 
-export function initializeIframeResizer(readyCallback = () => {}) {
+export function initializeIframeResizer(onReady = () => {}) {
   if (!isWithinIframe()) {
     return;
   }
@@ -421,12 +421,12 @@ export function initializeIframeResizer(readyCallback = () => {}) {
   // have their embeds autosize to their content
   if (window.iFrameResizer) {
     console.error("iFrameResizer resizer already defined.");
-    readyCallback();
+    onReady();
   } else {
     window.iFrameResizer = {
       autoResize: true,
       heightCalculationMethod: "max",
-      readyCallback: readyCallback,
+      onReady,
     };
 
     // FIXME: Crimes

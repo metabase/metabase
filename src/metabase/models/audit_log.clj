@@ -6,11 +6,13 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [metabase.api.common :as api]
-   [metabase.models.activity :as activity]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as m]
+   [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -56,6 +58,41 @@
     {:previous (select-keys previous-object shared-updated-keys)
      :new (select-keys object shared-updated-keys)}))
 
+(mr/def ::event-params [:map {:closed true
+                              :doc "Used when inserting a value to the Audit Log."}
+                        [:object          {:optional true} [:maybe :map]]
+                        [:previous-object {:optional true} [:maybe :map]]
+                        [:user-id         {:optional true} [:maybe pos-int?]]
+                        [:model           {:optional true} [:maybe [:or :keyword :string]]]
+                        [:model-id        {:optional true} [:maybe pos-int?]]
+                        [:details         {:optional true} [:maybe :map]]])
+
+(mu/defn construct-event
+  :- [:map
+      [:unqualified-topic simple-keyword?]
+      [:user-id [:maybe ms/PositiveInt]]
+      [:model-name [:maybe :string]]
+      [:model-id [:maybe ms/PositiveInt]]
+      [:details :map]]
+  "Generates the data to be recorded in the Audit Log."
+  ([topic :- :keyword
+    params :- ::event-params
+    current-user-id :- [:maybe pos-int?]]
+   (let [unqualified-topic (keyword (name topic))
+         object            (:object params)
+         previous-object   (:previous-object params)
+         object-details    (model-details object unqualified-topic)
+         previous-details  (model-details previous-object unqualified-topic)]
+     {:unqualified-topic unqualified-topic
+      :user-id           (or (:user-id params) current-user-id)
+      :model-name        (model-name (or (:model params) object))
+      :model-id          (or (:model-id params) (u/id object))
+      :details           (merge {}
+                                (:details params)
+                                (if (not-empty previous-object)
+                                  (prepare-update-event-data object-details previous-details)
+                                  object-details))})))
+
 (mu/defn record-event!
   "Records an event in the Audit Log.
 
@@ -81,35 +118,34 @@
               [:model           {:optional true} [:maybe [:or :keyword :string]]]
               [:model-id        {:optional true} [:maybe pos-int?]]
               [:details         {:optional true} [:maybe :map]]]]
-  (let [unqualified-topic (keyword (name topic))
-        object            (:object params)
-        previous-object   (:previous-object params)
-        object-details    (model-details object unqualified-topic)
-        previous-details  (model-details previous-object unqualified-topic)
-        user-id           (or (:user-id params) api/*current-user-id*)
-        model             (model-name (or (:model params) object))
-        model-id          (or (:model-id params) (u/id object))
-        details           (merge {}
-                           (:details params)
-                           (if (not-empty previous-object)
-                             (prepare-update-event-data object-details previous-details)
-                             object-details))]
-    (t2/insert! :model/AuditLog
-                :topic    unqualified-topic
-                :details  details
-                :model    model
-                :model_id model-id
-                :user_id  user-id)
-    ;; TODO: temporarily double-writing to the `activity` table, delete this in Metabase v48
-    ;; TODO figure out set of events to actually continue recording in activity
-    (when-not (#{:card-read :dashboard-read :table-read :card-query :setting-update} unqualified-topic)
-      (activity/record-activity!
-       {:topic    topic
-        :object   object
-        :details  details
-        :model    model
-        :model-id model-id
-        :user-id  user-id}))))
+  (span/with-span!
+    {:name       "record-event!"
+     :attributes (cond-> {}
+                   (:model-id params)
+                   (assoc :model/id (:model-id params))
+                   (:user-id params)
+                   (assoc :user/id (:user-id params))
+                   (:model params)
+                   (assoc :model/name (u/lower-case-en (:model params))))}
+    (let [unqualified-topic (keyword (name topic))
+          object            (:object params)
+          previous-object   (:previous-object params)
+          object-details    (model-details object unqualified-topic)
+          previous-details  (model-details previous-object unqualified-topic)
+          user-id           (or (:user-id params) api/*current-user-id*)
+          model             (model-name (or (:model params) object))
+          model-id          (or (:model-id params) (u/id object))
+          details           (merge {}
+                                   (:details params)
+                                   (if (not-empty previous-object)
+                                     (prepare-update-event-data object-details previous-details)
+                                     object-details))]
+      (t2/insert! :model/AuditLog
+                  :topic    unqualified-topic
+                  :details  details
+                  :model    model
+                  :model_id model-id
+                  :user_id  user-id))))
 
 (t2/define-before-insert :model/AuditLog
   [activity]

@@ -89,15 +89,11 @@
       ([]
        (rf))
 
-      ([acc]
-       ;; We don't actually have a guarantee that it's from a card just because it's userland
+      ([acc]       ;; We don't actually have a guarantee that it's from a card just because it's userland
        (when (integer? (:card_id execution-info))
          (events/publish-event! :event/card-query {:user-id      (:executor_id execution-info)
                                                    :card-id      (:card_id execution-info)
-                                                   :cached       (:cached acc)
-                                                   :context      (:context execution-info)
-                                                   :ignore_cache (get-in execution-info
-                                                                         [:json_query :middleware :ignore-cached-results?])}))
+                                                   :context      (:context execution-info)}))
        (save-successful-query-execution! (:cached acc) execution-info @row-count)
        (rf (if (map? acc)
              (success-response execution-info acc)

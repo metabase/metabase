@@ -38,7 +38,8 @@
                               :type/Float          "FLOAT"
                               :type/Integer        "INTEGER"
                               :type/Text           "VARCHAR(1024)"
-                              :type/Time           "TIME"}]
+                              :type/Time           "TIME"
+                              :type/TimeWithTZ     "TIMETZ"}]
   (defmethod sql.tx/field-base-type->sql-type [:vertica base-type] [_ _] sql-type))
 
 (defn- db-name []

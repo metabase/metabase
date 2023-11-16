@@ -111,7 +111,8 @@
   pivot-columns-for-type
   pivot-types]
  [lib.equality
-  find-column-for-legacy-ref]
+  find-column-for-legacy-ref
+  find-matching-column]
  [lib.expression
   expression
   expressions
@@ -209,7 +210,7 @@
   joinable-columns
   joins
   raw-join-strategy
-  suggested-join-condition
+  suggested-join-conditions
   with-join-alias
   with-join-fields
   with-join-strategy
@@ -256,6 +257,7 @@
  [lib.query
   can-run
   query
+  stage-count
   with-different-table]
  [lib.ref
   ref]

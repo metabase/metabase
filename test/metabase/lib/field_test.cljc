@@ -746,8 +746,7 @@
     (let [query  (as-> (meta/table-metadata :orders) <>
                    (lib/query meta/metadata-provider <>)
                    (lib/join <> -1 (->> (meta/table-metadata :people)
-                                        (lib/suggested-join-condition <> -1)
-                                        vector
+                                        (lib/suggested-join-conditions <> -1)
                                         (lib/join-clause (meta/table-metadata :people)))))
           fields [[:field {} (meta/id :orders :id)]
                   [:field {} (meta/id :orders :subtotal)]
@@ -835,8 +834,7 @@
     (let [query  (as-> (meta/table-metadata :orders) <>
                    (lib/query meta/metadata-provider <>)
                    (lib/join <> -1 (->> (meta/table-metadata :people)
-                                        (lib/suggested-join-condition <> -1)
-                                        vector
+                                        (lib/suggested-join-conditions <> -1)
                                         (lib/join-clause (meta/table-metadata :people)))))
           all-columns   (lib/returned-columns query)
           table-columns (lib/fieldable-columns query -1)
@@ -992,8 +990,7 @@
     (let [query  (as-> (meta/table-metadata :orders) <>
                    (lib/query meta/metadata-provider <>)
                    (lib/join <> -1 (->> (meta/table-metadata :people)
-                                        (lib/suggested-join-condition <> -1)
-                                        vector
+                                        (lib/suggested-join-conditions <> -1)
                                         (lib/join-clause (meta/table-metadata :people)))))
           all-columns   (lib/returned-columns query)
           table-columns (lib/fieldable-columns query -1)
@@ -1402,6 +1399,33 @@
                           (lib/remove-field -1 vis-price)
                           lib.metadata.calculation/returned-columns))))))))))
 
+(deftest ^:parallel nested-aggregation-query-remove-fields-test
+  (testing "can remove a breakout field from a nested aggregated query (#18817)"
+    (let [provider (lib.tu/metadata-provider-with-cards-for-queries
+                    meta/metadata-provider
+                    [(-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (meta/field-metadata :orders :user-id))
+                         (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month)))])
+          base     (lib/query provider (lib.metadata/card provider 1))]
+      (is (=? [{:display-name "User ID"}
+               {:display-name "Created At: Month"}
+               {:display-name "Count"}]
+              (lib.metadata.calculation/returned-columns base)))
+      (let [col-user-id (->> base
+                             lib.metadata.calculation/visible-columns
+                             (filter #(= (:name %) "USER_ID"))
+                             first)
+            query (lib/remove-field base -1 col-user-id)]
+        (is (=? {:lib/type    :metadata/column
+                 :name        "USER_ID"
+                 :lib/card-id (get-in base [:stages 0 :source-card])
+                 :lib/source  :source/card}
+                col-user-id))
+        (is (=? [{:display-name "Created At: Month"}
+                 {:display-name "Count"}]
+              (lib.metadata.calculation/returned-columns query)))))))
+
 (defn- mark-selected [query]
   (lib.equality/mark-selected-columns query -1
                                       (lib.metadata.calculation/visible-columns query)
@@ -1494,3 +1518,12 @@
                (lib/legacy-card-or-table-id (first (lib/returned-columns (-> query
                                                                              (lib/breakout (first (lib/returned-columns query)))
                                                                              lib/append-stage))))))))))
+
+(deftest ^:parallel expression-ref-when-metadata-has-expression-name-test
+  (testing (str "column metadata with :expression-name should generate :expression refs regardless of :lib/source. "
+                "Prefer :expression-name over :name (#34957)")
+    (let [metadata (-> (meta/field-metadata :venues :name)
+                       (assoc :lib/source :source/fields
+                              :lib/expression-name "Custom Venue Name"))]
+      (is (=? [:expression {} "Custom Venue Name"]
+              (lib/ref metadata))))))
