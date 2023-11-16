@@ -16,7 +16,7 @@ const questionDetails = {
       CC1: ["+", ["field", ORDERS.TOTAL], 1],
       CC2: ["+", ["field", ORDERS.TOTAL], 1],
     },
-    limit: 5,
+    limit: 2,
   },
   dataset: true,
 };
@@ -46,7 +46,7 @@ describe("issue 29951", { requestTimeout: 10000 }, () => {
     dragColumn(0, 100);
     cy.findByTestId("qb-header").button("Refresh").click();
     cy.wait("@dataset");
-    cy.findByTestId("view-footer").should("contain", "Showing 5 rows");
+    cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
   });
 });
 
