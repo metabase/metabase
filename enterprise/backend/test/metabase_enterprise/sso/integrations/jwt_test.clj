@@ -24,7 +24,7 @@
 
 (defn- disable-other-sso-types [thunk]
   (let [current-features (premium-features/token-features)]
-    (premium-features-test/with-premium-features #{:sso-saml}
+    (premium-features-test/with-premium-features (conj (or current-features #{}) :sso-saml)
       (mt/with-temporary-setting-values [ldap-enabled false
                                          saml-enabled false]
         (premium-features-test/with-premium-features current-features
@@ -177,44 +177,42 @@
 
 (deftest create-new-account-test
   (testing "A new account will be created for a JWT user we haven't seen before"
-    (premium-features-test/with-premium-features #{:audit-app}
-      (with-jwt-default-setup
-        (with-users-with-email-deleted "newuser@metabase.com"
-          (letfn [(new-user-exists? []
-                    (boolean (seq (t2/select User :%lower.email "newuser@metabase.com"))))]
-            (is (= false
-                   (new-user-exists?)))
-            (let [response (saml-test/client-full-response :get 302 "/auth/sso"
-                                                           {:request-options {:redirect-strategy :none}}
-                                                           :return_to default-redirect-uri
-                                                           :jwt (jwt/sign {:email      "newuser@metabase.com"
-                                                                           :first_name "New"
-                                                                           :last_name  "User"
-                                                                           :more       "stuff"
-                                                                           :for        "the new user"}
-                                                                          default-jwt-secret))]
-              (is (saml-test/successful-login? response))
-              (let [new-user (t2/select-one User :email "newuser@metabase.com")]
-                (testing "new user"
-                  (is (= {:email        "newuser@metabase.com"
-                          :first_name   "New"
-                          :is_qbnewb    true
-                          :is_superuser false
-                          :id           true
-                          :last_name    "User"
-                          :date_joined  true
-                          :common_name  "New User"}
-                         (-> (mt/boolean-ids-and-timestamps [new-user])
-                             first
-                             (dissoc :last_login)))))
-                (testing "User Invite Event is logged."
-                  (is (= "newuser@metabase.com"
-                         (get-in (mt/latest-audit-log-entry :user-invited (:id new-user))
-                                 [:details :email]))))
-                (testing "attributes"
-                  (is (= {"more" "stuff"
-                          "for"  "the new user"}
-                         (t2/select-one-fn :login_attributes User :email "newuser@metabase.com"))))))))))))
+    (with-jwt-default-setup
+      (with-users-with-email-deleted "newuser@metabase.com"
+        (letfn [(new-user-exists? []
+                  (boolean (seq (t2/select User :%lower.email "newuser@metabase.com"))))]
+          (is (false? (new-user-exists?)))
+          (let [response (saml-test/client-full-response :get 302 "/auth/sso"
+                                                         {:request-options {:redirect-strategy :none}}
+                                                         :return_to default-redirect-uri
+                                                         :jwt (jwt/sign {:email      "newuser@metabase.com"
+                                                                         :first_name "New"
+                                                                         :last_name  "User"
+                                                                         :more       "stuff"
+                                                                         :for        "the new user"}
+                                                                        default-jwt-secret))]
+            (is (saml-test/successful-login? response))
+            (let [new-user (t2/select-one User :email "newuser@metabase.com")]
+              (testing "new user"
+                (is (= {:email        "newuser@metabase.com"
+                        :first_name   "New"
+                        :is_qbnewb    true
+                        :is_superuser false
+                        :id           true
+                        :last_name    "User"
+                        :date_joined  true
+                        :common_name  "New User"}
+                       (-> (mt/boolean-ids-and-timestamps [new-user])
+                           first
+                           (dissoc :last_login)))))
+              (testing "User Invite Event is logged."
+                (is (= "newuser@metabase.com"
+                       (get-in (mt/latest-audit-log-entry :user-invited (:id new-user))
+                               [:details :email]))))
+              (testing "attributes"
+                (is (= {"more" "stuff"
+                        "for"  "the new user"}
+                       (t2/select-one-fn :login_attributes User :email "newuser@metabase.com")))))))))))
 
 (deftest update-account-test
   (testing "A new account with 'Unknown' name will be created for a new JWT user without a first or last name."

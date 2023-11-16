@@ -50,13 +50,6 @@
 (def ^:private default-idp-uri-with-param (str default-idp-uri "?someparam=true"))
 (def ^:private default-idp-cert           (slurp "test_resources/sso/auth0-public-idp.cert"))
 
-(defmacro with-sso-saml-token
-  "Stubs the `premium-features/token-features` function to simulate a premium token with the `:sso-saml` feature.
-   This needs to be included to test any of the SAML features."
-  [& body]
-  `(premium-features-test/with-premium-features #{:sso-saml}
-     ~@body))
-
 (defn call-with-default-saml-config [f]
   (let [current-features (premium-features/token-features)]
     (premium-features-test/with-premium-features #{:sso-saml}
@@ -87,7 +80,7 @@
 (defmacro with-saml-default-setup [& body]
   ;; most saml tests make actual http calls, so ensuring any nested with-temp doesn't create transaction
   `(mt/with-ensure-with-temp-no-transaction!
-    (with-sso-saml-token
+    (premium-features-test/with-premium-features #{:sso-saml :audit-app}
       (call-with-login-attributes-cleared!
        (fn []
          (call-with-default-saml-config
@@ -146,7 +139,7 @@
                (client :get 400 "/auth/sso")))))))
 
 (deftest require-saml-enabled-test
-  (with-sso-saml-token
+  (premium-features-test/with-premium-features #{:sso-saml :audit-app}
     (testing "SSO requests fail if SAML hasn't been configured or enabled"
       (mt/with-temporary-setting-values [saml-enabled                       false
                                          saml-identity-provider-uri         nil
