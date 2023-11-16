@@ -255,6 +255,21 @@
              (lib.equality/find-matching-column a-ref cols)
              (lib.equality/find-matching-column query -1 a-ref cols))))))
 
+(deftest ^:parallel find-matching-column-from-column-test
+  (let [query (-> lib.tu/venues-query
+                  (lib/breakout (meta/field-metadata :venues :id)))
+        filterable-cols (lib/filterable-columns query)
+        matched-from-col (lib.equality/find-matching-column query -1 (m/find-first :breakout-position (lib/breakoutable-columns query)) filterable-cols)
+        matched-from-ref (lib.equality/find-matching-column query -1 (first (lib/breakouts query)) filterable-cols)]
+    (is (=?
+          {:id (meta/id :venues :id)}
+          matched-from-ref))
+    (is (=?
+          {:id (meta/id :venues :id)}
+          matched-from-col))
+    (is (= matched-from-ref
+           matched-from-col))))
+
 (deftest ^:parallel find-matching-column-by-name-test
   (testing "find-matching-column should find columns based on matching name"
     (let [query    (lib/append-stage lib.tu/query-with-join)

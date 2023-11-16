@@ -9,7 +9,6 @@
   by [[initialize-events!]]."
   (:require
    [clojure.spec.alpha :as s]
-   [clojure.string :as str]
    [metabase.events.schema :as events.schema]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
@@ -134,20 +133,6 @@
                             {:topic topic, :event event}
                             e))))
         event))))
-
-(mu/defn topic->model :- [:maybe :string]
-  "Determine a valid `model` identifier for the given `topic`."
-  [topic :- Topic]
-  ;; just take the first part of the topic name after splitting on dashes.
-  (first (str/split (name topic) #"-")))
-
-(defn object->model-id
-  "Determine the appropriate `model_id` (if possible) for a given `object`."
-  [topic object]
-  (if (contains? (set (keys object)) :id)
-    (:id object)
-    (let [model (topic->model topic)]
-      (get object (keyword (format "%s-id" model))))))
 
 (defn object->metadata
   "Determine metadata, if there is any, for given `object`.
