@@ -969,6 +969,11 @@
   [a-query stage-number a-drill-thru & args]
   (apply lib.core/drill-thru a-query stage-number a-drill-thru args))
 
+(defn ^:export drill-thru-column
+  "Returns the `:column` field (or nil) for this opaque drill-thru object."
+  [a-drill-thru]
+  (:column a-drill-thru))
+
 (defn ^:export pivot-types
   "Returns an array of pivot types that are available in this drill-thru, which must be a pivot drill-thru."
   [a-drill-thru]
