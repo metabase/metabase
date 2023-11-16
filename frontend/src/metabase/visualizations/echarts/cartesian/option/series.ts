@@ -131,6 +131,7 @@ export const buildEChartsSeries = (
         : 1;
 
       switch (seriesSettings.display) {
+        case "combo2":
         case "line":
         case "area":
           return buildEChartsLineAreaSeries(
