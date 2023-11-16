@@ -291,6 +291,10 @@ If you've written scripts to automate serialization, you'll need to:
 - Update those scripts with the new commands. See the new [export options](#export-options).
 - If your scripts do any post-processing of the exported YAML files, you may need to update your scripts to accommodate the slightly different directory and YAML file structures.
 
+## Drop entity IDs
+
+Before exporting, you can also run a Metabase command to [drop entity IDs](./commands.md#drop-entity-ids).
+
 ## Further reading
 
 - [Serialization tutorial](https://www.metabase.com/learn/administration/serialization).

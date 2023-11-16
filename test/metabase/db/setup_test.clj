@@ -2,9 +2,18 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [metabase.db.connection :as mdb.connection]
    [metabase.db.data-source :as mdb.data-source]
+   [metabase.db.liquibase :as liquibase]
+   [metabase.db.liquibase-test :as liquibase-test]
    [metabase.db.setup :as mdb.setup]
-   [metabase.test :as mt]))
+   [metabase.driver :as driver]
+   [metabase.test :as mt]
+   [toucan2.core :as t2])
+  (:import
+   (liquibase.changelog ChangeSet)))
+
+(set! *warn-on-reflection* true)
 
 (deftest verify-db-connection-test
   (testing "Should be able to verify a DB connection"
@@ -36,3 +45,42 @@
         (testing "from a connection URL"
           (test* (mdb.data-source/raw-connection-string->DataSource
                   (str "jdbc:h2:" subname))))))))
+
+(deftest setup-fresh-db-test
+  (mt/test-drivers #{:h2 :mysql :postgres}
+    (testing "can setup a fresh db"
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (is (= :done
+               (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true)))
+        (testing "migrations are executed in the order they are defined"
+          (is (= (liquibase-test/liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*)
+                 (t2/select-pks-vec (liquibase/changelog-table-name conn) {:order-by [[:orderexecuted :asc]]}))))))))
+
+(defn- update-to-changelog-id
+  [change-log-id conn]
+  (liquibase/with-liquibase [liquibase conn]
+    (let [unrun-migrations (.listUnrunChangeSets liquibase nil nil)
+          run-count        (loop [cnt        1
+                                  changesets unrun-migrations]
+                             (if (= (.getId ^ChangeSet (first changesets)) change-log-id)
+                               cnt
+                               (recur (inc cnt) (rest changesets))))]
+      (.update liquibase ^Integer run-count nil))))
+
+(deftest setup-a-mb-instance-running-version-lower-than-45
+  (mt/test-drivers #{:h2 :mysql :postgres}
+    (mt/with-temp-empty-app-db [conn driver/*driver*]
+      (with-redefs [liquibase/decide-liquibase-file (fn [& _args] @#'liquibase/changelog-legacy-file)]
+        ;; set up a db in a way we have a MB instance running metabase 44
+        (update-to-changelog-id "v44.00-000" conn))
+      (is (= :done
+             (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true))))))
+
+(deftest setup-a-mb-instance-running-version-greater-than-45
+  (mt/test-drivers #{:h2 :mysql :postgres}
+    (mt/with-temp-empty-app-db [conn driver/*driver*]
+     (with-redefs [liquibase/decide-liquibase-file (fn [& _args] @#'liquibase/changelog-legacy-file)]
+             ;; set up a db in a way we have a MB instance running metabase 45
+             (update-to-changelog-id "v45.00-001" conn))
+     (is (= :done
+            (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true))))))

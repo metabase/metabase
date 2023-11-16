@@ -229,11 +229,13 @@ describe("scenarios > question > filter", () => {
       display: "table",
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Created At > Product? → Created At/i).click();
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At is greater than Product → Created At")
+      .click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(/\[Created At\] > \[Products? → Created At\]/);
+    popover()
+      .contains("[Created At] > [Product → Created At]")
+      .should("be.visible");
   });
 
   it("should handle post-aggregation filter on questions with joined table (metabase#14811)", () => {

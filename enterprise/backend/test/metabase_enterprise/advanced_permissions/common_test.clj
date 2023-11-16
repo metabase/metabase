@@ -6,7 +6,6 @@
    [clojure.test :refer :all]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.database :as api.database]
-   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models :refer [Dashboard DashboardCard Database Field FieldValues
                             Permissions Table]]
@@ -702,61 +701,59 @@
 
 (deftest upload-csv-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
-    (mt/with-empty-db
-      (let [db-id (u/the-id (mt/db))]
-        (testing "Should be blocked without data access"
+    (testing "Uploads should be blocked without data access"
+      (mt/with-empty-db
+        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
           ;; Create not_public schema
-          (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
-            (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
-                           ["CREATE SCHEMA \"not_public\"; CREATE TABLE \"not_public\".\"table_name\" (id INTEGER)"])
-            (sync/sync-database! (mt/db))
-            (let [table-id (t2/select-one-pk :model/Table :db_id db-id)]
-              (mt/with-temporary-setting-values [uploads-enabled      true
-                                                 uploads-database-id  db-id
-                                                 uploads-schema-name  "not_public"
-                                                 uploads-table-prefix "uploaded_magic_"]
-                (doseq [[schema-perms can-upload?] {:all            true
-                                                    :none           false
-                                                    {table-id :all} false}]
-                  (with-all-users-data-perms {db-id {:data {:native :none, :schemas {"public"     :all
-                                                                                     "not_public" schema-perms}}}}
-                    (if can-upload?
-                      (is (some? (api.card-test/upload-example-csv! nil false)))
-                      (is (thrown-with-msg?
-                           clojure.lang.ExceptionInfo
-                           #"You don't have permissions to do that\."
-                           (api.card-test/upload-example-csv! nil false)))))
-                  (with-all-users-data-perms {db-id {:data {:native :write, :schemas ["not_public"]}}}
-                    (is (some? (api.card-test/upload-example-csv! nil false)))))))))))))
+          (jdbc/execute! conn-spec "CREATE SCHEMA \"not_public\"; CREATE TABLE \"not_public\".\"table_name\" (id INTEGER)"))
+        (sync/sync-database! (mt/db))
+        (let [db-id    (u/the-id (mt/db))
+              table-id (t2/select-one-pk :model/Table :db_id db-id)]
+          (mt/with-temporary-setting-values [uploads-enabled      true
+                                             uploads-database-id  db-id
+                                             uploads-schema-name  "not_public"
+                                             uploads-table-prefix "uploaded_magic_"]
+            (doseq [[schema-perms can-upload?] {:all            true
+                                                :none           false
+                                                {table-id :all} false}]
+              (with-all-users-data-perms {db-id {:data {:native :none, :schemas {"public"     :all
+                                                                                 "not_public" schema-perms}}}}
+                (if can-upload?
+                  (is (some? (api.card-test/upload-example-csv! nil false)))
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"You don't have permissions to do that\."
+                       (api.card-test/upload-example-csv! nil false)))))
+              (with-all-users-data-perms {db-id {:data {:native :write, :schemas ["not_public"]}}}
+                (is (some? (api.card-test/upload-example-csv! nil false)))))))))))
 
 (deftest get-database-can-upload-test
-  (mt/test-driver (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
-    (mt/with-empty-db
-      (let [db-id (u/the-id (mt/db))]
-        (testing "GET /api/database and GET /api/database/:id responses should include can_upload depending on unrestricted data access to the upload schema"
-          (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
-            (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
-                           ["CREATE SCHEMA \"not_public\"; CREATE TABLE \"not_public\".\"table_name\" (id INTEGER)"])
-            (sync/sync-database! (mt/db))
-            (let [table-id (t2/select-one-pk :model/Table :db_id db-id)]
-              (mt/with-temporary-setting-values [uploads-enabled      true
-                                                 uploads-database-id  db-id
-                                                 uploads-schema-name  "not_public"
-                                                 uploads-table-prefix "uploaded_magic_"]
-                (doseq [[schema-perms can-upload?] {:all            true
-                                                    :none           false
-                                                    {table-id :all} false}]
-                  (testing (format "can_upload should be %s if the user has %s access to the upload schema"
-                                   can-upload? schema-perms)
-                    (with-all-users-data-perms {db-id {:data {:native :none
-                                                              :schemas {"public"     :all
-                                                                        "not_public" schema-perms}}}}
-                      (testing "GET /api/database"
-                        (let [result (->> (mt/user-http-request :rasta :get 200 "database")
-                                          :data
-                                          (filter #(= (:id %) db-id))
-                                          first)]
-                          (is (= can-upload? (:can_upload result)))))
-                      (testing "GET /api/database/:id"
-                          (let [result (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))]
-                            (is (= can-upload? (:can_upload result))))))))))))))))
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
+    (testing "GET /api/database and GET /api/database/:id responses should include can_upload depending on unrestricted data access to the upload schema"
+      (mt/with-empty-db
+        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+          (jdbc/execute! conn-spec "CREATE SCHEMA \"not_public\"; CREATE TABLE \"not_public\".\"table_name\" (id INTEGER)"))
+        (sync/sync-database! (mt/db))
+        (let [db-id     (u/the-id (mt/db))
+              table-id (t2/select-one-pk :model/Table :db_id db-id)]
+          (mt/with-temporary-setting-values [uploads-enabled      true
+                                             uploads-database-id  db-id
+                                             uploads-schema-name  "not_public"
+                                             uploads-table-prefix "uploaded_magic_"]
+            (doseq [[schema-perms can-upload?] {:all            true
+                                                :none           false
+                                                {table-id :all} false}]
+              (testing (format "can_upload should be %s if the user has %s access to the upload schema"
+                               can-upload? schema-perms)
+                (with-all-users-data-perms {db-id {:data {:native :none
+                                                          :schemas {"public"     :all
+                                                                    "not_public" schema-perms}}}}
+                  (testing "GET /api/database"
+                    (let [result (->> (mt/user-http-request :rasta :get 200 "database")
+                                      :data
+                                      (filter #(= (:id %) db-id))
+                                      first)]
+                      (is (= can-upload? (:can_upload result)))))
+                  (testing "GET /api/database/:id"
+                    (let [result (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))]
+                      (is (= can-upload? (:can_upload result))))))))))))))
