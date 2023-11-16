@@ -39,7 +39,7 @@ describe("issue 25378", () => {
       cy.findByText("Relative dates…").click();
       cy.findByDisplayValue("days").click();
     });
-    popover().last().findByText("months").click();
+    cy.findByRole("listbox").findByText("months").click();
     popover().findByLabelText("Options").click();
     popover().last().findByText("Starting from…").click();
 

@@ -16,7 +16,7 @@ import {
 } from "./utils";
 import { TabList } from "./SpecificDatePicker.styled";
 
-export interface SpecificDatePickerProps {
+interface SpecificDatePickerProps {
   value?: SpecificDatePickerValue;
   availableOperators: ReadonlyArray<DatePickerOperator>;
   isNew: boolean;
