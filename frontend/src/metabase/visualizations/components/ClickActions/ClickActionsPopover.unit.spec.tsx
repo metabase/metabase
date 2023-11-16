@@ -775,7 +775,7 @@ async function setup({
   );
 
   dispatch.mockImplementation(fn => {
-    if (Object.prototype.toString.call(fn) === "[object Function]") {
+    if (typeof fn === "function") {
       return fn(dispatch, view.store.getState);
     }
   });
