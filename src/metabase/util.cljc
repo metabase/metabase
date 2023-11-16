@@ -615,9 +615,12 @@
 
      (pprint-to-str 'green some-obj)"
   (^String [x]
-   (with-out-str
-     #_{:clj-kondo/ignore [:discouraged-var]}
-     (pprint/pprint x)))
+   ;; we try to set this permanently above, but it doesn't seem to work in Cljs, so just bind it every time. The
+   ;; default value wastes too much space, 120 is a little easier to read actually.
+   (#?@(:clj [do] :cljs [binding [pprint/*print-right-margin* 120]])
+     (with-out-str
+       #_{:clj-kondo/ignore [:discouraged-var]}
+       (pprint/pprint x))))
 
   (^String [color-symb x]
    (u.format/colorize color-symb (pprint-to-str x))))
