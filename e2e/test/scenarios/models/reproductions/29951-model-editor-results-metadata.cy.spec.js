@@ -43,9 +43,12 @@ describe("issue 29951", { requestTimeout: 10000 }, () => {
     cy.button("Get Answer").should("be.visible");
     saveMetadataChanges();
 
+    cy.findAllByTestId("header-cell").last().should("have.text", "CC1");
+
     dragColumn(0, 100);
     cy.findByTestId("qb-header").button("Refresh").click();
     cy.wait("@dataset");
+    cy.get(".cellData").should("contain", "37.65");
     cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
   });
 });
