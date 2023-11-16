@@ -1,4 +1,4 @@
-import { restore, visitQuestionAdhoc } from "e2e/support/helpers";
+import { restore, rightSidebar, visitQuestionAdhoc } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -53,10 +53,14 @@ describe("issue 18976, 18817", () => {
     );
 
     cy.findByTestId("qb-header").button("Summarize").click();
-    cy.findByLabelText("Source")
+    rightSidebar()
+      .findByLabelText("Source")
       .findByRole("button", { name: "Remove dimension" })
       .click();
 
-    cy.findAllByTestId("header-cell").should("have.length", 2);
+    cy.findAllByTestId("header-cell")
+      .should("have.length", 2)
+      .and("contain", "Name")
+      .and("contain", "Count");
   });
 });
