@@ -21,7 +21,6 @@
   (span/with-span!
     {:name (str "recent-views-" (name topic))
      :topic topic
-     :object object
      :user-id user-id}
     (try
       (when object

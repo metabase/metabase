@@ -36,7 +36,6 @@
   (span/with-span!
     {:name "view-log-card-read"
      :topic topic
-     :object (:object event)
      :user-id (:user-id event)}
     (try
       (-> event
@@ -79,7 +78,6 @@
   (span/with-span!
     {:name "view-log-dashboard-read"
      :topic topic
-     :object object
      :user-id user-id}
     (try
       (let [dashcards (filter :card_id (:dashcards object)) ;; filter out link/text cards wtih no card_id
@@ -106,7 +104,6 @@
   (span/with-span!
     {:name "view-log-table-read"
      :topic topic
-     :object object
      :user-id user-id}
     (try
       (let [table-id    (u/id object)
