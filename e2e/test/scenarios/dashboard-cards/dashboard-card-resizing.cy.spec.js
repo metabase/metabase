@@ -236,7 +236,7 @@ describe("scenarios > dashboard card resizing", () => {
 
   it(
     `should not allow cards to be resized smaller than min height`,
-    { requestTimeout: 15000 },
+    { requestTimeout: 15000, tags: "@slow" },
     () => {
       const cardIds = [];
       TEST_QUESTIONS.forEach(question => {
