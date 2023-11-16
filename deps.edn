@@ -36,6 +36,7 @@
   com.github.seancorfield/honeysql          {:mvn/version "2.4.1066"}           ; Honey SQL 2. SQL generation from Clojure data maps
   com.github.seancorfield/next.jdbc         {:git/url "https://github.com/seancorfield/next-jdbc.git"
                                              :sha     "abd926cde3730087d3729dcea0ce0ab7ef1194f2"} ; for https://github.com/seancorfield/next-jdbc/issues/245; when this makes it to a release we can switch to that.
+  com.github.steffan-westcott/clj-otel-api  {:mvn/version "0.2.4.1"}            ; Telemetry library
   com.github.vertical-blank/sql-formatter   {:mvn/version "2.0.4"}              ; Java SQL formatting library https://github.com/vertical-blank/sql-formatter
   com.google.guava/guava                    {:mvn/version "32.1.2-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
   com.fasterxml.jackson.core/jackson-databind
@@ -205,7 +206,9 @@
   ;;    (dev/start!)
   :dev
   {:extra-deps
-   {clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
+   {com.clojure-goes-fast/clj-async-profiler
+                                 {:mvn/version "1.1.1"}                     ; Enables local profiling and heat map generation
+    clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
     clj-kondo/clj-kondo          {:mvn/version "2023.09.07"}                ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
     cloverage/cloverage          {:mvn/version "1.2.4"}
@@ -232,6 +235,8 @@
                  "-Dmb.test.env.setting=ABCDEFG"
                  "-Duser.timezone=UTC"
                  "-Dfile.encoding=UTF-8"
+                 ;; Allow clojure goes fast tooling to work
+                 "-Djdk.attach.allowAttachSelf"
                  "-Duser.language=en"
                  "-Duser.country=US"
                  ;; set the logging properties set in metabase.bootstrap. calling (dev) will load it but putting here to be sure
@@ -509,7 +514,7 @@
   {:deps       {io.github.weavejester/cljfmt {:git/tag "0.11.2", :git/sha "fb26b22f569724b05c93eb2502592dfc2de898c3"}}
    :ns-default cljfmt.tool}
 
-  ;;; building Uberjar, build and release scripts
+;;; building Uberjar, build and release scripts
 
   :build
   {:extra-paths

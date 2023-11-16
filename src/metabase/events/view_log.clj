@@ -8,16 +8,22 @@
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [methodical.core :as m]
+   [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
 (defn record-view!
   "Simple base function for recording a view of a given `model` and `model-id` by a certain `user`."
   [model model-id user-id metadata]
-  (t2/insert! :model/ViewLog
-              :user_id  user-id
-              :model    (u/lower-case-en model)
-              :model_id model-id
-              :metadata metadata))
+  (span/with-span!
+    {:name       "record-view!"
+     :attributes {:model/id   model-id
+                  :user/id    user-id
+                  :model/name (u/lower-case-en model)}}
+    (t2/insert! :model/ViewLog
+                :user_id user-id
+                :model (u/lower-case-en model)
+                :model_id model-id
+                :metadata metadata)))
 
 (derive ::read-event :metabase/event)
 (derive :event/card-read ::read-event)
