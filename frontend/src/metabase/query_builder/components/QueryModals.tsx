@@ -371,12 +371,14 @@ class QueryModals extends Component<QueryModalsProps> {
     return (
       <>
         {this.renderLegacyModal()}
-        <BulkFilterModal
-          opened={modal === MODAL_TYPES.FILTERS}
-          query={query}
-          onSubmit={this.onQueryChange}
-          onClose={onCloseModal}
-        />
+        {question.isStructured() && (
+          <BulkFilterModal
+            opened={modal === MODAL_TYPES.FILTERS}
+            query={query}
+            onSubmit={this.onQueryChange}
+            onClose={onCloseModal}
+          />
+        )}
       </>
     );
   }
