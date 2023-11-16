@@ -72,7 +72,7 @@ export interface Dataset {
   status?: string;
 }
 
-export interface PublicDatasetData {
+export interface EmbedDatasetData {
   rows: RowValues[];
   cols: DatasetColumn[];
   rows_truncated: number;
@@ -82,10 +82,18 @@ export interface PublicDatasetData {
   results_timezone?: string;
 }
 
-export interface PublicDataset {
-  data: PublicDatasetData;
-  json_query?: JsonQuery;
-  status?: string;
+export type EmbedDataset = SuccessEmbedDataset | ErrorEmbedDataset;
+
+interface SuccessEmbedDataset {
+  data: EmbedDatasetData;
+  json_query: JsonQuery;
+  status: string;
+}
+
+export interface ErrorEmbedDataset {
+  status: string;
+  error: string;
+  error_type: string;
 }
 
 export interface NativeQueryForm {
