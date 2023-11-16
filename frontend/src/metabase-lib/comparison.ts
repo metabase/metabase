@@ -15,6 +15,8 @@ export function areLegacyQueriesEqual(
 }
 
 export function findMatchingColumn(
+  query: Query,
+  stageIndex: number,
   column: ColumnMetadata,
   columns: ColumnMetadata[],
 ): ColumnMetadata | null {

@@ -19,9 +19,16 @@ export function findFilterColumn(
   query: Lib.Query,
   stageIndex: number,
   breakoutColumn: Lib.ColumnMetadata,
-) {
+): Lib.ColumnMetadata | undefined {
   const columns = Lib.filterableColumns(query, stageIndex);
-  return Lib.findMatchingColumn(breakoutColumn, columns) ?? undefined;
+  const filterColumn = Lib.findMatchingColumn(
+    query,
+    stageIndex,
+    breakoutColumn,
+    columns,
+  );
+
+  return filterColumn ?? undefined;
 }
 
 export function findFilterClause(
