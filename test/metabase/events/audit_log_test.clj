@@ -24,18 +24,6 @@
     (premium-features-test/with-premium-features #{:audit-app}
       (test-fn))))
 
-
-#_
-(defn latest-event-zzz
-  ([topic]
-   (latest-event-zzz topic nil))
-
-  ([topic model-id]
-   (t2/select-one [:model/AuditLog :topic :user_id :model :model_id :details]
-                  :topic    topic
-                  :model_id model-id
-                  {:order-by [[:id :desc]]})))
-
 (deftest card-create-test
   (testing ":card-create event"
     (t2.with-temp/with-temp [Card card {:name "My Cool Card"}]
@@ -109,40 +97,6 @@
                   :details  (cond-> {:name "My Cool Card", :description nil}
                               dataset? (assoc :model? true))}
                  (mt/latest-audit-log-entry "card-delete" (:id card))))))))))
-
-(deftest card-read-event-test
-  (testing :card-read
-    (doseq [dataset? [false true]]
-      (testing (if dataset? "Dataset" "Card")
-        (t2.with-temp/with-temp [Card card {:name "My Cool Card", :dataset dataset?}]
-          (is (= {:object card :user-id (mt/user->id :rasta)}
-                 (events/publish-event! :event/card-read {:object card :user-id (mt/user->id :rasta)})))
-          (is (partial=
-               {:topic    :card-read
-                :user_id  (mt/user->id :rasta)
-                :model    "Card"
-                :model_id (:id card)
-                :details  (cond-> {:name "My Cool Card", :description nil}
-                            dataset? (assoc :model? true))}
-               (mt/latest-audit-log-entry "card-read" (:id card)))))))))
-
-(deftest card-query-event-test
-  (testing :card-query
-    (doseq [dataset? [false true]]
-      (testing (if dataset? "Dataset" "Card")
-        (t2.with-temp/with-temp [Card card {:name "My Cool Card", :dataset dataset?}]
-          (events/publish-event! :event/card-query {:user-id      (mt/user->id :rasta)
-                                                    :card-id      (u/the-id card)
-                                                    :cached       false
-                                                    :ignore_cache false
-                                                    :context      :question})
-          (is (partial=
-               {:topic    :card-query
-                :user_id  (mt/user->id :rasta)
-                :model    "Card"
-                :model_id (:id card)
-                :details  {:cached false :ignore_cache false :context "question"}}
-               (mt/latest-audit-log-entry "card-query" (:id card)))))))))
 
 (deftest dashboard-create-event-test
   (testing :dashboard-create

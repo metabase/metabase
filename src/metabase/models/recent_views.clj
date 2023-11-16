@@ -27,7 +27,7 @@
 (def ^:private ^:dynamic *recent-views-stored-per-user*
   "The number of recently viewed items to keep per user. This should be larger than the number of items returned by the
   /api/activity/recent_views endpoint, but it should still be lightweight to read all of a user's recent views at once."
-  100)
+  30)
 
 (defn- view-ids-to-prune
   "Returns a set of view IDs to prune from the RecentViews table so we only keep the most recent n views per user.
@@ -38,7 +38,7 @@
     (let [ids-to-keep                    (map :id (take n prior-views))
           ;; We want to make sure we keep the most recent dashboard view for the user
           ids-to-prune                   (map :id (drop n prior-views))
-          most-recent-dashboard-id       (->> prior-views (filter #(= "Dashboard" (:model %))) first :id)
+          most-recent-dashboard-id       (->> prior-views (filter #(= "dashboard" (:model %))) first :id)
           pruning-most-recent-dashboard? ((set ids-to-prune) most-recent-dashboard-id)]
       (if pruning-most-recent-dashboard?
         (conj (remove #{most-recent-dashboard-id} (set ids-to-prune))
@@ -60,7 +60,7 @@
                     :model/name (u/lower-case-en model)}}
       (t2/with-transaction [_conn]
         (t2/insert! :model/RecentViews {:user_id  user-id
-                                        :model    (name model)
+                                        :model    (u/lower-case-en (name model))
                                         :model_id model-id})
         (let [current-views (t2/select :model/RecentViews :user_id user-id {:order-by [[:id :desc]]})
               ids-to-prune  (view-ids-to-prune current-views *recent-views-stored-per-user*)]

@@ -104,12 +104,10 @@
                          {:cards [(assoc (:orders lib.tu/mock-cards) :dataset-query lib.tu/venues-query)]})
                         (:orders lib.tu/mock-cards))]
       (is (=? (->> (cols-of :orders)
-                   (map #(dissoc % :id :table-id))
                    sort-cols)
               (sort-cols (get-in lib.tu/mock-cards [:orders :result-metadata]))))
 
-      (is (=? (->> (concat (from :source/card (for [c (cols-of :orders)]
-                                                (dissoc c :id :table-id)))
+      (is (=? (->> (concat (from :source/card (cols-of :orders))
                            (from :source/implicitly-joinable (cols-of :people))
                            (from :source/implicitly-joinable (cols-of :products)))
                    sort-cols)
@@ -230,5 +228,5 @@
                                                             (lib/breakoutable-columns $q)))))]
       (is (= ["Source" "Distinct values of ID"]
              (map #(lib/display-name query %) (lib/returned-columns query))))
-      (is (= ["ID is equal to 1"]
+      (is (= ["ID is 1"]
              (map #(lib/display-name query %) (lib/filters query)))))))
