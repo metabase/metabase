@@ -31,8 +31,7 @@ describe("time-series filter widget", () => {
     });
   });
 
-  // Skip the rest of the tests until https://github.com/metabase/metabase/issues/22973 gets resolved
-  it.skip("should allow switching from All time filter", () => {
+  it("should allow switching from All time filter", () => {
     cy.findAllByText("Summarize").first().click();
     cy.findAllByText("Created At").last().click();
     cy.wait("@dataset");
@@ -43,32 +42,36 @@ describe("time-series filter widget", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("All time").click();
     popover().within(() => {
-      cy.findByText("All time").click();
+      cy.findByDisplayValue("All time").click();
     });
     cy.findByTextEnsureVisible("Previous").click();
-    cy.findByTextEnsureVisible("days").click();
+    cy.findByDisplayValue("days").click();
     cy.findByTextEnsureVisible("quarters").click();
     cy.button("Apply").click();
     cy.wait("@dataset");
 
-    cy.findByTextEnsureVisible("Created At Previous 30 Quarters");
-    cy.findByTextEnsureVisible("Previous 30 Quarters");
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At is in the previous 30 quarters")
+      .should("be.visible");
   });
 
-  it.skip("should stay in-sync with the actual filter", () => {
+  it("should stay in-sync with the actual filter", () => {
     cy.findAllByText("Filter").first().click();
-    cy.findAllByText("Created At").last().click();
+    cy.findByTestId("filter-field-Created At").within(() => {
+      cy.findByLabelText("more options").click();
+    });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Last 3 Months").click();
+    cy.button("Apply Filters").click();
     cy.wait("@dataset");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At Previous 3 Months").click();
+    cy.findByText("Created At is in the previous 3 months").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("months").click();
+    cy.findByDisplayValue("months").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("years").click();
-    cy.button("Add filter").click();
+    cy.button("Update filter").click();
     cy.wait("@dataset");
 
     cy.findAllByText("Summarize").first().click();
@@ -77,19 +80,21 @@ describe("time-series filter widget", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Done").click();
 
-    cy.findByTextEnsureVisible("Created At Previous 3 Years");
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At is in the previous 3 years")
+      .should("be.visible");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Previous 3 Years").click();
+    cy.findByTestId("timeseries-filter-button").click();
     popover().within(() => {
-      cy.findByText("Previous").should("be.visible");
-      cy.findByText("All time").should("not.exist");
-      cy.findByText("Next").should("not.exist");
+      cy.findByDisplayValue("Previous").should("be.visible");
+      cy.findByDisplayValue("All time").should("not.exist");
+      cy.findByDisplayValue("Next").should("not.exist");
     });
 
     // switch to All time filter
     popover().within(() => {
-      cy.findByText("Previous").click();
+      cy.findByDisplayValue("Previous").click();
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("All time").click();
@@ -97,7 +102,7 @@ describe("time-series filter widget", () => {
     cy.wait("@dataset");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At Previous 3 Years").should("not.exist");
+    cy.findByText("Created At is in the previous 3 years").should("not.exist");
     cy.findByTextEnsureVisible("All time");
   });
 });
