@@ -429,9 +429,10 @@
              {:name "expr", :display-name "expr", :lib/source :source/previous-stage}]
             (lib/breakoutable-columns query)))
     (let [expr (m/find-first #(= (:name %) "expr") (lib/breakoutable-columns query))]
-      (is (=? {:lib/type   :metadata/column
-               :lib/source :source/previous-stage
-               :name       "expr"}
+      (is (=? {:lib/type            :metadata/column
+               :lib/source          :source/previous-stage
+               :name                "expr"
+               :lib/expression-name (symbol "nil #_\"key is not present.\"")}
               expr))
       (let [query' (lib/breakout query expr)]
         (is (=? {:stages [{:lib/type :mbql.stage/mbql, :source-table (meta/id :venues)}

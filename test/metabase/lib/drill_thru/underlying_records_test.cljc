@@ -105,7 +105,9 @@
                         [[:= {}
                           (-> (:column-ref breakout-dim)
                               (lib.options/with-options {:temporal-unit :month}))
-                          last-month]])))
+                          last-month]]))))
+
+(deftest ^:parallel underlying-records-apply-test-2
   (testing "sum_where(subtotal, products.category = \"Doohickey\") over time"
     (underlying-state (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                           (lib/aggregate (lib/sum-where
@@ -126,8 +128,9 @@
                          [:= {} (-> (meta/field-metadata :products :category)
                                     lib/ref
                                     (lib.options/with-options {}))
-                          "Doohickey"]])))
+                          "Doohickey"]]))))
 
+(deftest ^:parallel underlying-records-apply-test-3
   (testing "metric over time"
     (let [metric   {:description "Orders with a subtotal of $100 or more."
                     :archived false
@@ -149,8 +152,8 @@
                     :creator-id 1
                     :created-at "2023-10-04T20:11:34.029582"}
           provider (lib/composed-metadata-provider
-                     meta/metadata-provider
-                     (providers.mock/mock-metadata-provider {:metrics [metric]}))]
+                    meta/metadata-provider
+                    (providers.mock/mock-metadata-provider {:metrics [metric]}))]
       (underlying-state (-> (lib/query provider (meta/table-metadata :orders))
                             (lib/aggregate metric)
                             (lib/breakout (lib/with-temporal-bucket
@@ -189,3 +192,63 @@
                             (-> (:column-ref created-at-dim)
                                 (lib.options/with-options {:temporal-unit :month}))
                             last-month]])))))
+
+(deftest ^:parallel temporal-unit-breakouts-test
+  (let [column (-> (meta/field-metadata :orders :created-at)
+                   (lib/with-temporal-bucket :day-of-month))]
+    (doseq [[types column] {:default column
+                            :forced  (-> column
+                                         (dissoc :semantic-type)
+                                         (assoc :base-type :type/Integer
+                                                :effective-type :type/Integer))}
+            :let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                            (lib/aggregate (lib/count))
+                            (lib/breakout  column))]]
+      (testing (str "breakout with temporal-unit with " (name types) " types")
+        (let [agg-index 0
+              agg-value 96]
+          (underlying-state query agg-index agg-value
+                            [1]
+                            (fn [_agg-dim [created-at-dim]]
+                              [[:= {}
+                                (-> (:column-ref created-at-dim)
+                                    (lib.options/with-options {:temporal-unit :day-of-month}))
+                                1]])))))))
+
+(deftest ^:parallel binned-column-test
+  (testing "Underlying records for a binned column should generate a filters for current bin's min/max values (#35431)"
+    (let [query                    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                       (lib/aggregate (lib/count))
+                                       (lib/breakout (-> (meta/field-metadata :orders :quantity)
+                                                         (lib/with-binning {:strategy :num-bins, :num-bins 10}))))
+          col-count                (m/find-first #(= (:name %) "count")
+                                                 (lib/returned-columns query))
+          _                        (is (some? col-count))
+          col-orders-quantity      (m/find-first #(= (:name %) "QUANTITY")
+                                                 (lib/returned-columns query))
+          _                        (is (some? col-orders-quantity))
+          context                  {:column     col-count
+                                    :column-ref (lib/ref col-count)
+                                    :value      1
+                                    :dimensions [{:column     col-orders-quantity
+                                                  :column-ref (lib/ref col-orders-quantity)
+                                                  :value      20}]}
+          available-drills         (lib/available-drill-thrus query context)
+          underlying-records-drill (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                                 available-drills)
+          _                        (is (some? underlying-records-drill))
+          query'                   (lib/drill-thru query underlying-records-drill)]
+      (is (=? {:stages [{:lib/type :mbql.stage/mbql
+                         :filters  [[:>=
+                                     {}
+                                     [:field
+                                      {:binning (symbol "nil #_\"key is not present.\"")}
+                                      (meta/id :orders :quantity)]
+                                     20]
+                                    [:<
+                                     {}
+                                     [:field
+                                      {:binning (symbol "nil #_\"key is not present.\"")}
+                                      (meta/id :orders :quantity)]
+                                     30.0]]}]}
+              query')))))

@@ -101,7 +101,7 @@
 (defn- copy-resources! [basis]
   (u/step "Copy resources"
     (doseq [path (all-paths basis)]
-      (when (not (#{"src" "shared/src" "enterprise/backend/src"} path))
+      (when (not (#{"src" "enterprise/backend/src"} path))
         (u/step (format "Copy %s" path)
                 (b/copy-dir {:target-dir class-dir, :src-dirs [path]}))))))
 
