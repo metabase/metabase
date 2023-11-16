@@ -165,11 +165,10 @@
     native-extras :- [:maybe ::native-extras]]
    (let [tags (extract-template-tags inner-query)]
      (-> (lib.query/query-with-stages metadata-providerable
-                                      [(-> {:lib/type           :mbql.stage/native
-                                            :lib/stage-metadata results-metadata
-                                            :template-tags      tags
-                                            :native             inner-query}
-                                           lib.options/ensure-uuid)])
+                                      [{:lib/type           :mbql.stage/native
+                                        :lib/stage-metadata results-metadata
+                                        :template-tags      tags
+                                        :native             inner-query}])
          (with-native-extras native-extras)))))
 
 (mu/defn with-different-database :- ::lib.schema/query
