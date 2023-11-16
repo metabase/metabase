@@ -59,7 +59,6 @@ export const getRadioOverrides = (): MantineThemeOverride["components"] => ({
         ref: getStylesRef("label"),
         color: theme.colors.text[2],
         fontSize: theme.fontSizes.md,
-        fontWeight: "bold",
       },
       description: {
         ref: getStylesRef("description"),
