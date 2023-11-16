@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -186,6 +187,7 @@ const mapStateToProps = (state, props) => {
 const mapDispatchToProps = {
   ...actions,
   closeNavbar,
+  onChangeLocation: push,
   createBookmark: id => Bookmark.actions.create({ id, type: "card" }),
   deleteBookmark: id => Bookmark.actions.delete({ id, type: "card" }),
 };
