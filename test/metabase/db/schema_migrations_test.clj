@@ -559,7 +559,9 @@
 
 (deftest audit-v2-views-test
   (testing "Migrations v48.00-029 - v48.00-040"
-    (impl/test-migrations ["v48.00-029" "v48.00-040"] [migrate!]
+    ;; Use an open-ended migration range so that we can detect if any migrations added after these views broke the view
+    ;; queries
+    (impl/test-migrations ["v48.00-029"] [migrate!]
       (let [new-view-names ["v_audit_log"
                             "v_content"
                             "v_dashboardcard"
