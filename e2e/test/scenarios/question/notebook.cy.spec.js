@@ -117,7 +117,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("ID is between 96 and 97").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByDisplayValue("Between").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Is not");
