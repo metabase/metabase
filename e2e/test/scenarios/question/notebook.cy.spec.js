@@ -116,14 +116,15 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("ID between 96 97").click();
+    cy.findByText("ID is between 96 and 97").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Between").click();
-    cy.findByTestId("operator-select-list").within(() => {
-      cy.contains("Is not");
-      cy.contains("Greater than");
-      cy.contains("Less than");
-    });
+    cy.findByDisplayValue("Between").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.contains("Is not");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.contains("Greater than");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.contains("Less than");
   });
 
   it("should append indexes to duplicate custom expression names (metabase#12104)", () => {
@@ -216,13 +217,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID is 2").click();
 
-    popover().find("input").type("3{enter}");
+    popover().findByRole("textbox").type("3{enter}{enter}");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID is 2 selections");
-
-    // Still loading
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Showing 98 rows");
 
     cy.wait("@dataset");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -230,7 +227,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   // flaky test (#19454)
-  it.skip("should show an info popover for dimensions listened by the custom expression editor", () => {
+  it("should show an info popover for dimensions listened by the custom expression editor", () => {
     // start a custom question with orders
     startNewQuestion();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
