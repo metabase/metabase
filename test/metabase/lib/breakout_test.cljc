@@ -432,7 +432,6 @@
       (is (=? {:lib/type            :metadata/column
                :lib/source          :source/previous-stage
                :name                "expr"
-               :expression-name     (symbol "nil #_\"key is not present.\"")
                :lib/expression-name (symbol "nil #_\"key is not present.\"")}
               expr))
       (let [query' (lib/breakout query expr)]
