@@ -2,6 +2,7 @@ import d3 from "d3";
 // eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import _ from "underscore";
+import Color from "color";
 import type { RegisteredSeriesOption, EChartsOption } from "echarts";
 
 import { getTrendDataPointsFromInsight } from "metabase/visualizations/lib/trends";
@@ -79,13 +80,21 @@ export function getTrendLineOptionsAndDatasets(
 
   const options: RegisteredSeriesOption["line"][] = chartModel.insights.map(
     (_, index) => ({
-      // TODO styles
       type: "line",
       datasetIndex: index + 2, // TODO make this a constant somehow
-      yAxisIndex: 0, // TODO can we remove this?
       encode: {
         x: chartModel.dimensionModel.dataKey,
         y: TREND_LINE_DATA_KEY,
+      },
+      showSymbol: false,
+      lineStyle: {
+        color: Color(
+          renderingContext.getColor(chartModel.seriesModels[index].color),
+        )
+          .lighten(0.25)
+          .hex(), // TODO map on seriesModels instead
+        type: [5, 5],
+        width: 2,
       },
     }),
   );
