@@ -189,3 +189,25 @@
                             (-> (:column-ref created-at-dim)
                                 (lib.options/with-options {:temporal-unit :month}))
                             last-month]])))))
+
+(deftest ^:parallel temporal-unit-breakouts-test
+  (let [column (-> (meta/field-metadata :orders :created-at)
+                   (lib/with-temporal-bucket :day-of-month))]
+    (doseq [[types column] {:default column
+                            :forced  (-> column
+                                         (dissoc :semantic-type)
+                                         (assoc :base-type :type/Integer
+                                                :effective-type :type/Integer))}
+            :let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                            (lib/aggregate (lib/count))
+                            (lib/breakout  column))]]
+      (testing (str "breakout with temporal-unit with " (name types) " types")
+        (let [agg-index 0
+              agg-value 96]
+          (underlying-state query agg-index agg-value
+                            [1]
+                            (fn [_agg-dim [created-at-dim]]
+                              [[:= {}
+                                (-> (:column-ref created-at-dim)
+                                    (lib.options/with-options {:temporal-unit :day-of-month}))
+                                1]])))))))
