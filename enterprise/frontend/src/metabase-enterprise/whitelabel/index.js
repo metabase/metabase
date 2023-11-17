@@ -93,6 +93,27 @@ if (hasPremiumFeature("whitelabel")) {
           widget: LighthouseToggleWidget,
           defaultValue: true,
         },
+        {
+          // TODO: radio with the three options
+          key: "help-link",
+          display_name: t`Custom help text`,
+          description: "Should we use a custom help link?",
+          type: "boolean",
+          // widget: LighthouseToggleWidget,
+          defaultValue: true,
+        },
+        {
+          // TODO: custom input with validation
+          key: "help-link-custom-destination",
+          display_name: t`Custom help text url`,
+          description: "Can be a https?:// or mailto: link",
+          type: "string",
+          defaultValue: "",
+          getHidden: settings => {
+            // TODO: only visible if help-link is "custom"
+            return !settings["help-link"];
+          },
+        },
       ],
     },
     ...sections,
