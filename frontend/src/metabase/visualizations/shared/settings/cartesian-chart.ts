@@ -3,9 +3,12 @@ import type { ComputedVisualizationSettings } from "metabase/visualizations/type
 import type {
   Card,
   DatasetColumn,
+  DatasetData,
   SeriesOrderSetting,
 } from "metabase-types/api";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
+import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 
 export const STACKABLE_DISPLAY_TYPES = new Set(["area", "bar"]);
 
@@ -111,3 +114,36 @@ export const getDefaultXAxisTitle = (
 };
 
 export const getIsXAxisLabelEnabledDefault = () => true;
+
+export const getDefaultIsHistogram = (dimensionColumn: DatasetColumn) => {
+  return dimensionColumn.binning_info != null;
+};
+
+export const getDefaultIsNumeric = (
+  data: DatasetData,
+  dimensionIndex: number,
+) => {
+  return dimensionIsNumeric(data, dimensionIndex);
+};
+
+export const getDefaultIsTimeSeries = (
+  data: DatasetData,
+  dimensionIndex: number,
+) => {
+  return dimensionIsTimeseries(data, dimensionIndex);
+};
+
+export const getDefaultXAxisScale = (
+  vizSettings: ComputedVisualizationSettings,
+) => {
+  if (vizSettings["graph.x_axis._is_histogram"]) {
+    return "histogram";
+  }
+  if (vizSettings["graph.x_axis._is_timeseries"]) {
+    return "timeseries";
+  }
+  if (vizSettings["graph.x_axis._is_numeric"]) {
+    return "linear";
+  }
+  return "ordinal";
+};

@@ -3,6 +3,7 @@ import type { SeriesLabelOption } from "echarts/types/src/util/types";
 import type {
   SeriesModel,
   CartesianChartModel,
+  DataKey,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ComputedVisualizationSettings,
@@ -54,14 +55,20 @@ const buildEChartsBarSeries = (
   settings: ComputedVisualizationSettings,
   dimensionDataKey: string,
   yAxisIndex: number,
+  barSeriesCount: number,
   renderingContext: RenderingContext,
 ): RegisteredSeriesOption["bar"] => {
   const stackName =
     settings["stackable.stack_type"] != null ? `bar_${yAxisIndex}` : undefined;
 
+  const isHistogram = settings["graph.x_axis.scale"] === "histogram";
+  const barWidth = isHistogram ? `${100 / barSeriesCount - 1}%` : undefined;
+
   return {
     type: "bar",
     yAxisIndex,
+    barGap: 0,
+    barWidth,
     stack: stackName,
     encode: {
       y: seriesModel.dataKey,
@@ -120,11 +127,23 @@ export const buildEChartsSeries = (
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): EChartsOption["series"] => {
-  return chartModel.seriesModels
-    .map(seriesModel => {
-      const seriesSettings: SeriesSettings = settings.series(
+  const seriesSettingsByDataKey = chartModel.seriesModels.reduce(
+    (acc, seriesModel) => {
+      acc[seriesModel.dataKey] = settings.series(
         seriesModel.legacySeriesSettingsObjectKey,
       );
+      return acc;
+    },
+    {} as Record<DataKey, SeriesSettings>,
+  );
+
+  const barSeriesCount = Object.values(seriesSettingsByDataKey).filter(
+    seriesSettings => seriesSettings.display === "bar",
+  ).length;
+
+  return chartModel.seriesModels
+    .map(seriesModel => {
+      const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
 
       const yAxisIndex = chartModel.yAxisSplit[0].includes(seriesModel.dataKey)
         ? 0
@@ -148,6 +167,7 @@ export const buildEChartsSeries = (
             settings,
             chartModel.dimensionModel.dataKey,
             yAxisIndex,
+            barSeriesCount,
             renderingContext,
           );
       }
