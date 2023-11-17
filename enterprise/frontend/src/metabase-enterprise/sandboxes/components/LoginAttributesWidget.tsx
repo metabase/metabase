@@ -4,7 +4,7 @@ import { useField } from "formik";
 
 import FormField from "metabase/core/components/FormField";
 
-import MappingEditor from "./MappingEditor";
+import { MappingEditor } from "./MappingEditor";
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   name: string;
@@ -25,10 +25,6 @@ export const LoginAttributesWidget = ({
         value={value || {}}
         onChange={setValue}
         addText={t`Add an attribute`}
-        swapKeyAndValue={false}
-        keyHeader={undefined}
-        valueHeader={undefined}
-        divider={undefined}
       />
     </FormField>
   );

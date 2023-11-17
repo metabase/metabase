@@ -55,7 +55,6 @@ const getEditSegmentedAccessPostAction = (entityId, groupId, view) =>
 if (hasPremiumFeature("sandboxes")) {
   PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes = LoginAttributesWidget;
 
-  PLUGIN_ADMIN_USER_FORM_FIELDS;
   PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES.push(
     <ModalRoute
       key=":tableId/segmented"
