@@ -204,7 +204,7 @@ describe("scenarios > dashboard card resizing", () => {
 
   it(
     "should display all visualization cards with their default sizes",
-    { requestTimeout: 15000 },
+    { requestTimeout: 15000, tags: "@slow" },
     () => {
       TEST_QUESTIONS.forEach(question => {
         cy.createQuestion(question);
