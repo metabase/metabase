@@ -137,7 +137,6 @@
   [_]
   `String)
 
-;; TODO test
 (defsetting site-uuid
   ;; Don't i18n this docstring because it's not user-facing! :)
   "Unique identifier used for this instance of {0}. This is set once and only once the first time it is fetched via
