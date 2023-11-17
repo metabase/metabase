@@ -2,9 +2,12 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [goog.object :as gobject]
+   [metabase.lib.core :as lib]
    [metabase.lib.js :as lib.js]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.test-runner.assert-exprs.approximately-equal]
    [metabase.test.util.js :as test.js]))
 
 (deftest ^:parallel query=-test
@@ -137,3 +140,12 @@
 (deftest ^:parallel cljs-key->js-key-test
   (is (= "isManyPks"
          (#'lib.js/cljs-key->js-key :many-pks?))))
+
+(deftest ^:parallel expression-clause-for-legacy-expression-test
+  (let [query (-> lib.tu/venues-query
+                  (lib/expression "double-price" (lib/* (meta/field-metadata :venues :price) 2))
+                  (lib/aggregate (lib/sum [:expression {:lib/uuid (str (random-uuid))} "double-price"])))
+        agg-uuid (-> query lib/aggregations first lib.options/uuid)
+        legacy-expr [:> [:aggregation 0] 100]]
+    (is (=? [:> {} [:aggregation {} agg-uuid] 100]
+            (lib.js/expression-clause-for-legacy-expression query -1 legacy-expr)))))
