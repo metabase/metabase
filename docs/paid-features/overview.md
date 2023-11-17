@@ -81,11 +81,11 @@ All Metabase editions include global caching controls. Paid plans includes addit
 - [Caching controls for individual questions](../configuring-metabase/caching.md#caching-per-question)
 - [Caching control per database](../configuring-metabase/caching.md#caching-per-database)
 
-## Auditing
+## Usage analytics
 
 See how people are using your Metabase.
 
-- [Using the audit logs](../usage-and-performance-tools/audit.md)
+- [Metabase analytics](../usage-and-performance-tools/usage-analytics.md)
 
 ## Admin tools
 
