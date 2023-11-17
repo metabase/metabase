@@ -58,10 +58,9 @@ class Dashboard extends Component {
   }
 
   async componentDidUpdate(prevProps) {
-    updateParametersWidgetStickiness(this);
-
     if (prevProps.dashboardId !== this.props.dashboardId) {
       await this.loadDashboard(this.props.dashboardId);
+      updateParametersWidgetStickiness(this);
       return;
     }
 
@@ -212,7 +211,6 @@ class Dashboard extends Component {
       parameters,
       parameterValues,
       draftParameterValues,
-      isNavbarOpen,
       editingParameter,
       setParameterValue,
       setParameterIndex,
@@ -271,7 +269,6 @@ class Dashboard extends Component {
               >
                 <DashboardHeader
                   {...this.props}
-                  isNavbarOpen={isNavbarOpen}
                   onEditingChange={this.setEditing}
                   setDashboardAttribute={this.setDashboardAttribute}
                   addParameter={addParameter}
