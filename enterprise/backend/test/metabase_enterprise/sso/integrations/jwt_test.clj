@@ -63,14 +63,15 @@
 
 (defmacro ^:private with-jwt-default-setup [& body]
   `(mt/with-ensure-with-temp-no-transaction!
-     (disable-other-sso-types
-      (fn []
-        (with-sso-jwt-token
-          (saml-test/call-with-login-attributes-cleared!
-           (fn []
-             (call-with-default-jwt-config
-              (fn []
-                ~@body)))))))))
+     (premium-features-test/with-premium-features #{:audit-app}
+       (disable-other-sso-types
+        (fn []
+          (with-sso-jwt-token
+            (saml-test/call-with-login-attributes-cleared!
+             (fn []
+               (call-with-default-jwt-config
+                (fn []
+                  ~@body))))))))))
 
 (deftest sso-prereqs-test
   (with-sso-jwt-token
