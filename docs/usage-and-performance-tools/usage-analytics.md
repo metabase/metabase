@@ -1,17 +1,21 @@
 ---
-title: Metabase analytics
+title: Usage analytics
 ---
 
-## Metabase analytics
+## Usage analytics
 
 {% include plans-blockquote.html feature="Metabase analytics" %}
 
-The **Metabase Analytics** collection is a special collection that contains view-only questions, dashboards, and models that help you understand how people are using your Metabase.
+The **Metabase Analytics** collection is a special collection that contains view-only questions, dashboards, and models that help you understand how people are using your Metabase. These resources are useful for:
+
+- **Understanding Usage**: Understand how people use your Metabase (e.g., new questions, most active people and groups, and so on).
+- **Auditing activity**: Know who viewed or did what and when, including tracking dashboard and question views, queries, downloads, and other activity like changing settings or inviting people to your Metabase.
+- **Improving operations**: Know the slowest dashboards and questions, how your database's are performing, who's consuming the most resources, and so on.
 
 Some things to keep in mind with this special Metabase analytics collection:
 
 - Metabase analytics is a view-only collection. Even admins can't curate it. It is eternal.
-- By default, only admins can view the Metabase analytics collection. Though they can grant other groups view access to it.
+- By default, only admins can view the Metabase analytics collection (though they can grant other groups view access to it).
 - You can duplicate any item in the Metabase analytics collection, modify the item to your liking, and save the item to another collection.
 
 ## Permissions
