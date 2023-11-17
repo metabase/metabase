@@ -1,6 +1,6 @@
 (ns metabase-enterprise.serialization.v2.load
   "Loading is the interesting part of deserialization: integrating the maps \"ingested\" from files into the appdb.
-  See the detailed breakdown of the (de)serialization processes in [[metabase.models.serialization.base]]."
+  See the detailed breakdown of the (de)serialization processes in [[metabase.models.serialization]]."
   (:require
    [medley.core :as m]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
@@ -38,7 +38,7 @@
   references in this entity can be resolved properly.
 
   This is mostly bookkeeping for the overall deserialization process - the actual load of any given entity is done by
-  [[metabase.models.serialization.base/load-one!]] and its various overridable parts, which see.
+  [[metabase.models.serialization/load-one!]] and its various overridable parts, which see.
 
   Circular dependencies are not allowed, and are detected and thrown as an error."
   [{:keys [expanding ingestion seen] :as ctx} path]

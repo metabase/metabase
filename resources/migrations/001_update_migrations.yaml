@@ -4070,6 +4070,36 @@ databaseChangeLog:
         - sql: DELETE FROM core_user WHERE id = 13371338;
 
   - changeSet:
+      id: v48.00-056
+      author: noahmoss
+      comment: 'Adjust view_log schema for Audit Log v2'
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
+              - column:
+                  name: has_access
+                  type: boolean
+                  constraints:
+                    nullable: true
+                  remarks: 'Whether the user who initiated the view had read access to the item being viewed.'
+
+  - changeSet:
+      id: v48.00-057
+      author: noahmoss
+      comment: 'Adjust view_log schema for Audit Log v2'
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
+              - column:
+                  name: context
+                  type: varchar(32)
+                  constraints:
+                    nullable: true
+                  remarks: 'The context of the view, can be collection, question, or dashboard. Only for cards.'
+
+  - changeSet:
       id: v49.00-000
       author: qnkhuat
       comment: Remove leagcy pulses
