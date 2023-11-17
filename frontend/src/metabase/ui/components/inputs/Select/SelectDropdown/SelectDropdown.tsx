@@ -3,6 +3,8 @@ import type { HTMLAttributes, Ref } from "react";
 import { useMergedRef } from "@mantine/hooks";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 
+// hack to prevent Select from closing TippyPopover when selecting an item
+// remove when TippyPopover is no longer used
 export const SelectDropdown = forwardRef(function SelectDropdown(
   props: HTMLAttributes<HTMLDivElement>,
   outerRef: Ref<HTMLDivElement>,
