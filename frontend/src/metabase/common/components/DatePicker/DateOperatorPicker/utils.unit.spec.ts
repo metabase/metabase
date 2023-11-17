@@ -1,7 +1,13 @@
-import type { DatePickerValue, DatePickerTruncationUnit } from "../types";
+import type {
+  DatePickerValue,
+  DatePickerTruncationUnit,
+  SpecificDatePickerOperator,
+} from "../types";
 import { setOptionType } from "./utils";
 
-const DATE = new Date();
+const TODAY = new Date(2020, 0, 1, 0, 0);
+const DATE = new Date(2015, 10, 20, 0, 0);
+const DATE2 = new Date(2016, 5, 15, 0, 0);
 
 const SPECIFIC_VALUES: DatePickerValue[] = [
   { type: "specific", operator: "=", values: [DATE] },
@@ -25,7 +31,91 @@ const EXCLUDE_VALUES: DatePickerValue[] = [
 describe("setOptionType", () => {
   beforeAll(() => {
     jest.useFakeTimers();
-    jest.setSystemTime(new Date(2020, 0, 1));
+    jest.setSystemTime(TODAY);
+  });
+
+  describe("=", () => {
+    it.each([...RELATIVE_VALUES, ...EXCLUDE_VALUES])(
+      'should return default value for "$operator" operator',
+      value => {
+        expect(setOptionType(value, "=")).toEqual({
+          type: "specific",
+          operator: "=",
+          values: [TODAY],
+        });
+      },
+    );
+
+    it.each<SpecificDatePickerOperator>([">", "<"])(
+      'should preserve value for "%s" operator',
+      operator => {
+        const value: DatePickerValue = {
+          type: "specific",
+          operator,
+          values: [DATE],
+        };
+        expect(setOptionType(value, "=")).toEqual({
+          type: "specific",
+          operator: "=",
+          values: [DATE],
+        });
+      },
+    );
+
+    it('should preserve end date for "between" operator', () => {
+      const value: DatePickerValue = {
+        type: "specific",
+        operator: "between",
+        values: [DATE, DATE2],
+      };
+      expect(setOptionType(value, "=")).toEqual({
+        type: "specific",
+        operator: "=",
+        values: [DATE2],
+      });
+    });
+  });
+
+  describe(">", () => {
+    it.each([...RELATIVE_VALUES, ...EXCLUDE_VALUES])(
+      'should return default value for "$operator" operator',
+      value => {
+        expect(setOptionType(value, ">")).toEqual({
+          type: "specific",
+          operator: ">",
+          values: [TODAY],
+        });
+      },
+    );
+
+    it.each<SpecificDatePickerOperator>(["=", "<"])(
+      'should preserve value for "%s" operator',
+      operator => {
+        const value: DatePickerValue = {
+          type: "specific",
+          operator,
+          values: [DATE],
+        };
+        expect(setOptionType(value, ">")).toEqual({
+          type: "specific",
+          operator: ">",
+          values: [DATE],
+        });
+      },
+    );
+
+    it('should preserve start date for "between" operator', () => {
+      const value: DatePickerValue = {
+        type: "specific",
+        operator: "between",
+        values: [DATE, DATE2],
+      };
+      expect(setOptionType(value, ">")).toEqual({
+        type: "specific",
+        operator: ">",
+        values: [DATE],
+      });
+    });
   });
 
   describe("last", () => {
@@ -92,7 +182,7 @@ describe("setOptionType", () => {
       value => {
         expect(setOptionType(value, "next")).toEqual({
           type: "relative",
-          value: -30,
+          value: 30,
           unit: "day",
         });
       },
