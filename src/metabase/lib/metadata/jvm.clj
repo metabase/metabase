@@ -40,7 +40,7 @@
 
 (derive :metadata/database :model/Database)
 
-(methodical/defmethod t2.model/resolve-model :metadata/table
+(methodical/defmethod t2.model/resolve-model :metadata/database
   [model]
   (classloader/require 'metabase.models.database)
   model)
