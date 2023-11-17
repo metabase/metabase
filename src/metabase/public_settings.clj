@@ -116,8 +116,8 @@
 
   (defsetting help-link
   (deferred-tru "TODO")
-  :default    false
-  :type       :boolean
+  :default    ""
+  :type       :string
   :audit      :getter
   :visibility :public)
 

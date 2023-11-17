@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import _ from "underscore";
+import _, { get } from "underscore";
 
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 
@@ -62,6 +62,7 @@ const mapStateToProps = (state, props) => {
     isHomepageDashboard:
       getSetting(state, "custom-homepage") &&
       getSetting(state, "custom-homepage-dashboard") === props.dashboard?.id,
+    helpLink: getSetting(state, "help-link-custom-destination"),
   };
 };
 

@@ -26,6 +26,7 @@ import {
   enabledApplicationNameReplacement,
 } from "./lib/whitelabel";
 import { getLoadingMessageOptions } from "./lib/loading-message";
+import { HelpLinkRadio } from "./components/HelpLinkSettings";
 
 if (hasPremiumFeature("whitelabel")) {
   PLUGIN_LANDING_PAGE.push(() => MetabaseSettings.get("landing-page"));
@@ -94,12 +95,13 @@ if (hasPremiumFeature("whitelabel")) {
           defaultValue: true,
         },
         {
-          // TODO: radio with the three options
           key: "help-link",
-          display_name: t`Custom help text`,
-          description: "Should we use a custom help link?",
-          type: "boolean",
-          // widget: LighthouseToggleWidget,
+          display_name: t`Help Link in the Settings menu`,
+          // TODO: this needs to have a link
+          description:
+            "The Settings menu includes a Help link that goes to this page by default.",
+          type: "string",
+          widget: HelpLinkRadio,
           defaultValue: true,
         },
         {
@@ -111,7 +113,7 @@ if (hasPremiumFeature("whitelabel")) {
           defaultValue: "",
           getHidden: settings => {
             // TODO: only visible if help-link is "custom"
-            return !settings["help-link"];
+            return settings["help-link"] !== 1;
           },
         },
       ],
