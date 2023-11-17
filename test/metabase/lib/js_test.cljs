@@ -133,3 +133,7 @@
 (deftest ^:parallel is-column-metadata-test
   (is (true? (lib.js/is-column-metadata (meta/field-metadata :venues :id))))
   (is (false? (lib.js/is-column-metadata 1))))
+
+(deftest ^:parallel cljs-key->js-key-test
+  (is (= "isManyPks"
+         (#'lib.js/cljs-key->js-key :many-pks?))))
