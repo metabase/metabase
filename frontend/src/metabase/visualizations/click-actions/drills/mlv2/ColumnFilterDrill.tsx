@@ -11,6 +11,19 @@ export const ColumnFilterDrill: Drill<Lib.ColumnFilterDrillThruInfo> = ({
     return [];
   }
 
+  const query = question._getMLv2Query();
+  const drillColumn = Lib.drillThruColumn(drill);
+  const filterableColumns = Lib.filterableColumns(query, -1);
+  const filterColumn = Lib.findMatchingColumn(
+    query,
+    -1,
+    drillColumn,
+    filterableColumns,
+  );
+  if (!filterColumn) {
+    return [];
+  }
+
   return [
     {
       name: "filter-column",
@@ -19,14 +32,11 @@ export const ColumnFilterDrill: Drill<Lib.ColumnFilterDrillThruInfo> = ({
       buttonType: "horizontal",
       icon: "filter",
       popover: ({ onChangeCardAndRun, onClose }) => {
-        const query = question._getMLv2Query();
-        const column = Lib.drillThruColumn(drill);
-
         return (
           <FilterPickerBody
             query={query}
             stageIndex={-1}
-            column={column}
+            column={filterColumn}
             onChange={filter => {
               const nextQuery = Lib.filter(query, -1, filter);
               const nextQuestion = question._setMLv2Query(nextQuery);
