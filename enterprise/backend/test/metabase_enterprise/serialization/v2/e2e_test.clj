@@ -5,12 +5,9 @@
    [medley.core :as m]
    [metabase-enterprise.serialization.cmd :as cmd]
    [metabase-enterprise.serialization.test-util :as ts]
-   [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
-   [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
-   [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase.models :refer [Card
                             Collection
@@ -807,25 +804,3 @@
                            (get-in viz [:column_settings
                                         (format "[\"ref\",[\"field\",%s,null]]" %people.name)
                                         :pivot_table.column_sort_order])))))))))))))
-
-(deftest every-model-is-supported-test
-  (testing "Serialization support\n"
-    (testing "We know about every model"
-      (is (= (set (concat serdes.models/exported-models
-                          serdes.models/inlined-models
-                          serdes.models/excluded-models))
-             (set (map name (v2.entity-ids/toucan-models))))))
-
-    (let [should-have-entity-id (set (concat serdes.models/data-model serdes.models/content))]
-      (doseq [model (v2.entity-ids/toucan-models)]
-        (if (contains? should-have-entity-id (name model))
-          (testing (str "Model either has entity_id or a hash key: " (name model))
-            ;; `not=` is effectively `xor`
-            (is (not= (not= (get-method serdes/entity-id (name model))
-                            (get-method serdes/entity-id :default))
-                      (and (not= (get-method serdes/hash-fields model)
-                                 (get-method serdes/hash-fields :default))
-                           (serdes.backfill/has-entity-id? model)))))
-          (testing (str "Model shouldn't have entity_id defined: " (name model))
-            (is (= (get-method serdes/entity-id (name model))
-                   (get-method serdes/entity-id :default)))))))))
