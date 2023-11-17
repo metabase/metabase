@@ -1,4 +1,4 @@
-import type { DatePickerValue } from "../types";
+import type { DatePickerValue, DatePickerTruncationUnit } from "../types";
 import { setOptionType } from "./utils";
 
 const DATE = new Date();
@@ -26,6 +26,58 @@ describe("setOptionType", () => {
   beforeAll(() => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date(2020, 0, 1));
+  });
+
+  describe("current", () => {
+    it.each([...SPECIFIC_VALUES, ...EXCLUDE_VALUES])(
+      'should return default value for "$operator" operator',
+      value => {
+        expect(setOptionType(value, "current")).toEqual({
+          type: "relative",
+          value: "current",
+          unit: "day",
+        });
+      },
+    );
+
+    describe.each<DatePickerTruncationUnit>(["minute", "hour"])(
+      'should use default unit for "%s" unit',
+      unit => {
+        it.each([-10, 10])('"%d" interval', interval => {
+          const value: DatePickerValue = {
+            type: "relative",
+            value: interval,
+            unit,
+          };
+          expect(setOptionType(value, "current")).toEqual({
+            type: "relative",
+            value: "current",
+            unit: "day",
+          });
+        });
+      },
+    );
+
+    describe.each<DatePickerTruncationUnit>([
+      "day",
+      "week",
+      "month",
+      "quarter",
+      "year",
+    ])('should preserve unit for "%s" unit', unit => {
+      it.each([-10, 10])('"%d" interval', interval => {
+        const value: DatePickerValue = {
+          type: "relative",
+          value: interval,
+          unit,
+        };
+        expect(setOptionType(value, "current")).toEqual({
+          type: "relative",
+          value: "current",
+          unit,
+        });
+      });
+    });
   });
 
   describe("!=", () => {
