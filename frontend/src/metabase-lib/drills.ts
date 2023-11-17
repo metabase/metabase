@@ -37,3 +37,7 @@ export function drillThru(
 ): Query {
   return ML.drill_thru(query, stageIndex, drillThru, ...args);
 }
+
+export function drillThruColumn(drillThru: DrillThru): ColumnMetadata {
+  return ML.drill_thru_column(drillThru);
+}

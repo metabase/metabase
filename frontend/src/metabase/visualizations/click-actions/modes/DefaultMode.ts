@@ -3,7 +3,6 @@ import UnderlyingRecordsDrill from "metabase/visualizations/click-actions/drills
 import { QuickFilterDrill } from "metabase/visualizations/click-actions/drills/QuickFilterDrill";
 import { ObjectDetailDrill } from "metabase/visualizations/click-actions/drills/ObjectDetailDrill";
 import ZoomDrill from "metabase/visualizations/click-actions/drills/ZoomDrill";
-import { ColumnFilterDrill } from "metabase/visualizations/click-actions/drills/ColumnFilterDrill";
 import type { QueryClickActionsMode } from "../../types";
 import { ColumnFormattingAction } from "../actions/ColumnFormattingAction";
 import { HideColumnAction } from "../actions/HideColumnAction";
@@ -16,7 +15,6 @@ export const DefaultMode: QueryClickActionsMode = {
     ZoomDrill,
     ObjectDetailDrill,
     QuickFilterDrill,
-    ColumnFilterDrill,
     AutomaticInsightsDrill,
     HideColumnAction,
     ColumnFormattingAction,

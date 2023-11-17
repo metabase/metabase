@@ -1,5 +1,6 @@
 import type { Drill } from "metabase/visualizations/types/click-actions";
 import type { DrillThruType } from "metabase-lib";
+import { ColumnFilterDrill } from "metabase/visualizations/click-actions/drills/mlv2/ColumnFilterDrill";
 import { FKFilterDrill } from "metabase/visualizations/click-actions/drills/mlv2/FKFilterDrill";
 import { SummarizeColumnByTimeDrill } from "metabase/visualizations/click-actions/drills/mlv2/SummarizeColumnByTimeDrill";
 import { SortDrill } from "metabase/visualizations/click-actions/drills/mlv2/SortDrill";
@@ -26,7 +27,7 @@ export const DRILL_TYPE_TO_HANDLER_MAP: Record<
   DrillThruType,
   Drill<any> | null
 > = {
-  "drill-thru/column-filter": null, // ColumnFilterDrill,
+  "drill-thru/column-filter": ColumnFilterDrill,
   "drill-thru/quick-filter": null, // QuickFilterDrill,
   "drill-thru/pk": null, // PKDetailsDrill,
   "drill-thru/zoom": null, // ZoomToRowDrill,
