@@ -14,15 +14,13 @@ export const ColumnFilterDrill: Drill<Lib.ColumnFilterDrillThruInfo> = ({
   }
 
   const query = question._getMLv2Query();
-  const drillColumn = Lib.drillThruColumn(drill);
-  const filterableColumns = Lib.filterableColumns(query, STAGE_INDEX);
-  const filterColumn = Lib.findMatchingColumn(
+  const column = Lib.findMatchingColumn(
     query,
     STAGE_INDEX,
-    drillColumn,
-    filterableColumns,
+    Lib.drillThruColumn(drill),
+    Lib.filterableColumns(query, STAGE_INDEX),
   );
-  if (!filterColumn) {
+  if (!column) {
     return [];
   }
 
@@ -38,7 +36,7 @@ export const ColumnFilterDrill: Drill<Lib.ColumnFilterDrillThruInfo> = ({
           <FilterPickerBody
             query={query}
             stageIndex={STAGE_INDEX}
-            column={filterColumn}
+            column={column}
             onChange={filter => {
               const nextQuery = Lib.filter(query, STAGE_INDEX, filter);
               const nextQuestion = question._setMLv2Query(nextQuery);
