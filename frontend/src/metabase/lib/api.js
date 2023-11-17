@@ -85,7 +85,7 @@ export class Api extends EventEmitter {
           ? { Accept: "application/json", "Content-Type": "application/json" }
           : {};
 
-        if (options.formData && options.fetch) {
+        if (options.formData) {
           delete headers["Content-Type"];
         }
 
