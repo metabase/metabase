@@ -283,3 +283,13 @@ export const getActionIsEnabledInDatabase = (
 ): boolean => {
   return !!card.action?.database_enabled_actions;
 };
+
+/**
+ * When you remove a dashcard from a dashboard (either via removing or via moving it to another tab),
+ * another dashcard can take its place. This small offset ensures that the grid will put this dashcard
+ * in the correct place, pushing back down the other card.
+ * This is a "best effort" solution, it doesn't always work but it's good enough for the most common case
+ * see https://github.com/metabase/metabase/pull/35502
+ */
+export const calculateDashCardRowAfterUndo = (originalRow: number) =>
+  originalRow - 0.1;
