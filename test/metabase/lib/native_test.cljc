@@ -9,7 +9,9 @@
    [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
    [metabase.lib.test-util :as lib.tu]
    [metabase.util.humanization :as u.humanization]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (deftest ^:parallel variable-tag-test
   (are [exp input] (= exp (set (keys (lib.native/extract-template-tags input))))
@@ -148,9 +150,8 @@
 (deftest ^:parallel native-query-test
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
-           :stages   [{:lib/type    :mbql.stage/native
-                       :lib/options {:lib/uuid string?}
-                       :native      "SELECT * FROM VENUES;"}]}
+           :stages   [{:lib/type :mbql.stage/native
+                       :native   "SELECT * FROM VENUES;"}]}
           (lib/native-query meta/metadata-provider "SELECT * FROM VENUES;" qp-results-metadata nil))))
 
 (deftest ^:parallel native-query-suggested-name-test
