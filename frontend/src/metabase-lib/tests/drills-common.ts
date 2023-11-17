@@ -419,6 +419,8 @@ export const AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_COLUMNS = {
     base_type: "type/Integer",
     name: "CustomColumn",
     display_name: "CustomColumn",
+    expression_name: "CustomColumn",
+    field_ref: ["expression", "CustomColumn"],
     source: "breakout",
     effective_type: "type/Integer",
   }),
