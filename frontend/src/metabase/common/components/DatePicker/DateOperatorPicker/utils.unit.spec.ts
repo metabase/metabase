@@ -1,3 +1,4 @@
+import { DATE_PICKER_OPERATORS } from "../constants";
 import type {
   DatePickerTruncationUnit,
   DatePickerValue,
@@ -6,7 +7,8 @@ import type {
   SpecificDatePickerOperator,
   SpecificDatePickerValue,
 } from "../types";
-import { getOptionType, setOptionType } from "./utils";
+import { OPERATOR_OPTIONS } from "./constants";
+import { getAvailableOptions, getOptionType, setOptionType } from "./utils";
 import type { OptionType } from "./types";
 
 const TODAY = new Date(2020, 0, 1, 0, 0);
@@ -34,6 +36,23 @@ const EXCLUDE_VALUES: ExcludeDatePickerValue[] = [
   { type: "exclude", operator: "is-null", values: [] },
   { type: "exclude", operator: "not-null", values: [] },
 ];
+
+describe("getAvailableOptions", () => {
+  it("should return options that don't require an operator", () => {
+    const options = getAvailableOptions([]);
+    expect(options.map(option => option.label)).toEqual([
+      "All time",
+      "Previous",
+      "Next",
+      "Current",
+    ]);
+  });
+
+  it("should return options for default operators", () => {
+    const options = getAvailableOptions(DATE_PICKER_OPERATORS);
+    expect(options).toEqual(OPERATOR_OPTIONS);
+  });
+});
 
 describe("getOptionType", () => {
   it.each<[OptionType, DatePickerValue | undefined]>([
