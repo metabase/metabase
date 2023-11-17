@@ -209,11 +209,11 @@ describe("scenarios > admin > localization", () => {
 
     popover().within(() => {
       cy.findByText("Filter by this column").click();
-      cy.findByText("Specific dates...").click();
+      cy.findByText("Specific dates….").click();
       cy.findByText("On").click();
 
       // ensure the date picker is ready
-      cy.findByTextEnsureVisible("Add a time");
+      cy.findByTextEnsureVisible("Add time");
       cy.findByTextEnsureVisible("Add filter");
 
       // update the date input in the widget

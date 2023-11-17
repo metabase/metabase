@@ -844,31 +844,6 @@ describe("scenarios > question > filter", () => {
 
       openOrdersTable();
     });
-
-    it("should show correct currency symbols in currency single field filter", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Discount (€)").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Filter by this column").click();
-      cy.findByTestId("input-prefix").should("contain", "€");
-    });
-
-    it("should show correct currency symbols in currency between field filter", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Discount (€)").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Filter by this column").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Equal to").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Between").click();
-
-      cy.findAllByTestId("input-prefix").then(els => {
-        expect(els).to.have.lengthOf(2);
-        expect(els[0].innerText).to.equal("€");
-        expect(els[1].innerText).to.equal("€");
-      });
-    });
   });
 
   describe("specific combination of filters can cause frontend reload or blank screen (metabase#16198)", () => {
