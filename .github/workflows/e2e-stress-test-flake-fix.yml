@@ -51,7 +51,6 @@ jobs:
         uses: ./.github/actions/e2e-download-uberjar
         with:
           edition: 'ee'
-          was-built: false
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend

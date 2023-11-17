@@ -23,6 +23,7 @@ import { addUndo } from "metabase/redux/undo";
 import { INITIAL_DASHBOARD_STATE } from "../constants";
 import { getDashCardById } from "../selectors";
 import { trackCardMoved } from "../analytics";
+import { calculateDashCardRowAfterUndo } from "../utils";
 import { getDashCardMoveToTabUndoMessage, getExistingDashCards } from "./utils";
 
 type CreateNewTabPayload = { tabId: DashboardTabId };
@@ -65,6 +66,7 @@ const INIT_TABS = "metabase/dashboard/INIT_TABS";
 const createNewTabAction = createAction<CreateNewTabPayload>(CREATE_NEW_TAB);
 
 let tempTabId = -2;
+
 // Needed for testing
 export function resetTempTabId() {
   tempTabId = -2;
@@ -342,11 +344,19 @@ export const tabsReducer = createReducer<DashboardState>(
     builder.addCase(
       _moveDashCardToTab,
       (state, { payload: { dashCardId, destinationTabId } }) => {
-        const dashCard = state.dashcards[dashCardId];
-        const dashboardId = checkNotNull(state.dashboardId);
+        const dashboardState = { ...state } as unknown as DashboardState;
+        const dashCard = dashboardState.dashcards[dashCardId];
+        const dashboardId = checkNotNull(dashboardState.dashboardId);
+        const dashcards = dashboardState.dashcards;
+        const dashboards = dashboardState.dashboards;
 
         const { row, col } = getPositionForNewDashCard(
-          getExistingDashCards(state, dashboardId, destinationTabId),
+          getExistingDashCards(
+            dashboards,
+            dashcards,
+            dashboardId,
+            destinationTabId,
+          ),
           dashCard.size_x,
           dashCard.size_y,
         );
@@ -366,7 +376,7 @@ export const tabsReducer = createReducer<DashboardState>(
       ) => {
         const dashCard = state.dashcards[dashCardId];
 
-        dashCard.row = originalRow;
+        dashCard.row = calculateDashCardRowAfterUndo(originalRow);
         dashCard.col = originalCol;
         dashCard.dashboard_tab_id = originalTabId;
         dashCard.isDirty = true;

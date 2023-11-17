@@ -36,6 +36,7 @@
   com.github.seancorfield/honeysql          {:mvn/version "2.4.1066"}           ; Honey SQL 2. SQL generation from Clojure data maps
   com.github.seancorfield/next.jdbc         {:git/url "https://github.com/seancorfield/next-jdbc.git"
                                              :sha     "abd926cde3730087d3729dcea0ce0ab7ef1194f2"} ; for https://github.com/seancorfield/next-jdbc/issues/245; when this makes it to a release we can switch to that.
+  com.github.steffan-westcott/clj-otel-api  {:mvn/version "0.2.4.1"}            ; Telemetry library
   com.github.vertical-blank/sql-formatter   {:mvn/version "2.0.4"}              ; Java SQL formatting library https://github.com/vertical-blank/sql-formatter
   com.google.guava/guava                    {:mvn/version "32.1.2-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
   com.fasterxml.jackson.core/jackson-databind
@@ -73,6 +74,8 @@
   instaparse/instaparse                     {:mvn/version "1.4.12"}             ; Make your own parser
   clj-commons/clj-yaml                      {:mvn/version "1.0.27"}             ; Clojure wrapper for YAML library SnakeYAML
   io.github.camsaul/toucan2                 {:mvn/version "1.0.524"}
+  io.github.eerohele/pp                     {:git/tag "2023-10-05.5"            ; super fast pretty-printing library
+                                             :git/sha "7059eec"}
   ;; The 2.X line of Resilience4j requires Java 17, so we cannot upgrade this dependency until that is our minimum JVM version
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1"}              ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
@@ -171,7 +174,7 @@
 
 
  :paths
- ["src" "shared/src" "resources"]
+ ["src" "resources"]
 
  ;; These are needed for the Athena and Redshift drivers if you are developing against them locally. If those drivers'
  ;; dependencies are not included (i.e., if we don't have the `:drivers` profile), these repos are effectively
@@ -205,7 +208,9 @@
   ;;    (dev/start!)
   :dev
   {:extra-deps
-   {clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
+   {com.clojure-goes-fast/clj-async-profiler
+                                 {:mvn/version "1.1.1"}                     ; Enables local profiling and heat map generation
+    clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
     clj-kondo/clj-kondo          {:mvn/version "2023.09.07"}                ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
     cloverage/cloverage          {:mvn/version "1.2.4"}
@@ -226,12 +231,14 @@
     ring/ring-mock               {:mvn/version "0.4.0"}                     ; creating Ring request maps for testing purposes
     talltale/talltale            {:mvn/version "0.5.13"}}                   ; generates fake data, useful for prototyping or load testing
 
-   :extra-paths ["dev/src" "local/src" "test" "shared/test" "test_resources"]
+   :extra-paths ["dev/src" "local/src" "test" "test_resources"]
    :jvm-opts    ["-Dmb.run.mode=dev"
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.test.env.setting=ABCDEFG"
                  "-Duser.timezone=UTC"
                  "-Dfile.encoding=UTF-8"
+                 ;; Allow clojure goes fast tooling to work
+                 "-Djdk.attach.allowAttachSelf"
                  "-Duser.language=en"
                  "-Duser.country=US"
                  ;; set the logging properties set in metabase.bootstrap. calling (dev) will load it but putting here to be sure
@@ -304,7 +311,7 @@
    {com.github.tsmacdonald/marginalia {:mvn/version "0.9.2"}}
    :main-opts ["-m" "marginalia.main" "-n" "Metabase" "-d" "backend-docs" "-D"
                "The simplest, fastest way to get business intelligence and analytics to everyone in your company 😋"
-               "dev" "src" "shared/src" "enterprise/backend/src"]}
+               "dev" "src" "enterprise/backend/src"]}
 
   ;; Generate a single file's docs with
   ;;   clojure -M:marginalia/one src/metabase/some/namespace.clj
@@ -321,7 +328,7 @@
              :main-opts ["-m" "antq.core"]}
 
   :cljs
-  {:extra-paths ["test" "shared/test"]
+  {:extra-paths ["test"]
    :extra-deps
    {binaryage/devtools                 {:mvn/version "1.0.7"}
     cider/cider-nrepl                  {:mvn/version "0.37.0"}
@@ -375,7 +382,6 @@
                                  :sha     "518d5a1cbfcd7c952f548e6dbfcb9a4a5faf9062"}}
    :main-opts  ["-m" "clj-check.check"
                 "src"
-                "shared/src"
                 "enterprise/backend/src"
                 "modules/drivers/athena/src"
                 "modules/drivers/bigquery-cloud-sdk/src"
@@ -398,7 +404,6 @@
    :exec-args {;; manually specify the source paths for the time being (exclude test paths) until we fix Eastwood
                ;; errors in the test paths (once PR #17193 is merged)
                :source-paths    ["src"
-                                 "shared/src"
                                  "enterprise/backend/src"
                                  "modules/drivers/athena/src"
                                  "modules/drivers/bigquery-cloud-sdk/src"
@@ -445,7 +450,6 @@
                                    "enterprise"
                                    "frontend"
                                    "resources"
-                                   "shared"
                                    "src"
                                    "test"]
                 :include-patterns ["\\.clj.?$"
@@ -466,7 +470,7 @@
                                    "frontend/src/cljs"
                                    "frontend/test/metabase/lib/urls\\.unit\\.spec\\.js$"
                                    "frontend/test/metabase/lib/formatting\\.unit\\.spec\\.js$"
-                                   "shared/src/metabase/shared/util/currency\\.cljc$"
+                                   "src/metabase/shared/util/currency\\.cljc$"
                                    "#.+#$"
                                    "\\.transit\\.json$"]}}
 
@@ -484,10 +488,10 @@
                 metabase.util.log/logp]
 
                :src-ns-path
-               ["src" "enterprise/backend/src" "shared/src"]
+               ["src" "enterprise/backend/src"]
 
                :test-ns-path
-               ["test" "enterprise/backend/test" "shared/test"]
+               ["test" "enterprise/backend/test"]
 
                :ns-regex
                ["^metabase\\..*" "^metabase-enterprise\\..*"]
@@ -509,7 +513,7 @@
   {:deps       {io.github.weavejester/cljfmt {:git/tag "0.11.2", :git/sha "fb26b22f569724b05c93eb2502592dfc2de898c3"}}
    :ns-default cljfmt.tool}
 
-  ;;; building Uberjar, build and release scripts
+;;; building Uberjar, build and release scripts
 
   :build
   {:extra-paths
@@ -676,7 +680,7 @@
   ;;
   ;;    clj -X:dev:ee:ee-dev:test:test/mbql
   :test/mbql
-  {:exec-args {:only ["shared/test/mbql"
+  {:exec-args {:only ["test/mbql"
                       "test/metabase/lib"
                       "test/metadata/driver"
                       "test/metabase/query_processor"

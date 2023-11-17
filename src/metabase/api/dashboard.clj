@@ -44,6 +44,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -182,27 +183,33 @@
 (defn- get-dashboard
   "Get Dashboard with ID."
   [id]
-  (-> (t2/select-one :model/Dashboard :id id)
-      api/read-check
-      ;; i'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
-      ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
-      ;; cannot be in this situation
-      (t2/hydrate [:dashcards
-                   [:card [:moderation_reviews :moderator_details]]
-                   [:card :can_write]
-                   :series
-                   :dashcard/action
-                   :dashcard/linkcard-info]
-                  :tabs
-                  :collection_authority_level
-                  :can_write
-                  :param_fields
-                  :param_values
-                  [:collection :is_personal])
-      collection.root/hydrate-root-collection
-      api/check-not-archived
-      hide-unreadable-cards
-      add-query-average-durations))
+  (span/with-span!
+    {:name       "get-dashboard"
+     :attributes {:dashboard/id id}}
+    (let [dashboard (api/read-check (t2/select-one :model/Dashboard :id id))
+          ;; i'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
+          ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
+          ;; cannot be in this situation
+          hydrated  (span/with-span!
+                      {:name       "hydrate"
+                       :attributes {:dashboard/id id}}
+                      (t2/hydrate dashboard [:dashcards
+                                             [:card [:moderation_reviews :moderator_details]]
+                                             [:card :can_write]
+                                             :series
+                                             :dashcard/action
+                                             :dashcard/linkcard-info]
+                                  :tabs
+                                  :collection_authority_level
+                                  :can_write
+                                  :param_fields
+                                  :param_values
+                                  [:collection :is_personal]))]
+      (-> hydrated
+          collection.root/hydrate-root-collection
+          api/check-not-archived
+          hide-unreadable-cards
+          add-query-average-durations))))
 
 (defn- cards-to-copy
   "Returns a map of which cards we need to copy and which are not to be copied. The `:copy` key is a map from id to
@@ -367,7 +374,10 @@
   [id]
   {id ms/PositiveInt}
   (let [dashboard (get-dashboard id)]
-    (events/publish-event! :event/dashboard-read {:object dashboard :user-id api/*current-user-id*})
+    (span/with-span!
+      {:name       "publish-event!.dashboard-read"
+       :attributes {:dashboard/id id}}
+      (events/publish-event! :event/dashboard-read {:object dashboard :user-id api/*current-user-id*}))
     (last-edit/with-last-edit-info dashboard :dashboard)))
 
 (defn- check-allowed-to-change-embedding
@@ -786,6 +796,7 @@
         :let  [ttag      (get-template-tag dimension card)
                dimension (condp mbql.u/is-clause? dimension
                            :field        dimension
+                           :expression   dimension
                            :template-tag (:dimension ttag)
                            (log/error "cannot handle this dimension" {:dimension dimension}))
                field-id  (or
