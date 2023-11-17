@@ -27,11 +27,6 @@ function setup({
 }
 
 describe("DateOperatorPicker", () => {
-  beforeAll(() => {
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date(2020));
-  });
-
   it("should be able to change the option type", () => {
     const { onChange } = setup();
 
