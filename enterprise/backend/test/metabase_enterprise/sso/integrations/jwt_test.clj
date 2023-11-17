@@ -2,6 +2,7 @@
   (:require
    [buddy.sign.jwt :as jwt]
    [buddy.sign.util :as buddy-util]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [crypto.random :as crypto-random]
@@ -22,9 +23,11 @@
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
+(def ^:private other-enabled-premium-features #{:audit-app})
+
 (defn- disable-other-sso-types [thunk]
   (let [current-features (premium-features/token-features)]
-    (premium-features-test/with-additional-premium-features #{:sso-saml}
+    (premium-features-test/with-premium-features (set/union #{:sso-saml} other-enabled-premium-features)
       (mt/with-temporary-setting-values [ldap-enabled false
                                          saml-enabled false]
         (premium-features-test/with-premium-features current-features
