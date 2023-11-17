@@ -4,8 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [environ.core :as env]
-   [metabase.plugins.classloader :as classloader]
-   [metabase.util.log :as log])
+   [metabase.plugins.classloader :as classloader])
   (:import
    (clojure.lang Keyword)))
 
@@ -121,6 +120,13 @@
    Looks something like `Metabase v0.25.0.RC1`."
   (str "Metabase " (mb-version-info :tag)))
 
+(defn current-major-version
+  "Returns the major version of the running Metabase JAR.
+  When the version.properties file is missing (e.g., running in local dev), returns nil."
+  []
+  (some-> (second (re-find #"\d+\.(\d+)" (:tag mb-version-info)))
+          parse-long))
+
 (defonce ^{:doc "This UUID is randomly-generated upon launch and used to identify this specific Metabase instance during
                 this specifc run. Restarting the server will change this UUID, and each server in a horizontal cluster
                 will have its own ID, making this different from the `site-uuid` Setting."}
@@ -131,21 +137,6 @@
   ^{:doc "A string that contains identifying information about the Metabase version and the local process."}
   mb-version-and-process-identifier
   (format "%s [%s]" mb-app-id-string local-process-uuid))
-
-;; In 0.41.0 we switched from Leiningen to deps.edn. This warning here to keep people from being bitten in the ass by
-;; the little gotcha described below.
-;;
-;; TODO -- after we've shipped 0.43.0, remove this warning. At that point, the last three shipped major releases will
-;; all be deps.edn based.
-(when (and (not is-prod?)
-           (.exists (io/file ".lein-env")))
-  ;; don't need to i18n since this is a dev-only warning.
-  (log/warn
-   (str "Found .lein-env in the project root directory.\n"
-        "This file was previously created automatically by the Leiningen lein-env plugin.\n"
-        "Environ will use values from it in preference to env var or Java system properties you've specified.\n"
-        "You should delete it; it will be recreated as needed when switching to a branch still using Leiningen.\n"
-        "See https://github.com/metabase/metabase/wiki/Migrating-from-Leiningen-to-tools.deps#custom-env-var-values for more details.")))
 
 (defn mb-user-defaults
   "Default user details provided as a JSON string at launch time for first-user setup flow."
