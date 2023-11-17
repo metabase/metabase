@@ -3,7 +3,7 @@ import type { ChangeEvent, FocusEvent, Ref } from "react";
 import { useField } from "formik";
 import { TextInput } from "metabase/ui";
 import type { TextInputProps } from "metabase/ui";
-import { CopyWidgetButton, InputContainer } from "./FormTextInput.styled";
+import { CopyWidgetButton } from "./FormTextInput.styled";
 
 export interface FormTextInputProps
   extends Omit<TextInputProps, "value" | "error"> {
@@ -50,29 +50,14 @@ export const FormTextInput = forwardRef(function FormTextInput(
   return (
     <TextInput
       {...props}
-      styles={{
-        wrapper: {
-          flex: "1 0 auto",
-          marginTop: 0,
-        },
-        input: {
-          paddingRight: hasCopyButton ? 40 : undefined,
-        },
-      }}
-      inputContainer={e => {
-        return (
-          <InputContainer>
-            {e}
-            {hasCopyButton && <CopyWidgetButton value={value} />}
-          </InputContainer>
-        );
-      }}
       ref={ref}
       name={name}
       value={value ?? ""}
       error={touched ? error : null}
       onChange={handleChange}
       onBlur={handleBlur}
+      rightSection={hasCopyButton ? <CopyWidgetButton value={value} /> : null}
+      rightSectionWidth={hasCopyButton ? 40 : undefined}
     />
   );
 });

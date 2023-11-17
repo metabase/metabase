@@ -21,9 +21,3 @@ export const CopyWidgetButton = styled(CopyButton)`
     background-color: ${color("brand")};
   }
 `;
-
-export const InputContainer = styled.div`
-  display: flex;
-  position: relative;
-  margin-top: 0.25rem;
-`;
