@@ -513,20 +513,30 @@
   "Given a table name, returns a map of column_name -> column_type"
   (mdb.connection/memoize-for-application-db
    (fn fields-for-table [table-name]
-     (t2/with-connection [conn]
-       (u.conn/app-db-column-types conn table-name)))))
+     (u.conn/app-db-column-types mdb.connection/*application-db* table-name))))
 
 (defn- ->table-name
   "Returns the table name that a particular ingested entity should finally be inserted into."
   [ingested]
   (->> ingested ingested-model (keyword "model") t2/table-name name))
 
-(defn- model-field-cover
-  "Returns exhaustive list of fields for an ingested-model. Fields that aren't in this list will produce errors if
-  they get inserted."
+(defmulti ingested-model-columns
+  "Called by `drop-excess-keys` (which is in turn called by `load-xform-basics`) to determine the full set of keys that
+  should be on the map returned by `load-xform-basics`. The default implementation looks in the application DB for the
+  table associated with the ingested model and returns the set of keywordized columns, but for some models (e.g.
+  Actions) there is not a 1:1 relationship between a model and a table, so we need this multimethod to allow the
+  model to override when necessary."
+  ingested-model)
+
+(defmethod ingested-model-columns :default
+  ;; this works for most models - it just returns a set of keywordized column names from the database.
   [ingested]
-  (let [field-cover (keys (fields-for-table (->table-name ingested)))]
-    (set (map keyword field-cover))))
+  (->> ingested
+       ->table-name
+       fields-for-table
+       keys
+       (map (comp keyword u/lower-case-en))
+       set))
 
 (defn- drop-excess-keys
   "Given an ingested entity, removes keys that will not 'fit' into the current schema, because the column no longer
@@ -534,13 +544,13 @@
   later version of Metabase, when a column gets removed. (At the time of writing I am seeing this happen with
   color on collections)."
   [ingested]
-  (select-keys ingested (model-field-cover ingested)))
+  (select-keys ingested (ingested-model-columns ingested)))
 
 (defn load-xform-basics
   "Performs the usual steps for an incoming entity:
   - Drop :serdes/meta
 
-  You should call this as a first step from any implementation of [[load-xform]].
+  You should call this as part of any implementation of [[load-xform]].
 
   This is a mirror (but not precise inverse) of [[extract-one-basics]]."
   [ingested]
