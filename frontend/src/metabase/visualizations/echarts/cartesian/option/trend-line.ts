@@ -81,7 +81,7 @@ export function getTrendLineOptionsAndDatasets(
   const options: RegisteredSeriesOption["line"][] = chartModel.insights.map(
     (_, index) => ({
       type: "line",
-      datasetIndex: index + 2, // TODO make this a constant somehow
+      datasetIndex: index + 1, // TODO make this a constant somehow
       encode: {
         x: chartModel.dimensionModel.dataKey,
         y: TREND_LINE_DATA_KEY,
