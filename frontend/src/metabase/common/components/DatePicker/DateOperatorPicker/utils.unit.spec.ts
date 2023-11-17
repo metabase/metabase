@@ -86,6 +86,64 @@ describe("setOptionType", () => {
     });
   });
 
+  describe("next", () => {
+    it.each([...SPECIFIC_VALUES, ...EXCLUDE_VALUES])(
+      'should return default value for "$operator" operator',
+      value => {
+        expect(setOptionType(value, "next")).toEqual({
+          type: "relative",
+          value: -30,
+          unit: "day",
+        });
+      },
+    );
+
+    it.each<DatePickerTruncationUnit>([
+      "minute",
+      "hour",
+      "day",
+      "week",
+      "month",
+      "quarter",
+      "year",
+    ])(
+      'should preserve "%s" unit and use default value for "current" value',
+      unit => {
+        const value: DatePickerValue = {
+          type: "relative",
+          value: "current",
+          unit,
+        };
+        expect(setOptionType(value, "next")).toEqual({
+          type: "relative",
+          value: 30,
+          unit,
+        });
+      },
+    );
+
+    it.each<DatePickerTruncationUnit>([
+      "minute",
+      "hour",
+      "day",
+      "week",
+      "month",
+      "quarter",
+      "year",
+    ])('should preserve "%s" unit and value for "next" value', unit => {
+      const value: DatePickerValue = {
+        type: "relative",
+        value: -10,
+        unit,
+      };
+      expect(setOptionType(value, "next")).toEqual({
+        type: "relative",
+        value: 10,
+        unit,
+      });
+    });
+  });
+
   describe("current", () => {
     it.each([...SPECIFIC_VALUES, ...EXCLUDE_VALUES])(
       'should return default value for "$operator" operator',
