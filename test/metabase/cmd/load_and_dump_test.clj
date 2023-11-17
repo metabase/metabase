@@ -9,13 +9,15 @@
    [metabase.cmd.load-from-h2 :as load-from-h2]
    [metabase.cmd.test-util :as cmd.test-util]
    [metabase.db.connection :as mdb.connection]
+   [metabase.db.liquibase :as liquibase]
    [metabase.db.spec :as mdb.spec]
    [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [metabase.util.i18n.impl :as i18n.impl]))
+   [metabase.util.i18n.impl :as i18n.impl]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -44,6 +46,8 @@
                 (tx/create-db! driver/*driver* {:database-name db-name}))
               (binding [copy/*copy-h2-database-details* true]
                 (load-from-h2/load-from-h2! h2-fixture-db-file)
+                (println "AAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                 (t2/select-fn-vec (juxt :id :md5sum) :conn data-source (liquibase/changelog-table-name (.getConnection data-source)) {:order-by [[:orderexecuted :asc]]}))
                 (dump-to-h2/dump-to-h2! h2-file))
               (is (not (compare-h2-dbs/different-contents?
                         h2-file

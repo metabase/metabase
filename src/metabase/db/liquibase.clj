@@ -30,8 +30,8 @@
 (set! *warn-on-reflection* true)
 
 (comment
-  ;; load our custom migrations
-  metabase.db.custom-migrations/keep-me)
+ ;; load our custom migrations
+ metabase.db.custom-migrations/keep-me)
 
 ;; register our custom MySQL SQL generators
 (liquibase.mysql/register-mysql-generators!)
@@ -81,23 +81,23 @@
 (defn- decide-liquibase-file
   [^java.sql.Connection conn]
   (if (fresh-install? conn)
-   changelog-file
-   (let [latest-migration (->> (jdbc/query {:connection conn}
-                                           [(format "select id from %s order by dateexecuted desc limit 1" (changelog-table-name conn))])
-                               first
-                               :id)]
-     (cond
-      (nil? latest-migration)
-      changelog-file
-      ;; pre 42
-      (not (str/starts-with? latest-migration "v"))
-      changelog-legacy-file
+    changelog-file
+    (let [latest-migration (->> (jdbc/query {:connection conn}
+                                            [(format "select id from %s order by dateexecuted desc limit 1" (changelog-table-name conn))])
+                                first
+                                :id)]
+      (cond
+       (nil? latest-migration)
+       changelog-file
+       ;; pre 42
+       (not (str/starts-with? latest-migration "v"))
+       changelog-legacy-file
 
-      (< (->> latest-migration (re-find #"v(\d+)\..*") second parse-long) 45)
-      changelog-legacy-file
+       (< (->> latest-migration (re-find #"v(\d+)\..*") second parse-long) 45)
+       changelog-legacy-file
 
-      :else
-      changelog-file))))
+       :else
+       changelog-file))))
 
 (defn- liquibase-connection ^JdbcConnection [^java.sql.Connection jdbc-connection]
   (JdbcConnection. jdbc-connection))
@@ -111,10 +111,12 @@
     (.findCorrectDatabaseImplementation (DatabaseFactory/getInstance) liquibase-conn)))
 
 (defn- liquibase ^Liquibase [^java.sql.Connection conn ^Database database]
-  (Liquibase.
-   ^String (decide-liquibase-file conn)
-   (ClassLoaderResourceAccessor. (classloader/the-classloader))
-   database))
+  (let [liquibase-file (decide-liquibase-file conn)]
+    (println "GOT LIQUIBASE FILE" liquibase-file)
+    (Liquibase.
+     ^String liquibase-file
+     (ClassLoaderResourceAccessor. (classloader/the-classloader))
+     database)))
 
 (mu/defn do-with-liquibase
   "Impl for [[with-liquibase-macro]]."
@@ -135,8 +137,8 @@
 (defmacro with-liquibase
   "Execute body with an instance of a `Liquibase` bound to `liquibase-binding`.
 
-    (liquibase/with-liquibase [liquibase {:subname :postgres, ...}]
-      (liquibase/migrate-up-if-needed! liquibase))"
+  (liquibase/with-liquibase [liquibase {:subname :postgres, ...}]
+  (liquibase/migrate-up-if-needed! liquibase))"
   {:style/indent 1}
   [[liquibase-binding conn-or-data-source] & body]
   `(do-with-liquibase
@@ -183,23 +185,23 @@
   [^Liquibase liquibase]
   (when (migration-lock-exists? liquibase)
     (try
-      (force-release-locks! liquibase)
-      (catch Exception e
-        (log/error e (trs "Unable to release the Liquibase lock after a migration failure"))))))
+     (force-release-locks! liquibase)
+     (catch Exception e
+       (log/error e (trs "Unable to release the Liquibase lock after a migration failure"))))))
 
 (defn- wait-for-migration-lock-to-be-cleared
   "Check and make sure the database isn't locked. If it is, sleep for 2 seconds and then retry several times. There's a
   chance the lock will end up clearing up so we can run migrations normally."
   [^Liquibase liquibase]
   (u/auto-retry 5
-    (when (migration-lock-exists? liquibase)
-      (Thread/sleep 2000)
-      (throw
-       (LockException.
-        (str
-         (trs "Database has migration lock; cannot run migrations.")
-         " "
-         (trs "You can force-release these locks by running `java -jar metabase.jar migrate release-locks`.")))))))
+                (when (migration-lock-exists? liquibase)
+                  (Thread/sleep 2000)
+                  (throw
+                   (LockException.
+                    (str
+                     (trs "Database has migration lock; cannot run migrations.")
+                     " "
+                     (trs "You can force-release these locks by running `java -jar metabase.jar migrate release-locks`.")))))))
 
 (defn migrate-up-if-needed!
   "Run any unrun `liquibase` migrations, if needed."
@@ -209,8 +211,8 @@
     (do
      (log/info (trs "Database has unrun migrations. Waiting for migration lock to be cleared..."))
      (wait-for-migration-lock-to-be-cleared liquibase)
-    ;; while we were waiting for the lock, it was possible that another instance finished the migration(s), so make
-    ;; sure something still needs to be done...
+     ;; while we were waiting for the lock, it was possible that another instance finished the migration(s), so make
+     ;; sure something still needs to be done...
      (let [unrun-migrations-count (count (unrun-migrations liquibase))]
        (if (pos? unrun-migrations-count)
          (let [^Contexts contexts nil
@@ -236,9 +238,9 @@
                    (run [_]
                      (.waitForLock lock-service)
                      (try
-                       (f)
-                       (finally
-                         (.releaseLock lock-service))))))))
+                      (f)
+                      (finally
+                       (.releaseLock lock-service))))))))
 
 (defn update-with-change-log
   "Run update with the change log instances in `liquibase`."
@@ -291,12 +293,12 @@
 
                                  (log/info (format "[%s]" (.name exec-type)))))))]
       (try
-        (doseq [^ChangeSet change-set (.getChangeSets change-log)]
-          (.setFailOnError change-set false))
-        (update-with-change-log liquibase {:exec-listener exec-listener})
-        (finally
-          (doseq [[^ChangeSet change-set fail-on-error?] fail-on-errors]
-            (.setFailOnError change-set fail-on-error?)))))))
+       (doseq [^ChangeSet change-set (.getChangeSets change-log)]
+         (.setFailOnError change-set false))
+       (update-with-change-log liquibase {:exec-listener exec-listener})
+       (finally
+        (doseq [[^ChangeSet change-set fail-on-error?] fail-on-errors]
+          (.setFailOnError change-set fail-on-error?)))))))
 
 
 (mu/defn consolidate-liquibase-changesets!
