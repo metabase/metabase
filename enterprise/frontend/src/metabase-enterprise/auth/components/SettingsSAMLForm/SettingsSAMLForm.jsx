@@ -4,7 +4,6 @@ import PropTypes from "prop-types";
 import { jt, t } from "ttag";
 import _ from "underscore";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import CopyWidget from "metabase/components/CopyWidget";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { FormSection } from "metabase/containers/FormikForm";
 import {
@@ -52,14 +51,22 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
     return getAttributeValues(settingValues, defaultValues);
   }, [settingValues, defaultValues]);
 
+  const FAKE_ACS_URL_KEY = "FAKE_ACS_URL_KEY";
+
   const handleSubmit = useCallback(
-    values => onSubmit({ ...values, "saml-enabled": true }),
+    values => {
+      const { [FAKE_ACS_URL_KEY]: _, ...realValues } = values;
+      return onSubmit({ ...realValues, "saml-enabled": true });
+    },
     [onSubmit],
   );
 
   return (
     <FormProvider
-      initialValues={attributeValues}
+      initialValues={{
+        ...attributeValues,
+        [FAKE_ACS_URL_KEY]: getAcsCustomerUrl(),
+      }}
       onSubmit={handleSubmit}
       enableReinitialize
       // disablePristineSubmit
@@ -82,12 +89,13 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
           <h3 className="mb0">{t`Configure your identity provider (IdP)`}</h3>
           <p className="mb4 mt1 text-medium">{t`Your identity provider will need the following info about Metabase.`}</p>
 
-          <div className="Form-field">
-            <div className="Form-label">{t`URL the IdP should redirect back to`}</div>
-            <div className="pb1">{t`This is called the Single Sign On URL in Okta, the Application Callback URL in Auth0,
-                                  and the ACS (Consumer) URL in OneLogin. `}</div>
-            <CopyWidget value={getAcsCustomerUrl()} />
-          </div>
+          <FormTextInput
+            name={FAKE_ACS_URL_KEY}
+            description={t`This is called the Single Sign On URL in Okta, the Application Callback URL in Auth0, and the ACS (Consumer) URL in OneLogin. `}
+            hasCopyButton={true}
+            readOnly={true}
+            label={t`URL the IdP should redirect back to`}
+          />
 
           <h4 className="pt2">{t`SAML attributes`}</h4>
           <p className="mb3 mt1 text-medium">{t`In most IdPs, you'll need to put each of these in an input box labeled
