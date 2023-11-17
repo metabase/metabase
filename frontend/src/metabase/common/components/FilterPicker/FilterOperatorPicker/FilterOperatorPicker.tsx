@@ -3,7 +3,7 @@ import { t } from "ttag";
 import type { SelectProps } from "metabase/ui";
 import { Select } from "metabase/ui";
 import type { FilterOperatorName } from "metabase-lib";
-import type { PickerOperatorOption } from "./types";
+import type { PickerOperatorOption } from "../types";
 
 interface FilterOperatorPickerProps
   extends Omit<SelectProps, "data" | "withinPortal"> {
