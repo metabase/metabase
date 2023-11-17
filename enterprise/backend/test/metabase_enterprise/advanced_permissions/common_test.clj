@@ -26,7 +26,7 @@
   [graph f]
   (let [all-users-group-id  (u/the-id (perms-group/all-users))
         current-graph       (get-in (perms/data-perms-graph) [:groups all-users-group-id])]
-    (premium-features-test/with-premium-features #{:advanced-permissions :audit-app}
+    (premium-features-test/with-additional-premium-features #{:advanced-permissions}
       (memoize/memo-clear! @#'field/cached-perms-object-set)
       (try
         (mt/with-model-cleanup [Permissions]
@@ -531,8 +531,9 @@
 (deftest audit-log-generated-when-table-manual-scan
   (t2.with-temp/with-temp [Table {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
     (testing "An audit log entry is generated when a manually triggered re-scan occurs"
-      (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
-        (mt/user-http-request :rasta :post 200 (format "table/%d/rescan_values" table-id)))
+      (premium-features-test/with-additional-premium-features #{:audit-app}
+        (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
+          (mt/user-http-request :rasta :post 200 (format "table/%d/rescan_values" table-id))))
       (is (= table-id (:model_id (mt/latest-audit-log-entry :table-manual-scan))))
       (is (= table-id (-> (mt/latest-audit-log-entry :table-manual-scan) :details :id))))))
 

@@ -80,7 +80,7 @@
 (defmacro with-saml-default-setup [& body]
   ;; most saml tests make actual http calls, so ensuring any nested with-temp doesn't create transaction
   `(mt/with-ensure-with-temp-no-transaction!
-    (premium-features-test/with-premium-features #{:sso-saml :audit-app}
+    (premium-features-test/with-additional-premium-features #{:sso-saml}
       (call-with-login-attributes-cleared!
        (fn []
          (call-with-default-saml-config
@@ -139,7 +139,7 @@
                (client :get 400 "/auth/sso")))))))
 
 (deftest require-saml-enabled-test
-  (premium-features-test/with-premium-features #{:sso-saml :audit-app}
+  (premium-features-test/with-premium-features #{:sso-saml}
     (testing "SSO requests fail if SAML hasn't been configured or enabled"
       (mt/with-temporary-setting-values [saml-enabled                       false
                                          saml-identity-provider-uri         nil
