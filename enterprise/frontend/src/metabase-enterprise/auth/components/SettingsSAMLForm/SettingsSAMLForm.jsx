@@ -57,17 +57,9 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
     [onSubmit],
   );
 
-  const extraSamlAttrs = useMemo(
-    () =>
-      Object.fromEntries(
-        EXTRA_SAML_ATTRS.map(key => [key, settingValues[key]]),
-      ),
-    [settingValues],
-  );
-
   return (
     <FormProvider
-      initialValues={{ ...extraSamlAttrs, ...attributeValues }}
+      initialValues={attributeValues}
       onSubmit={handleSubmit}
       enableReinitialize
       // disablePristineSubmit
@@ -207,26 +199,31 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
   );
 };
 
-const SAML_ATTRS = [
-  "saml-attribute-email",
-  "saml-attribute-firstname",
-  "saml-attribute-lastname",
-  "saml-identity-provider-uri",
-  "saml-identity-provider-issuer",
-  "saml-identity-provider-certificate",
-  "saml-application-name",
-];
-const EXTRA_SAML_ATTRS = [
-  "saml-keystore-password",
-  "saml-attribute-group",
-  "saml-group-sync",
-  "saml-keystore-alias",
-  "saml-keystore-path",
-  "saml-enabled",
-];
+// NOTE: This serves two purposes.
+// 1) Our `settingValues` has settings unrelated to SAML, which was previously sifted by collecting only those matching inline field names in our form.
+// 2) Some values should be replaced by defaults.
+const IS_SAML_ATTR_DEFAULTABLE = {
+  "saml-attribute-email": true,
+  "saml-attribute-firstname": true,
+  "saml-attribute-lastname": true,
+  "saml-identity-provider-uri": true,
+  "saml-identity-provider-issuer": true,
+  "saml-identity-provider-certificate": true,
+  "saml-application-name": true,
+  "saml-keystore-password": false,
+  "saml-keystore-alias": false,
+  "saml-keystore-path": false,
+  "saml-attribute-group": false,
+  "saml-group-sync": false,
+};
 
 const getAttributeValues = (values, defaults) => {
-  return _.object(SAML_ATTRS.map(key => [key, values[key] ?? defaults[key]]));
+  return Object.fromEntries(
+    Object.entries(IS_SAML_ATTR_DEFAULTABLE).map(([key, isDefaultable]) => [
+      key,
+      isDefaultable ? values[key] ?? defaults[key] : values[key],
+    ]),
+  );
 };
 
 const getAcsCustomerUrl = () => {
