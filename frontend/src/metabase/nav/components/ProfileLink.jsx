@@ -32,6 +32,11 @@ function ProfileLink({ user, adminItems, onLogout }) {
   const { tag, date, ...versionExtra } = version;
   const isPaidPlan = useSelector(getIsPaidPlan);
 
+  const customHelpLink = useSelector(state => getSetting(state, "help-link"));
+  const customHelpUrl = useSelector(state =>
+    getSetting(state, "help-link-custom-destination"),
+  );
+
   const openModal = modalName => {
     setModalOpen(modalName);
   };
@@ -47,6 +52,13 @@ function ProfileLink({ user, adminItems, onLogout }) {
       JSON.stringify(bugReportDetails),
     );
 
+    // todo: make it a function so we can test it
+    const helpUrl = customHelpLink
+      ? customHelpUrl
+      : isAdmin && isPaidPlan
+      ? `https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=${tag}&diag=${compactBugReportDetailsForUrl}`
+      : `https://www.metabase.com/help?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=${tag}`;
+
     return [
       {
         title: t`Account settings`,
@@ -60,13 +72,13 @@ function ProfileLink({ user, adminItems, onLogout }) {
         link: "/admin",
         event: `Navbar;Profile Dropdown;Enter Admin`,
       },
-      {
+      customHelpLink !== "disabled" && {
         title: t`Help`,
         icon: null,
-        link:
-          isAdmin && isPaidPlan
-            ? `https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=${tag}&diag=${compactBugReportDetailsForUrl}`
-            : `https://www.metabase.com/help?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=${tag}`,
+        link: helpUrl,
+        // isAdmin && isPaidPlan
+        //   ? `https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=${tag}&diag=${compactBugReportDetailsForUrl}`
+        //   : `https://www.metabase.com/help?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=${tag}`,
 
         externalLink: true,
         event: `Navbar;Profile Dropdown;About ${tag}`,

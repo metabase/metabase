@@ -113,6 +113,20 @@
   :visibility :public
   :audit      :getter)
 
+
+  (defsetting help-link
+  (deferred-tru "TODO")
+  :default    false
+  :type       :boolean
+  :audit      :getter
+  :visibility :public)
+
+(defsetting help-link-custom-destination
+  (deferred-tru "TODO")
+  :type       :string
+  :visibility :public
+  :audit      :getter)
+
 (defsetting dismissed-custom-dashboard-toast
   (deferred-tru "Toggle which is true after a user has dismissed the custom dashboard toast.")
   :user-local :only
