@@ -118,6 +118,48 @@ describe("setOptionType", () => {
     });
   });
 
+  describe("<", () => {
+    it.each([...RELATIVE_VALUES, ...EXCLUDE_VALUES])(
+      'should return default value for "$operator" operator',
+      value => {
+        expect(setOptionType(value, "<")).toEqual({
+          type: "specific",
+          operator: "<",
+          values: [TODAY],
+        });
+      },
+    );
+
+    it.each<SpecificDatePickerOperator>(["=", ">"])(
+      'should preserve value for "%s" operator',
+      operator => {
+        const value: DatePickerValue = {
+          type: "specific",
+          operator,
+          values: [DATE],
+        };
+        expect(setOptionType(value, "<")).toEqual({
+          type: "specific",
+          operator: "<",
+          values: [DATE],
+        });
+      },
+    );
+
+    it('should preserve end date for "between" operator', () => {
+      const value: DatePickerValue = {
+        type: "specific",
+        operator: "between",
+        values: [DATE, DATE2],
+      };
+      expect(setOptionType(value, "<")).toEqual({
+        type: "specific",
+        operator: "<",
+        values: [DATE],
+      });
+    });
+  });
+
   describe("last", () => {
     it.each([...SPECIFIC_VALUES, ...EXCLUDE_VALUES])(
       'should return default value for "$operator" operator',
