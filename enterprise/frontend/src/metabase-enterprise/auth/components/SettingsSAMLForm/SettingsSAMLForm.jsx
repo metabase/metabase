@@ -57,9 +57,17 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
     [onSubmit],
   );
 
+  const extraSamlAttrs = useMemo(
+    () =>
+      Object.fromEntries(
+        EXTRA_SAML_ATTRS.map(key => [key, settingValues[key]]),
+      ),
+    [settingValues],
+  );
+
   return (
     <FormProvider
-      initialValues={attributeValues}
+      initialValues={{ ...extraSamlAttrs, ...attributeValues }}
       onSubmit={handleSubmit}
       enableReinitialize
       // disablePristineSubmit
@@ -212,6 +220,8 @@ const SAML_ATTRS = [
   "saml-identity-provider-issuer",
   "saml-identity-provider-certificate",
   "saml-application-name",
+];
+const EXTRA_SAML_ATTRS = [
   "saml-keystore-password",
   "saml-attribute-group",
   "saml-group-sync",
