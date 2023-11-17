@@ -10,8 +10,9 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-
 import { checkNotNull } from "metabase/lib/types";
+
+import { applySquareRootScaling, replaceValues } from "../model/dataset";
 import type { CartesianChartModel, GroupedDataset } from "../model/types";
 
 const TREND_LINE_DATA_KEY = "trend-line";
@@ -63,6 +64,21 @@ function normalizeTrendDatasets(
   );
 }
 
+function squareRootScaleDatasets(
+  trendDatasets: GroupedDataset[],
+  settings: ComputedVisualizationSettings,
+): GroupedDataset[] {
+  if (settings["graph.y_axis.scale"] !== "pow") {
+    return trendDatasets;
+  }
+
+  return trendDatasets.map(trendDataset =>
+    replaceValues(trendDataset, (dataKey, value) =>
+      dataKey === TREND_LINE_DATA_KEY ? applySquareRootScaling(value) : value,
+    ),
+  );
+}
+
 export function getTrendLineOptionsAndDatasets(
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
@@ -102,11 +118,12 @@ export function getTrendLineOptionsAndDatasets(
   const rawDatasets = chartModel.insights.map((_, index) =>
     getSingleSeriesTrendDataset(index, chartModel),
   );
-  const datasets = normalizeTrendDatasets(rawDatasets, settings);
+  const normalizedDatasets = normalizeTrendDatasets(rawDatasets, settings);
+  const scaledDatasets = squareRootScaleDatasets(normalizedDatasets, settings);
 
   return {
     options,
-    datasets: datasets.map(dataset => ({
+    datasets: scaledDatasets.map(dataset => ({
       dimensions: [chartModel.dimensionModel.dataKey, TREND_LINE_DATA_KEY],
       source: dataset,
     })),
