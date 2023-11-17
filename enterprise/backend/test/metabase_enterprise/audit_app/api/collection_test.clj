@@ -15,12 +15,12 @@
         (testing "Instance Analytics Collection should be the last collection."
           (testing "GET /api/collection"
             (is (= "instance-analytics"
-                   (->> (mt/user-http-request :rasta :get 200 "collection")
+                   (->> (mt/user-http-request :crowberto :get 200 "collection")
                         last
                         :type))))
           (testing "GET /api/collection/test"
             (is (= "instance-analytics"
-                   (->> (mt/user-http-request :rasta :get 200 "collection/tree")
+                   (->> (mt/user-http-request :crowberto :get 200 "collection/tree")
                         last
                         :type))))))))
   (premium-features-test/with-premium-features #{}
@@ -29,11 +29,11 @@
         (testing "Instance Analytics Collection should not show up when audit-app isn't enabled."
           (testing "GET /api/collection"
             (is (nil?
-                   (->> (mt/user-http-request :rasta :get 200 "collection")
+                   (->> (mt/user-http-request :crowberto :get 200 "collection")
                         last
                         :type))))
           (testing "GET /api/collection/test"
             (is (= nil
-                   (->> (mt/user-http-request :rasta :get 200 "collection/tree")
+                   (->> (mt/user-http-request :crowberto :get 200 "collection/tree")
                         last
                         :type)))))))))
