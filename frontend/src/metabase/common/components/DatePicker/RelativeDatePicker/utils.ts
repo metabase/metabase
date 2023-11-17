@@ -59,7 +59,7 @@ export function setDirection(
 
   if (!isIntervalValue(value)) {
     return {
-      ...value,
+      type: "relative",
       value: Math.abs(DEFAULT_VALUE.value) * sign,
       unit: ignoreCurrent ? DEFAULT_VALUE.unit : value.unit,
     };
