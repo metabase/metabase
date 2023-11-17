@@ -335,12 +335,16 @@ top_nav=false
 
 `search`, `new_button`, and `breadcrumbs` all depend on `top_nav` being set to `true`. If these three children (`search`, `new_button`, and `breadcrumbs`) are all false, Metabase will hide the top nav bar.
 
-## Reference app
+## Reference apps
 
-To build a sample interactive embed, see our [reference app on GitHub](https://github.com/metabase/sso-examples/tree/master/app-embed-example).
+To build a sample interactive embed using SSO with JWT, see our reference apps:
+
+- [Node.js + Express](https://github.com/metabase/metabase-nodejs-express-interactive-embedding-sample) (with [quick start guide](https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start))
+- [Node.js + React](https://github.com/metabase/sso-examples/tree/master/app-embed-example)
 
 ## Further reading
 
+- [Interactive embedding quick start](https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start)
 - [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/embedding/embedding-overview).
 - [Permissions strategies](https://www.metabase.com/learn/permissions/strategy).
 - [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
