@@ -3,7 +3,6 @@ import { DATE_PICKER_TRUNCATION_UNITS } from "../constants";
 import type {
   RelativeIntervalDirection,
   RelativeDatePickerValue,
-  DatePickerTruncationUnit,
 } from "../types";
 import { DEFAULT_VALUE } from "./constants";
 import type { DateIntervalValue, DateOffsetIntervalValue } from "./types";
@@ -25,7 +24,7 @@ export function isOffsetIntervalValue(
 }
 
 export function getDirectionDefaultValue(direction: RelativeIntervalDirection) {
-  return setDirectionAndCoerceUnit(DEFAULT_VALUE, direction);
+  return setDirection(DEFAULT_VALUE, direction);
 }
 
 export function getDirection(
@@ -41,10 +40,19 @@ export function getDirection(
 export function setDirection(
   value: RelativeDatePickerValue,
   direction: RelativeIntervalDirection,
-  fallbackUnit: DatePickerTruncationUnit = "hour",
+  ignoreCurrent = false,
 ): RelativeDatePickerValue {
   if (direction === "current") {
-    return { type: "relative", value: "current", unit: fallbackUnit };
+    const unit =
+      value.unit !== "hour" && value.unit !== "minute"
+        ? value.unit
+        : DEFAULT_VALUE.unit;
+
+    return {
+      type: "relative",
+      value: "current",
+      unit: ignoreCurrent ? "hour" : unit,
+    };
   }
 
   const sign = direction === "last" ? -1 : 1;
@@ -64,18 +72,6 @@ export function setDirection(
         ? Math.abs(value.offsetValue) * sign
         : undefined,
   };
-}
-
-export function setDirectionAndCoerceUnit(
-  value: RelativeDatePickerValue,
-  direction: RelativeIntervalDirection,
-) {
-  const fallbackUnit =
-    value.unit !== "hour" && value.unit !== "minute"
-      ? value.unit
-      : DEFAULT_VALUE.unit;
-
-  return setDirection(value, direction, fallbackUnit);
 }
 
 export function getInterval(value: DateIntervalValue): number {

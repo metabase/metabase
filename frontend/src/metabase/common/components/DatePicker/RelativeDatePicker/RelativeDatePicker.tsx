@@ -35,7 +35,7 @@ export function RelativeDatePicker({
   const handleTabChange = (tabValue: string | null) => {
     const tab = TABS.find(tab => tab.direction === tabValue);
     if (tab) {
-      setValue(setDirection(value, tab.direction));
+      setValue(setDirection(value, tab.direction, true));
     }
   };
 

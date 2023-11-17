@@ -8,7 +8,7 @@ import {
 } from "../SpecificDatePicker/utils";
 import {
   getDirectionDefaultValue,
-  setDirectionAndCoerceUnit,
+  setDirection,
 } from "../RelativeDatePicker/utils";
 import { getExcludeOperatorValue } from "../ExcludeDatePicker/utils";
 import { OPERATOR_OPTIONS } from "./constants";
@@ -61,7 +61,7 @@ export function setOptionType(
     case "next":
     case "current":
       return value?.type === "relative"
-        ? setDirectionAndCoerceUnit(value, optionType)
+        ? setDirection(value, optionType)
         : getDirectionDefaultValue(optionType);
     case "is-null":
     case "not-null":
