@@ -1,13 +1,13 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 import type { SelectProps } from "metabase/ui";
-import { Select } from "metabase/ui";
-import type { FilterOperatorName } from "metabase-lib";
+import type * as Lib from "metabase-lib";
 import type { PickerOperatorOption } from "../types";
+import { FlexSelect } from "./FilterOperatorPicker.styled";
 
 interface FilterOperatorPickerProps
   extends Omit<SelectProps, "data" | "withinPortal"> {
-  options: PickerOperatorOption<FilterOperatorName>[];
+  options: PickerOperatorOption<Lib.FilterOperatorName>[];
 }
 
 export function FilterOperatorPicker({
@@ -21,5 +21,5 @@ export function FilterOperatorPicker({
     }));
   }, [options]);
 
-  return <Select data={data} {...props} aria-label={t`Filter operator`} />;
+  return <FlexSelect data={data} {...props} aria-label={t`Filter operator`} />;
 }
