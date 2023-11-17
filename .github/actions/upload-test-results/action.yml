@@ -1,0 +1,39 @@
+name: Upload Test Results to s3
+description: Uploads test results files to s3
+
+inputs:
+  input-path:
+    required: true
+  output-dir:
+    required: true
+    default: test
+  aws-access-key-id:
+    required: true
+  aws-secret-access-key:
+    required: true
+  aws-region:
+    required: true
+    default: us-east-1
+  bucket:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configure AWS credentials
+      if: always()
+      uses: aws-actions/configure-aws-credentials@v3
+      with:
+        aws-access-key-id: ${{ inputs.aws-access-key-id }}
+        aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+        aws-region: ${{ inputs.aws-region }}
+    - name: Upload test results to S3
+      if: always()
+      env:
+        BUCKET: ${{ inputs.bucket }}
+        INPUT: ${{ inputs.input-path }}
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+      shell: bash
+      run: | # sh
+        DATE=$(date '+%Y-%m-%d')
+        aws s3 cp $INPUT s3://$BUCKET/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/$OUTPUT_DIR/ --exclude "*" --include "*.xml" --recursive
