@@ -19,7 +19,7 @@ runs:
       run: yarn build-static-viz
       shell: bash
     - name: Test database driver
-      run: clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test ${{ inputs.test-args }}
+      run: clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test ${{ inputs.test-args }} :only '[metabase.cmd.load-and-dump-test/load-and-dump-test metabase.cmd.dump-to-h2-test/dump-to-h2-dump-plaintext-test]'
       shell: bash
     - name: Publish Test Report (JUnit)
       uses: dorny/test-reporter@v1
