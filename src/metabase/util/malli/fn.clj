@@ -196,25 +196,30 @@
                  (= (first schema) :*)))]
     (star-schema? (last args))))
 
-(defn- input-schema-arg-names [[_cat & args :as input-schema]]
+(def ^:dynamic *sanitize?*
+  "Whether to 'sanitize' the arg lists."
+  true)
+
+(defn- input-schema-arg-names [sanitizer [_cat & args :as input-schema]]
   (let [varargs?    (varargs-schema? input-schema)
         normal-args (if varargs?
                       (butlast args)
                       args)]
-    (concat
-     (for [n (range (count normal-args))]
-       (symbol (str (char (+ (int \a) n)))))
-     (when varargs?
-       ['more]))))
+    (map (if *sanitize?* sanitizer identity)
+         (concat
+          (for [n (range (count normal-args))]
+            (symbol (str (char (+ (int \a) n)))))
+          (when varargs?
+            ['more])))))
 
-(defn- input-schema->arglist [input-schema]
-  (let [arg-names (input-schema-arg-names input-schema)]
+(defn- input-schema->arglist [sanitizer input-schema]
+  (let [arg-names (input-schema-arg-names sanitizer input-schema)]
     (vec (if (varargs-schema? input-schema)
            (concat (butlast arg-names) ['& (last arg-names)])
            arg-names))))
 
-(defn- input-schema->validation-forms [error-context [_cat & schemas :as input-schema]]
-  (let [arg-names (input-schema-arg-names input-schema)
+(defn- input-schema->validation-forms [sanitizer error-context [_cat & schemas :as input-schema]]
+  (let [arg-names (input-schema-arg-names sanitizer input-schema)
         schemas   (if (varargs-schema? input-schema)
                     (concat (butlast schemas) [[:maybe (last schemas)]])
                     schemas)]
@@ -231,8 +236,8 @@
               schemas)
          (filter some?))))
 
-(defn- input-schema->application-form [input-schema deparameterized-fn]
-  (let [arg-names (input-schema-arg-names input-schema)]
+(defn- input-schema->application-form [sanitizer input-schema deparameterized-fn]
+  (let [arg-names (input-schema-arg-names sanitizer input-schema)]
     (if (varargs-schema? input-schema)
       (list* `apply deparameterized-fn arg-names)
       (list* deparameterized-fn arg-names))))
@@ -241,9 +246,10 @@
   (let [input-schema           (if (= input-schema :cat)
                                  [:cat]
                                  input-schema)
-        arglist                (input-schema->arglist input-schema)
-        input-validation-forms (input-schema->validation-forms error-context input-schema)
-        result-form            (input-schema->application-form input-schema deparameterized-fn)
+        sanitizer              (memoize gensym)
+        arglist                (input-schema->arglist sanitizer input-schema)
+        input-validation-forms (input-schema->validation-forms sanitizer error-context input-schema)
+        result-form            (input-schema->application-form sanitizer input-schema deparameterized-fn)
         result-form            (if (and output-schema
                                         (not= output-schema :any))
                                  `(->> ~result-form

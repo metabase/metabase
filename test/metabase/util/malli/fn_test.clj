@@ -68,47 +68,48 @@
                                      (str n \space (or unit :day)))))))))
 
 (deftest ^:parallel instrumented-fn-form-test
-  (are [form expected] (= expected
-                          (walk/macroexpand-all (mu.fn/instrumented-fn-form {} (mu.fn/parse-fn-tail form))))
-    '([x :- :int y])
-    '(fn* ([a b]
-           (metabase.util.malli.fn/validate-input {} :int a)
-           ((fn* ([x y])) a b)))
+  (binding [mu.fn/*sanitize?* false]
+    (are [form expected] (= expected
+                            (walk/macroexpand-all (mu.fn/instrumented-fn-form {} (mu.fn/parse-fn-tail form))))
+      '([x :- :int y])
+      '(fn* ([a b]
+             (metabase.util.malli.fn/validate-input {} :int a)
+             ((fn* ([x y])) a b)))
 
-    '(:- :int [x :- :int y])
-    '(fn* ([a b]
-           (metabase.util.malli.fn/validate-input {} :int a)
-           (metabase.util.malli.fn/validate-output {} :int ((fn* ([x y])) a b))))
+      '(:- :int [x :- :int y])
+      '(fn* ([a b]
+             (metabase.util.malli.fn/validate-input {} :int a)
+             (metabase.util.malli.fn/validate-output {} :int ((fn* ([x y])) a b))))
 
-    '(:- :int [x :- :int y] (+ x y))
-    '(fn* ([a b]
-           (metabase.util.malli.fn/validate-input {} :int a)
-           (metabase.util.malli.fn/validate-output {} :int ((fn* ([x y] (+ x y))) a b))))
+      '(:- :int [x :- :int y] (+ x y))
+      '(fn* ([a b]
+             (metabase.util.malli.fn/validate-input {} :int a)
+             (metabase.util.malli.fn/validate-output {} :int ((fn* ([x y] (+ x y))) a b))))
 
-    '([x :- :int y] {:pre [(int? x)]})
-    '(fn* ([a b]
-           (metabase.util.malli.fn/validate-input {} :int a)
-           ((fn* ([x y]
-                  {:pre [(int? x)]}))
-            a b)))
+      '([x :- :int y] {:pre [(int? x)]})
+      '(fn* ([a b]
+             (metabase.util.malli.fn/validate-input {} :int a)
+             ((fn* ([x y]
+                    {:pre [(int? x)]}))
+              a b)))
 
-    '(:- :int
-         ([x] (inc x))
-         ([x :- :int y] (+ x y)))
-    '(fn*
-      ([a]
-       (metabase.util.malli.fn/validate-output {} :int ((fn* ([x]
-                                                              (inc x))
-                                                             ([x y]
-                                                              (+ x y)))
-                                                        a)))
-      ([a b]
-       (metabase.util.malli.fn/validate-input {} :int a)
-       (metabase.util.malli.fn/validate-output {} :int ((fn* ([x]
-                                                              (inc x))
-                                                             ([x y]
-                                                              (+ x y)))
-                                                        a b))))))
+      '(:- :int
+           ([x] (inc x))
+           ([x :- :int y] (+ x y)))
+      '(fn*
+        ([a]
+         (metabase.util.malli.fn/validate-output {} :int ((fn* ([x]
+                                                                (inc x))
+                                                               ([x y]
+                                                                (+ x y)))
+                                                          a)))
+        ([a b]
+         (metabase.util.malli.fn/validate-input {} :int a)
+         (metabase.util.malli.fn/validate-output {} :int ((fn* ([x]
+                                                                (inc x))
+                                                               ([x y]
+                                                                (+ x y)))
+                                                          a b)))))))
 
 (deftest ^:parallel fn-test
   (let [f (mu.fn/fn :- :int [y] y)]
@@ -143,24 +144,25 @@
          (f 1)))))
 
 (deftest ^:parallel varargs-test
-  (let [form '(metabase.util.malli.fn/fn my-fn
-                [path
-                 opts :- :map
-                 & {:keys [token-check?]
-                    :or   {token-check? true}}]
-                (merge {:path path, :token-check? token-check?} opts))]
-    (is (= '(fn*
-              ([a b & more]
-               (metabase.util.malli.fn/validate-input {:fn-name 'my-fn} :map b)
-               (clojure.core/apply (clojure.core/fn
-                                     [path opts & {:keys [token-check?], :or {token-check? true}}]
-                                     (merge {:path path, :token-check? token-check?} opts))
-                                   a b more)))
-           (macroexpand form)))
-    (is (= [:=>
-            [:cat :any :map [:* :any]]
-            :any]
-           (mu.fn/fn-schema (mu.fn/parse-fn-tail (rest form))))))
+  (binding [mu.fn/*sanitize?* false]
+    (let [form '(metabase.util.malli.fn/fn my-fn
+                  [path
+                   opts :- :map
+                   & {:keys [token-check?]
+                      :or   {token-check? true}}]
+                  (merge {:path path, :token-check? token-check?} opts))]
+      (is (= '(fn*
+               ([a b & more]
+                (metabase.util.malli.fn/validate-input {:fn-name 'my-fn} :map b)
+                (clojure.core/apply (clojure.core/fn
+                                      [path opts & {:keys [token-check?], :or {token-check? true}}]
+                                      (merge {:path path, :token-check? token-check?} opts))
+                                    a b more)))
+             (macroexpand form)))
+      (is (= [:=>
+              [:cat :any :map [:* :any]]
+              :any]
+             (mu.fn/fn-schema (mu.fn/parse-fn-tail (rest form)))))))
   (let [f (mu.fn/fn my-fn
             [path
              opts :- :map
