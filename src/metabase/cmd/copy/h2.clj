@@ -34,5 +34,5 @@
   (doseq [filename [h2-filename
                     (str h2-filename ".mv.db")]]
     (when (.exists (io/file filename))
-      (io/delete-file #p filename)
+      (io/delete-file filename)
       (log/warn (u/format-color 'red (trs "Output H2 database already exists: %s, removing.") filename)))))
