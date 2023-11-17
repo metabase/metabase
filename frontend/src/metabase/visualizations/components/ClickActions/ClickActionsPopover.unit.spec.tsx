@@ -144,7 +144,12 @@ describe("ClickActionsPopover", function () {
               ...ORDERS_DATASET_QUERY,
               query: {
                 ...ORDERS_DATASET_QUERY.query,
-                "order-by": [["asc", ["field", ORDERS.ID, null]]],
+                "order-by": [
+                  [
+                    "asc",
+                    ["field", ORDERS.ID, { "base-type": "type/Integer" }],
+                  ],
+                ],
               },
             },
           }),
@@ -152,6 +157,7 @@ describe("ClickActionsPopover", function () {
             column: ORDERS_COLUMNS.ID,
             value: undefined,
           },
+          rowValues: undefined,
         });
 
         expect(queryIcon("arrow_up")).not.toBeInTheDocument();
@@ -185,7 +191,7 @@ describe("ClickActionsPopover", function () {
                       "field",
                       ORDERS.ID,
                       {
-                        "base-type": "type/BigInteger",
+                        "base-type": "type/Integer",
                       },
                     ],
                   ],
@@ -208,7 +214,7 @@ describe("ClickActionsPopover", function () {
               ORDERS.TOTAL,
               "type/Float",
             ),
-            display: "table",
+            display: "line",
           },
         },
         {
@@ -219,7 +225,7 @@ describe("ClickActionsPopover", function () {
               ORDERS.QUANTITY,
               "type/Integer",
             ),
-            display: "table",
+            display: "line",
           },
         },
       ])(
@@ -508,7 +514,6 @@ function getSummarizedOverTimeResultDatasetQuery(
           "field",
           ORDERS.CREATED_AT,
           {
-            "base-type": "type/DateTime",
             "temporal-unit": "month",
           },
         ],
