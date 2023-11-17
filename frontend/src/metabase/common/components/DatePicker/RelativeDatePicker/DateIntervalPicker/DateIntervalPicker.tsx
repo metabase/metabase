@@ -8,7 +8,6 @@ import {
   Group,
   Menu,
   NumberInput,
-  Select,
   Text,
 } from "metabase/ui";
 import type { DateIntervalValue } from "../types";
@@ -25,6 +24,7 @@ import {
   setUnit,
   setDefaultOffset,
 } from "./utils";
+import { FlexSelect } from "./DateIntervalPicker.styled";
 
 interface DateIntervalPickerProps {
   value: DateIntervalValue;
@@ -81,7 +81,7 @@ export function DateIntervalPicker({
           w="4rem"
           onChange={handleIntervalChange}
         />
-        <Select
+        <FlexSelect
           data={unitOptions}
           value={value.unit}
           aria-label={t`Unit`}

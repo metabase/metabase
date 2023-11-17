@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { Box } from "metabase/ui";
+import { Box, Select } from "metabase/ui";
 import type { BoxProps } from "metabase/ui";
 
 export const PickerGrid = styled(Box)<BoxProps>`
@@ -8,4 +8,8 @@ export const PickerGrid = styled(Box)<BoxProps>`
   justify-content: center;
   align-items: center;
   gap: ${({ theme }) => theme.spacing.sm};
+`;
+
+export const FlexSelect = styled(Select)`
+  flex: 1;
 `;

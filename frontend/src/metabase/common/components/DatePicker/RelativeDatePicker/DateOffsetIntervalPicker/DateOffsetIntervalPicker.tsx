@@ -1,7 +1,7 @@
 import type { FormEvent } from "react";
 import { t } from "ttag";
 import { Icon } from "metabase/core/components/Icon";
-import { Button, Divider, Group, NumberInput, Select, Text } from "metabase/ui";
+import { Button, Divider, Group, NumberInput, Text } from "metabase/ui";
 import type { DateIntervalValue, DateOffsetIntervalValue } from "../types";
 import {
   formatDateRange,
@@ -18,7 +18,7 @@ import {
   setOffsetUnit,
   setUnit,
 } from "./utils";
-import { PickerGrid } from "./DateOffsetIntervalPicker.styled";
+import { FlexSelect, PickerGrid } from "./DateOffsetIntervalPicker.styled";
 
 interface DateOffsetIntervalPickerProps {
   value: DateOffsetIntervalValue;
@@ -85,7 +85,7 @@ export function DateOffsetIntervalPicker({
           w="4rem"
           onChange={handleIntervalChange}
         />
-        <Select
+        <FlexSelect
           data={unitOptions}
           value={value.unit}
           aria-label={t`Unit`}
@@ -99,7 +99,7 @@ export function DateOffsetIntervalPicker({
           w="4rem"
           onChange={handleOffsetIntervalChange}
         />
-        <Select
+        <FlexSelect
           data={offsetUnitOptions}
           value={value.offsetUnit}
           aria-label={t`Starting from unit`}
