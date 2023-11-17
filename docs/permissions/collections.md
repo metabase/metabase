@@ -58,7 +58,7 @@ The "Our analytics" collection and individual personal collections are invincibl
 
 ### Metabase analytics
 
-See [Metabase analytics](../usage-and-performance-tools/metabase-analytics.md).
+See [Usage analytics](../usage-and-performance-tools/usage-analytics.md).
 
 ### Personal collections
 
