@@ -406,8 +406,7 @@ describe("scenarios > question > filter", () => {
     cy.contains("Reviewer").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Is").click();
+    cy.findByDisplayValue("Is").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Is empty").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
