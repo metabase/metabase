@@ -95,19 +95,19 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
 
           <Stack gap="md">
             <FormTextInput
-              label={t`User's email attribute`}
               {...fields["saml-attribute-email"]}
-              // TODO: make <CopyWidget {...field} />
+              hasCopyButton={true}
+              label={t`User's email attribute`}
             />
             <FormTextInput
               {...fields["saml-attribute-firstname"]}
+              hasCopyButton={true}
               label={t`User's first name attribute`}
-              // TODO: make <CopyWidget {...field} />
             />
             <FormTextInput
               {...fields["saml-attribute-lastname"]}
+              hasCopyButton={true}
               label={t`User's last name attribute`}
-              // TODO: make <CopyWidget {...field} />
             />
           </Stack>
         </SAMLFormSection>
