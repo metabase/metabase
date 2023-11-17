@@ -331,9 +331,10 @@ top_nav=false
 
 ## Reference apps
 
-To build a sample interactive embed, see our reference apps on Github:
-- [Interactive embedding web app example using JWT SSO with Node.js + Express](https://github.com/metabase/metabase-nodejs-express-interactive-embedding-sample)
-- [Interactive embedding web app example using JWT SSO with Node.js + React](https://github.com/metabase/sso-examples/tree/master/app-embed-example)
+To build a sample interactive embed using SSO with JWT, see our reference apps:
+
+- [Node.js + Express](https://github.com/metabase/metabase-nodejs-express-interactive-embedding-sample) (with [quick start guide](https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start))
+- [Node.js + React](https://github.com/metabase/sso-examples/tree/master/app-embed-example)
 
 ## Further reading
 
