@@ -6,7 +6,7 @@ import * as Lib from "metabase-lib";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
-import { ColumnValuesWidget } from "../ColumnValuesWidget";
+import { FilterValuesWidget } from "../FilterValuesWidget";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
@@ -126,7 +126,7 @@ function StringValueInput({
   if (hasMultipleValues) {
     return (
       <FlexWithScroll p="md" mah={MAX_HEIGHT}>
-        <ColumnValuesWidget
+        <FilterValuesWidget
           column={column}
           value={values}
           hasMultipleValues={hasMultipleValues}

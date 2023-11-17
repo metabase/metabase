@@ -17,6 +17,7 @@ import type {
   ClauseDisplayInfo,
   ColumnDisplayInfo,
   ColumnGroup,
+  ColumnGroupDisplayInfo,
   ColumnMetadata,
   DrillThru,
   DrillThruDisplayInfo,
@@ -58,7 +59,7 @@ declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   columnGroup: ColumnGroup,
-): ColumnDisplayInfo | TableDisplayInfo;
+): ColumnGroupDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,

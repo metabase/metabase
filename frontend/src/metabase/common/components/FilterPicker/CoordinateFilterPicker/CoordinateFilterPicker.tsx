@@ -7,7 +7,7 @@ import * as Lib from "metabase-lib";
 import type { FilterPickerWidgetProps } from "../types";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import { getAvailableOperatorOptions } from "../utils";
-import { ColumnValuesWidget } from "../ColumnValuesWidget";
+import { FilterValuesWidget } from "../FilterValuesWidget";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
@@ -142,7 +142,7 @@ function CoordinateValueInput({
   if (hasMultipleValues) {
     return (
       <FlexWithScroll p="md" mah={300}>
-        <ColumnValuesWidget
+        <FilterValuesWidget
           value={values}
           column={column}
           hasMultipleValues

@@ -4,12 +4,13 @@ import { getMetadata } from "metabase/selectors/metadata";
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import * as Lib from "metabase-lib";
 import LegacyDimension from "metabase-lib/Dimension";
-import { MIN_WIDTH, MAX_WIDTH } from "../constants";
 
-interface ColumnValuesWidgetProps<T> {
+export interface ColumnValuesWidgetProps<T> {
   value: T[];
   column: Lib.ColumnMetadata;
   hasMultipleValues?: boolean;
+  minWidth?: string;
+  maxWidth?: string;
   onChange: (value: T[]) => void;
 }
 
@@ -17,6 +18,8 @@ export function ColumnValuesWidget<T extends string | number>({
   value,
   column,
   hasMultipleValues,
+  minWidth,
+  maxWidth,
   onChange,
 }: ColumnValuesWidgetProps<T>) {
   const metadata = useSelector(getMetadata);
@@ -40,8 +43,8 @@ export function ColumnValuesWidget<T extends string | number>({
       className="input"
       value={value}
       containerWidth="100%"
-      minWidth={`${MIN_WIDTH}px`}
-      maxWidth={`${MAX_WIDTH}px`}
+      minWidth={minWidth}
+      maxWidth={maxWidth}
       onChange={onChange}
       disablePKRemappingForSearch
       autoFocus
