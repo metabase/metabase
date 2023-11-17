@@ -4,8 +4,9 @@ import { css } from "@emotion/react";
 import { Icon } from "metabase/core/components/Icon";
 
 import { alpha, color } from "metabase/lib/colors";
+import { TableRoot } from "metabase/visualizations/components/TableRoot";
 
-export const Root = styled.div`
+export const Root = styled(TableRoot)`
   display: flex;
   flex-direction: column;
   position: relative;
@@ -59,7 +60,7 @@ export const Table = styled.table`
 `;
 
 export const SortIcon = styled(Icon)`
-  margin-right: 3px;
+  margin: 4px;
 `;
 
 SortIcon.defaultProps = {
@@ -71,11 +72,12 @@ export const TableHeaderCellContent = styled.button<{
   isRightAligned: boolean;
 }>`
   display: flex;
-  justify-content: ${props =>
-    props.isRightAligned ? "space-between" : "flex-start"};
+  align-items: center;
+  justify-content: flex-start;
   width: 100%;
+  flex-direction: ${props => (props.isRightAligned ? "row-reverse" : "row")};
 
-  margin-left: ${props => (props.isRightAligned ? "auto" : "unset")};
+  //margin-left: ${props => (props.isRightAligned ? "auto" : "unset")};
 
   color: ${props => (props.isSorted ? color("brand") : color("text-medium"))};
   font-weight: 700;
