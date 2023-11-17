@@ -175,22 +175,17 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
             {t`To enable this, you'll need to create mappings to tell Metabase which group(s) your users should
                be added to based on the SSO group they're in.`}
           </p>
-          {/*{...fields["saml-group-sync"]}*/}
-          {/*type={({ field: { value, onChange } }) => (*/}
           <Stack gap="md">
             <GroupMappingsWidget
+              isFormik={true}
               // map to legacy setting props
-              setting={{
-                key: "saml-group-sync",
-                value: fields["saml-group-sync"],
-              }}
+              setting={{ key: "saml-group-sync" }}
               onChange={handleSubmit}
               settingValues={settingValues}
               mappingSetting="saml-group-mappings"
               groupHeading={t`Group Name`}
               groupPlaceholder={t`Group Name`}
             />
-            {/*)}*/}
             <FormTextInput
               {...fields["saml-attribute-group"]}
               label={t`Group attribute name`}

@@ -10,6 +10,7 @@ import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 import { FormSwitch } from "metabase/forms/components/FormSwitch";
 
+import SettingToggle from "../SettingToggle";
 import AddMappingRow from "./AddMappingRow";
 import {
   GroupMappingsWidgetAndErrorRoot as WidgetAndErrorRoot,
@@ -33,6 +34,7 @@ function GroupMappingsWidget({
   clearGroupMember,
   updateSetting,
   mappings,
+  isFormik,
   ...props
 }) {
   const [showAddRow, setShowAddRow] = useState(false);
@@ -105,7 +107,11 @@ function GroupMappingsWidget({
         <Header>
           <ToggleRoot>
             <span>{t`Synchronize Group Memberships`}</span>
-            <FormSwitch name={props.setting.key}></FormSwitch>
+            {isFormik ? ( // temporary until SettingsJWTForm and SettingsLdapForm are migrated to formik
+              <FormSwitch name={props.setting.key}></FormSwitch>
+            ) : (
+              <SettingToggle {...props} hideLabel />
+            )}
           </ToggleRoot>
           <About>
             <Tooltip
