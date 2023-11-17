@@ -28,7 +28,6 @@ export function openNativeEditor({
   fromCurrentPage,
   newMenuItemTitle = "SQL query",
 } = {}) {
-  cy.intercept("GET", "/api/database").as("getDatabaseList");
   if (!fromCurrentPage) {
     cy.visit("/");
   }
@@ -36,8 +35,6 @@ export function openNativeEditor({
   cy.findByText(newMenuItemTitle).click();
 
   cy.url().should("include", "/question");
-
-  cy.wait("@getDatabaseList");
 
   databaseName && cy.findByText(databaseName).click();
 
