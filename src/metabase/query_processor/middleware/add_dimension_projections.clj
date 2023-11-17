@@ -43,6 +43,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
+(comment metabase.lib.metadata.jvm/keep-me)
+
 (def ^:private ExternalRemappingDimension
   "Schema for the info we fetch about `external` type Dimensions that will be used for remappings in this Query. Fetched
   by the pre-processing portion of the middleware, and passed along to the post-processing portion."
