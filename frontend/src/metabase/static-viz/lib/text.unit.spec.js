@@ -1,3 +1,4 @@
+// Trigger FE tests
 import { measureTextWidth, truncateText } from "./text";
 
 const fontSize = 11;
