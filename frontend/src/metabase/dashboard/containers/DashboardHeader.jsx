@@ -498,6 +498,7 @@ class DashboardHeader extends Component {
       dashboard,
       isEditing,
       isFullscreen,
+      isNavBarOpen,
       isAdditionalInfoVisible,
       setDashboardAttribute,
       setSidebar,
@@ -516,7 +517,7 @@ class DashboardHeader extends Component {
         isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}
         isLastEditInfoVisible={hasLastEditInfo && isAdditionalInfoVisible}
         isEditingInfo={isEditing}
-        isNavBarOpen={this.props.isNavBarOpen}
+        isNavBarOpen={isNavBarOpen}
         headerButtons={this.getHeaderButtons()}
         editWarning={this.getEditWarning(dashboard)}
         editingTitle={t`You're editing this dashboard.`.concat(
