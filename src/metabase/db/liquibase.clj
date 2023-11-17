@@ -87,17 +87,22 @@
                                first
                                :id)]
      (cond
-      (nil? latest-migration)
-      changelog-file
-      ;; pre 42
-      (not (str/starts-with? latest-migration "v"))
-      changelog-legacy-file
+       (nil? latest-migration)
+       changelog-file
 
-      (< (->> latest-migration (re-find #"v(\d+)\..*") second parse-long) 45)
-      changelog-legacy-file
+       ;; post-44 installation downgraded to 45
+       (= latest-migration "v00.00-000")
+       changelog-file
 
-      :else
-      changelog-file))))
+       ;; pre 42
+       (not (str/starts-with? latest-migration "v"))
+       changelog-legacy-file
+
+       (< (->> latest-migration (re-find #"v(\d+)\..*") second parse-long) 45)
+       changelog-legacy-file
+
+       :else
+       changelog-file))))
 
 (defn- liquibase-connection ^JdbcConnection [^java.sql.Connection jdbc-connection]
   (JdbcConnection. jdbc-connection))
