@@ -47,9 +47,11 @@ export function DateFilterPicker({
         availableOperators={availableOperators}
         availableUnits={availableUnits}
         backButton={
-          <BackButton pl="sm" onClick={onBack}>
-            {columnInfo.longDisplayName}
-          </BackButton>
+          onBack && (
+            <BackButton pl="sm" onClick={onBack}>
+              {columnInfo.longDisplayName}
+            </BackButton>
+          )
         }
         canUseRelativeOffsets
         isNew={isNew}
