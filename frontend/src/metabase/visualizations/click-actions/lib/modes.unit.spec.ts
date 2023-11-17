@@ -6,13 +6,8 @@ import {
   PEOPLE,
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
-import {
-  getMode,
-  getQueryMode,
-} from "metabase/visualizations/click-actions/lib/modes";
+import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import { checkNotNull } from "metabase/lib/types";
-import type { Filter } from "metabase-types/api";
-import { SegmentMode } from "metabase/visualizations/click-actions/modes/SegmentMode";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 const metadata = createMockMetadata({
@@ -106,14 +101,5 @@ describe("forQuestion(question)", () => {
       const mode = getMode(question);
       expect(mode && mode.name()).toEqual("default");
     });
-  });
-});
-
-describe("getQueryMode", () => {
-  it("should be in segment mode when selecting one PK ID", () => {
-    const filter: Filter = ["=", ["field", ORDERS.ID, null], 42];
-    const query = ordersTable.query().filter(filter);
-    const question = ordersTable.question().setQuery(query);
-    expect(getQueryMode(question)).toBe(SegmentMode);
   });
 });

@@ -3,8 +3,8 @@ import {
   ORDERS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import * as Lib from "metabase-lib";
 import type { DrillThruType } from "metabase-lib";
+import * as Lib from "metabase-lib";
 import { drillThru } from "metabase-lib";
 import type {
   ApplyDrillTestCase,
@@ -13,12 +13,10 @@ import type {
 } from "metabase-lib/tests/drills-common";
 import {
   AGGREGATED_ORDERS_DATASET_QUERY,
+  AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY,
   getDrillsQueryParameters,
+  getDrillsWithCustomColumnQueryParameters,
   ORDERS_DATASET_QUERY,
-  ORDERS_WITH_CUSTOM_COLUMN_COLUMNS,
-  ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY,
-  ORDERS_WITH_CUSTOM_COLUMN_QUESTION,
-  ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES,
 } from "metabase-lib/tests/drills-common";
 import Question from "metabase-lib/Question";
 import {
@@ -386,7 +384,6 @@ describe("drill-thru/sort", () => {
       },
       {
         // should support adding extra sorting for a query that already has a sorted column
-
         clickType: "header",
         columnName: "sum",
         queryType: "aggregated",
@@ -466,8 +463,9 @@ describe("drill-thru/sort", () => {
           clickType: "header",
           columnName: "avg",
           drillArgs: ["asc"],
+          queryType: "aggregated",
           expectedQuery: {
-            ...ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
+            ...AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
             "order-by": [["asc", ["aggregation", 3]]],
           },
         },
@@ -476,8 +474,9 @@ describe("drill-thru/sort", () => {
           clickType: "header",
           columnName: "CustomColumn",
           drillArgs: ["asc"],
+          queryType: "aggregated",
           expectedQuery: {
-            ...ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
+            ...AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
             "order-by": [
               [
                 "asc",
@@ -492,6 +491,7 @@ describe("drill-thru/sort", () => {
           columnName,
           clickType,
           drillArgs,
+          queryType,
           expectedQuery,
           customQuestion,
         }) => {
@@ -499,9 +499,10 @@ describe("drill-thru/sort", () => {
             drillType: DRILL_TYPE,
             clickType,
             clickedColumnName: columnName,
-            question: customQuestion || ORDERS_WITH_CUSTOM_COLUMN_QUESTION,
-            columns: ORDERS_WITH_CUSTOM_COLUMN_COLUMNS,
-            rowValues: ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES,
+            ...getDrillsWithCustomColumnQueryParameters(
+              queryType,
+              customQuestion,
+            ),
           });
 
           const updatedQuery = drillThru(

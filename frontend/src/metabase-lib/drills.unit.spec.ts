@@ -1,4 +1,3 @@
-import * as Lib from "metabase-lib";
 import {
   createOrdersCreatedAtDatasetColumn,
   ORDERS,
@@ -6,27 +5,15 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import { createMockCustomColumn } from "metabase-types/api/mocks";
-import type {
-  DatasetColumn,
-  RowValue,
-  StructuredDatasetQuery,
-} from "metabase-types/api";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type { StructuredDatasetQuery } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 import type { AvailableDrillsTestCase } from "metabase-lib/tests/drills-common";
 import {
   AGGREGATED_ORDERS_ROW_VALUES,
   getDrillsQueryParameters,
-  ORDERS_QUESTION,
   ORDERS_ROW_VALUES,
 } from "metabase-lib/tests/drills-common";
-import {
-  getAvailableDrills,
-  SAMPLE_METADATA,
-} from "./test-helpers";
-import { availableDrillThrus } from "./drills";
-
-const STAGE_INDEX = -1;
+import { getAvailableDrills, SAMPLE_METADATA } from "./test-helpers";
 
 describe("availableDrillThrus", () => {
   it.each<AvailableDrillsTestCase>([
@@ -380,72 +367,14 @@ describe("availableDrillThrus", () => {
     };
     const clickedColumnName = "count";
 
-    const { query, stageIndex, column, cellValue, row } = setup({
-      question,
+    const { drills } = getAvailableDrills({
       clickedColumnName,
+      clickType: "cell",
+      question,
       columns,
       rowValues,
-      tableName: "ORDERS",
     });
-
-    const dimensions = row
-      .filter(({ col }) => col?.name !== clickedColumnName)
-      .map(({ value, col }) => ({ value, column: col }));
-
-    const drills = availableDrillThrus(
-      query,
-      stageIndex,
-      column,
-      cellValue,
-      row,
-      dimensions,
-    );
 
     expect(drills).toBeInstanceOf(Array);
   });
 });
-
-const getMetadataColumns = (query: Lib.Query): Lib.ColumnMetadata[] => {
-  const aggregations = Lib.aggregations(query, STAGE_INDEX);
-  const breakouts = Lib.breakouts(query, STAGE_INDEX);
-
-  return aggregations.length === 0 && breakouts.length === 0
-    ? Lib.visibleColumns(query, STAGE_INDEX)
-    : [
-        ...Lib.breakoutableColumns(query, STAGE_INDEX),
-        ...Lib.orderableColumns(query, STAGE_INDEX),
-      ];
-};
-
-function setup({
-  question = ORDERS_QUESTION,
-  clickedColumnName,
-  columns,
-  rowValues,
-  tableName,
-}: {
-  question?: Question;
-  clickedColumnName: string;
-  columns: Record<string, DatasetColumn>;
-  rowValues: Record<string, RowValue>;
-  tableName: string;
-}) {
-  const query = question._getMLv2Query();
-  const legacyQuery = question.query() as StructuredQuery;
-
-  const stageIndex = STAGE_INDEX;
-
-  const legacyColumns = legacyQuery.columns();
-  const column = columns[clickedColumnName];
-
-  return {
-    query,
-    stageIndex,
-    column,
-    cellValue: rowValues[clickedColumnName],
-    row: legacyColumns.map(({ name }) => ({
-      col: columns[name],
-      value: rowValues[name],
-    })),
-  };
-}

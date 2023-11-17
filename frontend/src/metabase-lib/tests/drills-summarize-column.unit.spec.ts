@@ -9,8 +9,13 @@ import { drillThru } from "metabase-lib";
 import type {
   ApplyDrillTestCase,
   DrillDisplayInfoTestCase,
+  ApplyDrillTestCaseWithCustomColumn,
 } from "metabase-lib/tests/drills-common";
-import { getDrillsQueryParameters } from "metabase-lib/tests/drills-common";
+import {
+  getDrillsQueryParameters,
+  getDrillsWithCustomColumnQueryParameters,
+  ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY,
+} from "metabase-lib/tests/drills-common";
 import { getAvailableDrillByType } from "metabase-lib/test-helpers";
 
 const DRILL_TYPE: DrillThruType = "drill-thru/summarize-column";
@@ -261,5 +266,59 @@ describe("drill-thru/summarize-column", () => {
         });
       },
     );
+
+    describe("with custom column", () => {
+      it.each<ApplyDrillTestCaseWithCustomColumn>([
+        {
+          // FIXME: using summarize-column on a custom column produces incorrect query due to to expression conversion to a field (metabase#34957)
+          clickType: "header",
+          columnName: "CustomColumn",
+          drillArgs: ["sum"],
+          queryType: "unaggregated",
+          expectedQuery: {
+            ...ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
+            aggregation: [
+              [
+                "sum",
+                ["expression", "CustomColumn", { "base-type": "type/Integer" }],
+              ],
+            ],
+          },
+        },
+      ])(
+        `should return correct result on "${DRILL_TYPE}" drill apply to $columnName on $clickType in query with custom column`,
+        ({
+          columnName,
+          clickType,
+          drillArgs,
+          queryType,
+          expectedQuery,
+          customQuestion,
+        }) => {
+          const { drill, stageIndex, query } = getAvailableDrillByType({
+            drillType: DRILL_TYPE,
+            clickType,
+            clickedColumnName: columnName,
+            ...getDrillsWithCustomColumnQueryParameters(
+              queryType,
+              customQuestion,
+            ),
+          });
+
+          const updatedQuery = drillThru(
+            query,
+            stageIndex,
+            drill,
+            ...(drillArgs || []),
+          );
+
+          expect(Lib.toLegacyQuery(updatedQuery)).toEqual({
+            database: SAMPLE_DB_ID,
+            query: expectedQuery,
+            type: "query",
+          });
+        },
+      );
+    });
   });
 });
