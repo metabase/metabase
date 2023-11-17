@@ -6,7 +6,7 @@ redirect_from:
 
 # Auditing tools
 
-> Auditing tools are deprecated. Instead, check out the (much better) [Usage analytics](./metabase-analytics.md).
+> Auditing tools are deprecated. Instead, check out the (much better) [Usage analytics](./usage-analytics.md).
 
 {% include plans-blockquote.html feature="Audit logs" %}
 
