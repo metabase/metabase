@@ -71,7 +71,7 @@ describe("URLs", () => {
     });
   });
 
-  describe("collections", { tags: "@flaky" }, () => {
+  describe("collections", () => {
     it("should slugify collection name", () => {
       cy.visit("/collection/root");
       cy.findAllByTestId("collection-entry-name")
