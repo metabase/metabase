@@ -1,9 +1,13 @@
 import type {
-  DatePickerValue,
   DatePickerTruncationUnit,
+  DatePickerValue,
+  ExcludeDatePickerValue,
+  RelativeDatePickerValue,
   SpecificDatePickerOperator,
+  SpecificDatePickerValue,
 } from "../types";
-import { setOptionType } from "./utils";
+import { getOptionType, setOptionType } from "./utils";
+import type { OptionType } from "./types";
 
 const TODAY = new Date(2020, 0, 1, 0, 0);
 const PAST_30DAYS = new Date(2019, 11, 2, 0, 0);
@@ -12,24 +16,42 @@ const DATE_PAST_30DAYS = new Date(2015, 9, 21, 0, 0);
 const DATE_NEXT_30DAYS = new Date(2015, 11, 20, 0, 0);
 const DATE_NEXT_YEAR = new Date(2016, 5, 15, 0, 0);
 
-const SPECIFIC_VALUES: DatePickerValue[] = [
+const SPECIFIC_VALUES: SpecificDatePickerValue[] = [
   { type: "specific", operator: "=", values: [DATE] },
   { type: "specific", operator: ">", values: [DATE] },
   { type: "specific", operator: "<", values: [DATE] },
   { type: "specific", operator: "between", values: [DATE, DATE] },
 ];
 
-const RELATIVE_VALUES: DatePickerValue[] = [
-  { type: "relative", value: 1, unit: "hour" },
+const RELATIVE_VALUES: RelativeDatePickerValue[] = [
   { type: "relative", value: -1, unit: "minute" },
+  { type: "relative", value: 1, unit: "hour" },
   { type: "relative", value: "current", unit: "day" },
 ];
 
-const EXCLUDE_VALUES: DatePickerValue[] = [
+const EXCLUDE_VALUES: ExcludeDatePickerValue[] = [
   { type: "exclude", operator: "!=", values: [1], unit: "day-of-week" },
   { type: "exclude", operator: "is-null", values: [] },
   { type: "exclude", operator: "not-null", values: [] },
 ];
+
+describe("getOptionType", () => {
+  it.each<[OptionType, DatePickerValue | undefined]>([
+    ["none", undefined],
+    ["=", SPECIFIC_VALUES[0]],
+    [">", SPECIFIC_VALUES[1]],
+    ["<", SPECIFIC_VALUES[2]],
+    ["between", SPECIFIC_VALUES[3]],
+    ["last", RELATIVE_VALUES[0]],
+    ["next", RELATIVE_VALUES[1]],
+    ["current", RELATIVE_VALUES[2]],
+    ["none", EXCLUDE_VALUES[0]],
+    ["is-null", EXCLUDE_VALUES[1]],
+    ["not-null", EXCLUDE_VALUES[2]],
+  ])('should compute "%s" type', (type, value) => {
+    expect(getOptionType(value)).toBe(type);
+  });
+});
 
 describe("setOptionType", () => {
   beforeAll(() => {
