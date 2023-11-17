@@ -92,8 +92,8 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
           <FormTextInput
             name={FAKE_ACS_URL_KEY}
             description={t`This is called the Single Sign On URL in Okta, the Application Callback URL in Auth0, and the ACS (Consumer) URL in OneLogin. `}
-            hasCopyButton={true}
-            readOnly={true}
+            hasCopyButton
+            readOnly
             label={t`URL the IdP should redirect back to`}
           />
 
@@ -104,17 +104,17 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
           <Stack gap="md">
             <FormTextInput
               {...fields["saml-attribute-email"]}
-              hasCopyButton={true}
+              hasCopyButton
               label={t`User's email attribute`}
             />
             <FormTextInput
               {...fields["saml-attribute-firstname"]}
-              hasCopyButton={true}
+              hasCopyButton
               label={t`User's first name attribute`}
             />
             <FormTextInput
               {...fields["saml-attribute-lastname"]}
-              hasCopyButton={true}
+              hasCopyButton
               label={t`User's last name attribute`}
             />
           </Stack>
@@ -177,7 +177,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
           </p>
           <Stack gap="md">
             <GroupMappingsWidget
-              isFormik={true}
+              isFormik
               // map to legacy setting props
               setting={{ key: "saml-group-sync" }}
               onChange={handleSubmit}
