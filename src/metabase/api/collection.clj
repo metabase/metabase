@@ -101,7 +101,6 @@
     (for [collection collections]
       (-> collection
           (dissoc ::collection.root/is-root?)
-          (dissoc :namespace)
           collection/personal-collection-with-ui-details))))
 
 (api/defendpoint GET "/tree"
