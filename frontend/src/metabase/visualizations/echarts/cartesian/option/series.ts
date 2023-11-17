@@ -122,6 +122,23 @@ const buildEChartsLineAreaSeries = (
   };
 };
 
+const getSeriesYAxisIndex = (
+  seriesModel: SeriesModel,
+  chartModel: CartesianChartModel,
+): number => {
+  const hasSingleYAxis = chartModel.yAxisSplit.some(
+    yAxisKeys => yAxisKeys.length === 0,
+  );
+
+  if (hasSingleYAxis) {
+    return 0;
+  }
+
+  return chartModel.yAxisSplit.findIndex(yAxis =>
+    yAxis.includes(seriesModel.dataKey),
+  );
+};
+
 export const buildEChartsSeries = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
@@ -144,10 +161,7 @@ export const buildEChartsSeries = (
   return chartModel.seriesModels
     .map(seriesModel => {
       const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
-
-      const yAxisIndex = chartModel.yAxisSplit[0].includes(seriesModel.dataKey)
-        ? 0
-        : 1;
+      const yAxisIndex = getSeriesYAxisIndex(seriesModel, chartModel);
 
       switch (seriesSettings.display) {
         case "line":
