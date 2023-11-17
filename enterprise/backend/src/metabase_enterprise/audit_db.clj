@@ -181,7 +181,8 @@
   :default    true
   :visibility :internal
   :setter     :none
-  :audit      :never)
+  :audit      :never
+  :doc        false)
 
 (defn- maybe-load-analytics-content!
   [audit-db]
