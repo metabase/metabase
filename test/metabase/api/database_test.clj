@@ -1,3 +1,4 @@
+;; Trigger backend tests
 (ns metabase.api.database-test
   "Tests for /api/database endpoints."
   (:require
