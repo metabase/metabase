@@ -6,25 +6,13 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase-enterprise.audit-db-test :as audit-db-test]
    [metabase.api.collection :as api.collection]
    [metabase.config :as config]
    [metabase.models
-    :refer [Card
-            Collection
-            Dashboard
-            DashboardCard
-            ModerationReview
-            NativeQuerySnippet
-            PermissionsGroup
-            PermissionsGroupMembership
-            Pulse
-            PulseCard
-            PulseChannel
-            PulseChannelRecipient
-            Revision
-            Timeline
-            TimelineEvent
-            User]]
+    :refer [Card Collection Dashboard DashboardCard ModerationReview
+            NativeQuerySnippet PermissionsGroup PermissionsGroupMembership Pulse
+            PulseCard PulseChannel PulseChannelRecipient Revision Timeline TimelineEvent User]]
    [metabase.models.collection :as collection]
    [metabase.models.collection-test :as collection-test]
    [metabase.models.collection.graph :as graph]
@@ -41,7 +29,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-   (java.time ZonedDateTime ZoneId)))
+   (java.time ZoneId ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -145,33 +133,38 @@
     (testing "You should only see your collection and public collections"
       ;; Set audit-app feature so that we can assert that audit collections are also visible when running EE
       (premium-features-test/with-premium-features #{:audit-app}
-       (let [admin-user-id  (u/the-id (test.users/fetch-user :crowberto))
-             crowberto-root (t2/select-one Collection :personal_owner_id admin-user-id)]
-         (t2.with-temp/with-temp [Collection collection          {}
-                                  Collection {collection-id :id} {:name "Collection with Items"}
-                                  Collection _                   {:name            "subcollection"
-                                                                  :location        (format "/%d/" collection-id)
-                                                                  :authority_level "official"}
-                                  Collection _                   {:name     "Crowberto's Child Collection"
-                                                                  :location (collection/location-path crowberto-root)}]
-           (let [public-collection-names (into #{"Our analytics"
-                                                 (:name collection)
-                                                 "Collection with Items"
-                                                 "subcollection"}
-                                               (instance-analytics-collection-names))
-                 crowbertos               (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
-                 crowbertos-with-excludes (set (map :name (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)))
-                 luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))]
-             (is (= (into (t2/select-fn-set :name Collection {:where [:and [:= :type nil] [:= :archived false]]})
-                          public-collection-names)
-                    crowbertos))
-             (is (= (into public-collection-names #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"})
-                    crowbertos-with-excludes))
-             (is (true? (contains? crowbertos "Lucky Pigeon's Personal Collection")))
-             (is (false? (contains? crowbertos-with-excludes "Lucky Pigeon's Personal Collection")))
-             (is (= (conj public-collection-names (:name collection) "Lucky Pigeon's Personal Collection")
-                    luckys))
-             (is (false? (contains? luckys "Crowberto Corv's Personal Collection"))))))))))
+        (audit-db-test/with-audit-db-restoration
+          (let [admin-user-id  (u/the-id (test.users/fetch-user :crowberto))
+                crowberto-root (t2/select-one Collection :personal_owner_id admin-user-id)]
+            (t2.with-temp/with-temp [Collection collection          {}
+                                     Collection {collection-id :id} {:name "Collection with Items"}
+                                     Collection _                   {:name            "subcollection"
+                                                                     :location        (format "/%d/" collection-id)
+                                                                     :authority_level "official"}
+                                     Collection _                   {:name     "Crowberto's Child Collection"
+                                                                     :location (collection/location-path crowberto-root)}]
+              (let [public-collection-names  #{"Our analytics"
+                                               (:name collection)
+                                               "Collection with Items"
+                                               "subcollection"}
+                    crowbertos               (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
+                    crowbertos-with-excludes (set (map :name (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)))
+                    luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))]
+                (is (= (into #{}
+                        (concat (instance-analytics-collection-names)
+                                (t2/select-fn-set :name Collection {:where [:and [:= :type nil] [:= :archived false]]})
+                                public-collection-names))
+                       crowbertos))
+                (is (= (into #{}
+                        (concat public-collection-names
+                                #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"}
+                                (instance-analytics-collection-names)))
+                       crowbertos-with-excludes))
+                (is (true? (contains? crowbertos "Lucky Pigeon's Personal Collection")))
+                (is (false? (contains? crowbertos-with-excludes "Lucky Pigeon's Personal Collection")))
+                (is (= (conj public-collection-names (:name collection) "Lucky Pigeon's Personal Collection")
+                       luckys))
+                (is (false? (contains? luckys "Crowberto Corv's Personal Collection")))))))))))
 
 (deftest list-collections-personal-collection-locale-test
   (testing "GET /api/collection"
