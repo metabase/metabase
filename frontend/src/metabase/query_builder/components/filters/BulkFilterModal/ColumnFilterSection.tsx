@@ -2,7 +2,8 @@ import { Flex, Text } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import * as Lib from "metabase-lib";
-import type { FilterPickerWidgetProps } from "./types";
+
+import { NumberFilterEditor } from "./NumberFilterEditor";
 
 interface ColumnFilterSectionProps {
   query: Lib.Query;
@@ -41,7 +42,7 @@ export function ColumnFilterSection({
   );
 }
 
-function NotImplementedWidget(props: FilterPickerWidgetProps) {
+function NotImplementedWidget() {
   return null;
 }
 
@@ -62,7 +63,7 @@ function getFilterWidget(column: Lib.ColumnMetadata) {
     return NotImplementedWidget;
   }
   if (Lib.isNumeric(column)) {
-    return NotImplementedWidget;
+    return NumberFilterEditor;
   }
   return NotImplementedWidget;
 }
