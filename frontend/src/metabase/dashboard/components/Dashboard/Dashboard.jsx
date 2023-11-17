@@ -58,9 +58,10 @@ class Dashboard extends Component {
   }
 
   async componentDidUpdate(prevProps) {
+    updateParametersWidgetStickiness(this);
+
     if (prevProps.dashboardId !== this.props.dashboardId) {
       await this.loadDashboard(this.props.dashboardId);
-      updateParametersWidgetStickiness(this);
       return;
     }
 
