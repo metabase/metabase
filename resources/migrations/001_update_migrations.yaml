@@ -4102,7 +4102,7 @@ databaseChangeLog:
   - changeSet:
       id: v48.00-059
       author: qwef
-      comment: Added 0.48.0 - update the namespace of any audit collections that are already loaded
+      comment: 'Update the namespace of any audit collections that are already loaded'
       changes:
         - sql:
             sql: UPDATE collection SET namespace = 'analytics' WHERE entity_id = 'okNLSZKdSxaoG58JSQY54' OR entity_id = 'vG58R8k-QddHWA7_47umn'
