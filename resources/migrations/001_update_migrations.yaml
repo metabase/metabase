@@ -4106,6 +4106,7 @@ databaseChangeLog:
       changes:
         - sql:
             sql: UPDATE collection SET namespace = 'analytics' WHERE entity_id = 'okNLSZKdSxaoG58JSQY54' OR entity_id = 'vG58R8k-QddHWA7_47umn'
+      rollback: # not necessary
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
