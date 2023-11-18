@@ -93,8 +93,7 @@
                                      public-collection-names))
                        crowbertos))
                 (is (= (into #{}
-                             (concat public-collection-names
-                                     #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"}
+                             (concat #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"}
                                      (instance-analytics-collection-names)))
                        crowbertos-with-excludes))
                 (is (true? (contains? crowbertos "Lucky Pigeon's Personal Collection")))
