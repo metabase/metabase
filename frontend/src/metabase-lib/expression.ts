@@ -20,9 +20,7 @@ export function expression(
   return ML.expression(query, stageIndex, expressionName, clause);
 }
 
-export function expressionName(
-  clause: ExpressionClause,
-): string {
+export function expressionName(clause: ExpressionClause): string {
   return ML.expression_name(clause);
 }
 
