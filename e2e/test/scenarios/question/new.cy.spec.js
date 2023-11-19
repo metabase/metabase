@@ -11,6 +11,7 @@ import {
   modal,
   setTokenFeatures,
   describeOSS,
+  queryBuilderHeader,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
@@ -174,7 +175,10 @@ describe("scenarios > question > new", () => {
       cy.signOut();
       cy.signIn("nocollection");
       startNewQuestion();
-      popover().findByText("Orders").click();
+      popover().within(() => {
+        cy.findByText("Raw Data").click();
+        cy.findByText("Orders").click();
+      });
       visualize();
       saveQuestion("Personal question");
 
@@ -309,66 +313,134 @@ describe("scenarios > question > new", () => {
     });
     cy.get("header").findByText(NEW_COLLECTION);
   });
+
+  describe("add to a dashboard", () => {
+    const collectionInRoot = {
+      name: "Collection in root collection",
+    };
+    const dashboardInRoot = {
+      name: "Dashboard in root collection",
+    };
+    const myPersonalCollection = "My personal collection";
+
+    beforeEach(() => {
+      cy.intercept("POST", "/api/card").as("createQuestion");
+      cy.createCollection(collectionInRoot);
+      cy.createDashboard(dashboardInRoot);
+      // Can't use `startNewQuestion` because it's missing `display: "table"` and
+      // adding that will fail a lot of other tests and I don't want to deal with that yet.
+      cy.visit("/");
+      cy.findByTestId("app-bar").button("New").click();
+      popover().findByText("Question").click();
+    });
+
+    it("should hide public collections when selecting a dashboard for a question in a personal collection", () => {
+      popover().within(() => {
+        cy.findByText("Raw Data").click();
+        cy.findByText("Orders").click();
+      });
+
+      queryBuilderHeader().button("Save").click();
+      modal().findByTestId("select-button").click();
+      popover().findByText("My personal collection").click();
+      modal().within(() => {
+        cy.button("Save").click();
+        cy.wait("@createQuestion");
+        cy.button("Yes please!").click();
+
+        cy.findByText("Add this question to a dashboard").should("be.visible");
+        cy.findByText(myPersonalCollection).should("be.visible");
+        cy.findByText(collectionInRoot.name).should("not.exist");
+        cy.findByText(dashboardInRoot.name).should("not.exist");
+        cy.findByText("Create a new dashboard").should("not.exist");
+      });
+    });
+
+    it("should show all collections when selecting a dashboard for a question in a public collection", () => {
+      popover().within(() => {
+        cy.findByText("Raw Data").click();
+        cy.findByText("Orders").click();
+      });
+
+      queryBuilderHeader().button("Save").click();
+      cy.log("default selected collection is the root collection");
+      modal().within(() => {
+        cy.button("Save").click();
+        cy.wait("@createQuestion");
+        cy.button("Yes please!").click();
+
+        cy.findByText("Add this question to a dashboard").should("be.visible");
+        cy.findByText(myPersonalCollection).should("be.visible");
+        cy.findByText(collectionInRoot.name).should("be.visible");
+        cy.findByText(dashboardInRoot.name).should("be.visible");
+        cy.findByText("Create a new dashboard").should("be.visible");
+      });
+    });
+  });
 });
 
 // the data picker has different behavior if there are no models in the instance
 // the default instance image has a model in it, so we need to separately test the
 // model-less behavior
-describeOSS("scenarios > question > new > data picker > without models", () => {
-  beforeEach(() => {
-    restore("without-models");
-    cy.signInAsAdmin();
-    setTokenFeatures("none");
-  });
-
-  it("can create a question from the sample database", () => {
-    cy.visit("/question/new");
-
-    cy.get("#DataPopover").within(() => {
-      cy.findByText("Saved Questions").should("be.visible");
-      cy.findByText("Models").should("not.exist");
-      cy.findByText("Sample Database").click();
-      cy.findByText("Products").click();
-    });
-    cy.get("main")
-      .findByText(/Doing Science/)
-      .should("not.exist");
-
-    cy.findByTestId("TableInteractive-root").within(() => {
-      cy.findByText("Rustic Paper Wallet").should("be.visible");
-    });
-  });
-
-  it("can create a question from a saved question", () => {
-    cy.visit("/question/new");
-
-    cy.get("#DataPopover").within(() => {
-      cy.findByText("Saved Questions").click();
-      cy.findByText("Models").should("not.exist");
-      cy.findByText("Orders").click();
-    });
-    cy.get("main")
-      .findByText(/Doing Science/)
-      .should("not.exist");
-
-    cy.findByTestId("TableInteractive-root").within(() => {
-      cy.findByText(39.72).should("be.visible");
-    });
-  });
-
-  it("shows models and raw data options after creating a model", () => {
-    cy.createQuestion({
-      name: "Orders Model",
-      query: { "source-table": ORDERS_ID },
-      dataset: true,
+describeOSS(
+  "scenarios > question > new > data picker > without models",
+  { tags: "@OSS" },
+  () => {
+    beforeEach(() => {
+      restore("without-models");
+      cy.signInAsAdmin();
+      setTokenFeatures("none");
     });
 
-    cy.visit("/question/new");
+    it("can create a question from the sample database", () => {
+      cy.visit("/question/new");
 
-    cy.get("#DataPopover").within(() => {
-      cy.findByText("Raw Data").should("be.visible");
-      cy.findByText("Saved Questions").should("be.visible");
-      cy.findByText("Models").should("be.visible");
+      cy.get("#DataPopover").within(() => {
+        cy.findByText("Saved Questions").should("be.visible");
+        cy.findByText("Models").should("not.exist");
+        cy.findByText("Sample Database").click();
+        cy.findByText("Products").click();
+      });
+      cy.get("main")
+        .findByText(/Doing Science/)
+        .should("not.exist");
+
+      cy.findByTestId("TableInteractive-root").within(() => {
+        cy.findByText("Rustic Paper Wallet").should("be.visible");
+      });
     });
-  });
-});
+
+    it("can create a question from a saved question", () => {
+      cy.visit("/question/new");
+
+      cy.get("#DataPopover").within(() => {
+        cy.findByText("Saved Questions").click();
+        cy.findByText("Models").should("not.exist");
+        cy.findByText("Orders").click();
+      });
+      cy.get("main")
+        .findByText(/Doing Science/)
+        .should("not.exist");
+
+      cy.findByTestId("TableInteractive-root").within(() => {
+        cy.findByText(39.72).should("be.visible");
+      });
+    });
+
+    it("shows models and raw data options after creating a model", () => {
+      cy.createQuestion({
+        name: "Orders Model",
+        query: { "source-table": ORDERS_ID },
+        dataset: true,
+      });
+
+      cy.visit("/question/new");
+
+      cy.get("#DataPopover").within(() => {
+        cy.findByText("Raw Data").should("be.visible");
+        cy.findByText("Saved Questions").should("be.visible");
+        cy.findByText("Models").should("be.visible");
+      });
+    });
+  },
+);

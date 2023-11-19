@@ -15,7 +15,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- do-with-query-execution [query run]
+(defn do-with-query-execution [query run]
   (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
     (let [original-hash (qp.util/query-hash query)
           result        (promise)]
@@ -31,7 +31,7 @@
                 (:hash qe)         (update :hash (fn [^bytes a-hash]
                                                    (some-> a-hash codecs/bytes->hex)))))))))))
 
-(defmacro ^:private with-query-execution {:style/indent 1} [[qe-result-binding query] & body]
+(defmacro with-query-execution {:style/indent 1} [[qe-result-binding query] & body]
   `(do-with-query-execution ~query (fn [~qe-result-binding] ~@body)))
 
 (defn- process-userland-query
@@ -71,6 +71,7 @@
               :pulse_id     nil
               :card_id      nil
               :action_id    nil
+              :is_sandboxed false
               :context      nil
               :running_time true
               :cache_hit    false
@@ -105,8 +106,6 @@
           "QueryExecution saved in the DB should have query execution info. empty `:data` should get added to failures"))))
 
 (def ^:private ^:dynamic *viewlog-call-count* nil)
-
-(derive :event/card-query ::event)
 
 (methodical/defmethod events/publish-event! ::event
   [_topic _event]

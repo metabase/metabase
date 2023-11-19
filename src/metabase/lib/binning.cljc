@@ -1,12 +1,13 @@
 (ns metabase.lib.binning
   (:require
+   [metabase.lib.binning.util :as lib.binning.util]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.shared.formatting.numbers :as fmt.num]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
@@ -29,6 +30,7 @@
     [:field {:binning {:strategy :num-bins :num-bins 4}} 1]
 
   Pass `nil` `binning` to remove any binning."
+  {:style/indent [:form]}
   [x binning :- [:maybe [:or ::lib.schema.binning/binning ::lib.schema.binning/binning-option]]]
   (with-binning-method x (if (contains? binning :mbql)
                            (:mbql binning)
@@ -108,7 +110,7 @@
   "This is implemented outside of [[lib.metadata.calculation/display-name]] because it needs access to the field type.
   It's called directly by `:field` or `:metadata/column`'s [[lib.metadata.calculation/display-name]]."
   [{:keys [bin-width num-bins strategy] :as binning-options} :- ::lib.schema.binning/binning
-   column-metadata                                           :- lib.metadata/ColumnMetadata]
+   column-metadata                                           :- ::lib.schema.metadata/column]
   (when binning-options
     (case strategy
       :num-bins  (i18n/trun "{0} bin" "{0} bins" num-bins)
@@ -135,3 +137,31 @@
    column-binning :- [:maybe ::lib.schema.binning/binning]]
   (= (:mbql binning-option)
      (select-keys column-binning [:strategy :num-bins :bin-width])))
+
+(mu/defn resolve-bin-width :- [:maybe [:map
+                                       [:bin-width number?]
+                                       [:min-value number?]
+                                       [:max-value number?]]]
+  "If a `column` is binned, resolve the actual bin width that will be used when a query is processed as well as min
+  and max values."
+  [column-metadata :- ::lib.schema.metadata/column
+   value           :- number?]
+  (when-let [binning-options (binning column-metadata)]
+    (case (:strategy binning-options)
+      :num-bins
+      (when-let [{min-value :min, max-value :max, :as _number-fingerprint} (get-in column-metadata [:fingerprint :type :type/Number])]
+        (let [{:keys [num-bins]} binning-options
+              bin-width          (lib.binning.util/nicer-bin-width min-value max-value num-bins)]
+          {:bin-width bin-width
+           :min-value value
+           :max-value (+ value bin-width)}))
+
+      :bin-width
+      (let [{:keys [bin-width]} binning-options]
+        (assert (number? bin-width))
+        {:bin-width bin-width
+         :min-value value
+         :max-value (+ value bin-width)})
+
+      :default
+      nil)))

@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
@@ -292,7 +291,7 @@
                                                             :value value
                                                             :options options}})})
                        vec
-                       (update 0 mdb.query/format-sql :h2)
+                       (update 0 (partial driver/prettify-native-form :h2))
                        (update 0 str/split-lines))))))))))
 
 ;;; -------------------------------------------- Referenced Card Queries ---------------------------------------------

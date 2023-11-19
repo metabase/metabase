@@ -30,6 +30,7 @@ import { isSameSeries, getCardKey } from "metabase/visualizations/lib/utils";
 
 import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import { getFont } from "metabase/styled-components/selectors";
+import { getIsShowingRawTable } from "metabase/query_builder/selectors";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isRegularClickAction } from "metabase/visualizations/types";
@@ -64,6 +65,7 @@ const defaultProps = {
 
 const mapStateToProps = state => ({
   fontFamily: getFont(state),
+  isRawTable: getIsShowingRawTable(state),
 });
 
 class Visualization extends PureComponent {
@@ -227,7 +229,11 @@ class Visualization extends PureComponent {
     if (!clicked) {
       return [];
     }
-    const { metadata, getExtraDataForClick = () => ({}) } = this.props;
+    const {
+      metadata,
+      isRawTable,
+      getExtraDataForClick = () => ({}),
+    } = this.props;
 
     const seriesIndex = clicked.seriesIndex || 0;
     const card = this.state.series[seriesIndex].card;
@@ -236,8 +242,14 @@ class Visualization extends PureComponent {
 
     return mode
       ? mode.actionsForClick(
-          { ...clicked, extraData: getExtraDataForClick(clicked) },
-          {},
+          {
+            ...clicked,
+            extraData: {
+              ...getExtraDataForClick(clicked),
+              isRawTable,
+            },
+          },
+          this.state.computedSettings,
         )
       : [];
   }

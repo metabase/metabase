@@ -104,8 +104,8 @@ export function selectFromDropdown(option, clickOpts) {
 }
 
 export function startQuestionFromModel(modelName) {
-  cy.findByText("New").click();
-  cy.findByText("Question").should("be.visible").click();
+  cy.findByTestId("app-bar").findByText("New").click();
+  popover().findByText("Question").should("be.visible").click();
   cy.findByText("Models").click();
   cy.findByText(modelName).click();
 }

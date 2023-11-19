@@ -95,15 +95,13 @@ describe("FieldValuesWidget", () => {
     });
 
     describe("has_field_values = list", () => {
-      const field = metadata.field(PRODUCTS.CATEGORY);
+      const field = checkNotNull(metadata.field(PRODUCTS.CATEGORY));
 
       it("should call fetchFieldValues", async () => {
         const { fetchFieldValues } = await setup({
           fields: [field],
         });
-        expect(fetchFieldValues).toHaveBeenCalledWith({
-          id: PRODUCTS.CATEGORY,
-        });
+        expect(fetchFieldValues).toHaveBeenCalledWith(field);
       });
 
       it("should not have 'Search the list' as the placeholder text for fields with less or equal than 10 values", async () => {
@@ -261,12 +259,18 @@ describe("FieldValuesWidget", () => {
       });
 
       expect(screen.getByText(LISTABLE_PK_FIELD_VALUE)).toBeInTheDocument();
-      expect(fetchFieldValues).toHaveBeenCalledWith({
-        id: LISTABLE_PK_FIELD_ID,
-      });
-      expect(fetchFieldValues).not.toHaveBeenCalledWith({
-        id: EXPRESSION_FIELD_ID,
-      });
+      expect(fetchFieldValues).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: LISTABLE_PK_FIELD_ID,
+          table_id: valuesField.table_id,
+        }),
+      );
+      expect(fetchFieldValues).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: EXPRESSION_FIELD_ID,
+          table_id: expressionField.table_id,
+        }),
+      );
     });
   });
 

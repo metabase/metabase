@@ -1,7 +1,9 @@
 (ns metabase.lib.card-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
+   [medley.core :as m]
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -10,8 +12,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
-   [metabase.util :as u]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util :as u]))
 
 (comment lib/keep-me)
 
@@ -103,12 +104,10 @@
                          {:cards [(assoc (:orders lib.tu/mock-cards) :dataset-query lib.tu/venues-query)]})
                         (:orders lib.tu/mock-cards))]
       (is (=? (->> (cols-of :orders)
-                   (map #(dissoc % :id :table-id))
                    sort-cols)
               (sort-cols (get-in lib.tu/mock-cards [:orders :result-metadata]))))
 
-      (is (=? (->> (concat (from :source/card (for [c (cols-of :orders)]
-                                                (dissoc c :id :table-id)))
+      (is (=? (->> (concat (from :source/card (cols-of :orders))
                            (from :source/implicitly-joinable (cols-of :people))
                            (from :source/implicitly-joinable (cols-of :products)))
                    sort-cols)
@@ -211,3 +210,23 @@
                        (concat (from :source/implicitly-joinable (cols-of :people)))
                        sorted)
                   (->> nested lib.metadata.calculation/visible-columns sorted))))))))
+
+(deftest ^:parallel display-name-of-joined-cards-is-clean-test
+  (testing "We get proper field names rather than ids (#27323)"
+    (let [query (lib/query lib.tu/metadata-provider-with-mock-cards (:products lib.tu/mock-cards))
+          people-card (:people lib.tu/mock-cards)
+          lhs (m/find-first (comp #{"ID"} :name) (lib/join-condition-lhs-columns query 0 people-card nil nil))
+          rhs (m/find-first (comp #{"ID"} :name) (lib/join-condition-rhs-columns query 0 people-card nil nil))
+          join-clause (lib/join-clause people-card [(lib/= lhs rhs)])
+          query (lib/join query join-clause)
+          filter-col (m/find-first (comp #{"Mock people card__ID"} :lib/desired-column-alias)
+                                   (lib/filterable-columns query))
+          query (-> query
+                    (lib/filter (lib/= filter-col 1))
+                    (lib/aggregate (lib/distinct filter-col))
+                    (as-> $q (lib/breakout $q (m/find-first (comp #{"SOURCE"} :name)
+                                                            (lib/breakoutable-columns $q)))))]
+      (is (= ["Source" "Distinct values of ID"]
+             (map #(lib/display-name query %) (lib/returned-columns query))))
+      (is (= ["ID is 1"]
+             (map #(lib/display-name query %) (lib/filters query)))))))

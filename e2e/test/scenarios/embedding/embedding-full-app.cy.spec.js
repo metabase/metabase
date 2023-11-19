@@ -444,8 +444,8 @@ const visitXrayDashboardUrl = urlOptions => {
 
 const addLinkClickBehavior = ({ dashboardId, linkTemplate }) => {
   cy.request("GET", `/api/dashboard/${dashboardId}`).then(({ body }) => {
-    cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-      cards: body.dashcards.map(card => ({
+    cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+      dashcards: body.dashcards.map(card => ({
         ...card,
         visualization_settings: {
           click_behavior: {

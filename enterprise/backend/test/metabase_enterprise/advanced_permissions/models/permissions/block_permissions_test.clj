@@ -12,7 +12,6 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -153,10 +152,9 @@
               new-graph     (assoc-in current-graph
                                       [:groups group-id (mt/id) :data]
                                       {:schemas :block, :native :write})]
-          (is (schema= {:message  #".*Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas.*"
-                        s/Keyword s/Any}
-                       (premium-features-test/with-premium-features #{:advanced-permissions}
-                         (mt/user-http-request :crowberto :put 500 "permissions/graph" new-graph)))))))))
+          (is (=? {:message  #".*Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas.*"}
+                  (premium-features-test/with-premium-features #{:advanced-permissions}
+                    (mt/user-http-request :crowberto :put 500 "permissions/graph" new-graph)))))))))
 
 (deftest delete-database-delete-block-perms-test
   (testing "If a Database gets DELETED, any block permissions for it should get deleted too."
@@ -229,17 +227,19 @@
                                            "with perms for the Table in question" (perms/table-query-path (mt/id :venues))}]
                     (t2.with-temp/with-temp [Permissions _ {:group_id group-2-id :object perms}]
                       (testing (format "Should be able to run the query %s" message)
-                        (doseq [[message f] {"ad-hoc queries"  run-ad-hoc-query
-                                             "Saved Questions" run-saved-question}]
+                        (doseq [[message thunk] {"ad-hoc queries"  run-ad-hoc-query
+                                                 "Saved Questions" run-saved-question}]
                           (testing message
-                            (is (f)))))))
+                            (is (=? {:status :completed}
+                                    (thunk))))))))
                   (testing "\nSandboxed permissions"
-                    (premium-features-test/with-premium-features #{:advanced-permissions :sandboxing}
+                    (premium-features-test/with-premium-features #{:advanced-permissions :sandboxes}
                       (mt/with-temp [Permissions            _ {:group_id group-2-id
                                                                :object   (perms/table-sandboxed-query-path (mt/id :venues))}
                                      GroupTableAccessPolicy _ {:table_id (mt/id :venues) :group_id group-id}]
                         (testing "Should be able to run the query"
-                          (doseq [[message f] {"ad-hoc queries"  run-ad-hoc-query
-                                               "Saved Questions" run-saved-question}]
+                          (doseq [[message thunk] {"ad-hoc queries"  run-ad-hoc-query
+                                                   "Saved Questions" run-saved-question}]
                             (testing message
-                              (is (f)))))))))))))))))
+                              (is (=? {:status :completed}
+                                      (thunk))))))))))))))))))

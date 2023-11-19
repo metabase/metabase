@@ -74,8 +74,9 @@ describe("URLs", () => {
   describe("collections", () => {
     it("should slugify collection name", () => {
       cy.visit("/collection/root");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("First collection").click();
+      cy.findAllByTestId("collection-entry-name")
+        .contains("First collection")
+        .click();
       cy.location("pathname").should(
         "eq",
         `/collection/${FIRST_COLLECTION_ID}-first-collection`,

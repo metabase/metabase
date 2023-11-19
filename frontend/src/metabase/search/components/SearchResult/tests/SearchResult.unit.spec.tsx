@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+import { Route } from "react-router";
 import {
   setupCollectionByIdEndpoint,
   setupUsersEndpoints,
@@ -27,6 +29,11 @@ const TEST_RESULT_COLLECTION = createWrappedSearchResult({
   collection: TEST_REGULAR_COLLECTION,
 });
 
+const TEST_RESULT_INDEXED_ENTITY = createWrappedSearchResult({
+  model: "indexed-entity",
+  model_index_id: 1,
+});
+
 const setup = ({ result }: { result: WrappedResult }) => {
   setupCollectionByIdEndpoint({
     collections: [TEST_REGULAR_COLLECTION],
@@ -34,7 +41,15 @@ const setup = ({ result }: { result: WrappedResult }) => {
 
   setupUsersEndpoints([createMockUser()]);
 
-  renderWithProviders(<SearchResult result={result} />);
+  const { history } = renderWithProviders(
+    <Route path="*" component={() => <SearchResult result={result} />} />,
+    {
+      withRouter: true,
+      initialRoute: "/",
+    },
+  );
+
+  return { history };
 };
 
 describe("SearchResult", () => {
@@ -57,5 +72,40 @@ describe("SearchResult", () => {
       screen.queryByText(TEST_RESULT_COLLECTION.collection.name),
     ).not.toBeInTheDocument();
     expect(getIcon("folder")).toBeInTheDocument();
+  });
+
+  it("should redirect to search result page when clicking item", async () => {
+    const { history } = setup({ result: TEST_RESULT_QUESTION });
+
+    userEvent.click(screen.getByText(TEST_RESULT_QUESTION.name));
+
+    const expectedPath = TEST_RESULT_QUESTION.getUrl();
+
+    expect(history?.getCurrentLocation().pathname).toEqual(expectedPath);
+  });
+
+  describe("indexed entities", () => {
+    it("renders x-ray button for indexed entity search result", () => {
+      setup({ result: TEST_RESULT_INDEXED_ENTITY });
+
+      expect(screen.getByTestId("search-result-item-icon")).toHaveAttribute(
+        "type",
+        "indexed-entity",
+      );
+
+      expect(getIcon("bolt")).toBeInTheDocument();
+    });
+
+    it("redirects to x-ray page when clicking on x-ray button", () => {
+      const { history } = setup({ result: TEST_RESULT_INDEXED_ENTITY });
+
+      expect(getIcon("bolt")).toBeInTheDocument();
+
+      userEvent.click(getIcon("bolt"));
+
+      const expectedPath = `/auto/dashboard/model_index/${TEST_RESULT_INDEXED_ENTITY.model_index_id}/primary_key/${TEST_RESULT_INDEXED_ENTITY.id}`;
+
+      expect(history?.getCurrentLocation().pathname).toEqual(expectedPath);
+    });
   });
 });

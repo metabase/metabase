@@ -183,13 +183,13 @@
                :validate     [#{:continue :abort} "Must be 'continue' or 'abort'"]]]}
   [path & options]
   (log/warn (u/colorize :red (trs "''load'' is deprecated and will be removed in a future release. Please migrate to ''import''.")))
-  (call-enterprise 'metabase-enterprise.serialization.cmd/v1-load path (get-parsed-options #'load options)))
+  (call-enterprise 'metabase-enterprise.serialization.cmd/v1-load! path (get-parsed-options #'load options)))
 
 (defn ^:command import
   {:doc "Load serialized Metabase instance as created by the [[export]] command from directory `path`."
    :arg-spec [["-e" "--abort-on-error" "Stops import on any errors, default is to continue."]]}
   [path & options]
-  (call-enterprise 'metabase-enterprise.serialization.cmd/v2-load path (get-parsed-options #'import options)))
+  (call-enterprise 'metabase-enterprise.serialization.cmd/v2-load! path (get-parsed-options #'import options)))
 
 (defn ^:command dump
   {:doc "Note: this command is deprecated. Use `export` instead.
@@ -202,7 +202,7 @@
                :validate     [#{:active :all} "Must be 'active' or 'all'"]]]}
   [path & options]
   (log/warn (u/colorize :red (trs "''dump'' is deprecated and will be removed in a future release. Please migrate to ''export''.")))
-  (call-enterprise 'metabase-enterprise.serialization.cmd/v1-dump path (get-parsed-options #'dump options)))
+  (call-enterprise 'metabase-enterprise.serialization.cmd/v1-dump! path (get-parsed-options #'dump options)))
 
 (defn ^:command export
   {:doc "Serialize Metabase instance into directory at `path`."
@@ -215,19 +215,19 @@
               ["-f" "--include-field-values"     "Include field values along with field metadata."]
               ["-s" "--include-database-secrets" "Include database connection details (in plain text; use caution)."]]}
   [path & options]
-  (call-enterprise 'metabase-enterprise.serialization.cmd/v2-dump path (get-parsed-options #'export options)))
+  (call-enterprise 'metabase-enterprise.serialization.cmd/v2-dump! path (get-parsed-options #'export options)))
 
 (defn ^:command seed-entity-ids
   "Add entity IDs for instances of serializable models that don't already have them."
   []
-  (when-not (call-enterprise 'metabase-enterprise.serialization.cmd/seed-entity-ids)
+  (when-not (call-enterprise 'metabase-enterprise.serialization.cmd/seed-entity-ids!)
     (throw (Exception. "Error encountered while seeding entity IDs"))))
 
 (defn ^:command drop-entity-ids
   "Drop entity IDs for instances of serializable models. Useful for migrating from v1 serialization (x.46 and earlier)
   to v2 (x.47+)."
   []
-  (when-not (call-enterprise 'metabase-enterprise.serialization.cmd/drop-entity-ids)
+  (when-not (call-enterprise 'metabase-enterprise.serialization.cmd/drop-entity-ids!)
     (throw (Exception. "Error encountered while dropping entity IDs"))))
 
 (defn ^:command rotate-encryption-key

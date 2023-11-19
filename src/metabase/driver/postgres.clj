@@ -25,6 +25,8 @@
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.temporal-bucketing
+    :as lib.schema.temporal-bucketing]
    [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -266,11 +268,38 @@
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
                                [:convert_from expr (h2x/literal "UTF8")]))
 
-(defn- date-trunc [unit expr]
-  [:date_trunc (h2x/literal unit) (->timestamp expr)])
-
 (defn- extract [unit expr]
   [::h2x/extract unit expr])
+
+(defn- make-time [hour minute second]
+  (h2x/with-database-type-info [:make_time hour minute second] "time"))
+
+(defn- time-trunc [unit expr]
+  (let [hour   [::pg-conversion (extract :hour expr) :integer]
+        minute (if (#{:minute :second} unit)
+                 [::pg-conversion (extract :minute expr) :integer]
+                 [:inline 0])
+        second (if (= unit :second)
+                 [::pg-conversion (extract :second expr) ::double]
+                 [:inline 0.0])]
+    (make-time hour minute second)))
+
+(mu/defn ^:private date-trunc
+  [unit :- ::lib.schema.temporal-bucketing/unit.date-time.truncate
+   expr]
+  (condp = (h2x/database-type expr)
+    ;; apparently there is no convenient way to truncate a TIME column in Postgres, you can try to use `date_trunc`
+    ;; but it returns an interval (??) and other insane things. This seems to be slightly less insane.
+    "time"
+    (time-trunc unit expr)
+
+    "timetz"
+    (h2x/cast "timetz" (time-trunc unit expr))
+
+    #_else
+    (let [expr' (->timestamp expr)]
+      (-> [:date_trunc (h2x/literal unit) expr']
+          (h2x/with-database-type-info (h2x/database-type expr'))))))
 
 (defn- extract-from-timestamp [unit expr]
   (extract unit (->timestamp expr)))
@@ -718,9 +747,9 @@
     (fn []
       (try
         (parent-thunk)
-        (catch Throwable _
+        (catch Throwable e
           (let [s (.getString rs i)]
-            (log/tracef "Error in Postgres JDBC driver reading TIME value, fetching as string '%s'" s)
+            (log/tracef e "Error in Postgres JDBC driver reading TIME value, fetching as string '%s'" s)
             (u.date/parse s)))))))
 
 ;; The postgres JDBC driver cannot properly read MONEY columns — see https://github.com/pgjdbc/pgjdbc/issues/425. Work
@@ -752,7 +781,7 @@
 (defmethod driver/upload-type->database-type :postgres
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar_255              [[:varchar 255]]
+    ::upload/varchar-255              [[:varchar 255]]
     ::upload/text                     [:text]
     ::upload/int                      [:bigint]
     ::upload/int-pk                   [:bigint :primary-key]
@@ -761,7 +790,8 @@
     ::upload/float                    [:float]
     ::upload/boolean                  [:boolean]
     ::upload/date                     [:date]
-    ::upload/datetime                 [:timestamp]))
+    ::upload/datetime                 [:timestamp]
+    ::upload/offset-datetime          [:timestamp-with-time-zone]))
 
 (defmethod driver/table-name-length-limit :postgres
   [_driver]

@@ -22,16 +22,16 @@
                        :group         group
                        :width         width
                        :height        height
-                       :score         100
+                       :card-score    100
                        :title         name
                        :visualization [display]
                        :position      0)]
-              description (conj {:text     description
-                                 :group    group
-                                 :width    (- total-width width)
-                                 :height   height
-                                 :score    100
-                                 :position 0})))
+              description (conj {:text       description
+                                 :group      group
+                                 :width      (- total-width width)
+                                 :height     height
+                                 :card-score 100
+                                 :position   0})))
           cards))
 
 (defn- card-for-source-table

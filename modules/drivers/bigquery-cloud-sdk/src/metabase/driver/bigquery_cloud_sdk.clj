@@ -9,6 +9,7 @@
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -445,3 +446,7 @@
     (when-not (str/blank? dataset-id)
       (convert-dataset-id-to-filters! database dataset-id))
     database))
+
+(defmethod driver/prettify-native-form :bigquery-cloud-sdk
+  [_ native-form]
+  (sql.u/format-sql-and-fix-params :mysql native-form))

@@ -1,0 +1,175 @@
+description: Most viewed dashboards, questions, and tables in your Metabase.
+archived: false
+collection_position: 2
+dashcards:
+- size_x: 12
+  dashboard_tab_id: null
+  action_id: null
+  col: 0
+  parameter_mappings:
+  - parameter_id: 27bf158b
+    card_id: MUXrck2HHcd2TIRuPfK0v
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_group_members
+        - group_name
+      - join-alias: Group Members - User
+  - parameter_id: 124adfb8
+    card_id: MUXrck2HHcd2TIRuPfK0v
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - join-alias: People - Creator
+  - parameter_id: '5e162806'
+    card_id: MUXrck2HHcd2TIRuPfK0v
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - join-alias: People - Creator
+  card_id: MUXrck2HHcd2TIRuPfK0v
+  entity_id: 9Lnv8dgtICiNt2yl2WV0x
+  visualization_settings:
+    column_settings: null
+  size_y: 9
+  created_at: '2023-08-18T19:09:24.116624Z'
+  row: 0
+- size_x: 12
+  dashboard_tab_id: null
+  action_id: null
+  col: 12
+  parameter_mappings:
+  - parameter_id: 27bf158b
+    card_id: _lfXwss_MckZBidbcJsgk
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_group_members
+        - group_name
+      - join-alias: Group Members - User
+  - parameter_id: 124adfb8
+    card_id: _lfXwss_MckZBidbcJsgk
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - join-alias: People - Creator
+  - parameter_id: '5e162806'
+    card_id: _lfXwss_MckZBidbcJsgk
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - join-alias: People - Creator
+  card_id: _lfXwss_MckZBidbcJsgk
+  entity_id: mtP6yOJW7VaU9DV5lxwAw
+  visualization_settings:
+    column_settings: null
+  size_y: 9
+  created_at: '2023-08-18T19:13:18.392443Z'
+  row: 0
+- size_x: 12
+  dashboard_tab_id: null
+  action_id: null
+  col: 0
+  parameter_mappings:
+  - parameter_id: 27bf158b
+    card_id: ItdtatOMd0uUEpvx7tDAC
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_group_members
+        - group_name
+      - join-alias: Group Members - User
+  - parameter_id: 124adfb8
+    card_id: ItdtatOMd0uUEpvx7tDAC
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - join-alias: People - User
+  - parameter_id: '5e162806'
+    card_id: ItdtatOMd0uUEpvx7tDAC
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - join-alias: People - User
+  card_id: ItdtatOMd0uUEpvx7tDAC
+  entity_id: QkKyZ0hyV3s5T8UERDFOI
+  visualization_settings:
+    column_settings: null
+  size_y: 9
+  created_at: '2023-11-01T12:02:06.300855Z'
+  row: 9
+tabs: []
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+show_in_getting_started: false
+name: Most viewed content
+caveats: null
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+serdes/meta:
+- model: Dashboard
+  id: IW64bVIFFkpldy410Pe5F
+  label: most_viewed_content
+position: null
+entity_id: IW64bVIFFkpldy410Pe5F
+parameters:
+- name: Group name
+  slug: group_name
+  id: 27bf158b
+  type: string/=
+  sectionId: string
+  isMultiSelect: false
+  default:
+  - All Users
+- name: User
+  slug: user
+  id: 124adfb8
+  type: string/=
+  sectionId: string
+  isMultiSelect: true
+  filteringParameters:
+  - '5e162806'
+- name: Is user active
+  slug: is_user_active
+  id: '5e162806'
+  type: string/=
+  sectionId: string
+  default:
+  - 'true'
+  isMultiSelect: false
+auto_apply_filters: true
+created_at: '2023-08-18T19:07:51.157584Z'
+public_uuid: null
+points_of_interest: null

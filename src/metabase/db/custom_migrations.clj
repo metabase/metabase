@@ -357,9 +357,9 @@
                                   :from      [:report_dashboardcard]
                                   :where     [:= :report_dashboardcard.dashboard_id dashboard-id]
                                   :left-join [:dashboard_tab [:= :dashboard_tab.id :report_dashboardcard.dashboard_tab_id]]})
-                               (group-by :tab_position)
+                       (group-by :tab_position)
                                ;; sort by tab position
-                               (sort-by first))
+                       (sort-by first))
         cards->max-height (fn [cards] (apply max (map #(+ (:row %) (:size_y %)) cards)))]
     (loop [position+cards tab+cards
            next-tab-row   0]

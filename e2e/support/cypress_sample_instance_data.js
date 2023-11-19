@@ -35,6 +35,11 @@ export const NORMAL_PERSONAL_COLLECTION_ID = _.findWhere(
   { name: "Robert Tableton's Personal Collection" },
 ).id;
 
+export const READ_ONLY_PERSONAL_COLLECTION_ID = _.findWhere(
+  SAMPLE_INSTANCE_DATA.collections,
+  { name: "Read Only Tableton's Personal Collection" },
+).id;
+
 export const NO_DATA_PERSONAL_COLLECTION_ID = _.findWhere(
   SAMPLE_INSTANCE_DATA.collections,
   { name: "No Data Tableton's Personal Collection" },

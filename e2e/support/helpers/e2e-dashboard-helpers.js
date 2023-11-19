@@ -15,8 +15,8 @@ export function getDashboardCard(index = 0) {
   return getDashboardCards().eq(index);
 }
 
-function getDashCardApiUrl(dashId) {
-  return `/api/dashboard/${dashId}/cards`;
+function getDashboardApiUrl(dashId) {
+  return `/api/dashboard/${dashId}`;
 }
 
 const DEFAULT_CARD = {
@@ -31,8 +31,8 @@ const DEFAULT_CARD = {
 
 export function addOrUpdateDashboardCard({ card_id, dashboard_id, card }) {
   return cy
-    .request("PUT", getDashCardApiUrl(dashboard_id), {
-      cards: [
+    .request("PUT", getDashboardApiUrl(dashboard_id), {
+      dashcards: [
         {
           ...DEFAULT_CARD,
           card_id,
@@ -42,7 +42,7 @@ export function addOrUpdateDashboardCard({ card_id, dashboard_id, card }) {
     })
     .then(response => ({
       ...response,
-      body: response.body.cards[0],
+      body: response.body.dashcards[0],
     }));
 }
 
@@ -52,8 +52,8 @@ export function addOrUpdateDashboardCard({ card_id, dashboard_id, card }) {
  */
 export function updateDashboardCards({ dashboard_id, cards }) {
   let id = -1;
-  return cy.request("PUT", getDashCardApiUrl(dashboard_id), {
-    cards: cards.map(card => ({ ...DEFAULT_CARD, id: id--, ...card })),
+  return cy.request("PUT", getDashboardApiUrl(dashboard_id), {
+    dashcards: cards.map(card => ({ ...DEFAULT_CARD, id: id--, ...card })),
   });
 }
 
@@ -66,9 +66,9 @@ export function showDashboardCardActions(index = 0) {
 }
 
 export function removeDashboardCard(index = 0) {
-  showDashboardCardActions(index);
-  cy.findAllByTestId("dashboardcard-actions-panel")
-    .eq(0)
+  getDashboardCard(index)
+    .realHover({ scrollBehavior: "bottom" })
+    .findByTestId("dashboardcard-actions-panel")
     .should("be.visible")
     .icon("close")
     .click();
@@ -172,7 +172,7 @@ export function goToTab(tabName) {
 }
 
 export function moveDashCardToTab({ dashcardIndex = 0, tabName }) {
-  getDashboardCard(dashcardIndex).realHover().icon("move_card").click();
+  getDashboardCard(dashcardIndex).realHover().icon("move_card").realHover();
   menu().findByText(tabName).click();
 }
 
@@ -198,10 +198,6 @@ export function resizeDashboardCard({ card, x, y }) {
   });
 }
 
-export function createLinkCard() {
-  cy.icon("link").click();
-}
-
 export function toggleDashboardInfoSidebar() {
   dashboardHeader().icon("info").click();
 }
@@ -219,15 +215,13 @@ export const dashboardGrid = () => {
 };
 
 /**
- *
- * @param {number} dashboardId
- * @param {Object} option
+ * @param {Object=} option
  * @param {number=} option.id
  * @param {number=} option.col
  * @param {number=} option.row
  * @param {number=} option.size_x
  * @param {number=} option.size_y
- * @param {string} option.text
+ * @param {string=} option.text
  */
 export function getTextCardDetails({
   id = getNextUnsavedDashboardCardId(),
@@ -235,8 +229,8 @@ export function getTextCardDetails({
   row = 0,
   size_x = 4,
   size_y = 6,
-  text,
-}) {
+  text = "Text card",
+} = {}) {
   return {
     id,
     card_id: null,
@@ -264,7 +258,7 @@ export function getHeadingCardDetails({
   size_x = 24,
   size_y = 1,
   text = "Heading text details",
-}) {
+} = {}) {
   return {
     id,
     card_id: null,
@@ -293,7 +287,7 @@ export function getLinkCardDetails({
   size_x = 4,
   size_y = 1,
   url = "https://metabase.com",
-}) {
+} = {}) {
   return {
     id,
     card_id: null,
@@ -314,6 +308,44 @@ export function getLinkCardDetails({
       },
     },
     parameter_mappings: [],
+  };
+}
+
+/**
+ * @param {Object=} option
+ * @param {string=} option.label
+ * @param {number=} option.action_id
+ * @param {Array=} option.parameter_mappings
+ */
+export function getActionCardDetails({
+  id = getNextUnsavedDashboardCardId(),
+  col = 0,
+  row = 0,
+  label = "Action card",
+  action_id,
+  parameter_mappings,
+} = {}) {
+  return {
+    id,
+    action_id,
+    card_id: null,
+    col,
+    row,
+    size_x: 4,
+    size_y: 1,
+    series: [],
+    parameter_mappings,
+    visualization_settings: {
+      actionDisplayType: "button",
+      virtual_card: {
+        name: null,
+        display: "action",
+        visualization_settings: {},
+        dataset_query: {},
+        archived: false,
+      },
+      "button.label": label,
+    },
   };
 }
 

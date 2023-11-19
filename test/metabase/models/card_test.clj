@@ -81,8 +81,8 @@
   (testing "test that a Card's :public_uuid comes back if public sharing is enabled..."
     (tu/with-temporary-setting-values [enable-public-sharing true]
       (t2.with-temp/with-temp [:model/Card card {:public_uuid (str (random-uuid))}]
-        (is (schema= u/uuid-regex
-                     (:public_uuid card)))))
+        (is (=? u/uuid-regex
+                (:public_uuid card)))))
 
     (testing "...but if public sharing is *disabled* it should come back as `nil`"
       (tu/with-temporary-setting-values [enable-public-sharing false]
@@ -688,11 +688,11 @@
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
   [card-id is-creation?]
   (revision/push-revision!
-   :object       (t2/select-one :model/Card :id card-id)
-   :entity       :model/Card
-   :id           card-id
-   :user-id      (mt/user->id :crowberto)
-   :is-creation? is-creation?))
+   {:object       (t2/select-one :model/Card :id card-id)
+    :entity       :model/Card
+    :id           card-id
+    :user-id      (mt/user->id :crowberto)
+    :is-creation? is-creation?}))
 
 (deftest record-revision-and-description-completeness-test
   (t2.with-temp/with-temp
