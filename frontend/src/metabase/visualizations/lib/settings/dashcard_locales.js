@@ -580,6 +580,70 @@ const TITLE_LOCALES_BN = {
     'en' : 'Grade 3 Bangla mean scale scores by gender',
     'bn' : 'ছাত্র ছাত্রী ভিত্তিক পঞ্চম শ্রেণীর বাংলা বিষয়ের গড় স্কেল স্কোর'
   },
+  'tms.session.total.application' : {
+    'en' : 'Total Applications',
+    'bn' : 'মোট আবেদন'
+  },
+  'tms.session.validated.application' : {
+    'en' : 'Validated',
+    'bn' : 'যাচাইকৃত'
+  },
+  'tms.session.rejected.application' : {
+    'en' : 'Rejected',
+    'bn' : 'প্রত্যাখ্যাত'
+  },
+  'tms.session.pending.application' : {
+    'en' : 'Pending',
+    'bn' : 'পেন্ডিং'
+  },
+  'tms.session.cancelled.application' : {
+    'en' : 'Cancelled',
+    'bn' : 'বাতিলকৃত'
+  },
+  'tms.session.processing.finished.application' : {
+    'en' : 'Processing Finished',
+    'bn' : 'মনোনীত'
+  },
+  'tms.session.approved.application' : {
+    'en' : 'Approved',
+    'bn' : 'মঞ্জুরকৃত'
+  },
+  'tms.session.order.granted.application' : {
+    'en' : 'Order Granted',
+    'bn' : 'আদেশপ্রাপ্ত'
+  },
+  'tms.session.joined.application' : {
+    'en' : 'Joined',
+    'bn' : 'যোগদান করেছেন'
+  },
+  'tms.session.order.hold.application' : {
+    'en' : 'Order Hold',
+    'bn' : 'আদেশ স্থগিত'
+  },
+  'tms.session.order.cancelled.application' : {
+    'en' : 'Order Canceled',
+    'bn' : 'আদেশ বাতিল'
+  },
+  'tms.session.division.application' : {
+    'en' : 'Division wise total applications in this session',
+    'bn' : 'এই সেশনে বিভাগ ভিত্তিক মোট আবেদন'
+  },
+  'tms.session.district.total.application' : {
+    'en' : 'District wise total applications in this session',
+    'bn' : 'এই সেশনে জেলা ভিত্তিক মোট আবেদন'
+  },
+  'tms.session.different.steps.applications' : {
+    'en' : 'Applications in different stages',
+    'bn' : 'বিভিন্ন ধাপে আবেদন'
+  },
+  'tms.session.applicant.gender' : {
+    'en' : 'Statistics of Applicants Gender',
+    'bn' : 'জেন্ডার ভিত্তিক আবেদন'
+  },
+  'tms.session.application.teacher.type' : {
+    'en' : 'General and Substitute Teacher',
+    'bn' : 'সাধারণ ও সাবস্টিটিউট শিক্ষক'
+  },
 }
 
 export function dashcard_locale_title (locale, title_key) {
