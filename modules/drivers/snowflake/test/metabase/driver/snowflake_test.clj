@@ -4,7 +4,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -30,7 +29,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- sql->lines [sql]
-  (str/split-lines (mdb.query/format-sql sql :snowflake)))
+  (str/split-lines (driver/prettify-native-form :snowflake sql)))
 
 (defn- query->native [query]
   (let [native-query (atom nil)
