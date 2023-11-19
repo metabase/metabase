@@ -589,17 +589,18 @@
   (str sql "\n\n-- " remark))
 
 (defmethod qp.util/query->remark :snowflake
-  [_ {{:keys [executed-by card-id dashboard-id query-hash context]} :info, query-type :type, database-id :database}]
+  [_ {{:keys [context executed-by action-id card-id pulse-id dashboard-id database-id query-hash]} :info,
+      query-type :type}]
   (json/generate-string {:client      "Metabase"
                          :context     context
-                         :queryType   (case (keyword query-type) :query "MBQL" :native "native")
+                         :queryType   query-type
                          :userId      executed-by
+                         :actionId    action-id
+                         :pulseId     pulse-id
                          :cardId      card-id
                          :dashboardId dashboard-id
                          :databaseId  database-id
-                         :queryHash   (if (instance? (Class/forName "[B") query-hash)
-                                        (codecs/bytes->hex query-hash)
-                                        nil)
+                         :queryHash   (if (bytes? query-hash) (codecs/bytes->hex query-hash) nil)
                          :serverId    (public-settings/site-uuid)}))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------

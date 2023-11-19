@@ -70,6 +70,9 @@ title: Driver interface changelog
   removed in 0.51.0 or later. You can easily implement `metabase.driver/db-default-timezone` directly, and use
   `metabase.driver.sql-jdbc.execute/do-with-connection-with-options` to get a `java.sql.Connection` for a Database.
 
+- The multimethod `metabase.driver.sql-jdbc.execute/inject-remark` has been added. It allows JDBC-based drivers to
+  override the default behavior of how SQL query remarks are added to queries (prepending them as a comment).
+
 ## Metabase 0.47.0
 
 - A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in

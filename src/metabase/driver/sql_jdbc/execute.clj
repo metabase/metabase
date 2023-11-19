@@ -662,7 +662,7 @@
 
 (defmulti inject-remark
   "Injects the remark into the SQL query text."
-  {:arglists '([driver sql remark])}
+  {:added "0.48.0", :arglists '([driver sql remark])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 

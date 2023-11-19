@@ -330,7 +330,7 @@
                                  "  OR (\"PUBLIC\".\"users\".\"id\" = 2)"
                                  "  OR (\"PUBLIC\".\"users\".\"id\" = 3)"
                                  "LIMIT"
-                                 "  2000 -- {\"serverId\":\"{{site-uuid}}\",\"client\":\"Metabase\",\"queryHash\":\"cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2\",\"queryType\":\"MBQL\",\"cardId\":1234,\"dashboardId\":5678,\"context\":\"ad-hoc\",\"userId\":1000,\"databaseId\":1}"]]
+                                 "  2000 -- {\"pulseId\":null,\"serverId\":\"{{site-uuid}}\",\"client\":\"Metabase\",\"queryHash\":\"cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2\",\"actionId\":null,\"queryType\":\"query\",\"cardId\":1234,\"dashboardId\":5678,\"context\":\"ad-hoc\",\"userId\":1000,\"databaseId\":1}"]]
                        (-> line
                            (str/replace #"\Q{{site-uuid}}\E" (public-settings/site-uuid))
                            (str/replace #"\Q{{database_prefix}}\E" (test.data.snowflake/*database-prefix-fn*))))]
@@ -343,6 +343,7 @@
                                 :target [:dimension [:field (mt/id :users :id) nil]]
                                 :value  ["1" "2" "3"]}]
                   :info {:executed-by  1000
+                         :database-id  1
                          :card-id      1234
                          :dashboard-id 5678
                          :context      :ad-hoc
