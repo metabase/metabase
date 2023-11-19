@@ -54,7 +54,7 @@
       ;; this namespace was loaded. This dataset will not be deleted after this test run finishes, since there is no
       ;; reasonable hook to do so (from this test extension namespace), so instead we will rely on each run cleaning
       ;; up outdated, transient datasets via the `transient-dataset-outdated?` mechanism.
-      :db    (str "v3_" s "__transient_" ns-load-time)
+      :db    (str "v4_" s "__transient_" ns-load-time)
       :table s)))
 
 (defn- test-db-details []
