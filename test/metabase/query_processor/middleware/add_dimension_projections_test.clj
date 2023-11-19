@@ -6,9 +6,9 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.context.default :as context.default]
    [metabase.query-processor.middleware.add-dimension-projections
     :as qp.add-dimension-projections]
+   [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -174,7 +174,7 @@
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------
 
 (defn- remap-results [query metadata rows]
-  (let [rff (qp.add-dimension-projections/remap-results query context.default/default-rff)
+  (let [rff (qp.add-dimension-projections/remap-results query qp.reducible/default-rff)
         rf  (rff metadata)]
     (transduce identity rf rows)))
 

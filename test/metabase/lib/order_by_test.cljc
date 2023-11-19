@@ -279,6 +279,7 @@
                  {:id (meta/id :venues :latitude) :name "LATITUDE"}
                  {:id (meta/id :venues :longitude) :name "LONGITUDE"}
                  {:id (meta/id :venues :price) :name "PRICE"}
+                 {:name "Name is empty?" :effective-type :type/Boolean}
                  {:id (meta/id :categories :id) :name "ID"}
                  {:id (meta/id :categories :name) :name "NAME"}]
                 (lib/orderable-columns query)))))))

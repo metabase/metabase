@@ -14,10 +14,14 @@
    [metabase.lib.drill-thru.summarize-column-by-time :as lib.drill-thru.summarize-column-by-time]
    [metabase.lib.drill-thru.underlying-records :as lib.drill-thru.underlying-records]
    [metabase.lib.drill-thru.zoom :as lib.drill-thru.zoom]
+   [metabase.lib.drill-thru.zoom-in-bins :as lib.drill-thru.zoom-in-bins]
+   [metabase.lib.drill-thru.zoom-in-geographic :as lib.drill-thru.zoom-in-geographic]
    [metabase.lib.drill-thru.zoom-in-timeseries :as lib.drill-thru.zoom-in-timeseries]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (comment
@@ -50,7 +54,9 @@
    {:f #'lib.drill-thru.summarize-column/summarize-column-drill,                 :return-drills-for-dimensions? true}
    {:f #'lib.drill-thru.summarize-column-by-time/summarize-column-by-time-drill, :return-drills-for-dimensions? true}
    {:f #'lib.drill-thru.underlying-records/underlying-records-drill,             :return-drills-for-dimensions? false}
-   {:f #'lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill,             :return-drills-for-dimensions? false}])
+   {:f #'lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill,             :return-drills-for-dimensions? false}
+   {:f #'lib.drill-thru.zoom-in-geographic/zoom-in-geographic-drill,             :return-drills-for-dimensions? false}
+   {:f #'lib.drill-thru.zoom-in-bins/zoom-in-binning-drill,                      :return-drills-for-dimensions? false}])
 
 (mu/defn ^:private dimension-contexts :- [:maybe [:sequential {:min 1} ::lib.schema.drill-thru/context]]
   "Create new context maps (with updated `:column` and `:value` keys) for each of the `:dimensions` passed in. Some
@@ -105,4 +111,6 @@
     stage-number :- :int
     drill        :- ::lib.schema.drill-thru/drill-thru
     & args]
+   (log/infof "Applying drill thru: %s"
+              (u/pprint-to-str {:query query, :stage-number stage-number, :drill drill, :args args}))
    (apply lib.drill-thru.common/drill-thru-method query stage-number drill args)))

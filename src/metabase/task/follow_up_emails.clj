@@ -26,7 +26,8 @@
   "Have we sent a follow up email to the instance admin?"
   :type       :boolean
   :default    false
-  :visibility :internal)
+  :visibility :internal
+  :audit      :never)
 
 (defn- send-follow-up-email!
   "Send an email to the instance admin following up on their experience with Metabase thus far."

@@ -13,7 +13,7 @@ import Modal from "metabase/components/Modal";
 
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import QuestionSavedModal from "metabase/components/QuestionSavedModal";
-import AddToDashSelectDashModal from "metabase/containers/AddToDashSelectDashModal";
+import { ConnectedAddToDashSelectDashModal } from "metabase/containers/AddToDashSelectDashModal";
 
 import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
 import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
@@ -177,7 +177,7 @@ class QueryModals extends Component<QueryModalsProps> {
       case MODAL_TYPES.ADD_TO_DASHBOARD:
         return (
           <Modal onClose={onCloseModal}>
-            <AddToDashSelectDashModal
+            <ConnectedAddToDashSelectDashModal
               card={this.props.card}
               onClose={onCloseModal}
               onChangeLocation={this.props.onChangeLocation}

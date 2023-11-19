@@ -3,7 +3,6 @@
    [metabase.api.common :as api]
    [metabase.events :as events]
    [metabase.models.revision :as revision]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -12,25 +11,23 @@
 
 (defn- push-revision!
   [model
-   {revision-message :revision_message, :as event}
+   {:keys [user-id] object :object :as event}
    {:keys [is-creation?]
     :or   {is-creation? false}
     :as   _options}]
   (when event
     (try
-      (let [id      (or (:id event)
-                        (get event (keyword (str (u/lower-case-en (name model)) "_id")))
-                        (throw (ex-info "Event does not have ID associated with it"
-                                        {:mode model, :event event})))
-            user-id (events/object->user-id event)]
-        (revision/push-revision! :entity       model
-                                 :id           id
-                                 :object       (api/check-404 (t2/select-one model :id id))
+     (when-not (t2/instance-of? model object)
+       (throw (ex-info "object must be a model instance" {:object object :model model})))
+     (let [user-id (or user-id api/*current-user-id*)]
+       (revision/push-revision! {:entity       model
+                                 :id           (:id object)
+                                 :object       object
                                  :user-id      user-id
                                  :is-creation? is-creation?
-                                 :message      revision-message))
-      (catch Throwable e
-        (log/warnf e "Failed to process revision event for model %s" model)))))
+                                 :message      (:revision-message event)}))
+     (catch Throwable e
+       (log/warnf e "Failed to process revision event for model %s" model)))))
 
 (derive ::card-event ::event)
 (derive :event/card-create ::card-event)
@@ -43,16 +40,10 @@
 (derive ::dashboard-event ::event)
 (derive :event/dashboard-create ::dashboard-event)
 (derive :event/dashboard-update ::dashboard-event)
-(derive :event/dashboard-add-cards ::dashboard-event)
-(derive :event/dashboard-remove-cards ::dashboard-event)
-(derive :event/dashboard-reposition-cards ::dashboard-event)
-(derive :event/dashboard-add-tabs ::dashboard-event)
-(derive :event/dashboard-remove-tabs ::dashboard-event)
-(derive :event/dashboard-update-tabs ::dashboard-event)
 
 (methodical/defmethod events/publish-event! ::dashboard-event
   [topic event]
-  (push-revision! :model/Dashboard event {:is-creation? (= topic  :event/dashboard-create)}))
+  (push-revision! :model/Dashboard event {:is-creation? (= topic :event/dashboard-create)}))
 
 (derive ::metric-event ::event)
 (derive :event/metric-create ::metric-event)

@@ -8,13 +8,13 @@ Metabase runs on the Java Virtual Machine (JVM), and depending on how it's confi
 
 ## Java version
 
-Make sure you're using a Java version of 11 or higher. For more info, see [Java versions](../installation-and-operation/java-versions.md#check-installed-version).
+Make sure you're using a Java version of 11 or higher.
 
 ## WARNING: sun.reflect.Reflection.getCallerClass is not supported
 
-Don't worry about it. 
+Don't worry about it.
 
-``` 
+```
 WARNING: sun.reflect.Reflection.getCallerClass is not supported. This will impact performance.
 ```
 

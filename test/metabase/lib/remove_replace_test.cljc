@@ -64,33 +64,39 @@
 
 (deftest ^:parallel remove-clause-breakout-test
   (let [query (-> lib.tu/venues-query
+                  (lib/aggregate (lib/count))
                   (lib/breakout (meta/field-metadata :venues :id))
                   (lib/breakout (meta/field-metadata :venues :name)))
         breakouts (lib/breakouts query)]
     (is (= 2 (count breakouts)))
-    (is (= 1 (-> query
-                 (lib/remove-clause (first breakouts))
-                 (lib/breakouts)
-                 count)))
-    (is (nil? (-> query
-                  (lib/remove-clause (first breakouts))
-                  (lib/remove-clause (second breakouts))
-                  (lib/breakouts))))
+    (is (=? [{:display-name "ID"}
+             {:display-name "Name"}
+             {:display-name "Count"}]
+            (lib/returned-columns query)))
+    (let [query'  (lib/remove-clause query (first breakouts))
+          query'' (lib/remove-clause query' (second breakouts))]
+      (is (= 1 (-> query' lib/breakouts count)))
+      (is (=? [{:display-name "Name"}
+               {:display-name "Count"}]
+            (lib/returned-columns query')))
+      (is (nil? (lib/breakouts query'')))
+      (is (=? [{:display-name "Count"}]
+            (lib/returned-columns query''))))
     (testing "removing with dependent should cascade"
       (is (=? {:stages [{:breakout [(second breakouts)]} (complement :filters)]}
               (-> query
-                (lib/append-stage)
-                (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
-                (lib/remove-clause 0 (first breakouts)))))
+                  (lib/append-stage)
+                  (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
+                  (lib/remove-clause 0 (first breakouts)))))
       (is (=? {:stages [{:breakout [(second breakouts)]}
                         (complement :fields)
                         (complement :filters)]}
-            (-> query
-                (lib/append-stage)
-                (lib/with-fields [[:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"]])
-                (lib/append-stage)
-                (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
-                (lib/remove-clause 0 (first breakouts)))))
+              (-> query
+                  (lib/append-stage)
+                  (lib/with-fields [[:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"]])
+                  (lib/append-stage)
+                  (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
+                  (lib/remove-clause 0 (first breakouts)))))
       (is (nil? (-> query
                     (lib/remove-clause 0 (second breakouts))
                     (lib/append-stage)
@@ -218,6 +224,22 @@
                   (lib/append-stage)
                   (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "sum"] 1))
                   (lib/remove-clause 0 (first aggregations))))))))
+
+(deftest ^:parallel remove-clause-aggregation-with-ref-test
+  (testing "removing an aggregation removes references in order-by (#12625)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/aggregate (lib/count))
+                    (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
+                    (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
+                    (as-> $q (lib/order-by $q (lib/aggregation-ref $q 2))))
+          aggregations (lib/aggregations query)]
+      (is (=? {:stages [(complement :order-by)]}
+              (lib/remove-clause query (last aggregations))))
+      (let [query (lib/append-stage query)
+            sum-col (m/find-first (comp #{"sum_2"} :lib/desired-column-alias) (lib/visible-columns query))
+            query (lib/order-by query sum-col)]
+        (is (=? {:stages [(complement :order-by) (complement :order-by)]}
+                (lib/remove-clause query 0 (last aggregations))))))))
 
 (deftest ^:parallel remove-clause-expression-test
   (let [query (-> lib.tu/venues-query
@@ -949,3 +971,15 @@
       (is (=?
             {:stages [(complement :joins)]}
             (lib/remove-clause query -1 (first (lib/joins query))))))))
+
+(deftest ^:parallel removing-aggregation-leaves-breakouts
+  (testing "Removing aggregation leaves breakouts (#28609)"
+    (let [query (-> lib.tu/venues-query
+                    (lib/aggregate (lib/count)))
+          query (reduce lib/breakout
+                        query
+                        (lib/breakoutable-columns query))
+          result (lib/remove-clause query (first (lib/aggregations query)))]
+      (is (seq (lib/breakouts result)))
+      (is (empty? (lib/aggregations result)))
+      (is (= (lib/breakouts query) (lib/breakouts result))))))

@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
+import { Switch } from "metabase/ui";
 
 import { Timeline } from "metabase/common/components/Timeline";
 import EditableText from "metabase/core/components/EditableText";
@@ -17,8 +18,6 @@ import {
   toggleAutoApplyFilters,
 } from "metabase/dashboard/actions";
 
-import Toggle from "metabase/core/components/Toggle";
-import FormField from "metabase/core/components/FormField";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks/use-revision-list-query";
@@ -93,18 +92,16 @@ export function DashboardInfoSidebar({
       </ContentSection>
 
       <ContentSection>
-        <FormField
-          title={t`Auto-apply filters`}
-          orientation="horizontal"
-          htmlFor={autoApplyFilterToggleId}
-        >
-          <Toggle
-            disabled={!canWrite}
-            id={autoApplyFilterToggleId}
-            value={dashboard.auto_apply_filters}
-            onChange={handleToggleAutoApplyFilters}
-          />
-        </FormField>
+        <Switch
+          disabled={!canWrite}
+          label={t`Auto-apply filters`}
+          labelPosition="left"
+          variant="stretch"
+          size="sm"
+          id={autoApplyFilterToggleId}
+          checked={dashboard.auto_apply_filters}
+          onChange={e => handleToggleAutoApplyFilters(e.target.checked)}
+        />
       </ContentSection>
       {showCaching && (
         <ContentSection>

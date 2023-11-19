@@ -11,6 +11,8 @@
    [stencil.core :as stencil]
    [stencil.loader]))
 
+(set! *warn-on-reflection* true)
+
 ;; Disable caching of our template files for easier REPL debugging, we're only rendering them once anyways
 (stencil.loader/set-cache (cache/ttl-cache-factory {} :ttl 0))
 
@@ -21,8 +23,7 @@
 
 (defn- generate-draft-changelog []
   (u/step "Generate draft changelog"
-    (let [pre-release?                           (c/pre-release-version?)
-          {bugs :bug, enhancements :enhancement} (group-by github/issue-type (github/milestone-issues))]
+    (let [{bugs :bug, enhancements :enhancement} (group-by github/issue-type (github/milestone-issues))]
       (stencil/render-file release-template-filename
                            {:enhancements enhancements
                             :bug-fixes    bugs
@@ -70,7 +71,9 @@
             (u/announce "The correct JAR hash is %s" (hash/sha-256-sum c/uberjar-path))
             (assert (= (hash/sha-256-sum c/uberjar-path) release-hash) "Incorrect hash on GitHub release")))))))
 
-(defn create-draft-release! []
+(defn create-draft-release!
+  "Create a draft release and validate it."
+  []
   (u/step "Create draft release"
     (let [changelog (generate-draft-changelog)]
       (upload-draft-changelog! changelog)

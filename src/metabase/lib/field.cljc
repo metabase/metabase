@@ -338,8 +338,9 @@
   (cond->> options
     (some #(= (:unit %) unit) options)
     (mapv (fn [option]
-            (cond-> (dissoc option option-key)
-              (= (:unit option) unit) (assoc option-key true))))))
+            (cond-> option
+              (contains? option option-key) (dissoc option option-key)
+              (= (:unit option) unit)       (assoc option-key true))))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/column
   [_query _stage-number field-metadata]
@@ -437,14 +438,16 @@
   (case source
     :source/aggregations (lib.aggregation/column-metadata->aggregation-ref metadata)
     :source/expressions  (lib.expression/column-metadata->expression-ref metadata)
-    ;; :source/breakouts hides the true origin of the column. Since it's impossible to
-    ;; break out by aggregation references at the current stage, we only have to check
-    ;; if we break out by an expression reference. :expression-name is only set for
-    ;; expression references, so if it's set, we have to generate an expression ref,
-    ;; otherwise we generate a normal field ref.
-    :source/breakouts    (if (contains? metadata :lib/expression-name)
-                           (lib.expression/column-metadata->expression-ref metadata)
-                           (column-metadata->field-ref metadata))
+    ;; `:source/fields`/`:source/breakouts` can hide the true origin of the column. Since it's impossible to break out
+    ;; by aggregation references at the current stage, we only have to check if we break out by an expression
+    ;; reference. `:lib/expression-name` is only set for expression references, so if it's set, we have to generate an
+    ;; expression ref, otherwise we generate a normal field ref.
+    (:source/fields :source/breakouts)
+    (if (:lib/expression-name metadata)
+      (lib.expression/column-metadata->expression-ref metadata)
+      (column-metadata->field-ref metadata))
+
+    #_else
     (column-metadata->field-ref metadata)))
 
 (defn- expression-columns
@@ -522,6 +525,14 @@
   "Find the field id for something or nil."
   [field-metadata :- lib.metadata/ColumnMetadata]
   (:id field-metadata))
+
+(mu/defn legacy-card-or-table-id :- [:maybe [:or :string ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+  "Find the legacy card id or table id for a given ColumnMetadata or nil.
+   Returns a either `\"card__<id>\"` or integer table id."
+  [{card-id :lib/card-id table-id :table-id} :- lib.metadata/ColumnMetadata]
+  (cond
+    card-id (str "card__" card-id)
+    table-id table-id))
 
 (defn- populate-fields-for-stage
   "Given a query and stage, sets the `:fields` list to be the fields which would be selected by default.

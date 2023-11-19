@@ -1,9 +1,13 @@
+import { t } from "ttag";
+import { getColumnIcon } from "metabase/common/utils/columns";
+import type { IconName } from "metabase/core/components/Icon";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
 } from "metabase-types/api";
 import * as Lib from "metabase-lib";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import { getIconForField } from "metabase-lib/metadata/utils/fields";
 import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
 import type {
   ColumnGroupItem,
@@ -36,7 +40,7 @@ export const getMetadataColumns = (query: Lib.Query): Lib.ColumnMetadata[] => {
 
   return aggregations.length === 0 && breakouts.length === 0
     ? Lib.visibleColumns(query, STAGE_INDEX)
-    : [];
+    : Lib.returnedColumns(query, STAGE_INDEX);
 };
 
 export const getQueryColumnSettingItems = (
@@ -70,6 +74,7 @@ export const getQueryColumnSettingItems = (
           metadataColumn: metadataColumns[metadataIndex],
           datasetColumn: datasetColumns[datasetIndex],
           columnSettingIndex: settingIndex,
+          icon: getColumnIcon(metadataColumns[metadataIndex]),
         });
       }
 
@@ -96,6 +101,7 @@ export const getDatasetColumnSettingItems = (
           enabled: columnSetting.enabled,
           datasetColumn: datasetColumns[datasetIndex],
           columnSettingIndex: settingIndex,
+          icon: getIconForField(datasetColumns[datasetIndex]) as IconName,
         });
       }
 
@@ -137,17 +143,15 @@ export const getColumnGroups = (
   return groups.map(group => {
     const displayInfo = Lib.displayInfo(query, STAGE_INDEX, group);
     const columns = Lib.getColumnsFromColumnGroup(group);
-
     return {
       columns: columns.map(column => {
-        const displayInfo = Lib.displayInfo(query, STAGE_INDEX, column);
+        const columnDisplayInfo = Lib.displayInfo(query, STAGE_INDEX, column);
         return {
           column,
-          name: displayInfo.name,
-          displayName: displayInfo.displayName,
+          ...columnDisplayInfo,
         };
       }),
-      displayName: getColumnGroupName(displayInfo),
+      displayName: getColumnGroupName(displayInfo) || t`Question`,
       isJoinable: displayInfo.isFromJoin || displayInfo.isImplicitlyJoinable,
     };
   });
@@ -174,7 +178,7 @@ export const addColumnInQuery = (
 
 export const enableColumnInQuery = (
   query: Lib.Query,
-  { metadataColumn }: ColumnSettingItem,
+  { metadataColumn }: Partial<ColumnSettingItem>,
 ) => {
   if (!metadataColumn) {
     return query;
@@ -188,7 +192,7 @@ export const enableColumnInQuery = (
 
 export const disableColumnInQuery = (
   query: Lib.Query,
-  { metadataColumn }: ColumnSettingItem,
+  { metadataColumn }: Partial<ColumnSettingItem>,
 ) => {
   if (!metadataColumn) {
     return query;
@@ -197,15 +201,15 @@ export const disableColumnInQuery = (
   return Lib.removeField(query, STAGE_INDEX, metadataColumn);
 };
 
-const findColumnSettingIndex = (
+export const findColumnSettingIndex = (
   query: Lib.Query,
-  column: Lib.ColumnMetadata,
+  column: Lib.ColumnMetadata | DatasetColumn,
   columnSettings: ColumnSetting[],
 ) => {
   const columnIndexes = Lib.findColumnIndexesFromLegacyRefs(
     query,
     STAGE_INDEX,
-    [column],
+    [column] as Lib.ColumnMetadata[] | DatasetColumn[],
     columnSettings.map(({ fieldRef }) => fieldRef),
   );
 
@@ -253,6 +257,15 @@ export const disableColumnInSettings = (
     enabled: false,
   };
 
+  return newSettings;
+};
+
+export const removeColumnFromSettings = (
+  columnSettings: ColumnSetting[],
+  { columnSettingIndex }: { columnSettingIndex: number },
+) => {
+  const newSettings = [...columnSettings];
+  newSettings.splice(columnSettingIndex, 1);
   return newSettings;
 };
 

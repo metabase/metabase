@@ -22,7 +22,7 @@
 
 (comment
   metabase.bootstrap/keep-me
-  ;; make sure stuff like `schema=` and what not are loaded
+  ;; make sure stuff like `=?` and what not are loaded
   metabase.test-runner.assert-exprs/keep-me
 
   ;; helpers for mvl2
@@ -77,7 +77,6 @@
    "local"
    "resources"
    "resources-ee"
-   "shared/src"
    "src"
    "target"
    "test_config"

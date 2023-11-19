@@ -11,6 +11,8 @@
    [metabase.util.log :as log]
    [schema.core :as s])
   (:import
+   (com.github.vertical_blank.sqlformatter SqlFormatter)
+   (com.github.vertical_blank.sqlformatter.languages Dialect)
    (metabase.util.honey_sql_1 Identifier)))
 
 (set! *warn-on-reflection* true)
@@ -142,3 +144,39 @@
                     {:type            qp.error-type/invalid-query
                      :target-timezone target-timezone
                      :source-timezone source-timezone}))))
+
+(defn fix-sql-params
+  "[[format-sql]] will expand parameterized values (e.g. {{#123}} -> { { # 123 } }).
+  This function fixes that by removing whitespace from matching double-curly brace substrings."
+  [sql]
+  (when (string? sql)
+    (let [rgx #"\{\s*\{\s*[^\}]+\s*\}\s*\}"]
+      (str/replace sql rgx (fn [match] (str/replace match #"\s*" ""))))))
+
+(def dialects
+  "Mapping of dialect kw to dialect, used by sql formatter in [[format-sql]], to dialect."
+  {:db2         Dialect/Db2
+   :mariadb     Dialect/MariaDb
+   :mysql       Dialect/MySql
+   :n1ql        Dialect/N1ql
+   :plsql       Dialect/PlSql
+   :postgres    Dialect/PostgreSql
+   :redshift    Dialect/Redshift
+   :sparksql    Dialect/SparkSql
+   :standardsql Dialect/StandardSql
+   :tsql        Dialect/TSql})
+
+(defn format-sql
+  "Pretty format `sql` string using appropriate `dialect`.
+  `dialect` is derived from `driver-or-dialect-kw`. If there is no corresponding value in [[dialects]]. fallback to
+  `Dialect/StandardSql`. For more details see the [[metabase.driver/prettify-native-form]]."
+  [driver-or-dialect-kw sql]
+  (when (string? sql)
+    (let [dialect (get dialects driver-or-dialect-kw Dialect/StandardSql)
+          formatter (SqlFormatter/of ^Dialect dialect)]
+      (.format formatter ^String sql))))
+
+(defn format-sql-and-fix-params
+  "[[format-sql]] and [[fix-sql-params]] afterwards. For details see those functions."
+  [driver-or-dialect-kw sql]
+  (-> (format-sql driver-or-dialect-kw sql) fix-sql-params))

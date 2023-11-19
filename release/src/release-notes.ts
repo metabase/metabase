@@ -39,9 +39,9 @@ const isBugIssue = (issue: Issue) =>
 const formatIssue = (issue: Issue) => `- ${issue.title} (#${issue.number})`;
 
 export const getDockerTag = (version: string) => {
-  const imagePath = `${process.env.DOCKERHUB_OWNER}/${process.env.DOCKERHUB_REPO}${
-    isEnterpriseVersion(version) ? "-enterprise" : ""
-  }`;
+  const imagePath = `${process.env.DOCKERHUB_OWNER}/${
+    process.env.DOCKERHUB_REPO
+  }${isEnterpriseVersion(version) ? "-enterprise" : ""}`;
 
   return `[\`${imagePath}:${version}\`](https://hub.docker.com/r/${imagePath}/tags)`;
 };

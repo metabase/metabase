@@ -2,7 +2,6 @@ import {
   editDashboard,
   restore,
   visitDashboard,
-  createLinkCard,
   getTextCardDetails,
 } from "e2e/support/helpers";
 
@@ -26,9 +25,9 @@ describe("issue 31274", () => {
   // cypress automatically scrolls to the element, but we don't need it in this test
   it("should not clip dashcard actions (metabase#31274)", () => {
     cy.createDashboard().then(({ body: dashboard }) => {
-      const cards = createTextCards(3);
-      cy.request("PUT", `/api/dashboard/${dashboard.id}/cards`, {
-        cards,
+      const dashcards = createTextCards(3);
+      cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+        dashcards,
       });
 
       visitDashboard(dashboard.id);
@@ -58,7 +57,7 @@ describe("issue 31274", () => {
       editDashboard(dashboard.id);
     });
 
-    createLinkCard();
+    cy.icon("link").click();
     cy.findByPlaceholderText("https://example.com").realHover();
 
     cy.log(

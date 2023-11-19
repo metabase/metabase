@@ -20,7 +20,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -290,9 +289,10 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "user", :status "all"))))
 
-    (testing "Pagination gets the total users _in query_"
-      (is (= (t2/count User)
-             ((mt/user-http-request :crowberto :get 200 "user" :status "all") :total))))
+    (testing "Pagination gets the total users _in query_, not including the Internal User"
+      (let [f (if (t2/exists? User config/internal-mb-user-id) dec identity)] ;; is there a smarter way to do this?
+        (is (= (f (t2/count User))
+               ((mt/user-http-request :crowberto :get 200 "user" :status "all") :total)))))
     (testing "for admins, it should include those inactive users as we'd expect"
       (is (= (->> [{:email                  "crowberto@metabase.com"
                     :first_name             "Crowberto"
@@ -315,12 +315,12 @@
                     :personal_collection_id true
                     :common_name            "Rasta Toucan"}
                    {:email                  "trashbird@metabase.com"
-                     :first_name             "Trash"
-                     :last_name              "Bird"
-                     :is_active              false
-                     :group_ids              #{(u/the-id (perms-group/all-users))}
-                     :personal_collection_id true
-                     :common_name            "Trash Bird"}]
+                    :first_name             "Trash"
+                    :last_name              "Bird"
+                    :is_active              false
+                    :group_ids              #{(u/the-id (perms-group/all-users))}
+                    :personal_collection_id true
+                    :common_name            "Trash Bird"}]
                   (map (partial merge @user-defaults))
                   (map #(dissoc % :is_qbnewb :last_login)))
              (->> ((mt/user-http-request :crowberto :get 200 "user", :include_deactivated true) :data)
@@ -364,12 +364,13 @@
                   (map #(dissoc % :is_qbnewb :last_login)))))))
 
   (testing "GET /api/user?include_deactivated=false should return only active users"
-    (is (= (->> [{:email "crowberto@metabase.com"}
-                 {:email "lucky@metabase.com"}
-                 {:email "rasta@metabase.com"}])
+    (is (= #{"crowberto@metabase.com"
+             "lucky@metabase.com"
+             "rasta@metabase.com"}
            (->> ((mt/user-http-request :crowberto :get 200 "user", :include_deactivated false) :data)
                 (filter mt/test-user?)
-                (map #(select-keys % [:email])))))))
+                (map :email)
+                set)))))
 
 (deftest user-list-limit-test
   (testing "GET /api/user?limit=1&offset=1"
@@ -472,44 +473,45 @@
           (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current")))))))))
 
 (deftest get-user-test
-  (testing "GET /api/user/:id"
-    (testing "should return a smaller set of fields"
-      (let [resp (mt/user-http-request :rasta :get 200 (str "user/" (mt/user->id :rasta)))]
-        (is (= [{:id (:id (perms-group/all-users))}]
-               (:user_group_memberships resp)))
-        (is (= (-> (merge
-                    @user-defaults
-                    {:email       "rasta@metabase.com"
-                     :first_name  "Rasta"
-                     :last_name   "Toucan"
-                     :common_name "Rasta Toucan"})
-                   (dissoc :is_qbnewb :last_login))
-               (-> resp
-                   mt/boolean-ids-and-timestamps
-                   (dissoc :is_qbnewb :last_login :user_group_memberships))))))
+  (premium-features-test/with-premium-features #{}
+    (testing "GET /api/user/:id"
+      (testing "should return a smaller set of fields"
+        (let [resp (mt/user-http-request :rasta :get 200 (str "user/" (mt/user->id :rasta)))]
+          (is (= [{:id (:id (perms-group/all-users))}]
+                 (:user_group_memberships resp)))
+          (is (= (-> (merge
+                      @user-defaults
+                      {:email       "rasta@metabase.com"
+                       :first_name  "Rasta"
+                       :last_name   "Toucan"
+                       :common_name "Rasta Toucan"})
+                     (dissoc :is_qbnewb :last_login))
+                 (-> resp
+                     mt/boolean-ids-and-timestamps
+                     (dissoc :is_qbnewb :last_login :user_group_memberships))))))
 
-    (testing "Check that a non-superuser CANNOT fetch someone else's user details"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 (str "user/" (mt/user->id :trashbird))))))
+      (testing "Check that a non-superuser CANNOT fetch someone else's user details"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 (str "user/" (mt/user->id :trashbird))))))
 
-    (testing "A superuser should be allowed to fetch another users data"
-      (let [resp (mt/user-http-request :crowberto :get 200 (str "user/" (mt/user->id :rasta)))]
-        (is (= [{:id (:id (perms-group/all-users))}]
-               (:user_group_memberships resp)))
-        (is (= (-> (merge
-                    @user-defaults
-                    {:email       "rasta@metabase.com"
-                     :first_name  "Rasta"
-                     :last_name   "Toucan"
-                     :common_name "Rasta Toucan"})
-                   (dissoc :is_qbnewb :last_login))
-               (-> resp
-                   mt/boolean-ids-and-timestamps
-                   (dissoc :is_qbnewb :last_login :user_group_memberships))))))
+      (testing "A superuser should be allowed to fetch another users data"
+        (let [resp (mt/user-http-request :crowberto :get 200 (str "user/" (mt/user->id :rasta)))]
+          (is (= [{:id (:id (perms-group/all-users))}]
+                 (:user_group_memberships resp)))
+          (is (= (-> (merge
+                      @user-defaults
+                      {:email       "rasta@metabase.com"
+                       :first_name  "Rasta"
+                       :last_name   "Toucan"
+                       :common_name "Rasta Toucan"})
+                     (dissoc :is_qbnewb :last_login))
+                 (-> resp
+                     mt/boolean-ids-and-timestamps
+                     (dissoc :is_qbnewb :last_login :user_group_memberships))))))
 
-    (testing "We should get a 404 when trying to access a disabled account"
-      (is (= "Not found."
-             (mt/user-http-request :crowberto :get 404 (str "user/" (mt/user->id :trashbird))))))))
+      (testing "We should get a 404 when trying to access a disabled account"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 (str "user/" (mt/user->id :trashbird)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -519,28 +521,29 @@
 (deftest create-user-test
   (testing "POST /api/user"
     (testing "Test that we can create a new User"
-      (let [user-name (mt/random-name)
-            email     (mt/random-email)]
-        (mt/with-model-cleanup [User]
-          (mt/with-fake-inbox
-            (let [resp (mt/user-http-request :crowberto :post 200 "user"
-                                             {:first_name       user-name
-                                              :last_name        user-name
-                                              :email            email
-                                              :login_attributes {:test "value"}})]
-              (is (= (merge @user-defaults
-                            (merge
-                             @user-defaults
-                             {:email                  email
-                              :first_name             user-name
-                              :last_name              user-name
-                              :common_name            (str user-name " " user-name)
-                              :login_attributes       {:test "value"}}))
-                     (-> resp
-                         mt/boolean-ids-and-timestamps
-                         (dissoc :user_group_memberships))))
-              (is (= [{:id (:id (perms-group/all-users))}]
-                     (:user_group_memberships resp))))))))
+      (premium-features-test/with-premium-features #{}
+        (let [user-name (mt/random-name)
+              email     (mt/random-email)]
+          (mt/with-model-cleanup [User]
+            (mt/with-fake-inbox
+              (let [resp (mt/user-http-request :crowberto :post 200 "user"
+                                               {:first_name       user-name
+                                                :last_name        user-name
+                                                :email            email
+                                                :login_attributes {:test "value"}})]
+                (is (= (merge @user-defaults
+                              (merge
+                               @user-defaults
+                               {:email                  email
+                                :first_name             user-name
+                                :last_name              user-name
+                                :common_name            (str user-name " " user-name)
+                                :login_attributes       {:test "value"}}))
+                       (-> resp
+                           mt/boolean-ids-and-timestamps
+                           (dissoc :user_group_memberships))))
+                (is (= [{:id (:id (perms-group/all-users))}]
+                       (:user_group_memberships resp)))))))))
 
     (testing "Check that non-superusers are denied access"
       (is (= "You don't have permissions to do that."
@@ -1053,9 +1056,8 @@
               (testing group
                 (testing (format "attempt to set locale to %s" new-locale)
                   (testing "response"
-                    (is (schema= {:errors {:locale #".*String must be a valid two-letter ISO language or language-country code.*"}
-                                  s/Any   s/Any}
-                                 (set-locale! 400 {:locale new-locale}))))
+                    (is (=? {:errors {:locale #".*String must be a valid two-letter ISO language or language-country code.*"}}
+                            (set-locale! 400 {:locale new-locale}))))
                   (testing "value in DB should be unchanged"
                     (is (= "en_US"
                            (locale-from-db)))))))))))))
@@ -1084,9 +1086,8 @@
                (mt/user-http-request :crowberto :put 404 (format "user/%s/reactivate" Integer/MAX_VALUE)))))
 
       (testing " Attempting to reactivate an already active user should fail"
-        (is (schema= {:message  (s/eq "Not able to reactivate an active user")
-                      s/Keyword s/Any}
-                     (mt/user-http-request :crowberto :put 400 (format "user/%s/reactivate" (mt/user->id :rasta)))))))
+        (is (=? {:message "Not able to reactivate an active user"}
+                (mt/user-http-request :crowberto :put 400 (format "user/%s/reactivate" (mt/user->id :rasta)))))))
 
     (testing (str "test that when disabling Google auth if a user gets disabled and re-enabled they are no longer "
                   "Google Auth (#3323)")
@@ -1150,10 +1151,10 @@
     (testing "Test that we return a session if we are changing our own password"
       (t2.with-temp/with-temp [User user {:password "def", :is_superuser false}]
         (let [creds {:username (:email user), :password "def"}]
-          (is (schema= {:session_id (s/pred mt/is-uuid-string? "session")
-                        :success    (s/eq true)}
-                       (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password     "abc123!!DEF"
-                                                                                         :old_password "def"}))))))
+          (is (=? {:session_id mt/is-uuid-string?
+                   :success    true}
+                  (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password     "abc123!!DEF"
+                                                                                    :old_password "def"}))))))
 
     (testing "Test that we don't return a session if we are changing our someone else's password as a superuser"
       (t2.with-temp/with-temp [User user {:password "def", :is_superuser false}]
@@ -1226,3 +1227,42 @@
     (testing "Check that non-superusers are denied access to resending invites"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 (format "user/%d/send_invite" (mt/user->id :crowberto))))))))
+
+(deftest user-activate-deactivate-event-test
+  (testing "User Deactivate/Reactivate events via the API are recorded in the audit log"
+    (premium-features-test/with-premium-features #{:audit-app}
+      (t2.with-temp/with-temp [User {:keys [id]} {:first_name "John"
+                                                  :last_name  "Cena"}]
+        (testing "DELETE /api/user/:id and PUT /api/user/:id/reactivate"
+          (mt/user-http-request :crowberto :delete 200 (format "user/%s" id))
+          (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" id))
+          (is (= [{:topic    :user-deactivated
+                   :user_id  (mt/user->id :crowberto)
+                   :model    "User"
+                   :model_id id
+                   :details  {}}
+                  {:topic    :user-reactivated
+                   :user_id  (mt/user->id :crowberto)
+                   :model    "User"
+                   :model_id id
+                   :details  {}}]
+                 [(mt/latest-audit-log-entry :user-deactivated id)
+                  (mt/latest-audit-log-entry :user-reactivated id)])))))))
+
+(deftest user-update-event-test
+  (testing "User Updates via the API are recorded in the audit log"
+    (t2.with-temp/with-temp [User {:keys [id]} {:first_name "John"
+                                                :last_name  "Cena"}]
+      (premium-features-test/with-premium-features #{:audit-app}
+        (testing "PUT /api/user/:id"
+          (mt/user-http-request :crowberto :put 200 (format "user/%s" id)
+                                {:first_name "Johnny" :last_name "Appleseed"})
+          (is (= {:topic    :user-update
+                  :user_id  (mt/user->id :crowberto)
+                  :model    "User"
+                  :model_id id
+                  :details  {:new {:first_name "Johnny"
+                                   :last_name "Appleseed"}
+                             :previous {:first_name "John"
+                                        :last_name "Cena"}}}
+                 (mt/latest-audit-log-entry :user-update id))))))))

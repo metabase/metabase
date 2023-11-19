@@ -3,7 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.db.query :as mdb.query]
+   [metabase.driver :as driver]
    [metabase.driver.redshift :as redshift]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -74,7 +74,7 @@
       @native-query)))
 
 (defn- sql->lines [sql]
-  (str/split-lines (mdb.query/format-sql sql :redshift)))
+  (str/split-lines (driver/prettify-native-form :redshift sql)))
 
 (deftest remark-test
   (testing "if I run a Redshift query, does it get a remark added to it?"

@@ -25,6 +25,8 @@ import {
   updateDashboardCards,
   goToTab,
   moveDashCardToTab,
+  addTextBoxWhileEditing,
+  expectGoodSnowplowEvent,
 } from "e2e/support/helpers";
 
 import {
@@ -38,7 +40,6 @@ import {
 
 describe("scenarios > dashboard > tabs", () => {
   beforeEach(() => {
-    cy.in;
     restore();
     cy.signInAsAdmin();
   });
@@ -91,45 +92,85 @@ describe("scenarios > dashboard > tabs", () => {
     });
   });
 
-  it("should allow moving dashcards between tabs", () => {
-    visitDashboardAndCreateTab({
-      dashboardId: ORDERS_DASHBOARD_ID,
-      save: false,
-    });
+  it(
+    "should allow moving dashcards between tabs",
+    { scrollBehavior: false },
+    () => {
+      visitDashboardAndCreateTab({
+        dashboardId: ORDERS_DASHBOARD_ID,
+        save: false,
+      });
 
-    goToTab("Tab 1");
+      goToTab("Tab 1");
 
-    cy.log("should stay on the same tab");
-    cy.findByRole("tab", { selected: true }).should("have.text", "Tab 1");
+      cy.log("add second card");
+      addTextBoxWhileEditing("Text card");
 
-    getDashboardCard(0).then(element => {
-      cy.wrap({
-        width: element.outerWidth(),
-        height: element.outerHeight(),
-      }).as("originalSize");
-    });
+      cy.log("should stay on the same tab");
+      cy.findByRole("tab", { selected: true }).should("have.text", "Tab 1");
 
-    cy.log("move card to second tab");
-
-    moveDashCardToTab({ tabName: "Tab 2" });
-
-    getDashboardCards().should("have.length", 0);
-
-    goToTab("Tab 2");
-
-    getDashboardCards().should("have.length", 1);
-
-    cy.log("size should stay the same");
-
-    getDashboardCard(0).then(element => {
-      cy.get("@originalSize").then(originalSize => {
-        expect({
+      getDashboardCard(0).then(element => {
+        cy.wrap({
           width: element.outerWidth(),
           height: element.outerHeight(),
-        }).to.deep.eq(originalSize);
+        }).as("card1OriginalSize");
       });
-    });
-  });
+
+      getDashboardCard(1).then(element => {
+        cy.wrap(element.offset()).as("card2OriginalPosition");
+      });
+
+      cy.log("move second card to second tab first, then the first card");
+      // moving the second card first to invert their position, this allows us
+      // to check if the position is restored when undoing the movement of the second one
+      moveDashCardToTab({ tabName: "Tab 2", dashcardIndex: 1 });
+      moveDashCardToTab({ tabName: "Tab 2", dashcardIndex: 0 });
+
+      cy.log("fist tab should be empty");
+      cy.findAllByTestId("toast-undo").should("have.length", 2);
+      getDashboardCards().should("have.length", 0);
+
+      cy.log("should show undo toast with the correct text");
+      cy.findByTestId("undo-list").within(() => {
+        cy.findByText("Text card moved").should("be.visible");
+        cy.findByText("Card moved: Orders").should("be.visible");
+      });
+
+      cy.log("cards should be in second tab");
+      goToTab("Tab 2");
+      getDashboardCards().should("have.length", 2);
+
+      cy.log("size should stay the same");
+
+      getDashboardCard(1).then(element => {
+        cy.get("@card1OriginalSize").then(originalSize => {
+          expect({
+            width: element.outerWidth(),
+            height: element.outerHeight(),
+          }).to.deep.eq(originalSize);
+        });
+      });
+
+      cy.log("undoing movement of second card");
+
+      cy.findAllByTestId("toast-undo").eq(0).findByRole("button").click();
+
+      goToTab("Tab 1");
+
+      getDashboardCards().should("have.length", 1);
+
+      cy.log("second card should be in the original position");
+
+      getDashboardCard().then(element => {
+        cy.get("@card2OriginalPosition").then(originalPosition => {
+          const position = element.offset();
+          // approximately to avoid possibly flakiness, we just want it to be in the same grid cell
+          expect(position.left).to.approximately(originalPosition.left, 10);
+          expect(position.top).to.approximately(originalPosition.top, 10);
+        });
+      });
+    },
+  );
 
   it(
     "should allow moving different types of dashcards to other tabs",
@@ -139,6 +180,9 @@ describe("scenarios > dashboard > tabs", () => {
       const cards = [
         getTextCardDetails({
           text: "Text card",
+          // small card aligned to the left so that move icon is out of the viewport
+          // unless the left alignment logic kicks in
+          size_x: 1,
         }),
         getHeadingCardDetails({
           text: "Heading card",
@@ -169,6 +213,14 @@ describe("scenarios > dashboard > tabs", () => {
       goToTab("Tab 2");
 
       getDashboardCards().should("have.length", cards.length);
+
+      cy.findAllByTestId("toast-undo").should("have.length", cards.length);
+
+      cy.log("'Undo' toasts should be dismissed when saving the dashboard");
+
+      saveDashboard();
+
+      cy.findAllByTestId("toast-undo").should("have.length", 0);
     },
   );
 
@@ -219,7 +271,7 @@ describe("scenarios > dashboard > tabs", () => {
   });
 
   it("should only fetch cards on the current tab", () => {
-    cy.intercept("PUT", "/api/dashboard/*/cards").as("saveDashboardCards");
+    cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
 
     visitDashboardAndCreateTab({
       dashboardId: ORDERS_DASHBOARD_ID,
@@ -235,7 +287,7 @@ describe("scenarios > dashboard > tabs", () => {
     saveDashboard();
 
     cy.wait("@saveDashboardCards").then(({ response }) => {
-      cy.wrap(response.body.cards[1].id).as("secondTabDashcardId");
+      cy.wrap(response.body.dashcards[1].id).as("secondTabDashcardId");
     });
 
     cy.intercept(
@@ -321,11 +373,39 @@ describeWithSnowplow("scenarios > dashboard > tabs", () => {
     editDashboard();
     createNewTab();
     saveDashboard();
-    expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 1); // dashboard_tab_created
+    expectGoodSnowplowEvent({ event: "dashboard_saved" }, 1);
+    expectGoodSnowplowEvent({ event: "dashboard_tab_created" }, 1);
 
     editDashboard();
     deleteTab("Tab 2");
     saveDashboard();
-    expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 2); // dashboard_tab_deleted
+    expectGoodSnowplowEvent({ event: "dashboard_saved" }, 2);
+    expectGoodSnowplowEvent({ event: "dashboard_tab_deleted" }, 1);
+  });
+
+  it("should send snowplow events when cards are moved between tabs", () => {
+    const cardMovedEventName = "card_moved_to_tab";
+
+    visitDashboard(ORDERS_DASHBOARD_ID);
+
+    expectGoodSnowplowEvent(
+      {
+        event: cardMovedEventName,
+      },
+      0,
+    );
+
+    editDashboard();
+    createNewTab();
+    goToTab("Tab 1");
+
+    moveDashCardToTab({ tabName: "Tab 2" });
+
+    expectGoodSnowplowEvent(
+      {
+        event: cardMovedEventName,
+      },
+      1,
+    );
   });
 });

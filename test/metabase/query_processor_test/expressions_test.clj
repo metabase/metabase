@@ -37,8 +37,10 @@
                (mt/run-mbql-query venues
                  {:expressions {:my_cool_new_field [:/ $price 2]}
                   :limit       3
-                  :order-by    [[:asc $id]]})))))
+                  :order-by    [[:asc $id]]})))))))
 
+(deftest ^:parallel floating-point-division-for-expressions-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Make sure FLOATING POINT division is done when dividing by expressions/fields"
       (is (= [[0.6]
               [0.5]
@@ -87,29 +89,43 @@
                   :limit       3
                   :order-by    [[:asc $id]]})))))))
 
+(defn- dont-return-expressions-if-fields-is-explicit-query []
+  ;; bigquery doesn't let you have hypthens in field, table, etc names
+  (let [priceplusone (if (= driver/*driver* :bigquery-cloud-sdk) "price_plus_1" "Price + 1")
+        oneplusone   (if (= driver/*driver* :bigquery-cloud-sdk) "one_plus_one" "1 + 1")
+        query        (mt/mbql-query venues
+                                    {:expressions {priceplusone [:+ $price 1]
+                                                   oneplusone   [:+ 1 1]}
+                                     :fields      [$price [:expression oneplusone]]
+                                     :order-by    [[:asc $id]]
+                                     :limit       3})]
+    {:priceplusone priceplusone
+     :oneplusone   oneplusone
+     :query        query}))
+
 (deftest ^:parallel dont-return-expressions-if-fields-is-explicit-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    ;; bigquery doesn't let you have hypthens in field, table, etc names
-    (let [priceplusone (if (= driver/*driver* :bigquery-cloud-sdk) "price_plus_1" "Price + 1")
-          oneplusone   (if (= driver/*driver* :bigquery-cloud-sdk) "one_plus_one" "1 + 1")
-          query        (mt/mbql-query venues
-                         {:expressions {priceplusone [:+ $price 1]
-                                        oneplusone   [:+ 1 1]}
-                          :fields      [$price [:expression oneplusone]]
-                          :order-by    [[:asc $id]]
-                          :limit       3})]
+    (let [{:keys [query]} (dont-return-expressions-if-fields-is-explicit-query)]
       (testing "If an explicit `:fields` clause is present, expressions *not* in that clause should not come back"
         (is (= [[3 2] [2 2] [2 2]]
                (mt/formatted-rows [int int]
-                 (qp/process-query query)))))
+                 (qp/process-query query))))))))
 
+(deftest ^:parallel dont-return-expressions-if-fields-is-explicit-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    ;; bigquery doesn't let you have hypthens in field, table, etc names
+    (let [{:keys [query]} (dont-return-expressions-if-fields-is-explicit-query)]
       (testing "If `:fields` is not explicit, then return all the expressions"
         (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3 4 2]
                 [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 3 2]
                 [3 "The Apple Pan"         11 34.0406 -118.428 2 3 2]]
                (mt/formatted-rows [int str int 4.0 4.0 int int int]
-                 (qp/process-query (m/dissoc-in query [:query :fields]))))))
+                 (qp/process-query (m/dissoc-in query [:query :fields])))))))))
 
+(deftest ^:parallel dont-return-expressions-if-fields-is-explicit-test-3
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    ;; bigquery doesn't let you have hypthens in field, table, etc names
+    (let [{:keys [priceplusone oneplusone]} (dont-return-expressions-if-fields-is-explicit-query)]
       (testing "When aggregating, expressions that aren't used shouldn't come back"
         (is (= [[2 22] [3 59] [4 13]]
                (mt/formatted-rows [int int]
@@ -131,7 +147,10 @@
                (mt/run-mbql-query venues
                  {:expressions {:x [:+ $price $id]}
                   :limit       3
-                  :order-by    [[:desc [:expression :x]]]})))))
+                  :order-by    [[:desc [:expression :x]]]})))))))
+
+(deftest ^:parallel expressions-in-order-by-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we refer to expressions inside an ORDER BY clause with a secondary order by?"
       (is (= [[81 "Tanoshi Sushi & Sake Bar" 40 40.7677 -73.9533 4 85.0]
               [79 "Sushi Yasuda" 40 40.7514 -73.9736 4 83.0]
@@ -170,16 +189,14 @@
               (is (isa? (name->base-type (mt/format-name "category_id"))
                         :type/Number)))))))))
 
+(defn- calculate-bird-scarcity*
+  "\"bird scarcity\" is a \"scientific metric\" based on the number of birds seen in a given day (at least for the
+  purposes of the tests below).
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                           HANDLING NULLS AND ZEROES                                            |
-;;; +----------------------------------------------------------------------------------------------------------------+
+  e.g.
 
-;; "bird scarcity" is a scientific metric based on the number of birds seen in a given day
-;; (at least for the purposes of the tests below)
-;;
-;; e.g. scarcity = 100.0 / num-birds
-(defn- calculate-bird-scarcity* [formula filter-clause]
+    scarcity = 100.0 / num-birds"
+  [formula filter-clause]
   (mt/formatted-rows [2.0]
     (mt/dataset daily-bird-counts
       (mt/run-mbql-query bird-count
@@ -192,62 +209,86 @@
 (defmacro ^:private calculate-bird-scarcity [formula & [filter-clause]]
   `(mt/dataset ~'daily-bird-counts
      (mt/$ids ~'bird-count
-              (calculate-bird-scarcity* ~formula ~filter-clause))))
+       (calculate-bird-scarcity* ~formula ~filter-clause))))
 
-(deftest ^:parallel nulls-and-zeroes-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions)
-                         ;; bigquery doesn't let you have hypthens in field, table, etc names
-                         ;; therefore a different macro is tested in bigquery driver tests
-                         :bigquery-cloud-sdk)
+(defn- nulls-and-zeroes-test-drivers []
+  (disj (mt/normal-drivers-with-feature :expressions)
+        ;; bigquery doesn't let you have hypthens in field, table, etc names
+        ;; therefore a different macro is tested in bigquery driver tests
+        :bigquery-cloud-sdk))
+
+(deftest ^:parallel nulls-and-zeroes-test-1
+  (mt/test-drivers (nulls-and-zeroes-test-drivers)
     (testing (str "hey... expressions should work if they are just a Field! (Also, this lets us take a peek at the "
                   "raw values being used to calculate the formulas below, so we can tell at a glance if they're right "
                   "without referring to the EDN def)")
       (is (= [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
-             (calculate-bird-scarcity $count))))
+             (calculate-bird-scarcity $count))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-2
+  (mt/test-drivers (nulls-and-zeroes-test-drivers)
     (testing (str "do expressions automatically handle division by zero? Should return `nil` "
-                    "in the results for places where that was attempted")
-        (is (= [[nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [9.09] [7.14]]
-               (calculate-bird-scarcity [:/ 100.0 $count]
-                                        [:!= $count nil]))))
+                  "in the results for places where that was attempted")
+      (is (= [[nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [9.09] [7.14]]
+             (calculate-bird-scarcity [:/ 100.0 $count] [:!= $count nil]))))))
 
-    (testing (str "do expressions handle division by `nil`? Should return `nil` in the results for places where that "
-                  "was attempted")
+(deftest ^:parallel nulls-and-zeroes-test-3
+  (mt/test-drivers (nulls-and-zeroes-test-drivers)
+    (testing (str
+              "do expressions handle division by `nil`? Should return `nil` in the results for places where that "
+              "was attempted")
       (is (= [[nil] [10.0] [12.5] [20.0] [20.0] [nil] [9.09] [7.14] [12.5] [7.14]]
-             (calculate-bird-scarcity [:/ 100.0 $count]
-                                      [:or
-                                       [:= $count nil]
-                                       [:!= $count 0]]))))
+             (calculate-bird-scarcity [:/ 100.0 $count] [:or [:= $count nil] [:!= $count 0]]))))))
 
-    (testing "can we handle BOTH NULLS AND ZEROES AT THE SAME TIME????"
-        (is (= [[nil] [nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [nil]]
-               (calculate-bird-scarcity [:/ 100.0 $count]))))
-
+(deftest ^:parallel nulls-and-zeroes-test-4
+   (mt/test-drivers
+     (nulls-and-zeroes-test-drivers)
+     (testing
+         "can we handle BOTH NULLS AND ZEROES AT THE SAME TIME????"
+         (is
+          (=
+           [[nil] [nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [nil]]
+           (calculate-bird-scarcity [:/ 100.0 $count]))))))
+(deftest ^:parallel nulls-and-zeroes-test-5
+  (mt/test-drivers (nulls-and-zeroes-test-drivers)
     (testing "can we handle dividing by literal 0?"
-        (is (= [[nil] [nil] [nil] [nil] [nil] [nil] [nil] [nil] [nil] [nil]]
-               (calculate-bird-scarcity [:/ $count 0]))))
+      (is (= [[nil] [nil] [nil] [nil] [nil] [nil] [nil] [nil] [nil] [nil]]
+             (calculate-bird-scarcity [:/ $count 0]))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-6
+  (mt/test-drivers (nulls-and-zeroes-test-drivers)
     (testing "ok, what if we use multiple args to divide, and more than one is zero?"
-        (is (= [[nil] [nil] [nil] [1.0] [1.56] [4.0] [4.0] [nil] [nil] [nil]]
-               (calculate-bird-scarcity [:/ 100.0 $count $count]))))
+      (is (= [[nil] [nil] [nil] [1.0] [1.56] [4.0] [4.0] [nil] [nil] [nil]]
+             (calculate-bird-scarcity [:/ 100.0 $count $count]))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-7
+  (mt/test-drivers (nulls-and-zeroes-test-drivers)
     (testing "are nulls/zeroes still handled appropriately when nested inside other expressions?"
-        (is (= [[nil] [nil] [nil] [20.0] [25.0] [40.0] [40.0] [nil] [nil] [nil]]
-               (calculate-bird-scarcity [:* [:/ 100.0 $count] 2]))))
+      (is (= [[nil] [nil] [nil] [20.0] [25.0] [40.0] [40.0] [nil] [nil] [nil]]
+             (calculate-bird-scarcity [:* [:/ 100.0 $count] 2]))))))
 
-    (testing (str "if a zero is present in the NUMERATOR we should return ZERO and not NULL "
-                  "(`0 / 10 = 0`; `10 / 0 = NULL`, at least as far as MBQL is concerned)")
+(deftest ^:parallel nulls-and-zeroes-test-8
+  (mt/test-drivers (nulls-and-zeroes-test-drivers)
+    (testing (str
+              "if a zero is present in the NUMERATOR we should return ZERO and not NULL "
+              "(`0 / 10 = 0`; `10 / 0 = NULL`, at least as far as MBQL is concerned)")
       (is (= [[nil] [0.0] [0.0] [1.0] [0.8] [0.5] [0.5] [nil] [0.0] [0.0]]
-             (calculate-bird-scarcity [:/ $count 10]))))
+             (calculate-bird-scarcity [:/ $count 10]))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-9
+  (mt/test-drivers (nulls-and-zeroes-test-drivers)
     (testing "can addition handle nulls & zeroes?"
       (is (= [[nil] [10.0] [10.0] [20.0] [18.0] [15.0] [15.0] [nil] [10.0] [10.0]]
-             (calculate-bird-scarcity [:+ $count 10]))))
+             (calculate-bird-scarcity [:+ $count 10]))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-10
+  (mt/test-drivers (nulls-and-zeroes-test-drivers)
     (testing "can subtraction handle nulls & zeroes?"
       (is (= [[nil] [10.0] [10.0] [0.0] [2.0] [5.0] [5.0] [nil] [10.0] [10.0]]
-             (calculate-bird-scarcity [:- 10 $count]))))
+             (calculate-bird-scarcity [:- 10 $count]))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-11
+  (mt/test-drivers (nulls-and-zeroes-test-drivers)
     (testing "can multiplications handle nulls & zeros?"
       (is (= [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
              (calculate-bird-scarcity [:* 1 $count]))))))
@@ -281,7 +322,12 @@
                         :fields      [[:expression :prev_month]]
                         :limit       3
                         :order-by    [[:asc $name]]})
-                     mt/rows)))))
+                     mt/rows))))))))
+
+(deftest temporal-arithmetic-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :date-arithmetics)
+    (doseq [[op interval] [[:+ [:interval -31 :day]]
+                           [:- [:interval 31 :day]]]]
       (testing (str "Test interaction of datetime arithmetics with truncation using " op " operator")
         (is (= (robust-dates
                 ["2014-09-02T00:00:00"
