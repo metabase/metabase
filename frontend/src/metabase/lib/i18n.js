@@ -2,7 +2,6 @@ import { addLocale, useLocale } from "ttag";
 // eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import dayjs from "dayjs";
-import updateLocalePlugin from "dayjs/plugin/updateLocale";
 
 import MetabaseSettings from "metabase/lib/settings";
 import { DAY_OF_WEEK_OPTIONS } from "metabase/lib/date-time";
@@ -41,7 +40,6 @@ export function updateMomentStartOfWeek() {
 export function updateDayjsStartOfWeek() {
   const startOfWeekDay = getStartOfWeekDay();
   if (startOfWeekDay != null) {
-    dayjs.extend(updateLocalePlugin);
     dayjs.updateLocale(dayjs.locale(), { weekStart: startOfWeekDay });
   }
 }

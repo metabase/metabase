@@ -1,5 +1,6 @@
 import React from "react";
 import "metabase/css/index.css";
+import "metabase/lib/dayjs";
 import { ThemeProvider } from "metabase/ui";
 
 export const parameters = {
