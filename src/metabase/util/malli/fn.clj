@@ -9,6 +9,8 @@
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]))
 
+(set! *warn-on-reflection* true)
+
 (defn- add-default-schemas
   "Malli normally generates wacky default schemas when you use destructuring in an argslist; this never seems to work
   correctly, so just add default schemas manually to circumvent Malli's weird behavior.
@@ -218,6 +220,23 @@
       (list* `apply '&f arg-names)
       (list* '&f arg-names))))
 
+(defn fixup-stacktrace
+  "If exception is thrown from the [[validate]] machinery, remove those stack trace elements so the top of the stack is
+  the calling function."
+  [^Exception e]
+  (if (#{::invalid-input ::invalid-output} (-> e ex-data :type))
+    (let [trace (.getStackTrace e)
+          cleaned (when trace
+                    (into-array StackTraceElement
+                                (drop-while (comp #{(.getName (class validate))
+                                                    (.getName (class validate-input))
+                                                    (.getName (class validate-output))}
+                                                  #(.getClassName ^StackTraceElement %))
+                                            trace)))]
+      (doto e
+        (.setStackTrace cleaned)))
+    e))
+
 (defn- instrumented-arity [error-context [_=> input-schema output-schema]]
   (let [input-schema           (if (= input-schema :cat)
                                  [:cat]
@@ -230,7 +249,12 @@
                                  `(->> ~result-form
                                        (validate-output ~error-context ~output-schema))
                                  result-form)]
-    `(~arglist ~@input-validation-forms ~result-form)))
+    `(~arglist
+      (try
+        ~@input-validation-forms
+        ~result-form
+        (catch Exception ~'error
+          (throw (fixup-stacktrace ~'error)))))))
 
 (defn- instrumented-fn-tail [error-context [schema-type :as schema]]
   (case schema-type
