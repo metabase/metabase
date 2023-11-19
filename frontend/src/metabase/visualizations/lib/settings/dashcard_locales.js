@@ -597,7 +597,7 @@ const TITLE_LOCALES_BN = {
     'bn' : 'পেন্ডিং'
   },
   'tms.session.cancelled.application' : {
-    'en' : 'cancelled',
+    'en' : 'Cancelled',
     'bn' : 'বাতিলকৃত'
   },
   'tms.session.processing.finished.application' : {
