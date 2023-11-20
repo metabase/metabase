@@ -1,9 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
-import { Flex, NumberInput, Text } from "metabase/ui";
+import { Flex, Grid, NumberInput, Text } from "metabase/ui";
+import { Icon } from "metabase/core/components/Icon";
 import { ColumnValuesWidget } from "metabase/common/components/ColumnValuesWidget";
+import { getColumnIcon } from "metabase/common/utils/columns";
 import { useNumberFilter } from "metabase/common/hooks/filters/use-number-filter";
 import * as Lib from "metabase-lib";
 import type { FilterPickerWidgetProps } from "../types";
@@ -18,6 +20,13 @@ export function NumberFilterEditor({
 }: FilterPickerWidgetProps) {
   const isID = Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
   const defaultOperator = isID ? "=" : "between";
+
+  const columnInfo = useMemo(
+    () => Lib.displayInfo(query, stageIndex, column),
+    [query, stageIndex, column],
+  );
+
+  const columnIcon = getColumnIcon(column);
 
   const {
     operator,
@@ -46,20 +55,30 @@ export function NumberFilterEditor({
   });
 
   return (
-    <Flex align="center">
-      <FilterOperatorPicker
-        value={operator}
-        options={availableOperators}
-        onChange={setOperator}
-      />
-      <NumberValueInput
-        column={column}
-        values={values}
-        valueCount={valueCount}
-        hasMultipleValues={hasMultipleValues}
-        onChange={setValues}
-      />
-    </Flex>
+    <Grid grow>
+      <Grid.Col span="auto">
+        <Flex h="100%" align="center" gap="sm">
+          <Icon name={columnIcon} />
+          <Text color="text.2" weight="bold">
+            {columnInfo.displayName}
+          </Text>
+          <FilterOperatorPicker
+            value={operator}
+            options={availableOperators}
+            onChange={setOperator}
+          />
+        </Flex>
+      </Grid.Col>
+      <Grid.Col span={6}>
+        <NumberValueInput
+          column={column}
+          values={values}
+          valueCount={valueCount}
+          hasMultipleValues={hasMultipleValues}
+          onChange={setValues}
+        />
+      </Grid.Col>
+    </Grid>
   );
 }
 
@@ -80,49 +99,40 @@ function NumberValueInput({
   hasMultipleValues,
   onChange,
 }: NumberValueInputProps) {
-  const placeholder = t`Enter a number`;
-
   if (hasMultipleValues) {
     return (
-      <Flex p="md">
-        <ColumnValuesWidget
-          value={values}
-          column={column}
-          hasMultipleValues
-          onChange={onChange}
-        />
-      </Flex>
+      <ColumnValuesWidget
+        value={values}
+        column={column}
+        hasMultipleValues
+        onChange={onChange}
+      />
     );
   }
 
   if (valueCount === 1) {
     return (
-      <Flex p="md">
-        <NumberInput
-          value={values[0]}
-          onChange={newValue => onChange([newValue])}
-          placeholder={placeholder}
-          autoFocus
-          w="100%"
-        />
-      </Flex>
+      <NumberInput
+        value={values[0]}
+        onChange={newValue => onChange([newValue])}
+        placeholder={t`Enter a number`}
+      />
     );
   }
 
   if (valueCount === 2) {
     return (
-      <Flex align="center" justify="center" p="md">
+      <Flex align="center">
         <NumberInput
           value={values[0]}
           onChange={(newValue: number) => onChange([newValue, values[1]])}
-          placeholder={placeholder}
-          autoFocus
+          placeholder={t`Min`}
         />
         <Text mx="sm">{t`and`}</Text>
         <NumberInput
           value={values[1]}
           onChange={(newValue: number) => onChange([values[0], newValue])}
-          placeholder={placeholder}
+          placeholder={t`Max`}
         />
       </Flex>
     );

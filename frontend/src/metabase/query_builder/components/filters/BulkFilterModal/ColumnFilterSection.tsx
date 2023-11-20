@@ -2,7 +2,6 @@ import { Flex, Text } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import * as Lib from "metabase-lib";
-
 import { NumberFilterEditor } from "./NumberFilterEditor";
 
 interface ColumnFilterSectionProps {
@@ -20,30 +19,34 @@ export function ColumnFilterSection({
   filter,
   onChange,
 }: ColumnFilterSectionProps) {
+  const FilterWidget = getFilterWidget(column);
+  return (
+    <FilterWidget
+      query={query}
+      stageIndex={stageIndex}
+      column={column}
+      filter={filter}
+      onChange={onChange}
+    />
+  );
+}
+
+function NotImplementedWidget({
+  query,
+  stageIndex,
+  column,
+}: Pick<ColumnFilterSectionProps, "query" | "stageIndex" | "column">) {
   const columnInfo = Lib.displayInfo(query, stageIndex, column);
   const columnIcon = getColumnIcon(column);
 
-  const FilterWidget = getFilterWidget(column);
-
   return (
-    <Flex direction="row" align="center" px="2rem" py="1rem" gap="sm">
+    <Flex direction="row" align="center" gap="sm" py="1rem">
       <Icon name={columnIcon} />
       <Text color="text.2" weight="bold">
         {columnInfo.displayName}
       </Text>
-      <FilterWidget
-        query={query}
-        stageIndex={stageIndex}
-        column={column}
-        filter={filter}
-        onChange={onChange}
-      />
     </Flex>
   );
-}
-
-function NotImplementedWidget() {
-  return null;
 }
 
 function getFilterWidget(column: Lib.ColumnMetadata) {
