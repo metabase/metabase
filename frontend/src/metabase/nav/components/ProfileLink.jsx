@@ -34,7 +34,7 @@ function ProfileLink({ user, adminItems, onLogout }) {
 
   const customHelpLink = useSelector(state => getSetting(state, "help-link"));
   const customHelpUrl = useSelector(state =>
-    getSetting(state, "help-link-custom-url"),
+    getSetting(state, "help-link-custom-destination"),
   );
 
   const openModal = modalName => {

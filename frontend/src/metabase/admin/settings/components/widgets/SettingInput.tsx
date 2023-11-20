@@ -16,6 +16,7 @@ interface SettingInputProps {
     value: string | null;
     default?: string;
     placeholder?: string;
+    ariaLabel?: string;
   };
   onChange: (value: string | number | null) => void;
   autoFocus?: boolean;
@@ -54,6 +55,7 @@ const SettingInput = ({
       onChange={fireOnChange ? changeHandler : undefined}
       onBlurChange={!fireOnChange ? changeHandler : undefined}
       autoFocus={autoFocus}
+      aria-label={setting.ariaLabel}
     />
   );
 };

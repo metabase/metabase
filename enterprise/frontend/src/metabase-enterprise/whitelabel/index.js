@@ -14,6 +14,7 @@ import {
 } from "metabase-enterprise/settings/selectors";
 import MetabaseSettings from "metabase/lib/settings";
 
+import { Anchor } from "metabase/ui";
 import ColorSettingsWidget from "./components/ColorSettingsWidget";
 import FontWidget from "./components/FontWidget";
 import FontFilesWidget from "./components/FontFilesWidget";
@@ -79,6 +80,30 @@ if (hasPremiumFeature("whitelabel")) {
           defaultValue: "doing-science",
         },
         {
+          key: "help-link",
+          display_name: t`Help Link in the Settings menu`,
+          description: (
+            <p>
+              {t`The Settings menu includes a Help link that goes to `}
+              <Anchor href="https://www.metabase.com/help">{t`this page`}</Anchor>
+              {t`by default.`}
+            </p>
+          ),
+          widget: HelpLinkRadio,
+          defaultValue: true,
+        },
+        {
+          // TODO: custom input with validation
+          key: "help-link-custom-destination",
+          ariaLabel: "Help link custom destination",
+          noHeader: true,
+          type: "string",
+          defaultValue: "",
+          getHidden: settings => {
+            return settings["help-link"] !== "custom";
+          },
+        },
+        {
           key: "show-metabot",
           display_name: t`Metabot greeting`,
           description: null,
@@ -93,28 +118,6 @@ if (hasPremiumFeature("whitelabel")) {
           type: "boolean",
           widget: LighthouseToggleWidget,
           defaultValue: true,
-        },
-        {
-          key: "help-link",
-          display_name: t`Help Link in the Settings menu`,
-          // TODO: this needs to have a link
-          description:
-            "The Settings menu includes a Help link that goes to this page by default.",
-          type: "string",
-          widget: HelpLinkRadio,
-          defaultValue: true,
-        },
-        {
-          // TODO: custom input with validation
-          key: "help-link-custom-destination",
-          display_name: t`Custom help text url`,
-          description: "Can be a https?:// or mailto: link",
-          type: "string",
-          defaultValue: "",
-          getHidden: settings => {
-            // TODO: only visible if help-link is "custom"
-            return settings["help-link"] !== 1;
-          },
         },
       ],
     },

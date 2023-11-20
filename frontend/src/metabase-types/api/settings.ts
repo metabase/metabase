@@ -226,7 +226,7 @@ export interface Settings {
   "has-user-setup": boolean;
   "hide-embed-branding?": boolean;
   "help-link": HomeLinkSetting;
-  "help-link-custom-url": string;
+  "help-link-custom-destination": string;
   "is-hosted?": boolean;
   "is-metabot-enabled": boolean;
   "jwt-enabled"?: boolean;

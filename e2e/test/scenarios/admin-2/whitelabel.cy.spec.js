@@ -1,4 +1,9 @@
-import { describeEE, restore, setTokenFeatures } from "e2e/support/helpers";
+import {
+  describeEE,
+  popover,
+  restore,
+  setTokenFeatures,
+} from "e2e/support/helpers";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 function checkFavicon() {
@@ -151,6 +156,86 @@ describeEE("formatting > whitelabel", () => {
       cy.get("body").should("have.css", "font-family", `"${font}", sans-serif`);
     });
   });
+
+  describe("Help link", () => {
+    beforeEach(() => {
+      cy.intercept("PUT", "/api/setting/help-link").as("putHelpLink");
+      cy.intercept("PUT", "/api/setting/help-link-custom-destination").as(
+        "getHelpLinkUrl",
+      );
+    });
+
+    it("should allow hiding the help link", () => {
+      //
+      cy.log("HIDE HELP LINK");
+
+      cy.signInAsAdmin();
+      cy.visit("/admin/settings/whitelabel");
+
+      cy.findByTestId("help-link-setting").findByText("Hide it").click();
+      cy.wait("@putHelpLink");
+      // cy.wait("@getHelpLinkUrl");
+
+      cy.signInAsNormalUser();
+
+      cy.visit("/");
+      openSettingsMenu();
+      helpLink().should("not.exist");
+
+      //
+      cy.log("SET CUSTOM HELP LINK");
+
+      cy.signInAsAdmin();
+      cy.visit("/admin/settings/whitelabel");
+
+      cy.findByTestId("help-link-setting")
+        .findByText("Go to a custom destination...")
+        .click();
+
+      cy.findByLabelText("Help link custom destination")
+        .should("have.focus")
+        .type("https://example.org/custom-destination")
+        .blur();
+
+      cy.wait("@getHelpLinkUrl");
+
+      cy.signInAsNormalUser();
+      cy.visit("/");
+      openSettingsMenu();
+      helpLink().should(
+        "have.attr",
+        "href",
+        "https://example.org/custom-destination",
+      );
+
+      //
+      cy.log("SET DEFAULT HELP LINK");
+
+      cy.signInAsAdmin();
+      cy.visit("/admin/settings/whitelabel");
+
+      cy.findByTestId("help-link-setting")
+        .findByText("Link to Metabase help")
+        .click();
+
+      cy.wait("@putHelpLink");
+
+      cy.visit("/");
+      openSettingsMenu();
+
+      helpLink()
+        .should("have.attr", "href")
+        .and("include", "https://www.metabase.com/help-premium?");
+
+      cy.signInAsNormalUser();
+      cy.visit("/");
+      openSettingsMenu();
+
+      helpLink()
+        .should("have.attr", "href")
+        .and("include", "https://www.metabase.com/help?");
+    });
+  });
 });
 
 function changeLoadingMessage(message) {
@@ -164,3 +249,8 @@ function setApplicationFontTo(font) {
     value: font,
   });
 }
+
+const openSettingsMenu = () =>
+  cy.findByLabelText("Navigation bar").icon("gear").click();
+
+const helpLink = () => popover().findByRole("link", { name: "Help" });
