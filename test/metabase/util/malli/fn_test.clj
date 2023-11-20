@@ -210,7 +210,7 @@
         cn        (when top-trace
                     (.getClassName ^StackTraceElement top-trace))]
     (when cn
-      (is (re-find (re-pattern (munge (str (ns-name *ns*)))) cn))
+      (is (re-find (re-pattern (munge (namespace `foo))) cn))
       (is (not (re-find #"metabase.util.malli.fn\$validate" cn))))))
 
 (deftest ^:parallel error-location-tests
