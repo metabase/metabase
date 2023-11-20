@@ -28,6 +28,35 @@ export const PREVIOUS_VALUE_OPTIONS = {
   CHANGED: "PREVIOUS_VALUE_CHANGED",
 };
 
+function computeChangeTypeWithOptions({
+  formatOptions,
+  percentChange,
+  prevValue,
+}) {
+  if (isEmpty(prevValue)) {
+    return {
+      type: PREVIOUS_VALUE_OPTIONS.MISSING,
+      changeStr: t`N/A`,
+      valueStr: t`(empty)`,
+    };
+  }
+
+  if (percentChange === 0) {
+    return {
+      type: PREVIOUS_VALUE_OPTIONS.SAME,
+      changeStr: t`No change`,
+      valueStr: "",
+    };
+  }
+
+  return {
+    type: PREVIOUS_VALUE_OPTIONS.CHANGED,
+    changeArrow: percentChange < 0 ? "↓" : "↑",
+    changeStr: formatChange(percentChange),
+    valueStr: formatValue(prevValue, formatOptions),
+  };
+}
+
 function computePreviousPeriodComparison({
   rows,
   metricIndex,
@@ -61,24 +90,12 @@ function computePreviousPeriodComparison({
       ? t`previous ${dateUnitDisplay}`
       : formatDateTimeRangeWithUnit([prevDate], dateUnit, { compact: true }); // FIXME: elide part of the prevDate in common with lastDate
 
-  const { type, changeArrow, changeStr, valueStr } = isEmpty(prevValue)
-    ? {
-        type: PREVIOUS_VALUE_OPTIONS.MISSING,
-        changeStr: t`N/A`,
-        valueStr: t`(empty)`,
-      }
-    : percentChange === 0
-    ? {
-        type: PREVIOUS_VALUE_OPTIONS.SAME,
-        changeStr: t`No change`,
-        valueStr: "",
-      }
-    : {
-        type: PREVIOUS_VALUE_OPTIONS.CHANGED,
-        changeArrow: percentChange < 0 ? "↓" : "↑",
-        changeStr: formatChange(percentChange),
-        valueStr: formatValue(prevValue, formatOptions),
-      };
+  const { type, changeArrow, changeStr, valueStr } =
+    computeChangeTypeWithOptions({
+      formatOptions,
+      percentChange,
+      prevValue,
+    });
 
   const arrowColorName = !settings["scalar.switch_positive_negative"]
     ? { "↓": "error", "↑": "success" }
