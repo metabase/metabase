@@ -29,15 +29,12 @@ const NESTED_DB_FIELD = createMockField({
 const CARD_FIELD = createMockField({
   id: CARD_FIELD_ID,
   table_id: CARD_TABLE_ID,
-  name: "foo",
-  display_name: "foo",
 });
 
 const NATIVE_CARD_FIELD = createMockField({
   id: NATIVE_CARD_FIELD_ID,
   table_id: CARD_TABLE_ID,
-  name: "foo",
-  display_name: "foo",
+  name: undefined,
 });
 
 const DB_TABLE = createMockTable({
