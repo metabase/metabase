@@ -9,7 +9,7 @@ import {
   createMockAdminAppState,
 } from "metabase-types/store/mocks";
 
-import ProfileLink from "metabase/nav/components/ProfileLink";
+import { ProfileLink } from "metabase/nav/components/ProfileLink";
 
 const REGULAR_ITEMS = [
   "Account settings",
