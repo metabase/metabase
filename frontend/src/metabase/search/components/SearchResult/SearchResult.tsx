@@ -5,6 +5,7 @@ import { push } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
+import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { WrappedResult } from "metabase/search/types";
 import { Group, Loader, Icon } from "metabase/ui";
 
@@ -14,7 +15,6 @@ import {
   DescriptionDivider,
   DescriptionSection,
   LoadingSection,
-  ModerationIcon,
   ResultNameSection,
   ResultTitle,
   SearchResultContainer,
@@ -108,7 +108,11 @@ export function SearchResult({
           >
             {name}
           </ResultTitle>
-          <ModerationIcon status={moderated_status} filled size={14} />
+          <PLUGIN_MODERATION.ModerationStatusIcon
+            status={moderated_status}
+            filled
+            size={14}
+          />
         </Group>
         <InfoText showLinks={!onClick} result={result} isCompact={compact} />
         {description && showDescription && (

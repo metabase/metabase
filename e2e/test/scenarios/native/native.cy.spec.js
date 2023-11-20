@@ -15,6 +15,7 @@ import {
   filterField,
   visitCollection,
   popover,
+  modal,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -45,8 +46,11 @@ describe("scenarios > question > native", () => {
     cy.findByTestId("qb-header").within(() => {
       cy.findByText("Save").click();
     });
-    cy.findByTestId("save-question-modal").within(() => {
-      cy.findByTestId("select-button").should("have.text", "Third collection");
+    modal().within(() => {
+      cy.findByLabelText(/Which collection should this go in/).should(
+        "have.text",
+        "Third collection",
+      );
     });
   });
 

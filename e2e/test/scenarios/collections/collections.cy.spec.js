@@ -22,6 +22,8 @@ import {
   openUnpinnedItemMenu,
   getPinnedSection,
   moveOpenedCollectionTo,
+  pickEntity,
+  entityPickerModal,
 } from "e2e/support/helpers";
 
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
@@ -63,12 +65,12 @@ describe("scenarios > collection defaults", () => {
         cy.findByTestId("select-button").findByText("Our analytics").click();
       });
 
-      popover().within(() => {
-        cy.findByText(`Collection ${COLLECTIONS_COUNT}`).click();
+      pickEntity({
+        path: ["Our analytics", `Collection ${COLLECTIONS_COUNT}`],
+        select: true,
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Create").click();
+      modal().button("Create").click();
 
       cy.findByTestId("collection-name-heading").should(
         "have.text",
@@ -366,13 +368,13 @@ describe("scenarios > collection defaults", () => {
         // Click to choose which collection should this question be saved to
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(revokedUsersPersonalCollectionName).click();
-        popover().within(() => {
-          cy.findByText(/Collections/i);
-          cy.findByText(/My personal collection/i);
-          cy.findByText("Parent").should("not.exist");
-          cy.log("Reported failing from v0.34.3");
-          cy.findByText("Child");
-        });
+        pickEntity({ path: [revokedUsersPersonalCollectionName] });
+        pickEntity({ path: ["Collections", "Child"] });
+        entityPickerModal().button("Select").should("be.enabled");
+        cy.log("Reported failing from v0.34.3");
+        cy.findByTestId("entity-picker-modal")
+          .findByText("Parent")
+          .should("not.exist");
       });
     });
 

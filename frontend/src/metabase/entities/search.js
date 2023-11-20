@@ -1,8 +1,8 @@
 import { canonicalCollectionId } from "metabase/collections/utils";
-import { GET } from "metabase/lib/api";
 import { createEntity } from "metabase/lib/entities";
 import { entityForObject } from "metabase/lib/schema";
 import { ObjectUnionSchema } from "metabase/schema";
+import { CollectionsApi, SearchApi } from "metabase/services";
 
 import Actions from "./actions";
 import Bookmarks from "./bookmarks";
@@ -14,9 +14,6 @@ import Questions from "./questions";
 import Segments from "./segments";
 import SnippetCollections from "./snippet-collections";
 import Snippets from "./snippets";
-
-const searchList = GET("/api/search");
-const collectionList = GET("/api/collection/:collection/items");
 
 export default createEntity({
   name: "search",
@@ -44,8 +41,8 @@ export default createEntity({
           );
         }
 
-        const { data, ...rest } = await collectionList({
-          collection,
+        const { data, ...rest } = await CollectionsApi.listItems({
+          collectionId: collection,
           archived,
           models,
           namespace,
@@ -67,7 +64,7 @@ export default createEntity({
             : [],
         };
       } else {
-        const { data, ...rest } = await searchList(query);
+        const { data, ...rest } = await SearchApi.list(query);
 
         return {
           ...rest,

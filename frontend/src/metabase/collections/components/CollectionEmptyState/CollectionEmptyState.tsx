@@ -38,9 +38,21 @@ const CollectionEmptyState = ({
   );
 };
 
-const CollectionEmptyIcon = (): JSX.Element => {
+export const CollectionEmptyIcon = ({
+  height = 94,
+  width = 117,
+}: {
+  height?: number;
+  width?: number;
+}): JSX.Element => {
   return (
-    <svg width="117" height="94" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg
+      height={height}
+      width={width}
+      viewBox="0 0 117 94"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
       <EmptyStateIconForeground
         fillRule="evenodd"
         clipRule="evenodd"

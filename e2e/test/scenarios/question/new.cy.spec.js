@@ -18,6 +18,9 @@ import {
   setTokenFeatures,
   describeOSS,
   queryBuilderHeader,
+  entityPickerModal,
+  collectionOnTheGoModal,
+  modal,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -276,8 +279,11 @@ describe("scenarios > question > new", () => {
     cy.findByTestId("qb-header").within(() => {
       cy.findByText("Save").click();
     });
-    cy.findByTestId("save-question-modal").within(modal => {
-      cy.findByTestId("select-button").should("have.text", "Third collection");
+    modal().within(() => {
+      cy.findByLabelText(/Which collection/).should(
+        "have.text",
+        "Third collection",
+      );
     });
   });
 
@@ -291,19 +297,25 @@ describe("scenarios > question > new", () => {
       cy.findByText("Orders").click();
     });
     cy.findByTestId("qb-header").findByText("Save").click();
-
-    cy.findByTestId("save-question-modal").then(modal => {
-      cy.findByTestId("select-button").click();
-    });
-
-    popover().findByText("New collection").click();
+    modal()
+      .findByLabelText(/Which collection/)
+      .click();
+    entityPickerModal().findByText("Create a new collection").click();
 
     const NEW_COLLECTION = "Foo";
-    cy.findByTestId("new-collection-modal").then(modal => {
-      cy.findByPlaceholderText("My new fantastic collection").type(
+    collectionOnTheGoModal().within(() => {
+      cy.findByLabelText(/Name of new folder/).type(NEW_COLLECTION);
+      cy.findByText("Create").click();
+    });
+    entityPickerModal().findByText("Foo").click();
+    entityPickerModal().findByText("Select").click();
+    modal().within(() => {
+      cy.findByText("Save new question");
+      cy.findByLabelText(/Which collection/).should(
+        "have.text",
         NEW_COLLECTION,
       );
-      cy.findByText("Create").click();
+      cy.findByText("Save").click();
     });
 
     cy.findByTestId("save-question-modal").then(modal => {
@@ -322,6 +334,7 @@ describe("scenarios > question > new", () => {
       name: "Dashboard in root collection",
     };
     const myPersonalCollection = "My personal collection";
+    const myPersonalCollectionName = "Bobby Tables's Personal Collection";
 
     beforeEach(() => {
       cy.intercept("POST", "/api/card").as("createQuestion");
@@ -341,54 +354,65 @@ describe("scenarios > question > new", () => {
       });
 
       queryBuilderHeader().button("Save").click();
-      cy.findByTestId("save-question-modal").within(modal => {
-        cy.findByTestId("select-button").click();
-      });
-
-      popover().findByText("My personal collection").click();
-
-      cy.findByTestId("save-question-modal").within(modal => {
-        cy.findByText("Save").click();
+      modal()
+        .findByLabelText(/Which collection/)
+        .click();
+      entityPickerModal().findByText(myPersonalCollectionName).click();
+      entityPickerModal().findByText("Select").click();
+      modal().within(() => {
+        cy.button("Save").click();
         cy.wait("@createQuestion");
+        cy.button("Yes please!").click();
+
+        popover().findByText("My personal collection").click();
+
+        cy.findByTestId("save-question-modal").within(modal => {
+          cy.findByText("Save").click();
+          cy.wait("@createQuestion");
+        });
+
+        cy.get("#QuestionSavedModal").within(() => {
+          cy.findByText("Yes please!").click();
+        });
+
+        cy.get("#AddToDashSelectDashModal").within(() => {
+          cy.findByText("Add this question to a dashboard").should(
+            "be.visible",
+          );
+          cy.findByText(myPersonalCollection).should("be.visible");
+          cy.findByText(collectionInRoot.name).should("not.exist");
+          cy.findByText(dashboardInRoot.name).should("not.exist");
+          cy.findByText("Create a new dashboard").should("not.exist");
+        });
       });
 
-      cy.get("#QuestionSavedModal").within(() => {
-        cy.findByText("Yes please!").click();
-      });
+      it("should show all collections when selecting a dashboard for a question in a public collection", () => {
+        popover().within(() => {
+          cy.findByText("Raw Data").click();
+          cy.findByText("Orders").click();
+        });
 
-      cy.get("#AddToDashSelectDashModal").within(() => {
-        cy.findByText("Add this question to a dashboard").should("be.visible");
-        cy.findByText(myPersonalCollection).should("be.visible");
-        cy.findByText(collectionInRoot.name).should("not.exist");
-        cy.findByText(dashboardInRoot.name).should("not.exist");
-        cy.findByText("Create a new dashboard").should("not.exist");
-      });
-    });
+        queryBuilderHeader().button("Save").click();
+        cy.log("default selected collection is the root collection");
 
-    it("should show all collections when selecting a dashboard for a question in a public collection", () => {
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
-        cy.findByText("Orders").click();
-      });
+        cy.findByTestId("save-question-modal").within(modal => {
+          cy.findByText("Save").click();
+          cy.wait("@createQuestion");
+        });
 
-      queryBuilderHeader().button("Save").click();
-      cy.log("default selected collection is the root collection");
+        cy.get("#QuestionSavedModal").within(() => {
+          cy.findByText("Yes please!").click();
+        });
 
-      cy.findByTestId("save-question-modal").within(modal => {
-        cy.findByText("Save").click();
-        cy.wait("@createQuestion");
-      });
-
-      cy.get("#QuestionSavedModal").within(() => {
-        cy.findByText("Yes please!").click();
-      });
-
-      cy.get("#AddToDashSelectDashModal").within(() => {
-        cy.findByText("Add this question to a dashboard").should("be.visible");
-        cy.findByText(myPersonalCollection).should("be.visible");
-        cy.findByText(collectionInRoot.name).should("be.visible");
-        cy.findByText(dashboardInRoot.name).should("be.visible");
-        cy.findByText("Create a new dashboard").should("be.visible");
+        cy.get("#AddToDashSelectDashModal").within(() => {
+          cy.findByText("Add this question to a dashboard").should(
+            "be.visible",
+          );
+          cy.findByText(myPersonalCollection).should("be.visible");
+          cy.findByText(collectionInRoot.name).should("be.visible");
+          cy.findByText(dashboardInRoot.name).should("be.visible");
+          cy.findByText("Create a new dashboard").should("be.visible");
+        });
       });
     });
   });
