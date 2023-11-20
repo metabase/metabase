@@ -96,11 +96,11 @@ Here we've wired up a Text filter to the "Event types" card, telling Metabase th
 
 If there are other cards that also have the field you select, Metabase will automatically connect the filter to those cards too (including cards on other tabs). If you later add a card with the selected field, Metabase will also try to connect that filter to the new card.
 
-To undo this auto-connecting of cards, you could click on the toast that pops up when Metabase auto-connects the filters, or you could manually disconnect the cards by clicking on the "X" next to the connected field.
+To undo this auto-connecting of cards, you could click on the toast that pops up when Metabase auto-connects the cards, or you could manually disconnect the cards by clicking on the "X" next to the connected field.
 
 ## Filtering dashboards with native/SQL questions
 
-If you're trying to filter native/SQL questions, you'll need to [add a bit of additional markup to your query](../questions/native-editor/sql-parameters.md) in order to use a dashboard filter with that question. For an in-depth article on this, jcheck out [Adding filters to dashboards with SQL questions](https://www.metabase.com/learn/dashboards/filters).
+If you're trying to connect a filter to a card with a native/SQL questions, you'll need to [add a variable to your query](../questions/native-editor/sql-parameters.md). For an in-depth article, check out [Adding filters to dashboards with SQL questions](https://www.metabase.com/learn/dashboards/filters).
 
 ## Wiring up dashboard filters to text cards
 
@@ -119,7 +119,7 @@ From this filter editing view, you can wire up dashboard cards to the filter, or
 - [Set filter input type](#set-filter-input-type)
 - [Set a default filter value](#set-a-default-filter-value)
 - [Remove a filter](#remove-a-filter)
-- [Reorder filter](#reorder-filters)
+- [Reorder filters](#reorder-filters)
 - [Make a multi-select filter](#make-a-multi-select-filter)
 - [Change a filter's selectable values](#change-a-filters-selectable-values)
 
@@ -181,7 +181,7 @@ In dashboard edit mode, click on the grabber handle (six dots) on the left side 
 ### Make a multi-select filter
 
 1. In dashboard edit mode, click your filter's **gear** icon.
-2. From the sidebar, find **Users can pick** and select "Multiple values".
+2. From the sidebar, find **People can pick** and select "Multiple values".
 
 A multi-select filter with the widget type [Dropdown list](#dropdown-list) or [Search box](#search-box) will display a list of values with checkboxes.
 
