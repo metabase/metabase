@@ -32,10 +32,10 @@
 (def ^:private test-db-name (bigquery.tx/normalize-name :db "test_data"))
 
 (defn- with-test-db-name
-  "Replaces instances of v3_test_data with the full per-test-run DB name"
+  "Replaces instances of v4_test_data with the full per-test-run DB name"
   [x]
   (cond
-    (string? x) (str/replace x "v3_test_data" test-db-name)
+    (string? x) (str/replace x "v4_test_data" test-db-name)
     (map? x)    (update-vals x with-test-db-name)
     (vector? x) (mapv with-test-db-name x)
     (list?   x) (map with-test-db-name x)
@@ -49,9 +49,9 @@
              (qp/process-query
               (mt/native-query
                 {:query (with-test-db-name
-                          (str "SELECT `v3_test_data.venues`.`id` "
-                               "FROM `v3_test_data.venues` "
-                               "ORDER BY `v3_test_data.venues`.`id` DESC "
+                          (str "SELECT `v4_test_data.venues`.`id` "
+                               "FROM `v4_test_data.venues` "
+                               "ORDER BY `v4_test_data.venues`.`id` DESC "
                                "LIMIT 2;"))})))))
 
     (testing (str "make sure that BigQuery native queries maintain the column ordering specified in the SQL -- "
@@ -77,10 +77,10 @@
              (mt/cols
                (qp/process-query
                 {:native   {:query (with-test-db-name
-                                     (str "SELECT `v3_test_data.checkins`.`venue_id` AS `venue_id`, "
-                                          "       `v3_test_data.checkins`.`user_id` AS `user_id`, "
-                                          "       `v3_test_data.checkins`.`id` AS `checkins_id` "
-                                          "FROM `v3_test_data.checkins` "
+                                     (str "SELECT `v4_test_data.checkins`.`venue_id` AS `venue_id`, "
+                                          "       `v4_test_data.checkins`.`user_id` AS `user_id`, "
+                                          "       `v4_test_data.checkins`.`id` AS `checkins_id` "
+                                          "FROM `v4_test_data.checkins` "
                                           "LIMIT 2"))}
                  :type     :native
                  :database (mt/id)})))))
@@ -132,9 +132,9 @@
 
     (testing "let's make sure we're generating correct HoneySQL + SQL for aggregations"
       (is (sql= (with-test-db-name
-                  '{:select   [v3_test_data.venues.price             AS price
-                               avg (v3_test_data.venues.category_id) AS avg]
-                    :from     [v3_test_data.venues]
+                  '{:select   [v4_test_data.venues.price             AS price
+                               avg (v4_test_data.venues.category_id) AS avg]
+                    :from     [v4_test_data.venues]
                     :group-by [price]
                     :order-by [avg ASC
                                price ASC]})
@@ -155,9 +155,9 @@
           (is (= (with-test-db-name
                    (str "SELECT `categories__via__category_id`.`name` AS `categories__via__category_id__name`,"
                         " count(*) AS `count` "
-                        "FROM `v3_test_data.venues` "
-                        "LEFT JOIN `v3_test_data.categories` `categories__via__category_id`"
-                        " ON `v3_test_data.venues`.`category_id` = `categories__via__category_id`.`id` "
+                        "FROM `v4_test_data.venues` "
+                        "LEFT JOIN `v4_test_data.categories` `categories__via__category_id`"
+                        " ON `v4_test_data.venues`.`category_id` = `categories__via__category_id`.`id` "
                         "GROUP BY `categories__via__category_id__name` "
                         "ORDER BY `categories__via__category_id__name` ASC"))
                  (get-in results [:data :native_form :query] results))))))))
@@ -214,13 +214,13 @@
     (is (= (with-test-db-name
              (str "-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304\n"
                   "SELECT"
-                  " `v3_test_data.venues`.`id` AS `id`,"
-                  " `v3_test_data.venues`.`name` AS `name`,"
-                  " `v3_test_data.venues`.`category_id` AS `category_id`,"
-                  " `v3_test_data.venues`.`latitude` AS `latitude`,"
-                  " `v3_test_data.venues`.`longitude` AS `longitude`,"
-                  " `v3_test_data.venues`.`price` AS `price` "
-                  "FROM `v3_test_data.venues` "
+                  " `v4_test_data.venues`.`id` AS `id`,"
+                  " `v4_test_data.venues`.`name` AS `name`,"
+                  " `v4_test_data.venues`.`category_id` AS `category_id`,"
+                  " `v4_test_data.venues`.`latitude` AS `latitude`,"
+                  " `v4_test_data.venues`.`longitude` AS `longitude`,"
+                  " `v4_test_data.venues`.`price` AS `price` "
+                  "FROM `v4_test_data.venues` "
                   "LIMIT 1"))
            (query->native
             {:database (mt/id)
@@ -255,9 +255,9 @@
                                                               :name      "name"
                                                               :base_type :type/Text})]}))
         (is (= (with-test-db-name
-                 (str "SELECT `v3_test_data.venues`.`id` AS `id`,"
-                      " `v3_test_data.venues`.`name` AS `name` "
-                      "FROM `v3_test_data.venues` "
+                 (str "SELECT `v4_test_data.venues`.`id` AS `id`,"
+                      " `v4_test_data.venues`.`name` AS `name` "
+                      "FROM `v4_test_data.venues` "
                       "LIMIT 1"))
                (query->native
                 {:database 1
@@ -274,9 +274,9 @@
              (qp/process-query
               (mt/native-query
                 {:query  (with-test-db-name
-                           (str "SELECT `v3_test_data.venues`.`name` AS `name` "
-                                "FROM `v3_test_data.venues` "
-                                "WHERE `v3_test_data.venues`.`name` = ?"))
+                           (str "SELECT `v4_test_data.venues`.`name` AS `name` "
+                                "FROM `v4_test_data.venues` "
+                                "WHERE `v4_test_data.venues`.`name` = ?"))
                  :params ["Red Medicine"]}))))
         (str "Do we properly unprepare, and can we execute, queries that still have parameters for one reason or "
              "another? (EE #277)"))))
@@ -579,7 +579,7 @@
                               (t/local-date "2019-11-12")]))))
       (mt/test-driver :bigquery-cloud-sdk
         (qp.store/with-metadata-provider (mt/id)
-          (let [expected [(with-test-db-name "WHERE `v3_test_data.checkins`.`date` BETWEEN ? AND ?")
+          (let [expected [(with-test-db-name "WHERE `v4_test_data.checkins`.`date` BETWEEN ? AND ?")
                           (t/local-date "2019-11-11")
                           (t/local-date "2019-11-12")]]
             (testing "Should be able to get temporal type from a `:field` with integer ID"
@@ -589,7 +589,7 @@
                                     (t/local-date "2019-11-11")
                                     (t/local-date "2019-11-12")]))))
             (testing "Should be able to get temporal type from a `:field` with `:temporal-unit`"
-              (is (= (cons (with-test-db-name "WHERE date_trunc(`v3_test_data.checkins`.`date`, day) BETWEEN ? AND ?")
+              (is (= (cons (with-test-db-name "WHERE date_trunc(`v4_test_data.checkins`.`date`, day) BETWEEN ? AND ?")
                            (rest expected))
                      (between->sql [:between
                                     [:field (mt/id :checkins :date) {::add/source-table (mt/id :checkins)
@@ -610,15 +610,15 @@
         (try
           (bigquery.tx/execute!
            (with-test-db-name
-             (format "CREATE TABLE `v3_test_data.%s` ( ts TIMESTAMP, dt DATETIME )" table-name)))
+             (format "CREATE TABLE `v4_test_data.%s` ( ts TIMESTAMP, dt DATETIME )" table-name)))
           (bigquery.tx/execute!
            (with-test-db-name
-             (format "INSERT INTO `v3_test_data.%s` (ts, dt) VALUES (TIMESTAMP \"2020-01-01 00:00:00 UTC\", DATETIME \"2020-01-01 00:00:00\")"
+             (format "INSERT INTO `v4_test_data.%s` (ts, dt) VALUES (TIMESTAMP \"2020-01-01 00:00:00 UTC\", DATETIME \"2020-01-01 00:00:00\")"
                      table-name)))
           (sync/sync-database! (mt/db))
           (f table-name)
           (finally
-            (bigquery.tx/execute! (with-test-db-name "DROP TABLE IF EXISTS `v3_test_data.%s`") table-name)))))))
+            (bigquery.tx/execute! (with-test-db-name "DROP TABLE IF EXISTS `v4_test_data.%s`") table-name)))))))
 
 (deftest ^:parallel filter-by-datetime-timestamp-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -888,8 +888,8 @@
                   (mt/native-query
                     {:query  (with-test-db-name
                                (str "SELECT count(*) AS `count` "
-                                    "FROM `v3_test_data.venues` "
-                                    "WHERE `v3_test_data.venues`.`name` = ?"))
+                                    "FROM `v4_test_data.venues` "
+                                    "WHERE `v4_test_data.venues`.`name` = ?"))
                      :params ["x\\\\' OR 1 = 1 -- "]})))))))))
 
 (deftest ^:parallel escape-alias-test
@@ -929,11 +929,11 @@
                         {:fields [$id $venue-id->venues.name]
                          :limit  1})]
             (is (sql= (with-test-db-name
-                        '{:select    [v3_test_data.checkins.id        AS id
+                        '{:select    [v4_test_data.checkins.id        AS id
                                       Organizacao__via__venue_id.name AS Organizacao__via__venue_id__name]
-                          :from      [v3_test_data.checkins]
-                          :left-join [v3_test_data.Organização Organizacao__via__venue_id
-                                      ON v3_test_data.checkins.venue_id = Organizacao__via__venue_id.id]
+                          :from      [v4_test_data.checkins]
+                          :left-join [v4_test_data.Organização Organizacao__via__venue_id
+                                      ON v4_test_data.checkins.venue_id = Organizacao__via__venue_id.id]
                           :limit     [1]})
                       query))))))))
 

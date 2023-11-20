@@ -45,34 +45,34 @@
 
 (deftest ^:parallel ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
-    (binding [test.data.snowflake/*database-prefix-fn* (constantly "v3_")]
+    (binding [test.data.snowflake/*database-prefix-fn* (constantly "v4_")]
       (testing "Create DB DDL statements"
-        (is (= "DROP DATABASE IF EXISTS \"v3_test-data\"; CREATE DATABASE \"v3_test-data\";"
+        (is (= "DROP DATABASE IF EXISTS \"v4_test-data\"; CREATE DATABASE \"v4_test-data\";"
                (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition defs/test-data)))))
 
       (testing "Create Table DDL statements"
         (is (= (map
                 #(str/replace % #"\s+" " ")
-                ["DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"users\";"
-                 "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
+                ["DROP TABLE IF EXISTS \"v4_test-data\".\"PUBLIC\".\"users\";"
+                 "CREATE TABLE \"v4_test-data\".\"PUBLIC\".\"users\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
                 \"last_login\" TIMESTAMP_NTZ, \"password\" TEXT, PRIMARY KEY (\"id\")) ;"
-                 "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"categories\";"
-                 "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT NOT NULL,
+                 "DROP TABLE IF EXISTS \"v4_test-data\".\"PUBLIC\".\"categories\";"
+                 "CREATE TABLE \"v4_test-data\".\"PUBLIC\".\"categories\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT NOT NULL,
                 PRIMARY KEY (\"id\")) ;"
-                 "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"venues\";"
-                 "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"venues\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
+                 "DROP TABLE IF EXISTS \"v4_test-data\".\"PUBLIC\".\"venues\";"
+                 "CREATE TABLE \"v4_test-data\".\"PUBLIC\".\"venues\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
                 \"category_id\" INTEGER, \"latitude\" FLOAT, \"longitude\" FLOAT, \"price\" INTEGER, PRIMARY KEY (\"id\")) ;"
-                 "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"checkins\";"
-                 "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" (\"id\" INTEGER AUTOINCREMENT, \"date\" DATE,
+                 "DROP TABLE IF EXISTS \"v4_test-data\".\"PUBLIC\".\"checkins\";"
+                 "CREATE TABLE \"v4_test-data\".\"PUBLIC\".\"checkins\" (\"id\" INTEGER AUTOINCREMENT, \"date\" DATE,
                 \"user_id\" INTEGER, \"venue_id\" INTEGER, PRIMARY KEY (\"id\")) ;"
-                 "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"venues\" ADD CONSTRAINT \"egory_id_categories_-740504465\"
-                FOREIGN KEY (\"category_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\");"
-                 "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ckins_user_id_users_1638713823\"
-                FOREIGN KEY (\"user_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\");"
-                 "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ins_venue_id_venues_-833167948\"
-                FOREIGN KEY (\"venue_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"venues\" (\"id\");"])
+                 "ALTER TABLE \"v4_test-data\".\"PUBLIC\".\"venues\" ADD CONSTRAINT \"egory_id_categories_-740504465\"
+                FOREIGN KEY (\"category_id\") REFERENCES \"v4_test-data\".\"PUBLIC\".\"categories\" (\"id\");"
+                 "ALTER TABLE \"v4_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ckins_user_id_users_1638713823\"
+                FOREIGN KEY (\"user_id\") REFERENCES \"v4_test-data\".\"PUBLIC\".\"users\" (\"id\");"
+                 "ALTER TABLE \"v4_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ins_venue_id_venues_-833167948\"
+                FOREIGN KEY (\"venue_id\") REFERENCES \"v4_test-data\".\"PUBLIC\".\"venues\" (\"id\");"])
                (ddl/create-db-tables-ddl-statements :snowflake (-> (mt/get-dataset-definition defs/test-data)
-                                                                   (update :database-name #(str "v3_" %))))))))))
+                                                                   (update :database-name #(str "v4_" %))))))))))
 
 ;; TODO -- disabled because these are randomly failing, will figure out when I'm back from vacation. I think it's a
 ;; bug in the JDBC driver -- Cam
