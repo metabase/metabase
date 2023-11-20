@@ -70,9 +70,10 @@ function PreviousValueComparison({
   comparison,
   width,
   fontFamily,
-  fontSize,
   formatOptions,
 }) {
+  const fontSize = "0.875rem";
+
   const {
     comparisonType,
     percentChange,
@@ -184,7 +185,6 @@ export function SmartScalar({
   totalNumGridCols,
   fontFamily,
 }) {
-  const fontSize = "0.875rem";
   const scalarRef = useRef(null);
 
   const insights = rawSeries?.[0].data?.insights;
@@ -243,7 +243,7 @@ export function SmartScalar({
 
       <PreviousValueWrapper data-testid="scalar-previous-value">
         <PreviousValueComparison
-          {...{ comparison, width, fontFamily, fontSize, formatOptions }}
+          {...{ comparison, width, fontFamily, formatOptions }}
         />
       </PreviousValueWrapper>
     </ScalarWrapper>

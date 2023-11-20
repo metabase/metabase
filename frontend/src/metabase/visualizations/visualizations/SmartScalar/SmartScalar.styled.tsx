@@ -3,6 +3,7 @@ import styled from "@emotion/styled";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { Icon } from "metabase/core/components/Icon";
 import { space } from "metabase/styled-components/theme";
+import { isEmpty } from "metabase/lib/validate";
 
 // NIGHT-MODE TEXT HACK:
 // Our "fullscreen-night-text" className only supports one shade of text (white).
@@ -13,7 +14,7 @@ const detailsNumberOpacity = 0.7; // approximates color("text-light")
 export const Variation = styled.div`
   color: ${props => props.color};
   opacity: ${props =>
-    props.color == null ? detailsNumberOpacity * detailsOpacity : 1};
+    isEmpty(props.color) ? detailsNumberOpacity * detailsOpacity : 1};
   display: flex;
   align-items: center;
   max-width: 100%;
