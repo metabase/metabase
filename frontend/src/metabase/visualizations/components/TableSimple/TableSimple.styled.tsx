@@ -76,12 +76,8 @@ export const TableHeaderCellContent = styled.button<{
   justify-content: flex-start;
   width: 100%;
   flex-direction: ${props => (props.isRightAligned ? "row-reverse" : "row")};
-
-  //margin-left: ${props => (props.isRightAligned ? "auto" : "unset")};
-
   color: ${props => (props.isSorted ? color("brand") : color("text-medium"))};
   font-weight: 700;
-
   cursor: pointer;
 
   ${SortIcon} {
