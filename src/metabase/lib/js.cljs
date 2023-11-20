@@ -695,6 +695,16 @@
   [a-query stage-number expression-name an-expression-clause]
   (lib.core/expression a-query stage-number expression-name an-expression-clause))
 
+(defn ^:export expression-name
+  "Return the name of `an-expression-clause`."
+  [an-expression-clause]
+  (lib.core/expression-name an-expression-clause))
+
+(defn ^:export with-expression-name
+  "Return an new expressions clause like `an-expression-clause` but with name `new-name`."
+  [an-expression-clause new-name]
+  (lib.core/with-expression-name an-expression-clause new-name))
+
 (defn ^:export expressions
   "Get the expressions map from a given stage of a `query`."
   [a-query stage-number]

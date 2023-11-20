@@ -191,7 +191,7 @@ describe("ClickActionsPopover", function () {
                       "field",
                       ORDERS.ID,
                       {
-                        "base-type": "type/Integer",
+                        "base-type": "type/BigInteger",
                       },
                     ],
                   ],
@@ -214,7 +214,7 @@ describe("ClickActionsPopover", function () {
               ORDERS.TOTAL,
               "type/Float",
             ),
-            display: "line",
+            display: "table",
           },
         },
         {
@@ -225,7 +225,7 @@ describe("ClickActionsPopover", function () {
               ORDERS.QUANTITY,
               "type/Integer",
             ),
-            display: "line",
+            display: "table",
           },
         },
       ])(
@@ -514,6 +514,7 @@ function getSummarizedOverTimeResultDatasetQuery(
           "field",
           ORDERS.CREATED_AT,
           {
+            "base-type": "type/DateTime",
             "temporal-unit": "month",
           },
         ],
