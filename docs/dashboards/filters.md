@@ -86,17 +86,21 @@ A flexible filter type that will let you create either a dropdown menu or an inp
 
 Dashboard filters apply across all [dashboard tabs](./introduction.md#dashboard-tabs), though for each filter widget you add, you'll need to tell Metabase which column the filter should update for each card.
 
-Click on a card's dropdown menu to select the field that you want the widget to filter on. If there are other cards that also have the field you select, Metabase will automatically wire up the filter to those cards as well.
+Click on a card's dropdown menu to select the field that you want the widget to filter on.
 
 Here we've wired up a Text filter to the "Event types" card, telling Metabase that the column to filter on should be the `Analytics.Event.Button.Label` field:
 
 ![Wiring up a dashboard filter to a card](./images/wiring-cards.png)
 
-If there’s a card on your dashboard that you don’t want the filter to update, or that doesn’t make sense to use with the filter, that’s okay — Metabase will only apply the filter to the cards you select.
+## Auto-connecting filters to cards
+
+If there are other cards that also have the field you select, Metabase will automatically connect the filter to those cards as well (including cards on other tabs). If you later add a card with the selected field, Metabase will try to connect that filter to the new card as well.
+
+To undo this auto-connecting of cards, you could click on the toast that pops up when Metabase auto-connects the filters, or you could manually disconnect the cards by clicking on the X next to the connected field.
 
 ## Filtering dashboards with native/SQL questions
 
-If you're trying to filter native/SQL questions, you'll need to [add a bit of additional markup to your query](../questions/native-editor/sql-parameters.md) in order to use a dashboard filter with that question. For an in-depth article on this, check out [Adding filters to dashboards with SQL questions](https://www.metabase.com/learn/dashboards/filters).
+If you're trying to filter native/SQL questions, you'll need to [add a bit of additional markup to your query](../questions/native-editor/sql-parameters.md) in order to use a dashboard filter with that question. For an in-depth article on this, jcheck out [Adding filters to dashboards with SQL questions](https://www.metabase.com/learn/dashboards/filters).
 
 ## Wiring up dashboard filters to text cards
 
