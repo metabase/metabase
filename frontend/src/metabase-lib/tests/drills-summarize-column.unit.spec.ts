@@ -3,15 +3,25 @@ import {
   ORDERS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import * as Lib from "metabase-lib";
 import type { DrillThruType } from "metabase-lib";
+import * as Lib from "metabase-lib";
 import { drillThru } from "metabase-lib";
+import { getAvailableDrillByType } from "metabase-lib/test-helpers";
 import type {
   ApplyDrillTestCase,
+  ApplyDrillTestCaseWithCustomColumn,
   DrillDisplayInfoTestCase,
-} from "metabase-lib/tests/drills-common";
-import { getDrillsQueryParameters } from "metabase-lib/tests/drills-common";
-import { getAvailableDrillByType } from "metabase-lib/test-helpers";
+} from "./drills-common";
+import {
+  AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_COLUMNS,
+  AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_QUESTION,
+  AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES,
+  getDrillsQueryParameters,
+  ORDERS_WITH_CUSTOM_COLUMN_COLUMNS,
+  ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY,
+  ORDERS_WITH_CUSTOM_COLUMN_QUESTION,
+  ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES,
+} from "./drills-common";
 
 const DRILL_TYPE: DrillThruType = "drill-thru/summarize-column";
 
@@ -253,6 +263,78 @@ describe("drill-thru/summarize-column", () => {
         });
 
         const updatedQuery = drillThru(query, stageIndex, drill, ...drillArgs);
+
+        expect(Lib.toLegacyQuery(updatedQuery)).toEqual({
+          database: SAMPLE_DB_ID,
+          query: expectedQuery,
+          type: "query",
+        });
+      },
+    );
+
+    it.each<ApplyDrillTestCaseWithCustomColumn>([
+      {
+        clickType: "header",
+        columnName: "CustomColumn",
+        drillArgs: ["sum"],
+        queryType: "unaggregated",
+        expectedQuery: {
+          ...ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
+          aggregation: [
+            [
+              "sum",
+              ["expression", "CustomColumn", { "base-type": "type/Integer" }],
+            ],
+          ],
+        },
+      },
+      {
+        clickType: "header",
+        columnName: "CustomTax",
+        drillArgs: ["avg"],
+        queryType: "unaggregated",
+        expectedQuery: {
+          ...ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
+          aggregation: [
+            ["avg", ["expression", "CustomTax", { "base-type": "type/Float" }]],
+          ],
+        },
+      },
+    ])(
+      `should return correct result on "${DRILL_TYPE}" drill apply to $columnName on $clickType in query with custom column`,
+      ({
+        columnName,
+        clickType,
+        queryType,
+        drillArgs,
+        expectedQuery,
+        customQuestion,
+      }) => {
+        const { drill, stageIndex, query } = getAvailableDrillByType({
+          drillType: DRILL_TYPE,
+          clickType,
+          clickedColumnName: columnName,
+          ...(queryType === "unaggregated"
+            ? {
+                question: customQuestion || ORDERS_WITH_CUSTOM_COLUMN_QUESTION,
+                columns: ORDERS_WITH_CUSTOM_COLUMN_COLUMNS,
+                rowValues: ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES,
+              }
+            : {
+                question:
+                  customQuestion ||
+                  AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_QUESTION,
+                columns: AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_COLUMNS,
+                rowValues: AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES,
+              }),
+        });
+
+        const updatedQuery = drillThru(
+          query,
+          stageIndex,
+          drill,
+          ...(drillArgs || []),
+        );
 
         expect(Lib.toLegacyQuery(updatedQuery)).toEqual({
           database: SAMPLE_DB_ID,

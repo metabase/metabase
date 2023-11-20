@@ -6,25 +6,28 @@ import {
 import * as Lib from "metabase-lib";
 import type { DrillThruType } from "metabase-lib";
 import { drillThru } from "metabase-lib";
-import type {
-  ApplyDrillTestCase,
-  ApplyDrillTestCaseWithCustomColumn,
-  DrillDisplayInfoTestCase,
-} from "metabase-lib/tests/drills-common";
-import {
-  AGGREGATED_ORDERS_DATASET_QUERY,
-  getDrillsQueryParameters,
-  ORDERS_DATASET_QUERY,
-  ORDERS_WITH_CUSTOM_COLUMN_COLUMNS,
-  ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY,
-  ORDERS_WITH_CUSTOM_COLUMN_QUESTION,
-  ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES,
-} from "metabase-lib/tests/drills-common";
 import Question from "metabase-lib/Question";
 import {
   getAvailableDrillByType,
   SAMPLE_METADATA,
 } from "metabase-lib/test-helpers";
+import type {
+  ApplyDrillTestCase,
+  ApplyDrillTestCaseWithCustomColumn,
+  DrillDisplayInfoTestCase,
+} from "./drills-common";
+import {
+  AGGREGATED_ORDERS_DATASET_QUERY,
+  AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_COLUMNS,
+  AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY,
+  AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_QUESTION,
+  AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES,
+  getDrillsQueryParameters,
+  ORDERS_DATASET_QUERY,
+  ORDERS_WITH_CUSTOM_COLUMN_COLUMNS,
+  ORDERS_WITH_CUSTOM_COLUMN_QUESTION,
+  ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES,
+} from "./drills-common";
 
 const DRILL_TYPE: DrillThruType = "drill-thru/sort";
 
@@ -459,65 +462,76 @@ describe("drill-thru/sort", () => {
       },
     );
 
-    describe("with custom column", () => {
-      it.each<ApplyDrillTestCaseWithCustomColumn>([
-        {
-          // should support sorting for custom column
-          clickType: "header",
-          columnName: "avg",
-          drillArgs: ["asc"],
-          expectedQuery: {
-            ...ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
-            "order-by": [["asc", ["aggregation", 3]]],
-          },
+    it.each<ApplyDrillTestCaseWithCustomColumn>([
+      {
+        // should support sorting for custom column
+        clickType: "header",
+        columnName: "avg",
+        drillArgs: ["asc"],
+        queryType: "aggregated",
+        expectedQuery: {
+          ...AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
+          "order-by": [["asc", ["aggregation", 3]]],
         },
-        {
-          // should support sorting for custom column without table relation (metabase#34499)
-          clickType: "header",
-          columnName: "CustomColumn",
-          drillArgs: ["asc"],
-          expectedQuery: {
-            ...ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
-            "order-by": [
-              [
-                "asc",
-                ["expression", "CustomColumn", { "base-type": "type/Integer" }],
-              ],
+      },
+      {
+        // should support sorting for custom column without table relation
+        clickType: "header",
+        columnName: "CustomColumn",
+        drillArgs: ["asc"],
+        queryType: "aggregated",
+        expectedQuery: {
+          ...AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
+          "order-by": [
+            [
+              "asc",
+              ["expression", "CustomColumn", { "base-type": "type/Integer" }],
             ],
-          },
+          ],
         },
-      ])(
-        `should return correct result on "${DRILL_TYPE}" drill apply to $columnName on $clickType in query with custom column`,
-        ({
-          columnName,
+      },
+    ])(
+      `should return correct result on "${DRILL_TYPE}" drill apply to $columnName on $clickType in query with custom column`,
+      ({
+        columnName,
+        clickType,
+        queryType,
+        drillArgs,
+        expectedQuery,
+        customQuestion,
+      }) => {
+        const { drill, stageIndex, query } = getAvailableDrillByType({
+          drillType: DRILL_TYPE,
           clickType,
-          drillArgs,
-          expectedQuery,
-          customQuestion,
-        }) => {
-          const { drill, stageIndex, query } = getAvailableDrillByType({
-            drillType: DRILL_TYPE,
-            clickType,
-            clickedColumnName: columnName,
-            question: customQuestion || ORDERS_WITH_CUSTOM_COLUMN_QUESTION,
-            columns: ORDERS_WITH_CUSTOM_COLUMN_COLUMNS,
-            rowValues: ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES,
-          });
+          clickedColumnName: columnName,
+          ...(queryType === "unaggregated"
+            ? {
+                question: customQuestion || ORDERS_WITH_CUSTOM_COLUMN_QUESTION,
+                columns: ORDERS_WITH_CUSTOM_COLUMN_COLUMNS,
+                rowValues: ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES,
+              }
+            : {
+                question:
+                  customQuestion ||
+                  AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_QUESTION,
+                columns: AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_COLUMNS,
+                rowValues: AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES,
+              }),
+        });
 
-          const updatedQuery = drillThru(
-            query,
-            stageIndex,
-            drill,
-            ...(drillArgs || []),
-          );
+        const updatedQuery = drillThru(
+          query,
+          stageIndex,
+          drill,
+          ...(drillArgs || []),
+        );
 
-          expect(Lib.toLegacyQuery(updatedQuery)).toEqual({
-            database: SAMPLE_DB_ID,
-            query: expectedQuery,
-            type: "query",
-          });
-        },
-      );
-    });
+        expect(Lib.toLegacyQuery(updatedQuery)).toEqual({
+          database: SAMPLE_DB_ID,
+          query: expectedQuery,
+          type: "query",
+        });
+      },
+    );
   });
 });

@@ -28,7 +28,10 @@ import {
   PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { createMockColumn } from "metabase-types/api/mocks";
+import {
+  createMockColumn,
+  createMockCustomColumn,
+} from "metabase-types/api/mocks";
 import type * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
 import { DEFAULT_QUERY, SAMPLE_METADATA } from "metabase-lib/test-helpers";
@@ -300,9 +303,9 @@ export const AGGREGATED_PRODUCTS_ROW_VALUES: Record<
 };
 
 export const ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY: StructuredDatasetQuery = {
-  ...AGGREGATED_ORDERS_DATASET_QUERY,
+  ...ORDERS_DATASET_QUERY,
   query: {
-    ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+    ...ORDERS_DATASET_QUERY.query,
     expressions: {
       CustomColumn: ["+", 1, 1],
       CustomTax: [
@@ -317,14 +320,6 @@ export const ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY: StructuredDatasetQuery = {
         2,
       ],
     },
-    aggregation: [
-      ...(AGGREGATED_ORDERS_DATASET_QUERY.query.aggregation || []),
-      ["avg", ["expression", "CustomTax", { "base-type": "type/Number" }]],
-    ],
-    breakout: [
-      ...(AGGREGATED_ORDERS_DATASET_QUERY.query.breakout || []),
-      ["expression", "CustomColumn", { "base-type": "type/Integer" }],
-    ],
   },
 };
 
@@ -334,8 +329,96 @@ export const ORDERS_WITH_CUSTOM_COLUMN_QUESTION = Question.create({
 });
 
 export const ORDERS_WITH_CUSTOM_COLUMN_COLUMNS = {
+  ...ORDERS_COLUMNS,
+  CustomColumn: createMockCustomColumn({
+    base_type: "type/Integer",
+    name: "CustomColumn",
+    display_name: "CustomColumn",
+    expression_name: "CustomColumn",
+    field_ref: ["expression", "CustomColumn"],
+    source: "fields",
+    effective_type: "type/Integer",
+  }),
+  CustomTax: createMockCustomColumn({
+    base_type: "type/Float",
+    name: "CustomTax",
+    display_name: "CustomTax",
+    expression_name: "CustomTax",
+    field_ref: ["expression", "CustomTax"],
+    source: "fields",
+    effective_type: "type/Float",
+  }),
+};
+export const ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES = {
+  ...ORDERS_ROW_VALUES,
+  CustomColumn: 2,
+  CustomTax: 13.2,
+};
+
+export const AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY: StructuredDatasetQuery =
+  {
+    ...AGGREGATED_ORDERS_DATASET_QUERY,
+    query: {
+      ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+      expressions: {
+        CustomColumn: ["+", 1, 1],
+        OtherCustomColumn: ["+", 1, 1],
+        CustomTax: [
+          "+",
+          [
+            "field",
+            ORDERS.TAX,
+            {
+              "base-type": "type/Float",
+            },
+          ],
+          2,
+        ],
+      },
+      aggregation: [
+        ...(AGGREGATED_ORDERS_DATASET_QUERY.query.aggregation || []),
+        [
+          "avg",
+          [
+            "expression",
+            "CustomTax",
+            {
+              "base-type": "type/Number",
+            },
+          ],
+        ],
+        [
+          "sum",
+          [
+            "expression",
+            "OtherCustomColumn",
+            {
+              "base-type": "type/Integer",
+            },
+          ],
+        ],
+      ],
+      breakout: [
+        ...(AGGREGATED_ORDERS_DATASET_QUERY.query.breakout || []),
+        [
+          "expression",
+          "CustomColumn",
+          {
+            "base-type": "type/Integer",
+          },
+        ],
+      ],
+    },
+  };
+
+export const AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_QUESTION = Question.create({
+  metadata: SAMPLE_METADATA,
+  dataset_query: AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY,
+});
+
+export const AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_COLUMNS = {
   ...AGGREGATED_ORDERS_COLUMNS,
-  CustomColumn: createMockColumn({
+  CustomColumn: createMockCustomColumn({
     base_type: "type/Integer",
     name: "CustomColumn",
     display_name: "CustomColumn",
@@ -344,7 +427,7 @@ export const ORDERS_WITH_CUSTOM_COLUMN_COLUMNS = {
     source: "breakout",
     effective_type: "type/Integer",
   }),
-  avg: createMockColumn({
+  avg: createMockCustomColumn({
     base_type: "type/Float",
     name: "avg",
     display_name: "Average of CustomTax",
@@ -352,20 +435,37 @@ export const ORDERS_WITH_CUSTOM_COLUMN_COLUMNS = {
     field_ref: ["aggregation", 3],
     effective_type: "type/Float",
   }),
+  sum_2: createMockCustomColumn({
+    base_type: "type/Float",
+    name: "sum_2",
+    display_name: "Sum of OtherCustomColumn",
+    source: "aggregation",
+    field_ref: ["aggregation", 4],
+    effective_type: "type/Float",
+  }),
 };
-export const ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES = {
+export const AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES = {
   ...AGGREGATED_ORDERS_ROW_VALUES,
   CustomColumn: 2,
   avg: 13.2,
+  sum_2: 123,
 };
 
 export type ApplyDrillTestCaseWithCustomColumn = {
   clickType: "cell" | "header";
-  columnName: keyof typeof ORDERS_WITH_CUSTOM_COLUMN_COLUMNS;
-  drillArgs?: any[];
   customQuestion?: Question;
+  drillArgs?: any[];
   expectedQuery: StructuredQueryApi;
-};
+} & (
+  | {
+      queryType: "unaggregated";
+      columnName: keyof typeof ORDERS_WITH_CUSTOM_COLUMN_COLUMNS;
+    }
+  | {
+      queryType: "aggregated";
+      columnName: keyof typeof AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_COLUMNS;
+    }
+);
 
 export function getDrillsQueryParameters(
   queryType: "unaggregated" | "aggregated",

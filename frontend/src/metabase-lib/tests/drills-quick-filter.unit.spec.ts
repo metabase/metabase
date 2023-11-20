@@ -6,18 +6,26 @@ import {
 import * as Lib from "metabase-lib";
 import type { DrillThruType } from "metabase-lib";
 import { drillThru } from "metabase-lib";
-import type { ComparisonFilter } from "metabase-types/api";
+import type { ComparisonFilter, Filter } from "metabase-types/api";
+import { getAvailableDrillByType } from "metabase-lib/test-helpers";
 import type {
   ApplyDrillTestCase,
   DrillDisplayInfoTestCase,
-} from "metabase-lib/tests/drills-common";
+  ApplyDrillTestCaseWithCustomColumn,
+} from "./drills-common";
 import {
   AGGREGATED_ORDERS_DATASET_QUERY,
   AGGREGATED_ORDERS_ROW_VALUES,
+  AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_COLUMNS,
+  AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY,
+  AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_QUESTION,
+  AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES,
   getDrillsQueryParameters,
   ORDERS_ROW_VALUES,
-} from "metabase-lib/tests/drills-common";
-import { getAvailableDrillByType } from "metabase-lib/test-helpers";
+  ORDERS_WITH_CUSTOM_COLUMN_COLUMNS,
+  ORDERS_WITH_CUSTOM_COLUMN_QUESTION,
+  ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES,
+} from "./drills-common";
 
 const DRILL_TYPE: DrillThruType = "drill-thru/quick-filter";
 
@@ -223,6 +231,93 @@ describe("drill-thru/quick-filter", () => {
         });
 
         const updatedQuery = drillThru(query, stageIndex, drill, ...drillArgs);
+
+        expect(Lib.toLegacyQuery(updatedQuery)).toEqual({
+          database: SAMPLE_DB_ID,
+          query: expectedQuery,
+          type: "query",
+        });
+      },
+    );
+
+    it.each<ApplyDrillTestCaseWithCustomColumn>([
+      {
+        // using quick-filter on a custom column produces incorrect query due to to expression conversion to a field (metabase#34957)
+        clickType: "cell",
+        columnName: "CustomColumn",
+        drillArgs: [">"],
+        queryType: "aggregated",
+        expectedQuery: {
+          ...AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
+          filter: [
+            ">",
+            [
+              "expression",
+              "CustomColumn",
+              {
+                "base-type": "type/Integer",
+              },
+            ],
+            AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES.CustomColumn,
+          ] as Filter,
+        },
+      },
+      {
+        clickType: "cell",
+        columnName: "avg",
+        drillArgs: ["≠"],
+        queryType: "aggregated",
+        expectedQuery: {
+          filter: [
+            "!=",
+            [
+              "field",
+              "avg",
+              {
+                "base-type": "type/Float",
+              },
+            ],
+            AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES.avg,
+          ] as Filter,
+          "source-query":
+            AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
+        },
+      },
+    ])(
+      `should return correct result on "${DRILL_TYPE}" drill apply to $columnName on $clickType in query with custom column`,
+      ({
+        columnName,
+        clickType,
+        queryType,
+        drillArgs,
+        expectedQuery,
+        customQuestion,
+      }) => {
+        const { drill, stageIndex, query } = getAvailableDrillByType({
+          drillType: DRILL_TYPE,
+          clickType,
+          clickedColumnName: columnName,
+          ...(queryType === "unaggregated"
+            ? {
+                question: customQuestion || ORDERS_WITH_CUSTOM_COLUMN_QUESTION,
+                columns: ORDERS_WITH_CUSTOM_COLUMN_COLUMNS,
+                rowValues: ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES,
+              }
+            : {
+                question:
+                  customQuestion ||
+                  AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_QUESTION,
+                columns: AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_COLUMNS,
+                rowValues: AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES,
+              }),
+        });
+
+        const updatedQuery = drillThru(
+          query,
+          stageIndex,
+          drill,
+          ...(drillArgs || []),
+        );
 
         expect(Lib.toLegacyQuery(updatedQuery)).toEqual({
           database: SAMPLE_DB_ID,
