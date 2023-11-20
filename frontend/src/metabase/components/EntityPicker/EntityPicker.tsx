@@ -11,33 +11,41 @@ interface EntityPickerProps {
   initialState?: any[];
 }
 
-export function EntityPicker({ onFolderSelect, onItemSelect, folderModel, itemModel, initialState = [] }: EntityPickerProps) {
-  const [stack, setStack] = useState<{
-    items: any[],
-    selectedId: any
-  }[]>(initialState);
+export function EntityPicker({
+  onFolderSelect,
+  onItemSelect,
+  folderModel,
+  itemModel,
+  initialState = [],
+}: EntityPickerProps) {
+  const [stack, setStack] = useState<
+    {
+      items: any[];
+      selectedId: any;
+    }[]
+  >(initialState);
 
   const handleFolderSelect = async (folder: any, levelIndex: number) => {
     const children = await onFolderSelect(folder);
 
     // FIXME do better
-    const restOfStack = stack.slice(0, levelIndex+1);
+    const restOfStack = stack.slice(0, levelIndex + 1);
     restOfStack[restOfStack.length - 1].selectedId = folder.id;
 
-    setStack([...restOfStack, {items: children, selectedId: null}]);
+    setStack([...restOfStack, { items: children, selectedId: null }]);
   };
 
   const handleItemSelect = (item: any) => {
     onItemSelect(item);
-  }
+  };
 
   const handleClick = (item: any, levelIndex: number) => {
-    if (item.model === folderModel) {
+    if (folderModel.includes(item.model)) {
       handleFolderSelect(item, levelIndex);
-    } else if (item.model === itemModel){
+    } else if (item.model === itemModel) {
       handleItemSelect(item);
     }
-  }
+  };
 
   return (
     <Modal title="Entity Picker" opened onClose={() => null} size="xl">
@@ -46,43 +54,50 @@ export function EntityPicker({ onFolderSelect, onItemSelect, folderModel, itemMo
           <ItemList
             // key={levelIndex} // FIXME: bad
             items={level.items}
-            onClick={(item) => handleClick(item, levelIndex)}
+            onClick={item => handleClick(item, levelIndex)}
             selectedId={level.selectedId}
             folderModel={folderModel}
           />
         ))}
-
       </Flex>
     </Modal>
-  )
+  );
 }
 
-
 function ItemList({
-  items, onClick, selectedId, folderModel
+  items,
+  onClick,
+  selectedId,
+  folderModel,
 }: {
-  items: any[], onClick: (item: any) => void, selectedId: number, folderModel: string
+  items: any[];
+  onClick: (item: any) => void;
+  selectedId: number;
+  folderModel: string;
 }) {
   if (!items) {
     return null;
- }
+  }
 
   return (
     <div>
       {items.map(item => {
-        const isFolder = item.model === folderModel;
+        const isFolder = folderModel.includes(item.model);
         const isSelected = isFolder && item.id === selectedId;
         return (
           <div key={item.model + item.id}>
-            <Button onClick={() => onClick(item)} variant={isSelected ? 'filled' : 'default'} fullWidth mb="sm">
-              <Icon name={isFolder ? 'folder' : 'table'} />
-              <Text ml="sm">
-                {item.name}
-              </Text>
+            <Button
+              onClick={() => onClick(item)}
+              variant={isSelected ? "filled" : "default"}
+              fullWidth
+              mb="sm"
+            >
+              <Icon name={isFolder ? "folder" : "table"} />
+              <Text ml="sm">{item.name}</Text>
             </Button>
           </div>
-        )
+        );
       })}
     </div>
-  )
+  );
 }
