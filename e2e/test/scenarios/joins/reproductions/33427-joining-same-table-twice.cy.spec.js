@@ -25,8 +25,6 @@ describe("issue 33427", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("PUT", "/api/card/*").as("updateCard");
-    cy.intercept("POST", `/api/dataset`).as("dataset");
   });
 
   it("should display proper column names in the fields picker (metabase#33427)", () => {
