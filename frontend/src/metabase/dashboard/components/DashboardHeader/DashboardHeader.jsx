@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import _, { get } from "underscore";
+import _ from "underscore";
 
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 
