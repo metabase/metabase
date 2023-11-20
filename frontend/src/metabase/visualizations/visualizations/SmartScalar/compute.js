@@ -41,31 +41,33 @@ function computePreviousPeriodComparison({
   const i = rows.findLastIndex(
     (row, i) => i < rows.length - 1 && !isEmpty(row[metricIndex]),
   );
-  const date = rows[i]?.[dimensionIndex];
-  const value = rows[i]?.[metricIndex];
-  const change = !isEmpty(value) ? computeChange(value, nextValue) : null;
+  const prevDate = rows[i]?.[dimensionIndex];
+  const prevValue = rows[i]?.[metricIndex];
+  const percentChange = !isEmpty(prevValue)
+    ? computeChange(prevValue, nextValue)
+    : null;
 
   const dateUnitDisplay = Lib.describeTemporalUnit(dateUnit).toLowerCase();
-  const datesAreContinuous =
-    date &&
+  const datesAreSequential =
+    !isEmpty(prevDate) &&
     moment
-      .utc(date)
+      .utc(prevDate)
       .startOf(dateUnit)
       .add(1, dateUnit)
       .isSame(moment.utc(nextDate).startOf(dateUnit));
 
   const title =
-    isEmpty(date) || datesAreContinuous
+    isEmpty(prevDate) || datesAreSequential
       ? t`previous ${dateUnitDisplay}`
-      : formatDateTimeRangeWithUnit([date], dateUnit, { compact: true }); // FIXME: elide part of the prevDate in common with lastDate
+      : formatDateTimeRangeWithUnit([prevDate], dateUnit, { compact: true }); // FIXME: elide part of the prevDate in common with lastDate
 
-  const { type, changeArrow, changeStr, valueStr } = isEmpty(value)
+  const { type, changeArrow, changeStr, valueStr } = isEmpty(prevValue)
     ? {
         type: PREVIOUS_VALUE_OPTIONS.MISSING,
         changeStr: t`N/A`,
         valueStr: t`(empty)`,
       }
-    : change === 0
+    : percentChange === 0
     ? {
         type: PREVIOUS_VALUE_OPTIONS.SAME,
         changeStr: t`No change`,
@@ -73,9 +75,9 @@ function computePreviousPeriodComparison({
       }
     : {
         type: PREVIOUS_VALUE_OPTIONS.CHANGED,
-        changeArrow: change < 0 ? "↓" : "↑",
-        changeStr: formatChange(change),
-        valueStr: formatValue(value, formatOptions),
+        changeArrow: percentChange < 0 ? "↓" : "↑",
+        changeStr: formatChange(percentChange),
+        valueStr: formatValue(prevValue, formatOptions),
       };
 
   const arrowColorName = !settings["scalar.switch_positive_negative"]
@@ -85,8 +87,8 @@ function computePreviousPeriodComparison({
 
   return {
     type,
-    change,
-    value,
+    percentChange,
+    prevValue,
     title,
     changeColor,
     changeArrow,
