@@ -757,9 +757,8 @@
                                                                             :breakout     [[:field field-id nil]]}}
                                                  :visualization_settings
                                                  {:pivot_table.column_split
-                                                  {:columns []
-                                                   :rows    [["field" pf1 nil]
-                                                             ["field" pf2 nil]]
+                                                  {:columns [["field" pf1 nil]]
+                                                   :rows    [["field" pf2 nil]]
                                                    :values  [["aggregation" 0]]}
                                                   :column_settings
                                                   {(format "[\"ref\",[\"field\",%s,null]]" pf1)
@@ -773,8 +772,10 @@
               (let [viz (:visualization_settings
                          (t2/select-one Card :entity_id (:entity_id card)))]
                 (is (contains? viz :pivot_table.column_split))
-                (is (= 2
-                       (count (get-in viz [:pivot_table.column_split :rows]))))
+                (is (=? [[:field int? nil]]
+                        (get-in viz [:pivot_table.column_split :rows])))
+                (is (=? [[:field int? nil]]
+                       (get-in viz [:pivot_table.column_split :columns])))
                 (is (= "descending"
                        (get-in viz [:column_settings
                                     (format "[\"ref\",[\"field\",%s,null]]" pf1)
