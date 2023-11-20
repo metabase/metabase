@@ -97,9 +97,9 @@ function computePreviousPeriodComparison({
       prevValue,
     });
 
-  const arrowColorName = !settings["scalar.switch_positive_negative"]
-    ? { "↓": "error", "↑": "success" }
-    : { "↓": "success", "↑": "error" };
+  const arrowColorName = settings["scalar.switch_positive_negative"]
+    ? { "↓": "success", "↑": "error" }
+    : { "↓": "error", "↑": "success" };
   const changeColor = color(arrowColorName[changeArrow]);
 
   return {
