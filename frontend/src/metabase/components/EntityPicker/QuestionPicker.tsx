@@ -15,6 +15,10 @@ interface QuestionPickerProps {
 const collectionList = GET("/api/collection/:collection/items");
 const collectionAPI = GET("/api/collection/:id");
 
+const sortFoldersFirst = (a: any, b: any) => {
+  return a.model === 'collection' ? -1 : 1;
+}
+
 export function QuestionPicker({ onItemSelect, initialCollectionId }: QuestionPickerProps) {
   const [ initialState, setInitialState ] = useState<any>();
 
@@ -23,7 +27,7 @@ export function QuestionPicker({ onItemSelect, initialCollectionId }: QuestionPi
      ? await collectionList({collection: 'root' }, {model: ["question", "collection" ]})
      : await collectionList({collection: folder.id }, { model: ["question", "collection" ]});
 
-    return items.data as Collection[];
+    return items.data.sort(sortFoldersFirst) as Collection[];
   };
 
   useEffect(() => {
@@ -35,14 +39,17 @@ export function QuestionPicker({ onItemSelect, initialCollectionId }: QuestionPi
 
         const stack = await Promise.all(path.map(async (id, index) => {
           return {
-            items: await onFolderSelect({ id }),
+            items: (await onFolderSelect({ id })).sort(sortFoldersFirst),
             selectedId: path[index+1] ?? null
           }
         }));
         setInitialState(stack);
       });
     } else {
-      setInitialState([]);
+      onFolderSelect({ id: 'root' }).then((items) => {
+        items.sort(sortFoldersFirst);
+        setInitialState([{ items, selectedId: null }]);
+      });
     }
   }, [initialCollectionId]);
 

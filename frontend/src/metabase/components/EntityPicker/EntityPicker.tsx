@@ -1,7 +1,10 @@
 import { useState } from "react";
 
-import { Modal, Flex, Button, Text } from "metabase/ui";
+import { NavLink } from "@mantine/core"; // TODO, get this into metabase-ui
+
+import { Flex, Text, Box } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
+import { PickerColumn } from "./EntityPicker.styled";
 
 interface EntityPickerProps {
   onFolderSelect: (folder?: any) => Promise<any[]>;
@@ -42,25 +45,23 @@ export function EntityPicker({
   const handleClick = (item: any, levelIndex: number) => {
     if (folderModel.includes(item.model)) {
       handleFolderSelect(item, levelIndex);
-    } else if (item.model === itemModel) {
+    } else  {
       handleItemSelect(item);
     }
   };
 
   return (
-    <Modal title="Entity Picker" opened onClose={() => null} size="xl">
-      <Flex gap="lg">
-        {stack.map((level, levelIndex) => (
-          <ItemList
-            // key={levelIndex} // FIXME: bad
-            items={level.items}
-            onClick={item => handleClick(item, levelIndex)}
-            selectedId={level.selectedId}
-            folderModel={folderModel}
-          />
-        ))}
-      </Flex>
-    </Modal>
+    <Flex h="70vh" w="80vw">
+      {stack.map((level, levelIndex) => (
+        <ItemList
+          // key={levelIndex} // FIXME: bad
+          items={level.items}
+          onClick={item => handleClick(item, levelIndex)}
+          selectedId={level.selectedId}
+          folderModel={folderModel}
+        />
+      ))}
+    </Flex>
   );
 }
 
@@ -79,25 +80,31 @@ function ItemList({
     return null;
   }
 
+  if(!items.length) {
+    return (
+      <Box>
+        <Text>No items</Text>
+      </Box>
+    )
+  }
+
   return (
-    <div>
+    <PickerColumn>
       {items.map(item => {
         const isFolder = folderModel.includes(item.model);
         const isSelected = isFolder && item.id === selectedId;
         return (
-          <div key={item.model + item.id}>
-            <Button
+          <div>
+            <NavLink
+              label={item.name}
+              active={isSelected}
+              icon={<Icon name={isFolder ? "folder" : "table"} />}
               onClick={() => onClick(item)}
-              variant={isSelected ? "filled" : "default"}
-              fullWidth
-              mb="sm"
-            >
-              <Icon name={isFolder ? "folder" : "table"} />
-              <Text ml="sm">{item.name}</Text>
-            </Button>
+              variant="filled"
+            />
           </div>
         );
       })}
-    </div>
+    </PickerColumn>
   );
 }
