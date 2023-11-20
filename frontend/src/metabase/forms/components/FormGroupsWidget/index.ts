@@ -1,1 +1,1 @@
-export * from "./FormGroupWidget";
+export * from "./FormGroupsWidget";

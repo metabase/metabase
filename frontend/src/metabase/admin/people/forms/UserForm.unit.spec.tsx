@@ -69,7 +69,7 @@ describe("UserForm", () => {
         "bobby.tables@metabase.com",
       );
       // This isn't a proper form input, so we need to grab the label specifically,
-      // And can ensure the proper default group is applies
+      // And can ensure the proper default group is applied
       expect(await screen.findByText("Groups")).toBeInTheDocument();
       expect(await screen.findByText("foo")).toBeInTheDocument();
 
