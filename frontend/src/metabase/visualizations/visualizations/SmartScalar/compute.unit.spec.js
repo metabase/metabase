@@ -63,7 +63,7 @@ describe("SmartScalar > compute", () => {
     const series = ({ rows }) => [{ data: { rows, cols } }];
     const settings = { "scalar.field": "Count" };
 
-    it.each([
+    const testCases = [
       {
         description: "should correctly display percent increase",
         rows: [
@@ -146,7 +146,9 @@ describe("SmartScalar > compute", () => {
         dateUnit: null,
         expected: "300; Nov 1, 2019; ↑ 200% vs. Sep 1, 2019: 100",
       },
-    ])("$description", ({ rows, expected, dateUnit }) => {
+    ];
+
+    it.each(testCases)("$description", ({ rows, expected, dateUnit }) => {
       const insights = [
         { unit: dateUnit, col: "Count" },
         { unit: dateUnit, col: "Sum" },
