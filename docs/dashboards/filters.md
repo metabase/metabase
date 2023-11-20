@@ -102,7 +102,7 @@ If you're trying to filter native/SQL questions, you'll need to [add a bit of ad
 
 You can even wire up filters to text cards, but only if [the text card includes a variable](./introduction.md#including-variables-in-text-cards).
 
-## Editing a filter widget
+## Editing a filter
 
 To edit a filter's settings:
 
