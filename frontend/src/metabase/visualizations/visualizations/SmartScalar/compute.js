@@ -10,31 +10,33 @@ import { isDate } from "metabase-lib/types/utils/isa";
 
 const FALLBACK_DATE_UNIT = "day";
 
-// compute the percent change between two values (a → b)
-export function computeChange(a, b) {
-  if (a === 0) {
+// compute the percent change between two values (prevVal → nextVal)
+export function computeChange(prevVal, nextVal) {
+  if (prevVal === 0) {
     // a   b     %
     // 0 → - = -∞%
     // 0 → + =  ∞%
     // 0 → 0 =  0%
-    return 0 < b ? Infinity : b < 0 ? -Infinity : 0;
+    return 0 < nextVal ? Infinity : nextVal < 0 ? -Infinity : 0;
   }
-  if (b === 0) {
+  if (nextVal === 0) {
     // a   b       %
     // - → 0 = -100%
     // + → 0 = -100%
     return -1;
   }
-  if (0 < a) {
+  if (0 < prevVal) {
     //  a   b   %
     //  + → + = (b-a)/a
     //  + → - = (b-a)/a
-    return (b - a) / a;
+    return (nextVal - prevVal) / prevVal;
   }
   // a   b     b   a
   // - → - =  [+ → +]
   // - → + = -[+ → -]
-  return b < 0 ? computeChange(-b, -a) : -computeChange(b, a);
+  return nextVal < 0
+    ? computeChange(-nextVal, -prevVal)
+    : -computeChange(nextVal, prevVal);
 }
 
 export const PREVIOUS_VALUE_MISSING = "PREVIOUS_VALUE_MISSING";
