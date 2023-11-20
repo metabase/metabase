@@ -58,3 +58,15 @@ export function expressionClauseForLegacyExpression(
 ): ExpressionClause {
   return ML.expression_clause_for_legacy_expression(query, stageIndex, mbql);
 }
+
+export function LegacyExpressionForExpressionClause(
+  query: Query,
+  stageIndex: number,
+  expressionClause: ExpressionClause,
+): any {
+  return ML.legacy_expression_for_expression_clause(
+    query,
+    stageIndex,
+    expressionClause,
+  );
+}

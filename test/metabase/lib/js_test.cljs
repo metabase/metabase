@@ -141,11 +141,15 @@
   (is (= "isManyPks"
          (#'lib.js/cljs-key->js-key :many-pks?))))
 
-(deftest ^:parallel expression-clause-for-legacy-expression-test
+(deftest ^:parallel expression-clause-<->-legacy-expression-test
   (let [query (-> lib.tu/venues-query
                   (lib/expression "double-price" (lib/* (meta/field-metadata :venues :price) 2))
                   (lib/aggregate (lib/sum [:expression {:lib/uuid (str (random-uuid))} "double-price"])))
         agg-uuid (-> query lib/aggregations first lib.options/uuid)
-        legacy-expr [:> [:aggregation 0] 100]]
-    (is (=? [:> {} [:aggregation {} agg-uuid] 100]
-            (lib.js/expression-clause-for-legacy-expression query -1 legacy-expr)))))
+        legacy-expr [:> [:aggregation 0] 100]
+        pmbql-expr (lib.js/expression-clause-for-legacy-expression query -1 legacy-expr)
+        legacy-expr' (lib.js/legacy-expression-for-expression-clause query -1 pmbql-expr)]
+    (testing "from legacy expression"
+      (is (=? [:> {} [:aggregation {} agg-uuid] 100] pmbql-expr)))
+    (testing "from pMBQL expression"
+      (is (=? legacy-expr legacy-expr')))))

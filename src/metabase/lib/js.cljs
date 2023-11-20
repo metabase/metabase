@@ -1044,3 +1044,9 @@
   [a-query stage-number legacy-expression]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
     (lib.convert/->pMBQL legacy-expression)))
+
+(defn ^:export legacy-expression-for-expression-clause
+  "Create a legacy expression from `an-expression-clause` at stage `stage-number` of `a-query`."
+  [a-query stage-number an-expression-clause]
+  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
+    (lib.convert/->legacy-MBQL an-expression-clause)))
