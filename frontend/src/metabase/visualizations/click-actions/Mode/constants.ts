@@ -5,6 +5,7 @@ import { SummarizeColumnByTimeDrill } from "metabase/visualizations/click-action
 import { SortDrill } from "metabase/visualizations/click-actions/drills/mlv2/SortDrill";
 import { ZoomBinsDrill } from "metabase/visualizations/click-actions/drills/mlv2/ZoomBinsDrill";
 import { ZoomGeoDrill } from "metabase/visualizations/click-actions/drills/mlv2/ZoomGeoDrill";
+import { ZoomTimeseriesDrill } from "metabase/visualizations/click-actions/drills/mlv2/ZoomTimeseriesDrill";
 
 export const MODE_TYPE_DEFAULT = "default";
 export const MODE_TYPE_NATIVE = "native";
@@ -42,5 +43,5 @@ export const DRILL_TYPE_TO_HANDLER_MAP: Record<
   "drill-thru/underlying-records": null, // UnderlyingRecordsDrill,
   "drill-thru/zoom-in.bins": ZoomBinsDrill,
   "drill-thru/zoom-in.geo": ZoomGeoDrill,
-  "drill-thru/zoom-in.timeseries": null,
+  "drill-thru/zoom-in.timeseries": ZoomTimeseriesDrill,
 };
