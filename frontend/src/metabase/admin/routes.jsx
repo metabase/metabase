@@ -130,7 +130,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           </Route>
 
           <Route path="" component={PeopleListingApp}>
-            <ModalRoute path="new" modal={NewUserModal} />
+            <Route path="new" component={NewUserModal} />
           </Route>
 
           <Route path=":userId" component={PeopleListingApp}>

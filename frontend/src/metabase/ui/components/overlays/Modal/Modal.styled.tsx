@@ -18,6 +18,14 @@ export const getModalOverrides = (): MantineThemeOverride["components"] => ({
         backgroundColor: theme.fn.rgba(theme.colors.bg[3], 0.6),
       },
     }),
+    defaultProps: {
+      centered: true,
+      size: "lg",
+      shadow: "md",
+      radius: "sm",
+      withinPortal: true,
+      padding: "2rem",
+    },
   },
   ModalRoot: {
     defaultProps: {
