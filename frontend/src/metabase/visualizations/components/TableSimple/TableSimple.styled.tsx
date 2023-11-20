@@ -85,7 +85,7 @@ export const TableHeaderCellContent = styled.button<{
   cursor: pointer;
 
   ${SortIcon} {
-    opacity: ${props => (props.isSorted ? 1 : 0.2)};
+    opacity: ${props => (props.isSorted ? 1 : 0.5)};
   }
 
   &:hover {
