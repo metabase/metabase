@@ -1,5 +1,5 @@
-(ns metabase.task.truncate-audit-log.interface
-  "Common definitions for the OSS and EE implementations of `truncate-audit-log`"
+(ns metabase.task.truncate-audit-tables.interface
+  "Common definitions for the OSS and EE implementations of `truncate-audit-tables`"
   (:require
    [metabase.config :as config]
    [metabase.models.setting.multi-setting :refer [define-multi-setting]]
