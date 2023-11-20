@@ -6,6 +6,7 @@ import { formatValue } from "metabase/lib/formatting/value";
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
 import { color } from "metabase/lib/colors";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
+import { isEmpty } from "metabase/lib/validate";
 import { isDate } from "metabase-lib/types/utils/isa";
 
 const FALLBACK_DATE_UNIT = "day";
@@ -38,11 +39,11 @@ function computePreviousPeriodComparison({
   settings,
 }) {
   const i = rows.findLastIndex(
-    (row, i) => i < rows.length - 1 && row[metricIndex] != null,
+    (row, i) => i < rows.length - 1 && !isEmpty(row[metricIndex]),
   );
   const date = rows[i]?.[dimensionIndex];
   const value = rows[i]?.[metricIndex];
-  const change = value != null ? computeChange(value, nextValue) : null;
+  const change = !isEmpty(value) ? computeChange(value, nextValue) : null;
 
   const dateUnitDisplay = Lib.describeTemporalUnit(dateUnit).toLowerCase();
   const datesAreContinuous =
@@ -54,29 +55,28 @@ function computePreviousPeriodComparison({
       .isSame(moment.utc(nextDate).startOf(dateUnit));
 
   const title =
-    date == null || datesAreContinuous
+    isEmpty(date) || datesAreContinuous
       ? t`previous ${dateUnitDisplay}`
       : formatDateTimeRangeWithUnit([date], dateUnit, { compact: true }); // FIXME: elide part of the prevDate in common with lastDate
 
-  const { type, changeArrow, changeStr, valueStr } =
-    value == null
-      ? {
-          type: PREVIOUS_VALUE_OPTIONS.MISSING,
-          changeStr: t`N/A`,
-          valueStr: t`(empty)`,
-        }
-      : change === 0
-      ? {
-          type: PREVIOUS_VALUE_OPTIONS.SAME,
-          changeStr: t`No change`,
-          valueStr: "",
-        }
-      : {
-          type: PREVIOUS_VALUE_OPTIONS.CHANGED,
-          changeArrow: change < 0 ? "↓" : "↑",
-          changeStr: formatChange(change),
-          valueStr: formatValue(value, formatOptions),
-        };
+  const { type, changeArrow, changeStr, valueStr } = isEmpty(value)
+    ? {
+        type: PREVIOUS_VALUE_OPTIONS.MISSING,
+        changeStr: t`N/A`,
+        valueStr: t`(empty)`,
+      }
+    : change === 0
+    ? {
+        type: PREVIOUS_VALUE_OPTIONS.SAME,
+        changeStr: t`No change`,
+        valueStr: "",
+      }
+    : {
+        type: PREVIOUS_VALUE_OPTIONS.CHANGED,
+        changeArrow: change < 0 ? "↓" : "↑",
+        changeStr: formatChange(change),
+        valueStr: formatValue(value, formatOptions),
+      };
 
   const arrowColorName = !settings["scalar.switch_positive_negative"]
     ? { "↓": "error", "↑": "success" }
@@ -121,7 +121,7 @@ export function computeTrend(series, insights, settings) {
   const i = rows.length - 1;
   const date = rows[i]?.[dimensionIndex];
   const value = rows[i]?.[metricIndex];
-  if (value == null) {
+  if (isEmpty(value)) {
     return null;
   }
 
