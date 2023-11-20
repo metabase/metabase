@@ -25,9 +25,11 @@ export function computeChange(prevVal, nextVal) {
   return (nextVal - prevVal) / Math.abs(prevVal);
 }
 
-export const PREVIOUS_VALUE_MISSING = "PREVIOUS_VALUE_MISSING";
-export const PREVIOUS_VALUE_SAME = "PREVIOUS_VALUE_SAME";
-export const PREVIOUS_VALUE_CHANGED = "PREVIOUS_VALUE_CHANGED";
+export const PREVIOUS_VALUE_OPTIONS = {
+  MISSING: "PREVIOUS_VALUE_MISSING",
+  SAME: "PREVIOUS_VALUE_SAME",
+  CHANGED: "PREVIOUS_VALUE_CHANGED",
+};
 
 function computePreviousPeriodComparison({
   rows,
@@ -63,18 +65,18 @@ function computePreviousPeriodComparison({
   const { type, changeArrow, changeStr, valueStr } =
     value == null
       ? {
-          type: PREVIOUS_VALUE_MISSING,
+          type: PREVIOUS_VALUE_OPTIONS.MISSING,
           changeStr: t`N/A`,
           valueStr: t`(empty)`,
         }
       : change === 0
       ? {
-          type: PREVIOUS_VALUE_SAME,
+          type: PREVIOUS_VALUE_OPTIONS.SAME,
           changeStr: t`No change`,
           valueStr: "",
         }
       : {
-          type: PREVIOUS_VALUE_CHANGED,
+          type: PREVIOUS_VALUE_OPTIONS.CHANGED,
           changeArrow: change < 0 ? "↓" : "↑",
           changeStr: formatChange(change),
           valueStr: formatValue(value, formatOptions),

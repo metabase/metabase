@@ -51,7 +51,7 @@ import {
   getValueWidth,
   isPeriodVisible,
 } from "./utils";
-import { computeTrend, PREVIOUS_VALUE_CHANGED } from "./compute";
+import { computeTrend, PREVIOUS_VALUE_OPTIONS } from "./compute";
 
 const ScalarPeriod = ({ lines = 2, period, onClick }) => (
   <ScalarTitleContainer data-testid="scalar-period" lines={lines}>
@@ -79,7 +79,7 @@ function PreviousValueComparison({
   const arrowIconName = { "↓": "arrow_down", "↑": "arrow_up" }[changeArrow];
 
   const fittedChangeDisplay =
-    type === PREVIOUS_VALUE_CHANGED
+    type === PREVIOUS_VALUE_OPTIONS.CHANGED
       ? formatChangeAutoPrecision(change, {
           fontFamily,
           fontWeight: 900,
@@ -105,7 +105,7 @@ function PreviousValueComparison({
 
   const valueCandidates = [
     display.value,
-    ...(type === PREVIOUS_VALUE_CHANGED
+    ...(type === PREVIOUS_VALUE_OPTIONS.CHANGED
       ? [formatValue(value, { ...formatOptions, compact: true })]
       : []),
     "",
