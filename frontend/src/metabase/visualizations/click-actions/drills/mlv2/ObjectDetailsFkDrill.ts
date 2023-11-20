@@ -12,18 +12,21 @@ export const ObjectDetailsFkDrill: Drill<Lib.FKDetailsDrillThruInfo> = ({
     return [];
   }
 
-  const { objectId, "manyPks?": hasManyPKColumns } = drillDisplayInfo;
+  const { objectId, isManyPks } = drillDisplayInfo;
 
   return [
     {
-      name: "object-detail",
+      name: "object-detail-fk",
       section: "details",
       title: t`View details`,
       buttonType: "horizontal",
       icon: "expand",
       default: true,
       question: () => applyDrill(drill, objectId),
-      ...getObjectDetailsActionExtraData({ objectId, hasManyPKColumns }),
+      ...getObjectDetailsActionExtraData({
+        objectId,
+        isManyPks,
+      }),
     },
   ];
 };

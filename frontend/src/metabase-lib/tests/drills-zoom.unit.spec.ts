@@ -2,6 +2,8 @@ import type { DrillThruType } from "metabase-lib";
 import type { DrillDisplayInfoTestCase } from "metabase-lib/tests/drills-common";
 import {
   getDrillsQueryParameters,
+  ORDERS_COLUMNS,
+  ORDERS_QUESTION_NOT_EDITABLE,
   ORDERS_ROW_VALUES,
 } from "metabase-lib/tests/drills-common";
 import { getAvailableDrillByType } from "metabase-lib/test-helpers";
@@ -81,5 +83,20 @@ describe("drill-thru/zoom", () => {
         expect(drillDisplayInfo).toEqual(expectedParameters);
       },
     );
+
+    it('should not return "drill-thru/zoom" drill config for not editable query', () => {
+      const drillType = "drill-thru/zoom";
+
+      expect(() =>
+        getAvailableDrillByType({
+          drillType,
+          clickType: "cell",
+          clickedColumnName: "PRODUCT_ID",
+          question: ORDERS_QUESTION_NOT_EDITABLE,
+          columns: ORDERS_COLUMNS,
+          rowValues: ORDERS_ROW_VALUES,
+        }),
+      ).toThrow(`Failed to find ${drillType} drill`);
+    });
   });
 });

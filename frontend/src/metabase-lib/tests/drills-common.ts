@@ -6,14 +6,23 @@ import type {
 } from "metabase-types/api";
 import {
   createOrdersCreatedAtDatasetColumn,
+  createOrdersCreatedAtField,
   createOrdersDiscountDatasetColumn,
+  createOrdersDiscountField,
   createOrdersIdDatasetColumn,
   createOrdersProductIdDatasetColumn,
+  createOrdersProductIdField,
   createOrdersQuantityDatasetColumn,
+  createOrdersQuantityField,
   createOrdersSubtotalDatasetColumn,
+  createOrdersSubtotalField,
+  createOrdersTable,
   createOrdersTaxDatasetColumn,
+  createOrdersTaxField,
   createOrdersTotalDatasetColumn,
+  createOrdersTotalField,
   createOrdersUserIdDatasetColumn,
+  createOrdersUserIdField,
   createProductsCategoryDatasetColumn,
   createProductsCreatedAtDatasetColumn,
   createProductsEanDatasetColumn,
@@ -22,6 +31,7 @@ import {
   createProductsRatingDatasetColumn,
   createProductsTitleDatasetColumn,
   createProductsVendorDatasetColumn,
+  createSampleDatabase,
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
@@ -30,6 +40,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { createMockColumn } from "metabase-types/api/mocks";
 import type * as Lib from "metabase-lib";
+import { createMockMetadata } from "__support__/metadata";
 import Question from "metabase-lib/Question";
 import { DEFAULT_QUERY, SAMPLE_METADATA } from "metabase-lib/test-helpers";
 
@@ -366,6 +377,108 @@ export type ApplyDrillTestCaseWithCustomColumn = {
   customQuestion?: Question;
   expectedQuery: StructuredQueryApi;
 };
+
+export const ORDERS_QUESTION_NOT_EDITABLE = Question.create({
+  metadata: createMockMetadata({
+    databases: [
+      createSampleDatabase({
+        native_permissions: "none",
+      }),
+    ],
+  }),
+  dataset_query: ORDERS_DATASET_QUERY,
+});
+
+export const ORDERS_METADATA_WITH_MULTIPLE_PK = createMockMetadata({
+  databases: [
+    createSampleDatabase({
+      tables: [
+        createOrdersTable({
+          fields: [
+            createOrdersUserIdField({
+              semantic_type: "type/PK",
+            }),
+            createOrdersProductIdField({
+              semantic_type: "type/PK",
+            }),
+            createOrdersSubtotalField(),
+            createOrdersTaxField(),
+            createOrdersTotalField(),
+            createOrdersDiscountField(),
+            createOrdersCreatedAtField(),
+            createOrdersQuantityField(),
+          ],
+        }),
+      ],
+    }),
+  ],
+});
+export const ORDERS_QUESTION_WITH_MULTIPLE_PK = Question.create({
+  metadata: ORDERS_METADATA_WITH_MULTIPLE_PK,
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DB_ID,
+    query: {
+      "source-table": ORDERS_ID,
+    },
+  },
+});
+export const ORDERS_COLUMNS_WITH_MULTIPLE_PK = {
+  USER_ID: createOrdersUserIdDatasetColumn({
+    semantic_type: "type/PK",
+  }),
+  PRODUCT_ID: createOrdersProductIdDatasetColumn({
+    semantic_type: "type/PK",
+  }),
+  SUBTOTAL: createOrdersSubtotalDatasetColumn(),
+  TAX: createOrdersTaxDatasetColumn(),
+  TOTAL: createOrdersTotalDatasetColumn(),
+  DISCOUNT: createOrdersDiscountDatasetColumn(),
+  CREATED_AT: createOrdersCreatedAtDatasetColumn(),
+  QUANTITY: createOrdersQuantityDatasetColumn(),
+};
+export const ORDERS_ROW_VALUES_WITH_MULTIPLE_PK: Record<
+  keyof typeof ORDERS_COLUMNS_WITH_MULTIPLE_PK,
+  RowValue
+> = {
+  USER_ID: "1",
+  PRODUCT_ID: "105",
+  SUBTOTAL: 52.723521442619514,
+  TAX: 2.9,
+  TOTAL: 49.206842233769756,
+  DISCOUNT: null,
+  CREATED_AT: "2025-12-06T22:22:48.544+02:00",
+  QUANTITY: 2,
+};
+
+export const ORDERS_QUESTION_WITH_MULTIPLE_PK_NOT_EDITABLE = Question.create({
+  metadata: createMockMetadata({
+    databases: [
+      createSampleDatabase({
+        native_permissions: "none",
+        tables: [
+          createOrdersTable({
+            fields: [
+              createOrdersUserIdField({
+                semantic_type: "type/PK",
+              }),
+              createOrdersProductIdField({
+                semantic_type: "type/PK",
+              }),
+              createOrdersSubtotalField(),
+              createOrdersTaxField(),
+              createOrdersTotalField(),
+              createOrdersDiscountField(),
+              createOrdersCreatedAtField(),
+              createOrdersQuantityField(),
+            ],
+          }),
+        ],
+      }),
+    ],
+  }),
+  dataset_query: ORDERS_DATASET_QUERY,
+});
 
 export function getDrillsQueryParameters(
   queryType: "unaggregated" | "aggregated",

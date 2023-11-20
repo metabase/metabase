@@ -2,12 +2,12 @@ import type { RowValue } from "metabase-types/api";
 
 export function getObjectDetailsActionExtraData({
   objectId,
-  hasManyPKColumns,
+  isManyPks,
 }: {
   objectId: RowValue;
-  hasManyPKColumns: boolean;
+  isManyPks: boolean;
 }) {
-  if (!hasManyPKColumns) {
+  if (!isManyPks) {
     return {
       extra: () => ({ objectId }),
     };

@@ -15,7 +15,7 @@ export const ObjectDetailsPkDrill: Drill<Lib.PKDrillThruInfo> = ({
 
   return [
     {
-      name: "object-detail",
+      name: "object-detail-pk",
       section: "details",
       title: t`View details`,
       buttonType: "horizontal",

@@ -16,13 +16,13 @@ export const ObjectDetailsZoomDrill: Drill<Lib.ZoomDrillThruInfo> = ({
     return [];
   }
 
-  const { objectId, "manyPks?": hasManyPKColumns } = drillDisplayInfo;
+  const { objectId, isManyPks } = drillDisplayInfo;
 
   const getQuestion = () => applyDrill(drill, objectId);
 
   return [
     {
-      name: "object-detail",
+      name: "object-detail-zoom",
       section: "details",
       title: t`View details`,
       buttonType: "horizontal",
@@ -33,7 +33,10 @@ export const ObjectDetailsZoomDrill: Drill<Lib.ZoomDrillThruInfo> = ({
         dashboard: clicked?.extraData?.dashboard as Dashboard | undefined,
         getQuestion,
       }),
-      ...getObjectDetailsActionExtraData({ objectId, hasManyPKColumns }),
+      ...getObjectDetailsActionExtraData({
+        objectId,
+        isManyPks,
+      }),
     },
   ];
 };
