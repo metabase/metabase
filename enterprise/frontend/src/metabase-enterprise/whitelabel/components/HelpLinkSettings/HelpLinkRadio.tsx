@@ -35,14 +35,25 @@ export const HelpLinkRadio = ({ setting, onChange }: Props) => {
   );
 };
 
-const waitFor = <T,>(condition: () => T) => {
+/**
+ * Wait for `condition` to return truthy and returns its value
+ * Checks every `interval` ms and times out after `timeout` ms
+ */
+const waitFor = <T,>(
+  condition: () => T,
+  { interval = 10, timeout = 5000 } = {},
+) => {
   return new Promise<T>(resolve => {
+    const timeoutId = setTimeout(() => {
+      clearInterval(intervalId);
+    }, timeout);
     const intervalId = setInterval(() => {
       const value = condition();
       if (value) {
         clearInterval(intervalId);
+        clearTimeout(timeoutId);
         resolve(value);
       }
-    }, 10);
+    }, interval);
   });
 };
