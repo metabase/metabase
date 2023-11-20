@@ -27,5 +27,6 @@
               ;; `not=` is effectively `xor`
               (is (not= custom-entity-id? random-entity-id?)))
             (testing (str "Model shouldn't have entity_id defined: " (name model))
-              (is (not custom-entity-id?))
-              (is (not random-entity-id?)))))))))
+              ;; we're not checking for `random-entity-id?` here, since some inline models (like dashcards) need
+              ;; entity_id to sync
+              (is (not custom-entity-id?)))))))))
