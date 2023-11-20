@@ -73,19 +73,26 @@ function PreviousValueComparison({
   fontSize,
   formatOptions,
 }) {
-  const { type, change, title, value, changeArrow, changeColor, display } =
-    comparison;
+  const {
+    comparisonType,
+    percentChange,
+    comparisonPeriodStr,
+    prevValue,
+    changeArrow,
+    changeColor,
+    display,
+  } = comparison;
 
   const arrowIconName = { "↓": "arrow_down", "↑": "arrow_up" }[changeArrow];
 
   const fittedChangeDisplay =
-    type === PREVIOUS_VALUE_OPTIONS.CHANGED
-      ? formatChangeAutoPrecision(change, {
+    comparisonType === PREVIOUS_VALUE_OPTIONS.CHANGED
+      ? formatChangeAutoPrecision(percentChange, {
           fontFamily,
           fontWeight: 900,
           width: getChangeWidth(width),
         })
-      : display.change;
+      : display.percentChange;
   const separator = <Separator> • </Separator>;
   const availableComparisonWidth =
     width -
@@ -104,16 +111,16 @@ function PreviousValueComparison({
     });
 
   const valueCandidates = [
-    display.value,
-    ...(type === PREVIOUS_VALUE_OPTIONS.CHANGED
-      ? [formatValue(value, { ...formatOptions, compact: true })]
+    display.prevValue,
+    ...(comparisonType === PREVIOUS_VALUE_OPTIONS.CHANGED
+      ? [formatValue(prevValue, { ...formatOptions, compact: true })]
       : []),
     "",
   ];
   const detailCandidates = valueCandidates.map(valueStr => {
     return valueStr === ""
-      ? jt`vs. ${title}`
-      : jt`vs. ${title}: ${(
+      ? jt`vs. ${comparisonPeriodStr}`
+      : jt`vs. ${comparisonPeriodStr}: ${(
           <PreviousValueNumber>{valueStr}</PreviousValueNumber>
         )}`;
   });
@@ -148,7 +155,7 @@ function PreviousValueComparison({
       tooltip={
         <VariationContainerTooltip>
           <VariationPercent iconSize={TOOLTIP_ICON_SIZE}>
-            {display.change}
+            {display.percentChange}
           </VariationPercent>
           <VariationDetails>{fullDetailDisplay}</VariationDetails>
         </VariationContainerTooltip>

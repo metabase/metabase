@@ -47,13 +47,13 @@ describe("SmartScalar > compute", () => {
     const printComparison = ({
       comparisonPeriodStr,
       changeArrow,
-      display: { change, value },
+      display: { percentChange, prevValue },
     }) =>
       [
         changeArrow,
-        change,
+        percentChange,
         "vs.",
-        [comparisonPeriodStr, value].filter(e => e).join(": "),
+        [comparisonPeriodStr, prevValue].filter(e => e).join(": "),
       ]
         .filter(e => e)
         .join(" ");

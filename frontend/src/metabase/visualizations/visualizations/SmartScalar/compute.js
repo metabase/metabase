@@ -110,8 +110,8 @@ function computePreviousPeriodComparison({
     changeColor,
     changeArrow,
     display: {
-      change: percentChangeStr,
-      value: prevValueStr,
+      percentChange: percentChangeStr,
+      prevValue: prevValueStr,
     },
   };
 }
