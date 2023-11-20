@@ -20,7 +20,7 @@ Instead of creating duplicate dashboards, you can add filter widgets to let peop
 - Click the **filter icon** that appears in the top-right to add a filter.
 - Select a [filter type](#filter-types).
 - [Connect your filter](#connecting-a-filter-to-dashboard-cards) to one or more dashboard cards.
-- [Configure your filter](#configuring-a-filter-widget).
+- [Configure your filter](#editing-a-filter).
 - **Save** your changes.
 
 ### Filter types
@@ -84,7 +84,7 @@ A flexible filter type that will let you create either a dropdown menu or an inp
 
 ## Connecting a filter to dashboard cards
 
-Dashboard filters apply across all [dashboard tabs](./introduction.md#dashboard-tabs), though for each filter widget you add, you'll need to tell Metabase which column the filter should update for each card.
+Dashboard filters apply across all [dashboard tabs](./introduction.md#dashboard-tabs), though for each filter you add, you'll need to tell Metabase which column the filter should update for each card.
 
 Click on a card's dropdown menu to select the field that you want the widget to filter on.
 
@@ -94,9 +94,9 @@ Here we've wired up a Text filter to the "Event types" card, telling Metabase th
 
 ## Auto-connecting filters to cards
 
-If there are other cards that also have the field you select, Metabase will automatically connect the filter to those cards as well (including cards on other tabs). If you later add a card with the selected field, Metabase will try to connect that filter to the new card as well.
+If there are other cards that also have the field you select, Metabase will automatically connect the filter to those cards too (including cards on other tabs). If you later add a card with the selected field, Metabase will also try to connect that filter to the new card.
 
-To undo this auto-connecting of cards, you could click on the toast that pops up when Metabase auto-connects the filters, or you could manually disconnect the cards by clicking on the X next to the connected field.
+To undo this auto-connecting of cards, you could click on the toast that pops up when Metabase auto-connects the filters, or you could manually disconnect the cards by clicking on the "X" next to the connected field.
 
 ## Filtering dashboards with native/SQL questions
 
@@ -115,7 +115,7 @@ To edit a filter's settings:
 
 From this filter editing view, you can wire up dashboard cards to the filter, or use the filter settings sidebar to:
 
-- [Change the filter's label](#filter-label)
+- [Rename filter](#rename-filter)
 - [Set filter input type](#set-filter-input-type)
 - [Set a default filter value](#set-a-default-filter-value)
 - [Remove a filter](#remove-a-filter)
@@ -185,7 +185,7 @@ In dashboard edit mode, click on the grabber handle (six dots) on the left side 
 
 A multi-select filter with the widget type [Dropdown list](#dropdown-list) or [Search box](#search-box) will display a list of values with checkboxes.
 
-### Change a filter widget's selectable values
+### Change a filter's selectable values
 
 1. In dashboard edit mode, click your filter's **gear** icon.
 2. From the sidebar, find **How should users filter on this column?**.
