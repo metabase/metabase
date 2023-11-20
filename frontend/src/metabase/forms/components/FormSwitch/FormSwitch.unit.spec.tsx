@@ -30,7 +30,7 @@ const setup = ({ initialValues }: SetupOpts) => {
   return { onSubmit };
 };
 
-describe("FormTextInput", () => {
+describe("FormSwitch", () => {
   it("should show the initial value: true", async () => {
     setup({ initialValues: { agree: true } });
     expect(screen.getByLabelText("Agree?")).toBeChecked();
