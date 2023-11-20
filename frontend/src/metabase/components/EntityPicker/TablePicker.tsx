@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 
 import type { Table } from "metabase-types/api";
+import { databases, schemas, tables } from "metabase/entities";
 import type Question from "metabase-lib/Question";
 
 import { EntityPicker } from "./EntityPicker";
-
-import { databases, schemas, tables } from "metabase/entities";
 
 interface TablePickerProps {
   onItemSelect: (item: Question) => void;
@@ -19,18 +18,15 @@ export function TablePicker({
   const [initialState, setInitialState] = useState<any>();
 
   const onFolderSelect = async (item: any) => {
-    switch (item.model) {
-      case "database":
-        return schemas.api
-          .list({ dbId: item.id })
-          .then(data => data.map(d => ({ ...d, model: "schema" })));
-      case "schema":
-        return tables.api.list({
-          dbId: item.database.id,
-          schemaName: item.name,
-        });
-      default:
-        return [];
+    if (item.model === "database" && item.features.includes("schemas")) {
+      return schemas.api
+        .list({ dbId: item.id })
+        .then(data => data.map(d => ({ ...d, model: "schema" })));
+    } else {
+      return tables.api.list({
+        dbId: item.model === "database" ? item.id : item.database.id,
+        schemaName: item.model === "database" ? "" : item.name,
+      });
     }
   };
 
