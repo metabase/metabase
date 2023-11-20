@@ -173,7 +173,6 @@ describeEE("formatting > whitelabel", () => {
 
       cy.findByTestId("help-link-setting").findByText("Hide it").click();
       cy.wait("@putHelpLink");
-      // cy.wait("@getHelpLinkUrl");
 
       cy.signInAsNormalUser();
 

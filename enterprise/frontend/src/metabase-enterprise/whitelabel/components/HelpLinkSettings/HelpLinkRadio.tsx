@@ -9,7 +9,7 @@ interface Props {
 
 export const HelpLinkRadio = ({ setting, onChange }: Props) => {
   const focusUrlInput = useCallback(async () => {
-    // The url input is rendered only after the setting is saved on the BE
+    // The url input is rendered only after the setting is saved and returned from the BE
     // there's no easy way to autofocus it from here besides waiting.
     // `autofocus` can't be used otherwise it will be autofocused also on page load
     const input = await waitFor(() =>
