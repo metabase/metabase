@@ -45,7 +45,9 @@ export function getUniqueFieldId({
   const fieldIdentifier = getFieldIdentifier({ id, name });
 
   if (isVirtualCardId(table_id)) {
-    if (name) {
+    const isVirtual = typeof id !== "number";
+
+    if (isVirtual && name) {
       return `${table_id}:${fieldIdentifier}:${name}`;
     }
 
