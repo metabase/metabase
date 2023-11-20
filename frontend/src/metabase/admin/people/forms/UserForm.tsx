@@ -17,14 +17,8 @@ import { Button } from "metabase/ui";
 import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";
 
 const localUserScmeha = Yup.object({
-  first_name: Yup.string()
-    .required(Errors.required)
-    .max(100, Errors.maxLength)
-    .default(""),
-  last_name: Yup.string()
-    .required(Errors.required)
-    .max(100, Errors.maxLength)
-    .default(""),
+  first_name: Yup.string().max(100, Errors.maxLength).default(""),
+  last_name: Yup.string().max(100, Errors.maxLength).default(""),
   email: Yup.string().email().required(Errors.required),
 });
 
