@@ -203,7 +203,7 @@ function FilterableColumnGroup({
           };
 
           return (
-            <ColumnFilterListItem key={`col-${i}`} pr="md">
+            <ColumnFilterListItem key={`col-${i}`} px="2rem" py="1rem">
               <ColumnFilterSection
                 query={query}
                 stageIndex={stageIndex}

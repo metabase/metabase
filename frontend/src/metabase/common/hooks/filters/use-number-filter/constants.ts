@@ -1,6 +1,6 @@
-import type { OperatorOption } from "./types";
+import type { NumberOperatorOption } from "./types";
 
-export const OPERATOR_OPTIONS: Record<string, OperatorOption> = {
+export const OPERATOR_OPTIONS: Record<string, NumberOperatorOption> = {
   "=": {
     operator: "=",
     valueCount: 1,
