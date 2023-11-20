@@ -8,7 +8,7 @@ import {
   FormTextInput,
   requiredErrorMessage,
 } from "metabase/forms";
-import { getIcon, render, screen, waitFor } from "__support__/ui";
+import { getIcon, queryIcon, render, screen, waitFor } from "__support__/ui";
 
 interface FormValues {
   name: string | null | undefined;
@@ -66,6 +66,16 @@ describe("FormTextInput", () => {
 
     expect(screen.getByDisplayValue("Test")).toBeInTheDocument();
     expect(getIcon("copy")).toBeInTheDocument();
+  });
+
+  it("should not show copy button when disabled", () => {
+    setup({
+      initialValues: { name: "Test" },
+      hasCopyButton: false,
+    });
+
+    expect(screen.getByDisplayValue("Test")).toBeInTheDocument();
+    expect(queryIcon("copy")).not.toBeInTheDocument();
   });
 
   it("should submit a non-empty value", async () => {
