@@ -136,7 +136,7 @@ export function computeTrend(series, insights, settings) {
   );
   const dateUnit = metricInsight?.unit ?? FALLBACK_DATE_UNIT;
 
-  // get last value and date
+  // get latest value and date
   const i = rows.length - 1;
   const date = rows[i]?.[dimensionIndex];
   const value = rows[i]?.[metricIndex];
@@ -144,7 +144,7 @@ export function computeTrend(series, insights, settings) {
     return null;
   }
 
-  // format last value and date
+  // format latest value and date
   const formatOptions = settings.column?.(metricColumn);
   const valueStr = formatValue(value, formatOptions);
   const dateStr = formatDateTimeRangeWithUnit([date], dateUnit, {
