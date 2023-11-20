@@ -488,76 +488,75 @@
                (t2/select 'ParameterCard :card_id source-card-id)))))))
 
 (deftest cleanup-parameter-on-card-changes-test
-  (mt/dataset test-data
-    (mt/with-temp
-      [:model/Card {source-card-id :id} (merge (mt/card-with-source-metadata-for-query
-                                                (mt/mbql-query products {:fields [(mt/$ids $products.title)
-                                                                                  (mt/$ids $products.category)]
-                                                                         :limit 5}))
-                                               {:database_id (mt/id)
-                                                :table_id    (mt/id :products)})
-       :model/Card card                 {:parameters [{:name                  "Param 1"
-                                                       :id                    "param_1"
-                                                       :type                  "category"
-                                                       :values_source_type    "card"
-                                                       :values_source_config {:card_id source-card-id
-                                                                              :value_field (mt/$ids $products.title)}}]}
-       Dashboard   dashboard            {:parameters [{:name       "Param 2"
-                                                       :id         "param_2"
-                                                       :type       "category"
-                                                       :values_source_type    "card"
-                                                       :values_source_config {:card_id source-card-id
-                                                                              :value_field (mt/$ids $products.category)}}]}]
-      ;; check if we had parametercard to starts with
-      (is (=? [{:card_id                   source-card-id
-                :parameter_id              "param_1"
-                :parameterized_object_type :card
-                :parameterized_object_id   (:id card)}
-               {:card_id                   source-card-id
-                :parameter_id              "param_2"
-                :parameterized_object_type :dashboard
-                :parameterized_object_id   (:id dashboard)}]
-              (t2/select ParameterCard :card_id source-card-id {:order-by [[:parameter_id :asc]]})))
-      ;; update card with removing the products.category
-      (testing "on update result_metadata"
-        (t2/update! :model/Card source-card-id
-                    (mt/card-with-source-metadata-for-query
-                     (mt/mbql-query products {:fields [(mt/$ids $products.title)]
-                                              :limit 5})))
+  (mt/with-temp
+    [:model/Card {source-card-id :id} (merge (mt/card-with-source-metadata-for-query
+                                              (mt/mbql-query products {:fields [(mt/$ids $products.title)
+                                                                                (mt/$ids $products.category)]
+                                                                       :limit 5}))
+                                             {:database_id (mt/id)
+                                              :table_id    (mt/id :products)})
+     :model/Card card                 {:parameters [{:name                  "Param 1"
+                                                     :id                    "param_1"
+                                                     :type                  "category"
+                                                     :values_source_type    "card"
+                                                     :values_source_config {:card_id source-card-id
+                                                                            :value_field (mt/$ids $products.title)}}]}
+     Dashboard   dashboard            {:parameters [{:name       "Param 2"
+                                                     :id         "param_2"
+                                                     :type       "category"
+                                                     :values_source_type    "card"
+                                                     :values_source_config {:card_id source-card-id
+                                                                            :value_field (mt/$ids $products.category)}}]}]
+    ;; check if we had parametercard to starts with
+    (is (=? [{:card_id                   source-card-id
+              :parameter_id              "param_1"
+              :parameterized_object_type :card
+              :parameterized_object_id   (:id card)}
+             {:card_id                   source-card-id
+              :parameter_id              "param_2"
+              :parameterized_object_type :dashboard
+              :parameterized_object_id   (:id dashboard)}]
+            (t2/select ParameterCard :card_id source-card-id {:order-by [[:parameter_id :asc]]})))
+    ;; update card with removing the products.category
+    (testing "on update result_metadata"
+      (t2/update! :model/Card source-card-id
+                  (mt/card-with-source-metadata-for-query
+                   (mt/mbql-query products {:fields [(mt/$ids $products.title)]
+                                            :limit 5})))
 
-        (testing "ParameterCard for dashboard is removed"
-          (is (=? [{:card_id                   source-card-id
-                    :parameter_id              "param_1"
-                    :parameterized_object_type :card
-                    :parameterized_object_id   (:id card)}]
-                  (t2/select ParameterCard :card_id source-card-id))))
+      (testing "ParameterCard for dashboard is removed"
+        (is (=? [{:card_id                   source-card-id
+                  :parameter_id              "param_1"
+                  :parameterized_object_type :card
+                  :parameterized_object_id   (:id card)}]
+                (t2/select ParameterCard :card_id source-card-id))))
 
-        (testing "update the dashboard parameter and remove values_config of dashboard"
-          (is (=? [{:id   "param_2"
-                    :name "Param 2"
-                    :type :category}]
-                  (t2/select-one-fn :parameters Dashboard :id (:id dashboard))))
+      (testing "update the dashboard parameter and remove values_config of dashboard"
+        (is (=? [{:id   "param_2"
+                  :name "Param 2"
+                  :type :category}]
+                (t2/select-one-fn :parameters Dashboard :id (:id dashboard))))
 
-          (testing "but no changes with parameter on card"
-            (is (=? [{:name                 "Param 1"
-                      :id                   "param_1"
-                      :type                 :category
-                      :values_source_type   "card"
-                      :values_source_config {:card_id     source-card-id
-                                             :value_field (mt/$ids $products.title)}}]
-                    (t2/select-one-fn :parameters :model/Card :id (:id card)))))))
+        (testing "but no changes with parameter on card"
+          (is (=? [{:name                 "Param 1"
+                    :id                   "param_1"
+                    :type                 :category
+                    :values_source_type   "card"
+                    :values_source_config {:card_id     source-card-id
+                                           :value_field (mt/$ids $products.title)}}]
+                  (t2/select-one-fn :parameters :model/Card :id (:id card)))))))
 
-     (testing "on archive card"
-       (t2/update! :model/Card source-card-id {:archived true})
+   (testing "on archive card"
+     (t2/update! :model/Card source-card-id {:archived true})
 
-       (testing "ParameterCard for card is removed"
-         (is (=? [] (t2/select ParameterCard :card_id source-card-id))))
+     (testing "ParameterCard for card is removed"
+       (is (=? [] (t2/select ParameterCard :card_id source-card-id))))
 
-       (testing "update the dashboard parameter and remove values_config of card"
-         (is (=? [{:id   "param_1"
-                   :name "Param 1"
-                   :type :category}]
-                 (t2/select-one-fn :parameters :model/Card :id (:id card)))))))))
+     (testing "update the dashboard parameter and remove values_config of card"
+       (is (=? [{:id   "param_1"
+                 :name "Param 1"
+                 :type :category}]
+               (t2/select-one-fn :parameters :model/Card :id (:id card))))))))
 
 (deftest descendants-test
   (testing "regular cards don't depend on anything"

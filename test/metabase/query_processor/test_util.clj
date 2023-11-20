@@ -417,11 +417,11 @@
            (nest-query {:database 1, :type :native, :native {:query "wow"}} 2)))))
 
 (defn- fk-mappings []
-  {[:orders :product_id]  [:products :id]
+  {[:checkins :user_id]   [:users :id]
+   [:checkins :venue_id]  [:venues :id]
+   [:orders :product_id]  [:products :id]
    [:orders :user_id]     [:people :id]
    [:reviews :product_id] [:products :id]
-   [:checkins :user_id]   [:users :id]
-   [:checkins :venue_id]  [:venues :id]
    [:venues :category_id] [:categories :id]})
 
 (def ^:dynamic *enable-fk-support-for-disabled-drivers-in-tests*

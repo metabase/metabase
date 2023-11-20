@@ -129,31 +129,30 @@
   (find-values field-values-id))
 
 (deftest get-or-create-full-field-values!-test
-  (mt/dataset test-data
-    (testing "create a full Fieldvalues if it does not exist"
-      (t2/delete! FieldValues :field_id (mt/id :categories :name) :type :full)
-      (is (= :full (-> (t2/select-one Field :id (mt/id :categories :name))
-                       field-values/get-or-create-full-field-values!
-                       :type))
-          (is (= 1 (t2/count FieldValues :field_id (mt/id :categories :name) :type :full))))
+  (testing "create a full Fieldvalues if it does not exist"
+    (t2/delete! FieldValues :field_id (mt/id :categories :name) :type :full)
+    (is (= :full (-> (t2/select-one Field :id (mt/id :categories :name))
+                     field-values/get-or-create-full-field-values!
+                     :type))
+        (is (= 1 (t2/count FieldValues :field_id (mt/id :categories :name) :type :full))))
 
-      (testing "if an Advanced FieldValues Exists, make sure we still returns the full FieldValues"
-        (t2.with-temp/with-temp [FieldValues _ {:field_id (mt/id :categories :name)
-                                                :type     :sandbox
-                                                :hash_key "random-hash"}]
-          (is (= :full (:type (field-values/get-or-create-full-field-values! (t2/select-one Field :id (mt/id :categories :name))))))))
+    (testing "if an Advanced FieldValues Exists, make sure we still returns the full FieldValues"
+      (t2.with-temp/with-temp [FieldValues _ {:field_id (mt/id :categories :name)
+                                              :type     :sandbox
+                                              :hash_key "random-hash"}]
+        (is (= :full (:type (field-values/get-or-create-full-field-values! (t2/select-one Field :id (mt/id :categories :name))))))))
 
-      (testing "if an old FieldValues Exists, make sure we still return the full FieldValues and update last_used_at"
-        (t2/query-one {:update :metabase_fieldvalues
-                       :where [:and
-                               [:= :field_id (mt/id :categories :name)]
-                               [:= :type "full"]]
-                       :set {:last_used_at (t/offset-date-time 2001 12)}})
-        (is (= (t/offset-date-time 2001 12)
-               (:last_used_at (t2/select-one FieldValues :field_id (mt/id :categories :name) :type :full))))
-        (is (seq (:values (field-values/get-or-create-full-field-values! (t2/select-one Field :id (mt/id :categories :name))))))
-        (is (not= (t/offset-date-time 2001 12)
-                  (:last_used_at (t2/select-one FieldValues :field_id (mt/id :categories :name) :type :full))))))))
+    (testing "if an old FieldValues Exists, make sure we still return the full FieldValues and update last_used_at"
+      (t2/query-one {:update :metabase_fieldvalues
+                     :where [:and
+                             [:= :field_id (mt/id :categories :name)]
+                             [:= :type "full"]]
+                     :set {:last_used_at (t/offset-date-time 2001 12)}})
+      (is (= (t/offset-date-time 2001 12)
+             (:last_used_at (t2/select-one FieldValues :field_id (mt/id :categories :name) :type :full))))
+      (is (seq (:values (field-values/get-or-create-full-field-values! (t2/select-one Field :id (mt/id :categories :name))))))
+      (is (not= (t/offset-date-time 2001 12)
+                (:last_used_at (t2/select-one FieldValues :field_id (mt/id :categories :name) :type :full)))))))
 
 (deftest normalize-human-readable-values-test
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
@@ -234,23 +233,22 @@
 
 (deftest rescanned-human-readable-values-test
   (testing "Make sure FieldValues are calculated and saved correctly when remapping is in place (#13235)"
-    (mt/dataset test-data
-      (mt/with-temp-copy-of-db
-        (letfn [(field-values []
-                  (t2/select-one FieldValues :field_id (mt/id :orders :product_id)))]
-          (testing "Should have no FieldValues initially"
-            (is (= nil
-                   (field-values))))
-          (t2.with-temp/with-temp [Dimension _ {:field_id                (mt/id :orders :product_id)
-                                                :human_readable_field_id (mt/id :products :title)
-                                                :type                    "external"}]
-            (mt/with-temp-vals-in-db Field (mt/id :orders :product_id) {:has_field_values "list"}
-              (is (= ::field-values/fv-created
-                     (field-values/create-or-update-full-field-values! (t2/select-one Field :id (mt/id :orders :product_id)))))
-              (is (partial= {:field_id              (mt/id :orders :product_id)
-                             :values                [1 2 3 4]
-                             :human_readable_values []}
-                            (field-values))))))))))
+    (mt/with-temp-copy-of-db
+      (letfn [(field-values []
+                (t2/select-one FieldValues :field_id (mt/id :orders :product_id)))]
+        (testing "Should have no FieldValues initially"
+          (is (= nil
+                 (field-values))))
+        (t2.with-temp/with-temp [Dimension _ {:field_id                (mt/id :orders :product_id)
+                                              :human_readable_field_id (mt/id :products :title)
+                                              :type                    "external"}]
+          (mt/with-temp-vals-in-db Field (mt/id :orders :product_id) {:has_field_values "list"}
+            (is (= ::field-values/fv-created
+                   (field-values/create-or-update-full-field-values! (t2/select-one Field :id (mt/id :orders :product_id)))))
+            (is (partial= {:field_id              (mt/id :orders :product_id)
+                           :values                [1 2 3 4]
+                           :human_readable_values []}
+                          (field-values)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Life Cycle                                                     |

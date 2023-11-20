@@ -264,58 +264,56 @@
 
 (deftest ^:parallel results-metadata-should-have-field-refs-test
   (testing "QP results metadata should include Field refs"
-    (mt/dataset test-data
-      (letfn [(do-test [num-expected-columns]
-                (let [results-metadata (get-in (mt/run-mbql-query orders {:limit 10})
-                                               [:data :results_metadata :columns])
-                      expected-cols    (qp/query->expected-cols (mt/mbql-query orders))]
-                  (is (= num-expected-columns
-                         (count results-metadata)))
-                  (is (= num-expected-columns
-                         (count expected-cols)))
-                  (testing "Card results metadata shouldn't differ wildly from QP expected cols"
-                    (letfn [(select-keys-to-compare [cols]
-                              (map #(select-keys % [:name :base_type :id :field_ref]) cols))]
-                      (is (= (select-keys-to-compare results-metadata)
-                             (select-keys-to-compare expected-cols)))))))]
-        (do-test 9)
-        (testing "With an FK column remapping"
-          (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                            (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                                            (mt/id :orders :product_id)
-                                            (mt/id :products :title))
-            ;; Add column remapping from Orders Product ID -> Products.Title
-            (do-test 10)))))))
+    (letfn [(do-test [num-expected-columns]
+              (let [results-metadata (get-in (mt/run-mbql-query orders {:limit 10})
+                                             [:data :results_metadata :columns])
+                    expected-cols    (qp/query->expected-cols (mt/mbql-query orders))]
+                (is (= num-expected-columns
+                       (count results-metadata)))
+                (is (= num-expected-columns
+                       (count expected-cols)))
+                (testing "Card results metadata shouldn't differ wildly from QP expected cols"
+                  (letfn [(select-keys-to-compare [cols]
+                            (map #(select-keys % [:name :base_type :id :field_ref]) cols))]
+                    (is (= (select-keys-to-compare results-metadata)
+                           (select-keys-to-compare expected-cols)))))))]
+      (do-test 9)
+      (testing "With an FK column remapping"
+        (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                          (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                          (mt/id :orders :product_id)
+                                          (mt/id :products :title))
+          ;; Add column remapping from Orders Product ID -> Products.Title
+          (do-test 10))))))
 
 (deftest ^:parallel field-refs-should-be-correct-fk-forms-test
   (testing "Field refs included in results metadata should be wrapped correctly e.g. in `fk->` form"
-    (mt/dataset test-data
-      (doseq [[description query]
-              {"simple query"
-               (mt/mbql-query orders
-                 {:aggregation [[:count]]
-                  :breakout    [$product_id->products.category]
-                  :order-by    [[:asc $product_id->products.category]]
-                  :limit       5})
+    (doseq [[description query]
+            {"simple query"
+             (mt/mbql-query orders
+               {:aggregation [[:count]]
+                :breakout    [$product_id->products.category]
+                :order-by    [[:asc $product_id->products.category]]
+                :limit       5})
 
-               "query with source query"
-               (mt/mbql-query orders
-                 {:source-query {:source-table $$orders}
-                  :aggregation  [[:count]]
-                  :breakout     [$product_id->products.category]
-                  :order-by     [[:asc $product_id->products.category]]
-                  :limit        5})}]
-        (testing (str description "\n" (u/pprint-to-str query))
-          (is (=? {:status   :completed
-                   :data     (mt/$ids orders
-                               {:cols             [{:name      "CATEGORY"
-                                                    :field_ref $product_id->products.category
-                                                    :id        %products.category}
-                                                   {:name      "count"
-                                                    :field_ref [:aggregation 0]}]
-                                :results_metadata {:columns  [{:name      "CATEGORY"
-                                                               :field_ref $product_id->products.category
-                                                               :id        %products.category}
-                                                              {:name      "count"
-                                                               :field_ref [:aggregation 0]}]}})}
-                  (qp/process-query query))))))))
+             "query with source query"
+             (mt/mbql-query orders
+               {:source-query {:source-table $$orders}
+                :aggregation  [[:count]]
+                :breakout     [$product_id->products.category]
+                :order-by     [[:asc $product_id->products.category]]
+                :limit        5})}]
+      (testing (str description "\n" (u/pprint-to-str query))
+        (is (=? {:status   :completed
+                 :data     (mt/$ids orders
+                             {:cols             [{:name      "CATEGORY"
+                                                  :field_ref $product_id->products.category
+                                                  :id        %products.category}
+                                                 {:name      "count"
+                                                  :field_ref [:aggregation 0]}]
+                              :results_metadata {:columns  [{:name      "CATEGORY"
+                                                             :field_ref $product_id->products.category
+                                                             :id        %products.category}
+                                                            {:name      "count"
+                                                             :field_ref [:aggregation 0]}]}})}
+                (qp/process-query query)))))))

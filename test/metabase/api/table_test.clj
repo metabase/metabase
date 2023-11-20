@@ -96,20 +96,20 @@
                 :id           (mt/id :checkins)
                 :entity_type  "entity/EventTable"}
                {:name         (mt/format-name "orders")
-                :display_name "Orders",
-                :id           (mt/id :orders),
+                :display_name "Orders"
+                :id           (mt/id :orders)
                 :entity_type  "entity/TransactionTable"}
                {:name         (mt/format-name "people")
-                :display_name "People",
-                :id           (mt/id :people),
+                :display_name "People"
+                :id           (mt/id :people)
                 :entity_type  "entity/UserTable"}
                {:name         (mt/format-name "products")
-                :display_name "Products",
-                :id           (mt/id :products),
+                :display_name "Products"
+                :id           (mt/id :products)
                 :entity_type  "entity/ProductTable"}
-               {:name         (mt/format-name "reviews"),
-                :display_name "Reviews",
-                :id           (mt/id :reviews),
+               {:name         (mt/format-name "reviews")
+                :display_name "Reviews"
+                :id           (mt/id :reviews)
                 :entity_type  "entity/GenericTable"}
                {:name         (mt/format-name "users")
                 :display_name "Users"

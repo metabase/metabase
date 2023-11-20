@@ -160,12 +160,11 @@
 
 (deftest ^:parallel humanize-filter-value-works-for-expressions-16680-test
   (testing "Expressions can be used in humanized names in addition to fields"
-    (mt/dataset test-data
-      (is (= "TestColumn is 2 and Created At is in February 2024"
-             (#'names/humanize-filter-value
-               nil
-               ["and"
-                ["=" ["expression" "TestColumn" {:base-type "type/Integer"}] 2]
-                ["=" ["field" (mt/id :orders :created_at)
-                      {:base-type "type/DateTime", :temporal-unit "month"}]
-                 "2024-02-01T00:00:00Z"]]))))))
+    (is (= "TestColumn is 2 and Created At is in February 2024"
+           (#'names/humanize-filter-value
+             nil
+             ["and"
+              ["=" ["expression" "TestColumn" {:base-type "type/Integer"}] 2]
+              ["=" ["field" (mt/id :orders :created_at)
+                    {:base-type "type/DateTime", :temporal-unit "month"}]
+               "2024-02-01T00:00:00Z"]])))))

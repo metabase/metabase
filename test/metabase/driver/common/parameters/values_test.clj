@@ -381,53 +381,52 @@
   (mt/with-test-user :rasta
     (testing "Persisted Models are substituted"
       (mt/test-driver :postgres
-        (mt/dataset test-data
-          (mt/with-persistence-enabled [persist-models!]
-            (let [mbql-query (mt/mbql-query categories)]
-              (mt/with-temp [Card model {:name "model"
-                                         :dataset true
-                                         :dataset_query mbql-query
-                                         :database_id (mt/id)}]
-                (persist-models!)
-                (testing "tag uses persisted table"
-                  (let [pi (t2/select-one 'PersistedInfo :card_id (u/the-id model))]
-                    (is (= "persisted" (:state pi)))
-                    (is (re-matches #"select \* from \"metabase_cache_[a-z0-9]+_[0-9]+\".\"model_[0-9]+_model\""
-                                    (:query
-                                     (value-for-tag
-                                      {:name         "card-template-tag-test"
-                                       :display-name "Card template tag test"
-                                       :type         :card
-                                       :card-id      (:id model)}
-                                      []))))
-                    (testing "query hits persisted table"
-                      (let [persisted-schema (ddl.i/schema-name {:id (mt/id)}
-                                                                (public-settings/site-uuid))
-                            update-query     (format "update %s.%s set name = name || ' from cached table'"
-                                                     persisted-schema (:table_name pi))
-                            model-query (format "select c_orig.name, c_cached.name
+        (mt/with-persistence-enabled [persist-models!]
+          (let [mbql-query (mt/mbql-query categories)]
+            (mt/with-temp [Card model {:name "model"
+                                       :dataset true
+                                       :dataset_query mbql-query
+                                       :database_id (mt/id)}]
+              (persist-models!)
+              (testing "tag uses persisted table"
+                (let [pi (t2/select-one 'PersistedInfo :card_id (u/the-id model))]
+                  (is (= "persisted" (:state pi)))
+                  (is (re-matches #"select \* from \"metabase_cache_[a-z0-9]+_[0-9]+\".\"model_[0-9]+_model\""
+                                  (:query
+                                   (value-for-tag
+                                    {:name         "card-template-tag-test"
+                                     :display-name "Card template tag test"
+                                     :type         :card
+                                     :card-id      (:id model)}
+                                    []))))
+                  (testing "query hits persisted table"
+                    (let [persisted-schema (ddl.i/schema-name {:id (mt/id)}
+                                                              (public-settings/site-uuid))
+                          update-query     (format "update %s.%s set name = name || ' from cached table'"
+                                                   persisted-schema (:table_name pi))
+                          model-query (format "select c_orig.name, c_cached.name
                                                from categories c_orig
                                                left join {{#%d}} c_cached
                                                on c_orig.id = c_cached.id
                                                order by c_orig.id desc limit 3"
-                                                (u/the-id model))
-                            tag-name    (format "#%d" (u/the-id model))]
-                        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                                       [update-query])
-                        (is (= [["Winery" "Winery from cached table"]
-                                ["Wine Bar" "Wine Bar from cached table"]
-                                ["Vegetarian / Vegan" "Vegetarian / Vegan from cached table"]]
-                               (mt/rows (qp/process-query
-                                         {:database (mt/id)
-                                          :type :native
-                                          :native {:query model-query
-                                                   :template-tags
-                                                   {(keyword tag-name)
-                                                    {:id "c6558da4-95b0-d829-edb6-45be1ee10d3c"
-                                                     :name tag-name
-                                                     :display-name tag-name
-                                                     :type "card"
-                                                     :card-id (u/the-id model)}}}}))))))))))))))))
+                                              (u/the-id model))
+                          tag-name    (format "#%d" (u/the-id model))]
+                      (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                                     [update-query])
+                      (is (= [["Winery" "Winery from cached table"]
+                              ["Wine Bar" "Wine Bar from cached table"]
+                              ["Vegetarian / Vegan" "Vegetarian / Vegan from cached table"]]
+                             (mt/rows (qp/process-query
+                                       {:database (mt/id)
+                                        :type :native
+                                        :native {:query model-query
+                                                 :template-tags
+                                                 {(keyword tag-name)
+                                                  {:id "c6558da4-95b0-d829-edb6-45be1ee10d3c"
+                                                   :name tag-name
+                                                   :display-name tag-name
+                                                   :type "card"
+                                                   :card-id (u/the-id model)}}}})))))))))))))))
 
 (deftest ^:parallel card-query-test-4
   (mt/with-test-user :rasta
@@ -602,25 +601,24 @@
 
 (deftest ^:parallel no-value-template-tag-defaults-test
   (testing "should throw an Exception if no :value is specified for a required parameter, even if defaults are provided"
-    (mt/dataset test-data
-      (testing "Field filters"
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"You'll need to pick a value for 'Filter' before this query can run."
-             (query->params-map
-              {:template-tags {"filter"
-                               {:id           "xyz456"
-                                :name         "filter"
-                                :display-name "Filter"
-                                :type         :dimension
-                                :dimension    [:field (mt/id :products :category) nil]
-                                :widget-type  :category
-                                :default      ["Gizmo" "Gadget"]
-                                :required     true}}
-               :parameters    [{:type    :string/=
-                                :id      "abc123"
-                                :default ["Widget"]
-                                :target  [:dimension [:template-tag "filter"]]}]})))))))
+    (testing "Field filters"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"You'll need to pick a value for 'Filter' before this query can run."
+           (query->params-map
+            {:template-tags {"filter"
+                             {:id           "xyz456"
+                              :name         "filter"
+                              :display-name "Filter"
+                              :type         :dimension
+                              :dimension    [:field (mt/id :products :category) nil]
+                              :widget-type  :category
+                              :default      ["Gizmo" "Gadget"]
+                              :required     true}}
+             :parameters    [{:type    :string/=
+                              :id      "abc123"
+                              :default ["Widget"]
+                              :target  [:dimension [:template-tag "filter"]]}]}))))))
 
 (deftest ^:parallel no-value-template-tag-defaults-raw-value-test
   (testing "should throw an Exception if no :value is specified for a required parameter, even if defaults are provided"
@@ -643,23 +641,22 @@
 
 (deftest ^:parallel nil-value-parameter-template-tag-default-test
   (testing "Default values passed in as part of the request should not apply when the value is nil"
-    (mt/dataset test-data
-      (testing "Field filters"
-        (is (=? {"filter" {:value ::params/no-value}}
-                (query->params-map
-                 {:template-tags {"filter"
-                                  {:id           "xyz456"
-                                   :name         "filter"
-                                   :display-name "Filter"
-                                   :type         :dimension
-                                   :dimension    [:field (mt/id :products :category) nil]
-                                   :widget-type  :category
-                                   :default      ["Gizmo" "Gadget"]}}
-                  :parameters    [{:type    :string/=
-                                   :id      "abc123"
-                                   :default ["Widget"]
-                                   :value   nil
-                                   :target  [:dimension [:template-tag "filter"]]}]})))))))
+    (testing "Field filters"
+      (is (=? {"filter" {:value ::params/no-value}}
+              (query->params-map
+               {:template-tags {"filter"
+                                {:id           "xyz456"
+                                 :name         "filter"
+                                 :display-name "Filter"
+                                 :type         :dimension
+                                 :dimension    [:field (mt/id :products :category) nil]
+                                 :widget-type  :category
+                                 :default      ["Gizmo" "Gadget"]}}
+                :parameters    [{:type    :string/=
+                                 :id      "abc123"
+                                 :default ["Widget"]
+                                 :value   nil
+                                 :target  [:dimension [:template-tag "filter"]]}]}))))))
 
 (deftest ^:parallel nil-value-parameter-template-tag-default-raw-value-test
   (testing "Raw value template tags"
@@ -695,22 +692,21 @@
 
 (deftest ^:parallel use-parameter-defaults-test
   (testing "If parameter specifies a default value (but tag does not), don't use the default when the value is nil"
-    (mt/dataset test-data
-      (testing "Field filters"
-        (is (=? {"filter" {:value ::params/no-value}}
-                (query->params-map
-                 {:template-tags {"filter"
-                                  {:id           "xyz456"
-                                   :name         "filter"
-                                   :display-name "Filter"
-                                   :type         :dimension
-                                   :dimension    [:field (mt/id :products :category) nil]
-                                   :widget-type  :category}}
-                  :parameters    [{:type    :string/=
-                                   :id      "abc123"
-                                   :default ["Widget"]
-                                   :value   nil
-                                   :target  [:dimension [:template-tag "filter"]]}]})))))))
+    (testing "Field filters"
+      (is (=? {"filter" {:value ::params/no-value}}
+              (query->params-map
+               {:template-tags {"filter"
+                                {:id           "xyz456"
+                                 :name         "filter"
+                                 :display-name "Filter"
+                                 :type         :dimension
+                                 :dimension    [:field (mt/id :products :category) nil]
+                                 :widget-type  :category}}
+                :parameters    [{:type    :string/=
+                                 :id      "abc123"
+                                 :default ["Widget"]
+                                 :value   nil
+                                 :target  [:dimension [:template-tag "filter"]]}]}))))))
 
 (deftest ^:parallel use-parameter-defaults-raw-value-template-tags-test
   (testing "If parameter specifies a default value (but tag does not), don't use the default when the value is nil"
@@ -740,23 +736,22 @@
 
 (deftest ^:parallel handle-referenced-card-parameter-mixed-with-other-parameters-test
   (testing "Should be able to handle for Card ref params regardless of whether other params are passed in (#21246)\n"
-    (mt/dataset test-data
-      (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
-                                        meta/metadata-provider
-                                        [(lib.tu.macros/mbql-query products)])
-        (let [param-name    "#1"
-              template-tags {param-name {:type         :card
-                                         :card-id      1
-                                         :display-name param-name
-                                         :id           "__source__"
-                                         :name         param-name}}]
-          (testing "With no parameters passed in"
+    (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                                      meta/metadata-provider
+                                      [(lib.tu.macros/mbql-query products)])
+      (let [param-name    "#1"
+            template-tags {param-name {:type         :card
+                                       :card-id      1
+                                       :display-name param-name
+                                       :id           "__source__"
+                                       :name         param-name}}]
+        (testing "With no parameters passed in"
+          (is (=? {param-name ReferencedCardQuery}
+                  (query->params-map {:template-tags template-tags}))))
+        (testing "WITH parameters passed in"
+          (let [parameters [{:type   :date/all-options
+                             :value  "2022-04-20"
+                             :target [:dimension [:template-tag "created_at"]]}]]
             (is (=? {param-name ReferencedCardQuery}
-                    (query->params-map {:template-tags template-tags}))))
-          (testing "WITH parameters passed in"
-            (let [parameters [{:type   :date/all-options
-                               :value  "2022-04-20"
-                               :target [:dimension [:template-tag "created_at"]]}]]
-              (is (=? {param-name ReferencedCardQuery}
-                      (query->params-map {:template-tags template-tags
-                                          :parameters    parameters}))))))))))
+                    (query->params-map {:template-tags template-tags
+                                        :parameters    parameters})))))))))

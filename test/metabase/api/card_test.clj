@@ -510,58 +510,57 @@
                              :semantic_type :type/Number}]})
 
 (deftest sereies-are-compatible-test
-  (mt/dataset test-data
-    (testing "area-line-bar charts"
-      (t2.with-temp/with-temp
-        [:model/Card datetime-card       (merge (mt/card-with-source-metadata-for-query
-                                                  (mt/mbql-query orders {:aggregation [[:sum $orders.total]]
-                                                                         :breakout    [!month.orders.created_at]}))
-                                                {:visualization_settings {:graph.metrics    ["sum"]
-                                                                          :graph.dimensions ["CREATED_AT"]}}
-                                                {:name    "datetime card"
-                                                 :display :line})
-         :model/Card number-card         (merge (mt/card-with-source-metadata-for-query
-                                                  (mt/mbql-query orders {:aggregation [:count]
-                                                                         :breakout    [$orders.quantity]}))
-                                                {:visualization_settings {:graph.metrics    ["count"]
-                                                                          :graph.dimensions ["QUANTITY"]}}
-                                                {:name    "number card"
-                                                 :display :line})
-         :model/Card without-metric-card (merge (mt/card-with-source-metadata-for-query
-                                                  (mt/mbql-query orders {:breakout    [!month.orders.created_at]}))
-                                                {:visualization_settings {:graph.dimensions ["CREATED_AT"]}}
-                                                {:name    "card has no metric"
-                                                 :display :line})
-         :model/Card combo-card          (merge (mt/card-with-source-metadata-for-query
-                                                  (mt/mbql-query orders {:aggregation [[:sum $orders.total]]
-                                                                         :breakout    [!month.orders.created_at]}))
-                                                {:visualization_settings {:graph.metrics    ["sum"]
-                                                                          :graph.dimensions ["CREATED_AT"]}}
-                                                {:name    "table card"
-                                                 :display :combo})]
-        (testing "2 datetime cards can be combined"
-          (is (true? (api.card/series-are-compatible? datetime-card datetime-card))))
+  (testing "area-line-bar charts"
+    (t2.with-temp/with-temp
+      [:model/Card datetime-card       (merge (mt/card-with-source-metadata-for-query
+                                                (mt/mbql-query orders {:aggregation [[:sum $orders.total]]
+                                                                       :breakout    [!month.orders.created_at]}))
+                                              {:visualization_settings {:graph.metrics    ["sum"]
+                                                                        :graph.dimensions ["CREATED_AT"]}}
+                                              {:name    "datetime card"
+                                               :display :line})
+       :model/Card number-card         (merge (mt/card-with-source-metadata-for-query
+                                                (mt/mbql-query orders {:aggregation [:count]
+                                                                       :breakout    [$orders.quantity]}))
+                                              {:visualization_settings {:graph.metrics    ["count"]
+                                                                        :graph.dimensions ["QUANTITY"]}}
+                                              {:name    "number card"
+                                               :display :line})
+       :model/Card without-metric-card (merge (mt/card-with-source-metadata-for-query
+                                                (mt/mbql-query orders {:breakout    [!month.orders.created_at]}))
+                                              {:visualization_settings {:graph.dimensions ["CREATED_AT"]}}
+                                              {:name    "card has no metric"
+                                               :display :line})
+       :model/Card combo-card          (merge (mt/card-with-source-metadata-for-query
+                                                (mt/mbql-query orders {:aggregation [[:sum $orders.total]]
+                                                                       :breakout    [!month.orders.created_at]}))
+                                              {:visualization_settings {:graph.metrics    ["sum"]
+                                                                        :graph.dimensions ["CREATED_AT"]}}
+                                              {:name    "table card"
+                                               :display :combo})]
+      (testing "2 datetime cards can be combined"
+        (is (true? (api.card/series-are-compatible? datetime-card datetime-card))))
 
-        (testing "2 number cards can be combined"
-          (is (true? (api.card/series-are-compatible? number-card number-card))))
+      (testing "2 number cards can be combined"
+        (is (true? (api.card/series-are-compatible? number-card number-card))))
 
-        (testing "number card can't be combined with datetime cards"
-          (is (false? (api.card/series-are-compatible? number-card datetime-card)))
-          (is (false? (api.card/series-are-compatible? datetime-card number-card))))
+      (testing "number card can't be combined with datetime cards"
+        (is (false? (api.card/series-are-compatible? number-card datetime-card)))
+        (is (false? (api.card/series-are-compatible? datetime-card number-card))))
 
-        (testing "can combine series with UNIX millisecond timestamp and datetime"
-          (is (true? (api.card/series-are-compatible? millisecond-card datetime-card)))
-          (is (true? (api.card/series-are-compatible? datetime-card millisecond-card))))
+      (testing "can combine series with UNIX millisecond timestamp and datetime"
+        (is (true? (api.card/series-are-compatible? millisecond-card datetime-card)))
+        (is (true? (api.card/series-are-compatible? datetime-card millisecond-card))))
 
-        (testing "can't combines series with UNIX milliseceond timestamp and number"
-          (is (false? (api.card/series-are-compatible? millisecond-card number-card)))
-          (is (false? (api.card/series-are-compatible? number-card millisecond-card))))
+      (testing "can't combines series with UNIX milliseceond timestamp and number"
+        (is (false? (api.card/series-are-compatible? millisecond-card number-card)))
+        (is (false? (api.card/series-are-compatible? number-card millisecond-card))))
 
-        (testing "second card must has a metric"
-          (is (false? (api.card/series-are-compatible? datetime-card without-metric-card))))
+      (testing "second card must has a metric"
+        (is (false? (api.card/series-are-compatible? datetime-card without-metric-card))))
 
-        (testing "can't combine card of any other types rather than line/bar/area"
-          (is (nil? (api.card/series-are-compatible? datetime-card combo-card)))))))
+      (testing "can't combine card of any other types rather than line/bar/area"
+        (is (nil? (api.card/series-are-compatible? datetime-card combo-card))))))
 
   (testing "scalar test"
     (t2.with-temp/with-temp
@@ -2310,19 +2309,18 @@
 
 (deftest pivot-card-test
   (mt/test-drivers (api.pivots/applicable-drivers)
-    (mt/dataset test-data
-      (testing "POST /api/card/pivot/:card-id/query"
-        (t2.with-temp/with-temp [:model/Card card (api.pivots/pivot-card)]
-          (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))
-                rows   (mt/rows result)]
-            (is (= 1144 (:row_count result)))
-            (is (= "completed" (:status result)))
-            (is (= 6 (count (get-in result [:data :cols]))))
-            (is (= 1144 (count rows)))
+    (testing "POST /api/card/pivot/:card-id/query"
+      (t2.with-temp/with-temp [:model/Card card (api.pivots/pivot-card)]
+        (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))
+              rows   (mt/rows result)]
+          (is (= 1144 (:row_count result)))
+          (is (= "completed" (:status result)))
+          (is (= 6 (count (get-in result [:data :cols]))))
+          (is (= 1144 (count rows)))
 
-            (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
-            (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
-            (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
+          (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
+          (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
+          (is (= [nil nil nil 7 18760 69540] (last rows))))))))
 
 (deftest dataset-card
   (testing "Setting a question to a dataset makes it viz type table"
