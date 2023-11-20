@@ -166,7 +166,6 @@ describeEE("formatting > whitelabel", () => {
     });
 
     it("should allow hiding the help link", () => {
-      //
       cy.log("HIDE HELP LINK");
 
       cy.signInAsAdmin();
@@ -182,7 +181,6 @@ describeEE("formatting > whitelabel", () => {
       openSettingsMenu();
       helpLink().should("not.exist");
 
-      //
       cy.log("SET CUSTOM HELP LINK");
 
       cy.signInAsAdmin();
@@ -208,7 +206,6 @@ describeEE("formatting > whitelabel", () => {
         "https://example.org/custom-destination",
       );
 
-      //
       cy.log("SET DEFAULT HELP LINK");
 
       cy.signInAsAdmin();

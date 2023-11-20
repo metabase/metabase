@@ -8,7 +8,10 @@ interface Props {
 }
 
 export const HelpLinkRadio = ({ setting, onChange }: Props) => {
-  const focusNextInput = useCallback(async () => {
+  const focusUrlInput = useCallback(async () => {
+    // The url input is rendered only after the setting is saved on the BE
+    // there's no easy way to autofocus it from here besides waiting.
+    // `autofocus` can't be used otherwise it will be autofocused also on page load
     const input = await waitFor(() =>
       document.querySelector<HTMLInputElement>(
         "#setting-help-link-custom-destination",
@@ -25,7 +28,7 @@ export const HelpLinkRadio = ({ setting, onChange }: Props) => {
         <Radio
           label={t`Go to a custom destination...`}
           value={"custom"}
-          onClick={focusNextInput}
+          onClick={focusUrlInput}
         />
       </Stack>
     </Radio.Group>
