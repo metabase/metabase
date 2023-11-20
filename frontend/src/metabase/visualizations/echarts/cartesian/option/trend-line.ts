@@ -10,9 +10,9 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
+import type { RowValue } from "metabase-types/api";
 import type { Insight } from "metabase-types/api/insight";
 
-import type { RowValue } from "metabase-types/api";
 import { applySquareRootScaling, replaceValues } from "../model/dataset";
 import type { CartesianChartModel, DataKey } from "../model/types";
 
@@ -23,6 +23,13 @@ type TrendDataset = {
   [TREND_LINE_DATA_KEY]: number;
 }[];
 
+/**
+ * Computes the dataset for a single series, based on its `insight` object.
+ *
+ * @param {Insight} insight - Insight object for a series
+ * @param {CartesianChartModel} chartModel - Locally computed chart data
+ * @returns {TrendDataset} Resultant dataset for the series with the given `insight` object
+ */
 function getSingleSeriesTrendDataset(
   insight: Insight,
   chartModel: CartesianChartModel,
@@ -44,11 +51,20 @@ function getSingleSeriesTrendDataset(
   }));
 }
 
+/**
+ * Normalizes the trend line datasets for each series, if the visualization is a normalized
+ * stacked bar chart. Otherwise, it will just return the input datasets without any transformation.
+ *
+ * @param {TrendDataset[]} trendDatasets - Datasets for the trend lines for each series
+ * @param {ComputedVisualizationSettings} settings - Locally computed visualization settings for the chart
+ * @returns {TrendDataset[]} Resultant trend line datasets
+ */
 function normalizeTrendDatasets(
   trendDatasets: TrendDataset[],
   settings: ComputedVisualizationSettings,
 ): TrendDataset[] {
   if (settings["stackable.stack_type"] !== "normalized") {
+    // TODO confirm all series are bar
     return trendDatasets;
   }
 
@@ -72,6 +88,15 @@ function normalizeTrendDatasets(
   );
 }
 
+/**
+ * Applies a square root function to all values in the datasets for all trend lines,
+ * for use with the power y-axis scale.
+ *
+ * @param {TrendDataset[]} trendDatasets - Datasets for the trend lines for all series in the chart.
+ * @param {ComputedVisualizationSettings} settings - Locally computed visualization settings for the chart
+ * @returns {TrendDataset[]} Square-rooted datasets if the `graph.y_axis.scale` setting is `pow`,
+ * otherwise the unchanged input datasets
+ */
 function squareRootScaleDatasets(
   trendDatasets: TrendDataset[],
   settings: ComputedVisualizationSettings,
@@ -87,6 +112,16 @@ function squareRootScaleDatasets(
   ) as TrendDataset[];
 }
 
+/**
+ * Computes the dataset and series option objects needed by ECharts to render trend lines.
+ * Each series in the chart model will have one corresponding dataset and option, in the same
+ * order as the `chartModel.seriesModels` array.
+ *
+ * @param {CartesianChartModel} chartModel - Local computed data model for the chart
+ * @param {ComputedVisualizationSettings} settings - Locally computed visualization settings for the chart
+ * @param {RenderingContext} renderingContext - Misc. helpers provided by the environment (client or static-viz pipeline)
+ * @returns Object ({ options, datasets }), each key is either `null` or an array
+ */
 export function getTrendLineOptionsAndDatasets(
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
