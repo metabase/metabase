@@ -1,7 +1,7 @@
 import type { Drill } from "metabase/visualizations/types";
-import type { ZoomTimeseriesDrillThruInfo } from "metabase-lib";
+import type * as Lib from "metabase-lib";
 
-export const ZoomTimeseriesDrill: Drill<ZoomTimeseriesDrillThruInfo> = ({
+export const ZoomTimeseriesDrill: Drill<Lib.ZoomTimeseriesDrillThruInfo> = ({
   drill,
   drillDisplayInfo,
   applyDrill,
