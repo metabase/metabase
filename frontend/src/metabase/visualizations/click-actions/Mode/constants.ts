@@ -11,6 +11,7 @@ import { SummarizeColumnDrill } from "metabase/visualizations/click-actions/dril
 import { ObjectDetailsPkDrill } from "metabase/visualizations/click-actions/drills/mlv2/ObjectDetailsPkDrill";
 import { ObjectDetailsFkDrill } from "metabase/visualizations/click-actions/drills/mlv2/ObjectDetailsFkDrill";
 import { ObjectDetailsZoomDrill } from "metabase/visualizations/click-actions/drills/mlv2/ObjectDetailsZoomDrill";
+import { UnderlyingRecordsDrill } from "metabase/visualizations/click-actions/drills/mlv2/UnderlyingRecordsDrill";
 
 export const MODE_TYPE_DEFAULT = "default";
 export const MODE_TYPE_NATIVE = "native";
@@ -45,7 +46,7 @@ export const DRILL_TYPE_TO_HANDLER_MAP: Record<
   "drill-thru/sort": SortDrill,
   "drill-thru/summarize-column": SummarizeColumnDrill,
   "drill-thru/summarize-column-by-time": SummarizeColumnByTimeDrill,
-  "drill-thru/underlying-records": null, // UnderlyingRecordsDrill,
+  "drill-thru/underlying-records": UnderlyingRecordsDrill,
   "drill-thru/zoom-in.bins": ZoomBinsDrill,
   "drill-thru/zoom-in.geo": ZoomGeoDrill,
   "drill-thru/zoom-in.timeseries": ZoomTimeseriesDrill,
