@@ -1304,3 +1304,13 @@
       (if (neg? @a)
         (apply f args)
         (throw (ex-info "Not yet" {:remaining @a}))))))
+
+(defn latest-audit-log-entry
+  "Returns the latest audit log entry, optionally filters on `topic`."
+  ([] (latest-audit-log-entry nil nil))
+  ([topic] (latest-audit-log-entry topic nil))
+  ([topic model-id]
+   (t2/select-one [:model/AuditLog :topic :user_id :model :model_id :details]
+                  {:order-by [[:id :desc]]
+                   :where [:and (when topic [:= :topic (name topic)])
+                                (when model-id [:= :model_id model-id])]})))

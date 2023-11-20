@@ -1,4 +1,3 @@
-import { produce } from "immer";
 import { assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
 
@@ -6,14 +5,14 @@ import { createThunkAction } from "metabase/lib/redux";
 
 import Dashboards from "metabase/entities/dashboards";
 
-import { DashboardApi, CardApi } from "metabase/services";
+import { CardApi } from "metabase/services";
 import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavior";
 
+import { trackDashboardSaved } from "../analytics";
 import { getDashboardBeforeEditing } from "../selectors";
 
 import { fetchDashboard } from "./data-fetching";
 import { hasDashboardChanged, haveDashboardCardsChanged } from "./utils";
-import { saveCardsAndTabs } from "./tabs";
 
 export const UPDATE_DASHBOARD_AND_CARDS =
   "metabase/dashboard/UPDATE_DASHBOARD_AND_CARDS";
@@ -24,6 +23,7 @@ export const updateDashboardAndCards = createThunkAction(
   UPDATE_DASHBOARD_AND_CARDS,
   function () {
     return async function (dispatch, getState) {
+      const startTime = performance.now();
       const state = getState();
       const { dashboards, dashcards, dashboardId } = state.dashboard;
       const dashboard = {
@@ -94,10 +94,9 @@ export const updateDashboardAndCards = createThunkAction(
           .map(async dc => CardApi.update(dc.card)),
       );
 
-      const dashcardsToUpdate = dashboard.dashcards.filter(dc => !dc.isRemoved);
-      const updateCardsAndTabs = DashboardApi.updateCardsAndTabs({
-        dashId: dashboard.id,
-        cards: dashcardsToUpdate.map(dc => ({
+      const dashcardsToUpdate = dashboard.dashcards
+        .filter(dc => !dc.isRemoved)
+        .map(dc => ({
           id: dc.id,
           card_id: dc.card_id,
           dashboard_tab_id: dc.dashboard_tab_id,
@@ -109,29 +108,27 @@ export const updateDashboardAndCards = createThunkAction(
           series: dc.series,
           visualization_settings: dc.visualization_settings,
           parameter_mappings: dc.parameter_mappings,
-        })),
-        tabs: (dashboard.tabs ?? [])
-          .filter(tab => !tab.isRemoved)
-          .map(({ id, name }) => ({
-            id,
-            name,
-          })),
-      });
+        }));
+      const tabsToUpdate = (dashboard.tabs ?? [])
+        .filter(tab => !tab.isRemoved)
+        .map(({ id, name }) => ({
+          id,
+          name,
+        }));
+      await dispatch(
+        Dashboards.actions.update({
+          ...dashboard,
+          dashcards: dashcardsToUpdate,
+          tabs: tabsToUpdate,
+        }),
+      );
 
-      updateCardsAndTabs.then(updatedCardsAndTabs => {
-        dispatch(saveCardsAndTabs(updatedCardsAndTabs));
+      const endTime = performance.now();
+      const duration_milliseconds = parseInt(endTime - startTime);
+      trackDashboardSaved({
+        dashboard_id: dashboard.id,
+        duration_milliseconds,
       });
-
-      // Make two parallel requests: one to update the dashboard (without dashcards and tabs)
-      // and another for the dashcards and tabs
-      const onlyDashboard = produce(dashboard, d => {
-        delete d.dashcards;
-        delete d.tabs;
-      });
-      await Promise.all([
-        updateCardsAndTabs,
-        dispatch(Dashboards.actions.update(onlyDashboard)),
-      ]);
 
       // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
       dispatch(

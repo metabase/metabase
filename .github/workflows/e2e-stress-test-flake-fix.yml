@@ -17,6 +17,22 @@ on:
         required: false
 
 jobs:
+  workflow-summary:
+    name: Stress test inputs
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Generate workflow summary
+        run: |
+          echo '**Inputs:**' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo '- `branch`: ${{ github.ref_name }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `spec`: ${{ inputs.spec }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `burn_in`: ${{ inputs.burn_in }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `grep`: "${{ inputs.grep }}"' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
+
   stress-test-flake-fix:
     runs-on: ubuntu-22.04
     timeout-minutes: 60
@@ -51,7 +67,6 @@ jobs:
         uses: ./.github/actions/e2e-download-uberjar
         with:
           edition: 'ee'
-          was-built: false
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend

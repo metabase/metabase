@@ -1,6 +1,7 @@
 import { without } from "underscore";
 import { useState } from "react";
 import { t } from "ttag";
+import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import type { UserId, UserListResult } from "metabase-types/api";
 import { Center, Text } from "metabase/ui";
 import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchFilterPopoverWrapper";
@@ -12,7 +13,6 @@ import {
   SelectedUserButton,
   UserPickerInput,
 } from "metabase/search/components/SearchUserPicker/SearchUserPicker.styled";
-import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import { UserListElement } from "metabase/search/components/UserListElement";
 import { Icon } from "metabase/core/components/Icon";
 
@@ -23,7 +23,11 @@ export const SearchUserPicker = ({
   value: UserId[];
   onChange: (value: UserId[]) => void;
 }) => {
-  const { data: users = [], isLoading } = useUserListQuery();
+  const { isLoading, data } = useUserListQuery({
+    query: { recipients: true },
+  });
+
+  const users = data ?? [];
 
   const [userFilter, setUserFilter] = useState("");
   const [selectedUserIds, setSelectedUserIds] = useState(value);

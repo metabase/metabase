@@ -5,7 +5,7 @@ import { Checkbox, TextInput, Box, Flex, Text } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import type { TableColumnOrderSetting } from "metabase-types/api";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { StackedCheckBox } from "metabase/components/StackedCheckBox/StackedCheckBox";
+
 import type * as Lib from "metabase-lib";
 import type {
   ColumnSetting,
@@ -181,22 +181,34 @@ export const ChartSettingAddRemoveColumns = ({
             aria-label={`${columnGroup.displayName.toLocaleLowerCase()}-table-columns`}
             key={`column-group-${columnGroup.displayName}`}
           >
-            <Text fz="lg" fw={700} mb="1rem">
+            <Text fz="lg" fw={700} lh="1.5rem" mb="1rem" mt="1.75rem">
               {columnGroup.displayName}
             </Text>
             {showAddRemoveAll(columnGroup.columns) && (
-              <Box mb="0.75rem">
+              <Box mb="1.5rem">
                 {areAllColumnsInQuery(columnGroup.columns) ? (
-                  <StackedCheckBox
-                    label={<Text fw={700} ml="0.75rem">{t`Remove all`}</Text>}
+                  <Checkbox
+                    variant="stacked"
+                    size="xs"
+                    label={
+                      <Text
+                        fw={700}
+                        ml="0.375rem"
+                        lh="1rem"
+                      >{t`Remove all`}</Text>
+                    }
                     checked={true}
                     onClick={() =>
                       removeAllColumnsFromTable(columnGroup.columns)
                     }
                   />
                 ) : (
-                  <StackedCheckBox
-                    label={<Text fw={700} ml="0.75rem">{t`Add all`}</Text>}
+                  <Checkbox
+                    variant="stacked"
+                    size="xs"
+                    label={
+                      <Text fw={700} ml="0.375rem" lh="1rem">{t`Add all`}</Text>
+                    }
                     checked={false}
                     onClick={() => addAllColumnsFromTable(columnGroup.columns)}
                   />
@@ -207,9 +219,9 @@ export const ChartSettingAddRemoveColumns = ({
               <Box mb="1rem" key={`column-${columnItem.displayName}`}>
                 <Checkbox
                   label={
-                    <Flex ml="0.75rem" align="center">
+                    <Flex ml="0.25rem" align="center">
                       <Icon name={getColumnIcon(columnItem.column)}></Icon>
-                      <Text span ml="0.75rem">
+                      <Text span ml="0.5rem" lh="1rem" fw={400}>
                         {columnItem.displayName}
                       </Text>
                     </Flex>
@@ -217,6 +229,8 @@ export const ChartSettingAddRemoveColumns = ({
                   checked={columnInQuery(columnItem)}
                   onClick={() => toggleColumn(columnItem)}
                   disabled={columnItem.isBreakout || columnItem.isAggregation}
+                  mb="1.5rem"
+                  size="xs"
                 />
               </Box>
             ))}

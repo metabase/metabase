@@ -1,16 +1,14 @@
 default: &default
   - "locales/**"
-  - "bin/**"
-
-ci: &ci
-  - ".github/**/!(*.md|team.json)"
+  - "bin/**/!(*.md)"
 
 shared_sources: &shared_sources
-  - "shared/src/**"
-  - "src/metabase/lib/**"
+  - "src/**/*.cljc"
+  - "src/**/*.cljs"
 
 shared_specs: &shared_specs
-  - "shared/test/**"
+  - "test/**/*.cljc"
+  - "test/**/*.cljs"
 
 frontend_ci: &frontend_ci
   - ".github/actions/prepare-frontend/**"
@@ -82,6 +80,16 @@ sources: &sources
   - *frontend_sources
   - *backend_sources
 
+e2e_ci: &e2e_ci
+  - ".github/actions/build-e2e-matrix/**"
+  - ".github/actions/prepare-frontend/**"
+  - ".github/actions/prepare-backend/**"
+  - ".github/actions/prepare-uberjar-artifact/**"
+  - ".github/actions/e2e-prepare-containers/**"
+  - ".github/actions/prepare-cypress/**"
+  - ".github/actions/run-snowplow-micro/**"
+  - ".github/workflows/e2e-tests.yml"
+
 e2e_specs: &e2e_specs
   - "**/*.cy.*.js"
   - "e2e/runner/**"
@@ -90,12 +98,12 @@ e2e_specs: &e2e_specs
 
 e2e_all:
   - *default
-  - *ci
+  - *e2e_ci
   - *sources
   - *e2e_specs
 
 snowplow:
-  - *ci
+  - ".github/workflows/snowplow.yml"
   - "snowplow/**"
 
 documentation:
@@ -112,7 +120,9 @@ codeql:
 
 i18n:
   - *default
-  - *ci
+  - ".github/actions/prepare-frontend/**"
+  - ".github/actions/prepare-backend/**"
+  - ".github/workflows/i18n.yml"
   - *sources
 
 visualizations:

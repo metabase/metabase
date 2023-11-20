@@ -1,6 +1,9 @@
 import { restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  FIRST_COLLECTION_ID,
+  READ_ONLY_PERSONAL_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -141,6 +144,42 @@ describe("scenarios > collections > archive", () => {
     cy.findByTestId(`archive-item-${QUESTION_NAME}`).should("not.exist");
   });
 
+  it("should hide read-only archived items (metabase#24018)", () => {
+    const READ_ONLY_NAME = "read-only dashboard";
+    const CURATEABLE_NAME = "curate-able dashboard";
+
+    // setup archive with read-only collection items
+    createAndArchiveDashboard({
+      name: READ_ONLY_NAME,
+      collection_id: null,
+    });
+
+    // setup archive with curate-able collection items (user created items)
+    cy.signIn("readonly");
+
+    createAndArchiveDashboard({
+      name: CURATEABLE_NAME,
+      collection_id: READ_ONLY_PERSONAL_COLLECTION_ID,
+    });
+
+    // assert on desired behavior for read-only user
+    cy.visit("/archive");
+
+    cy.get("main").within(() => {
+      cy.findByText(READ_ONLY_NAME).should("not.exist");
+      cy.findByText(CURATEABLE_NAME).should("be.visible");
+    });
+
+    // assert on desired behavior for admin user
+    cy.signInAsAdmin();
+    cy.visit("/archive");
+
+    cy.get("main").within(() => {
+      cy.findByText(READ_ONLY_NAME).should("be.visible");
+      cy.findByText(CURATEABLE_NAME).should("be.visible");
+    });
+  });
+
   it("should load initially hidden archived items on scroll (metabase#24213)", () => {
     const stubbedItems = Array.from({ length: 50 }, (v, i) => ({
       name: "Item " + i,
@@ -180,3 +219,12 @@ describe("scenarios > collections > archive", () => {
     });
   });
 });
+
+function createAndArchiveDashboard({ name, collection_id }) {
+  cy.request("POST", "/api/dashboard/", {
+    name: name,
+    collection_id: collection_id,
+  }).then(({ body: { id: dashboardId } }) => {
+    cy.request("PUT", `/api/dashboard/${dashboardId}`, { archived: true });
+  });
+}

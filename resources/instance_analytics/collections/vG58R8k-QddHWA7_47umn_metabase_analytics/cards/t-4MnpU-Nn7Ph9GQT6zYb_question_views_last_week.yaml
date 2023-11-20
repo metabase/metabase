@@ -1,0 +1,90 @@
+description: null
+archived: false
+collection_position: null
+table_id:
+- Internal Metabase Database
+- public
+- v_view_log
+result_metadata: null
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Question views last week
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  database: Internal Metabase Database
+  type: query
+  query:
+    joins:
+    - strategy: left-join
+      alias: Group Members - User
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_view_log
+          - user_id
+        - base-type: type/Integer
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_group_members
+          - user_id
+        - base-type: type/Integer
+          join-alias: Group Members - User
+      source-table: lTp-ATFsCUFEr9I0fMEaO
+    aggregation:
+    - - count
+    breakout:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: week
+    source-table: P6Ityjj7igswKh4NgZZjz
+    filter:
+    - and
+    - - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_view_log
+          - entity_type
+        - base-type: type/Text
+      - card
+    - - time-interval
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_view_log
+          - timestamp
+        - base-type: type/DateTimeWithLocalTZ
+      - -2
+      - week
+      - include-current: false
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: t-4MnpU-Nn7Ph9GQT6zYb
+  label: question_views_last_week
+display: smartscalar
+entity_id: t-4MnpU-Nn7Ph9GQT6zYb
+collection_preview: true
+visualization_settings:
+  graph.dimensions:
+  - timestamp
+  graph.metrics:
+  - count
+  column_settings: null
+metabase_version: null
+parameters: []
+dataset: false
+created_at: '2023-06-14T19:34:18.446212Z'
+public_uuid: null

@@ -43,9 +43,9 @@ Metabase's reference documentation.
 - [Configuring the Metabase application database](./installation-and-operation/configuring-application-database.md)
 - [Backing up Metabase](./installation-and-operation/backing-up-metabase-application-data.md)
 - [Migrating to a production application database](./installation-and-operation/migrating-from-h2.md)
-- [Java versions](./installation-and-operation/java-versions.md)
 - [Monitoring your Metabase](./installation-and-operation/monitoring-metabase.md)
 - [Serialization](./installation-and-operation/serialization.md)
+- [Commands](./installation-and-operation/commands.md)
 - [Supported browsers](./installation-and-operation/supported-browsers.md)
 - [Privacy](./installation-and-operation/privacy.md)
 
@@ -151,6 +151,7 @@ Metabase's reference documentation.
 - [Data sandboxes](./permissions/data-sandboxes.md)
 - [Data sandbox examples](./permissions/data-sandbox-examples.md)
 - [SQL snippets folder permissions](./permissions/snippets.md)
+- [Notification permissions](./permissions/notifications.md)
 
 ### Embedding
 
@@ -180,7 +181,7 @@ Metabase's reference documentation.
 ### Tools
 
 - [Tools overview](./usage-and-performance-tools/start.md)
-- [Auditing tools](./usage-and-performance-tools/audit.md)
+- [Usage analytics](./usage-and-performance-tools/usage-analytics.md)
 - [Admin tools](./usage-and-performance-tools/tools.md)
 
 ### Cloud

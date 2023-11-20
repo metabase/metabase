@@ -10,8 +10,8 @@ import {
 import {
   setupSearchEndpoints,
   setupRecentViewsEndpoints,
-  setupUsersEndpoints,
   setupCollectionByIdEndpoint,
+  setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import * as domUtils from "metabase/lib/dom";
 import registerVisualizations from "metabase/visualizations/register";
@@ -245,7 +245,7 @@ describe("LinkViz", () => {
 
     it("clicking a search item should update the entity", async () => {
       setupSearchEndpoints([searchCardItem]);
-      setupUsersEndpoints([createMockUser()]);
+      setupUserRecipientsEndpoint({ users: [createMockUser()] });
       setupCollectionByIdEndpoint({
         collections: [searchCardCollection],
       });

@@ -24,7 +24,8 @@
    [:fields   {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/ColumnMetadata  :metadata/column)]]]
    [:cards    {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/CardMetadata    :metadata/card)]]]
    [:metrics  {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/MetricMetadata  :metadata/metric)]]]
-   [:segments {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/SegmentMetadata :metadata/segment)]]]])
+   [:segments {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/SegmentMetadata :metadata/segment)]]]
+   [:settings {:optional true} [:maybe [:map-of :keyword any?]]]])
 
 (mu/defn mock-metadata-provider :- lib.metadata/MetadataProvider
   "Create a mock metadata provider to facilitate writing tests. All keys except `:database` should be a sequence of maps
@@ -41,7 +42,7 @@
     (lib.tu/mock-metadata-provider parent-metadata-provider {...})
     =>
     (lib/composed-metadata-provider (lib.tu/mock-metadata-provider {...}) parent-metadata-provider)"
-  ([{:keys [database tables fields cards metrics segments] :as m} :- MockMetadata]
+  ([{:keys [database tables fields cards metrics segments settings] :as m} :- MockMetadata]
    (reify
      metadata.protocols/MetadataProvider
      (database [_this]            (some-> database
@@ -70,6 +71,8 @@
      (segments [_this table-id]   (for [segment segments
                                         :when   (= (:table-id segment) table-id)]
                                     (assoc segment :lib/type :metadata/segment)))
+
+     (setting [_this setting]     (get settings (keyword setting)))
 
      clojure.core.protocols/Datafiable
      (datafy [_this]

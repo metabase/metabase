@@ -68,9 +68,8 @@ export const generateVersionInfoJson = ({
 
 export const getVersionInfoUrl = (version: string) => {
   return isEnterpriseVersion(version)
-    ? `http://${ process.env.AWS_S3_STATIC_BUCKET }.s3.${ process.env.AWS_REGION }.amazonaws.com/version-info-ee.json`
-    : `http://${ process.env.AWS_S3_STATIC_BUCKET }.s3.${ process.env.AWS_REGION }.amazonaws.com/version-info.json`
-
+    ? `http://${process.env.AWS_S3_STATIC_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/version-info-ee.json`
+    : `http://${process.env.AWS_S3_STATIC_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/version-info.json`;
 };
 
 export async function getVersionInfo({
