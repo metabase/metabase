@@ -27,9 +27,9 @@
    [reifyhealth.specmonstah.core :as rs]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
- (:import
-  (java.io File)
-  (java.nio.file Path)))
+  (:import
+   (java.io File)
+   (java.nio.file Path)))
 
 (set! *warn-on-reflection* true)
 
@@ -735,3 +735,47 @@
                     (is (thrown-with-msg? Exception #"Please upgrade"
                                           (cmd/v2-load! dump-dir {}))
                         "throws")))))))))))
+
+(deftest pivot-export-test
+  (testing "Pivot table export and load correctly"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-source-and-dest-dbs
+        (ts/with-source-db
+          (t2.with-temp/with-temp
+            [Database   {db-id :id}             {:name "Pivot Database"}
+             Table      {table-id :id}          {:name "Pivot Table"}
+             Field      {pf1 :id}               {:name "Pivot Field 1"}
+             Field      {pf2 :id}               {:name "Pivot Field 2"}
+             Field      {field-id :id}          {:name "Some Field"}
+             Collection {coll-id :id}           {:name "Pivot Collection"}
+             Card       card                    {:name          "Pivot Card"
+                                                 :collection_id coll-id
+                                                 :dataset_query {:type     :query
+                                                                 :database db-id
+                                                                 :query    {:source-table table-id
+                                                                            :aggregation  [:sum [:field pf1 nil]]
+                                                                            :breakout     [[:field field-id nil]]}}
+                                                 :visualization_settings
+                                                 {:pivot_table.column_split
+                                                  {:columns []
+                                                   :rows    [["field" pf1 nil]
+                                                             ["field" pf2 nil]]
+                                                   :values  [["aggregation" 0]]}
+                                                  :column_settings
+                                                  {(format "[\"ref\",[\"field\",%s,null]]" pf1)
+                                                   {:pivot_table.column_sort_order "descending"}}}}]
+            (-> (serdes/with-cache (into [] (extract/extract {})))
+                (storage/store! dump-dir))
+
+            (ts/with-dest-db
+              (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+
+              (let [viz (:visualization_settings
+                         (t2/select-one Card :entity_id (:entity_id card)))]
+                (is (contains? viz :pivot_table.column_split))
+                (is (= 2
+                       (count (get-in viz [:pivot_table.column_split :rows]))))
+                (is (= "descending"
+                       (get-in viz [:column_settings
+                                    (format "[\"ref\",[\"field\",%s,null]]" pf1)
+                                    :pivot_table.column_sort_order])))))))))))
