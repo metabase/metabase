@@ -11,6 +11,80 @@ import { isDate } from "metabase-lib/types/utils/isa";
 
 const FALLBACK_DATE_UNIT = "day";
 
+export function computeTrend(series, insights, settings) {
+  const [
+    {
+      data: { rows, cols },
+    },
+  ] = series;
+
+  // column locations for date and metric
+  const dimensionIndex = cols.findIndex(col => isDate(col));
+  const metricIndex = cols.findIndex(
+    col => col.name === settings["scalar.field"],
+  );
+
+  // get metric column metadata
+  const metricColumn = cols[metricIndex];
+  const metricInsight = insights?.find(
+    insight => insight.col === metricColumn.name,
+  );
+  const dateUnit = metricInsight?.unit ?? FALLBACK_DATE_UNIT;
+
+  // get latest value and date
+  const i = rows.length - 1;
+  const date = rows[i]?.[dimensionIndex];
+  const value = rows[i]?.[metricIndex];
+  if (isEmpty(value)) {
+    return null;
+  }
+
+  // format latest value and date
+  const formatOptions = settings.column?.(metricColumn);
+  const valueStr = formatValue(value, formatOptions);
+  const dateStr = formatDateTimeRangeWithUnit([date], dateUnit, {
+    compact: true,
+  });
+
+  const clicked = {
+    value,
+    column: cols[dimensionIndex],
+    dimensions: [
+      {
+        value: rows[i][dimensionIndex],
+        column: cols[dimensionIndex],
+      },
+    ],
+    data: rows[i].map((value, index) => ({
+      value,
+      col: cols[index],
+    })),
+    settings,
+  };
+
+  const comparison = computePreviousPeriodComparison({
+    rows,
+    dimensionIndex,
+    metricIndex,
+    nextValue: value,
+    nextDate: date,
+    dateUnit,
+    formatOptions,
+    settings,
+  });
+
+  return {
+    value,
+    clicked,
+    formatOptions,
+    display: {
+      value: valueStr,
+      date: dateStr,
+    },
+    comparison,
+  };
+}
+
 // compute the percent change between two values (prevVal → nextVal)
 // percentChange = (nextVal - prevVal) / Math.abs(prevVal)
 export function computeChange(prevVal, nextVal) {
@@ -113,79 +187,5 @@ function computePreviousPeriodComparison({
       percentChange: percentChangeStr,
       prevValue: prevValueStr,
     },
-  };
-}
-
-export function computeTrend(series, insights, settings) {
-  const [
-    {
-      data: { rows, cols },
-    },
-  ] = series;
-
-  // column locations for date and metric
-  const dimensionIndex = cols.findIndex(col => isDate(col));
-  const metricIndex = cols.findIndex(
-    col => col.name === settings["scalar.field"],
-  );
-
-  // get metric column metadata
-  const metricColumn = cols[metricIndex];
-  const metricInsight = insights?.find(
-    insight => insight.col === metricColumn.name,
-  );
-  const dateUnit = metricInsight?.unit ?? FALLBACK_DATE_UNIT;
-
-  // get latest value and date
-  const i = rows.length - 1;
-  const date = rows[i]?.[dimensionIndex];
-  const value = rows[i]?.[metricIndex];
-  if (isEmpty(value)) {
-    return null;
-  }
-
-  // format latest value and date
-  const formatOptions = settings.column?.(metricColumn);
-  const valueStr = formatValue(value, formatOptions);
-  const dateStr = formatDateTimeRangeWithUnit([date], dateUnit, {
-    compact: true,
-  });
-
-  const clicked = {
-    value,
-    column: cols[dimensionIndex],
-    dimensions: [
-      {
-        value: rows[i][dimensionIndex],
-        column: cols[dimensionIndex],
-      },
-    ],
-    data: rows[i].map((value, index) => ({
-      value,
-      col: cols[index],
-    })),
-    settings,
-  };
-
-  const comparison = computePreviousPeriodComparison({
-    rows,
-    dimensionIndex,
-    metricIndex,
-    nextValue: value,
-    nextDate: date,
-    dateUnit,
-    formatOptions,
-    settings,
-  });
-
-  return {
-    value,
-    clicked,
-    formatOptions,
-    display: {
-      value: valueStr,
-      date: dateStr,
-    },
-    comparison,
   };
 }
