@@ -1,6 +1,7 @@
 import * as ML from "cljs/metabase.lib.js";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 import type {
+  ColumnFilterDrillDetails,
   ColumnMetadata,
   DataRow,
   Dimension,
@@ -38,6 +39,8 @@ export function drillThru(
   return ML.drill_thru(query, stageIndex, drillThru, ...args);
 }
 
-export function drillThruColumn(drillThru: DrillThru): ColumnMetadata {
-  return ML.drill_thru_column(drillThru);
+export function columnFilterDrillDetails(
+  drillThru: DrillThru,
+): ColumnFilterDrillDetails {
+  return ML.column_filter_drill_details(drillThru);
 }
