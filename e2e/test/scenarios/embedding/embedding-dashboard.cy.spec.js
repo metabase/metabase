@@ -5,6 +5,7 @@ import {
   visitEmbeddedPage,
   filterWidget,
   visitIframe,
+  getDashboardCard,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -232,6 +233,32 @@ describe("scenarios > embedding > dashboard parameters", () => {
       cy.url().then(url => cy.visit(url + "?id=1&id=3"));
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(".ScalarValue", "2");
+    });
+  });
+
+  it("should render error message when `params` is not an object (metabase#14474)", () => {
+    cy.get("@dashboardId").then(dashboardId => {
+      cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+        embedding_params: {
+          id: "enabled",
+          name: "enabled",
+          source: "enabled",
+          user_id: "enabled",
+        },
+        enable_embedding: true,
+      });
+
+      const invalidParamsValue = [];
+      const payload = {
+        resource: { dashboard: dashboardId },
+        params: invalidParamsValue,
+      };
+
+      visitEmbeddedPage(payload);
+
+      getDashboardCard()
+        .findByText("There was a problem displaying this chart.")
+        .should("be.visible");
     });
   });
 });
