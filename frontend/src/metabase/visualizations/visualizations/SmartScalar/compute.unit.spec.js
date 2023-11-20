@@ -6,21 +6,6 @@ import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
 
 describe("SmartScalar > compute", () => {
   describe("computeChange", () => {
-    // Tests from original clojure implementation:
-    // https://github.com/metabase/metabase/blob/d2ecd17/src/metabase/sync/analyze/fingerprint/insights.clj#L32-L42
-    //
-    //  (defn change
-    //    "Relative difference between `x1` an `x2`."
-    //    [x2 x1]
-    //    (when (and x1 x2 (not (zero? x1)))
-    //      (let [x2 (double x2)
-    //            x1 (double x1)]
-    //        (cond
-    //          (every? neg? [x1 x2])     (change (- x1) (- x2))
-    //          (and (neg? x1) (pos? x2)) (- (change x1 x2))
-    //          (neg? x1)                 (- (change x2 (- x1)))
-    //          :else                     (/ (- x2 x1) x1)))))
-
     it("should evaluate: 0 → - = -∞%", () => {
       expect(computeChange(0, -1)).toBe(-Infinity);
       expect(computeChange(0, -10)).toBe(-Infinity);
@@ -32,31 +17,32 @@ describe("SmartScalar > compute", () => {
     it("should evaluate: 0 → 0 =  0%", () => {
       expect(computeChange(0, 0)).toBe(0);
     });
-    it("should evaluate: - → 0 = -100%", () => {
-      expect(computeChange(-1, 0)).toBe(-1);
-      expect(computeChange(-10, 0)).toBe(-1);
+    it("should evaluate: - → 0 = 100%", () => {
+      expect(computeChange(-1, 0)).toBe(1);
+      expect(computeChange(-10, 0)).toBe(1);
     });
     it("should evaluate: + → 0 = -100%", () => {
       expect(computeChange(1, 0)).toBe(-1);
       expect(computeChange(10, 0)).toBe(-1);
     });
-    it("should evaluate: + → + = (b-a)/a", () => {
-      expect(computeChange(3, 5)).toBe((5 - 3) / 3);
-      expect(computeChange(12, 3)).toBe((3 - 12) / 12);
+    it("should evaluate: + → + = (nextVal - prevVal) / Math.abs(prevVal)", () => {
+      expect(computeChange(3, 5)).toBe((5 - 3) / Math.abs(3));
+      expect(computeChange(12, 3)).toBe((3 - 12) / Math.abs(12));
     });
-    it("should evaluate: + → - = (b-a)/a", () => {
-      expect(computeChange(3, -5)).toBe((-5 - 3) / 3);
-      expect(computeChange(12, -3)).toBe((-3 - 12) / 12);
+    it("should evaluate: + → - = (nextVal - prevVal) / Math.abs(prevVal)", () => {
+      expect(computeChange(3, -5)).toBe((-5 - 3) / Math.abs(3));
+      expect(computeChange(12, -3)).toBe((-3 - 12) / Math.abs(12));
     });
-    it("should evaluate: - → - =  [+ ← +]", () => {
-      expect(computeChange(-3, -5)).toBe(computeChange(5, 3));
-      expect(computeChange(-12, -3)).toBe(computeChange(3, 12));
+    it("should evaluate: - → - =  (nextVal - prevVal) / Math.abs(prevVal)", () => {
+      expect(computeChange(-3, -5)).toBe((-5 - -3) / Math.abs(-3));
+      expect(computeChange(-12, -3)).toBe((-3 - -12) / Math.abs(-12));
     });
-    it("should evaluate: - → + = -[- ← +]", () => {
-      expect(computeChange(-3, 5)).toBe(-computeChange(5, -3));
-      expect(computeChange(-12, 3)).toBe(-computeChange(3, -12));
+    it("should evaluate: - → + = (nextVal - prevVal) / Math.abs(prevVal)", () => {
+      expect(computeChange(-3, 5)).toBe((5 - -3) / Math.abs(-3));
+      expect(computeChange(-12, 3)).toBe((3 - -12) / Math.abs(-12));
     });
   });
+
   describe("computeTrend", () => {
     const printComparison = ({
       title,
