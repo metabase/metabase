@@ -12,7 +12,7 @@ Have you ever found yourself in a situation where it seems like you need to crea
 
 Instead of creating duplicate dashboards, you can add filter widgets to let people change variables for cards on a dashboard.
 
-## Adding a new filter widget to a dashboard
+## Adding a new filter
 
 ![Add a Filter](./images/add-filter.png)
 
@@ -35,7 +35,7 @@ You can choose from a number of filter types:
 
 The type of filter you choose will determine what the [filter widget](#filter-widgets) will look like, as well as which fields you’ll be able to filter your cards by:
 
-### Time filters
+#### Time filters
 
 When picking a Time filter, Metabase will prompt you to pick a specific type of filter widget:
 
@@ -48,7 +48,7 @@ When picking a Time filter, Metabase will prompt you to pick a specific type of 
 
 Single Date and Date Range will provide a calendar widget, while the other options all provide slightly different dropdown interfaces for picking values. To get a widget that's just like the time filter in the query builder, choose All options.
 
-### Location filters
+#### Location filters
 
 There are four types of Location filters to choose from:
 
@@ -57,11 +57,11 @@ There are four types of Location filters to choose from:
 - ZIP or Postal Code
 - Country
 
-### ID filter
+#### ID filter
 
 The ID filter provides a simple input box where you can type the ID of a user, order, etc.
 
-### Number filter
+#### Number filter
 
 You can choose from:
 
@@ -71,7 +71,7 @@ You can choose from:
 - Greater than or equal to
 - Less than or equal to
 
-### Text or category filter
+#### Text or category filter
 
 A flexible filter type that will let you create either a dropdown menu or an input box to filter on any category field in your cards. Options include:
 
@@ -102,32 +102,59 @@ If you're trying to filter native/SQL questions, you'll need to [add a bit of ad
 
 You can even wire up filters to text cards, but only if [the text card includes a variable](./introduction.md#including-variables-in-text-cards).
 
-## Configuring a filter widget
+## Editing a filter widget
 
 To edit a filter's settings:
 
 1. Click the **pencil** icon to enter dashboard editing mode.
 2. Click the **gear** icon on the filter you want to edit.
 
-From this filter editing view, you can wire up individual dashboard cards to the filter, or use the settings the filter sidebar to:
+From this filter editing view, you can wire up dashboard cards to the filter, or use the filter settings sidebar to:
 
-- [Remove a filter](#remove-a-filter)
-- [Reorder filter widgets](#reorder-filter-widgets)
+- [Change the filter's label](#filter-label)
+- [Set filter input type](#set-filter-input-type)
 - [Set a default filter value](#set-a-default-filter-value)
+- [Remove a filter](#remove-a-filter)
+- [Reorder filter](#reorder-filters)
 - [Make a multi-select filter](#make-a-multi-select-filter)
-- [Change the filter widget type](#filter-widgets)
 - [Change a filter's selectable values](#change-a-filters-selectable-values)
 
-### Remove a filter widget
+### Rename filter
 
 1. In dashboard edit mode, click your filter's **gear** icon.
-2. From the sidebar, click **Remove**.
+2. Change the Label text.
 
-If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard edit mode without saving your changes.
+Renaming the filter only affects the filter's display; the label has no effect on which columns Metabase filters.
 
-### Reorder filter widgets
+### Set filter input type
 
-In dashboard edit mode, click on the grabber handle (six dots) on the left side of a filter widget, then drag the widget to a different position.
+1. In dashboard edit mode, click your filter's **gear** icon.
+2. From the filter settings sidebar, set **How should people filter on this column?**:
+
+- [Dropdown list](#dropdown-list)
+- [Search box](#search-box)
+- [Input box](#plain-input-box)
+
+#### Dropdown list
+
+A list of all of the possible values in a column. People can use checkboxes to select more than one value on [multi-select filters](#make-a-multi-select-filter). You should choose the dropdown widget if you want the list of filter values to load instantly (from cache).
+
+If you're not seeing the **Dropdown list** option, and your dashboard filter is based on a column from a:
+
+- Table or GUI model: an admin will need to [enable the dropdown widget](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) for that column from Metabase's **Admin settings**.
+- SQL model: go to your [model's metadata settings](../data-modeling/models.md#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
+
+#### Search box
+
+A search box that suggests a list of matching filter values as you type. The suggestion list will display checkboxes for [multi-select filters](#make-a-multi-select-filter).
+
+The search box is a good choice for most columns containing labels, categories, statuses, and so on. It's is the default filter widget for columns with less than 100 unique values.
+
+#### Plain input box
+
+An input box that lets people enter plain text (no suggestion list).
+
+Useful for looking up partial matches (such as the ["contains" filter](#text-or-category-filter)) in columns that contain free text, such as comments or descriptions. The input box is the default filter widget for columns with more than 100 unique values.
 
 ### Set a default filter value
 
@@ -136,7 +163,18 @@ In dashboard edit mode, click on the grabber handle (six dots) on the left side 
 
 For example, you might want to set a default filter value like "Active", so that when people load your dashboard, they only see data for "Active" records (not "Inactive", "Cancelled", etc).
 
-### Make a multi-select filter widget
+### Remove a filter
+
+1. In dashboard edit mode, click your filter's **gear** icon.
+2. From the sidebar, click **Remove**.
+
+If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard edit mode without saving your changes.
+
+### Reorder filters
+
+In dashboard edit mode, click on the grabber handle (six dots) on the left side of a filter widget, then drag the widget to a different position.
+
+### Make a multi-select filter
 
 1. In dashboard edit mode, click your filter's **gear** icon.
 2. From the sidebar, find **Users can pick** and select "Multiple values".
@@ -156,48 +194,6 @@ A multi-select filter with the widget type [Dropdown list](#dropdown-list) or [S
 ![Selectable values](./images/selectable-values.png)
 
 \* If you don't see "Dropdown list" as an option, go to [Filter widgets: Dropdown list](#dropdown-list) for more info.
-
-## Using filter widgets
-
-Once you’ve added a filter to your dashboard, just click on the filter widget to select a value and activate the filter. To stop filtering, just click the blue X.
-
-Your active filter will only apply to your view of the dashboard. If someone else is viewing the same dashboard link at the same time, they won't see your filter.
-
-![Using a filter](./images/use-filter.png)
-
-You can also set up a dashboard question to [update a filter on click](./interactive.md#use-a-chart-to-filter-a-dashboard).
-
-## Filter widget type
-
-You can find a filter's widget settings from dashboard edit mode (**pencil** icon), then clicking on a filter widget's **gear** icon.
-
-From the filter settings sidebar, you'll find the widget types under **How should people filter on this column?**:
-
-- [Dropdown list](#dropdown-list)
-- [Search box](#search-box)
-- [Input box](#plain-input-box)
-
-### Dropdown list
-
-A list of all of the possible values in a column. People can use checkboxes to select more than one value on [multi-select filters](#make-a-multi-select-filter). You should choose the dropdown widget if you want the list of filter values to load instantly (from cache).
-
-If you're not seeing the **Dropdown list** option, and your dashboard filter is based on a column from a:
-
-- Table or GUI model: an admin will need to [enable the dropdown widget](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) for that column from Metabase's **Admin settings**.
-
-- SQL model: go to your [model's metadata settings](../data-modeling/models.md#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
-
-### Search box
-
-A search box that suggests a list of matching filter values as you type. The suggestion list will display checkboxes for [multi-select filters](#make-a-multi-select-filter).
-
-The search box is a good choice for most columns containing labels, categories, statuses, and so on. This is the default filter widget for columns with less than 100 unique values.
-
-### Plain input box
-
-An input box that lets people enter plain text (no suggestion list).
-
-Useful for looking up partial matches (such as the ["contains" filter](#text-or-category-filter)) in columns that contain free text, such as comments or descriptions. The input box is the default filter widget for columns with more than 100 unique values.
 
 ## Linking filters
 
@@ -222,6 +218,16 @@ If a dashboard is particularly large or slow, or you have multiple filters that 
 To turn off the automatic application of filters, click on the info **i** icon, and toggle the **Auto-apply filters** option. With auto-apply turned off, each time you change a value in a filter, you'll need to click the **Apply** button to refresh the dashboard with the new filter value.
 
 ![Click Apply to apply the filters and refresh the dashboard](./images/apply-button.png)
+
+## Using filter widgets
+
+Once you’ve added a filter to your dashboard, just click on the filter widget to select a value and activate the filter. To stop filtering, just click the blue X.
+
+Your active filter will only apply to your view of the dashboard. If someone else is viewing the same dashboard link at the same time, they won't see your filter.
+
+![Using a filter](./images/use-filter.png)
+
+You can also set up a dashboard question to [update a filter on click](./interactive.md#use-a-chart-to-filter-a-dashboard).
 
 ## Further reading
 
