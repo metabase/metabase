@@ -10,6 +10,7 @@
   (:require
    [clojure.spec.alpha :as s]
    [metabase.events.schema :as events.schema]
+   [metabase.models.interface :as mi]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -121,18 +122,20 @@
         (span/with-span!
           {:name       "publish-event!.logging"
            :attributes {}}
-          (log/debugf "Publishing %s event:\n\n%s" (u/colorize :yellow (pr-str topic)) (u/pprint-to-str event))
+          (log/infof "Publishing %s event (name and id):\n\n%s"
+                      (u/colorize :yellow (pr-str topic))
+                      (u/pprint-to-str (let [model (mi/model event)]
+                                         (cond-> (select-keys event [:name :id])
+                                           model
+                                           (assoc :model model)))))
           (assert (and (qualified-keyword? topic)
                        (isa? topic :metabase/event))
                   (format "Invalid event topic %s: events must derive from :metabase/event" (pr-str topic)))
           (assert (map? event)
                   (format "Invalid event %s: event must be a map." (pr-str event))))
         (try
-          (span/with-span!
-            {:name       "publish-event!.schema-validation"
-             :attributes {}}
-            (when-let [schema (events.schema/topic->schema topic)]
-              (mu/validate-throw schema event)))
+          (when-let [schema (events.schema/topic->schema topic)]
+            (mu/validate-throw schema event))
           (span/with-span!
             {:name       "publish-event!.next-method"
              :attributes {}}

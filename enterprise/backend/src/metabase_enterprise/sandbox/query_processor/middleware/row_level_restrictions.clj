@@ -377,8 +377,10 @@
 (defenterprise merge-sandboxing-metadata
   "Post-processing middleware. Merges in column metadata from the original, unsandboxed version of the query."
   :feature :sandboxes
-  [{::keys [original-metadata]} rff]
-  (if original-metadata
-    (fn merge-sandboxing-metadata-rff* [metadata]
-      (rff (merge-metadata original-metadata metadata)))
-    rff))
+  [{::keys [original-metadata] :as query} rff]
+  (fn merge-sandboxing-metadata-rff* [metadata]
+    (let [metadata (assoc metadata :is_sandboxed (some? (get-in query [::qp.perms/perms :gtaps])))
+          metadata (if original-metadata
+                     (merge-metadata original-metadata metadata)
+                     metadata)]
+      (rff metadata))))

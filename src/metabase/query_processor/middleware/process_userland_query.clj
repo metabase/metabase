@@ -59,8 +59,11 @@
                                                              (catch Throwable e
                                                                (log/error e (trs "Error saving query execution info"))))))))
 
-(defn- save-successful-query-execution! [cached? query-execution result-rows]
-  (let [qe-map (assoc query-execution :cache_hit (boolean cached?) :result_rows result-rows)]
+(defn- save-successful-query-execution! [cached? is_sandboxed? query-execution result-rows]
+  (let [qe-map (assoc query-execution
+                      :cache_hit (boolean cached?)
+                      :result_rows result-rows
+                      :is_sandboxed (boolean is_sandboxed?))]
     (save-query-execution! qe-map)))
 
 (defn- save-failed-query-execution! [query-execution message]
@@ -75,7 +78,7 @@
   (merge
    (-> query-execution
        add-running-time
-       (dissoc :error :hash :executor_id :action_id :card_id :dashboard_id :pulse_id :result_rows :native))
+       (dissoc :error :hash :executor_id :action_id :is_sandboxed :card_id :dashboard_id :pulse_id :result_rows :native))
    result
    {:status                 :completed
     :average_execution_time (when cached?
@@ -94,7 +97,7 @@
          (events/publish-event! :event/card-query {:user-id      (:executor_id execution-info)
                                                    :card-id      (:card_id execution-info)
                                                    :context      (:context execution-info)}))
-       (save-successful-query-execution! (:cached acc) execution-info @row-count)
+       (save-successful-query-execution! (:cached acc) (get-in acc [:data :is_sandboxed]) execution-info @row-count)
        (rf (if (map? acc)
              (success-response execution-info acc)
              acc)))

@@ -8,7 +8,6 @@
    [metabase-enterprise.sso.integrations.jwt :as mt.jwt]
    [metabase-enterprise.sso.integrations.saml-test :as saml-test]
    [metabase.config :as config]
-   [metabase.events.audit-log-test :as audit-log-test]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
@@ -24,12 +23,9 @@
 (use-fixtures :once (fixtures/initialize :test-users))
 
 (defn- disable-other-sso-types [thunk]
-  (let [current-features (premium-features/token-features)]
-    (premium-features-test/with-premium-features #{:sso-saml}
-      (mt/with-temporary-setting-values [ldap-enabled false
-                                         saml-enabled false]
-        (premium-features-test/with-premium-features current-features
-          (thunk))))))
+  (mt/with-temporary-setting-values [ldap-enabled false
+                                     saml-enabled false]
+    (thunk)))
 
 (use-fixtures :each disable-other-sso-types)
 
@@ -41,12 +37,12 @@
   "Stubs the `premium-features/token-features` function to simulate a premium token with the `:sso-jwt` feature.
    This needs to be included to test any of the JWT features."
   [& body]
-  `(premium-features-test/with-premium-features #{:sso-jwt}
+  `(premium-features-test/with-additional-premium-features #{:sso-jwt}
      ~@body))
 
 (defn- call-with-default-jwt-config [f]
   (let [current-features (premium-features/token-features)]
-    (premium-features-test/with-premium-features #{:sso-jwt}
+    (premium-features-test/with-additional-premium-features #{:sso-jwt}
       (mt/with-temporary-setting-values [jwt-enabled               true
                                          jwt-identity-provider-uri default-idp-uri
                                          jwt-shared-secret         default-jwt-secret
@@ -61,14 +57,15 @@
 
 (defmacro ^:private with-jwt-default-setup [& body]
   `(mt/with-ensure-with-temp-no-transaction!
-     (disable-other-sso-types
-      (fn []
-        (with-sso-jwt-token
-          (saml-test/call-with-login-attributes-cleared!
-           (fn []
-             (call-with-default-jwt-config
-              (fn []
-                ~@body)))))))))
+     (premium-features-test/with-premium-features #{:audit-app}
+       (disable-other-sso-types
+        (fn []
+          (with-sso-jwt-token
+            (saml-test/call-with-login-attributes-cleared!
+             (fn []
+               (call-with-default-jwt-config
+                (fn []
+                  ~@body))))))))))
 
 (deftest sso-prereqs-test
   (with-sso-jwt-token
@@ -182,8 +179,7 @@
       (with-users-with-email-deleted "newuser@metabase.com"
         (letfn [(new-user-exists? []
                   (boolean (seq (t2/select User :%lower.email "newuser@metabase.com"))))]
-          (is (= false
-                 (new-user-exists?)))
+          (is (false? (new-user-exists?)))
           (let [response (saml-test/client-full-response :get 302 "/auth/sso"
                                                          {:request-options {:redirect-strategy :none}}
                                                          :return_to default-redirect-uri
@@ -209,7 +205,7 @@
                            (dissoc :last_login)))))
               (testing "User Invite Event is logged."
                 (is (= "newuser@metabase.com"
-                       (get-in (audit-log-test/latest-event :user-invited (:id new-user))
+                       (get-in (mt/latest-audit-log-entry :user-invited (:id new-user))
                                [:details :email]))))
               (testing "attributes"
                 (is (= {"more" "stuff"
