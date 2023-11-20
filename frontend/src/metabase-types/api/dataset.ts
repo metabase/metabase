@@ -52,7 +52,7 @@ export interface DatasetData {
   results_timezone?: string;
   download_perms?: DownloadPermission;
   results_metadata: ResultsMetadata;
-  insights?: Insight[];
+  insights?: Insight[] | null;
 }
 
 export type JsonQuery = DatasetQuery & {

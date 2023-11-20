@@ -10,47 +10,55 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import { checkNotNull } from "metabase/lib/types";
+import type { Insight } from "metabase-types/api/insight";
 
+import type { RowValue } from "metabase-types/api";
 import { applySquareRootScaling, replaceValues } from "../model/dataset";
-import type { CartesianChartModel, GroupedDataset } from "../model/types";
+import type { CartesianChartModel, DataKey } from "../model/types";
 
 const TREND_LINE_DATA_KEY = "trend-line";
 
-function getSingleSeriesTrendDataset(
-  index: number,
-  chartModel: CartesianChartModel,
-): GroupedDataset {
-  const insights = checkNotNull(chartModel.insights); // TODO just make this a param?
+type TrendDataset = {
+  [key: DataKey]: RowValue;
+  [TREND_LINE_DATA_KEY]: number;
+}[];
 
-  const xValues = chartModel.dataset.map(row =>
-    moment(row[chartModel.dimensionModel.dataKey]),
+function getSingleSeriesTrendDataset(
+  insight: Insight,
+  chartModel: CartesianChartModel,
+): TrendDataset {
+  const xValues = chartModel.dataset.map(
+    // We know the value is a string because it has to be a timeseries aggregation
+    row => moment(row[chartModel.dimensionModel.dataKey] as string),
   );
   const trendDataPoints = getTrendDataPointsFromInsight(
-    insights[index],
+    insight,
     d3.extent(xValues),
     xValues.length,
   );
 
-  return trendDataPoints.map(([x, y], i) => ({
+  return trendDataPoints.map(([_x, y], rowIndex) => ({
     [chartModel.dimensionModel.dataKey]:
-      chartModel.dataset[i][chartModel.dimensionModel.dataKey],
+      chartModel.dataset[rowIndex][chartModel.dimensionModel.dataKey],
     [TREND_LINE_DATA_KEY]: y,
   }));
 }
 
 function normalizeTrendDatasets(
-  trendDatasets: GroupedDataset[],
+  trendDatasets: TrendDataset[],
   settings: ComputedVisualizationSettings,
-): GroupedDataset[] {
+): TrendDataset[] {
   if (settings["stackable.stack_type"] !== "normalized") {
     return trendDatasets;
   }
 
-  const totals = _.range(trendDatasets[0].length).map(rowIndex =>
+  // For each row in the chart dataset (e.g. question results), compute the sum
+  // of the trend line value at that row for all series.
+  const rowCount = trendDatasets[0].length;
+  const totals = _.range(rowCount).map(rowIndex =>
     trendDatasets.reduce(
       (total, trendDataset) =>
-        total + (trendDataset[rowIndex][TREND_LINE_DATA_KEY] as number), // TODO better typesafety?
+        total + trendDataset[rowIndex][TREND_LINE_DATA_KEY],
       0,
     ),
   );
@@ -65,9 +73,9 @@ function normalizeTrendDatasets(
 }
 
 function squareRootScaleDatasets(
-  trendDatasets: GroupedDataset[],
+  trendDatasets: TrendDataset[],
   settings: ComputedVisualizationSettings,
-): GroupedDataset[] {
+): TrendDataset[] {
   if (settings["graph.y_axis.scale"] !== "pow") {
     return trendDatasets;
   }
@@ -76,7 +84,7 @@ function squareRootScaleDatasets(
     replaceValues(trendDataset, (dataKey, value) =>
       dataKey === TREND_LINE_DATA_KEY ? applySquareRootScaling(value) : value,
     ),
-  );
+  ) as TrendDataset[];
 }
 
 export function getTrendLineOptionsAndDatasets(
@@ -87,36 +95,41 @@ export function getTrendLineOptionsAndDatasets(
   options: RegisteredSeriesOption["line"][] | null;
   datasets: EChartsOption["dataset"][] | null;
 } {
-  if (!settings["graph.show_trendline"]) {
+  // The trend line can only be shown when the question has only
+  // a single aggregation on a time field. When this is not the case,
+  // the backend will return null for the insights object, so our array
+  // will have length 0.
+  const canShowTrendLine = chartModel.insights.length !== 0;
+  if (!settings["graph.show_trendline"] || !canShowTrendLine) {
     return { options: null, datasets: null };
   }
   if (chartModel.insights.length !== chartModel.seriesModels.length) {
     throw Error("Number of insight objects does not match number of series");
   }
 
-  const options: RegisteredSeriesOption["line"][] = chartModel.insights.map(
-    (_, index) => ({
+  // series option objects for each trend line (one per series)
+  const options: RegisteredSeriesOption["line"][] = chartModel.seriesModels.map(
+    (seriesModel, index) => ({
       type: "line",
-      datasetIndex: index + 1, // TODO make this a constant somehow
+      datasetIndex: index + 1, // offset to account for the chart's dataset (e.g. question results)
       encode: {
         x: chartModel.dimensionModel.dataKey,
         y: TREND_LINE_DATA_KEY,
       },
       showSymbol: false,
       lineStyle: {
-        color: Color(
-          renderingContext.getColor(chartModel.seriesModels[index].color),
-        )
+        color: Color(renderingContext.getColor(seriesModel.color))
           .lighten(0.25)
-          .hex(), // TODO map on seriesModels instead
+          .hex(),
         type: [5, 5],
         width: 2,
       },
     }),
   );
 
-  const rawDatasets = chartModel.insights.map((_, index) =>
-    getSingleSeriesTrendDataset(index, chartModel),
+  // compute datasets for each trend line series
+  const rawDatasets = chartModel.insights.map(insight =>
+    getSingleSeriesTrendDataset(insight, chartModel),
   );
   const normalizedDatasets = normalizeTrendDatasets(rawDatasets, settings);
   const scaledDatasets = squareRootScaleDatasets(normalizedDatasets, settings);
@@ -126,6 +139,6 @@ export function getTrendLineOptionsAndDatasets(
     datasets: scaledDatasets.map(dataset => ({
       dimensions: [chartModel.dimensionModel.dataKey, TREND_LINE_DATA_KEY],
       source: dataset,
-    })),
+    })) as EChartsOption["dataset"][],
   };
 }
