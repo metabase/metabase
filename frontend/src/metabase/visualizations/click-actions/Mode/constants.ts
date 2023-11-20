@@ -8,6 +8,9 @@ import { ZoomGeoDrill } from "metabase/visualizations/click-actions/drills/mlv2/
 import { ZoomTimeseriesDrill } from "metabase/visualizations/click-actions/drills/mlv2/ZoomTimeseriesDrill";
 import { DistributionDrill } from "metabase/visualizations/click-actions/drills/mlv2/DistributionDrill";
 import { SummarizeColumnDrill } from "metabase/visualizations/click-actions/drills/mlv2/SummarizeColumnDrill";
+import { ObjectDetailsPkDrill } from "metabase/visualizations/click-actions/drills/mlv2/ObjectDetailsPkDrill";
+import { ObjectDetailsFkDrill } from "metabase/visualizations/click-actions/drills/mlv2/ObjectDetailsFkDrill";
+import { ObjectDetailsZoomDrill } from "metabase/visualizations/click-actions/drills/mlv2/ObjectDetailsZoomDrill";
 
 export const MODE_TYPE_DEFAULT = "default";
 export const MODE_TYPE_NATIVE = "native";
@@ -33,9 +36,9 @@ export const DRILL_TYPE_TO_HANDLER_MAP: Record<
 > = {
   "drill-thru/column-filter": null, // ColumnFilterDrill,
   "drill-thru/quick-filter": null, // QuickFilterDrill,
-  "drill-thru/pk": null, // PKDetailsDrill,
-  "drill-thru/zoom": null, // ZoomToRowDrill,
-  "drill-thru/fk-details": null, // FKDetailsDrill,
+  "drill-thru/pk": ObjectDetailsPkDrill,
+  "drill-thru/zoom": ObjectDetailsZoomDrill,
+  "drill-thru/fk-details": ObjectDetailsFkDrill,
   "drill-thru/pivot": null,
   "drill-thru/fk-filter": FKFilterDrill,
   "drill-thru/distribution": DistributionDrill,
