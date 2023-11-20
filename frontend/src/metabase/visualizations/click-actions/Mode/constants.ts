@@ -6,6 +6,8 @@ import { SortDrill } from "metabase/visualizations/click-actions/drills/mlv2/Sor
 import { ZoomBinsDrill } from "metabase/visualizations/click-actions/drills/mlv2/ZoomBinsDrill";
 import { ZoomGeoDrill } from "metabase/visualizations/click-actions/drills/mlv2/ZoomGeoDrill";
 import { ZoomTimeseriesDrill } from "metabase/visualizations/click-actions/drills/mlv2/ZoomTimeseriesDrill";
+import { DistributionDrill } from "metabase/visualizations/click-actions/drills/mlv2/DistributionDrill";
+import { SummarizeColumnDrill } from "metabase/visualizations/click-actions/drills/mlv2/SummarizeColumnDrill";
 
 export const MODE_TYPE_DEFAULT = "default";
 export const MODE_TYPE_NATIVE = "native";
@@ -36,9 +38,9 @@ export const DRILL_TYPE_TO_HANDLER_MAP: Record<
   "drill-thru/fk-details": null, // FKDetailsDrill,
   "drill-thru/pivot": null,
   "drill-thru/fk-filter": FKFilterDrill,
-  "drill-thru/distribution": null, // DistributionDrill,
+  "drill-thru/distribution": DistributionDrill,
   "drill-thru/sort": SortDrill,
-  "drill-thru/summarize-column": null, // SummarizeColumnDrill,
+  "drill-thru/summarize-column": SummarizeColumnDrill,
   "drill-thru/summarize-column-by-time": SummarizeColumnByTimeDrill,
   "drill-thru/underlying-records": null, // UnderlyingRecordsDrill,
   "drill-thru/zoom-in.bins": ZoomBinsDrill,
