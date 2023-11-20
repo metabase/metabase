@@ -16,7 +16,7 @@ import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import type { CollectionItem, DashboardId } from "metabase-types/api";
 import { getSettingsLoading } from "metabase/selectors/settings";
 
-// import { TablePicker } from "metabase/components/EntityPicker"; // FIXME
+// import { TabbedEntityPicker } from "metabase/components/EntityPicker";
 
 import type Database from "metabase-lib/metadata/Database";
 import {
@@ -41,7 +41,10 @@ export const HomePage = (): JSX.Element => {
 
   return (
     <HomeLayout hasMetabot={getHasMetabot(databases, models, isMetabotEnabled)}>
-      {/* <TablePicker onItemSelect={console.log} /> */}
+      {/* <TabbedEntityPicker
+        onItemSelect={console.log}
+        tabs={["question", "table"]}
+      /> */}
       <HomeContent />
     </HomeLayout>
   );
