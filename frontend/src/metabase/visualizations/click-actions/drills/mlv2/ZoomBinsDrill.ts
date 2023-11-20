@@ -2,7 +2,7 @@ import { t } from "ttag";
 import type { Drill } from "metabase/visualizations/types";
 import type { ZoomDrillThruInfo } from "metabase-lib";
 
-export const ZoomGeoDrill: Drill<ZoomDrillThruInfo> = ({
+export const ZoomBinsDrill: Drill<ZoomDrillThruInfo> = ({
   drill,
   applyDrill,
 }) => {
@@ -12,7 +12,7 @@ export const ZoomGeoDrill: Drill<ZoomDrillThruInfo> = ({
 
   return [
     {
-      name: "zoom-in.geo",
+      name: "zoom-in.bins",
       title: t`Zoom in`,
       section: "zoom",
       icon: "zoom_in",
