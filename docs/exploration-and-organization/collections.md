@@ -42,6 +42,8 @@ In addition to the collections you and your teammates have made, you'll also alw
 
 You can use your personal collection as a scratch space to put experiments and explorations that you don't think would be particularly interesting to the rest of your team, or as a work-in-progress space where you can work on things and then move them to a shared place once they're ready.
 
+To share items in your personal collection, for example to add a question in your personal collection to a dashboard in a public collection, you'll first need to move that item to a public collection.
+
 ## Pinned items
 
 ![Pins](./images/pinned-items.png)

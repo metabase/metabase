@@ -1184,10 +1184,12 @@
                        Database   [{db-id      :id}           {:name "My Database"}]
                        Table      [{no-schema-id :id}         {:name "Schemaless Table" :db_id db-id}]
                        Field      [_                          {:name "Some Field" :table_id no-schema-id}]
-                       Table      [{schema-id    :id}         {:name        "Schema'd Table"
-                                                               :db_id       db-id
-                                                               :schema      "PUBLIC"}]
+                       Table      [{schema-id    :id}         {:name   "Schema'd Table"
+                                                               :db_id  db-id
+                                                               :schema "PUBLIC"}]
                        Field      [{field-id :id}             {:name "Other Field" :table_id schema-id}]
+                       Field      [{field-id2 :id}            {:name "Field To Click 1" :table_id schema-id}]
+                       Field      [{field-id3 :id}            {:name "Field To Click 2" :table_id schema-id}]
 
                        ;; One dashboard and three cards in each of the three collections:
                        ;; Two cards contained in the dashboard and one freestanding.
@@ -1304,7 +1306,57 @@
                                                                                   :values_source_config {:card_id     c1-2-id
                                                                                                          :value_field [:field field-id nil]}}]}]
                        DashboardCard [_                       {:card_id      c4-id
-                                                               :dashboard_id dash4-id}]]
+                                                               :dashboard_id dash4-id}]
+
+                       ;; Fifth dashboard which has :click_behavior defined.
+                       Collection    [{coll5-id      :id}        {:name          "Fifth collection"}]
+                       Dashboard     [{clickdash-id  :id
+                                      clickdash-eid :entity_id} {:name          "Dashboard with click behavior"
+                                                                 :collection_id coll5-id
+                                                                 :creator_id    mark-id}]
+                       DashboardCard [_                          {:card_id      c3-1-id
+                                                                  :dashboard_id clickdash-id
+                                                                  :visualization_settings
+                                                                  ;; Top-level click behavior for the card.
+                                                                  {:click_behavior {:type              "link"
+                                                                                    :linkType          "question"
+                                                                                    :targetId          c3-2-id
+                                                                                    :parameterMappings {}}}}]
+                       ;;; stress-test that exporting various visualization_settings does not break
+                       DashboardCard [_                          {:card_id      c3-1-id
+                                                                  :dashboard_id clickdash-id
+                                                                  :visualization_settings
+                                                                  {:column_settings
+                                                                   {(str "[\"ref\",[\"field\"," field-id ",null]]")
+                                                                    {:click_behavior
+                                                                     {:type     "link"
+                                                                      :linkType "dashboard"
+                                                                      :targetId dash4-id}}
+                                                                    (str "[\"ref\",[\"field\"," field-id2 ",null]]")
+                                                                    {:click_behavior
+                                                                     {:type "crossfilter"
+                                                                      :parameterMapping
+                                                                      {"abcdef" {:id     "abcdef"
+                                                                                 :source {:type "column"
+                                                                                          :id   field-id2
+                                                                                          :name "Field To Click 1"}
+                                                                                 :target {:type "parameter"
+                                                                                          :id   "abcdef"}}}}}
+                                                                    (str "[\"ref\",[\"field\"," field-id3 ",null]]")
+                                                                    (let [mapping-id (format "[\"dimension\",[\"fk->\",[\"field\",%d,null],[\"field\",%d,null]]]" field-id3 field-id)
+                                                                          dimension  [:dimension [:field field-id {:source-field field-id3}]]]
+                                                                      {:click_behavior
+                                                                       {:type     "link"
+                                                                        :linkType "question"
+                                                                        :targetId c4-id
+                                                                        :parameterMapping
+                                                                        {mapping-id {:id     mapping-id
+                                                                                     :source {:type "column"
+                                                                                              :id   "Category_ID"
+                                                                                              :name "Category ID"}
+                                                                                     :target {:type      "dimension"
+                                                                                              :id        mapping-id
+                                                                                              :dimension dimension}}}}})}}}]]
 
       (testing "selecting a collection includes settings and data model by default"
         (is (= #{"Card" "Collection" "Dashboard" "Database" "Setting"}
@@ -1348,6 +1400,18 @@
                (->> (extract/extract {:targets [["Dashboard" dash4-id]] :no-settings true :no-data-model true})
                     (map serdes/path)
                     set)))))
+
+      (testing "selecting a dashboard gets any dashboards or cards it links to when clicked"
+        (is (=? #{[{:model "Dashboard"       :id clickdash-eid :label "dashboard_with_click_behavior"}]
+                  [{:model "Card"            :id c3-1-eid      :label "question_3_1"}]    ; Visualized card
+                  [{:model "Dashboard"       :id dash4-eid     :label "dashboard_4"}]     ; Linked dashboard
+                  [{:model "Card"            :id c3-2-eid      :label "question_3_2"}]    ; Linked card
+                  [{:model "Card"            :id c4-eid        :label "question_4_1"}]    ; Transitive via dash4
+                  [{:model "Card"            :id c1-1-eid      :label "question_1_1"}]    ; Linked by c4
+                  [{:model "Card"            :id c1-2-eid      :label "question_1_2"}]}   ; Linked by dash4
+                (->> (extract/extract {:targets [["Dashboard" clickdash-id]] :no-settings true :no-data-model true})
+                     (map serdes/path)
+                     set))))
 
       (testing "selecting a collection gets all its contents"
         (let [grandchild-paths  #{[{:model "Collection"    :id coll3-eid :label "grandchild_collection"}]
