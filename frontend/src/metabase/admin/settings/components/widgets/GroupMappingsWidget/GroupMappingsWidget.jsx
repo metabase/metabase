@@ -8,7 +8,7 @@ import { isDefaultGroup } from "metabase/lib/groups";
 
 import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
-import { FormSwitch } from "metabase/forms/components/FormSwitch";
+import { FormSwitch } from "metabase/forms";
 
 import SettingToggle from "../SettingToggle";
 import AddMappingRow from "./AddMappingRow";
