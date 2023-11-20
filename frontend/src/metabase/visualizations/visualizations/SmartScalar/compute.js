@@ -156,11 +156,11 @@ export function computeTrend(series, insights, settings) {
     column: cols[dimensionIndex],
     dimensions: [
       {
-        value: rows[rows.length - 1][dimensionIndex],
+        value: rows[i][dimensionIndex],
         column: cols[dimensionIndex],
       },
     ],
-    data: rows[rows.length - 1].map((value, index) => ({
+    data: rows[i].map((value, index) => ({
       value,
       col: cols[index],
     })),
