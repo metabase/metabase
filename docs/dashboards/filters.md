@@ -33,7 +33,7 @@ You can choose from a number of filter types:
 - [Number](#number-filter)
 - [Text or categories](#text-or-category-filter)
 
-The type of filter you choose will determine what the [filter widget](#filter-widgets) will look like, as well as which fields you’ll be able to filter your cards by:
+The type of filter you choose will determine how the filter works, as well as which fields you’ll be able to filter your cards by:
 
 #### Time filters
 
@@ -84,7 +84,7 @@ A flexible filter type that will let you create either a dropdown menu or an inp
 
 ## Connecting a filter to dashboard cards
 
-Dashboard filters apply across all [dashboard tabs](./introduction.md#dashboard-tabs), though for each filter widget you add, you'll need to tell Metabase which column Metabase should filter for each card.
+Dashboard filters apply across all [dashboard tabs](./introduction.md#dashboard-tabs), though for each filter widget you add, you'll need to tell Metabase which column the filter should update for each card.
 
 Click on a card's dropdown menu to select the field that you want the widget to filter on. If there are other cards that also have the field you select, Metabase will automatically wire up the filter to those cards as well.
 
@@ -92,7 +92,7 @@ Here we've wired up a Text filter to the "Event types" card, telling Metabase th
 
 ![Wiring up a dashboard filter to a card](./images/wiring-cards.png)
 
-If there’s a card on your dashboard that you don’t want to use with the filter, or that doesn’t make sense to use with the filter, that’s okay — the filter will only be applied to the cards you select.
+If there’s a card on your dashboard that you don’t want the filter to update, or that doesn’t make sense to use with the filter, that’s okay — Metabase will only apply the filter to the cards you select.
 
 ## Filtering dashboards with native/SQL questions
 
