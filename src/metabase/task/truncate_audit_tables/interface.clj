@@ -8,7 +8,7 @@
    [metabase.util.log :as log]))
 
 (define-multi-setting audit-max-retention-days
-  (deferred-tru "Retention policy for the `query_execution` table.")
+  (deferred-tru "Retention policy for the `query_execution`, `audit_log`, and `view_log` tables.")
   (fn [] (if (and config/ee-available? (premium-features/enable-audit-app?)) :ee :oss))
   :visibility :internal
   :setter     :none)

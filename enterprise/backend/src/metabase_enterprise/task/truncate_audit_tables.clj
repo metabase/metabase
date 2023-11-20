@@ -4,7 +4,19 @@
    [metabase.models.setting :as setting]
    [metabase.models.setting.multi-setting
     :refer [define-multi-setting-impl]]
-   [metabase.task.truncate-audit-tables.interface :as truncate-audit-tables.i]))
+   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.task.truncate-audit-tables.interface
+    :as
+    truncate-audit-tables.i]))
+
+(defenterprise audit-models-to-truncate
+  "List of models to truncate, as well as the name of the column containing the row's timestamp. EE version adds
+  `audit_log` and `view_log` truncation"
+  :feature :audit-app
+  []
+  {:model/QueryExecution :started_at
+   :model/AuditLog       :timestamp
+   :model/ViewLog        :timestamp})
 
 (define-multi-setting-impl truncate-audit-tables.i/audit-max-retention-days :ee
   :getter (fn []

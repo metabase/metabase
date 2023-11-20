@@ -11,7 +11,7 @@
     :refer [define-multi-setting-impl]]
    [metabase.models.task-history :as task-history]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.task :as task]
    [metabase.task.truncate-audit-tables.interface
     :as truncate-audit-tables.i]
@@ -53,14 +53,21 @@
               (log/infof "%s cleanup successful, %d rows were deleted" table-name rows-deleted)
               (log/infof "%s cleanup successful, no rows were deleted" table-name)))
           (catch Throwable e
-            (log/errorf e "%s cleanup failed" table-name)
-            (throw e)))))))
+            (log/errorf e "%s cleanup failed" table-name)))))))
+
+(defenterprise audit-models-to-truncate
+  "List of models to truncate. OSS implementation only truncates `query_execution` table."
+  metabase-enterprise.task.truncate-audit-tables
+  []
+  {:model/QueryExecution :started_at})
 
 (defn- truncate-audit-tables!
   []
-  (truncate-table! :model/QueryExecution :started_at)
-  (truncate-table! :model/AuditLog :timestamp)
-  (truncate-table! :model/ViewLog :timestamp))
+  (dorun
+   (map
+    (fn [[model time-column]]
+      (truncate-table! model time-column))
+    (audit-models-to-truncate))))
 
 (jobs/defjob ^{:doc "Triggers the removal of `query_execution` rows older than the configured threshold."} TruncateAuditTables [_]
   (truncate-audit-tables!))
