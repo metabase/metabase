@@ -3,6 +3,7 @@ import type { DrillThruType } from "metabase-lib";
 import { FKFilterDrill } from "metabase/visualizations/click-actions/drills/mlv2/FKFilterDrill";
 import { SummarizeColumnByTimeDrill } from "metabase/visualizations/click-actions/drills/mlv2/SummarizeColumnByTimeDrill";
 import { SortDrill } from "metabase/visualizations/click-actions/drills/mlv2/SortDrill";
+import { ZoomGeoDrill } from "metabase/visualizations/click-actions/drills/mlv2/ZoomGeoDrill";
 
 export const MODE_TYPE_DEFAULT = "default";
 export const MODE_TYPE_NATIVE = "native";
@@ -39,4 +40,5 @@ export const DRILL_TYPE_TO_HANDLER_MAP: Record<
   "drill-thru/summarize-column-by-time": SummarizeColumnByTimeDrill,
   "drill-thru/underlying-records": null, // UnderlyingRecordsDrill,
   "drill-thru/zoom-in.timeseries": null,
+  "drill-thru/zoom-in.geo": ZoomGeoDrill,
 };
