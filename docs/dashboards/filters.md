@@ -10,13 +10,20 @@ redirect_from:
 
 Have you ever found yourself in a situation where it seems like you need to create nearly identical copies of the same dashboard, with just one different variable? Maybe you have an Earnings dashboard, but you want to see the data for each city your business is in, or maybe you have a KPI dashboard that you want to see broken out by month.
 
-Instead of creating duplicate dashboards, you can add [filter widgets](#filter-widgets) to let people change variables for cards on a dashboard.
+Instead of creating duplicate dashboards, you can add filter widgets to let people change variables for cards on a dashboard.
 
-## Adding a new filter
-
-To add a filter to a dashboard, first click the **pencil icon** to enter dashboard editing mode, then click the **Add a Filter** button that appears in the top-right. Dashboard filters apply across all [dashboard tabs](./introduction.md#dashboard-tabs), though you'll need to connect filters to each card you want to filter.
+## Adding a new filter widget to a dashboard
 
 ![Add a Filter](./images/add-filter.png)
+
+- Click the **pencil icon** to enter dashboard editing mode.
+- Click the **filter icon** that appears in the top-right to add a filter.
+- Select a [filter type](#filter-types).
+- [Connect your filter](#connecting-a-filter-to-dashboard-cards) to one or more dashboard cards.
+- [Configure your filter](#configuring-a-filter-widget).
+- **Save** your changes.
+
+### Filter types
 
 You can choose from a number of filter types:
 
@@ -75,32 +82,34 @@ A flexible filter type that will let you create either a dropdown menu or an inp
 - **Starts with**. Match values that begin with the entered text.
 - **Ends with**. Match values that end with the entered text.
 
+## Connecting a filter to dashboard cards
+
+Dashboard filters apply across all [dashboard tabs](./introduction.md#dashboard-tabs), though for each filter widget you add, you'll need to tell Metabase which column Metabase should filter for each card.
+
+Click on a card's dropdown menu to select the field that you want the widget to filter on. If there are other cards that also have the field you select, Metabase will automatically wire up the filter to those cards as well.
+
+Here we've wired up a Text filter to the "Event types" card, telling Metabase that the column to filter on should be the `Analytics.Event.Button.Label` field:
+
+![Wiring up a dashboard filter to a card](./images/wiring-cards.png)
+
+If there’s a card on your dashboard that you don’t want to use with the filter, or that doesn’t make sense to use with the filter, that’s okay — the filter will only be applied to the cards you select.
+
 ## Filtering dashboards with native/SQL questions
 
 If you're trying to filter native/SQL questions, you'll need to [add a bit of additional markup to your query](../questions/native-editor/sql-parameters.md) in order to use a dashboard filter with that question. For an in-depth article on this, check out [Adding filters to dashboards with SQL questions](https://www.metabase.com/learn/dashboards/filters).
 
-## Example filter
+## Wiring up dashboard filters to text cards
 
-Let's add a filter widget to our dashboard. We'll select a **Text or Category** filter, and then select the **Is** option to select one or more values from a list.
+You can even wire up filters to text cards, but only if [the text card includes a variable](./introduction.md#including-variables-in-text-cards).
 
-Metabase will display a filter editing sidebar where you can wire up your new filter to each applicable card. Each card will feature a dropdown menu where you can select the column to filter. The sidebar on the right displays the settings for the current filter.
+## Configuring a filter widget
 
-If there’s a card on your dashboard that you don’t want to use with the filter, or that doesn’t make sense to use with the filter, that’s okay — the filter will only be applied to the cards you select.
-
-Here we've wired up a Text filter to a card on the `Analytics.Event.Button.Label` field:
-
-![Wiring up a dashboard filter to a card](./images/wiring-cards.png)
-
-Before we **Save** our changes, we can edit our filter's settings.
-
-## Editing a filter
-
-To access a filter's settings:
+To edit a filter's settings:
 
 1. Click the **pencil** icon to enter dashboard editing mode.
 2. Click the **gear** icon on the filter you want to edit.
 
-From this filter editing view, you can wire up individual dashboard cards to the filter, or use the settings in the sidebar to:
+From this filter editing view, you can wire up individual dashboard cards to the filter, or use the settings the filter sidebar to:
 
 - [Remove a filter](#remove-a-filter)
 - [Reorder filter widgets](#reorder-filter-widgets)
@@ -109,7 +118,7 @@ From this filter editing view, you can wire up individual dashboard cards to the
 - [Change the filter widget type](#filter-widgets)
 - [Change a filter's selectable values](#change-a-filters-selectable-values)
 
-### Remove a filter
+### Remove a filter widget
 
 1. In dashboard edit mode, click your filter's **gear** icon.
 2. From the sidebar, click **Remove**.
@@ -127,28 +136,28 @@ In dashboard edit mode, click on the grabber handle (six dots) on the left side 
 
 For example, you might want to set a default filter value like "Active", so that when people load your dashboard, they only see data for "Active" records (not "Inactive", "Cancelled", etc).
 
-### Make a multi-select filter
+### Make a multi-select filter widget
 
 1. In dashboard edit mode, click your filter's **gear** icon.
 2. From the sidebar, find **Users can pick** and select "Multiple values".
 
 A multi-select filter with the widget type [Dropdown list](#dropdown-list) or [Search box](#search-box) will display a list of values with checkboxes.
 
-### Change a filter's selectable values
+### Change a filter widget's selectable values
 
 1. In dashboard edit mode, click your filter's **gear** icon.
 2. From the sidebar, find **How should users filter on this column?**.
 3. Select "Dropdown list".\*
 4. Click **Edit** (to the right of "Dropdown list") to specify where the values should come from:
-    - From connected fields
-    - From another model or question
-    - Custom list
+   - From connected fields
+   - From another model or question
+   - Custom list
 
 ![Selectable values](./images/selectable-values.png)
 
 \* If you don't see "Dropdown list" as an option, go to [Filter widgets: Dropdown list](#dropdown-list) for more info.
 
-## Using filters
+## Using filter widgets
 
 Once you’ve added a filter to your dashboard, just click on the filter widget to select a value and activate the filter. To stop filtering, just click the blue X.
 
@@ -158,9 +167,7 @@ Your active filter will only apply to your view of the dashboard. If someone els
 
 You can also set up a dashboard question to [update a filter on click](./interactive.md#use-a-chart-to-filter-a-dashboard).
 
-## Filter widgets
-
-The filter widget is the little box at the top of your dashboard which people will use to enter their filter values.
+## Filter widget type
 
 You can find a filter's widget settings from dashboard edit mode (**pencil** icon), then clicking on a filter widget's **gear** icon.
 
@@ -210,19 +217,11 @@ To learn more, check out [Linking filters in dashboards](https://www.metabase.co
 
 By default, each time you change the value in a filter on a dashboard, the dashboard will refresh to get the results of each card with that new filter value applied.
 
-If a dashboard is particularly large or slow, or you have multiple filters that you want to adjust, you may want to tell Metabase when to refresh the dashboard.
+If a dashboard is particularly large or slow, or you have multiple filters that you want to adjust before the dashboard refreshes its results, you may want to tell Metabase when to apply those filters and refresh the dashboard.
 
-To turn off the automatic application of filters, click on the info **i** icon, and toggle the **Auto-apply filters** option. With auto-apply turned off, each time you change a value in a filter, you'll need to click the apply button to refresh the dashboard with the new filter value.
+To turn off the automatic application of filters, click on the info **i** icon, and toggle the **Auto-apply filters** option. With auto-apply turned off, each time you change a value in a filter, you'll need to click the **Apply** button to refresh the dashboard with the new filter value.
 
 ![Click Apply to apply the filters and refresh the dashboard](./images/apply-button.png)
-
-## Best practices
-
-Here are a few tips to get the most out of dashboard filters:
-
-- **Limit filters to 3 or fewer**. Limiting filters will make it easier for your teammates to quickly understand what options are available to them when viewing your dashboard.
-- **Start with a new dashboard**. While you can add dashboard filters to an existing dashboard with a bunch of cards in it, it can be easier to start a new dashboard and think about what filters you intend to add to it. That way you can make sure that you only put cards in that dashboard that can be used with the filters. Alternatively, you could duplicate an existing dashboard, and pare down the number of cards.
-- **Link filters** so people don't have to sift through irrelevant filter options (like cities not in a filtered state).
 
 ## Further reading
 
