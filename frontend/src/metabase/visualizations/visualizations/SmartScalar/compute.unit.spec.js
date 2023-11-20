@@ -45,11 +45,16 @@ describe("SmartScalar > compute", () => {
 
   describe("computeTrend", () => {
     const printComparison = ({
-      title,
+      comparisonPeriodStr,
       changeArrow,
       display: { change, value },
     }) =>
-      [changeArrow, change, "vs.", [title, value].filter(e => e).join(": ")]
+      [
+        changeArrow,
+        change,
+        "vs.",
+        [comparisonPeriodStr, value].filter(e => e).join(": "),
+      ]
         .filter(e => e)
         .join(" ");
     const printTrend = ({ display: { value, date }, comparison }) =>

@@ -35,25 +35,25 @@ function computeChangeTypeWithOptions({
 }) {
   if (isEmpty(prevValue)) {
     return {
-      type: PREVIOUS_VALUE_OPTIONS.MISSING,
-      changeStr: t`N/A`,
-      valueStr: t`(empty)`,
+      comparisonType: PREVIOUS_VALUE_OPTIONS.MISSING,
+      percentChangeStr: t`N/A`,
+      prevValueStr: t`(empty)`,
     };
   }
 
   if (percentChange === 0) {
     return {
-      type: PREVIOUS_VALUE_OPTIONS.SAME,
-      changeStr: t`No change`,
-      valueStr: "",
+      comparisonType: PREVIOUS_VALUE_OPTIONS.SAME,
+      percentChangeStr: t`No change`,
+      prevValueStr: "",
     };
   }
 
   return {
-    type: PREVIOUS_VALUE_OPTIONS.CHANGED,
+    comparisonType: PREVIOUS_VALUE_OPTIONS.CHANGED,
     changeArrow: percentChange < 0 ? "↓" : "↑",
-    changeStr: formatChange(percentChange),
-    valueStr: formatValue(prevValue, formatOptions),
+    percentChangeStr: formatChange(percentChange),
+    prevValueStr: formatValue(prevValue, formatOptions),
   };
 }
 
@@ -85,12 +85,12 @@ function computePreviousPeriodComparison({
       .add(1, dateUnit)
       .isSame(moment.utc(nextDate).startOf(dateUnit));
 
-  const title =
+  const comparisonPeriodStr =
     isEmpty(prevDate) || datesAreSequential
       ? t`previous ${dateUnitDisplay}`
       : formatDateTimeRangeWithUnit([prevDate], dateUnit, { compact: true }); // FIXME: elide part of the prevDate in common with lastDate
 
-  const { type, changeArrow, changeStr, valueStr } =
+  const { comparisonType, changeArrow, percentChangeStr, prevValueStr } =
     computeChangeTypeWithOptions({
       formatOptions,
       percentChange,
@@ -103,15 +103,15 @@ function computePreviousPeriodComparison({
   const changeColor = color(arrowColorName[changeArrow]);
 
   return {
-    type,
+    comparisonType,
     percentChange,
     prevValue,
-    title,
+    comparisonPeriodStr,
     changeColor,
     changeArrow,
     display: {
-      change: changeStr,
-      value: valueStr,
+      change: percentChangeStr,
+      value: prevValueStr,
     },
   };
 }
