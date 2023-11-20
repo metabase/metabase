@@ -17,10 +17,6 @@ export function computeChange(prevVal, nextVal) {
     // percentChange = nextVal / 0
     return nextVal === 0 ? 0 : nextVal > 0 ? Infinity : -Infinity;
   }
-  if (nextVal === 0) {
-    // percentChange = - prevVal / Math.abs(prevVal) = -1
-    return -1;
-  }
 
   return (nextVal - prevVal) / Math.abs(prevVal);
 }
