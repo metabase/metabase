@@ -4,11 +4,11 @@ import { t } from "ttag";
 import _ from "underscore";
 import { Flex, Grid, NumberInput, Text } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
-import { ColumnValuesWidget } from "metabase/common/components/ColumnValuesWidget";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useNumberFilter } from "metabase/common/hooks/filters/use-number-filter";
 import * as Lib from "metabase-lib";
 import type { FilterPickerWidgetProps } from "../types";
+import { FilterValuesWidget } from "../FilterValuesWidget";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 
 export function NumberFilterEditor({
@@ -101,7 +101,7 @@ function NumberValueInput({
 }: NumberValueInputProps) {
   if (hasMultipleValues) {
     return (
-      <ColumnValuesWidget
+      <FilterValuesWidget
         value={values}
         column={column}
         hasMultipleValues
