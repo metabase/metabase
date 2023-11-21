@@ -442,6 +442,11 @@
   (cond-> (set/rename-keys param-ref norm->db-param-ref-keys)
     (= "dimension" (::param-ref-type param-ref)) (assoc :id id-str)))
 
+(defn dimension-param-mapping?
+  "Is this a parameter mapping for a dimension? Like when link refers a card getting data from another card."
+  [mapping]
+  (= "dimension" (get-in mapping [:target :type])))
+
 (defn db->norm-param-mapping
   "Converts a `parameter-mapping` (i.e. value of `:parameterMapping`) from DB to normalized form"
   {:added "0.40.0"}
@@ -452,7 +457,7 @@
     ;; v is {:id <same long string> :source <param-ref> :target <param-ref>}
     (reduce-kv (fn [acc k v]
                  (let [[new-k new-v]
-                       (if (= "dimension" (get-in v [:target :type]))
+                       (if (dimension-param-mapping? v)
                          (let [parsed-id (-> (if (keyword? k) (keyname k) k)
                                              parse-json-string
                                              mbql.normalize/normalize-tokens)]

@@ -145,8 +145,8 @@ function TableSimple({
             onClick={onClick}
             isRightAligned={isColumnRightAligned(col)}
           >
-            <SortIcon name={iconName} />
             <Ellipsified>{getColumnTitle(colIndex)}</Ellipsified>
+            <SortIcon name={iconName} />
           </TableHeaderCellContent>
         </th>
       );

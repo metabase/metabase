@@ -1166,9 +1166,12 @@
   been keywordized. Therefore the keys must be converted to strings, parsed, exported, and JSONified. The values are
   ported by [[export-viz-click-behavior-mapping]]."
   [mappings]
-  (into {} (for [[kw-key mapping] mappings]
-             [(json-ids->fully-qualified-names (name kw-key))
-              (export-viz-click-behavior-mapping mapping)])))
+  (into {} (for [[kw-key mapping] mappings
+                 :let [k (name kw-key)]]
+             (if (mb.viz/dimension-param-mapping? mapping)
+               [(json-ids->fully-qualified-names k)
+                (export-viz-click-behavior-mapping mapping)]
+               [k mapping]))))
 
 (defn- import-viz-click-behavior-mappings
   "The exported form of `:parameterMappings` on a `:click_behavior` viz settings is a map of JSON strings which contain
