@@ -29,26 +29,22 @@ export function automaticDashboardDrillUrl({
   const query = question.query() as StructuredQuery;
   const dimensions = (clicked && clicked.dimensions) || [];
 
-  const nextQuery = query
+  const nextQuestion = query
     .clearFilters() // clear existing filters so we don't duplicate them
     .question()
-    .drillUnderlyingRecords(dimensions)
-    .query() as StructuredQuery;
-  const filters = nextQuery.filters();
+    .drillUnderlyingRecords(dimensions);
 
-  return ML_Urls.getAutomaticDashboardUrl(question, filters);
+  return ML_Urls.getAutomaticDashboardUrl(nextQuestion);
 }
 
 export function compareToRestDrillUrl({ question, clicked }: ClickActionProps) {
   const query = question.query() as StructuredQuery;
   const dimensions = (clicked && clicked.dimensions) || [];
 
-  const nextQuery = query
+  const nextQuestion = query
     .clearFilters() // clear existing filters so we don't duplicate them
     .question()
-    .drillUnderlyingRecords(dimensions)
-    .query() as StructuredQuery;
-  const filters = nextQuery.filters();
+    .drillUnderlyingRecords(dimensions);
 
-  return ML_Urls.getComparisonDashboardUrl(question, filters);
+  return ML_Urls.getComparisonDashboardUrl(nextQuestion);
 }

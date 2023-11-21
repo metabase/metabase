@@ -13,6 +13,7 @@ import { ObjectDetailsFkDrill } from "metabase/visualizations/click-actions/dril
 import { ObjectDetailsZoomDrill } from "metabase/visualizations/click-actions/drills/mlv2/ObjectDetailsZoomDrill";
 import { UnderlyingRecordsDrill } from "metabase/visualizations/click-actions/drills/mlv2/UnderlyingRecordsDrill";
 import { QuickFilterDrill } from "metabase/visualizations/click-actions/drills/mlv2/QuickFilterDrill";
+import { AutomaticInsightsDrill } from "metabase/visualizations/click-actions/drills/mlv2/AutomaticInsightsDrill";
 
 export const MODE_TYPE_DEFAULT = "default";
 export const MODE_TYPE_NATIVE = "native";
@@ -51,4 +52,5 @@ export const DRILL_TYPE_TO_HANDLER_MAP: Record<
   "drill-thru/zoom-in.bins": ZoomBinsDrill,
   "drill-thru/zoom-in.geo": ZoomGeoDrill,
   "drill-thru/zoom-in.timeseries": ZoomTimeseriesDrill,
+  "drill-thru/automatic-insights": AutomaticInsightsDrill,
 };

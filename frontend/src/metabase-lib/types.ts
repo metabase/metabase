@@ -265,7 +265,8 @@ export type DrillThruType =
   | "drill-thru/underlying-records"
   | "drill-thru/zoom-in.bins"
   | "drill-thru/zoom-in.geo"
-  | "drill-thru/zoom-in.timeseries";
+  | "drill-thru/zoom-in.timeseries"
+  | "drill-thru/automatic-insights";
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
