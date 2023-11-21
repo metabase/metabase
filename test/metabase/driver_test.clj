@@ -1,12 +1,20 @@
 (ns metabase.driver-test
   (:require
    [cheshire.core :as json]
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.h2 :as h2]
    [metabase.driver.impl :as driver.impl]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.plugins.classloader :as classloader]
+   [metabase.sync :as sync]
+   [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
-   [metabase.test.data.env :as tx.env]))
+   [metabase.test.data.env :as tx.env]
+   [metabase.test.data.interface :as tx]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -67,6 +75,59 @@
         (is (nil? (->> (driver/describe-database driver/*driver* (mt/db))
                        :tables
                        (some :schema))))))))
+
+(deftest check-can-connect-before-sync-test
+  (testing "Database sync should short-circuit and fail if the database connection is not available"
+    (mt/test-drivers (mt/normal-drivers)
+      (let [;; create a database with a table and sync
+            database-name      (name (gensym))
+            empty-dbdef        {:database-name database-name}
+            _                  (tx/create-db! driver/*driver* empty-dbdef)
+            connection-details (tx/dbdef->connection-details driver/*driver* :db empty-dbdef)
+            db                 (first (t2/insert-returning-instances! :model/Database {:name       database-name
+                                                                                       :engine     (u/qualified-name driver/*driver*)
+                                                                                       :details    connection-details}))
+            log-match?         (fn [[log-level throwable message]]
+                                 (and (= log-level :warn)
+                                      (instance? clojure.lang.ExceptionInfo throwable)
+                                      (re-matches #"^Cannot sync Database (.+): (.+)" message)))]
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec db) ["create table foo (id int)"])
+        (binding [h2/*allow-testing-h2-connections* true]
+          (sync/sync-database! db))
+        (testing "sense checks before deleting the database"
+          (testing "sense check 1: the table should exist on initial sync"
+            (is (true? (t2/exists? :model/Table :db_id (u/the-id db)))))
+          (testing "sense check 2: sync-and-analyze-database! should not log a warning"
+            (is (not-any?
+                 log-match?
+                 (mt/with-log-messages-for-level :warn
+                   (#'task.sync-databases/sync-and-analyze-database!* (u/the-id db))))))
+          (testing "sense check 3: sync-schema should return true and start a sync"
+            (is (= {:status "ok"}
+                   (mt/user-http-request :crowberto :post 200 (str "/database/" (u/the-id db) "/sync_schema"))))))
+        ;; invalidate the connection pool so we don't have to wait to finish syncing before destroying the db
+        (when (isa? driver/hierarchy driver/*driver* :sql-jdbc)
+          (sql-jdbc.conn/invalidate-pool-for-db! db))
+        ;; delete the db
+        (tx/destroy-db! driver/*driver* empty-dbdef)
+        ;; now test all the methods of syncing fail
+        (testing "after deleting a database"
+          (testing "1: `sync-database!` should throw"
+            (is (thrown-with-msg?
+                  clojure.lang.ExceptionInfo
+                  #".*"
+                  (binding [h2/*allow-testing-h2-connections* true]
+                    (sync/sync-database! db)))))
+          ;; triggering a sync should show a warning
+          (testing "2: sync-and-analyze-database! should log a warning and end early"
+            (is (some
+                 log-match?
+                 (mt/with-log-messages-for-level :warn
+                   (#'task.sync-databases/sync-and-analyze-database!* (u/the-id db))))))
+          (testing "3: triggering the sync via the POST /api/database/:id/sync_schema endpoint should fail"
+            (mt/user-http-request :crowberto :post 500 (str "/database/" (u/the-id db) "/sync_schema"))))
+        ;; clean up the database
+        (t2/delete! :model/Database (u/the-id db))))))
 
 (deftest supports-table-privileges-matches-implementations-test
   (mt/test-drivers (mt/normal-drivers-with-feature :table-privileges)
