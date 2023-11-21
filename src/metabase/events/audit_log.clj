@@ -192,3 +192,10 @@
 (methodical/defmethod events/publish-event! ::permission-failure-event
   [topic event]
   (audit-log/record-event! topic event))
+
+(derive ::settings-changed-event ::event)
+(derive :event/setting-update ::settings-changed-event)
+
+(methodical/defmethod events/publish-event! ::settings-changed-event
+  [topic event]
+  (audit-log/record-event! topic event))

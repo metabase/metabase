@@ -134,11 +134,8 @@
           (assert (map? event)
                   (format "Invalid event %s: event must be a map." (pr-str event))))
         (try
-          (span/with-span!
-            {:name       "publish-event!.schema-validation"
-             :attributes {}}
-            (when-let [schema (events.schema/topic->schema topic)]
-              (mu/validate-throw schema event)))
+          (when-let [schema (events.schema/topic->schema topic)]
+            (mu/validate-throw schema event))
           (span/with-span!
             {:name       "publish-event!.next-method"
              :attributes {}}

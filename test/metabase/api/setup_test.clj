@@ -9,12 +9,12 @@
    [metabase.config :as config]
    [metabase.driver.h2 :as h2]
    [metabase.events :as events]
-   [metabase.events.audit-log-test :as audit-log-test]
    [metabase.http-client :as client]
    [metabase.models :refer [Database Table User]]
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache-test :as setting.cache-test]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.setup :as setup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -82,59 +82,61 @@
 (deftest create-superuser-test
   (testing "POST /api/setup"
     (testing "Check that we can create a new superuser via setup-token"
-      (let [email (mt/random-email)]
-        (with-setup! {:user {:email email}}
-          (testing "new User should be created"
-            (is (t2/exists? User :email email)))
-          (testing "Creating a new admin user should set the `admin-email` Setting"
-            (is (= email (public-settings/admin-email))))
-          (testing "Should record :user-joined in the Audit Log (#12933)"
-            (let [user-id (u/the-id (t2/select-one User :email email))]
-              (is (= {:topic    :user-joined
-                      :model_id user-id
-                      :user_id  user-id
-                      :model    "User"
-                      :details  {}}
-                     (audit-log-test/latest-event :user-joined user-id))))))))))
+      (premium-features-test/with-premium-features #{:audit-app}
+        (let [email (mt/random-email)]
+          (with-setup! {:user {:email email}}
+            (testing "new User should be created"
+              (is (t2/exists? User :email email)))
+            (testing "Creating a new admin user should set the `admin-email` Setting"
+              (is (= email (public-settings/admin-email))))
+            (testing "Should record :user-joined in the Audit Log (#12933)"
+              (let [user-id (u/the-id (t2/select-one User :email email))]
+                (is (= {:topic    :user-joined
+                        :model_id user-id
+                        :user_id  user-id
+                        :model    "User"
+                        :details  {}}
+                       (mt/latest-audit-log-entry :user-joined user-id)))))))))))
 
 (deftest invite-user-test
   (testing "POST /api/setup"
     (testing "Check that a second admin can be created during setup, and that an invite email is sent successfully and
              a Snowplow analytics event is sent"
-      (mt/with-fake-inbox
-        (snowplow-test/with-fake-snowplow-collector
-          (let [email              (mt/random-email)
-                first-name         (mt/random-name)
-                last-name          (mt/random-name)
-                invitor-first-name (mt/random-name)]
-            (with-setup! {:invite {:email email, :first_name first-name, :last_name last-name}
-                          :user   {:first_name invitor-first-name}
-                          :prefs  {:site_name "Metabase"}}
-              (let [invited-user (t2/select-one User :email email)]
-                (is (= (:first_name invited-user) first-name))
-                (is (= (:last_name invited-user) last-name))
-                (is (:is_superuser invited-user))
-                (is (partial= [{:data {"event"           "invite_sent",
-                                       "invited_user_id" (u/the-id invited-user)
-                                       "source"          "setup"}}]
-                              (filter #(= (get-in % [:data "event"]) "invite_sent")
-                                      (snowplow-test/pop-event-data-and-user-id!))))
-                (is (mt/received-email-body?
-                     email
-                     (re-pattern (str invitor-first-name " could use your help setting up Metabase.*"))))
-                (testing "The audit-log :user-invited event is recorded"
-                  (let [logged-event (audit-log-test/latest-event :user-invited (u/the-id invited-user))]
-                    (is (partial=
-                         {:topic    :user-invited
-                          :user_id  nil
-                          :model    "User"
-                          :model_id (u/the-id (t2/select-one User :email email))
-                          :details  {:invite_method          "email"
-                                     :first_name             first-name
-                                     :last_name              last-name
-                                     :email                  email
-                                     :user_group_memberships [{:id 1} {:id 2}]}}
-                         logged-event))))))))))))
+      (premium-features-test/with-premium-features #{:audit-app}
+        (mt/with-fake-inbox
+          (snowplow-test/with-fake-snowplow-collector
+            (let [email              (mt/random-email)
+                  first-name         (mt/random-name)
+                  last-name          (mt/random-name)
+                  invitor-first-name (mt/random-name)]
+              (with-setup! {:invite {:email email, :first_name first-name, :last_name last-name}
+                            :user   {:first_name invitor-first-name}
+                            :prefs  {:site_name "Metabase"}}
+                (let [invited-user (t2/select-one User :email email)]
+                  (is (= (:first_name invited-user) first-name))
+                  (is (= (:last_name invited-user) last-name))
+                  (is (:is_superuser invited-user))
+                  (is (partial= [{:data {"event"           "invite_sent",
+                                         "invited_user_id" (u/the-id invited-user)
+                                         "source"          "setup"}}]
+                                (filter #(= (get-in % [:data "event"]) "invite_sent")
+                                        (snowplow-test/pop-event-data-and-user-id!))))
+                  (is (mt/received-email-body?
+                       email
+                       (re-pattern (str invitor-first-name " could use your help setting up Metabase.*"))))
+                  (testing "The audit-log :user-invited event is recorded"
+                    (let [logged-event (mt/latest-audit-log-entry :user-invited (u/the-id invited-user))]
+                      (is (partial=
+                           {:topic    :user-invited
+                            :user_id  nil
+                            :model    "User"
+                            :model_id (u/the-id (t2/select-one User :email email))
+                            :details  {:invite_method          "email"
+                                       :first_name             first-name
+                                       :last_name              last-name
+                                       :email                  email
+                                       :user_group_memberships [{:id 1} {:id 2}]}}
+                           logged-event)))))))))))))
 
 (deftest invite-user-test-2
   (testing "POST /api/setup"
