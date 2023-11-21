@@ -21,6 +21,8 @@ export interface OptionsType {
   number_style?: string;
   prefix?: string;
   remap?: any;
+  removeDay?: boolean;
+  removeYear?: boolean;
   rich?: boolean;
   suffix?: string;
   time_enabled?: "minutes" | "milliseconds" | "seconds" | null;

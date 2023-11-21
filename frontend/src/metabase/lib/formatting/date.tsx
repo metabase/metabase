@@ -622,10 +622,6 @@ export function formatDateTimeRangeWithUnit(
     options.type === "tooltip" ? "MMMM" : getMonthFormat(options);
   const condensed = options.compact || options.type === "tooltip";
 
-  // month format is configurable, so we need to insert it after lookup
-  const formatDate = (date: Moment, formatStr: string) =>
-    date.format(formatStr.replace(DATE_RANGE_MONTH_PLACEHOLDER, monthFormat));
-
   const specs = DATE_RANGE_FORMAT_SPECS[unit];
   const defaultSpec = specs.find(spec => spec.same === null);
   const matchSpec =
@@ -633,6 +629,29 @@ export function formatDateTimeRangeWithUnit(
   if (!matchSpec || !defaultSpec) {
     return String(start);
   }
+
+  const formatDate = (date: Moment, formatStr: string) => {
+    const yearRegex = /,*\s*YYYY/;
+    const dayRegex = /[\s\S]+,*\s*YYYY,*\s*/;
+
+    // day display is hide-able (if date being compared to is same day)
+    if (options.removeDay) {
+      return date.format(formatStr.replace(dayRegex, ""));
+    }
+
+    // month format is configurable, so we need to insert it after lookup
+    const monthReplacementStr = formatStr.replace(
+      DATE_RANGE_MONTH_PLACEHOLDER,
+      monthFormat,
+    );
+
+    // day display is hide-able (if date being compared to is same year)
+    if (options.removeYear) {
+      return date.format(monthReplacementStr.replace(yearRegex, ""));
+    }
+
+    return date.format(monthReplacementStr);
+  };
 
   // Even if we don’t have want to condense, we should avoid empty date ranges like Jan 1 - Jan 1.
   // This is indicated when the smallest matched format has no end format.
@@ -644,6 +663,7 @@ export function formatDateTimeRangeWithUnit(
     format: [startFormat, endFormat],
     dashPad = "",
   } = condensed ? matchSpec : defaultSpec;
+
   return !endFormat
     ? formatDate(start, startFormat)
     : formatDate(start, startFormat) +

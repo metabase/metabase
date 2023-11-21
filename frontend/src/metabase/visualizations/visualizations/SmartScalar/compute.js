@@ -162,7 +162,7 @@ function computePreviousPeriodComparison({
   const comparisonPeriodStr =
     isEmpty(prevDate) || datesAreSequential
       ? t`previous ${dateUnitDisplay}`
-      : formatDateTimeRangeWithUnit([prevDate], dateUnit, { compact: true }); // FIXME: elide part of the prevDate in common with lastDate
+      : computeComparisonPeriodStr({ dateUnit, nextDate, prevDate });
 
   const { comparisonType, changeArrow, percentChangeStr, prevValueStr } =
     computeChangeTypeWithOptions({
@@ -188,4 +188,15 @@ function computePreviousPeriodComparison({
       prevValue: prevValueStr,
     },
   };
+}
+
+function computeComparisonPeriodStr({ dateUnit, prevDate, nextDate }) {
+  const isSameDay = moment(prevDate).isSame(nextDate, "day");
+  const isSameYear = moment(prevDate).isSame(nextDate, "year");
+
+  return formatDateTimeRangeWithUnit([prevDate], dateUnit, {
+    compact: true,
+    removeDay: isSameDay,
+    removeYear: isSameYear,
+  });
 }
