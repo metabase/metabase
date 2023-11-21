@@ -1,16 +1,14 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { FormEvent } from "react";
 import { t } from "ttag";
 import { Box, Flex, Text, TimeInput } from "metabase/ui";
+import { useTimeFilter } from "metabase/common/hooks/filters/use-time-filter";
 import * as Lib from "metabase-lib";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
-import { getAvailableOperatorOptions } from "../utils";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { FilterPickerFooter } from "../FilterPickerFooter";
-import { OPERATOR_OPTIONS } from "./constants";
-import { getDefaultValues, getFilterClause } from "./utils";
 
 export function TimeFilterPicker({
   query,
@@ -26,34 +24,19 @@ export function TimeFilterPicker({
     [query, stageIndex, column],
   );
 
-  const filterParts = useMemo(() => {
-    return filter ? Lib.timeFilterParts(query, stageIndex, filter) : null;
-  }, [query, stageIndex, filter]);
-
-  const availableOperators = useMemo(
-    () =>
-      getAvailableOperatorOptions(query, stageIndex, column, OPERATOR_OPTIONS),
-    [query, stageIndex, column],
-  );
-
-  const [operator, setOperator] = useState(
-    filterParts ? filterParts.operator : "<",
-  );
-
-  const [values, setValues] = useState(() =>
-    getDefaultValues(operator, filterParts?.values),
-  );
-
-  const { valueCount } = OPERATOR_OPTIONS[operator];
-
-  const handleOperatorChange = (operator: Lib.TimeFilterOperatorName) => {
-    setOperator(operator);
-    setValues(getDefaultValues(operator, values));
-  };
+  const {
+    operator,
+    values,
+    valueCount,
+    availableOperators,
+    setOperator,
+    setValues,
+    getFilterClause,
+  } = useTimeFilter({ query, stageIndex, column, filter });
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    onChange(getFilterClause(operator, column, values));
+    onChange(getFilterClause());
   };
 
   return (
@@ -71,7 +54,7 @@ export function TimeFilterPicker({
         <FilterOperatorPicker
           value={operator}
           options={availableOperators}
-          onChange={handleOperatorChange}
+          onChange={setOperator}
         />
       </FilterPickerHeader>
       <Box>

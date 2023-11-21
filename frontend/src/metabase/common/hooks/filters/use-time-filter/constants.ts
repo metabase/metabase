@@ -1,6 +1,6 @@
-import type { OperatorOption } from "./types";
+import type { TimeOperatorOption } from "./types";
 
-export const OPERATOR_OPTIONS: Record<string, OperatorOption> = {
+export const OPERATOR_OPTIONS: Record<string, TimeOperatorOption> = {
   "<": {
     operator: "<",
     valueCount: 1,
