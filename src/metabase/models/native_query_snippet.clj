@@ -1,5 +1,6 @@
 (ns metabase.models.native-query-snippet
   (:require
+   [medley.core :as m]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.native-query-snippet.permissions :as snippet.perms]
@@ -84,13 +85,13 @@
   [_model-name _opts snippet]
   (-> (serdes/extract-one-basics "NativeQuerySnippet" snippet)
       (update :creator_id serdes/*export-user*)
-      (update :collection_id #(when % (serdes/*export-fk* % 'Collection)))))
+      (m/update-existing :collection_id #(serdes/*export-fk* % 'Collection))))
 
 (defmethod serdes/load-xform "NativeQuerySnippet" [snippet]
   (-> snippet
       serdes/load-xform-basics
       (update :creator_id serdes/*import-user*)
-      (update :collection_id #(when % (serdes/*import-fk* % 'Collection)))))
+      (m/update-existing :collection_id #(serdes/*import-fk* % 'Collection))))
 
 (defmethod serdes/dependencies "NativeQuerySnippet"
   [{:keys [collection_id]}]
@@ -98,11 +99,25 @@
     [[{:model "Collection" :id collection_id}]]
     []))
 
-(defmethod serdes/storage-path "NativeQuerySnippet" [snippet ctx]
-  ;; Intended path here is ["snippets" "nested" "collections" "snippet_eid_and_slug"]
-  ;; We just the default path, then pull it apart.
-  ;; The default is ["collections" "nested" collections" "nativequerysnippets" "base_name"]
-  (let [basis  (serdes/storage-default-collection-path snippet ctx)
-        file   (last basis)
-        colls  (->> basis rest (drop-last 2))] ; Drops the "collections" at the start, and the last two.
-    (concat ["snippets"] colls [file])))
+(defmethod serdes/storage-path "NativeQuerySnippet" [snippet _ctx]
+  (let [{:keys [id label]} (-> snippet serdes/path last)]
+    ["snippets" (serdes/storage-leaf-file-name id label)]))
+
+(defmethod serdes/generate-path "NativeQuerySnippet" [model-name entity]
+  [(-> (serdes/maybe-labeled model-name entity :name)
+       first
+       (assoc :name (:name entity)))])
+
+(defmethod serdes/load-find-local "NativeQuerySnippet" [path]
+  (let [this (last path)
+        res (t2/select :model/NativeQuerySnippet {:where [:or
+                                                          [:= :name (:name this)]
+                                                          [:= :entity_id (:entity_id this)]]})]
+    (if (or (> (count res) 1)
+            (not= (:entity_id (first res)) (:entity_id this)))
+      (do
+        (t2/update! :model/NativeQuerySnippet {:name      (:name this)
+                                               :entity_id [:!= (:entity_id this)]}
+                    {:name [:|| :name "-" :id]})
+        (recur path))
+      (first res))))

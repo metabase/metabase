@@ -977,7 +977,7 @@
                                                                                 :type :snippet,
                                                                                 :snippet-name "filtered data",
                                                                                 :snippet-id (:id @snippet1s)}}}}))
-        (ts/create! User :first_name "Geddy" :last_name "Lee"     :email "glee@rush.yyz")
+        (ts/create! User :first_name "Geddy" :last_name "Lee" :email "glee@rush.yyz")
 
         (testing "on extraction"
           (reset! extracted (serdes/extract-one "Card" {} @card1s))
@@ -995,6 +995,26 @@
                        :template-tags
                        (get "snippet: things")
                        :snippet-id)))))))))
+
+(deftest snippet-with-unique-name
+  (let [unique-name "some snippet"]
+    (testing "Snippets with the same name should be replaced/removed on deserialization"
+      (ts/with-source-and-dest-dbs
+        (ts/with-source-db
+          (let [snippet   (ts/create! NativeQuerySnippet :name unique-name)
+                extracted (into [] (serdes.extract/extract {}))]
+
+            (ts/with-dest-db
+              (let [other (ts/create! NativeQuerySnippet :name unique-name)]
+                (is (= (:entity_id other)
+                       (t2/select-one-fn :entity_id NativeQuerySnippet :name unique-name)))
+                (serdes.load/load-metabase! (ingestion-in-memory extracted))
+                ;; old snippet was replaced with new one since snippet name is unique
+                (is (= (:entity_id snippet)
+                       (t2/select-one-fn :entity_id NativeQuerySnippet :name unique-name)))
+                ;; old snippet's name was changed
+                (is (= (str (:name other) "-" (:id other))
+                       (t2/select-one-fn :name NativeQuerySnippet :entity_id (:entity_id other))))))))))))
 
 (deftest load-action-test
   (let [serialized (atom nil)
