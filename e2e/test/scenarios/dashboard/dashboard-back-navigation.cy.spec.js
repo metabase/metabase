@@ -155,7 +155,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     cy.wait("@dashcardQuery");
 
     getDashboardCard().within(() => {
-      cy.findByText("101.04").should("be.visible"); // table data
+      cy.findByText("110.93").should("be.visible"); // table data
       cy.findByText("Orders").click();
       cy.wait("@cardQuery");
     });
@@ -163,7 +163,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
     // cached data
-    getDashboardCard(0).findByText("101.04").should("be.visible");
+    getDashboardCard(0).findByText("110.93").should("be.visible");
     getDashboardCard(1).findByText("Text card").should("be.visible");
     getDashboardCard(2).findByText("Action card").should("be.visible");
 
