@@ -1,7 +1,9 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import Button from "metabase/core/components/Button";
 import { alpha, color, lighten } from "metabase/lib/colors";
 import { TableRoot } from "metabase/visualizations/components/TableRoot";
+import { Draggable } from "metabase/core/components/TabRow/TabRow.stories";
 
 export const TableInteractiveRoot = styled(TableRoot)`
   .TableInteractive-headerCellData .cellData {
