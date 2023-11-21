@@ -645,7 +645,7 @@ export function formatDateTimeRangeWithUnit(
       monthFormat,
     );
 
-    // day display is hide-able (if date being compared to is same year)
+    // year display is hide-able (if date being compared to is same year)
     if (options.removeYear) {
       return date.format(monthReplacementStr.replace(yearRegex, ""));
     }
