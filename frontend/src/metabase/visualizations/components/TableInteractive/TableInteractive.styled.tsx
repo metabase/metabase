@@ -3,8 +3,9 @@ import { css } from "@emotion/react";
 import Draggable from "react-draggable";
 import Button from "metabase/core/components/Button";
 import { alpha, color, lighten } from "metabase/lib/colors";
+import { TableRoot } from "metabase/visualizations/components/TableRoot";
 
-export const TableInteractiveRoot = styled.div`
+export const TableInteractiveRoot = styled(TableRoot)`
   .TableInteractive-headerCellData .cellData {
     border: 1px solid ${alpha("brand", 0.2)};
   }
@@ -15,11 +16,6 @@ export const TableInteractiveRoot = styled.div`
 
   .TableInteractive-cellWrapper:hover {
     background-color: ${alpha("brand", 0.1)};
-  }
-
-  .Table-ID .cellData {
-    border: 1px solid ${alpha("brand", 0.14)};
-    background-color: ${alpha("brand", 0.08)};
   }
 `;
 
