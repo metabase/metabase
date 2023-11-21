@@ -25,12 +25,8 @@
   (log/debug (trs "Cleaning up Inactive Tables older than {0} days" inactive-table-max-days))
   (task-history/with-task-history {:task "delete-inactive-tables"}
     (t2/delete! :model/Table
-                :active     false
-                :updated_at [:< (t/minus (t/zoned-date-time) (t/days inactive-table-max-days))]
-                ;; do not delete tables that have active cards associated with them (#35615)
-                :id         [:not-in {:select-distinct [:table_id]
-                                      :from            [:report_card]
-                                      :where           [:= :archived false]}])))
+                :active false
+                :updated_at [:< (t/minus (t/zoned-date-time) (t/days inactive-table-max-days))])))
 
 (jobs/defjob
   ^{:doc "Delete inactive Tables."}
