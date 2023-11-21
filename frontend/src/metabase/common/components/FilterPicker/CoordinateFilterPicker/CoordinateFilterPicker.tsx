@@ -1,28 +1,19 @@
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import type { FormEvent } from "react";
 import { t } from "ttag";
 import { Box, Flex, NumberInput, Stack, Text } from "metabase/ui";
+import { useCoordinateFilter } from "metabase/common/hooks/filters/use-coordinate-filter";
 import * as Lib from "metabase-lib";
 
 import type { FilterPickerWidgetProps } from "../types";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
-import { getAvailableOperatorOptions } from "../utils";
 import { FilterValuesWidget } from "../FilterValuesWidget";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
+
 import { CoordinateColumnPicker } from "./CoordinateColumnPicker";
-import { OPERATOR_OPTIONS } from "./constants";
-import {
-  canPickColumns,
-  getAvailableColumns,
-  getDefaultSecondColumn,
-  getDefaultValues,
-  getFilterClause,
-  hasValidValues,
-} from "./utils";
-import type { NumberValue } from "./types";
 
 export function CoordinateFilterPicker({
   query,
@@ -38,45 +29,27 @@ export function CoordinateFilterPicker({
     [query, stageIndex, column],
   );
 
-  const filterParts = useMemo(
-    () =>
-      filter ? Lib.coordinateFilterParts(query, stageIndex, filter) : null,
-    [query, stageIndex, filter],
-  );
-
-  const availableOperators = useMemo(
-    () =>
-      getAvailableOperatorOptions(query, stageIndex, column, OPERATOR_OPTIONS),
-    [query, stageIndex, column],
-  );
-
-  const availableColumns = useMemo(
-    () => getAvailableColumns(query, stageIndex, column),
-    [query, stageIndex, column],
-  );
-
-  const [operator, setOperator] = useState(
-    filterParts ? filterParts.operator : "=",
-  );
-  const [values, setValues] = useState(
-    getDefaultValues(operator, filterParts?.values),
-  );
-  const [secondColumn, setSecondColumn] = useState(
-    getDefaultSecondColumn(availableColumns, filterParts?.longitudeColumn),
-  );
-
-  const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
-  const isValid = hasValidValues(operator, values);
-
-  const handleOperatorChange = (operator: Lib.CoordinateFilterOperatorName) => {
-    setOperator(operator);
-    setValues(getDefaultValues(operator, values));
-  };
+  const {
+    operator,
+    values,
+    secondColumn,
+    isValid,
+    valueCount,
+    hasMultipleValues,
+    availableOperators,
+    availableColumns,
+    canPickColumns,
+    setOperator,
+    setSecondColumn,
+    setValues,
+    getFilterClause,
+  } = useCoordinateFilter({ query, stageIndex, column, filter });
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (isValid) {
-      onChange(getFilterClause(operator, column, secondColumn, values));
+    const nextFilter = getFilterClause();
+    if (nextFilter) {
+      onChange(nextFilter);
     }
   };
 
@@ -95,11 +68,11 @@ export function CoordinateFilterPicker({
         <FilterOperatorPicker
           value={operator}
           options={availableOperators}
-          onChange={handleOperatorChange}
+          onChange={setOperator}
         />
       </FilterPickerHeader>
       <Box>
-        {canPickColumns(operator, availableColumns) && (
+        {canPickColumns && (
           <CoordinateColumnPicker
             query={query}
             stageIndex={stageIndex}
@@ -121,6 +94,8 @@ export function CoordinateFilterPicker({
     </Box>
   );
 }
+
+type NumberValue = number | "";
 
 interface CoordinateValueInputProps {
   column: Lib.ColumnMetadata;
