@@ -72,12 +72,12 @@ const Fields = createEntity({
     fetchFieldValues: compose(
       withAction(FETCH_FIELD_VALUES),
       withCachedDataAndRequestState(
-        ({ id, table_id }) => {
-          const uniqueId = getUniqueFieldId({ id, table_id });
+        ({ id, name, table_id }) => {
+          const uniqueId = getUniqueFieldId({ id, name, table_id });
           return [...Fields.getObjectStatePath(uniqueId)];
         },
-        ({ id, table_id }) => {
-          const uniqueId = getUniqueFieldId({ id, table_id });
+        ({ id, name, table_id }) => {
+          const uniqueId = getUniqueFieldId({ id, name, table_id });
           return [...Fields.getObjectStatePath(uniqueId), "values"];
         },
         field => {
@@ -86,13 +86,18 @@ const Fields = createEntity({
       ),
       withNormalize(FieldSchema),
     )(field => async () => {
+      const { id, table_id, name } = field;
       const { field_id, ...data } = await MetabaseApi.field_values({
-        fieldId: field.id,
+        fieldId: id,
       });
-      const table_id = field.table_id;
 
       // table_id is required for uniqueFieldId as it's a way to know if field is virtual
-      return { id: field_id, ...data, ...(table_id && { table_id }) };
+      return {
+        id: field_id,
+        ...data,
+        ...(table_id && { table_id }),
+        ...(name && { name }),
+      };
     }),
 
     updateField(field, values, opts) {
