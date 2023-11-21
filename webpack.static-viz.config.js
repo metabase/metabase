@@ -1,4 +1,5 @@
 const YAML = require("json-to-pretty-yaml");
+const TerserPlugin = require("terser-webpack-plugin");
 const { StatsWriterPlugin } = require("webpack-stats-plugin");
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
@@ -60,6 +61,11 @@ module.exports = env => {
     },
     optimization: {
       minimize: !shouldDisableMinimization,
+      minimizer: [
+        new TerserPlugin({
+          minify: TerserPlugin.swcMinify,
+        }),
+      ],
     },
     plugins: [
       new StatsWriterPlugin({
