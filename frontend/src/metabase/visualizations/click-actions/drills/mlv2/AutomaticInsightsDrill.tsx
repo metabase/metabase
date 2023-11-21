@@ -34,7 +34,7 @@ export const AutomaticInsightsDrill: Drill = ({ drill, applyDrill }) => {
     },
   ];
 
-  const Component = ({ onClick }: ClickActionPopoverProps) => {
+  const DrillPopover = ({ onClick }: ClickActionPopoverProps) => {
     return <ClickActionsView clickActions={clickActions} onClick={onClick} />;
   };
 
@@ -45,7 +45,7 @@ export const AutomaticInsightsDrill: Drill = ({ drill, applyDrill }) => {
       section: "auto",
       icon: "bolt",
       buttonType: "horizontal",
-      popover: Component,
+      popover: DrillPopover,
     },
   ];
 };
