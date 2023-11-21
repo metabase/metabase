@@ -356,14 +356,18 @@ const getOrigin = url => {
 const getLocation = url => {
   try {
     const { pathname, search, hash } = new URL(url, window.location.origin);
-    const pathNameWithoutSubPath = pathname.replace(
-      // Only replace the path from the start to avoid matching the string elsewhere
-      new RegExp(`^${getSitePath()}`),
-      "",
-    );
+    const sitePath = getSitePath();
+    const pathNameWithoutSubPath =
+      sitePath === "/"
+        ? pathname
+        : pathname.replace(
+            // Only replace the path from the start to avoid matching the string elsewhere
+            new RegExp(`^${ensureNoTrailingSlash(sitePath)}`),
+            "",
+          );
     const query = querystring.parse(search.substring(1));
     return {
-      pathname: ensureLeadingSlash(pathNameWithoutSubPath),
+      pathname: pathNameWithoutSubPath,
       search,
       query,
       hash,
@@ -373,12 +377,12 @@ const getLocation = url => {
   }
 };
 
-function ensureLeadingSlash(url) {
-  if (url[0] === "/") {
-    return url;
+function ensureNoTrailingSlash(url) {
+  if (url.at(-1) === "/") {
+    return url.slice(0, -1);
   }
 
-  return "/" + url;
+  return url;
 }
 
 export function isSameOrigin(url) {
