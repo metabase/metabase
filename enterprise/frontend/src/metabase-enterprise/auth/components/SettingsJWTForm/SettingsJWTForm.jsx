@@ -129,7 +129,6 @@ const JWT_ATTRS = [
   "jwt-attribute-firstname",
   "jwt-attribute-lastname",
   "jwt-group-sync",
-  "jwt-group-mappings",
 ];
 
 const getAttributeValues = values => {
