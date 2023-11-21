@@ -63,11 +63,10 @@
 
 (defn- truncate-audit-tables!
   []
-  (dorun
-   (map
-    (fn [[model time-column]]
-      (truncate-table! model time-column))
-    (audit-models-to-truncate))))
+  (run!
+   (fn [[model time-column]]
+     (truncate-table! model time-column))
+   (audit-models-to-truncate)))
 
 (jobs/defjob ^{:doc "Triggers the removal of `query_execution` rows older than the configured threshold."} TruncateAuditTables [_]
   (truncate-audit-tables!))
