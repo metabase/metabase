@@ -263,7 +263,10 @@ export type DrillThruType =
   | "drill-thru/summarize-column-by-time"
   | "drill-thru/column-filter"
   | "drill-thru/underlying-records"
-  | "drill-thru/zoom-in.timeseries";
+  | "drill-thru/zoom-in.bins"
+  | "drill-thru/zoom-in.geo"
+  | "drill-thru/zoom-in.timeseries"
+  | "drill-thru/automatic-insights";
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
@@ -334,6 +337,16 @@ export type DrillThruDisplayInfo =
   | ColumnFilterDrillThruInfo
   | UnderlyingRecordsDrillThruInfo
   | ZoomTimeseriesDrillThruInfo;
+
+export type ColumnFilterDrillDetails = {
+  query: Query;
+  column: ColumnMetadata;
+};
+
+export type PivotDrillDetails = {
+  query: Query;
+  columns: ColumnMetadata[];
+};
 
 export interface Dimension {
   column: DatasetColumn;

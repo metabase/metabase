@@ -3,7 +3,7 @@ import type {
   ClickActionBase,
   Drill,
 } from "metabase/visualizations/types/click-actions";
-import type { SortDrillThruInfo } from "metabase-lib";
+import type * as Lib from "metabase-lib";
 
 const ACTIONS: Record<string, ClickActionBase> = {
   asc: {
@@ -22,7 +22,7 @@ const ACTIONS: Record<string, ClickActionBase> = {
   },
 };
 
-export const SortDrill: Drill<SortDrillThruInfo> = ({
+export const SortDrill: Drill<Lib.SortDrillThruInfo> = ({
   drill,
   drillDisplayInfo,
   applyDrill,
@@ -33,8 +33,8 @@ export const SortDrill: Drill<SortDrillThruInfo> = ({
 
   const { directions } = drillDisplayInfo;
 
-  return directions.map(sortDirection => ({
-    ...ACTIONS[sortDirection],
-    question: () => applyDrill(drill, sortDirection),
+  return directions.map(direction => ({
+    ...ACTIONS[direction],
+    question: () => applyDrill(drill, direction),
   }));
 };

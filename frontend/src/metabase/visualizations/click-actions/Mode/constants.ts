@@ -3,6 +3,19 @@ import type { DrillThruType } from "metabase-lib";
 import { FKFilterDrill } from "metabase/visualizations/click-actions/drills/mlv2/FKFilterDrill";
 import { SummarizeColumnByTimeDrill } from "metabase/visualizations/click-actions/drills/mlv2/SummarizeColumnByTimeDrill";
 import { SortDrill } from "metabase/visualizations/click-actions/drills/mlv2/SortDrill";
+import { ZoomBinsDrill } from "metabase/visualizations/click-actions/drills/mlv2/ZoomBinsDrill";
+import { ZoomGeoDrill } from "metabase/visualizations/click-actions/drills/mlv2/ZoomGeoDrill";
+import { ZoomTimeseriesDrill } from "metabase/visualizations/click-actions/drills/mlv2/ZoomTimeseriesDrill";
+import { DistributionDrill } from "metabase/visualizations/click-actions/drills/mlv2/DistributionDrill";
+import { SummarizeColumnDrill } from "metabase/visualizations/click-actions/drills/mlv2/SummarizeColumnDrill";
+import { ObjectDetailsPkDrill } from "metabase/visualizations/click-actions/drills/mlv2/ObjectDetailsPkDrill";
+import { ObjectDetailsFkDrill } from "metabase/visualizations/click-actions/drills/mlv2/ObjectDetailsFkDrill";
+import { ObjectDetailsZoomDrill } from "metabase/visualizations/click-actions/drills/mlv2/ObjectDetailsZoomDrill";
+import { UnderlyingRecordsDrill } from "metabase/visualizations/click-actions/drills/mlv2/UnderlyingRecordsDrill";
+import { QuickFilterDrill } from "metabase/visualizations/click-actions/drills/mlv2/QuickFilterDrill";
+import { AutomaticInsightsDrill } from "metabase/visualizations/click-actions/drills/mlv2/AutomaticInsightsDrill";
+import { ColumnFilterDrill } from "metabase/visualizations/click-actions/drills/mlv2/ColumnFilterDrill";
+import { PivotDrill } from "metabase/visualizations/click-actions/drills/mlv2/PivotDrill";
 
 export const MODE_TYPE_DEFAULT = "default";
 export const MODE_TYPE_NATIVE = "native";
@@ -26,17 +39,20 @@ export const DRILL_TYPE_TO_HANDLER_MAP: Record<
   DrillThruType,
   Drill<any> | null
 > = {
-  "drill-thru/column-filter": null, // ColumnFilterDrill,
-  "drill-thru/quick-filter": null, // QuickFilterDrill,
-  "drill-thru/pk": null, // PKDetailsDrill,
-  "drill-thru/zoom": null, // ZoomToRowDrill,
-  "drill-thru/fk-details": null, // FKDetailsDrill,
-  "drill-thru/pivot": null,
+  "drill-thru/column-filter": ColumnFilterDrill,
+  "drill-thru/quick-filter": QuickFilterDrill,
+  "drill-thru/pk": ObjectDetailsPkDrill,
+  "drill-thru/zoom": ObjectDetailsZoomDrill,
+  "drill-thru/fk-details": ObjectDetailsFkDrill,
+  "drill-thru/pivot": PivotDrill,
   "drill-thru/fk-filter": FKFilterDrill,
-  "drill-thru/distribution": null, // DistributionDrill,
+  "drill-thru/distribution": DistributionDrill,
   "drill-thru/sort": SortDrill,
-  "drill-thru/summarize-column": null, // SummarizeColumnDrill,
+  "drill-thru/summarize-column": SummarizeColumnDrill,
   "drill-thru/summarize-column-by-time": SummarizeColumnByTimeDrill,
-  "drill-thru/underlying-records": null, // UnderlyingRecordsDrill,
-  "drill-thru/zoom-in.timeseries": null,
+  "drill-thru/underlying-records": UnderlyingRecordsDrill,
+  "drill-thru/zoom-in.bins": ZoomBinsDrill,
+  "drill-thru/zoom-in.geo": ZoomGeoDrill,
+  "drill-thru/zoom-in.timeseries": ZoomTimeseriesDrill,
+  "drill-thru/automatic-insights": AutomaticInsightsDrill,
 };

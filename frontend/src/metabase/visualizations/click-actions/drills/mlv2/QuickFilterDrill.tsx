@@ -7,7 +7,7 @@ import type {
 } from "metabase/visualizations/types/click-actions";
 import type * as Lib from "metabase-lib";
 import { isBoolean, isDate, isNumeric } from "metabase-lib/types/utils/isa";
-import { TextIcon } from "../QuickFilterDrill/QuickFilterDrill.styled";
+import { TextIcon } from "./QuickFilterDrill.styled";
 
 type FilterOperator = "=" | "≠" | "<" | ">";
 type DateQuickFilterOperatorType = "<" | ">" | "=" | "≠";
