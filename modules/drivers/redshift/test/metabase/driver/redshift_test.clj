@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   #_[java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.redshift :as redshift]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -391,3 +392,66 @@
              (mt/first-row
                (qp/process-query
                  (mt/native-query {:query "select interval '5 days'"}))))))))
+
+(defn- run-native-query [sql & params]
+  (-> (mt/native-query {:query sql
+                        :params params})
+      qp/process-query))
+
+(defn- session-id []
+  (-> (run-native-query "select pg_backend_pid()") mt/rows ffirst))
+
+
+(defn- last-queries-of-a-session [session-id]
+  (let [query-str (str "select session_id, start_time, result_cache_hit, query_text\n"
+                       "from sys_query_history\n"
+                       "where session_id = " session-id "\n"
+                       "order by start_time desc\n"
+                       "limit 5\n")]
+    (->> (run-native-query query-str)
+         mt/rows
+         (map (fn [[session-id start-time result-cache-hit query-text]]
+                {:session-id session-id
+                 :start-time start-time
+                 :result-cache-hit result-cache-hit
+                 :query-text query-text})))))
+
+(deftest timestamps-caching-test
+  (mt/test-driver :redshift
+   (testing "Relative date time queries should be cached"
+     (sql-jdbc.execute/do-with-connection-with-options
+      :redshift
+      (mt/id)
+      nil
+      (fn [^java.sql.Connection _connection]
+        (let [sid (session-id)
+              query-to-cache (mt/mbql-query
+                              test_data_users
+                              {:fields [$id $last_login]
+                               :filter [:time-interval $last_login -500 :day {:include-current false}]})
+              compiled-sql (-> query-to-cache qp/compile :query)]
+          (dotimes [_ 2]
+            (qp/process-query query-to-cache))
+          (let [last-queries (last-queries-of-a-session sid)
+                cached-row (second last-queries)
+                adjusted-redshift-sql (str/replace (:query-text cached-row) #"\$\d+" "?")]
+            (testing "Row to check cache in contains correct sql"
+              (is (.contains adjusted-redshift-sql compiled-sql)))
+            (testing "Cache value is correct"
+              (is (true? (:result-cache-hit cached-row)))))))))))
+
+(comment
+  mt/with-system-timezone-id
+  mt/with-results-timezone-id
+  mt/with-database-timezone-id
+
+  ;; test yesterday
+  )
+
+;; this is probably tested somewhere
+#_(deftest timestamps-correctness-test
+  ;; some kind of with timezone bla bla
+  (mt/with-clock (t/zoned-date-time 2014 8 2 10 30 21 0 "UTC")
+    (mt/with-report-timezone-id "US/Pacific"
+      ))
+  )
