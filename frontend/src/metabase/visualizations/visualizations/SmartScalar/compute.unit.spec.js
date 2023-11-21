@@ -125,11 +125,11 @@ describe("SmartScalar > compute", () => {
         description:
           "should correctly display percent decrease over missing row",
         rows: [
-          ["2019-10-01", 300],
+          ["2019-09-01", 300],
           ["2019-11-01", 100],
         ],
         dateUnit: "month",
-        expected: "100; Nov 2019; ↓ 66.67% vs. previous month: 300",
+        expected: "100; Nov 2019; ↓ 66.67% vs. Sep: 300",
       },
       {
         description: "should correctly display percent decrease over null data",

@@ -153,7 +153,7 @@ describe("SmartScalar", () => {
     expect(screen.getByText("100")).toBeInTheDocument();
     expect(screen.getByText("Nov 2019")).toBeInTheDocument();
     expect(screen.getByText("No change")).toBeInTheDocument();
-    expect(screen.getByText("vs. Sep 2019")).toBeInTheDocument();
+    expect(screen.getByText("vs. Sep")).toBeInTheDocument();
   });
 
   it("should show ↑ ∞% change", () => {
