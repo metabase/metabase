@@ -1,7 +1,7 @@
 import { t } from "ttag";
-import type { Option, OptionType } from "./types";
+import type { BooleanOperatorOption, OptionType } from "./types";
 
-export const OPTIONS: Record<OptionType, Option> = {
+export const OPTIONS: Record<OptionType, BooleanOperatorOption> = {
   true: {
     name: t`True`,
     operator: "=",
@@ -16,12 +16,10 @@ export const OPTIONS: Record<OptionType, Option> = {
     name: t`Empty`,
     operator: "is-null",
     type: "is-null",
-    isAdvanced: true,
   },
   "not-null": {
     name: t`Not empty`,
     operator: "not-null",
     type: "not-null",
-    isAdvanced: true,
   },
 };
