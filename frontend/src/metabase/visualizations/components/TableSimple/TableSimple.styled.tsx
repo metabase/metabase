@@ -4,9 +4,8 @@ import { css } from "@emotion/react";
 import { Icon } from "metabase/core/components/Icon";
 
 import { alpha, color } from "metabase/lib/colors";
-import { TableRoot } from "metabase/visualizations/components/TableRoot";
 
-export const Root = styled(TableRoot)`
+export const Root = styled.div`
   display: flex;
   flex-direction: column;
   position: relative;
