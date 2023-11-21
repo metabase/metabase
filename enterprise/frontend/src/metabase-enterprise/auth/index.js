@@ -207,12 +207,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
         key: "jwt-group-sync",
         display_name: t`Synchronize group memberships`,
         description: null,
-        widget: GroupMappingsWidget,
-        props: {
-          mappingSetting: "jwt-group-mappings",
-          groupHeading: t`Group Name`,
-          groupPlaceholder: "Group Name",
-        },
       },
       {
         key: "jwt-group-mappings",
