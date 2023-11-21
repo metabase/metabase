@@ -53,7 +53,6 @@ function ProfileLink({ user, adminItems, onLogout }) {
       JSON.stringify(bugReportDetails),
     );
 
-    // todo: make it a function so we can test it
     const helpLink = getHelpLink({
       helpLinkSetting,
       helpLinkCustomDestinationSetting,

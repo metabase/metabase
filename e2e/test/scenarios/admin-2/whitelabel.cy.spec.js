@@ -165,7 +165,7 @@ describeEE("formatting > whitelabel", () => {
       );
     });
 
-    it("should allow hiding the help link", () => {
+    it("should allow customising the help link", () => {
       cy.log("HIDE HELP LINK");
 
       cy.signInAsAdmin();
