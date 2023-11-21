@@ -31,6 +31,10 @@ import Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Dimension from "metabase-lib/Dimension";
 import {
+  AGGREGATED_ORDERS_COLUMNS,
+  AGGREGATED_ORDERS_DATASET_QUERY,
+  AGGREGATED_ORDERS_QUESTION,
+  AGGREGATED_ORDERS_ROW_VALUES,
   ORDERS_COLUMNS,
   ORDERS_COLUMNS_LIST,
   ORDERS_DATASET_QUERY,
@@ -381,8 +385,8 @@ describe("ClickActionsPopover", function () {
     describe("ZoomTimeseriesDrill", () => {
       it.each([
         {
-          column: AGGREGATED_ORDERS_COLUMNS_MAP.CREATED_AT,
-          columnName: AGGREGATED_ORDERS_COLUMNS_MAP.CREATED_AT.name,
+          column: AGGREGATED_ORDERS_COLUMNS.CREATED_AT,
+          columnName: AGGREGATED_ORDERS_COLUMNS.CREATED_AT.name,
           cellValue: AGGREGATED_ORDERS_ROW_VALUES.CREATED_AT,
           drillTitle: "See this month by week",
           expectedCard: {
@@ -413,8 +417,8 @@ describe("ClickActionsPopover", function () {
           },
         },
         {
-          column: AGGREGATED_ORDERS_COLUMNS_MAP.count,
-          columnName: AGGREGATED_ORDERS_COLUMNS_MAP.count.name,
+          column: AGGREGATED_ORDERS_COLUMNS.count,
+          columnName: AGGREGATED_ORDERS_COLUMNS.count.name,
           cellValue: AGGREGATED_ORDERS_ROW_VALUES.count,
           drillTitle: "See this month by week",
           expectedCard: {
@@ -426,7 +430,7 @@ describe("ClickActionsPopover", function () {
                   "=",
                   [
                     "field",
-                    AGGREGATED_ORDERS_COLUMNS_MAP.CREATED_AT.id,
+                    AGGREGATED_ORDERS_COLUMNS.CREATED_AT.id,
                     { "base-type": "type/DateTime", "temporal-unit": "month" },
                   ],
                   AGGREGATED_ORDERS_ROW_VALUES.CREATED_AT,
@@ -462,7 +466,7 @@ describe("ClickActionsPopover", function () {
               column,
               value: cellValue,
             },
-            columns: AGGREGATED_ORDERS_COLUMNS,
+            columns: Object.values(AGGREGATED_ORDERS_COLUMNS),
             rowValues: AGGREGATED_ORDERS_ROW_VALUES,
           });
 
