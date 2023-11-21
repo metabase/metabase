@@ -738,45 +738,51 @@
 
 (deftest pivot-export-test
   (testing "Pivot table export and load correctly"
-    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-      (ts/with-source-and-dest-dbs
-        (ts/with-source-db
-          (t2.with-temp/with-temp
-            [Database   {db-id :id}             {:name "Pivot Database"}
-             Table      {table-id :id}          {:name "Pivot Table"}
-             Field      {pf1 :id}               {:name "Pivot Field 1"}
-             Field      {pf2 :id}               {:name "Pivot Field 2"}
-             Field      {field-id :id}          {:name "Some Field"}
-             Collection {coll-id :id}           {:name "Pivot Collection"}
-             Card       card                    {:name          "Pivot Card"
-                                                 :collection_id coll-id
-                                                 :dataset_query {:type     :query
-                                                                 :database db-id
-                                                                 :query    {:source-table table-id
-                                                                            :aggregation  [:sum [:field pf1 nil]]
-                                                                            :breakout     [[:field field-id nil]]}}
-                                                 :visualization_settings
-                                                 {:pivot_table.column_split
-                                                  {:columns [["field" pf1 nil]]
-                                                   :rows    [["field" pf2 nil]]
-                                                   :values  [["aggregation" 0]]}
-                                                  :column_settings
-                                                  {(format "[\"ref\",[\"field\",%s,null]]" pf1)
-                                                   {:pivot_table.column_sort_order "descending"}}}}]
-            (-> (serdes/with-cache (into [] (extract/extract {})))
-                (storage/store! dump-dir))
+    (let [card1s (atom nil)]
+      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+        (ts/with-source-and-dest-dbs
+          (ts/with-source-db
+            (mt/dataset test-data
+              (mt/$ids nil
+                (t2.with-temp/with-temp
+                  [Database   {db-id :id}    {:name "Pivot Database"}
+                   Collection {coll-id :id}  {:name "Pivot Collection"}
+                   Card       card           {:name          "Pivot Card"
+                                              :collection_id coll-id
+                                              :dataset_query {:type     :query
+                                                              :database db-id
+                                                              :query    {:source-table $$checkins
+                                                                         :aggregation  [:sum [:field %checkins.id nil]]
+                                                                         :breakout     [[:field %checkins.user_id nil]]}}
+                                              :visualization_settings
+                                              {:pivot_table.column_split
+                                               {:rows    [[:field %users.name {:base-type    :type/Text
+                                                                               :source-field %checkins.user_id}]]
+                                                :columns [[:field %venues.name {:base-type    :type/Text
+                                                                                :source-field %checkins.venue_id}]]
+                                                :values  [[:aggregation 0]]}
+                                               :column_settings
+                                               {(format "[\"ref\",[\"field\",%s,null]]" %users.name)
+                                                {:pivot_table.column_sort_order "descending"}}}}]
+                  (reset! card1s card)
+                  (-> (serdes/with-cache (into [] (extract/extract {})))
+                      (storage/store! dump-dir))))))
 
-            (ts/with-dest-db
-              (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+          (ts/with-dest-db
+            (mt/dataset test-data
+              (mt/$ids nil
+                (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
 
-              (let [viz (:visualization_settings
-                         (t2/select-one Card :entity_id (:entity_id card)))]
-                (is (contains? viz :pivot_table.column_split))
-                (is (=? [[:field int? nil]]
-                        (get-in viz [:pivot_table.column_split :rows])))
-                (is (=? [[:field int? nil]]
-                       (get-in viz [:pivot_table.column_split :columns])))
-                (is (= "descending"
-                       (get-in viz [:column_settings
-                                    (format "[\"ref\",[\"field\",%s,null]]" pf1)
-                                    :pivot_table.column_sort_order])))))))))))
+                (let [viz (:visualization_settings
+                           (t2/select-one Card :entity_id (:entity_id @card1s)))]
+                  (is (contains? viz :pivot_table.column_split))
+                  (is (= [[:field %users.name {:base-type    :type/Text
+                                               :source-field %checkins.user_id}]]
+                         (get-in viz [:pivot_table.column_split :rows])))
+                  (is (= [[:field %venues.name {:base-type    :type/Text
+                                                :source-field %checkins.venue_id}]]
+                         (get-in viz [:pivot_table.column_split :columns])))
+                  (is (= "descending"
+                         (get-in viz [:column_settings
+                                      (format "[\"ref\",[\"field\",%s,null]]" %users.name)
+                                      :pivot_table.column_sort_order]))))))))))))
