@@ -641,8 +641,12 @@ const TITLE_LOCALES_BN = {
     'bn' : 'জেন্ডার ভিত্তিক আবেদন'
   },
   'tms.session.application.teacher.type' : {
-    'en' : 'General and Substitute Teacher',
-    'bn' : 'সাধারণ ও সাবস্টিটিউট শিক্ষক'
+    'en' : 'General and Substitute Transfer',
+    'bn' : 'সাধারণ ও সাবস্টিটিউট বদলি'
+  },
+  'tms.session.abandoned.application' : {
+    'en' : 'Abandoned',
+    'bn' : 'পরিত্যক্ত'
   },
 }
 
