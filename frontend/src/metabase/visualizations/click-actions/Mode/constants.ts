@@ -14,6 +14,8 @@ import { ObjectDetailsZoomDrill } from "metabase/visualizations/click-actions/dr
 import { UnderlyingRecordsDrill } from "metabase/visualizations/click-actions/drills/mlv2/UnderlyingRecordsDrill";
 import { QuickFilterDrill } from "metabase/visualizations/click-actions/drills/mlv2/QuickFilterDrill";
 import { AutomaticInsightsDrill } from "metabase/visualizations/click-actions/drills/mlv2/AutomaticInsightsDrill";
+import { ColumnFilterDrill } from "metabase/visualizations/click-actions/drills/mlv2/ColumnFilterDrill";
+import { PivotDrill } from "metabase/visualizations/click-actions/drills/mlv2/PivotDrill";
 
 export const MODE_TYPE_DEFAULT = "default";
 export const MODE_TYPE_NATIVE = "native";
@@ -37,12 +39,12 @@ export const DRILL_TYPE_TO_HANDLER_MAP: Record<
   DrillThruType,
   Drill<any> | null
 > = {
-  "drill-thru/column-filter": null, // ColumnFilterDrill,
+  "drill-thru/column-filter": ColumnFilterDrill,
   "drill-thru/quick-filter": QuickFilterDrill,
   "drill-thru/pk": ObjectDetailsPkDrill,
   "drill-thru/zoom": ObjectDetailsZoomDrill,
   "drill-thru/fk-details": ObjectDetailsFkDrill,
-  "drill-thru/pivot": null,
+  "drill-thru/pivot": PivotDrill,
   "drill-thru/fk-filter": FKFilterDrill,
   "drill-thru/distribution": DistributionDrill,
   "drill-thru/sort": SortDrill,
