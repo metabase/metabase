@@ -53,7 +53,6 @@ class DashboardSharingEmbeddingModal extends Component {
     }
     return (
       <Modal
-        data-testid="dashboard-sharing-embedding-modal"
         full
         disabled={!isLinkEnabled}
         as={ModalTrigger}
