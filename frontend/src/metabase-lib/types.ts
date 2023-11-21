@@ -342,6 +342,11 @@ export type ColumnFilterDrillDetails = {
   column: ColumnMetadata;
 };
 
+export type PivotDrillDetails = {
+  query: Query;
+  columns: ColumnMetadata[];
+};
+
 export interface Dimension {
   column: DatasetColumn;
   value?: RowValue;

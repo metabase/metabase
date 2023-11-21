@@ -6,6 +6,7 @@ import type {
   DataRow,
   Dimension,
   DrillThru,
+  PivotDrillDetails,
   Query,
 } from "./types";
 
@@ -43,4 +44,8 @@ export function columnFilterDrillDetails(
   drillThru: DrillThru,
 ): ColumnFilterDrillDetails {
   return ML.column_filter_drill_details(drillThru);
+}
+
+export function pivotDrillDetails(drillThru: DrillThru): PivotDrillDetails {
+  return ML.pivot_drill_details(drillThru);
 }
