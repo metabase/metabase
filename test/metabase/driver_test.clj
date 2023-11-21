@@ -95,14 +95,12 @@
         (binding [h2/*allow-testing-h2-connections* true]
           (sync/sync-database! db))
         (testing "sense checks before deleting the database"
-          (testing "sense check 1: the table should exist on initial sync"
-            (is (true? (t2/exists? :model/Table :db_id (u/the-id db)))))
-          (testing "sense check 2: sync-and-analyze-database! should not log a warning"
+          (testing "sense check 1: sync-and-analyze-database! should not log a warning"
             (is (not-any?
                  log-match?
                  (mt/with-log-messages-for-level :warn
                    (#'task.sync-databases/sync-and-analyze-database!* (u/the-id db))))))
-          (testing "sense check 3: sync-schema should return true and start a sync"
+          (testing "sense check 2: sync-schema should return true and start a sync"
             (is (= {:status "ok"}
                    (mt/user-http-request :crowberto :post 200 (str "/database/" (u/the-id db) "/sync_schema"))))))
         ;; invalidate the connection pool so we don't have to wait to finish syncing before destroying the db
@@ -110,21 +108,13 @@
           (sql-jdbc.conn/invalidate-pool-for-db! db))
         ;; delete the db
         (tx/destroy-db! driver/*driver* empty-dbdef)
-        ;; now test all the methods of syncing fail
-        (testing "after deleting a database"
-          (testing "1: `sync-database!` should throw"
-            (is (thrown-with-msg?
-                  clojure.lang.ExceptionInfo
-                  #".*"
-                  (binding [h2/*allow-testing-h2-connections* true]
-                    (sync/sync-database! db)))))
-          ;; triggering a sync should show a warning
-          (testing "2: sync-and-analyze-database! should log a warning and end early"
+        (testing "after deleting a database, sync should fail"
+          (testing "1: sync-and-analyze-database! should log a warning and fail early"
             (is (some
                  log-match?
                  (mt/with-log-messages-for-level :warn
                    (#'task.sync-databases/sync-and-analyze-database!* (u/the-id db))))))
-          (testing "3: triggering the sync via the POST /api/database/:id/sync_schema endpoint should fail"
+          (testing "2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should fail"
             (mt/user-http-request :crowberto :post 500 (str "/database/" (u/the-id db) "/sync_schema"))))
         ;; clean up the database
         (t2/delete! :model/Database (u/the-id db))))))

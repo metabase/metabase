@@ -48,7 +48,6 @@
   ([database                         :- i/DatabaseInstance
     {:keys [scan], :or {scan :full}} :- [:maybe [:map
                                                  [:scan {:optional true} [:maybe [:enum :schema :full]]]]]]
-   (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions)
    (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
      (cond-> [(assoc (sync-metadata/sync-db-metadata! database) :name "metadata")]
        (= scan :full)
