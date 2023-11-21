@@ -211,7 +211,12 @@ To link filters, you'll need to set up this parent-child relationship. And you s
 
 Here you can limit the current filter's choices. If you toggle on one of these dashboard filters, selecting a value for that filter will limit the available choices for this filter. In this case, we toggle on the state filter (the parent), to limit the choices for the city filter. When states are selected, the city filter will limit its choices to cities in those states. Click **Done**, then **Save** to save the dashboard.
 
-To learn more, check out [Linking filters in dashboards](https://www.metabase.com/learn/dashboards/linking-filters).
+### Limitations of linking filters
+
+- Native/SQL questions must have a [field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type) variable in order to be linked. Regular SQL variables won't work.
+- You can't link filters that use "Custom List" or "From another model or question" as their value's source.
+
+To learn more about linked filters, check out [Linking filters in dashboards](https://www.metabase.com/learn/dashboards/linking-filters).
 
 ## Auto-apply filters
 
