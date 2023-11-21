@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [fn])
   (:require
    [clojure.core :as core]
-   [clojure.string :as str]
    [malli.core :as mc]
    [malli.destructure :as md]
    [malli.error :as me]
@@ -146,36 +145,20 @@
   use [[metabase.util.malli/disable-enforcement]] to bind this only in Clojure code."
   true)
 
-(defn- fixup-stacktrace
-  "This function removes stack trace elements that came from this namespace. When we throw validation errors, they
-  shouldn't originate from *this* namespace, they should appear to be thrown from the instrumented function itself."
-  [^Exception e]
-  (let [trace (.getStackTrace e)
-        fixed-trace (into-array StackTraceElement
-                                (drop-while
-                                 #(str/starts-with? (.getClassName ^StackTraceElement %)
-                                                    ;; this is... hacky, but it works.
-                                                    (namespace ::x))
-                                            trace))]
-    (.setStackTrace e fixed-trace)))
-
 (defn- validate [error-context schema value error-type]
   (when *enforce*
     (when-let [error (mr/explain schema value)]
       (let [humanized (me/humanize error)]
-        (throw
-         (doto (ex-info
-                (case error-type
-                  ::invalid-input  (i18n/tru "Invalid input: {0}" (pr-str humanized))
-                  ::invalid-output (i18n/tru "Invalid output: {0}" (pr-str humanized)))
-                (merge
-                 {:type      error-type
-                  :error     error
-                  :humanized humanized
-                  :schema    schema
-                  :value     value}
-                 error-context))
-           fixup-stacktrace))))))
+        (throw (ex-info (case error-type
+                          ::invalid-input  (i18n/tru "Invalid input: {0}" (pr-str humanized))
+                          ::invalid-output (i18n/tru "Invalid output: {0}" (pr-str humanized)))
+                        (merge
+                         {:type      error-type
+                          :error     error
+                          :humanized humanized
+                          :schema    schema
+                          :value     value}
+                         error-context)))))))
 
 (defn validate-input
   "Impl for [[metabase.util.malli.fn/fn]]; validates an input argument with `value` against `schema` using a cached
@@ -231,37 +214,57 @@
               schemas)
          (filter some?))))
 
-(defn- input-schema->application-form [input-schema deparameterized-fn]
+(defn- input-schema->application-form [input-schema]
   (let [arg-names (input-schema-arg-names input-schema)]
     (if (varargs-schema? input-schema)
-      (list* `apply deparameterized-fn arg-names)
-      (list* deparameterized-fn arg-names))))
+      (list* `apply '&f arg-names)
+      (list* '&f arg-names))))
 
-(defn- instrumented-arity [error-context [_=> input-schema output-schema] deparameterized-fn]
+(defn fixup-stacktrace
+  "If exception is thrown from the [[validate]] machinery, remove those stack trace elements so the top of the stack is
+  the calling function."
+  [^Exception e]
+  (if (#{::invalid-input ::invalid-output} (-> e ex-data :type))
+    (let [trace (.getStackTrace e)
+          cleaned (when trace
+                    (into-array StackTraceElement
+                                (drop-while (comp #{(.getName (class validate))
+                                                    (.getName (class validate-input))
+                                                    (.getName (class validate-output))}
+                                                  #(.getClassName ^StackTraceElement %))
+                                            trace)))]
+      (doto e
+        (.setStackTrace cleaned)))
+    e))
+
+(defn- instrumented-arity [error-context [_=> input-schema output-schema]]
   (let [input-schema           (if (= input-schema :cat)
                                  [:cat]
                                  input-schema)
         arglist                (input-schema->arglist input-schema)
         input-validation-forms (input-schema->validation-forms error-context input-schema)
-        result-form            (input-schema->application-form input-schema deparameterized-fn)
+        result-form            (input-schema->application-form input-schema)
         result-form            (if (and output-schema
                                         (not= output-schema :any))
                                  `(->> ~result-form
                                        (validate-output ~error-context ~output-schema))
                                  result-form)]
-    `(~arglist ~@input-validation-forms ~result-form)))
+    `(~arglist
+      (try
+        ~@input-validation-forms
+        ~result-form
+        (catch Exception ~'error
+          (throw (fixup-stacktrace ~'error)))))))
 
-(defn- instrumented-fn-tail [error-context
-                             [schema-type :as schema]
-                             deparameterized-fn]
+(defn- instrumented-fn-tail [error-context [schema-type :as schema]]
   (case schema-type
     :=>
-    [(instrumented-arity error-context schema deparameterized-fn)]
+    [(instrumented-arity error-context schema)]
 
     :function
     (let [[_function & schemas] schema]
       (for [schema schemas]
-        (instrumented-arity error-context schema deparameterized-fn)))))
+        (instrumented-arity error-context schema)))))
 
 (defn instrumented-fn-form
   "Given a `fn-tail` like
@@ -275,9 +278,8 @@
     (mc/-instrument {:schema [:=> [:cat :int :any] :any]}
                     (fn [x y] (+ 1 2)))"
   [error-context parsed]
-  `(core/fn ~@(instrumented-fn-tail error-context
-                                    (fn-schema parsed)
-                                    (deparameterized-fn-form parsed))))
+  `(let [~'&f ~(deparameterized-fn-form parsed)]
+     (core/fn ~@(instrumented-fn-tail error-context (fn-schema parsed)))))
 
 (defmacro fn
   "Malli version of [[schema.core/fn]]. A form like
