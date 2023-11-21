@@ -9,9 +9,6 @@ import type { Dashboard } from "metabase-types/api";
 export type DashboardEmbedHeaderButtonProps = {
   dashboard: Dashboard;
   admin: boolean;
-  // editing: boolean;
-  // embeddingEnabled: boolean;
-  // fullscreen: boolean;
   linkEnabled: boolean;
   publicLinksEnabled: boolean;
 };
@@ -68,7 +65,7 @@ export const DashboardEmbedHeaderButton = ({
       return (
         <>
           {dashboardButton()}
-          {/*  Render the public link popover here*/}
+          {/*  TODO: Render the public link popover here*/}
         </>
       );
     }

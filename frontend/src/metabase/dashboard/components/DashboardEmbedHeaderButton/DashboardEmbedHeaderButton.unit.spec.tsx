@@ -35,7 +35,7 @@ const setup = ({
     public_uuid: hasPublicLink ? "123" : undefined,
   });
 
-  const { history } = renderWithProviders(
+  renderWithProviders(
     <DashboardEmbedHeaderButton
       dashboard={testDashboard}
       admin={isAdmin}
@@ -43,10 +43,6 @@ const setup = ({
       publicLinksEnabled={publicLinksEnabled}
     />,
   );
-
-  return {
-    history,
-  };
 };
 
 describe("DashboardEmbedHeaderButton", () => {
@@ -154,17 +150,7 @@ describe("DashboardEmbedHeaderButton", () => {
         expect(await screen.findByText("Embed")).toBeInTheDocument();
       });
     });
-    describe("when user is non-admin", () => {
-      it("should render the `Public link` option if a public link has been created", () => {
-        setup({
-          hasPublicLink: true,
-          publicLinksEnabled: true,
-          isAdmin: false,
-        });
 
-        userEvent.click(screen.getByLabelText("share icon"));
-        expect(screen.getByText("Public link")).toBeInTheDocument();
-      });
-    });
+    // TODO: Write tests for showing the popover when the user is non-admin and a public link has/hasn't been created
   });
 });
