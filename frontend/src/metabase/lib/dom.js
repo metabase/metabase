@@ -220,7 +220,15 @@ export function constrainToScreen(element, direction, padding) {
   return false;
 }
 
-const isAbsoluteUrl = url => url.startsWith("/");
+function getSitePath() {
+  return new URL(MetabaseSettings.get("site-url")).pathname;
+}
+
+function isMetabaseUrl(url) {
+  const urlPath = new URL(url, window.location.origin).pathname;
+
+  return isSameOrSiteUrlOrigin(url) && urlPath.startsWith(getSitePath());
+}
 
 function getWithSiteUrl(url) {
   const siteUrl = MetabaseSettings.get("site-url");
@@ -277,13 +285,12 @@ export function open(
     ...options
   } = {},
 ) {
-  const isOriginalUrlAbsolute = isAbsoluteUrl(url); // this does not check real "absolute" url, but if a url should be resolved from the root URL
   url = ignoreSiteUrl ? url : getWithSiteUrl(url);
 
   if (shouldOpenInBlankWindow(url, options)) {
     openInBlankWindow(url);
   } else if (isSameOrigin(url)) {
-    if (isOriginalUrlAbsolute) {
+    if (!isMetabaseUrl(url)) {
       clickLink(url, false);
     } else {
       openInSameOrigin(url, getLocation(url));
@@ -349,12 +356,30 @@ const getOrigin = url => {
 const getLocation = url => {
   try {
     const { pathname, search, hash } = new URL(url, window.location.origin);
+    const pathNameWithoutSubPath = pathname.replace(
+      // Only replace the path from the start to avoid matching the string elsewhere
+      new RegExp(`^${getSitePath()}`),
+      "",
+    );
     const query = querystring.parse(search.substring(1));
-    return { pathname, search, query, hash };
+    return {
+      pathname: ensureLeadingSlash(pathNameWithoutSubPath),
+      search,
+      query,
+      hash,
+    };
   } catch {
     return {};
   }
 };
+
+function ensureLeadingSlash(url) {
+  if (url[0] === "/") {
+    return url;
+  }
+
+  return "/" + url;
+}
 
 export function isSameOrigin(url) {
   const origin = getOrigin(url);
