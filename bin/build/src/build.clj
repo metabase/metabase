@@ -46,7 +46,7 @@
                      "HOME"       (env/env :user-home)
                      "WEBPACK_BUNDLE"   "production"
                      "MB_EDITION" mb-edition}}
-              "yarn" "build-static-viz"))
+              "yarn" "build-static-viz-pure"))
       (u/announce "Frontend built successfully."))))
 
 (defn- build-licenses!
