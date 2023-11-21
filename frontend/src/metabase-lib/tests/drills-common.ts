@@ -29,7 +29,10 @@ import {
   PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { createMockColumn } from "metabase-types/api/mocks";
+import {
+  createMockColumn,
+  createMockCustomColumn,
+} from "metabase-types/api/mocks";
 import type * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
 import { DEFAULT_QUERY, SAMPLE_METADATA } from "metabase-lib/test-helpers";
@@ -175,7 +178,7 @@ export const AGGREGATED_ORDERS_COLUMNS = {
     unit: "month",
   }),
 
-  count: createMockColumn({
+  count: createMockCustomColumn({
     base_type: "type/BigInteger",
     name: "count",
     display_name: "Count",
@@ -203,6 +206,9 @@ export const AGGREGATED_ORDERS_COLUMNS = {
     effective_type: "type/Float",
   }),
 };
+export const AGGREGATED_ORDERS_COLUMNS_LIST = Object.values(
+  AGGREGATED_ORDERS_COLUMNS,
+);
 export const AGGREGATED_ORDERS_ROW_VALUES: Record<
   keyof typeof AGGREGATED_ORDERS_COLUMNS,
   RowValue

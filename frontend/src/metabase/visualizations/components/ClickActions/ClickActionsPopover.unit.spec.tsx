@@ -31,6 +31,10 @@ import Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Dimension from "metabase-lib/Dimension";
 import {
+  AGGREGATED_ORDERS_COLUMNS,
+  AGGREGATED_ORDERS_COLUMNS_LIST,
+  AGGREGATED_ORDERS_QUESTION,
+  AGGREGATED_ORDERS_ROW_VALUES,
   ORDERS_COLUMNS,
   ORDERS_COLUMNS_LIST,
   ORDERS_DATASET_QUERY,
@@ -377,6 +381,87 @@ describe("ClickActionsPopover", function () {
         },
       );
     });
+
+    describe("UnderlyingRecordsDrill", () => {
+      it.each([
+        {
+          column: AGGREGATED_ORDERS_COLUMNS.sum,
+          columnName: AGGREGATED_ORDERS_COLUMNS.sum.name,
+          cellValue: AGGREGATED_ORDERS_ROW_VALUES.sum,
+          drillTitle: "See this Order",
+          expectedCard: {
+            dataset_query: {
+              database: SAMPLE_DB_ID,
+              query: {
+                filter: [
+                  "and",
+                  [
+                    "=",
+                    [
+                      "field",
+                      ORDERS.PRODUCT_ID,
+                      {
+                        "base-type": "type/Integer",
+                      },
+                    ],
+                    AGGREGATED_ORDERS_ROW_VALUES.PRODUCT_ID,
+                  ],
+                  [
+                    "=",
+                    [
+                      "field",
+                      ORDERS.CREATED_AT,
+                      {
+                        "base-type": "type/DateTime",
+                        "temporal-unit": "month",
+                      },
+                    ],
+                    AGGREGATED_ORDERS_ROW_VALUES.CREATED_AT,
+                  ],
+                ],
+                "source-table": ORDERS_ID,
+              },
+              type: "query",
+            },
+            display: "table",
+          },
+        },
+      ])(
+        "should apply drill on $columnName cell click",
+        async ({ column, cellValue, drillTitle, expectedCard }) => {
+          const { props } = await setup({
+            question: AGGREGATED_ORDERS_QUESTION,
+            columns: AGGREGATED_ORDERS_COLUMNS_LIST,
+            rowValues: AGGREGATED_ORDERS_ROW_VALUES,
+            clicked: {
+              column,
+              data: AGGREGATED_ORDERS_COLUMNS_LIST.map(column => ({
+                col: AGGREGATED_ORDERS_COLUMNS[
+                  column.name as keyof typeof AGGREGATED_ORDERS_COLUMNS
+                ],
+                value:
+                  AGGREGATED_ORDERS_ROW_VALUES[
+                    column.name as keyof typeof AGGREGATED_ORDERS_ROW_VALUES
+                  ],
+              })),
+              value: cellValue,
+            },
+          });
+
+          const drill = screen.getByText(drillTitle);
+          expect(drill).toBeInTheDocument();
+
+          userEvent.click(drill);
+
+          expect(props.onChangeCardAndRun).toHaveBeenCalledTimes(1);
+          expect(props.onChangeCardAndRun).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+              nextCard: expect.objectContaining(expectedCard),
+            }),
+          );
+        },
+      );
+    });
   });
 });
 
@@ -406,9 +491,20 @@ async function setup({
       checkNotNull(clicked?.column),
     );
 
+  const dimensions =
+    (question?.query() as StructuredQuery).aggregations().length > 0
+      ? columns
+          .filter(
+            col =>
+              col?.source === "breakout" && col?.name !== clicked?.column?.name,
+          )
+          .map(col => ({ value: rowValues[col.name], column: col }))
+      : undefined;
+
   clicked = {
     ...clicked,
     dimension: dimension || undefined,
+    dimensions,
   };
 
   const clickActions = mode.actionsForClick(
