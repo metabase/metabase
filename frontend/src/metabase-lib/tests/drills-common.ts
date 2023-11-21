@@ -1,5 +1,6 @@
 /* istanbul ignore file */
 import type {
+  DatasetColumn,
   RowValue,
   StructuredDatasetQuery,
   StructuredQuery as StructuredQueryApi,
@@ -371,30 +372,32 @@ export function getDrillsQueryParameters(
   queryType: "unaggregated" | "aggregated",
   queryTable: "ORDERS" | "PRODUCTS" = "ORDERS",
   customQuestion?: Question,
+  customColumns?: Record<string, DatasetColumn>,
+  customRowValues?: Record<string, RowValue>,
 ) {
   if (queryTable === "PRODUCTS") {
     return queryType === "unaggregated"
       ? {
           question: customQuestion || PRODUCTS_QUESTION,
-          columns: PRODUCTS_COLUMNS,
-          rowValues: PRODUCTS_ROW_VALUES,
+          columns: customColumns || PRODUCTS_COLUMNS,
+          rowValues: customRowValues || PRODUCTS_ROW_VALUES,
         }
       : {
           question: customQuestion || AGGREGATED_PRODUCTS_QUESTION,
-          columns: AGGREGATED_PRODUCTS_COLUMNS,
-          rowValues: AGGREGATED_PRODUCTS_ROW_VALUES,
+          columns: customColumns || AGGREGATED_PRODUCTS_COLUMNS,
+          rowValues: customRowValues || AGGREGATED_PRODUCTS_ROW_VALUES,
         };
   }
 
   return queryType === "unaggregated"
     ? {
         question: customQuestion || ORDERS_QUESTION,
-        columns: ORDERS_COLUMNS,
-        rowValues: ORDERS_ROW_VALUES,
+        columns: customColumns || ORDERS_COLUMNS,
+        rowValues: customRowValues || ORDERS_ROW_VALUES,
       }
     : {
         question: customQuestion || AGGREGATED_ORDERS_QUESTION,
-        columns: AGGREGATED_ORDERS_COLUMNS,
-        rowValues: AGGREGATED_ORDERS_ROW_VALUES,
+        columns: customColumns || AGGREGATED_ORDERS_COLUMNS,
+        rowValues: customRowValues || AGGREGATED_ORDERS_ROW_VALUES,
       };
 }

@@ -1461,6 +1461,18 @@ export const createOrdersTableDatasetColumns = () => [
   createOrdersQuantityDatasetColumn(),
 ];
 
+export const createOrdersTableDatasetColumnsMap = () => ({
+  ID: createOrdersIdDatasetColumn(),
+  USER_ID: createOrdersUserIdDatasetColumn(),
+  PRODUCT_ID: createOrdersProductIdDatasetColumn(),
+  SUBTOTAL: createOrdersSubtotalDatasetColumn(),
+  TAX: createOrdersTaxDatasetColumn(),
+  TOTAL: createOrdersTotalDatasetColumn(),
+  DISCOUNT: createOrdersDiscountDatasetColumn(),
+  CREATED_AT: createOrdersCreatedAtDatasetColumn(),
+  QUANTITY: createOrdersQuantityDatasetColumn(),
+});
+
 export const createProductsIdDatasetColumn = (
   opts?: Partial<DatasetColumn>,
 ): DatasetColumn =>

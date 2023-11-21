@@ -3,9 +3,13 @@ import {
   createOrdersCreatedAtDatasetColumn,
   ORDERS,
   ORDERS_ID,
+  PEOPLE,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { createMockColumn } from "metabase-types/api/mocks";
+import {
+  createMockColumn,
+  createMockCustomColumn,
+} from "metabase-types/api/mocks";
 import type {
   DatasetColumn,
   RowValue,
@@ -403,6 +407,85 @@ describe("availableDrillThrus", () => {
     );
 
     expect(drills).toBeInstanceOf(Array);
+  });
+
+  it("should return list of available drills for pivot table", () => {
+    const question = Question.create({
+      metadata: SAMPLE_METADATA,
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              PEOPLE.SOURCE,
+              {
+                "base-type": "type/Text",
+                "source-field": ORDERS.USER_ID,
+              },
+            ],
+          ],
+        },
+        pivot_cols: [1],
+        pivot_rows: [0],
+      } as StructuredDatasetQuery,
+    });
+
+    const columns = {
+      CREATED_AT: createOrdersCreatedAtDatasetColumn({
+        source: "breakout",
+        field_ref: [
+          "field",
+          ORDERS.CREATED_AT,
+          {
+            "base-type": "type/DateTime",
+            "temporal-unit": "month",
+          },
+        ],
+      }),
+      count: createMockCustomColumn({
+        base_type: "type/BigInteger",
+        name: "count",
+        display_name: "Count",
+        semantic_type: "type/Quantity",
+        source: "aggregation",
+        field_ref: ["aggregation", 0],
+        effective_type: "type/BigInteger",
+      }),
+    };
+    const rowValues = {
+      CREATED_AT: "2022-06-01T00:00:00+03:00",
+      count: 37,
+    };
+    const clickedColumnName = "count";
+
+    const { drills, drillsDisplayInfo } = getAvailableDrills({
+      clickedColumnName,
+      question,
+      columns,
+      rowValues,
+      clickType: "cell",
+    });
+
+    expect(drills).toBeInstanceOf(Array);
+    expect(drills.length).toBeGreaterThan(0);
+    expect(drillsDisplayInfo).toEqual([
+      {
+        type: "drill-thru/pivot",
+      },
+      {
+        operators: ["<", ">", "=", "≠"],
+        type: "drill-thru/quick-filter",
+      },
+      {
+        rowCount: 37,
+        tableName: "Orders",
+        type: "drill-thru/underlying-records",
+      },
+    ]);
   });
 });
 
