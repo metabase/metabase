@@ -13,7 +13,6 @@ import {
 } from "metabase/forms";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { Stack } from "metabase/ui";
-import { settingToFormField } from "metabase/admin/settings/utils";
 import { FormSection } from "metabase/containers/FormikForm";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import { JWTForm, JWTFormFooter } from "./SettingsJWTForm.styled";
@@ -37,7 +36,16 @@ const SettingsJWTForm = ({
   }, [elements]);
 
   const fields = useMemo(() => {
-    return _.mapObject(settings, settingToFormField);
+    return _.mapObject(settings, setting => ({
+      name: setting.key,
+      label: setting.display_name,
+      description: setting.description,
+      placeholder: setting.is_env_setting
+        ? t`Using ${setting.env_name}`
+        : setting.placeholder || setting.default,
+      required: setting.required,
+      autoFocus: setting.autoFocus,
+    }));
   }, [settings]);
 
   const attributeValues = useMemo(() => {
