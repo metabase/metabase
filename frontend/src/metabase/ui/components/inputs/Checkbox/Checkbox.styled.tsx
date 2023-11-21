@@ -62,7 +62,6 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
         ref: getStylesRef("label"),
         color: theme.colors.text[2],
         fontSize: theme.fontSizes.md,
-        lineHeight: theme.lineHeight,
       },
       description: {
         ref: getStylesRef("description"),
