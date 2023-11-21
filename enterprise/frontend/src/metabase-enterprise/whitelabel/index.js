@@ -86,7 +86,7 @@ if (hasPremiumFeature("whitelabel")) {
             <p>
               {t`The Settings menu includes a Help link that goes to `}
               <Anchor href="https://www.metabase.com/help">{t`this page`}</Anchor>
-              {t`by default.`}
+              {t` by default.`}
             </p>
           ),
           widget: HelpLinkRadio,
