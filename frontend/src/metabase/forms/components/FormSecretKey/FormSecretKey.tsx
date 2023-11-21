@@ -3,13 +3,13 @@ import type { ChangeEvent, FocusEvent, Ref } from "react";
 import { useField } from "formik";
 import { t } from "ttag";
 
-import { TextInput } from "metabase/ui";
+import { TextInput, Button } from "metabase/ui";
 import type { TextInputProps } from "metabase/ui";
 
 import Confirm from "metabase/components/Confirm";
 import { UtilApi } from "metabase/services";
 
-import { SecretKeyRoot, GenerateButton } from "./FormSecretKey.styled";
+import { SecretKeyRoot } from "./FormSecretKey.styled";
 
 export interface FormSecretKeyProps
   extends Omit<TextInputProps, "value" | "error"> {
@@ -78,13 +78,13 @@ export const FormSecretKey = forwardRef(function FormSecretKey(
           content={confirmation.dialog}
           action={generateToken}
         >
-          <GenerateButton variant="filled">{t`Regenerate key`}</GenerateButton>
+          <Button variant="filled">{t`Regenerate key`}</Button>
         </Confirm>
       ) : (
-        <GenerateButton
+        <Button
           variant="filled"
           onClick={generateToken}
-        >{t`Generate key`}</GenerateButton>
+        >{t`Generate key`}</Button>
       )}
     </SecretKeyRoot>
   );
