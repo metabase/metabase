@@ -75,7 +75,7 @@ You can choose from:
 
 A flexible filter type that will let you create either a dropdown menu or an input box to filter on any category field in your cards. Options include:
 
-- **Is**. Select one or more values from a list or search box.
+- **Is**. Select one or more values from a list or search box. Use **Is** when you just want to plug a value into a variable. For multiple values, the card must be either a question built using the query builder, or a native/SQL question using a [field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type).
 - **Is not**. Exclude one or more specific values.
 - **Contains**. Match values that contain the entered text.
 - **Does not contain**. Filter out values that contain the entered text.
@@ -100,7 +100,7 @@ To undo this auto-connecting of cards, you could click on the toast that pops up
 
 ## Filtering dashboards with native/SQL questions
 
-If you're trying to connect a filter to a card with a native/SQL questions, you'll need to [add a variable to your query](../questions/native-editor/sql-parameters.md). For an in-depth article, check out [Adding filters to dashboards with SQL questions](https://www.metabase.com/learn/dashboards/filters).
+If you're trying to connect a filter to a card with a native/SQL questions, you'll need to [add a variable or field filter to your query](../questions/native-editor/sql-parameters.md). For an in-depth article, check out [Adding filters to dashboards with SQL questions](https://www.metabase.com/learn/dashboards/filters).
 
 ## Wiring up dashboard filters to text cards
 
