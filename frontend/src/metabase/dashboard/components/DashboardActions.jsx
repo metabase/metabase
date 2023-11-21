@@ -4,12 +4,11 @@ import MetabaseSettings from "metabase/lib/settings";
 import Tooltip from "metabase/core/components/Tooltip";
 
 import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
-import DashboardSharingEmbeddingModal from "../containers/DashboardSharingEmbeddingModal.jsx";
+import { DashboardEmbedHeaderButton } from "metabase/dashboard/components/DashboardEmbedHeaderButton/DashboardEmbedHeaderButton";
 import {
   FullScreenButtonIcon,
   NightModeButtonIcon,
   RefreshWidgetButton,
-  ShareButton,
 } from "./DashboardActions.styled";
 
 export const getDashboardActions = (
@@ -34,7 +33,6 @@ export const getDashboardActions = (
   },
 ) => {
   const isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing");
-  const isEmbeddingEnabled = MetabaseSettings.get("enable-embedding");
 
   const buttons = [];
 
@@ -79,29 +77,11 @@ export const getDashboardActions = (
 
     if (canShareDashboard) {
       buttons.push(
-        <DashboardSharingEmbeddingModal
-          key="dashboard-embed"
-          additionalClickActions={() => self.refs.popover.close()}
+        <DashboardEmbedHeaderButton
           dashboard={dashboard}
-          enabled={
-            !isEditing &&
-            !isFullscreen &&
-            ((isPublicLinksEnabled && (isAdmin || dashboard.public_uuid)) ||
-              (isEmbeddingEnabled && isAdmin))
-          }
-          isLinkEnabled={canShareDashboard}
-          linkText={
-            <Tooltip
-              isLinkEnabled={canShareDashboard}
-              tooltip={
-                canShareDashboard
-                  ? t`Sharing`
-                  : t`Add data to share this dashboard`
-              }
-            >
-              <ShareButton icon="share" canShareDashboard={canShareDashboard} />
-            </Tooltip>
-          }
+          publicLinksEnabled={isPublicLinksEnabled}
+          admin={isAdmin}
+          linkEnabled={canShareDashboard}
         />,
       );
     }

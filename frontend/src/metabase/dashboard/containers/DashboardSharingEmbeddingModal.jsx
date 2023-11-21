@@ -2,13 +2,12 @@
 import { Component } from "react";
 import { connect } from "react-redux";
 
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
 import { getParameters } from "metabase/dashboard/selectors";
 import * as Urls from "metabase/lib/urls";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
+import Modal from "metabase/components/Modal";
 import {
   createPublicLink,
   deletePublicLink,
@@ -37,7 +36,6 @@ class DashboardSharingEmbeddingModal extends Component {
 
   render() {
     const {
-      additionalClickActions,
       className,
       createPublicLink,
       dashboard,
@@ -49,14 +47,15 @@ class DashboardSharingEmbeddingModal extends Component {
       isLinkEnabled,
       updateEnableEmbedding,
       updateEmbeddingParams,
+      onClose,
       ...props
     } = this.props;
     if (!enabled) {
       return null;
     }
     return (
-      <ModalWithTrigger
-        ref={m => (this._modal = m)}
+      <Modal
+        data-testid="dashboard-sharing-embedding-modal"
         full
         disabled={!isLinkEnabled}
         as={ModalTrigger}
@@ -94,13 +93,10 @@ class DashboardSharingEmbeddingModal extends Component {
           onUpdateEmbeddingParams={embeddingParams =>
             updateEmbeddingParams(dashboard, embeddingParams)
           }
-          onClose={() => {
-            this._modal && this._modal.close();
-            additionalClickActions();
-          }}
+          onClose={onClose}
           getPublicUrl={({ public_uuid }) => Urls.publicDashboard(public_uuid)}
         />
-      </ModalWithTrigger>
+      </Modal>
     );
   }
 }
