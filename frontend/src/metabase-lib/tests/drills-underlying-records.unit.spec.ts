@@ -5,6 +5,8 @@ import {
   createOrdersCreatedAtDatasetColumn,
   ORDERS,
   ORDERS_ID,
+  PEOPLE,
+  PEOPLE_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
@@ -14,7 +16,6 @@ import type {
   ApplyDrillTestCase,
 } from "metabase-lib/tests/drills-common";
 import {
-  AGGREGATED_ORDERS_ROW_VALUES,
   getDrillsQueryParameters,
   ORDERS_COLUMNS,
   ORDERS_QUESTION,
@@ -150,17 +151,34 @@ describe("drill-thru/underlying-records", () => {
     >([
       {
         clickType: "cell",
-        columnName: "CREATED_AT",
+        columnName: "max",
         queryType: "aggregated",
         expectedQuery: {
           filter: [
-            "=",
+            "and",
             [
-              "field",
-              ORDERS.CREATED_AT,
-              { "temporal-unit": "month", "base-type": "type/DateTime" },
+              "=",
+              [
+                "field",
+                ORDERS.PRODUCT_ID,
+                {
+                  "base-type": "type/Integer",
+                },
+              ],
+              3,
             ],
-            AGGREGATED_ORDERS_ROW_VALUES.CREATED_AT,
+            [
+              "=",
+              [
+                "field",
+                ORDERS.CREATED_AT,
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "month",
+                },
+              ],
+              "2022-12-01T00:00:00+02:00",
+            ],
           ],
           "source-table": ORDERS_ID,
         },
@@ -168,7 +186,7 @@ describe("drill-thru/underlying-records", () => {
       {
         clickType: "cell",
         queryType: "aggregated",
-        columnName: "CREATED_AT",
+        columnName: "count",
         customQuestion: Question.create({
           metadata: SAMPLE_METADATA,
           dataset_query: {
@@ -214,7 +232,7 @@ describe("drill-thru/underlying-records", () => {
           }),
         },
         customRowValues: {
-          CREATED_AT: "2022-12-01T00:00:00+02:00",
+          CREATED_AT: 3,
           count: 77,
         },
         expectedQuery: {
@@ -228,6 +246,149 @@ describe("drill-thru/underlying-records", () => {
             3,
           ],
           "source-table": ORDERS_ID,
+        },
+      },
+      {
+        clickType: "cell",
+        queryType: "aggregated",
+        columnName: "count",
+        customQuestion: Question.create({
+          metadata: SAMPLE_METADATA,
+          dataset_query: {
+            type: "query",
+            database: SAMPLE_DB_ID,
+            query: {
+              "source-table": ORDERS_ID,
+              joins: [
+                {
+                  strategy: "left-join",
+                  alias: "People - User",
+                  condition: [
+                    "=",
+                    [
+                      "field",
+                      ORDERS.USER_ID,
+                      {
+                        "base-type": "type/Integer",
+                      },
+                    ],
+                    [
+                      "field",
+                      PEOPLE.ID,
+                      {
+                        "base-type": "type/BigInteger",
+                        "join-alias": "People - User",
+                      },
+                    ],
+                  ],
+                  "source-table": PEOPLE_ID,
+                },
+              ],
+              aggregation: [["count"]],
+              breakout: [
+                [
+                  "field",
+                  PEOPLE.STATE,
+                  {
+                    "base-type": "type/Text",
+                    "join-alias": "People - User",
+                  },
+                ],
+              ],
+            },
+          },
+        }),
+        customColumns: {
+          STATE: createMockColumn({
+            description:
+              "The state or province of the account’s billing address",
+            semantic_type: "type/State",
+            table_id: PEOPLE_ID,
+            coercion_strategy: null,
+            name: "STATE",
+            source: "breakout",
+            fk_target_field_id: null,
+            field_ref: [
+              "field",
+              PEOPLE.STATE,
+              {
+                "base-type": "type/Text",
+                "join-alias": "People - User",
+              },
+            ],
+            effective_type: "type/Text",
+            id: PEOPLE.STATE,
+            visibility_type: "normal",
+            display_name: "People - User → State",
+            fingerprint: {
+              global: {
+                "distinct-count": 49,
+                "nil%": 0,
+              },
+              type: {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 1,
+                  "average-length": 2,
+                },
+              },
+            },
+            base_type: "type/Text",
+          }),
+          count: createMockColumn({
+            base_type: "type/BigInteger",
+            name: "count",
+            display_name: "Count",
+            semantic_type: "type/Quantity",
+            source: "aggregation",
+            field_ref: ["aggregation", 0],
+            effective_type: "type/BigInteger",
+          }),
+        },
+        customRowValues: {
+          STATE: "AZ",
+          count: 77,
+        },
+        expectedQuery: {
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              strategy: "left-join",
+              alias: "People - User",
+              condition: [
+                "=",
+                [
+                  "field",
+                  ORDERS.USER_ID,
+                  {
+                    "base-type": "type/Integer",
+                  },
+                ],
+                [
+                  "field",
+                  PEOPLE.ID,
+                  {
+                    "base-type": "type/BigInteger",
+                    "join-alias": "People - User",
+                  },
+                ],
+              ],
+              "source-table": PEOPLE_ID,
+            },
+          ],
+          filter: [
+            "=",
+            [
+              "field",
+              PEOPLE.STATE,
+              {
+                "base-type": "type/Text",
+              },
+            ],
+            "AZ",
+          ],
         },
       },
     ])(
