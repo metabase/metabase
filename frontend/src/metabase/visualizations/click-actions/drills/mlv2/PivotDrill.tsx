@@ -10,6 +10,8 @@ import type {
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 
+const STAGE_INDEX = -1;
+
 const DEFAULT_ACTION: ClickActionBase = {
   name: "breakout-by",
   section: "breakout",
@@ -57,7 +59,7 @@ export const PivotDrill: Drill = ({ drill, applyDrill }) => {
     });
   }
 
-  const PivotPopover = ({ onClick }: ClickActionPopoverProps) => {
+  const DrillPopover = ({ onClick }: ClickActionPopoverProps) => {
     return <ClickActionsView clickActions={clickActions} onClick={onClick} />;
   };
 
@@ -66,7 +68,7 @@ export const PivotDrill: Drill = ({ drill, applyDrill }) => {
       ...DEFAULT_ACTION,
       icon: "arrow_split",
       title: t`Break out by…`,
-      popover: clickActions.length > 1 ? PivotPopover : clickActions[0].popover,
+      popover: clickActions.length > 1 ? DrillPopover : clickActions[0].popover,
     },
   ];
 };
@@ -77,14 +79,14 @@ function getColumnPopover(
   drill: Lib.DrillThru,
   applyDrill: (drill: Lib.DrillThru, column: Lib.ColumnMetadata) => Question,
 ) {
-  return function PivotColumnPopover({
+  return function DrillColumnPopover({
     onChangeCardAndRun,
     onClose,
   }: ClickActionPopoverProps) {
     return (
       <QueryColumnPicker
         query={query}
-        stageIndex={-1}
+        stageIndex={STAGE_INDEX}
         columnGroups={Lib.groupColumns(columns)}
         checkIsColumnSelected={() => false}
         onSelect={column => {
