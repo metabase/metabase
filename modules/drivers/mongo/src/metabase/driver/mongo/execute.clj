@@ -211,7 +211,7 @@
                                                       session
                                                       query
                                                       (qp.context/timeout context))]
-        (with-open [^MongoCursor cursor (try (.cursor ^AggregateIterable aggregate)
+        (with-open [^MongoCursor cursor (try (.cursor aggregate)
                                              (catch Throwable e
                                                (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
                                                                {:driver :mongo
