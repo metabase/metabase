@@ -280,7 +280,7 @@ export function open(
     // custom function for opening in new window
     openInBlankWindow = url => clickLink(url, true),
     // custom function for opening in same app instance
-    openInSameOrigin = openInSameWindow,
+    openInSameOrigin,
     ignoreSiteUrl = false,
     ...options
   } = {},
@@ -293,7 +293,7 @@ export function open(
     if (!isMetabaseUrl(url)) {
       clickLink(url, false);
     } else {
-      openInSameOrigin(url, getLocation(url));
+      openInSameOrigin(getLocation(url));
     }
   } else {
     openInSameWindow(url);
