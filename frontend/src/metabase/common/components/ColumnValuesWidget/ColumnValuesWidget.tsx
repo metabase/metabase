@@ -9,6 +9,8 @@ export interface ColumnValuesWidgetProps<T> {
   value: T[];
   column: Lib.ColumnMetadata;
   hasMultipleValues?: boolean;
+  disablePKRemappingForSearch?: boolean;
+  autoFocus?: boolean;
   minWidth?: string;
   maxWidth?: string;
   onChange: (value: T[]) => void;
@@ -18,6 +20,8 @@ export function ColumnValuesWidget<T extends string | number>({
   value,
   column,
   hasMultipleValues,
+  disablePKRemappingForSearch,
+  autoFocus,
   minWidth,
   maxWidth,
   onChange,
@@ -46,8 +50,8 @@ export function ColumnValuesWidget<T extends string | number>({
       minWidth={minWidth}
       maxWidth={maxWidth}
       onChange={onChange}
-      disablePKRemappingForSearch
-      autoFocus
+      disablePKRemappingForSearch={disablePKRemappingForSearch}
+      autoFocus={autoFocus}
       multi={hasMultipleValues}
       disableSearch={!hasMultipleValues}
     />

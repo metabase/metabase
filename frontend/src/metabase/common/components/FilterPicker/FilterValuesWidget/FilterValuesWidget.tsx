@@ -12,6 +12,7 @@ export function FilterValuesWidget<T extends string | number>(
 ) {
   return (
     <ColumnValuesWidget
+      disablePKRemappingForSearch
       {...props}
       minWidth={`${MIN_WIDTH}px`}
       maxWidth={`${MAX_WIDTH}px`}

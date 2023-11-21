@@ -109,6 +109,7 @@ function StringValueInput({
     return (
       <FlexWithScroll p="md" mah={MAX_HEIGHT}>
         <FilterValuesWidget
+          autoFocus
           column={column}
           value={values}
           hasMultipleValues={hasMultipleValues}
