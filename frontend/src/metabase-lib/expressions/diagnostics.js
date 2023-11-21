@@ -35,11 +35,11 @@ export function countMatchingParentheses(tokens) {
  * @private
  * @param {string} source
  * @param {string} startRule
- * @param {object} query
+ * @param {object} legacyQuery
  * @param {string | null} name
  * @returns {ErrorWithMessage | null}
  */
-export function diagnose(source, startRule, query, name = null) {
+export function diagnose(source, startRule, legacyQuery, name = null) {
   if (!source || source.length === 0) {
     return null;
   }
@@ -82,15 +82,15 @@ export function diagnose(source, startRule, query, name = null) {
   }
 
   try {
-    return prattCompiler(source, startRule, query, name);
+    return prattCompiler(source, startRule, legacyQuery, name);
   } catch (err) {
     return err;
   }
 }
 
-function prattCompiler(source, startRule, query, name) {
+function prattCompiler(source, startRule, legacyQuery, name) {
   const tokens = lexify(source);
-  const options = { source, startRule, query, name };
+  const options = { source, startRule, legacyQuery, name };
 
   // PARSE
   const { root, errors } = parse(tokens, {
@@ -102,7 +102,7 @@ function prattCompiler(source, startRule, query, name) {
   }
 
   function resolveMBQLField(kind, name, node) {
-    if (!query) {
+    if (!legacyQuery) {
       return [kind, name];
     }
     if (kind === "metric") {
