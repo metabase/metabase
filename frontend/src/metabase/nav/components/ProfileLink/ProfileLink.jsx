@@ -33,8 +33,8 @@ function ProfileLink({ user, adminItems, onLogout }) {
   const { tag, date, ...versionExtra } = version;
   const isPaidPlan = useSelector(getIsPaidPlan);
 
-  const customHelpLink = useSelector(state => getSetting(state, "help-link"));
-  const customHelpLinkDestination = useSelector(state =>
+  const helpLinkSetting = useSelector(state => getSetting(state, "help-link"));
+  const helpLinkCustomDestinationSetting = useSelector(state =>
     getSetting(state, "help-link-custom-destination"),
   );
 
@@ -55,8 +55,8 @@ function ProfileLink({ user, adminItems, onLogout }) {
 
     // todo: make it a function so we can test it
     const helpLink = getHelpLink({
-      customHelpLink,
-      customHelpLinkDestination,
+      helpLinkSetting,
+      helpLinkCustomDestinationSetting,
       isAdmin,
       isPaidPlan,
       tag,

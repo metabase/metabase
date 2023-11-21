@@ -2,19 +2,19 @@ import type { Settings } from "metabase-types/api";
 import { getHelpLink } from "./utils";
 
 const setup = ({
-  customHelpLink,
-  customHelpLinkDestination = "customDestination",
+  helpLinkSetting,
+  helpLinkCustomDestinationSetting = "customDestination",
   isAdmin = false,
   isPaidPlan = false,
 }: {
-  customHelpLink: Settings["help-link"];
-  customHelpLinkDestination?: Settings["help-link-custom-destination"];
+  helpLinkSetting: Settings["help-link"];
+  helpLinkCustomDestinationSetting?: Settings["help-link-custom-destination"];
   isAdmin?: boolean;
   isPaidPlan?: boolean;
 }) => {
   return getHelpLink({
-    customHelpLink,
-    customHelpLinkDestination,
+    helpLinkSetting,
+    helpLinkCustomDestinationSetting,
     isAdmin,
     isPaidPlan,
     tag: "mockTag",
@@ -25,7 +25,7 @@ describe("getHelpLink", () => {
   describe("when the setting is set to hidden", () => {
     it("should return {visible:false}", () => {
       const link = setup({
-        customHelpLink: "hidden",
+        helpLinkSetting: "hidden",
       });
       expect(link).toHaveProperty("visible", false);
     });
@@ -34,8 +34,8 @@ describe("getHelpLink", () => {
   describe("when the setting is `custom`", () => {
     it("should return  the custom destination", () => {
       const link = setup({
-        customHelpLink: "custom",
-        customHelpLinkDestination: "https://custom.example.org/help",
+        helpLinkSetting: "custom",
+        helpLinkCustomDestinationSetting: "https://custom.example.org/help",
       });
 
       expect(link).toHaveProperty("visible", true);
@@ -49,7 +49,7 @@ describe("getHelpLink", () => {
         const link = setup({
           isAdmin: true,
           isPaidPlan: true,
-          customHelpLink: "metabase_default",
+          helpLinkSetting: "metabase_default",
         });
 
         expect(link).toHaveProperty("visible", true);
@@ -65,7 +65,7 @@ describe("getHelpLink", () => {
         const link = setup({
           isAdmin: false,
           isPaidPlan: true,
-          customHelpLink: "metabase_default",
+          helpLinkSetting: "metabase_default",
         });
 
         expect(link).toHaveProperty("visible", true);
