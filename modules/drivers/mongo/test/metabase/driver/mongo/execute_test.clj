@@ -4,15 +4,11 @@
    [clojure.test :refer :all]
    [metabase.async.streaming-response :as streaming-response]
    [metabase.driver.mongo.execute :as mongo.execute]
-   [metabase.driver.mongo.util :as mongo.util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.context :as qp.context]
-   [metabase.test :as mt]
-   [monger.conversion :as m.conversion]
-   [monger.util :as m.util])
+   [metabase.test :as mt])
   (:import
-   (com.mongodb BasicDBObject MongoCommandException)
-   (com.mongodb.client ClientSession MongoCollection MongoDatabase)
+   (com.mongodb BasicDBObject)
    (java.util NoSuchElementException)))
 
 (set! *warn-on-reflection* true)
@@ -68,53 +64,15 @@
                     :columns ["_id" "name" "last_login" "alias"]}
                    (mt/rows+column-names (qp/process-query query))))))))))
 
-(defn- interrupt-ex? [^MongoCommandException ex]
-  (and (= 11601 (.getErrorCode ex))
-       (= "Interrupted" (.getErrorCodeName ex))))
-
-(deftest kill-an-in-flight-query-method-validation-test
-  (testing "Confirm that method used to kill in-flight queries on mongo works"
-    (mt/test-driver
-     :mongo
-     (mt/dataset
-      sample-dataset
-      (let [;; Following query runs on my m2 ~ 50 seconds.
-            query (mt/mbql-query orders
-                                 {:aggregation [[:sum $total]],
-                                  :breakout [!month.created_at],
-                                  :order-by [[:asc !month.created_at]],
-                                  :joins [{:alias "People_User",
-                                           :strategy :left-join,
-                                           :condition
-                                           [:!= $user_id &People_User.people.id],
-                                           :source-table $$people}]})
-            compiled (-> query qp/compile :query)
-            pipeline (m.util/into-array-list (m.conversion/to-db-object compiled))]
-        (mongo.util/with-mongo-connection [connection (mt/id)]
-          (let [client-database ^MongoDatabase (#'mongo.execute/connection->database connection)
-                collection ^MongoCollection (. client-database (getCollection "orders"))]
-            (with-open [session ^ClientSession (#'mongo.execute/start-session! connection)]
-              (let [aggregate (.aggregate collection session ^java.util.ArrayList pipeline)
-                    ;; Manually tested: if session is closed before aggregation execution takes place (call to
-                    ;; eg. either `.into` or `.cursor`) aggregation is then executed.
-                    ;; TODO: Find workaround!
-                    result-ch (a/thread (try (.into aggregate (java.util.ArrayList.))
-                                             (catch MongoCommandException ex
-                                               (if (interrupt-ex? ex)
-                                                 :interrupted
-                                                 ex))))]
-                (future (Thread/sleep 500)
-                        (#'mongo.execute/kill-session! client-database session))
-                 ;; Using 15k timeout to handle unforseen circumstances.
-                (let [result (a/alt!! (a/timeout 60000) :timeout
-                                      result-ch ([v] v))]
-                  (is (= :interrupted result))))))))))))
-
 (deftest kill-an-in-flight-query-test
   (mt/test-driver
    :mongo
    (mt/dataset
     sample-dataset
+    ;; Dummy query execution here. If the dataset was not initialized before running this test, the timing gets out of
+    ;; sync and test fails. I suspect dataset initialization happens after (or while) the future is executed.
+    ;; To overcome that next line is executed - and dataset initialization forced - before the test code runs.
+    (mt/run-mbql-query people {:limit 10})
     (let [canceled-chan (a/chan)]
       (with-redefs [qp.context/canceled-chan (constantly canceled-chan)]
         (let [query (mt/mbql-query orders
@@ -129,7 +87,6 @@
           (future (Thread/sleep 500)
                   (a/>!! canceled-chan ::streaming-response/request-canceled))
           (testing "Cancel signal kills the in progress query"
-            (is (re-find #"Command failed with error 11601.*operation was interrupted"
-                         (try (qp/process-query query)
-                              (catch Throwable e
-                                (ex-message e))))))))))))
+            (is (thrown-with-msg? Throwable
+                                  #"Command failed with error 11601.*operation was interrupted"
+                                  (qp/process-query query))))))))))

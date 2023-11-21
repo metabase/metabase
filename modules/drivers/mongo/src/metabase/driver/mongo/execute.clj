@@ -15,7 +15,7 @@
    [monger.util :as m.util])
   (:import
    (com.mongodb BasicDBObject DB DBObject)
-   (com.mongodb.client AggregateIterable ClientSession MongoDatabase MongoCollection MongoCursor)
+   (com.mongodb.client AggregateIterable ClientSession MongoDatabase MongoCursor)
    (java.util.concurrent TimeUnit)
    (org.bson BsonBoolean BsonInt32)))
 
@@ -132,23 +132,20 @@
 
 ;; See https://mongodb.github.io/mongo-java-driver/3.12/javadoc/com/mongodb/client/AggregateIterable.html
 (defn- init-aggregate!
-  [^AggregateIterable aggregate 
+  [^AggregateIterable aggregate
    ^java.lang.Long timeout-ms]
   (doto aggregate
     (.allowDiskUse true)
     ;; TODO - consider what the best batch size option is here. Not sure what the default is.
     (.batchSize 100)
-    (.maxTime timeout-ms TimeUnit/MILLISECONDS)
-    ;; According to https://mongodb.github.io/mongo-java-driver/3.12/javadoc/com/mongodb/client/AggregateIterable.html#useCursor(java.lang.Boolean)
-    ;; following call is needed only for mongo versions 2.6 <= v < 3.6
-    (.useCursor true)))
+    (.maxTime timeout-ms TimeUnit/MILLISECONDS)))
 
 (defn- ^:dynamic *aggregate*
   [^MongoDatabase db
    ^String coll
    ^ClientSession session
    stages timeout-ms]
-  (let [coll      ^MongoCollection (.getCollection db coll)
+  (let [coll      (.getCollection db coll)
         pipe      (m.util/into-array-list (m.conversion/to-db-object stages))
         aggregate (.aggregate coll session pipe BasicDBObject)]
     (init-aggregate! aggregate timeout-ms)))
@@ -222,4 +219,3 @@
                                                                 :type   qp.error-type/invalid-query}
                                                                e))))]
           (reduce-results native-query query context cursor respond))))))
-
