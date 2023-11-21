@@ -197,7 +197,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       getDashboardCard().realHover().icon("click").click();
 
-      // When the drill-through menu is selected, it should've visual cue.
+      // When the default menu is selected, it should've visual cue (metabase#34848)
       cy.get("aside")
         .findByText("Open the Metabase drill-through menu")
         .parent()
