@@ -2,6 +2,7 @@ import { Flex, Text } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import * as Lib from "metabase-lib";
+import { BooleanFilterEditor } from "./BooleanFilterEditor";
 import { NumberFilterEditor } from "./NumberFilterEditor";
 
 interface ColumnFilterSectionProps {
@@ -51,7 +52,7 @@ function NotImplementedWidget({
 
 function getFilterWidget(column: Lib.ColumnMetadata) {
   if (Lib.isBoolean(column)) {
-    return NotImplementedWidget;
+    return BooleanFilterEditor;
   }
   if (Lib.isTime(column)) {
     return NotImplementedWidget;

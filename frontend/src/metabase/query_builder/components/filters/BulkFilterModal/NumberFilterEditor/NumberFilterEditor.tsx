@@ -69,7 +69,7 @@ export function NumberFilterEditor({
           />
         </Flex>
       </Grid.Col>
-      <Grid.Col span={6}>
+      <Grid.Col span={4}>
         <NumberValueInput
           column={column}
           values={values}
