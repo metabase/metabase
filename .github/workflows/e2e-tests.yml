@@ -17,11 +17,7 @@ concurrency:
 
 jobs:
   external-filter:
-    # 1. within the organization OR
-    # 2. fork
-    if: |
-      github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository ||
-      github.event.workflow_run.conclusion == 'success'
+    if: github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 3
     steps:
@@ -34,6 +30,8 @@ jobs:
 
   files-changed:
     name: Check which files changed
+    needs: external-filter
+    if: needs.external-filter.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
@@ -48,6 +46,8 @@ jobs:
           filters: .github/file-paths.yaml
 
   e2e-matrix-builder:
+    needs: external-filter
+    if: needs.external-filter.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     outputs:
@@ -210,10 +210,10 @@ jobs:
           if-no-files-found: ignore
 
   e2e-tests-skipped-stub:
-    needs: [e2e-tests, e2e-matrix-builder]
+    needs: [e2e-tests, e2e-matrix-builder, external-filter]
     if: |
       !cancelled() &&
-      needs.e2e-tests.result == 'skipped'
+      needs.e2e-tests.result == 'skipped' && needs.external-filter.result == 'success'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 5
     name: e2e-tests-${{ matrix.name }}-${{ matrix.edition }}

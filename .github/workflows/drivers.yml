@@ -16,22 +16,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  external-filter:
-    # 1. within the organization OR
-    # 2. fork
-    if: |
-      github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository ||
-      github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 3
-    steps:
-      - run: |
-          if ${{ github.event.pull_request.head.repo.full_name == github.repository }}; then
-            echo 'Running Drivers tests within the organization.'
-          elif ${{ github.event.workflow_run.conclusion == 'success' }}; then
-            echo "Running Drivers tests for the external contributor. Thank you!"
-          fi
-
   files-changed:
     name: Check which files changed
     runs-on: ubuntu-22.04
@@ -48,10 +32,10 @@ jobs:
           filters: .github/file-paths.yaml
 
   be-tests-athena-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -70,10 +54,10 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-bigquery-cloud-sdk-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -94,10 +78,10 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-druid-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -119,10 +103,10 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-googleanalytics-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -137,10 +121,10 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-google-related-drivers-classpath-test:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -161,10 +145,10 @@ jobs:
         test-args: ':only "[metabase.query-processor-test.expressions-test metabase.driver.google-test metabase.driver.googleanalytics-test]"'
 
   be-tests-mariadb-10-2-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -189,10 +173,10 @@ jobs:
         junit-name: 'be-tests-mariadb-10-2-ee'
 
   be-tests-mariadb-latest-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -217,10 +201,10 @@ jobs:
         junit-name: 'be-tests-mariadb-latest-ee'
 
   be-tests-mongo-4-4-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -242,10 +226,10 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-mongo-4-4-ssl-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -279,10 +263,10 @@ jobs:
           test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-mongo-5-0-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -304,10 +288,10 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-mongo-5-0-ssl-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -341,10 +325,10 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-mongo-latest-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -369,10 +353,10 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-mysql-8-0-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -397,10 +381,10 @@ jobs:
         junit-name: 'be-tests-mysql-8-0-ee'
 
   be-tests-mysql-latest-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -437,10 +421,10 @@ jobs:
         junit-name: 'be-tests-mysql-latest-ee'
 
   be-tests-oracle-18-4-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -466,10 +450,10 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-oracle-21-3-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -504,10 +488,10 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-postgres-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -536,10 +520,10 @@ jobs:
         junit-name: 'be-tests-postgres-ee'
 
   be-tests-postgres-latest-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -571,10 +555,10 @@ jobs:
         junit-name: 'be-tests-postgres-latest-ee'
 
   be-tests-presto-jdbc-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -623,10 +607,10 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-redshift-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -645,10 +629,10 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-snowflake-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -669,10 +653,10 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-sparksql-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -692,10 +676,10 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-sqlite-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -710,10 +694,10 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-sqlserver-2017-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -740,10 +724,10 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-sqlserver-2022-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -770,10 +754,10 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-vertica-ee:
-    needs: [files-changed, external-filter]
+    needs: files-changed
     if: |
       (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
