@@ -64,58 +64,60 @@ const SettingsJWTForm = ({
       initialValues={attributeValues}
       onSubmit={handleSubmit}
       enableReinitialize
-      // disablePristineSubmit
     >
-      <JWTForm>
-        <Breadcrumbs
-          className="mb3"
-          crumbs={[
-            [t`Authentication`, "/admin/settings/authentication"],
-            [t`JWT`],
-          ]}
-        />
-        <FormSection title={"Server Settings"}>
-          <Stack gap="md">
-            <FormTextInput {...fields["jwt-identity-provider-uri"]} />
-            <FormSecretKey
-              {...fields["jwt-shared-secret"]}
-              confirmation={{
-                header: t`Regenerate JWT signing key?`,
-                dialog: t`This will cause existing tokens to stop working until the identity provider is updated with the new key.`,
-              }}
+      {({ dirty }) => (
+        <JWTForm>
+          <Breadcrumbs
+            className="mb3"
+            crumbs={[
+              [t`Authentication`, "/admin/settings/authentication"],
+              [t`JWT`],
+            ]}
+          />
+          <FormSection title={"Server Settings"}>
+            <Stack gap="md">
+              <FormTextInput {...fields["jwt-identity-provider-uri"]} />
+              <FormSecretKey
+                {...fields["jwt-shared-secret"]}
+                confirmation={{
+                  header: t`Regenerate JWT signing key?`,
+                  dialog: t`This will cause existing tokens to stop working until the identity provider is updated with the new key.`,
+                }}
+              />
+            </Stack>
+          </FormSection>
+          <FormSection
+            title={"User attribute configuration (optional)"}
+            collapsible
+          >
+            <Stack gap="md">
+              <FormTextInput {...fields["jwt-attribute-email"]} />
+              <FormTextInput {...fields["jwt-attribute-firstname"]} />
+              <FormTextInput {...fields["jwt-attribute-lastname"]} />
+            </Stack>
+          </FormSection>
+          <FormSection title={"Group Schema"}>
+            <GroupMappingsWidget
+              isFormik
+              setting={{ key: "jwt-group-sync" }}
+              onChange={handleSubmit}
+              settingValues={settingValues}
+              mappingSetting="jwt-group-mappings"
+              groupHeading={t`Group Name`}
+              groupPlaceholder={t`Group Name`}
             />
-          </Stack>
-        </FormSection>
-        <FormSection
-          title={"User attribute configuration (optional)"}
-          collapsible
-        >
-          <Stack gap="md">
-            <FormTextInput {...fields["jwt-attribute-email"]} />
-            <FormTextInput {...fields["jwt-attribute-firstname"]} />
-            <FormTextInput {...fields["jwt-attribute-lastname"]} />
-          </Stack>
-        </FormSection>
-        <FormSection title={"Group Schema"}>
-          <GroupMappingsWidget
-            isFormik
-            setting={{ key: "jwt-group-sync" }}
-            onChange={handleSubmit}
-            settingValues={settingValues}
-            mappingSetting="jwt-group-mappings"
-            groupHeading={t`Group Name`}
-            groupPlaceholder={t`Group Name`}
-          />
-        </FormSection>
+          </FormSection>
 
-        <JWTFormFooter>
-          <FormErrorMessage />
-          <FormSubmitButton
-            label={isEnabled ? t`Save changes` : t`Save and enable`}
-            variant="filled"
-          />
-        </JWTFormFooter>
-      </JWTForm>
+          <JWTFormFooter>
+            <FormErrorMessage />
+            <FormSubmitButton
+              disabled={!dirty}
+              label={isEnabled ? t`Save changes` : t`Save and enable`}
+              variant="filled"
+            />
+          </JWTFormFooter>
+        </JWTForm>
+      )}
     </FormProvider>
   );
 };
