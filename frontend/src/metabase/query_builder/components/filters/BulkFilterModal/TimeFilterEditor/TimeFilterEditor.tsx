@@ -2,25 +2,21 @@ import { useEffect, useMemo } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
-import { Flex, Grid, NumberInput, Text } from "metabase/ui";
+import { Flex, Grid, Text, TimeInput } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
-import { ColumnValuesWidget } from "metabase/common/components/ColumnValuesWidget";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { useNumberFilter } from "metabase/common/hooks/filters/use-number-filter";
+import { useTimeFilter } from "metabase/common/hooks/filters/use-time-filter";
 import * as Lib from "metabase-lib";
 import type { FilterPickerWidgetProps } from "../types";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 
-export function NumberFilterEditor({
+export function TimeFilterEditor({
   query,
   stageIndex,
   column,
   filter,
   onChange,
 }: FilterPickerWidgetProps) {
-  const isID = Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
-  const defaultOperator = isID ? "=" : "between";
-
   const columnInfo = useMemo(
     () => Lib.displayInfo(query, stageIndex, column),
     [query, stageIndex, column],
@@ -32,17 +28,15 @@ export function NumberFilterEditor({
     operator,
     values,
     valueCount,
-    hasMultipleValues,
     availableOperators,
     setOperator,
     setValues,
     getFilterClause,
-  } = useNumberFilter({
+  } = useTimeFilter({
     query,
     stageIndex,
     column,
     filter,
-    defaultOperator,
   });
 
   const previousOperator = usePrevious(operator);
@@ -70,11 +64,9 @@ export function NumberFilterEditor({
         </Flex>
       </Grid.Col>
       <Grid.Col span={4}>
-        <NumberValueInput
-          column={column}
+        <TimeValueInput
           values={values}
           valueCount={valueCount}
-          hasMultipleValues={hasMultipleValues}
           onChange={setValues}
         />
       </Grid.Col>
@@ -82,57 +74,32 @@ export function NumberFilterEditor({
   );
 }
 
-type NumberValue = number | "";
-
-interface NumberValueInputProps {
-  column: Lib.ColumnMetadata;
-  values: NumberValue[];
+interface TimeValueInputProps {
+  values: Date[];
   valueCount: number;
-  hasMultipleValues?: boolean;
-  onChange: (values: NumberValue[]) => void;
+  onChange: (values: Date[]) => void;
 }
 
-function NumberValueInput({
-  column,
-  values,
-  valueCount,
-  hasMultipleValues,
-  onChange,
-}: NumberValueInputProps) {
-  if (hasMultipleValues) {
-    return (
-      <ColumnValuesWidget
-        value={values}
-        column={column}
-        hasMultipleValues
-        onChange={onChange}
-      />
-    );
-  }
-
+function TimeValueInput({ values, valueCount, onChange }: TimeValueInputProps) {
   if (valueCount === 1) {
+    const [value] = values;
     return (
-      <NumberInput
-        value={values[0]}
-        onChange={newValue => onChange([newValue])}
-        placeholder={t`Enter a number`}
-      />
+      <TimeInput value={value} onChange={newValue => onChange([newValue])} />
     );
   }
 
   if (valueCount === 2) {
+    const [value1, value2] = values;
     return (
       <Flex align="center">
-        <NumberInput
-          value={values[0]}
-          onChange={(newValue: number) => onChange([newValue, values[1]])}
-          placeholder={t`Min`}
+        <TimeInput
+          value={value1}
+          onChange={newValue1 => onChange([newValue1, value2])}
         />
         <Text mx="sm">{t`and`}</Text>
-        <NumberInput
-          value={values[1]}
-          onChange={(newValue: number) => onChange([values[0], newValue])}
-          placeholder={t`Max`}
+        <TimeInput
+          value={value2}
+          onChange={newValue2 => onChange([value1, newValue2])}
         />
       </Flex>
     );
