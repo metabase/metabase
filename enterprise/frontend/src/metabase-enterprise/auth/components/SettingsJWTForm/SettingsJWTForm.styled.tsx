@@ -13,5 +13,7 @@ export const JWTForm = styled(Form)`
 
 export const JWTFormFooter = styled.div`
   display: flex;
-  gap: 0.5rem;
+  flex-direction: column;
+  align-items: start;
+  gap: 1rem;
 `;
