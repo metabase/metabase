@@ -16,7 +16,6 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-// [quarantine] - intermittently failing, possibly due to a "flickering" element (re-rendering)
 describe("scenarios > admin > datamodel > field", () => {
   beforeEach(() => {
     restore();
