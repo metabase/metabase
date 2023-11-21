@@ -16,6 +16,7 @@ import Modal from "metabase/components/Modal";
 import LogoIcon from "metabase/components/LogoIcon";
 import EntityMenu from "metabase/components/EntityMenu";
 import { getAdminPaths } from "metabase/admin/app/selectors";
+import { getHelpLink } from "./utils";
 
 // generate the proper set of list items for the current user
 // based on whether they're an admin or not
@@ -33,7 +34,7 @@ function ProfileLink({ user, adminItems, onLogout }) {
   const isPaidPlan = useSelector(getIsPaidPlan);
 
   const customHelpLink = useSelector(state => getSetting(state, "help-link"));
-  const customHelpUrl = useSelector(state =>
+  const customHelpLinkDestination = useSelector(state =>
     getSetting(state, "help-link-custom-destination"),
   );
 
@@ -53,12 +54,14 @@ function ProfileLink({ user, adminItems, onLogout }) {
     );
 
     // todo: make it a function so we can test it
-    const helpUrl =
-      customHelpLink === "custom"
-        ? customHelpUrl
-        : isAdmin && isPaidPlan
-        ? `https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=${tag}&diag=${compactBugReportDetailsForUrl}`
-        : `https://www.metabase.com/help?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=${tag}`;
+    const helpLink = getHelpLink({
+      customHelpLink,
+      customHelpLinkDestination,
+      isAdmin,
+      isPaidPlan,
+      tag,
+      bugReportDetails: compactBugReportDetailsForUrl,
+    });
 
     return [
       {
@@ -73,10 +76,10 @@ function ProfileLink({ user, adminItems, onLogout }) {
         link: "/admin",
         event: `Navbar;Profile Dropdown;Enter Admin`,
       },
-      customHelpLink !== "hidden" && {
+      helpLink.visible && {
         title: t`Help`,
         icon: null,
-        link: helpUrl,
+        link: helpLink.href,
         externalLink: true,
         event: `Navbar;Profile Dropdown;About ${tag}`,
       },
