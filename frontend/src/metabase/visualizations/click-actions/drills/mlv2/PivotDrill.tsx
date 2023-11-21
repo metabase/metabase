@@ -88,7 +88,7 @@ function getColumnPopover(
         columnGroups={Lib.groupColumns(columns)}
         checkIsColumnSelected={() => false}
         onSelect={column => {
-          const nextQuestion = applyDrill(drill, column);
+          const nextQuestion = applyDrill(drill, column).setDefaultDisplay();
           const nextCard = nextQuestion.card();
           onChangeCardAndRun({ nextCard });
         }}
