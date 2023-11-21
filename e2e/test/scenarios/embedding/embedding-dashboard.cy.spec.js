@@ -6,6 +6,7 @@ import {
   filterWidget,
   visitIframe,
   getDashboardCard,
+  addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -260,6 +261,86 @@ describe("scenarios > embedding > dashboard parameters", () => {
         .findByText("There was a problem displaying this chart.")
         .should("be.visible");
     });
+  });
+
+  it("should render error without crashing when embed query returns error (metabase#34954)", () => {
+    const categoryTemplateTag = {
+      type: "text",
+      name: "category",
+      id: "377a4a4a-179e-4d86-8263-f3b3887df15f",
+      "display-name": "Category",
+    };
+    const questionDetails = {
+      native: {
+        query: "Select * from products Where category = {{category}}",
+        "template-tags": {
+          category: categoryTemplateTag,
+        },
+      },
+    };
+
+    const dashboardParameter = {
+      name: "Category",
+      slug: "category",
+      id: "9cd1ee78",
+      type: "string/=",
+      sectionId: "string",
+      values_query_type: "none",
+    };
+    const dashboardDetails = {
+      name: 'dashboard with "category" parameter',
+      parameters: [dashboardParameter],
+    };
+
+    cy.createNativeQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+    }).then(({ body: { card_id, dashboard_id } }) => {
+      cy.wrap(dashboard_id).as("dashboardId2");
+
+      addOrUpdateDashboardCard({
+        card_id,
+        dashboard_id,
+        card: {
+          parameter_mappings: [
+            {
+              parameter_id: dashboardParameter.id,
+              card_id,
+              target: ["variable", ["template-tag", categoryTemplateTag.name]],
+            },
+          ],
+          visualization_settings: {
+            "card.hide_empty": true,
+          },
+        },
+      });
+
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        embedding_params: {
+          category: "enabled",
+        },
+        enable_embedding: true,
+      });
+
+      const payload = {
+        resource: { dashboard: dashboard_id },
+        params: {},
+      };
+
+      visitEmbeddedPage(payload);
+    });
+
+    cy.log("The whole page would have crashed before the fix at this point");
+    getDashboardCard()
+      .findByText("There was a problem displaying this chart.")
+      .should("be.visible");
+
+    cy.log("Add a filter to complete the query");
+    filterWidget().findByPlaceholderText("Category").type("Widget{enter}");
+
+    getDashboardCard()
+      .findByText("Practical Bronze Computer")
+      .should("be.visible");
   });
 });
 

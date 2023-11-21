@@ -19,6 +19,7 @@ import type {
   Parameter,
   StructuredDatasetQuery,
   ActionDashboardCard,
+  EmbedDataset,
 } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
 import Question from "metabase-lib/Question";
@@ -225,14 +226,16 @@ const isDashcardDataLoaded = (
   return data != null && Object.values(data).every(result => result != null);
 };
 
-const hasRows = (dashcardData: Record<CardId, Dataset>) => {
+const hasRows = (dashcardData: Record<CardId, Dataset | EmbedDataset>) => {
   const queryResults = dashcardData
     ? Object.values(dashcardData).filter(Boolean)
     : [];
 
   return (
     queryResults.length > 0 &&
-    queryResults.every(queryResult => queryResult.data.rows.length > 0)
+    queryResults.every(
+      queryResult => "data" in queryResult && queryResult.data.rows.length > 0,
+    )
   );
 };
 
