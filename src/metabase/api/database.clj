@@ -992,8 +992,7 @@
                        nil)
                      (catch Throwable e
                        e))]
-
-      (throw ex)
+      (throw (ex-info (ex-message ex) {:status-code 422}))
       (do
         (future
           (sync-metadata/sync-db-metadata! db)
