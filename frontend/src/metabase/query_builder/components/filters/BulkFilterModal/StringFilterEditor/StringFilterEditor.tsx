@@ -2,25 +2,22 @@ import { useEffect, useMemo } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
-import { Flex, Grid, NumberInput, Text } from "metabase/ui";
+import { Flex, Grid, Text, TextInput } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
-import { ColumnValuesWidget } from "metabase/common/components/ColumnValuesWidget";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { useNumberFilter } from "metabase/common/hooks/filters/use-number-filter";
+import { useStringFilter } from "metabase/common/hooks/filters/use-string-filter";
 import * as Lib from "metabase-lib";
 import type { FilterPickerWidgetProps } from "../types";
+import { FilterValuesWidget } from "../FilterValuesWidget";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 
-export function NumberFilterEditor({
+export function StringFilterEditor({
   query,
   stageIndex,
   column,
   filter,
   onChange,
 }: FilterPickerWidgetProps) {
-  const isID = Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
-  const defaultOperator = isID ? "=" : "between";
-
   const columnInfo = useMemo(
     () => Lib.displayInfo(query, stageIndex, column),
     [query, stageIndex, column],
@@ -37,12 +34,11 @@ export function NumberFilterEditor({
     setOperator,
     setValues,
     getFilterClause,
-  } = useNumberFilter({
+  } = useStringFilter({
     query,
     stageIndex,
     column,
     filter,
-    defaultOperator,
   });
 
   const previousOperator = usePrevious(operator);
@@ -70,7 +66,7 @@ export function NumberFilterEditor({
         </Flex>
       </Grid.Col>
       <Grid.Col span={4}>
-        <NumberValueInput
+        <StringValueInput
           column={column}
           values={values}
           valueCount={valueCount}
@@ -82,29 +78,27 @@ export function NumberFilterEditor({
   );
 }
 
-type NumberValue = number | "";
-
-interface NumberValueInputProps {
+interface StringValueInputProps {
   column: Lib.ColumnMetadata;
-  values: NumberValue[];
+  values: string[];
   valueCount: number;
   hasMultipleValues?: boolean;
-  onChange: (values: NumberValue[]) => void;
+  onChange: (values: string[]) => void;
 }
 
-function NumberValueInput({
+function StringValueInput({
   column,
   values,
   valueCount,
   hasMultipleValues,
   onChange,
-}: NumberValueInputProps) {
+}: StringValueInputProps) {
   if (hasMultipleValues) {
     return (
-      <ColumnValuesWidget
-        value={values}
+      <FilterValuesWidget
         column={column}
-        hasMultipleValues
+        value={values}
+        hasMultipleValues={hasMultipleValues}
         onChange={onChange}
       />
     );
@@ -112,29 +106,11 @@ function NumberValueInput({
 
   if (valueCount === 1) {
     return (
-      <NumberInput
+      <TextInput
         value={values[0]}
-        onChange={newValue => onChange([newValue])}
-        placeholder={t`Enter a number`}
+        onChange={event => onChange([event.target.value])}
+        placeholder={t`Enter some text`}
       />
-    );
-  }
-
-  if (valueCount === 2) {
-    return (
-      <Flex align="center">
-        <NumberInput
-          value={values[0]}
-          onChange={(newValue: number) => onChange([newValue, values[1]])}
-          placeholder={t`Min`}
-        />
-        <Text mx="sm">{t`and`}</Text>
-        <NumberInput
-          value={values[1]}
-          onChange={(newValue: number) => onChange([values[0], newValue])}
-          placeholder={t`Max`}
-        />
-      </Flex>
     );
   }
 
