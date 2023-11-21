@@ -5,9 +5,9 @@ import { t } from "ttag";
 import _ from "underscore";
 import { updateSettings } from "metabase/admin/settings/settings";
 import {
-  Form,
   FormErrorMessage,
   FormProvider,
+  FormSecretKey,
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
@@ -16,7 +16,7 @@ import { Stack } from "metabase/ui";
 import { settingToFormField } from "metabase/admin/settings/utils";
 import { FormSection } from "metabase/containers/FormikForm";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
-import { JWTFormFooter } from "metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.styled";
+import { JWTForm, JWTFormFooter } from "./SettingsJWTForm.styled";
 
 const propTypes = {
   elements: PropTypes.array,
@@ -58,7 +58,7 @@ const SettingsJWTForm = ({
       enableReinitialize
       // disablePristineSubmit
     >
-      <Form className="mx2">
+      <JWTForm>
         <Breadcrumbs
           className="mb3"
           crumbs={[
@@ -67,14 +67,22 @@ const SettingsJWTForm = ({
           ]}
         />
         <FormSection title={"Server Settings"}>
-          <FormTextInput {...fields["jwt-identity-provider-uri"]} />
-          {/*TODO: "jwt-shared-secret" uses SecretKeyWidget */}
+          <Stack gap="md">
+            <FormTextInput {...fields["jwt-identity-provider-uri"]} />
+            <FormSecretKey
+              {...fields["jwt-shared-secret"]}
+              confirmation={{
+                header: t`Regenerate JWT signing key?`,
+                dialog: t`This will cause existing tokens to stop working until the identity provider is updated with the new key.`,
+              }}
+            />
+          </Stack>
         </FormSection>
         <FormSection
           title={"User attribute configuration (optional)"}
           collapsible
         >
-          <Stack gap={"md"}>
+          <Stack gap="md">
             <FormTextInput {...fields["jwt-attribute-email"]} />
             <FormTextInput {...fields["jwt-attribute-firstname"]} />
             <FormTextInput {...fields["jwt-attribute-lastname"]} />
@@ -99,7 +107,7 @@ const SettingsJWTForm = ({
             variant="filled"
           />
         </JWTFormFooter>
-      </Form>
+      </JWTForm>
     </FormProvider>
   );
 };
@@ -111,6 +119,7 @@ const JWT_ATTRS = [
   "jwt-attribute-firstname",
   "jwt-attribute-lastname",
   "jwt-group-sync",
+  "jwt-group-mappings",
 ];
 
 const getAttributeValues = values => {
