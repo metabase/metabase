@@ -62,7 +62,7 @@
 
   (testing "source table"
     (is (= '(mt/mbql-query orders
-                           {:joins [{:source-table $$people}]})
+              {:joins [{:source-table $$people}]})
            (debug-qp/to-mbql-shorthand
             {:database (mt/id)
              :type     :query
@@ -72,11 +72,11 @@
 (deftest to-mbql-shorthand-joins-test
   (testing :fk-field-id
     (is (= '(mt/$ids venues
-                     [{:strategy     :left-join
-                       :alias        "CATEGORIES__via__CATEGORY_ID"
-                       :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
-                       :source-table $$categories
-                       :fk-field-id  %category_id}])
+              [{:strategy     :left-join
+                :alias        "CATEGORIES__via__CATEGORY_ID"
+                :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
+                :source-table $$categories
+                :fk-field-id  %category_id}])
            (debug-qp/to-mbql-shorthand
             [{:strategy     :left-join
               :alias        "CATEGORIES__via__CATEGORY_ID"
