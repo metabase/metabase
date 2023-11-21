@@ -96,7 +96,7 @@ Here we've wired up a Text filter to the "Event types" card, telling Metabase th
 
 If there are other cards that also have the field you select, Metabase will automatically connect the filter to those cards too (including cards on other tabs). If you later add a card with the selected field, Metabase will also try to connect that filter to the new card.
 
-To undo this auto-connecting of cards, you could click on the toast that pops up when Metabase auto-connects the cards, or you could manually disconnect the cards by clicking on the "X" next to the connected field.
+To undo this auto-connecting of cards, click on the toast that pops up when Metabase auto-connects the cards, or manually disconnect the cards by clicking on the "X" next to the connected field.
 
 ## Filtering dashboards with native/SQL questions
 
@@ -126,7 +126,7 @@ From this filter editing view, you can wire up dashboard cards to the filter, or
 ### Rename filter
 
 1. In dashboard edit mode, click your filter's **gear** icon.
-2. Change the Label text.
+2. Change the label text.
 
 Renaming the filter only affects the filter's display; the label has no effect on which columns Metabase filters.
 
