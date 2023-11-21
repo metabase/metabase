@@ -33,6 +33,7 @@ export const BehaviorOption = ({
     isSelected={selected}
     onClick={onClick}
     disabled={disabled}
+    aria-selected={selected}
   >
     <BehaviorOptionIcon
       name={selected ? "check" : icon}

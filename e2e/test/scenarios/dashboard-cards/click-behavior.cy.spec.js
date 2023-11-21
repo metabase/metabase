@@ -196,6 +196,15 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       editDashboard();
 
       getDashboardCard().realHover().icon("click").click();
+
+      // When the drill-through menu is selected, it should've visual cue.
+      cy.get("aside")
+        .findByText("Open the Metabase drill-through menu")
+        .parent()
+        .parent()
+        .should("have.attr", "aria-selected", "true")
+        .should("have.css", "background-color", "rgb(80, 158, 227)");
+
       addDashboardDestination();
       cy.get("aside").findByText("Select a dashboard tab").should("not.exist");
       cy.get("aside").findByText("No available targets").should("exist");
