@@ -5,10 +5,10 @@ import {
   Form,
   FormProvider,
   FormSubmitButton,
-  FormTextInput,
+  FormTextarea,
   requiredErrorMessage,
 } from "metabase/forms";
-import { getIcon, queryIcon, render, screen, waitFor } from "__support__/ui";
+import { render, screen, waitFor } from "__support__/ui";
 
 interface FormValues {
   name: string | null | undefined;
@@ -18,14 +18,12 @@ interface SetupOpts {
   initialValues?: FormValues;
   validationSchema?: AnySchema;
   nullable?: boolean;
-  hasCopyButton?: boolean;
 }
 
 const setup = ({
   initialValues = { name: "" },
   validationSchema,
   nullable,
-  hasCopyButton,
 }: SetupOpts = {}) => {
   const onSubmit = jest.fn();
 
@@ -36,11 +34,7 @@ const setup = ({
       onSubmit={onSubmit}
     >
       <Form>
-        <FormTextInput
-          name="name"
-          label="Name"
-          {...{ nullable, hasCopyButton }}
-        />
+        <FormTextarea name="name" label="Name" nullable={nullable} />
         <FormSubmitButton />
       </Form>
     </FormProvider>,
@@ -49,33 +43,13 @@ const setup = ({
   return { onSubmit };
 };
 
-describe("FormTextInput", () => {
+describe("FormTextarea", () => {
   it("should show the initial value", async () => {
     setup({
       initialValues: { name: "Test" },
     });
 
     expect(screen.getByDisplayValue("Test")).toBeInTheDocument();
-  });
-
-  it("should show copy button when enabled", () => {
-    setup({
-      initialValues: { name: "Test" },
-      hasCopyButton: true,
-    });
-
-    expect(screen.getByDisplayValue("Test")).toBeInTheDocument();
-    expect(getIcon("copy")).toBeInTheDocument();
-  });
-
-  it("should not show copy button when disabled", () => {
-    setup({
-      initialValues: { name: "Test" },
-      hasCopyButton: false,
-    });
-
-    expect(screen.getByDisplayValue("Test")).toBeInTheDocument();
-    expect(queryIcon("copy")).not.toBeInTheDocument();
   });
 
   it("should submit a non-empty value", async () => {

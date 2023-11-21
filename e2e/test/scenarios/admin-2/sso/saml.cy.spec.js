@@ -39,7 +39,7 @@ describeEE("scenarios > admin > settings > SSO > SAML", () => {
     setupSaml();
     cy.visit("/admin/settings/authentication/saml");
 
-    typeAndBlurUsingLabel("SAML Identity Provider URL", "https://other.test");
+    typeAndBlurUsingLabel(/SAML Identity Provider URL/, "https://other.test");
     cy.button("Save changes").click();
     cy.wait("@updateSamlSettings");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -116,7 +116,7 @@ const setupSaml = () => {
 
 const enterSamlSettings = () => {
   getSamlCertificate().then(certificate => {
-    typeAndBlurUsingLabel("SAML Identity Provider URL", "https://example.test");
-    typeAndBlurUsingLabel("SAML Identity Provider Certificate", certificate);
+    typeAndBlurUsingLabel(/SAML Identity Provider URL/, "https://example.test");
+    typeAndBlurUsingLabel(/SAML Identity Provider Certificate/, certificate);
   });
 };

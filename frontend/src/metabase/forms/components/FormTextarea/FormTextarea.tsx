@@ -1,33 +1,24 @@
 import { forwardRef, useCallback } from "react";
 import type { ChangeEvent, FocusEvent, Ref } from "react";
 import { useField } from "formik";
-import { TextInput } from "metabase/ui";
-import type { TextInputProps } from "metabase/ui";
-import { CopyWidgetButton } from "./FormTextInput.styled";
+import { Textarea } from "metabase/ui";
+import type { TextareaProps } from "metabase/ui";
 
-export interface FormTextInputProps
-  extends Omit<TextInputProps, "value" | "error"> {
+export interface FormTextareaProps
+  extends Omit<TextareaProps, "value" | "error"> {
   name: string;
   nullable?: boolean;
-  hasCopyButton?: boolean;
 }
 
-export const FormTextInput = forwardRef(function FormTextInput(
-  {
-    name,
-    nullable,
-    hasCopyButton,
-    onChange,
-    onBlur,
-    ...props
-  }: FormTextInputProps,
-  ref: Ref<HTMLInputElement>,
+export const FormTextarea = forwardRef(function FormTextarea(
+  { name, nullable, onChange, onBlur, ...props }: FormTextareaProps,
+  ref: Ref<HTMLTextAreaElement>,
 ) {
   const [{ value }, { error, touched }, { setValue, setTouched }] =
     useField(name);
 
   const handleChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
+    (event: ChangeEvent<HTMLTextAreaElement>) => {
       const newValue = event.target.value;
       if (newValue === "") {
         setValue(nullable ? null : undefined);
@@ -40,7 +31,7 @@ export const FormTextInput = forwardRef(function FormTextInput(
   );
 
   const handleBlur = useCallback(
-    (event: FocusEvent<HTMLInputElement>) => {
+    (event: FocusEvent<HTMLTextAreaElement>) => {
       setTouched(true);
       onBlur?.(event);
     },
@@ -48,7 +39,7 @@ export const FormTextInput = forwardRef(function FormTextInput(
   );
 
   return (
-    <TextInput
+    <Textarea
       {...props}
       ref={ref}
       name={name}
@@ -56,8 +47,6 @@ export const FormTextInput = forwardRef(function FormTextInput(
       error={touched ? error : null}
       onChange={handleChange}
       onBlur={handleBlur}
-      rightSection={hasCopyButton ? <CopyWidgetButton value={value} /> : null}
-      rightSectionWidth={hasCopyButton ? 40 : undefined}
     />
   );
 });
