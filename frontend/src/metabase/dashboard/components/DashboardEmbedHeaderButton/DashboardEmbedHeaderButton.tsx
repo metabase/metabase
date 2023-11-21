@@ -24,11 +24,11 @@ export const DashboardEmbedHeaderButton = ({
 
   const tooltipLabel = publicLinksEnabled ? t`Sharing` : t`Embedding`;
   const hasPublicLink = publicLinksEnabled && dashboard.public_uuid;
-  let publicLinkOptionLabel = t`Public link`;
 
-  if (admin && !hasPublicLink && publicLinksEnabled) {
-    publicLinkOptionLabel = t`Create a public link`;
-  }
+  const canCreatePublicLink = admin && !hasPublicLink && publicLinksEnabled;
+  const publicLinkOptionLabel = canCreatePublicLink
+    ? t`Create a public link`
+    : t`Public link`;
 
   const dashboardButton = (onClick?: () => void) => (
     <Tooltip
@@ -104,13 +104,14 @@ export const DashboardEmbedHeaderButton = ({
             icon={<Icon name="embed" />}
           >
             <Title c="inherit" order={4}>
-              Embed
+              {t`Embed`}
             </Title>
           </Menu.Item>
         </Menu.Dropdown>
       </Menu>
 
       {openEmbedModal && embedModal()}
+      {/* TODO: Render the link popover here  */}
     </>
   );
 };
