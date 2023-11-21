@@ -1,8 +1,10 @@
+import MetabaseSettings from "metabase/lib/settings";
 import type { UrlClickAction } from "metabase/visualizations/types";
 import { performAction } from "./action";
 
 describe("performAction", () => {
   it('should redirect using router if a "relative" url has been passed', () => {
+    MetabaseSettings.set("site-url", "http://localhost:3000");
     const action: UrlClickAction = {
       buttonType: "horizontal",
       name: "automatic-insights",
