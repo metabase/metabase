@@ -8,6 +8,7 @@
    :exclude
    [filter])
   (:require
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [goog.object :as gobject]
    [medley.core :as m]
@@ -146,9 +147,18 @@
 ;; In contrast, the CLJS -> JS conversion doesn't know about queries, so it can use `=`-based LRU caches.
 (declare ^:private display-info->js)
 
+(defn- cljs-key->js-key [cljs-key]
+  (let [key-str (u/qualified-name cljs-key)
+        ;; if the key is something like `many-pks?` convert it to something that is more JS-friendly (remove the
+        ;; question mark), `:is-many-pks`, which becomes `isManyPks`
+        key-str (if (str/ends-with? key-str "?")
+                  (str "is-" (str/replace key-str #"\?$" ""))
+                  key-str)]
+    (u/->camelCaseEn key-str)))
+
 (defn- display-info-map->js* [x]
   (reduce (fn [obj [cljs-key cljs-val]]
-            (let [js-key (-> cljs-key u/qualified-name u/->camelCaseEn)
+            (let [js-key (cljs-key->js-key cljs-key)
                   js-val (display-info->js cljs-val)] ;; Recursing through the cache
               (gobject/set obj js-key js-val)
               obj))
@@ -685,6 +695,16 @@
   [a-query stage-number expression-name an-expression-clause]
   (lib.core/expression a-query stage-number expression-name an-expression-clause))
 
+(defn ^:export expression-name
+  "Return the name of `an-expression-clause`."
+  [an-expression-clause]
+  (lib.core/expression-name an-expression-clause))
+
+(defn ^:export with-expression-name
+  "Return an new expressions clause like `an-expression-clause` but with name `new-name`."
+  [an-expression-clause new-name]
+  (lib.core/with-expression-name an-expression-clause new-name))
+
 (defn ^:export expressions
   "Get the expressions map from a given stage of a `query`."
   [a-query stage-number]
@@ -698,13 +718,13 @@
   ([a-query stage-number expression-position]
    (to-array (lib.core/expressionable-columns a-query stage-number expression-position))))
 
-(defn ^:export suggested-join-condition
-  "Return a suggested default join condition when constructing a join against `joinable`, e.g. a Table, Saved
-  Question, or another query. A suggested condition will be returned if the source Table has a foreign key to the
+(defn ^:export suggested-join-conditions
+  "Return suggested default join conditions when constructing a join against `joinable`, e.g. a Table, Saved
+  Question, or another query. Suggested conditions will be returned if the source Table has a foreign key to the
   primary key of the thing we're joining (see #31175 for more info); otherwise this will return `nil` if no default
-  condition is suggested."
+  conditions are suggested."
   [a-query stage-number joinable]
-  (lib.core/suggested-join-condition a-query stage-number joinable))
+  (to-array (lib.core/suggested-join-conditions a-query stage-number joinable)))
 
 (defn ^:export join-fields
   "Get the `:fields` associated with a join."
@@ -996,3 +1016,35 @@
     offset-n
     (some-> offset-unit keyword)
     (js->clj options :keywordize-keys true)))
+
+(defn ^:export find-matching-column
+  "Given `a-ref-or-column` and a list of `columns`, finds the column that best matches this ref or column.
+
+   Matching is based on finding the basically plausible matches first. There is often zero or one plausible matches, and
+   this can return quickly.
+
+   If there are multiple plausible matches, they are disambiguated by the most important extra included in the `ref`.
+   (`:join-alias` first, then `:temporal-unit`, etc.)
+
+   - Integer IDs in the `ref` are matched by ID; this usually is unambiguous.
+   - If there are multiple joins on one table (including possible implicit joins), check `:join-alias` next.
+   - If `a-ref` has a `:join-alias`, only a column which matches it can be the match, and it should be unique.
+   - If `a-ref` doesn't have a `:join-alias`, prefer the column with no `:join-alias`, and prefer already selected
+   columns over implicitly joinable ones.
+   - There may be broken cases where the ref has an ID but the column does not. Therefore the ID must be resolved to a
+   name or `:lib/desired-column-alias` and matched that way.
+   - `query` and `stage-number` are required for this case, since they're needed to resolve the correct name.
+   - Columns with `:id` set are dropped to prevent them matching. (If they didn't match by `:id` above they shouldn't
+   match by name due to a coincidence of column names in different tables.)
+   - String IDs are checked against `:lib/desired-column-alias` first.
+   - If that doesn't match any columns, `:name` is compared next.
+   - The same disambiguation (by `:join-alias` etc.) is applied if there are multiple plausible matches.
+
+   Returns the matching column, or nil if no match is found."
+  [a-query stage-number a-ref columns]
+  (lib.core/find-matching-column a-query stage-number a-ref columns))
+
+(defn ^:export stage-count
+  "Returns the count of stages in query"
+  [a-query]
+  (lib.core/stage-count a-query))

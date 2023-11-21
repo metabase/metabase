@@ -11,6 +11,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util :as mbql.u]
@@ -38,6 +39,11 @@
 (defmethod lib.metadata.calculation/display-name-method :mbql/query
   [query stage-number x style]
   (lib.metadata.calculation/display-name query stage-number (lib.util/query-stage x stage-number) style))
+
+(mu/defn stage-count :- ::lib.schema.common/int-greater-than-or-equal-to-zero
+  "Returns the count of stages in query"
+  [query :- ::lib.schema/query]
+  (count (:stages query)))
 
 (defmulti can-run-method
   "Returns whether the query is runnable based on first stage :lib/type"

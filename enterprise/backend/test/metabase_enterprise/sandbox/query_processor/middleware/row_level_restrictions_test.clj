@@ -20,6 +20,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache-test :as cache-test]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
@@ -1113,3 +1114,14 @@
                     (is (not (str/includes? (-> sandboxed-result :data :native_form :query)
                                             (:table_name persisted-info)))
                         "Erroneously used the persisted model cache")))))))))))
+
+(deftest is-sandboxed-success-test
+  (testing "Integration test that checks that is_sandboxed is recorded in query_execution correctly for a sandboxed query"
+    (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
+      (t2.with-temp/with-temp [Card card {:database_id   (mt/id)
+                                          :table_id      (mt/id :categories)
+                                          :dataset_query (mt/mbql-query categories)}]
+        (let [query (:dataset_query card)]
+          (process-userland-query-test/with-query-execution [qe query]
+            (qp/process-userland-query query)
+            (is (:is_sandboxed (qe)))))))))

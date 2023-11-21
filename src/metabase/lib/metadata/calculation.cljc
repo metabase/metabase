@@ -553,17 +553,19 @@
   (let [existing-table-ids (into #{} (map :table-id) column-metadatas)]
     (into []
           (comp (filter :fk-target-field-id)
-                (map (fn [{source-field-id :id, :keys [fk-target-field-id]}]
+                (map (fn [{source-field-id :id, :keys [fk-target-field-id] :as source}]
                        (-> (lib.metadata/field query fk-target-field-id)
-                           (assoc ::source-field-id source-field-id))))
+                           (assoc ::source-field-id source-field-id
+                                  ::source-join-alias (:metabase.lib.join/join-alias source)))))
                 (remove #(contains? existing-table-ids (:table-id %)))
-                (mapcat (fn [{:keys [table-id], ::keys [source-field-id]}]
+                (mapcat (fn [{:keys [table-id], ::keys [source-field-id source-join-alias]}]
                           (let [table-metadata (lib.metadata/table query table-id)
                                 options        {:unique-name-fn               unique-name-fn
                                                 :include-implicitly-joinable? false}]
                             (for [field (visible-columns-method query stage-number table-metadata options)
                                   :let  [field (assoc field
                                                       :fk-field-id              source-field-id
+                                                      :fk-join-alias            source-join-alias
                                                       :lib/source               :source/implicitly-joinable
                                                       :lib/source-column-alias  (:name field))]]
                               (assoc field :lib/desired-column-alias (unique-name-fn

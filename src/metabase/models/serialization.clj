@@ -79,7 +79,7 @@
   (fn [model-name _instance] model-name))
 
 (defmethod entity-id :default [_ {:keys [entity_id]}]
-  entity_id)
+  (str/trim entity_id))
 
 ;;; ## Hashing entities
 ;;; In the worst case, an entity is already present in two instances linked by serdes, and it doesn't have `entity_id`
@@ -371,6 +371,7 @@
   (let [model (t2.model/resolve-model (symbol model-name))
         pk    (first (t2/primary-keys model))]
     (-> (into {} entity)
+        (m/update-existing :entity_id str/trim)
         (assoc :serdes/meta (generate-path model-name entity))
         (dissoc pk :updated_at))))
 
@@ -417,7 +418,7 @@
 ;;; Then for each ingested entity:
 ;;;
 ;;; - `(ingest-one serdes-path opts)` is called to read the value into memory, then
-;;; - `(serdes-dependencies ingested)` gets a list of other `:serdes/meta` paths need to be loaded first.
+;;; - `(dependencies ingested)` gets a list of other `:serdes/meta` paths need to be loaded first.
 ;;;     - See below on depenencies.
 ;;; - Dependencies are loaded recursively in postorder; that is an entity is loaded after all its deps.
 ;;;     - Circular dependencies will make the load process throw.
@@ -696,7 +697,7 @@
 
   The identifier can be a single entity ID string, a single identity-hash string, or a vector of entity ID and hash
   strings. If the ID is compound, then the last ID is the one that corresponds to the model. This allows for the
-  compound IDs needed for nested entities like `DashboardCard`s to get their [[serdes/serdes-dependencies]].
+  compound IDs needed for nested entities like `DashboardCard`s to get their [[dependencies]].
 
   Throws if the corresponding entity cannot be found.
 
@@ -711,7 +712,7 @@
           entity     (lookup-by-id model eid)]
       (if entity
         (get entity (first (t2/primary-keys model)))
-        (throw (ex-info "Could not find foreign key target - bad serdes-dependencies or other serialization error"
+        (throw (ex-info "Could not find foreign key target - bad serdes dependencies or other serialization error"
                         {:entity_id eid :model (name model)}))))))
 
 (defn ^:dynamic ^::cache *export-fk-keyed*
@@ -775,7 +776,7 @@
 
 (defn table->path
   "Given a `table_id` as exported by [[export-table-fk]], turn it into a `[{:model ...}]` path for the Table.
-  This is useful for writing [[metabase.models.serialization.base/serdes-dependencies]] implementations."
+  This is useful for writing [[dependencies]] implementations."
   [[db-name schema table-name]]
   (filterv some? [{:model "Database" :id db-name}
                   (when schema {:model "Schema" :id schema})
@@ -819,7 +820,7 @@
 
 (defn field->path
   "Given a `field_id` as exported by [[export-field-fk]], turn it into a `[{:model ...}]` path for the Field.
-  This is useful for writing [[metabase.models.serialization.base/serdes-dependencies]] implementations."
+  This is useful for writing [[dependencies]] implementations."
   [[db-name schema table-name field-name]]
   (filterv some? [{:model "Database" :id db-name}
                   (when schema {:model "Schema" :id schema})
@@ -1039,7 +1040,7 @@
 
 (defn mbql-deps
   "Given an MBQL expression as exported, with qualified names like `[\"some-db\" \"schema\" \"table_name\"]` instead of
-  raw IDs, return the corresponding set of serdes-dependencies. The query can't be imported until all the referenced
+  raw IDs, return the corresponding set of serdes dependencies. The query can't be imported until all the referenced
   databases, tables and fields are loaded."
   [entity]
   (cond
@@ -1049,11 +1050,14 @@
 
 ;;; ## Dashboard/Question Parameters
 
+(defn- export-parameter-mapping [mapping]
+  (ids->fully-qualified-names mapping))
+
 (defn export-parameter-mappings
   "Given the :parameter_mappings field of a `Card` or `DashboardCard`, as a vector of maps, converts
   it to a portable form with the field IDs replaced with `[db schema table field]` references."
   [mappings]
-  (map ids->fully-qualified-names mappings))
+  (map export-parameter-mapping mappings))
 
 (defn import-parameter-mappings
   "Given the :parameter_mappings field as exported by serialization convert its field references
@@ -1102,6 +1106,7 @@
    "collection" :model/Collection
    "database"   :model/Database
    "dashboard"  :model/Dashboard
+   "question"   :model/Card
    "table"      :model/Table})
 
 (defn- export-viz-link-card
@@ -1115,6 +1120,77 @@
                    "table"    (*export-table-fk* id)
                    "database" (*export-fk-keyed* id 'Database :name)
                    (*export-fk* id (link-card-model->toucan-model model)))}))))
+
+(defn- json-ids->fully-qualified-names
+  "Converts IDs to fully qualified names inside a JSON string.
+  Returns a new JSON string with the IDs converted inside."
+  [json-str]
+  (-> json-str
+      (json/parse-string true)
+      ids->fully-qualified-names
+      json/generate-string))
+
+(defn- json-mbql-fully-qualified-names->ids
+  "Converts fully qualified names to IDs in MBQL embedded inside a JSON string.
+  Returns a new JSON string with teh IDs converted inside."
+  [json-str]
+  (-> json-str
+      (json/parse-string true)
+      mbql-fully-qualified-names->ids
+      json/generate-string))
+
+(defn- export-viz-click-behavior-link
+  [{:keys [linkType type] :as click-behavior}]
+  (cond-> click-behavior
+    (= type "link") (update :targetId *export-fk* (link-card-model->toucan-model linkType))))
+
+(defn- import-viz-click-behavior-link
+  [{:keys [linkType type] :as click-behavior}]
+  (cond-> click-behavior
+    (= type "link") (update :targetId *import-fk* (link-card-model->toucan-model linkType))))
+
+(defn- export-viz-click-behavior-mapping [mapping]
+  (-> mapping
+      (m/update-existing    :id                  json-ids->fully-qualified-names)
+      (m/update-existing-in [:target :id]        json-ids->fully-qualified-names)
+      (m/update-existing-in [:target :dimension] ids->fully-qualified-names)))
+
+(defn- import-viz-click-behavior-mapping [mapping]
+  (-> mapping
+      (m/update-existing    :id                  json-mbql-fully-qualified-names->ids)
+      (m/update-existing-in [:target :id]        json-mbql-fully-qualified-names->ids)
+      (m/update-existing-in [:target :dimension] mbql-fully-qualified-names->ids)))
+
+(defn- export-viz-click-behavior-mappings
+  "The `:parameterMappings` on a `:click_behavior` viz settings is a map of... IDs turned into JSON strings which have
+  been keywordized. Therefore the keys must be converted to strings, parsed, exported, and JSONified. The values are
+  ported by [[export-viz-click-behavior-mapping]]."
+  [mappings]
+  (into {} (for [[kw-key mapping] mappings
+                 :let [k (name kw-key)]]
+             (if (mb.viz/dimension-param-mapping? mapping)
+               [(json-ids->fully-qualified-names k)
+                (export-viz-click-behavior-mapping mapping)]
+               [k mapping]))))
+
+(defn- import-viz-click-behavior-mappings
+  "The exported form of `:parameterMappings` on a `:click_behavior` viz settings is a map of JSON strings which contain
+  fully qualified names. These must be parsed, imported, JSONified and then turned back into keywords, since that's the
+  form used internally."
+  [mappings]
+  (into {} (for [[json-key mapping] mappings]
+             [(keyword (json-mbql-fully-qualified-names->ids json-key))
+              (import-viz-click-behavior-mapping mapping)])))
+
+(defn- export-viz-click-behavior [settings]
+  (some-> settings
+          (m/update-existing    :click_behavior export-viz-click-behavior-link)
+          (m/update-existing-in [:click_behavior :parameterMapping] export-viz-click-behavior-mappings)))
+
+(defn- import-viz-click-behavior [settings]
+  (some-> settings
+          (m/update-existing    :click_behavior import-viz-click-behavior-link)
+          (m/update-existing-in [:click_behavior :parameterMapping] import-viz-click-behavior-mappings)))
 
 (defn- export-visualizations [entity]
   (mbql.u/replace
@@ -1150,7 +1226,9 @@
   This function parses those keys, converts the IDs to portable values, and serializes them back to JSON."
   [settings]
   (when settings
-    (update-keys settings #(-> % json/parse-string export-visualizations json/generate-string))))
+    (-> settings
+        (update-keys #(-> % json/parse-string export-visualizations json/generate-string))
+        (update-vals export-viz-click-behavior))))
 
 (defn export-visualization-settings
   "Given the `:visualization_settings` map, convert all its field-ids to portable `[db schema table field]` form."
@@ -1159,6 +1237,7 @@
     (-> settings
         export-visualizations
         export-viz-link-card
+        export-viz-click-behavior
         (update :column_settings export-column-settings))))
 
 (defn- import-viz-link-card
@@ -1194,7 +1273,9 @@
 
 (defn- import-column-settings [settings]
   (when settings
-    (update-keys settings #(-> % name json/parse-string import-visualizations json/generate-string))))
+    (-> settings
+        (update-keys #(-> % name json/parse-string import-visualizations json/generate-string))
+        (update-vals import-viz-click-behavior))))
 
 (defn import-visualization-settings
   "Given an EDN value as exported by [[export-visualization-settings]], convert its portable `[db schema table field]`
@@ -1204,6 +1285,7 @@
     (-> settings
         import-visualizations
         import-viz-link-card
+        import-viz-click-behavior
         (update :column_settings import-column-settings))))
 
 (defn- viz-link-card-deps
@@ -1214,18 +1296,58 @@
         [{:model (name (link-card-model->toucan-model model))
           :id    id}])}))
 
+(defn- viz-click-behavior-deps
+  [settings]
+  (when-let [{:keys [linkType targetId type]} (:click_behavior settings)]
+    (case type
+      "link" (when-let [model (some-> linkType link-card-model->toucan-model name)]
+               #{[{:model model
+                   :id    targetId}]})
+      ;; TODO: We might need to handle the click behavior that updates dashboard filters? I can't figure out how get
+      ;; that to actually attach to a filter to check what it looks like.
+      nil)))
+
 (defn visualization-settings-deps
   "Given the :visualization_settings (possibly nil) for an entity, return any embedded serdes-deps as a set.
   Always returns an empty set even if the input is nil."
   [viz]
-  (let [vis-column-settings (some->> viz
-                                     :column_settings
-                                     keys
-                                     (map (comp mbql-deps json/parse-string name)))
-        link-card-deps      (viz-link-card-deps viz)]
-    (->> (concat vis-column-settings [(mbql-deps viz) link-card-deps])
+  (let [column-settings-keys-deps (some->> viz
+                                           :column_settings
+                                           keys
+                                           (map (comp mbql-deps json/parse-string name)))
+        column-settings-vals-deps (some->> viz
+                                           :column_settings
+                                           vals
+                                           (map viz-click-behavior-deps))
+        link-card-deps            (viz-link-card-deps viz)
+        click-behavior-deps       (viz-click-behavior-deps viz)]
+    (->> (concat column-settings-keys-deps
+                 column-settings-vals-deps
+                 [(mbql-deps viz) link-card-deps click-behavior-deps])
          (filter some?)
          (reduce set/union #{}))))
+
+(defn- viz-click-behavior-descendants [{:keys [click_behavior]}]
+  (when-let [{:keys [linkType targetId type]} click_behavior]
+    (case type
+      "link" (when-let [model (link-card-model->toucan-model linkType)]
+               #{[(name model) targetId]})
+      ;; TODO: We might need to handle the click behavior that updates dashboard filters? I can't figure out how get
+      ;; that to actually attach to a filter to check what it looks like.
+      nil)))
+
+(defn- viz-column-settings-descendants [{:keys [column_settings]}]
+  (when column_settings
+    (->> (vals column_settings)
+         (mapcat viz-click-behavior-descendants)
+         set)))
+
+(defn visualization-settings-descendants
+  "Given the :visualization_settings (possibly nil) for an entity, return anything that should be considered a
+  descendant. Always returns an empty set even if the input is nil."
+  [viz]
+  (set/union (viz-click-behavior-descendants  viz)
+             (viz-column-settings-descendants viz)))
 
 ;;; ## Memoizing appdb lookups
 

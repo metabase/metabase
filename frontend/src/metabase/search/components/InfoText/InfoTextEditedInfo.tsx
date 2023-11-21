@@ -1,8 +1,7 @@
 import dayjs from "dayjs";
-import { useAsync } from "react-use";
 import { t } from "ttag";
 import { isNull } from "underscore";
-import { UserApi } from "metabase/services";
+import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import type { UserListResult } from "metabase-types/api";
 import Tooltip from "metabase/core/components/Tooltip";
 import { isNotNull } from "metabase/lib/types";
@@ -37,12 +36,11 @@ export const InfoTextEditedInfo = ({
   result: WrappedResult;
   isCompact?: boolean;
 }) => {
-  const {
-    loading: isLoading,
-    value,
-    error,
-  } = useAsync<() => Promise<{ data: UserListResult[] }>>(UserApi.list);
-  const users = value?.data ?? [];
+  const { isLoading, data, error } = useUserListQuery({
+    query: { recipients: true },
+  });
+
+  const users = data ?? [];
 
   if (isLoading) {
     return (

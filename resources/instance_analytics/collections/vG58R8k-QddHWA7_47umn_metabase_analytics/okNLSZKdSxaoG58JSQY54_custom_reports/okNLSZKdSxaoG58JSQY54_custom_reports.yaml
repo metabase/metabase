@@ -11,5 +11,5 @@ serdes/meta:
   id: okNLSZKdSxaoG58JSQY54
   label: custom_reports
 entity_id: okNLSZKdSxaoG58JSQY54
-namespace: null
+namespace: "analytics"
 created_at: '2023-06-08T14:15:39.856869Z'

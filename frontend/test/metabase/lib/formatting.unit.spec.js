@@ -156,7 +156,7 @@ describe("formatting", () => {
         expect(formatNumber(724.9, options)).toEqual("$724.90");
         expect(formatNumber(1234.56, options)).toEqual("$1.2k");
         expect(formatNumber(1234567.89, options)).toEqual("$1.2M");
-        expect(formatNumber(-1234567.89, options)).toEqual("$-1.2M");
+        expect(formatNumber(-1234567.89, options)).toEqual("-$1.2M");
         expect(
           formatNumber(1234567.89, { ...options, currency: "CNY" }),
         ).toEqual("CN¥1.2M");
