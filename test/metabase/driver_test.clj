@@ -104,16 +104,16 @@
               (testing "2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should succeed"
                 (is (= {:status "ok"}
                        (mt/user-http-request :crowberto :post 200 (str "/database/" (u/the-id db) "/sync_schema"))))))
-              ;; release db resources like connection pools we don't have to wait to finish syncing before destroying the db
+            ;; release db resources like connection pools we don't have to wait to finish syncing before destroying the db
             (driver/notify-database-updated driver/*driver* db)
-              ;; destroy the db
+            ;; destroy the db
             (tx/destroy-db! driver/*driver* dbdef)
             (testing "after deleting a database, sync should fail"
               (testing "1: sync-and-analyze-database! should log a warning and fail early"
                 (is (some? (find-log-match))))
               (testing "2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should fail"
                 (mt/user-http-request :crowberto :post 422 (str "/database/" (u/the-id db) "/sync_schema"))))
-              ;; clean up the database
+            ;; clean up the database
             (t2/delete! :model/Database (u/the-id db))))))))
 
 (deftest supports-table-privileges-matches-implementations-test
