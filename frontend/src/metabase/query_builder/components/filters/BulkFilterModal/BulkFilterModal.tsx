@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { Button, Flex, Modal, Tabs } from "metabase/ui";
@@ -56,6 +56,10 @@ export function BulkFilterModal({
   onClose,
 }: BulkFilterModalProps) {
   const [query, setQuery] = useState(initialQuery);
+
+  useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery]);
 
   const columnGroups: ColumnGroupListItem[] = useMemo(() => {
     const stageCount = Lib.stageCount(query);

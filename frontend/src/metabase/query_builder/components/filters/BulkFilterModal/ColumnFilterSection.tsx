@@ -3,6 +3,7 @@ import { Icon } from "metabase/core/components/Icon";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import * as Lib from "metabase-lib";
 import { NumberFilterEditor } from "./NumberFilterEditor";
+import { StringFilterEditor } from "./StringFilterEditor";
 import { TimeFilterEditor } from "./TimeFilterEditor";
 
 interface ColumnFilterSectionProps {
@@ -64,7 +65,7 @@ function getFilterWidget(column: Lib.ColumnMetadata) {
     return NotImplementedWidget;
   }
   if (Lib.isString(column)) {
-    return NotImplementedWidget;
+    return StringFilterEditor;
   }
   if (Lib.isNumeric(column)) {
     return NumberFilterEditor;
