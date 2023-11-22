@@ -409,4 +409,5 @@ function drillFK({ id }) {
 
 function drillDashboardFK({ id }) {
   cy.get(".Table-FK").contains(id).first().click();
+  popover().findByTextEnsureVisible("View details").click();
 }

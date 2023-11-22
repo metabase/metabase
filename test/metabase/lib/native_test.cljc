@@ -9,9 +9,9 @@
    [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
    [metabase.lib.test-util :as lib.tu]
    [metabase.util.humanization :as u.humanization]
-   [metabase.util.malli :as mu]
-   [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.malli :as mu]))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel variable-tag-test
   (are [exp input] (= exp (set (keys (lib.native/extract-template-tags input))))
