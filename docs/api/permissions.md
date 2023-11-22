@@ -14,7 +14,7 @@ Delete a specific `PermissionsGroup`.
 
 ### PARAMS:
 
-*  **`group-id`**
+*  **`group-id`** value must be an integer greater than zero.
 
 ## `DELETE /api/permissions/membership/:id`
 
@@ -55,7 +55,7 @@ Fetch the details for a certain permissions group.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/permissions/membership`
 
@@ -131,7 +131,7 @@ Update the name of a `PermissionsGroup`.
 
 ### PARAMS:
 
-*  **`group-id`** 
+*  **`group-id`** value must be an integer greater than zero.
 
 *  **`name`** value must be a non-blank string.
 

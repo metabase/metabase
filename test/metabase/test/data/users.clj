@@ -5,14 +5,14 @@
    [medley.core :as m]
    [metabase.db.connection :as mdb.connection]
    [metabase.http-client :as client]
-   [metabase.models.interface :as mi]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
-   [metabase.models.permissions-group-membership
-    :refer [PermissionsGroupMembership]]
+   [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
    [metabase.models.user :refer [User]]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -54,6 +54,9 @@
   (set (keys user->info)))
 
 (def ^:private TestUserName
+  (into [:enum] usernames))
+
+(def ^:private TestUserName:Schema
   (apply s/enum usernames))
 
 ;;; ------------------------------------------------- Test User Fns --------------------------------------------------
@@ -81,7 +84,7 @@
                                                     :is_qbnewb    true
                                                     :is_active    active}))))))
 
-(s/defn fetch-user :- #_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema User)
+(mu/defn fetch-user :- (ms/InstanceOf User)
   "Fetch the User object associated with `username`. Creates user if needed.
 
     (fetch-user :rasta) -> {:id 100 :first_name \"Rasta\" ...}"
@@ -116,7 +119,7 @@
   "Return a map with `:username` and `:password` for User with `username`.
 
     (user->credentials :rasta) -> {:username \"rasta@metabase.com\", :password \"blueberries\"}"
-  [username :- TestUserName]
+  [username :- TestUserName:Schema]
   {:pre [(contains? usernames username)]}
   (let [{:keys [email password]} (user->info username)]
     {:username email
@@ -126,7 +129,7 @@
 
 (s/defn username->token :- u/uuid-regex
   "Return cached session token for a test User, logging in first if needed."
-  [username :- TestUserName]
+  [username :- TestUserName:Schema]
   (or (@tokens username)
       (locking tokens
         (or (@tokens username)
