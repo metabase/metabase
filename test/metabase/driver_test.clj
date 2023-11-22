@@ -72,10 +72,10 @@
                        :tables
                        (some :schema))))))))
 
-(defn- basic-table-definition [table-name]
+(defn- basic-db-definition [database-name]
   (tx/map->DatabaseDefinition
-   {:database-name     table-name
-    :table-definitions [{:table-name        table-name
+   {:database-name     database-name
+    :table-definitions [{:table-name        "baz"
                          :field-definitions [{:field-name "foo", :base-type :type/Text}]
                          :rows              [["bar"]]}]}))
 
@@ -89,7 +89,7 @@
                           ;; but to an S3 bucket that may contain many databases
                           (remove #{:athena}))
       (let [database-name (mt/random-name)
-            dbdef         (basic-table-definition database-name)]
+            dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
           (let [db (mt/db)
                 find-log-match (fn []
@@ -124,31 +124,31 @@
 
 (deftest nonsql-dialects-return-original-query-test
   (mt/test-driver :mongo
-                  (testing "Passing a mongodb query through [[driver/prettify-native-form]] returns the original query (#31122)"
-                    (let [query [{"$group"  {"_id" {"created_at" {"$let" {"vars" {"parts" {"$dateToParts" {"timezone" "UTC"
-                                                                                                           "date"     "$created_at"}}}
-                                                                          "in"   {"$dateFromParts" {"timezone" "UTC"
-                                                                                                    "year"     "$$parts.year"
-                                                                                                    "month"    "$$parts.month"
-                                                                                                    "day"      "$$parts.day"}}}}}
-                                             "sum" {"$sum" "$tax"}}}
-                                 {"$sort"    {"_id" 1}}
-                                 {"$project" {"_id" false
-                                              "created_at" "$_id.created_at"
-                                              "sum" true}}]
-                          formatted-query (driver/prettify-native-form :mongo query)]
+    (testing "Passing a mongodb query through [[driver/prettify-native-form]] returns the original query (#31122)"
+      (let [query           [{"$group" {"_id" {"created_at" {"$let" {"vars" {"parts" {"$dateToParts" {"timezone" "UTC"
+                                                                                                      "date"     "$created_at"}}}
+                                                                     "in"   {"$dateFromParts" {"timezone" "UTC"
+                                                                                               "year"     "$$parts.year"
+                                                                                               "month"    "$$parts.month"
+                                                                                               "day"      "$$parts.day"}}}}}
+                                        "sum" {"$sum" "$tax"}}}
+                             {"$sort" {"_id" 1}}
+                             {"$project" {"_id"        false
+                                          "created_at" "$_id.created_at"
+                                          "sum"        true}}]
+            formatted-query (driver/prettify-native-form :mongo query)]
 
-                      (testing "Formatting a non-sql query returns the same query"
-                        (is (= query formatted-query)))
+        (testing "Formatting a non-sql query returns the same query"
+          (is (= query formatted-query)))
 
         ;; TODO(qnkhuat): do we really need to handle case where wrong driver is passed?
-                      (let [;; This is a mongodb query, but if you pass in the wrong driver it will attempt the format
+        (let [;; This is a mongodb query, but if you pass in the wrong driver it will attempt the format
               ;; This is a corner case since the system should always be using the right driver
-                            weird-formatted-query (driver/prettify-native-form :postgres (json/generate-string query))]
-                        (testing "The wrong formatter will change the format..."
-                          (is (not= query weird-formatted-query)))
-                        (testing "...but the resulting data is still the same"
+              weird-formatted-query (driver/prettify-native-form :postgres (json/generate-string query))]
+          (testing "The wrong formatter will change the format..."
+            (is (not= query weird-formatted-query)))
+          (testing "...but the resulting data is still the same"
             ;; Bottom line - Use the right driver, but if you use the wrong
             ;; one it should be harmless but annoying
-                          (is (= query
-                                 (json/parse-string weird-formatted-query)))))))))
+            (is (= query
+                   (json/parse-string weird-formatted-query)))))))))
