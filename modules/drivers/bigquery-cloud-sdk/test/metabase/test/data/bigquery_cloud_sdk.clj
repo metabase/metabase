@@ -320,27 +320,27 @@
     (log/info (u/format-color 'blue "Deleting temporary dataset more than two hours old: %s`." outdated))
     (u/ignore-exceptions
      (destroy-dataset! outdated)))
-  (let [database-name (normalize-name :db database-name)]
+  (let [dataset-id (normalize-name :db database-name)]
     (u/auto-retry 2
      (try
-       (log/infof "Creating dataset %s..." (pr-str database-name))
+       (log/infof "Creating dataset %s..." (pr-str dataset-id))
        ;; if the dataset failed to load successfully last time around, destroy whatever was loaded so we start
        ;; again from a blank slate
        (u/ignore-exceptions
-        (destroy-dataset! database-name))
-       (create-dataset! database-name)
+        (destroy-dataset! dataset-id))
+       (create-dataset! dataset-id)
        ;; now create tables and load data.
        (doseq [tabledef table-definitions]
-         (load-tabledef! database-name tabledef))
-       (log/info (u/format-color 'green "Successfully created %s." (pr-str database-name)))
+         (load-tabledef! dataset-id tabledef))
+       (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))
        (catch Throwable e
-         (log/error (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str database-name)))
+         (log/error (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str dataset-id)))
          (log/error (u/pprint-to-str 'red (Throwable->map e)))
          (throw e))))))
 
 (defmethod tx/destroy-db! :bigquery-cloud-sdk
   [_ {:keys [database-name]}]
-  (destroy-dataset! database-name))
+  (destroy-dataset! (normalize-name :db database-name)))
 
 (defmethod tx/aggregate-column-info :bigquery-cloud-sdk
   ([driver aggregation-type]
