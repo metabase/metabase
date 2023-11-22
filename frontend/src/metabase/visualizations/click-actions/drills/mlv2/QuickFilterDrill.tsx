@@ -5,8 +5,10 @@ import type {
 } from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
+import { getFilterPopover } from "./utils";
 
 export const QuickFilterDrill: Drill<Lib.QuickFilterDrillThruInfo> = ({
+  question,
   drill,
   drillDisplayInfo,
   applyDrill,
@@ -19,7 +21,7 @@ export const QuickFilterDrill: Drill<Lib.QuickFilterDrillThruInfo> = ({
   const drillDetails = Lib.quickFilterDrillDetails(drill);
 
   return operators.map(operator =>
-    getClickAction(drill, drillDetails, operator, applyDrill),
+    getClickAction(question, drill, drillDetails, operator, applyDrill),
   );
 };
 
@@ -36,6 +38,7 @@ const getTextValueTitle = (value: string): string => {
 };
 
 function getClickAction(
+  question: Question,
   drill: Lib.DrillThru,
   { query, column, value }: Lib.QuickFilterDrillThruDetails,
   operator: Lib.QuickFilterDrillThruOperator,
@@ -44,7 +47,7 @@ function getClickAction(
     operator: Lib.QuickFilterDrillThruOperator,
   ) => Question,
 ): ClickAction {
-  const action: ClickAction = {
+  const defaultAction: ClickAction = {
     name: operator,
     title: operator,
     section: "filter",
@@ -53,9 +56,9 @@ function getClickAction(
     question: () => applyDrill(drill, operator),
   };
 
-  if (Lib.isDate(column)) {
+  if (Lib.isDate(column) && value != null) {
     const dateAction: ClickAction = {
-      ...action,
+      ...defaultAction,
       sectionTitle: t`Filter by this date`,
       sectionDirection: "column",
       buttonType: "horizontal",
@@ -87,37 +90,39 @@ function getClickAction(
     }
   }
 
-  if (Lib.isString(column)) {
+  if (Lib.isString(column) && typeof value === "string") {
     const stringAction: ClickAction = {
-      ...action,
+      ...defaultAction,
       sectionDirection: "column",
       buttonType: "horizontal",
     };
-    const valueTitle = getTextValueTitle(String(value));
+    const valueTitle = getTextValueTitle(value);
 
     switch (operator) {
       case "=":
         return {
           ...stringAction,
           title: t`Is ${valueTitle}`,
+          iconText: operator,
         };
       case "≠":
         return {
           ...stringAction,
           title: t`Is not ${valueTitle}`,
+          iconText: operator,
         };
       case "contains": {
         return {
           ...stringAction,
           title: `Contains…`,
-          popover: () => <div />,
+          popover: getFilterPopover({ question, query, column }),
         };
       }
       case "does-not-contain": {
         return {
           ...stringAction,
           title: `Does not contain…`,
-          popover: () => <div />,
+          popover: getFilterPopover({ question, query, column }),
         };
       }
       default:
@@ -125,5 +130,5 @@ function getClickAction(
     }
   }
 
-  return action;
+  return defaultAction;
 }
