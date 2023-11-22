@@ -160,9 +160,9 @@ describe("scenarios > admin > datamodel > field", () => {
             .click();
           popover().findByText("Custom mapping").click();
 
-          cy.findByDisplayValue("null").clear().type(remappedNullValue).blur();
+          cy.findByDisplayValue("null").clear().type(remappedNullValue);
           cy.button("Save").click();
-          cy.button("Saved!");
+          cy.button("Saved!").should("be.visible");
 
           cy.log("Make sure custom mapping appears in QB");
           openTable({ database: dbId, table: NUMBER_WITH_NULLS_ID });
