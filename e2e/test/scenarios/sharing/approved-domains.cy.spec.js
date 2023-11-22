@@ -34,17 +34,15 @@ describeEE(
       visitQuestion(ORDERS_QUESTION_ID);
 
       cy.icon("bell").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Set up an alert").click();
+      cy.button("Set up an alert").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Email alerts to:")
-        .parent()
-        .within(() => addEmailRecipient(deniedEmail));
-
+      cy.findByRole("heading", { name: "Email" })
+        .closest("li")
+        .within(() => {
+          addEmailRecipient(deniedEmail);
+          cy.findByText(alertError);
+        });
       cy.button("Done").should("be.disabled");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(alertError);
     });
 
     it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
