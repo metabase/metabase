@@ -16,6 +16,7 @@ import Modal from "metabase/components/Modal";
 import LogoIcon from "metabase/components/LogoIcon";
 import EntityMenu from "metabase/components/EntityMenu";
 import { getAdminPaths } from "metabase/admin/app/selectors";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 
 // generate the proper set of list items for the current user
 // based on whether they're an admin or not
@@ -29,6 +30,7 @@ function ProfileLink({ user, adminItems, onLogout }) {
   const [modalOpen, setModalOpen] = useState(null);
   const [bugReportDetails, setBugReportDetails] = useState(null);
   const version = useSelector(state => getSetting(state, "version"));
+  const applicationName = useSelector(getApplicationName);
   const { tag, date, ...versionExtra } = version;
   const isPaidPlan = useSelector(getIsPaidPlan);
 
@@ -72,7 +74,7 @@ function ProfileLink({ user, adminItems, onLogout }) {
         event: `Navbar;Profile Dropdown;About ${tag}`,
       },
       {
-        title: t`About Metabase`,
+        title: t`About ${applicationName}`,
         icon: null,
         action: () => openModal("about"),
         event: `Navbar;Profile Dropdown;About ${tag}`,
