@@ -10,4 +10,5 @@ export const LdapFormFooter = styled.div`
   flex-direction: column;
   align-items: start;
   gap: 1rem;
+  margin-bottom: 1rem;
 `;
