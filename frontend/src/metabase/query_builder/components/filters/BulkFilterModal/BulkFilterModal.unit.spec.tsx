@@ -1,6 +1,8 @@
+import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen } from "__support__/ui";
+import { Button } from "metabase/ui";
 import type { FieldReference } from "metabase-types/api";
 import {
   createSampleDatabase,
@@ -26,14 +28,25 @@ function setup({ query = createQuery({ metadata }) }: SetupOpts = {}) {
   const onSubmit = jest.fn();
   const onClose = jest.fn();
 
-  renderWithProviders(
-    <BulkFilterModal
-      query={query}
-      opened
-      onSubmit={onSubmit}
-      onClose={onClose}
-    />,
-  );
+  function BulkFilterModalWithTrigger() {
+    const [opened, setOpened] = useState(true);
+    return (
+      <>
+        <Button onClick={() => setOpened(true)}>Show modal</Button>
+        <BulkFilterModal
+          query={query}
+          opened={opened}
+          onSubmit={onSubmit}
+          onClose={() => {
+            onClose();
+            setOpened(false);
+          }}
+        />
+      </>
+    );
+  }
+
+  renderWithProviders(<BulkFilterModalWithTrigger />);
 
   function getNextQuery() {
     const [query] = onSubmit.mock.lastCall;
@@ -117,6 +130,21 @@ describe("BulkFilterModal", () => {
     const { onClose } = setup();
     userEvent.click(screen.getByLabelText("Close"));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("should reset changes on close", async () => {
+    const { onSubmit } = setup();
+
+    let createdAtShortcut = screen.getByRole("button", { name: "Today" });
+    userEvent.click(createdAtShortcut);
+    expect(createdAtShortcut).toHaveAttribute("aria-selected", "true");
+
+    userEvent.click(screen.getByLabelText("Close"));
+    userEvent.click(screen.getByRole("button", { name: "Show modal" }));
+    createdAtShortcut = await screen.findByRole("button", { name: "Today" });
+    expect(createdAtShortcut).toHaveAttribute("aria-selected", "false");
+
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   describe("multi-stage query", () => {

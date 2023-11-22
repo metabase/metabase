@@ -91,6 +91,11 @@ export function BulkFilterModal({
     [initialQuery, query],
   );
 
+  const handleClose = useCallback(() => {
+    setQuery(initialQuery); // reset unsaved changes
+    onClose();
+  }, [initialQuery, onClose]);
+
   const handleSubmit = useCallback(() => {
     onSubmit(query);
     onClose();
@@ -111,7 +116,7 @@ export function BulkFilterModal({
   const initialTab = defaultGroup.displayInfo.name || COMPUTED_COLUMN_GROUP_ID;
 
   return (
-    <Modal.Root opened={opened} size={modalWidth} onClose={onClose}>
+    <Modal.Root opened={opened} size={modalWidth} onClose={handleClose}>
       <Modal.Overlay />
       <Modal.Content>
         <ModalHeader p="lg">
