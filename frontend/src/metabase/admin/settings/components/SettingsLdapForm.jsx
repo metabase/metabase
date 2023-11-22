@@ -5,10 +5,13 @@ import _ from "underscore";
 import { connect } from "react-redux";
 import { updateLdapSettings } from "metabase/admin/settings/settings";
 
+import { Stack } from "metabase/ui";
 import {
   FormErrorMessage,
   FormProvider,
+  // FormRadioGroup,
   FormSubmitButton,
+  FormTextInput,
 } from "metabase/forms";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { FormSection } from "metabase/containers/FormikForm";
@@ -46,7 +49,6 @@ const SettingsLdapForm = ({
       autoFocus: setting.autoFocus,
     }));
   }, [settings]);
-  console.error(fields); // TODO: remove
 
   const attributeValues = useMemo(() => {
     return getAttributeValues(settingValues);
@@ -74,6 +76,28 @@ const SettingsLdapForm = ({
               [t`LDAP`],
             ]}
           />
+          <FormSection title={"Server Settings"}>
+            <Stack gap="md">
+              <FormTextInput {...fields["ldap-host"]} />
+              <FormTextInput {...fields["ldap-port"]} />
+              {/*ldap-security (FormRadioGroup)*/}
+              <FormTextInput {...fields["ldap-bind-dn"]} />
+              <FormTextInput {...fields["ldap-password"]} type="password" />
+            </Stack>
+          </FormSection>
+          <FormSection title={"User Schema"}>
+            <Stack gap="md">
+              <FormTextInput {...fields["ldap-user-base"]} />
+              <FormTextInput {...fields["ldap-user-filter"]} />
+            </Stack>
+          </FormSection>
+          <FormSection title={"Attributes"} collapsible>
+            <Stack gap="md">
+              <FormTextInput {...fields["ldap-attribute-email"]} />
+              <FormTextInput {...fields["ldap-attribute-firstname"]} />
+              <FormTextInput {...fields["ldap-attribute-lastname"]} />
+            </Stack>
+          </FormSection>
           <FormSection title={"Group Schema"}>
             <GroupMappingsWidget
               isFormik
@@ -111,7 +135,7 @@ const LDAP_ATTRS = [
   "ldap-user-base",
   "ldap-user-filter",
 
-  // Attributes (collapsible)
+  // Attributes
   "ldap-attribute-email",
   "ldap-attribute-firstname",
   "ldap-attribute-lastname",
