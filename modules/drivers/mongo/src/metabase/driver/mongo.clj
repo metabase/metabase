@@ -56,10 +56,11 @@
   [_ details]
   (with-mongo-connection [^DB conn, details]
     (let [db-stats (-> (cmd/db-stats conn)
-                       (m.conversion/from-db-object :keywordize))]
+                       (m.conversion/from-db-object :keywordize))
+          db-names (mg/get-db-names mongo.util/*mongo-client*)]
       (and (= (float (:ok db-stats))
               1.0)
-           (contains? (mg/get-db-names mongo.util/*mongo-client*) (:db db-stats))))))
+           (contains? db-names (:db db-stats))))))
 
 (defmethod driver/humanize-connection-error-message
   :mongo
