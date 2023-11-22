@@ -50,8 +50,8 @@ describeEE(
     it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
       visitDashboard(ORDERS_DASHBOARD_ID);
       cy.icon("subscription").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Email it").click();
+
+      cy.findByRole("heading", { name: "Email it" }).click();
 
       sidebar().within(() => {
         addEmailRecipient(deniedEmail);
