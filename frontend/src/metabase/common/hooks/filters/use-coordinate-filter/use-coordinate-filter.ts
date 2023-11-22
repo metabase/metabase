@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { usePrevious } from "react-use";
 import * as Lib from "metabase-lib";
 import { getAvailableOperatorOptions } from "../utils";
 import type { CoordinatePickerOperator } from "./types";
@@ -27,6 +28,8 @@ export function useCoordinateFilter({
   filter,
   defaultOperator = "=",
 }: UseCoordinateFilterOpts) {
+  const previousFilter = usePrevious(filter);
+
   const filterParts = useMemo(
     () =>
       filter ? Lib.coordinateFilterParts(query, stageIndex, filter) : null,
@@ -55,6 +58,14 @@ export function useCoordinateFilter({
   const [secondColumn, setSecondColumn] = useState(
     getDefaultSecondColumn(availableColumns, filterParts?.longitudeColumn),
   );
+
+  useEffect(() => {
+    if (previousFilter && !filter) {
+      _setOperator(defaultOperator);
+      setValues(getDefaultValues(defaultOperator));
+      setSecondColumn(getDefaultSecondColumn(availableColumns));
+    }
+  }, [filter, previousFilter, availableColumns, defaultOperator]);
 
   const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
   const isValid = hasValidValues(operator, values);
