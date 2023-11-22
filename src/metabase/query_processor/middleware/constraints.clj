@@ -5,6 +5,22 @@
    [metabase.models.setting :as setting]
    [metabase.util.i18n :refer [deferred-tru]]))
 
+;; The following "defaults" are not applied to the settings themselves - why not? Because the existing behavior is
+;; that, if you manually update the settings, queries are affected *WHETHER OR NOT* the
+;; `add-default-userland-constraints` middleware was applied.
+;;
+;; To achieve this, the QP looks for the following, in order:
+;; 1. a non-nil value set by the `add-default-userland-constraints` middleware below, either:
+;;    a) the value of the setting (if it's set),
+;;    b) the "default" value from the constant below, or
+;;    c) `nil` if the constraint middleware was not applied
+;; 2. a non-nil value for the appropriate setting (for aggregated vs. unaggregated queries) itself, either:
+;;    a) the value of the setting, or
+;;    b) `nil` if the setting is not set
+;; 3. the value of `absolute-max-results`
+;;
+;; If we turned the below `const`s into `:default`s on the settings themselves, we would use the default values for
+;; all queries, whether or not the middleware was applied.
 (def ^:private ^:const default-max-unaggregated-query-row-limit 2000)
 (def ^:private ^:const default-max-aggregated-query-row-limit 10000)
 
@@ -41,10 +57,7 @@
    :max-results-bare-rows (or (max-unaggregated-query-row-limit) default-max-unaggregated-query-row-limit)})
 
 (defn- ensure-valid-constraints
-  "`:max-unaggregated-query-row-limit` must be less than or equal to `:max-results`, so if someone sets `:max-results`
-  but not `:max-unaggregated-query-row-limit` or sets an both but sets an invalid value for
-  ``:max-unaggregated-query-row-limit` use the same value for both. Otherwise the default bare rows value could end up
-  being higher than the custom `:max-rows` value, causing an error."
+  "Clamps the value of `max-results-bare-rows` to be less than or equal to the value of `max-results`."
   [{:keys [max-results max-results-bare-rows], :as constraints}]
   (if (<= max-results-bare-rows max-results)
     constraints
