@@ -1,8 +1,8 @@
 import { t } from "ttag";
+import type { IconName } from "metabase/core/components/Icon";
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
 import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
 import type {
-  ClickActionBase,
   ClickActionPopoverProps,
   Drill,
   PopoverClickAction,
@@ -10,69 +10,82 @@ import type {
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 
-const DEFAULT_ACTION: ClickActionBase = {
-  name: "breakout-by",
-  section: "breakout",
-  buttonType: "horizontal",
+type ClickActionCategory = {
+  name: string;
+  title: string;
+  icon: IconName;
+  match: (column: Lib.ColumnMetadata) => boolean;
 };
 
+const CATEGORIES: ClickActionCategory[] = [
+  {
+    name: "pivot-by-category",
+    title: t`Category`,
+    icon: "string",
+    match: Lib.isCategory,
+  },
+  {
+    name: "pivot-by-location",
+    title: t`Location`,
+    icon: "location",
+    match: Lib.isLocation,
+  },
+  {
+    name: "pivot-by-time",
+    title: t`Time`,
+    icon: "calendar",
+    match: Lib.isTime,
+  },
+];
+
 export const PivotDrill: Drill = ({ drill, applyDrill }) => {
-  if (!drill) {
-    return [];
-  }
+  const drillDetails = Lib.pivotDrillDetails(drill);
 
-  const clickActions: PopoverClickAction[] = [];
-  const { query, stageIndex, columns } = Lib.pivotDrillDetails(drill);
-  const categoryColumns = columns.filter(Lib.isCategory);
-  const locationColumns = columns.filter(Lib.isLocation);
-  const dateColumns = columns.filter(Lib.isDate);
-
-  const getPopover = (columns: Lib.ColumnMetadata[]) =>
-    getColumnPopover(query, stageIndex, columns, drill, applyDrill);
-
-  if (categoryColumns.length > 0) {
-    clickActions.push({
-      ...DEFAULT_ACTION,
-      name: "pivot-by-category",
-      title: t`Category`,
-      icon: "string",
-      popover: getPopover(categoryColumns),
-    });
-  }
-
-  if (locationColumns.length > 0) {
-    clickActions.push({
-      ...DEFAULT_ACTION,
-      name: "pivot-by-location",
-      title: t`Location`,
-      icon: "location",
-      popover: getPopover(locationColumns),
-    });
-  }
-
-  if (dateColumns.length > 0) {
-    clickActions.push({
-      ...DEFAULT_ACTION,
-      name: "pivot-by-time",
-      title: t`Time`,
-      icon: "calendar",
-      popover: getPopover(dateColumns),
-    });
-  }
+  const actions = CATEGORIES.flatMap(category => {
+    const action = getAction(drill, drillDetails, category, applyDrill);
+    return action ? [action] : [];
+  });
 
   const DrillPopover = ({ onClick }: ClickActionPopoverProps) => {
-    return <ClickActionsView clickActions={clickActions} onClick={onClick} />;
+    return <ClickActionsView clickActions={actions} onClick={onClick} />;
   };
 
   return [
     {
-      ...DEFAULT_ACTION,
-      icon: "arrow_split",
+      name: "breakout-by",
       title: t`Break out by…`,
-      popover: clickActions.length > 1 ? DrillPopover : clickActions[0].popover,
+      section: "breakout",
+      icon: "arrow_split",
+      buttonType: "horizontal",
+      popover: actions.length > 1 ? DrillPopover : actions[0].popover,
     },
   ];
 };
+
+function getAction(
+  drill: Lib.DrillThru,
+  { query, stageIndex, columns }: Lib.PivotDrillDetails,
+  category: ClickActionCategory,
+  applyDrill: (drill: Lib.DrillThru, column: Lib.ColumnMetadata) => Question,
+): PopoverClickAction | undefined {
+  const matchingColumns = columns.filter(category.match);
+  if (matchingColumns.length === 0) {
+    return;
+  }
+
+  return {
+    ...category,
+    section: "breakout",
+    buttonType: "horizontal",
+    popover: getColumnPopover(
+      query,
+      stageIndex,
+      matchingColumns,
+      drill,
+      applyDrill,
+    ),
+  };
+}
 
 function getColumnPopover(
   query: Lib.Query,
