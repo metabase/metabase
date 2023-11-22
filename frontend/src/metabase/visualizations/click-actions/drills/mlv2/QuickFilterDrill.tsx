@@ -15,47 +15,26 @@ export const QuickFilterDrill: Drill<Lib.QuickFilterDrillThruInfo> = ({
 }) => {
   const { operators } = drillDisplayInfo;
   const drillInfo = Lib.quickFilterDrillDetails(drill);
-  const columnInfo = Lib.displayInfo(
-    drillInfo.query,
-    drillInfo.stageIndex,
-    drillInfo.column,
-  );
 
-  return operators.map(operator =>
-    getClickAction(
-      question,
-      drill,
-      drillInfo,
-      columnInfo,
-      operator,
-      applyDrill,
-    ),
-  );
-};
-
-function getClickAction(
-  question: Question,
-  drill: Lib.DrillThru,
-  { query, column, value }: Lib.QuickFilterDrillThruDetails,
-  columnInfo: Lib.ColumnDisplayInfo,
-  operator: Lib.QuickFilterDrillThruOperator,
-  applyDrill: (
-    drill: Lib.DrillThru,
-    operator: Lib.QuickFilterDrillThruOperator,
-  ) => Question,
-): ClickAction {
-  const defaultAction: ClickAction = {
+  return operators.map(operator => ({
     name: operator,
     title: operator,
     section: "filter",
     sectionDirection: "row",
     buttonType: "token-filter",
     question: () => applyDrill(drill, operator),
-  };
+    ...getActionOverrides(question, drill, drillInfo, operator),
+  }));
+};
 
+function getActionOverrides(
+  question: Question,
+  drill: Lib.DrillThru,
+  { query, column, stageIndex, value }: Lib.QuickFilterDrillThruDetails,
+  operator: Lib.QuickFilterDrillThruOperator,
+): Partial<ClickAction> {
   if (Lib.isDate(column) && value != null) {
-    const dateAction: ClickAction = {
-      ...defaultAction,
+    const action: Partial<ClickAction> = {
       sectionTitle: t`Filter by this date`,
       sectionDirection: "column",
       buttonType: "horizontal",
@@ -63,72 +42,61 @@ function getClickAction(
 
     switch (operator) {
       case "=":
-        return {
-          ...dateAction,
-          title: t`On`,
-        };
+        return { ...action, title: t`On` };
       case "≠":
-        return {
-          ...dateAction,
-          title: t`Not on`,
-        };
+        return { ...action, title: t`Not on` };
       case ">":
-        return {
-          ...dateAction,
-          title: t`After`,
-        };
+        return { ...action, title: t`After` };
       case "<":
-        return {
-          ...dateAction,
-          title: t`Before`,
-        };
+        return { ...action, title: t`Before` };
       default:
-        return dateAction;
+        return action;
     }
   }
 
   if (Lib.isString(column) && typeof value === "string") {
-    const stringAction: ClickAction = {
-      ...defaultAction,
-      sectionTitle: t`Filter by ${columnInfo.displayName}`,
+    const columnName = Lib.displayInfo(query, stageIndex, column).displayName;
+    const valueTitle = getTextValueTitle(value);
+    const action: Partial<ClickAction> = {
+      sectionTitle: t`Filter by ${columnName}`,
       sectionDirection: "column",
       buttonType: "horizontal",
     };
-    const valueTitle = getTextValueTitle(value);
 
     switch (operator) {
       case "=":
         return {
-          ...stringAction,
+          ...action,
           title: t`Is ${valueTitle}`,
           iconText: operator,
         };
       case "≠":
         return {
-          ...stringAction,
+          ...action,
           title: t`Is not ${valueTitle}`,
           iconText: operator,
         };
       case "contains": {
         return {
-          ...stringAction,
+          ...action,
           title: `Contains…`,
           popover: getFilterPopover({ question, query, column }),
         };
       }
       case "does-not-contain": {
         return {
-          ...stringAction,
+          ...action,
           title: `Does not contain…`,
           popover: getFilterPopover({ question, query, column }),
         };
       }
-      default:
-        return stringAction;
+      default: {
+        return action;
+      }
     }
   }
 
-  return defaultAction;
+  return {};
 }
 
 const getTextValueTitle = (value: string): string => {
