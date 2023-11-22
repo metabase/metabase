@@ -1,7 +1,6 @@
 (ns metabase.driver-test
   (:require
    [cheshire.core :as json]
-   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
@@ -91,7 +90,6 @@
                                  (and (= log-level :warn)
                                       (instance? clojure.lang.ExceptionInfo throwable)
                                       (re-matches #"^Cannot sync Database (.+): (.+)" message)))]
-        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec db) ["create table foo (id int)"])
         (binding [h2/*allow-testing-h2-connections* true]
           (sync/sync-database! db))
         (testing "sense checks before deleting the database"
