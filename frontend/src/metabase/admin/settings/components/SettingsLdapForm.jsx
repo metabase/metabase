@@ -93,6 +93,7 @@ const SettingsLdapForm = ({
             <Stack gap="md">
               <FormTextInput {...fields["ldap-user-base"]} />
               <FormTextInput {...fields["ldap-user-filter"]} />
+              {/*TODO: ldap-user-filter has custom validations for parentheses*/}
             </Stack>
           </FormSection>
           <FormSection title={"Attributes"} collapsible>
@@ -103,15 +104,22 @@ const SettingsLdapForm = ({
             </Stack>
           </FormSection>
           <FormSection title={"Group Schema"}>
-            <GroupMappingsWidget
-              isFormik
-              setting={{ key: "ldap-group-sync" }}
-              onChange={handleSubmit}
-              settingValues={settingValues}
-              mappingSetting="ldap-group-mappings"
-              groupHeading={t`Group Name`}
-              groupPlaceholder={t`Group Name`}
-            />
+            <Stack gap={"md"}>
+              <GroupMappingsWidget
+                isFormik
+                setting={{ key: "ldap-group-sync" }}
+                onChange={handleSubmit}
+                settingValues={settingValues}
+                mappingSetting="ldap-group-mappings"
+                groupHeading={t`Group Name`}
+                groupPlaceholder={t`Group Name`}
+              />
+              <FormTextInput {...fields["ldap-group-base"]} />
+              <FormTextInput {...fields["ldap-group-membership-filter"]} />
+              {/*TODO: ldap-group-membership-filter only if hasPremiumFeature("sso_ldap")*/}
+              {/*TODO: ldap-user-filter has custom validations for parentheses*/}
+              {/*TODO: ldap-sync-admin-group onnly if hasPremiumFeature("sso_ldap") but not present on master */}
+            </Stack>
           </FormSection>
           <LdapFormFooter>
             <FormErrorMessage />
