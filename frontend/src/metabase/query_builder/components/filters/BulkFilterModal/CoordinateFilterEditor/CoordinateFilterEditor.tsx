@@ -10,6 +10,7 @@ import * as Lib from "metabase-lib";
 import type { FilterPickerWidgetProps } from "../types";
 import { FilterValuesWidget } from "../FilterValuesWidget";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { InsideFilterPopover } from "./InsideFilterPopover";
 
 export function CoordinateFilterEditor({
   query,
@@ -148,6 +149,10 @@ function CoordinateValueInput({
         />
       </Flex>
     );
+  }
+
+  if (valueCount === 4) {
+    return <InsideFilterPopover values={values} onChange={onChange} />;
   }
 
   return null;
