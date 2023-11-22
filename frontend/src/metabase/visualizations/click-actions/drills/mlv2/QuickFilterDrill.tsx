@@ -13,34 +13,27 @@ export const QuickFilterDrill: Drill<Lib.QuickFilterDrillThruInfo> = ({
   drillDisplayInfo,
   applyDrill,
 }) => {
-  if (!drill) {
-    return [];
-  }
-
   const { operators } = drillDisplayInfo;
-  const drillDetails = Lib.quickFilterDrillDetails(drill);
+  const drillInfo = Lib.quickFilterDrillDetails(drill);
+  const columnInfo = Lib.displayInfo(drillInfo.query, -1, drillInfo.column);
 
   return operators.map(operator =>
-    getClickAction(question, drill, drillDetails, operator, applyDrill),
+    getClickAction(
+      question,
+      drill,
+      drillInfo,
+      columnInfo,
+      operator,
+      applyDrill,
+    ),
   );
-};
-
-const getTextValueTitle = (value: string): string => {
-  if (value.length === 0) {
-    return t`empty`;
-  }
-
-  if (value.length > 20) {
-    return t`this`;
-  }
-
-  return value;
 };
 
 function getClickAction(
   question: Question,
   drill: Lib.DrillThru,
   { query, column, value }: Lib.QuickFilterDrillThruDetails,
+  columnInfo: Lib.ColumnDisplayInfo,
   operator: Lib.QuickFilterDrillThruOperator,
   applyDrill: (
     drill: Lib.DrillThru,
@@ -93,6 +86,7 @@ function getClickAction(
   if (Lib.isString(column) && typeof value === "string") {
     const stringAction: ClickAction = {
       ...defaultAction,
+      sectionTitle: t`Filter by ${columnInfo.displayName}`,
       sectionDirection: "column",
       buttonType: "horizontal",
     };
@@ -132,3 +126,15 @@ function getClickAction(
 
   return defaultAction;
 }
+
+const getTextValueTitle = (value: string): string => {
+  if (value.length === 0) {
+    return t`empty`;
+  }
+
+  if (value.length > 20) {
+    return t`this`;
+  }
+
+  return value;
+};
