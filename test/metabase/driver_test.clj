@@ -82,12 +82,11 @@
 (deftest check-can-connect-before-sync-test
   (testing "Database sync should short-circuit and fail if the database at the connection has been deleted (metabase#7526)"
     (mt/test-drivers (->> (mt/normal-drivers)
-                          ;; TODO: This only works with this subset of drivers. We should expand it to more drivers once we
-                          ;; correctly implement the can-connect? check.
-                          (filter #{:mongo :mysql :postgres :sqlite :sparksql :sqlserver :snowflake})
                           ;; athena is a special case because connections aren't made with a single database,
                           ;; but to an S3 bucket that may contain many databases
-                          (remove #{:athena}))
+                          ;; TODO: other drivers are still failing with this test. For these drivers there's a good chance there's a bug in
+                          ;; test.data.<driver> code, and not with the driver itself.
+                          (remove #{:athena :presto-jdbc :oracle :vertica}))
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
@@ -109,7 +108,12 @@
             ;; release db resources like connection pools we don't have to wait to finish syncing before destroying the db
             (driver/notify-database-updated driver/*driver* db)
             ;; destroy the db
-            (tx/destroy-db! driver/*driver* dbdef)
+            (if (contains? #{:redshift :snowflake} driver/*driver*)
+              ;; in the case of some cloud databases, the test database is never created, and shouldn't be destroyed.
+              ;; so fake it by redefining the database name on the dbdef
+              (t2/update! :model/Database (u/the-id db)
+                          {:details (assoc (:details (mt/db)) :db "fake-db-name-that-definitely-wont-be-used")})
+              (tx/destroy-db! driver/*driver* dbdef))
             (testing "after deleting a database, sync should fail"
               (testing "1: sync-and-analyze-database! should log a warning and fail early"
                 (is (some? (find-log-match))))
@@ -125,17 +129,17 @@
 (deftest nonsql-dialects-return-original-query-test
   (mt/test-driver :mongo
     (testing "Passing a mongodb query through [[driver/prettify-native-form]] returns the original query (#31122)"
-      (let [query           [{"$group" {"_id" {"created_at" {"$let" {"vars" {"parts" {"$dateToParts" {"timezone" "UTC"
-                                                                                                      "date"     "$created_at"}}}
-                                                                     "in"   {"$dateFromParts" {"timezone" "UTC"
-                                                                                               "year"     "$$parts.year"
-                                                                                               "month"    "$$parts.month"
-                                                                                               "day"      "$$parts.day"}}}}}
-                                        "sum" {"$sum" "$tax"}}}
-                             {"$sort" {"_id" 1}}
-                             {"$project" {"_id"        false
-                                          "created_at" "$_id.created_at"
-                                          "sum"        true}}]
+      (let [query [{"$group"   {"_id" {"created_at" {"$let" {"vars" {"parts" {"$dateToParts" {"timezone" "UTC"
+                                                                                              "date"     "$created_at"}}}
+                                                             "in"   {"$dateFromParts" {"timezone" "UTC"
+                                                                                       "year"     "$$parts.year"
+                                                                                       "month"    "$$parts.month"
+                                                                                       "day"      "$$parts.day"}}}}}
+                                "sum" {"$sum" "$tax"}}}
+                   {"$sort"    {"_id" 1}}
+                   {"$project" {"_id"        false
+                                "created_at" "$_id.created_at"
+                                "sum"        true}}]
             formatted-query (driver/prettify-native-form :mongo query)]
 
         (testing "Formatting a non-sql query returns the same query"
