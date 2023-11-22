@@ -8,6 +8,7 @@ import * as ace from "ace-builds/src-noconflict/ace";
 import type { Ace } from "ace-builds";
 import type { Expression } from "metabase-types/api";
 import ExplicitSize from "metabase/components/ExplicitSize";
+import type * as Lib from "metabase-lib";
 import { format } from "metabase-lib/expressions/format";
 import { processSource } from "metabase-lib/expressions/process";
 import { diagnose } from "metabase-lib/expressions/diagnostics";
@@ -47,15 +48,23 @@ interface ExpressionEditorTextfieldProps {
   expression: Expression | undefined;
   name: string;
   legacyQuery: StructuredQuery;
+  query?: Lib.Query;
+  stageIndex?: number;
   startRule?: string;
   width?: number;
   reportTimezone?: string;
   textAreaId?: string;
 
-  onChange: (expression: Expression | null) => void;
+  onChange: (
+    expression: Expression | null,
+    expressionClause: Lib.ExpressionClause | null,
+  ) => void;
   onError: (error: ErrorWithMessage | null) => void;
   onBlankChange: (isBlank: boolean) => void;
-  onCommit: (expression: Expression | null) => void;
+  onCommit: (
+    expression: Expression | null,
+    expressionClause: Lib.ExpressionClause | null,
+  ) => void;
   helpTextTarget: RefObject<HTMLElement>;
 }
 
@@ -279,6 +288,8 @@ class ExpressionEditorTextfield extends React.Component<
       return;
     }
 
+    const { onChange, onError } = this.props;
+
     this.clearSuggestions();
 
     const errorMessage = this.diagnoseExpression();
@@ -286,16 +297,20 @@ class ExpressionEditorTextfield extends React.Component<
 
     // whenever our input blurs we push the updated expression to our parent if valid
     if (errorMessage) {
-      this.props.onError(errorMessage);
+      onError(errorMessage);
     } else {
-      const expression = this.compileExpression();
-      if (expression) {
+      const compiledExpression = this.compileExpression();
+
+      if (compiledExpression) {
+        const { expression, expressionClause } = compiledExpression;
+
         if (!isExpression(expression)) {
           console.warn("isExpression=false", expression);
         }
-        this.props.onChange(expression);
+
+        onChange(expression, expressionClause);
       } else {
-        this.props.onError({ message: t`Invalid expression` });
+        onError({ message: t`Invalid expression` });
       }
     }
   };
@@ -331,18 +346,20 @@ class ExpressionEditorTextfield extends React.Component<
 
   compileExpression() {
     const { source } = this.state;
-    const { legacyQuery, startRule, name } = this.props;
+    const { legacyQuery, query, stageIndex, startRule, name } = this.props;
     if (!source || source.length === 0) {
       return null;
     }
-    const { expression } = processSource({
+    const { expression, expressionClause } = processSource({
       name,
       source,
+      query,
       legacyQuery,
+      stageIndex,
       startRule,
     });
 
-    return expression;
+    return { expression, expressionClause };
   }
 
   diagnoseExpression(): ErrorWithMessage | null {
@@ -362,6 +379,8 @@ class ExpressionEditorTextfield extends React.Component<
     const {
       legacyQuery,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
+      onCommit,
+      onError,
     } = this.props;
     const { source } = this.state;
     const errorMessage = diagnose(
@@ -372,12 +391,16 @@ class ExpressionEditorTextfield extends React.Component<
     this.setState({ errorMessage });
 
     if (errorMessage) {
-      this.props.onError(errorMessage);
+      onError(errorMessage);
     } else {
-      const expression = this.compileExpression();
+      const compiledExpression = this.compileExpression();
 
-      if (isExpression(expression)) {
-        this.props.onCommit(expression);
+      if (compiledExpression) {
+        const { expression, expressionClause } = compiledExpression;
+
+        if (isExpression(expression)) {
+          onCommit(expression, expressionClause);
+        }
       }
     }
   }

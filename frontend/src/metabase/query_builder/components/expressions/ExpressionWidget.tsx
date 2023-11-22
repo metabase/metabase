@@ -7,6 +7,7 @@ import Input from "metabase/core/components/Input/Input";
 import Tooltip from "metabase/core/components/Tooltip";
 import MetabaseSettings from "metabase/lib/settings";
 import type { Expression } from "metabase-types/api";
+import type * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/expressions";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
@@ -29,6 +30,8 @@ const EXPRESSIONS_DOCUMENTATION_URL = MetabaseSettings.docsUrl(
 
 export interface ExpressionWidgetProps {
   legacyQuery: StructuredQuery;
+  query?: Lib.Query;
+  stageIndex?: number;
   expression: Expression | undefined;
   name?: string;
   withName?: boolean;
@@ -44,6 +47,8 @@ export interface ExpressionWidgetProps {
 export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
   const {
     legacyQuery,
+    query,
+    stageIndex,
     name: initialName,
     expression: initialExpression,
     withName = false,
@@ -107,6 +112,8 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
             startRule={startRule}
             name={name}
             legacyQuery={legacyQuery}
+            query={query}
+            stageIndex={stageIndex}
             reportTimezone={reportTimezone}
             textAreaId="expression-content"
             onChange={handleExpressionChange}

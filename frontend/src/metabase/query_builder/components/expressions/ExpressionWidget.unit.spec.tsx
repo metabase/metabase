@@ -9,6 +9,7 @@ import {
   createSampleDatabase,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
+import { createQuery } from "metabase-lib/test-helpers";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 import type { ExpressionWidgetProps } from "./ExpressionWidget";
 import { ExpressionWidget } from "./ExpressionWidget";
@@ -144,7 +145,7 @@ describe("ExpressionWidget", () => {
   });
 });
 
-const createMockQueryForExpressions = () => {
+const createMockLegacyQueryForExpressions = () => {
   const state = createMockState({
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
@@ -166,7 +167,9 @@ function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
   const props = {
     expression: undefined,
     name: undefined,
-    legacyQuery: createMockQueryForExpressions(),
+    legacyQuery: createMockLegacyQueryForExpressions(),
+    query: createQuery(),
+    stageIndex: 0,
     reportTimezone: "UTC",
     ...mocks,
     ...additionalProps,

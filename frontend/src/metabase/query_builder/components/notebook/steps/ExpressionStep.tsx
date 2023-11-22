@@ -6,6 +6,8 @@ import ClauseStep from "./ClauseStep";
 const ExpressionStep = ({
   color,
   query,
+  topLevelQuery,
+  step,
   updateQuery,
   isLastOpened,
   reportTimezone,
@@ -24,6 +26,8 @@ const ExpressionStep = ({
       renderPopover={item => (
         <ExpressionWidget
           legacyQuery={query}
+          query={topLevelQuery}
+          stageIndex={step.stageIndex}
           name={item?.name}
           expression={item?.expression}
           withName
