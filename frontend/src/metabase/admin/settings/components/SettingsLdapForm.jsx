@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
+
 import { updateLdapSettings } from "metabase/admin/settings/settings";
 
 import { Stack, Group, Radio } from "metabase/ui";
@@ -23,6 +24,13 @@ const propTypes = {
   elements: PropTypes.array,
   settingValues: PropTypes.object.isRequired,
   onSubmit: PropTypes.func.isRequired,
+};
+
+const validateParentheses = value => {
+  return (value?.match(/\(/g) || []).length !==
+    (value?.match(/\)/g) || []).length
+    ? t`Check your parentheses`
+    : null;
 };
 
 const SettingsLdapForm = ({
@@ -94,8 +102,10 @@ const SettingsLdapForm = ({
           <FormSection title={"User Schema"}>
             <Stack gap="md">
               <FormTextInput {...fields["ldap-user-base"]} />
-              <FormTextInput {...fields["ldap-user-filter"]} />
-              {/*TODO: ldap-user-filter has custom validations for parentheses*/}
+              <FormTextInput
+                {...fields["ldap-user-filter"]}
+                validate={validateParentheses}
+              />
             </Stack>
           </FormSection>
           <FormSection title={"Attributes"} collapsible>
@@ -118,9 +128,11 @@ const SettingsLdapForm = ({
               />
               <FormTextInput {...fields["ldap-group-base"]} />
               {"ldap-group-membership-filter" in settingValues && (
-                <FormTextInput {...fields["ldap-group-membership-filter"]} />
+                <FormTextInput
+                  {...fields["ldap-group-membership-filter"]}
+                  validate={validateParentheses}
+                />
               )}
-              {/*TODO: ldap-user-filter has custom validations for parentheses*/}
             </Stack>
           </FormSection>
           <LdapFormFooter>
