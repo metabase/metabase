@@ -1,18 +1,16 @@
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import type { FormEvent } from "react";
 import { t } from "ttag";
 import { Box, Checkbox, Flex, TextInput } from "metabase/ui";
+import { useStringFilter } from "metabase/common/hooks/filters/use-string-filter";
 import * as Lib from "metabase-lib";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
-import { getAvailableOperatorOptions } from "../utils";
 import { FilterValuesWidget } from "../FilterValuesWidget";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
-import { OPERATOR_OPTIONS } from "./constants";
-import { getDefaultValues, getFilterClause, hasValidValues } from "./utils";
 
 const MAX_HEIGHT = 300;
 
@@ -30,42 +28,26 @@ export function StringFilterPicker({
     [query, stageIndex, column],
   );
 
-  const filterParts = useMemo(
-    () => (filter ? Lib.stringFilterParts(query, stageIndex, filter) : null),
-    [query, stageIndex, filter],
-  );
-
-  const availableOperators = useMemo(
-    () =>
-      getAvailableOperatorOptions(query, stageIndex, column, OPERATOR_OPTIONS),
-    [query, stageIndex, column],
-  );
-
-  const [operator, setOperator] = useState(
-    filterParts ? filterParts.operator : "=",
-  );
-
-  const [values, setValues] = useState(() =>
-    getDefaultValues(operator, filterParts?.values),
-  );
-
-  const [options, setOptions] = useState(
-    filterParts ? filterParts.options : {},
-  );
-
-  const { valueCount, hasMultipleValues, hasCaseSensitiveOption } =
-    OPERATOR_OPTIONS[operator];
-  const isValid = hasValidValues(operator, values);
-
-  const handleOperatorChange = (operator: Lib.StringFilterOperatorName) => {
-    setOperator(operator);
-    setValues(getDefaultValues(operator, values));
-  };
+  const {
+    operator,
+    values,
+    options,
+    isValid,
+    valueCount,
+    hasMultipleValues,
+    hasCaseSensitiveOption,
+    availableOperators,
+    setOperator,
+    setValues,
+    setOptions,
+    getFilterClause,
+  } = useStringFilter({ query, stageIndex, column, filter });
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (isValid) {
-      onChange(getFilterClause(operator, column, values, options));
+    const nextFilter = getFilterClause();
+    if (nextFilter) {
+      onChange(nextFilter);
     }
   };
 
@@ -84,7 +66,7 @@ export function StringFilterPicker({
         <FilterOperatorPicker
           value={operator}
           options={availableOperators}
-          onChange={handleOperatorChange}
+          onChange={setOperator}
         />
       </FilterPickerHeader>
       <div>
@@ -127,6 +109,7 @@ function StringValueInput({
     return (
       <FlexWithScroll p="md" mah={MAX_HEIGHT}>
         <FilterValuesWidget
+          autoFocus
           column={column}
           value={values}
           hasMultipleValues={hasMultipleValues}

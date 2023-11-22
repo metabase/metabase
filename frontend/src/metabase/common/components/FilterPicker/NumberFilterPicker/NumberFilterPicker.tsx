@@ -101,6 +101,7 @@ function NumberValueInput({
     return (
       <FlexWithScroll p="md" mah={300}>
         <FilterValuesWidget
+          autoFocus
           value={values}
           column={column}
           hasMultipleValues
