@@ -194,7 +194,7 @@
                              (descendants driver/hierarchy :sql-jdbc))
         (let [{schema :schema, table-name :name} (t2/select-one :model/Table :db_id (mt/id))]
           (doseq [auto-commit [true false]]
-            (testing (str "auto-commit " auto-commit)
+            (testing (pr-str {:auto-commit auto-commit :schema schema :name table-name})
               (sql-jdbc.execute/do-with-connection-with-options
                driver/*driver*
                (mt/db)
