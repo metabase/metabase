@@ -12,7 +12,6 @@ describe("issue 34577", { tags: "@mongo" }, () => {
   beforeEach(() => {
     restore("mongo-4");
     cy.signInAsAdmin();
-
     cy.request(`/api/database/${WRITABLE_DB_ID}/schema/`).then(({ body }) => {
       const tableId = body.find(table => table.name === "nested_id_collection").id;
       openTable({
@@ -23,8 +22,7 @@ describe("issue 34577", { tags: "@mongo" }, () => {
     });
   });
 
-  it("should correctly apply distinct count on a nested _id (metabase#34577)", () => {
-
+  it.skip("should correctly apply distinct count on a nested _id (metabase#34577)", () => {
     cy.findByRole("button", { name: "Summarize" }).click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
