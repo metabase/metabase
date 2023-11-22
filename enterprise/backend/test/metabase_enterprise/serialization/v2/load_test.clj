@@ -1078,3 +1078,37 @@
                    (get-in @dash1d [:tabs 0 :entity_id])))
             (is (not= (:entity_id @tab1s)
                       (:entity_id @tab2d)))))))))
+
+(deftest extraneous-keys-test
+  (let [serialized (atom nil)
+        eid (u/generate-nano-id)]
+    (ts/with-source-and-dest-dbs
+      (testing "Sprinkle the source database with a variety of different models"
+        (ts/with-source-db
+          (let [db         (ts/create! Database :name "my-db")
+                card       (ts/create! Card
+                                 :name "the query"
+                                 :query_type :native
+                                 :dataset true
+                                 :database_id (:id db)
+                                 :dataset_query {:database (:id db)
+                                                 :native   {:type   :native
+                                                            :native {:query "wow"}}})
+                parent     (ts/create! Collection :name "Parent Collection" :location "/")
+                _child     (ts/create! Collection
+                                       :name "Child Collection"
+                                       :location (format "/%d/" (:id parent)))
+                _action-id (action/insert! {:entity_id     eid
+                                            :name          "the action"
+                                            :model_id      (:id card)
+                                            :type          :query
+                                            :dataset_query "wow"
+                                            :database_id   (:id db)})]
+            (reset! serialized
+                    (->> (serdes.extract/extract {})
+                         ;; add an extra key to *every serialized model*
+                         (map #(assoc % :my-extraneous-keeeeeey "foobar!!!!"))
+                         (into []))))))
+      (testing "The extraneous keys do not interfere with loading"
+        (ts/with-dest-db
+          (is (serdes.load/load-metabase! (ingestion-in-memory @serialized))))))))

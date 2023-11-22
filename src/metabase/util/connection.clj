@@ -14,8 +14,8 @@
                      (= (:db-type app-db) :h2) u/upper-case-en)]
     (t2/with-connection [^Connection conn]
       (with-open [rset (.getColumns (.getMetaData conn) nil nil table-name nil)]
-        (into {} (take-while some?)
-              (repeatedly
-               (fn []
+        (into {}
+              (iteration
+               (fn [_]
                  (when (.next rset)
                    [(.getString rset "COLUMN_NAME") (.getString rset "TYPE_NAME")]))))))))

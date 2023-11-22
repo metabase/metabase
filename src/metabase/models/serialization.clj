@@ -548,13 +548,13 @@
 
 (defn load-xform-basics
   "Performs the usual steps for an incoming entity:
-  - Drop :serdes/meta
+  - removes extraneous keys (e.g. `:serdes/meta`)
 
   You should call this as part of any implementation of [[load-xform]].
 
   This is a mirror (but not precise inverse) of [[extract-one-basics]]."
   [ingested]
-  (-> ingested drop-excess-keys (dissoc :serdes/meta)))
+  (drop-excess-keys ingested))
 
 (defmethod load-xform :default [ingested]
   (load-xform-basics ingested))
