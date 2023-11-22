@@ -74,7 +74,7 @@
          end-time
          (< (.toMinutes (t/duration start-time end-time)) analyze-duration-threshold-for-refingerprinting))))
 
-(defn- sync-and-analyze-database!*
+(defn- sync-and-analyze-database*!
   [database-id]
   (log/info (trs "Starting sync task for Database {0}." database-id))
   (when-let [database (or (t2/select-one Database :id database-id)
@@ -110,7 +110,7 @@
                           {:database-id database-id
                            :raw-job-context job-context
                            :job-context (pr-str job-context)}))))
-      (sync-and-analyze-database!* database-id))))
+      (sync-and-analyze-database*! database-id))))
 
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Sync and analyze the database"}
