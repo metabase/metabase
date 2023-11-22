@@ -1,15 +1,24 @@
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { t, jt } from "ttag";
 import cx from "classnames";
 import Button from "metabase/core/components/Button";
+import { Icon } from "metabase/core/components/Icon";
+import Toggle from "metabase/core/components/Toggle";
 import CopyWidget from "metabase/components/CopyWidget";
+import Confirm from "metabase/components/Confirm";
 
 import { getPublicEmbedHTML } from "metabase/public/lib/code";
 
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   Description,
   EmbedWidgetHeader,
+  ExtensionOption,
+  Header,
+  IconContainer,
   PublicEmbedHeader,
+  PublicLinkHeader,
 } from "./SharingPane.styled";
 
 type Resource = {
@@ -46,6 +55,9 @@ export default function SharingPane({
   isPublicSharingEnabled,
   isApplicationEmbeddingEnabled,
 }: SharingPaneProps) {
+  const [extensionState, setExtension] = useState<Extension>(null);
+
+  const publicLink = getPublicUrl(resource, extensionState);
   const iframeSource = getPublicEmbedHTML(getPublicUrl(resource));
 
   const shouldDisableEmbedding = !isAdmin || !isApplicationEmbeddingEnabled;
@@ -57,6 +69,74 @@ export default function SharingPane({
 
   return (
     <div className="pt2 ml-auto mr-auto" style={{ maxWidth: 600 }}>
+      {isAdmin && isPublicSharingEnabled && (
+        <div className="px4 py3 mb4 bordered rounded flex align-center">
+          <Header>{t`Enable sharing`}</Header>
+          <div className="ml-auto">
+            {resource.public_uuid ? (
+              <Confirm
+                title={t`Disable this public link?`}
+                content={t`This will cause the existing link to stop working. You can re-enable it, but when you do it will be a different link.`}
+                action={() => {
+                  MetabaseAnalytics.trackStructEvent(
+                    "Sharing Modal",
+                    "Public Link Disabled",
+                    resourceType,
+                  );
+                  onDisablePublicLink();
+                }}
+              >
+                <Toggle value={true} />
+              </Confirm>
+            ) : (
+              <Toggle
+                value={false}
+                onChange={() => {
+                  MetabaseAnalytics.trackStructEvent(
+                    "Sharing Modal",
+                    "Public Link Enabled",
+                    resourceType,
+                  );
+                  onCreatePublicLink();
+                }}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      <SharingOption
+        className={cx("border-bottom", {
+          disabled: !resource.public_uuid,
+        })}
+        illustration={
+          <IconContainer>
+            <Icon name="link" size={32} />
+          </IconContainer>
+        }
+      >
+        <PublicLinkHeader>{t`Public link`}</PublicLinkHeader>
+        <Description className="mb1">{t`Share this ${resourceType} with people who don't have a Metabase account using the URL below:`}</Description>
+        <CopyWidget value={publicLink} />
+        {extensions && extensions.length > 0 && (
+          <div className="mt1">
+            {extensions.map(extension => (
+              <ExtensionOption
+                key={extension}
+                isSelected={extension === extensionState}
+                onClick={() =>
+                  setExtension(extensionState =>
+                    extension === extensionState ? null : extension,
+                  )
+                }
+              >
+                {extension}{" "}
+              </ExtensionOption>
+            ))}
+          </div>
+        )}
+      </SharingOption>
+
       <SharingOption
         className={cx("border-bottom", {
           disabled: !resource.public_uuid,
@@ -124,7 +204,6 @@ function ResponsiveImage({ imageUrl }: { imageUrl: string }) {
 }
 
 const imageRegExp = /(?<baseUrl>.*)(?<extension>\.[A-z]{3,4})/;
-
 function getSrcSet(imageUrl: string) {
   const { baseUrl, extension } = imageRegExp.exec(imageUrl)?.groups as {
     baseUrl: string;
