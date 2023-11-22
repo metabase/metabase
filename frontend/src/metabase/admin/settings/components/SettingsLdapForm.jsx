@@ -1,20 +1,56 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import _ from "underscore";
 import { connect } from "react-redux";
 import { updateLdapSettings } from "metabase/admin/settings/settings";
-import SettingsBatchForm from "./SettingsBatchForm";
-import { FormButton } from "./SettingsLdapForm.styled";
+
+import {
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+} from "metabase/forms";
+import Breadcrumbs from "metabase/components/Breadcrumbs";
+import { FormSection } from "metabase/containers/FormikForm";
+import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
+
+import { LdapForm, LdapFormFooter } from "./SettingsLdapForm.styled";
 
 const propTypes = {
+  elements: PropTypes.array,
   settingValues: PropTypes.object.isRequired,
   onSubmit: PropTypes.func.isRequired,
 };
 
-const SettingsLdapForm = ({ settingValues, onSubmit, ...props }) => {
+const SettingsLdapForm = ({
+  elements = [],
+  settingValues,
+  onSubmit,
+  ...props
+}) => {
   const isEnabled = settingValues["ldap-enabled"];
-  const layout = getLayout(settingValues);
-  const breadcrumbs = getBreadcrumbs();
+
+  const settings = useMemo(() => {
+    return _.indexBy(elements, "key");
+  }, [elements]);
+
+  const fields = useMemo(() => {
+    return _.mapObject(settings, setting => ({
+      name: setting.key,
+      label: setting.display_name,
+      description: setting.description,
+      placeholder: setting.is_env_setting
+        ? t`Using ${setting.env_name}`
+        : setting.placeholder || setting.default,
+      required: setting.required,
+      autoFocus: setting.autoFocus,
+    }));
+  }, [settings]);
+  console.error(fields); // TODO: remove
+
+  const attributeValues = useMemo(() => {
+    return getAttributeValues(settingValues);
+  }, [settingValues]);
 
   const handleSubmit = useCallback(
     values => {
@@ -24,71 +60,74 @@ const SettingsLdapForm = ({ settingValues, onSubmit, ...props }) => {
   );
 
   return (
-    <SettingsBatchForm
-      {...props}
-      layout={layout}
-      breadcrumbs={breadcrumbs}
-      settingValues={settingValues}
-      updateSettings={handleSubmit}
-      renderSubmitButton={({ disabled, pristine, onSubmit }) => (
-        <FormButton
-          primary={!disabled}
-          disabled={disabled || pristine}
-          actionFn={onSubmit}
-          normalText={isEnabled ? t`Save changes` : t`Save and enable`}
-          successText={t`Success`}
-        />
+    <FormProvider
+      initialValues={attributeValues}
+      onSubmit={handleSubmit}
+      enableReinitialize
+    >
+      {({ dirty }) => (
+        <LdapForm>
+          <Breadcrumbs
+            className="mb3"
+            crumbs={[
+              [t`Authentication`, "/admin/settings/authentication"],
+              [t`LDAP`],
+            ]}
+          />
+          <FormSection title={"Group Schema"}>
+            <GroupMappingsWidget
+              isFormik
+              setting={{ key: "ldap-group-sync" }}
+              onChange={handleSubmit}
+              settingValues={settingValues}
+              mappingSetting="ldap-group-mappings"
+              groupHeading={t`Group Name`}
+              groupPlaceholder={t`Group Name`}
+            />
+          </FormSection>
+          <LdapFormFooter>
+            <FormErrorMessage />
+            <FormSubmitButton
+              disabled={!dirty}
+              label={isEnabled ? t`Save changes` : t`Save and enable`}
+              variant="filled"
+            />
+          </LdapFormFooter>
+        </LdapForm>
       )}
-    />
+    </FormProvider>
   );
 };
 
+const LDAP_ATTRS = [
+  // Server Settings
+  "ldap-host",
+  "ldap-port",
+  "ldap-security",
+  "ldap-bind-dn",
+  "ldap-password",
+
+  // User Schema
+  "ldap-user-base",
+  "ldap-user-filter",
+
+  // Attributes (collapsible)
+  "ldap-attribute-email",
+  "ldap-attribute-firstname",
+  "ldap-attribute-lastname",
+
+  // Group Schema
+  "ldap-group-sync",
+  "ldap-group-base",
+  "ldap-group-membership-filter", // if hasPremiumFeature("sso_ldap")
+  "ldap-sync-admin-group", // if hasPremiumFeature("sso_ldap")
+];
+
+const getAttributeValues = values => {
+  return Object.fromEntries(LDAP_ATTRS.map(key => [key, values[key]]));
+};
+
 SettingsLdapForm.propTypes = propTypes;
-
-const getLayout = settingValues => {
-  return [
-    {
-      title: t`Server Settings`,
-      settings: [
-        "ldap-host",
-        "ldap-port",
-        "ldap-security",
-        "ldap-bind-dn",
-        "ldap-password",
-      ],
-    },
-    {
-      title: t`User Schema`,
-      settings: ["ldap-user-base", "ldap-user-filter"],
-    },
-    {
-      title: t`Attributes`,
-      collapse: true,
-      settings: [
-        "ldap-attribute-email",
-        "ldap-attribute-firstname",
-        "ldap-attribute-lastname",
-      ],
-    },
-    {
-      title: t`Group Schema`,
-      settings: [
-        "ldap-group-sync",
-        "ldap-group-base",
-        "ldap-group-membership-filter" in settingValues
-          ? "ldap-group-membership-filter"
-          : null,
-        "ldap-sync-admin-group" in settingValues
-          ? "ldap-sync-admin-group"
-          : null,
-      ].filter(Boolean),
-    },
-  ];
-};
-
-const getBreadcrumbs = () => {
-  return [[t`Authentication`, "/admin/settings/authentication"], [t`LDAP`]];
-};
 
 const mapDispatchToProps = {
   onSubmit: updateLdapSettings,
