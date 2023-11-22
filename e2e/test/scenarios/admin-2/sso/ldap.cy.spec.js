@@ -211,9 +211,9 @@ const enterLdapPort = value => {
 };
 
 const enterLdapSettings = () => {
-  typeAndBlurUsingLabel("LDAP Host", "localhost");
+  typeAndBlurUsingLabel(/LDAP Host/, "localhost");
   typeAndBlurUsingLabel("LDAP Port", "389");
   typeAndBlurUsingLabel("Username or DN", "cn=admin,dc=example,dc=org");
   typeAndBlurUsingLabel("Password", "adminpass");
-  typeAndBlurUsingLabel("User search base", "ou=users,dc=example,dc=org");
+  typeAndBlurUsingLabel(/User search base/, "ou=users,dc=example,dc=org");
 };

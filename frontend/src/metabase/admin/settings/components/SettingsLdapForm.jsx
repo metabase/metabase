@@ -127,7 +127,7 @@ const SettingsLdapForm = ({
                 groupPlaceholder={t`Group Name`}
               />
               <FormTextInput {...fields["ldap-group-base"]} />
-              {"ldap-group-membership-filter" in settingValues && (
+              {"ldap-group-membership-filter" in fields && (
                 <FormTextInput
                   {...fields["ldap-group-membership-filter"]}
                   validate={validateParentheses}
@@ -173,9 +173,7 @@ const LDAP_ATTRS = [
 ];
 
 const getAttributeValues = values => {
-  return Object.fromEntries(
-    LDAP_ATTRS.filter(key => key in values).map(key => [key, values[key]]),
-  );
+  return Object.fromEntries(LDAP_ATTRS.map(key => [key, values[key]]));
 };
 
 SettingsLdapForm.propTypes = propTypes;
