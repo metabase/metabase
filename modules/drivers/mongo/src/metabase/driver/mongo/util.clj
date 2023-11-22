@@ -18,6 +18,10 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:dynamic ^com.mongodb.MongoClient *mongo-client*
+  "Client used to connect to a Mongo database. Bound by top-level `with-mongo-connection` so it may be reused within its body."
+  nil)
+
 (def ^:dynamic ^com.mongodb.DB *mongo-connection*
   "Connection to a Mongo database. Bound by top-level `with-mongo-connection` so it may be reused within its body."
   nil)
@@ -225,13 +229,14 @@
     (ssh/with-ssh-tunnel [details-with-tunnel details]
       (let [connection-info (details->mongo-connection-info (normalize-details details-with-tunnel))
             [mongo-client db] (connect connection-info)]
-       (log/debug (u/format-color 'cyan (trs "Opened new MongoDB connection.")))
-       (try
-         (binding [*mongo-connection* db]
-           (f *mongo-connection*))
-         (finally
-           (mg/disconnect mongo-client)
-           (log/debug (u/format-color 'cyan (trs "Closed MongoDB connection.")))))))))
+        (log/debug (u/format-color 'cyan (trs "Opened new MongoDB connection.")))
+        (try
+          (binding [*mongo-connection* db
+                    *mongo-client*     mongo-client]
+            (f *mongo-connection*))
+          (finally
+            (mg/disconnect mongo-client)
+            (log/debug (u/format-color 'cyan (trs "Closed MongoDB connection.")))))))))
 
 (defmacro with-mongo-connection
   "Open a new MongoDB connection to ``database-or-connection-string`, bind connection to `binding`, execute `body`, and
@@ -247,8 +252,8 @@
        ...)
 
   `database-or-connection-string` can also optionally be the connection details map on its own."
-  [[binding database] & body]
-  `(let [f# (fn [~binding]
+  [[database-binding database] & body]
+  `(let [f# (fn [~database-binding]
               ~@body)]
      (if *mongo-connection*
        (f# *mongo-connection*)

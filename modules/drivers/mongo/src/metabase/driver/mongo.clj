@@ -12,7 +12,7 @@
    [metabase.driver.mongo.execute :as mongo.execute]
    [metabase.driver.mongo.parameters :as mongo.params]
    [metabase.driver.mongo.query-processor :as mongo.qp]
-   [metabase.driver.mongo.util :refer [with-mongo-connection]]
+   [metabase.driver.mongo.util :refer [with-mongo-connection] :as mongo.util]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -55,10 +55,11 @@
 (defmethod driver/can-connect? :mongo
   [_ details]
   (with-mongo-connection [^DB conn, details]
-    (= (float (-> (cmd/db-stats conn)
-                  (m.conversion/from-db-object :keywordize)
-                  :ok))
-       1.0)))
+    (let [db-stats (-> (cmd/db-stats conn)
+                       (m.conversion/from-db-object :keywordize))]
+      (and (= (float (:ok db-stats))
+              1.0)
+           (contains? (mg/get-db-names mongo.util/*mongo-client*) (:db db-stats))))))
 
 (defmethod driver/humanize-connection-error-message
   :mongo
