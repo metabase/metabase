@@ -937,8 +937,10 @@
   form used internally."
   [mappings]
   (into {} (for [[json-key mapping] mappings]
-             [(keyword (json-mbql-fully-qualified-names->ids json-key))
-              (import-viz-click-behavior-mapping mapping)])))
+             (if (mb.viz/dimension-param-mapping? mapping)
+               [(keyword (json-mbql-fully-qualified-names->ids json-key))
+                (import-viz-click-behavior-mapping mapping)]
+               [json-key mapping]))))
 
 (defn- export-viz-click-behavior [settings]
   (some-> settings
