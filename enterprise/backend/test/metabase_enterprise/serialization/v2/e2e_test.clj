@@ -742,7 +742,7 @@
       (ts/with-random-dump-dir [dump-dir "serdesv2-"]
         (ts/with-source-and-dest-dbs
           (ts/with-source-db
-            (mt/dataset test-data
+            (mt/dataset sample-dataset
               (mt/$ids nil
                 (t2.with-temp/with-temp
                   [Database   {db-id :id}    {:name "Pivot Database"}
@@ -751,38 +751,40 @@
                                               :collection_id coll-id
                                               :dataset_query {:type     :query
                                                               :database db-id
-                                                              :query    {:source-table $$checkins
-                                                                         :aggregation  [:sum [:field %checkins.id nil]]
-                                                                         :breakout     [[:field %checkins.user_id nil]]}}
+                                                              :query    {:source-table $$orders
+                                                                         :aggregation  [:sum [:field %orders.id nil]]
+                                                                         :breakout     [[:field %orders.user_id nil]]}}
                                               :visualization_settings
                                               {:pivot_table.column_split
-                                               {:rows    [[:field %users.name {:base-type    :type/Text
-                                                                               :source-field %checkins.user_id}]]
-                                                :columns [[:field %venues.name {:base-type    :type/Text
-                                                                                :source-field %checkins.venue_id}]]
+                                               {:rows    [[:field %people.name {:base-type    :type/Text
+                                                                                :source-field %orders.user_id}]]
+                                                :columns [[:field %products.title {:base-type    :type/Text
+                                                                                   :source-field %orders.product_id}]]
                                                 :values  [[:aggregation 0]]}
                                                :column_settings
-                                               {(format "[\"ref\",[\"field\",%s,null]]" %users.name)
+                                               {(format "[\"ref\",[\"field\",%s,null]]" %people.name)
                                                 {:pivot_table.column_sort_order "descending"}}}}]
                   (reset! card1s card)
                   (-> (serdes/with-cache (into [] (extract/extract {})))
                       (storage/store! dump-dir))))))
 
           (ts/with-dest-db
-            (mt/dataset test-data
+            (mt/dataset sample-dataset
               (mt/$ids nil
                 (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
 
-                (let [viz (:visualization_settings
-                           (t2/select-one Card :entity_id (:entity_id @card1s)))]
+                (let [viz (t2/select-one-fn :visualization_settings Card :entity_id (:entity_id @card1s))]
                   (is (contains? viz :pivot_table.column_split))
-                  (is (= [[:field %users.name {:base-type    :type/Text
-                                               :source-field %checkins.user_id}]]
+                  ;; column ids are different in different dbs
+                  (is (not= (get-in @card1s [:visualization_settings :pivot_table.column_split :rows 0 1])
+                            (get-in viz [:pivot_table.column_split :rows 0 1])))
+                  (is (= [[:field %people.name {:base-type    :type/Text
+                                                :source-field %orders.user_id}]]
                          (get-in viz [:pivot_table.column_split :rows])))
-                  (is (= [[:field %venues.name {:base-type    :type/Text
-                                                :source-field %checkins.venue_id}]]
+                  (is (= [[:field %products.title {:base-type    :type/Text
+                                                   :source-field %orders.product_id}]]
                          (get-in viz [:pivot_table.column_split :columns])))
                   (is (= "descending"
                          (get-in viz [:column_settings
-                                      (format "[\"ref\",[\"field\",%s,null]]" %users.name)
+                                      (format "[\"ref\",[\"field\",%s,null]]" %people.name)
                                       :pivot_table.column_sort_order]))))))))))))

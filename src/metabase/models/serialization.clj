@@ -1194,13 +1194,13 @@
 
 (defn- export-pivot-table [settings]
   (some-> settings
-          (m/update-existing-in [:pivot_table.column_split :rows] ids->fully-qualified-names #_export-pivot-table-fields)
-          (m/update-existing-in [:pivot_table.column_split :columns] ids->fully-qualified-names #_export-pivot-table-fields)))
+          (m/update-existing-in [:pivot_table.column_split :rows] ids->fully-qualified-names)
+          (m/update-existing-in [:pivot_table.column_split :columns] ids->fully-qualified-names)))
 
 (defn- import-pivot-table [settings]
   (some-> settings
-          (m/update-existing-in [:pivot_table.column_split :rows] mbql-fully-qualified-names->ids #_import-pivot-table-fields)
-          (m/update-existing-in [:pivot_table.column_split :columns] mbql-fully-qualified-names->ids #_import-pivot-table-fields)))
+          (m/update-existing-in [:pivot_table.column_split :rows] mbql-fully-qualified-names->ids)
+          (m/update-existing-in [:pivot_table.column_split :columns] mbql-fully-qualified-names->ids)))
 
 (defn- export-visualizations [entity]
   (mbql.u/replace
