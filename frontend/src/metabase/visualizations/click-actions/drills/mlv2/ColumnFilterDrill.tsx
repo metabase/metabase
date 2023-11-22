@@ -11,7 +11,7 @@ export const ColumnFilterDrill: Drill<Lib.ColumnFilterDrillThruInfo> = ({
     return [];
   }
 
-  const { query, column } = Lib.columnFilterDrillDetails(drill);
+  const { query, column, stageIndex } = Lib.columnFilterDrillDetails(drill);
 
   return [
     {
@@ -20,7 +20,7 @@ export const ColumnFilterDrill: Drill<Lib.ColumnFilterDrillThruInfo> = ({
       title: t`Filter by this column`,
       buttonType: "horizontal",
       icon: "filter",
-      popover: getFilterPopover({ question, query, column }),
+      popover: getFilterPopover({ question, query, column, stageIndex }),
     },
   ];
 };
