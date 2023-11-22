@@ -358,6 +358,7 @@ export type ColumnFilterDrillDetails = {
 
 export type PivotDrillDetails = {
   query: Query;
+  stageIndex: number;
   columns: ColumnMetadata[];
 };
 

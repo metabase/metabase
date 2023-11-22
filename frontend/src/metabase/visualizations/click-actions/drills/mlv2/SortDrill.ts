@@ -27,10 +27,6 @@ export const SortDrill: Drill<Lib.SortDrillThruInfo> = ({
   drillDisplayInfo,
   applyDrill,
 }) => {
-  if (!drill) {
-    return [];
-  }
-
   const { directions } = drillDisplayInfo;
 
   return directions.map(direction => ({

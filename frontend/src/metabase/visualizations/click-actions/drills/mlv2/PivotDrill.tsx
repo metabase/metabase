@@ -10,8 +10,6 @@ import type {
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 
-const STAGE_INDEX = -1;
-
 const DEFAULT_ACTION: ClickActionBase = {
   name: "breakout-by",
   section: "breakout",
@@ -24,10 +22,13 @@ export const PivotDrill: Drill = ({ drill, applyDrill }) => {
   }
 
   const clickActions: PopoverClickAction[] = [];
-  const { query, columns } = Lib.pivotDrillDetails(drill);
+  const { query, stageIndex, columns } = Lib.pivotDrillDetails(drill);
   const categoryColumns = columns.filter(Lib.isCategory);
   const locationColumns = columns.filter(Lib.isLocation);
   const dateColumns = columns.filter(Lib.isDate);
+
+  const getPopover = (columns: Lib.ColumnMetadata[]) =>
+    getColumnPopover(query, stageIndex, columns, drill, applyDrill);
 
   if (categoryColumns.length > 0) {
     clickActions.push({
@@ -35,7 +36,7 @@ export const PivotDrill: Drill = ({ drill, applyDrill }) => {
       name: "pivot-by-category",
       title: t`Category`,
       icon: "string",
-      popover: getColumnPopover(query, categoryColumns, drill, applyDrill),
+      popover: getPopover(categoryColumns),
     });
   }
 
@@ -45,7 +46,7 @@ export const PivotDrill: Drill = ({ drill, applyDrill }) => {
       name: "pivot-by-location",
       title: t`Location`,
       icon: "location",
-      popover: getColumnPopover(query, locationColumns, drill, applyDrill),
+      popover: getPopover(locationColumns),
     });
   }
 
@@ -55,7 +56,7 @@ export const PivotDrill: Drill = ({ drill, applyDrill }) => {
       name: "pivot-by-time",
       title: t`Time`,
       icon: "calendar",
-      popover: getColumnPopover(query, dateColumns, drill, applyDrill),
+      popover: getPopover(dateColumns),
     });
   }
 
@@ -75,6 +76,7 @@ export const PivotDrill: Drill = ({ drill, applyDrill }) => {
 
 function getColumnPopover(
   query: Lib.Query,
+  stageIndex: number,
   columns: Lib.ColumnMetadata[],
   drill: Lib.DrillThru,
   applyDrill: (drill: Lib.DrillThru, column: Lib.ColumnMetadata) => Question,
@@ -86,7 +88,7 @@ function getColumnPopover(
     return (
       <QueryColumnPicker
         query={query}
-        stageIndex={STAGE_INDEX}
+        stageIndex={stageIndex}
         columnGroups={Lib.groupColumns(columns)}
         checkIsColumnSelected={() => false}
         onSelect={column => {

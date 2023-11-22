@@ -12,10 +12,6 @@ export const FKFilterDrill: Drill<Lib.FKFilterDrillThruInfo> = ({
   drillDisplayInfo,
   applyDrill,
 }) => {
-  if (!drill) {
-    return [];
-  }
-
   const { tableName, columnName } = drillDisplayInfo;
   const tableTitle = pluralize(tableName);
   const columnTitle = singularize(stripId(columnName));

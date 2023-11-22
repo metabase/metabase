@@ -6,10 +6,6 @@ export const ZoomGeoDrill: Drill<Lib.ZoomDrillThruInfo> = ({
   drill,
   applyDrill,
 }) => {
-  if (!drill) {
-    return [];
-  }
-
   return [
     {
       name: "zoom-in.geo",
