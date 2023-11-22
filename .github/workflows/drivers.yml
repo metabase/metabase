@@ -379,7 +379,14 @@ jobs:
       MB_MYSQL_SSL_TEST_PASSWORD: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_PASSWORD }}
     services:
       mysql:
-        image: circleci/mysql:latest
+        image: mysql:latest
+        env:
+          # Try adjusting container env as per https://hub.docker.com/r/circleci/mysql
+          MYSQL_ALLOW_EMPTY_PASSWORD: true
+          MYSQL_DATABASE: circle_test
+          MYSQL_HOST: '127.0.0.1'
+          MYSQL_ROOT_HOST: '%'
+          MYSQL_USER: root
         ports:
         - "3306:3306"
     steps:
