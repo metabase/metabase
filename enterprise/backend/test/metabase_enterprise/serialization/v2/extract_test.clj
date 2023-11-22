@@ -1643,7 +1643,7 @@
                                                      :collection_id coll2-id
                                                      :dataset_query {:query {:source-table (str "card__" card1-id)
                                                                              :aggregation  [[:count]]}}}]
-      (testing "Complain about card to available for exporting"
+      (testing "Complain about card not available for exporting"
         (is (some #(str/starts-with? % "Failed to export Dashboard")
                   (into #{}
                         (map (fn [[_log-level _error message]] message))
@@ -1652,7 +1652,7 @@
                                             :no-settings   true
                                             :no-data-model true}))))))
 
-      (testing "Complain about card depending on a card"
+      (testing "Complain about card depending on an outside card"
         (is (some #(str/starts-with? % "Failed to export Cards")
                   (into #{}
                         (map (fn [[_log-level _error message]] message))

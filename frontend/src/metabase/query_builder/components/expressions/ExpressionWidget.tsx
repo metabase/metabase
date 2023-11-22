@@ -28,7 +28,7 @@ const EXPRESSIONS_DOCUMENTATION_URL = MetabaseSettings.docsUrl(
 );
 
 export interface ExpressionWidgetProps {
-  query: StructuredQuery;
+  legacyQuery: StructuredQuery;
   expression: Expression | undefined;
   name?: string;
   withName?: boolean;
@@ -43,7 +43,7 @@ export interface ExpressionWidgetProps {
 
 export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
   const {
-    query,
+    legacyQuery,
     name: initialName,
     expression: initialExpression,
     withName = false,
@@ -106,7 +106,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
             expression={expression}
             startRule={startRule}
             name={name}
-            query={query}
+            legacyQuery={legacyQuery}
             reportTimezone={reportTimezone}
             textAreaId="expression-content"
             onChange={handleExpressionChange}
