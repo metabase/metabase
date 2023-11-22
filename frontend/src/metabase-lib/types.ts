@@ -270,9 +270,17 @@ export type DrillThruType =
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
+export type QuickFilterDrillThruOperator =
+  | "="
+  | "≠"
+  | "<"
+  | ">"
+  | "contains"
+  | "does-not-contain";
+
 export type QuickFilterDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/quick-filter"> & {
-    operators: Array<"=" | "≠" | "<" | ">">;
+    operators: Array<QuickFilterDrillThruOperator>;
   };
 
 type ObjectDetailsDrillThruInfo<Type extends DrillThruType> =
@@ -346,6 +354,12 @@ export type ColumnFilterDrillDetails = {
 export type PivotDrillDetails = {
   query: Query;
   columns: ColumnMetadata[];
+};
+
+export type QuickFilterDrillThruDetails = {
+  query: Query;
+  column: ColumnMetadata;
+  value: unknown;
 };
 
 export interface Dimension {

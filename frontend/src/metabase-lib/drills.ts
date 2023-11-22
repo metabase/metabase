@@ -8,6 +8,7 @@ import type {
   DrillThru,
   PivotDrillDetails,
   Query,
+  QuickFilterDrillThruDetails,
 } from "./types";
 
 // NOTE: value might be null or undefined, and they mean different things!
@@ -48,4 +49,10 @@ export function columnFilterDrillDetails(
 
 export function pivotDrillDetails(drillThru: DrillThru): PivotDrillDetails {
   return ML.pivot_drill_details(drillThru);
+}
+
+export function quickFilterDrillDetails(
+  drillThru: DrillThru,
+): QuickFilterDrillThruDetails {
+  return ML.quick_filter_drill_details(drillThru);
 }

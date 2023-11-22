@@ -42,10 +42,14 @@ export type ClickActionSection =
   | "summarize"
   | "zoom";
 
+export type ClickActionSectionDirection = "row" | "column";
+
 export type ClickActionBase = {
   name: string;
   title?: React.ReactNode;
   section: ClickActionSection;
+  sectionTitle?: string;
+  sectionDirection?: ClickActionSectionDirection;
   icon?: React.ReactNode;
   buttonType: ClickActionButtonType;
   default?: boolean;

@@ -1,146 +1,129 @@
-import type * as React from "react";
 import { t } from "ttag";
-import type { DatasetColumn, RowValue } from "metabase-types/api";
 import type {
-  ClickActionButtonType,
+  ClickAction,
   Drill,
 } from "metabase/visualizations/types/click-actions";
-import type * as Lib from "metabase-lib";
-import { isBoolean, isDate, isNumeric } from "metabase-lib/types/utils/isa";
-import { TextIcon } from "./QuickFilterDrill.styled";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/Question";
 
-type FilterOperator = "=" | "≠" | "<" | ">";
-type DateQuickFilterOperatorType = "<" | ">" | "=" | "≠";
-type FilterValueType = "null" | "numeric" | "date" | "boolean" | "text";
+export const QuickFilterDrill: Drill<Lib.QuickFilterDrillThruInfo> = ({
+  drill,
+  drillDisplayInfo,
+  applyDrill,
+}) => {
+  if (!drill) {
+    return [];
+  }
 
-const DateButtonTitleMap: Record<DateQuickFilterOperatorType, string> = {
-  ["<"]: t`Before`,
-  [">"]: t`After`,
-  ["="]: t`On`,
-  ["≠"]: t`Not on`,
+  const { operators } = drillDisplayInfo;
+  const drillDetails = Lib.quickFilterDrillDetails(drill);
+
+  return operators.map(operator =>
+    getClickAction(drill, drillDetails, operator, applyDrill),
+  );
 };
-
-const SPECIFIC_VALUE_TITLE_MAX_LENGTH = 20;
 
 const getTextValueTitle = (value: string): string => {
   if (value.length === 0) {
     return t`empty`;
   }
 
-  if (value.length > SPECIFIC_VALUE_TITLE_MAX_LENGTH) {
+  if (value.length > 20) {
     return t`this`;
   }
 
   return value;
 };
 
-const getOperatorOverrides = (
-  operator: FilterOperator,
-  valueType: FilterValueType,
-  value: RowValue | undefined,
-): {
-  title?: string;
-  icon?: React.ReactNode;
-  buttonType?: ClickActionButtonType;
-} | null => {
-  if (valueType === "text" && typeof value === "string") {
-    const textValue = getTextValueTitle(value);
+function getClickAction(
+  drill: Lib.DrillThru,
+  { query, column, value }: Lib.QuickFilterDrillThruDetails,
+  operator: Lib.QuickFilterDrillThruOperator,
+  applyDrill: (
+    drill: Lib.DrillThru,
+    operator: Lib.QuickFilterDrillThruOperator,
+  ) => Question,
+): ClickAction {
+  const action: ClickAction = {
+    name: operator,
+    title: operator,
+    section: "filter",
+    sectionDirection: "row",
+    buttonType: "token-filter",
+    question: () => applyDrill(drill, operator),
+  };
 
-    if (operator === "=") {
-      return {
-        title: t`Is ${textValue}`,
-        icon: <TextIcon>=</TextIcon>,
-        buttonType: "horizontal",
-      };
-    }
-    if (operator === "≠") {
-      return {
-        title: t`Is not ${textValue}`,
-        icon: <TextIcon>≠</TextIcon>,
-        buttonType: "horizontal",
-      };
-    }
-    // if (operator === "contains") {
-    //   return {
-    //     title: t`Contains…`,
-    //     icon: "filter",
-    //     buttonType: "horizontal",
-    //   };
-    // }
-    // if (operator === "does-not-contain") {
-    //   return {
-    //     title: t`Does not contain…`,
-    //     icon: <TextIcon>≠</TextIcon>,
-    //     buttonType: "horizontal",
-    //   };
-    // }
-  }
-
-  if (valueType === "date") {
-    return {
-      title: DateButtonTitleMap[operator],
+  if (Lib.isDate(column)) {
+    const dateAction: ClickAction = {
+      ...action,
+      sectionTitle: t`Filter by this date`,
+      sectionDirection: "column",
       buttonType: "horizontal",
     };
+
+    switch (operator) {
+      case "=":
+        return {
+          ...dateAction,
+          title: t`On`,
+        };
+      case "≠":
+        return {
+          ...dateAction,
+          title: t`Not on`,
+        };
+      case ">":
+        return {
+          ...dateAction,
+          title: t`After`,
+        };
+      case "<":
+        return {
+          ...dateAction,
+          title: t`Before`,
+        };
+      default:
+        return dateAction;
+    }
   }
 
-  return null;
-};
-
-export const QuickFilterDrill: Drill<Lib.QuickFilterDrillThruInfo> = ({
-  drill,
-  drillDisplayInfo,
-  applyDrill,
-  clicked,
-}) => {
-  if (!drill || !clicked || !clicked.column) {
-    return [];
-  }
-
-  const { operators } = drillDisplayInfo;
-  const { value, column } = clicked;
-
-  const columnValueType = getValueType(value, column);
-
-  return operators.map(operator => {
-    const overrides = getOperatorOverrides(operator, columnValueType, value);
-
-    return {
-      name: operator,
-      title: operator,
-      section: "filter",
-      buttonType: "token-filter",
-
-      question: () => applyDrill(drill, operator),
-
-      extra: () => ({
-        valueType: columnValueType,
-        columnName: clicked.column?.display_name,
-      }),
-
-      ...overrides,
+  if (Lib.isString(column)) {
+    const stringAction: ClickAction = {
+      ...action,
+      sectionDirection: "column",
+      buttonType: "horizontal",
     };
-  });
-};
+    const valueTitle = getTextValueTitle(String(value));
 
-const getValueType = (
-  value: unknown,
-  column: DatasetColumn,
-): FilterValueType => {
-  if (value == null) {
-    return "null";
+    switch (operator) {
+      case "=":
+        return {
+          ...stringAction,
+          title: t`Is ${valueTitle}`,
+        };
+      case "≠":
+        return {
+          ...stringAction,
+          title: t`Is not ${valueTitle}`,
+        };
+      case "contains": {
+        return {
+          ...stringAction,
+          title: `Contains…`,
+          popover: () => <div />,
+        };
+      }
+      case "does-not-contain": {
+        return {
+          ...stringAction,
+          title: `Does not contain…`,
+          popover: () => <div />,
+        };
+      }
+      default:
+        return stringAction;
+    }
   }
 
-  if (isNumeric(column)) {
-    return "numeric";
-  }
-
-  if (isDate(column)) {
-    return "date";
-  }
-
-  if (isBoolean(column)) {
-    return "boolean";
-  }
-
-  return "text";
-};
+  return action;
+}
