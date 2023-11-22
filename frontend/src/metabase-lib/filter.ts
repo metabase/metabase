@@ -30,6 +30,7 @@ import {
   temporalBucket,
   withTemporalBucket,
 } from "./temporal_bucket";
+import { removeClause } from "./query";
 import type {
   BooleanFilterOperatorName,
   BooleanFilterParts,
@@ -87,6 +88,14 @@ export function filter(
 
 export function filters(query: Query, stageIndex: number): FilterClause[] {
   return ML.filters(query, stageIndex);
+}
+
+export function clearFilters(query: Query, stageIndex: number): Query {
+  let current = query;
+  filters(query, stageIndex).forEach(clause => {
+    current = removeClause(current, stageIndex, clause);
+  });
+  return current;
 }
 
 export function stringFilterClause({
