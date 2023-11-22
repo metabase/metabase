@@ -1,4 +1,3 @@
-import { t } from "ttag";
 import { getSetting, getSettings } from "metabase/selectors/settings";
 import { LOADING_MESSAGE_BY_SETTING } from "../whitelabel/lib/loading-message";
 import type { EnterpriseSettings, EnterpriseState } from "./types";
@@ -19,7 +18,7 @@ export const getLogoUrl = (state: EnterpriseState) =>
 export const getLoadingMessage = (state: EnterpriseState) =>
   LOADING_MESSAGE_BY_SETTING[getSetting(state, "loading-message")];
 
-const DEFAULT_APPLICATION_NAME = t`Metabase`;
+const DEFAULT_APPLICATION_NAME = "Metabase";
 export const getIsWhiteLabeling = (state: EnterpriseState) =>
   getApplicationName(state) !== DEFAULT_APPLICATION_NAME;
 
