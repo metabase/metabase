@@ -18,7 +18,7 @@ export function getFilterPopover({
   stageIndex,
   initialFilter,
 }: FilterPopoverOpts) {
-  return function DrillPopover({
+  return function FilterDrillPopover({
     onChangeCardAndRun,
     onClose,
   }: ClickActionPopoverProps) {
