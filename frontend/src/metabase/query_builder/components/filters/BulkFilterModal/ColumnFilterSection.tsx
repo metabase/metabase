@@ -3,6 +3,7 @@ import { Icon } from "metabase/core/components/Icon";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import * as Lib from "metabase-lib";
 import { BooleanFilterEditor } from "./BooleanFilterEditor";
+import { DateFilterEditor } from "./DateFilterEditor";
 import { NumberFilterEditor } from "./NumberFilterEditor";
 import { StringFilterEditor } from "./StringFilterEditor";
 import { TimeFilterEditor } from "./TimeFilterEditor";
@@ -60,7 +61,7 @@ function getFilterWidget(column: Lib.ColumnMetadata) {
     return TimeFilterEditor;
   }
   if (Lib.isDate(column)) {
-    return NotImplementedWidget;
+    return DateFilterEditor;
   }
   if (Lib.isCoordinate(column)) {
     return NotImplementedWidget;

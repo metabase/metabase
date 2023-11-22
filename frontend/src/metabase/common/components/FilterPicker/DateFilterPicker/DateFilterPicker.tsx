@@ -1,15 +1,10 @@
 import { useMemo } from "react";
 import type { DatePickerValue } from "metabase/common/components/DatePicker";
 import { DatePicker } from "metabase/common/components/DatePicker";
+import { useDateFilter } from "metabase/common/hooks/filters/use-date-filter";
 import * as Lib from "metabase-lib";
 import { BackButton } from "../BackButton";
 import type { FilterPickerWidgetProps } from "../types";
-import {
-  getFilterClause,
-  getPickerOperators,
-  getPickerUnits,
-  getPickerValue,
-} from "./utils";
 
 export function DateFilterPicker({
   query,
@@ -24,20 +19,11 @@ export function DateFilterPicker({
     return Lib.displayInfo(query, stageIndex, column);
   }, [query, stageIndex, column]);
 
-  const value = useMemo(() => {
-    return filter && getPickerValue(query, stageIndex, filter);
-  }, [query, stageIndex, filter]);
-
-  const availableOperators = useMemo(() => {
-    return getPickerOperators(query, stageIndex, column);
-  }, [query, stageIndex, column]);
-
-  const availableUnits = useMemo(() => {
-    return getPickerUnits(query, stageIndex, column);
-  }, [query, stageIndex, column]);
+  const { value, availableOperators, availableUnits, getFilterClause } =
+    useDateFilter({ query, stageIndex, column, filter });
 
   const handleChange = (value: DatePickerValue) => {
-    onChange(getFilterClause(query, stageIndex, column, value));
+    onChange(getFilterClause(value));
   };
 
   return (

@@ -16,7 +16,7 @@ import type {
   DatePickerValue,
 } from "./types";
 
-interface DatePickerProps {
+export interface DatePickerProps {
   value?: DatePickerValue;
   availableOperators?: ReadonlyArray<DatePickerOperator>;
   availableShortcuts?: ReadonlyArray<DatePickerShortcut>;
