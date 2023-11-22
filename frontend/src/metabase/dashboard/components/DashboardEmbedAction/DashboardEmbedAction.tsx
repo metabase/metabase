@@ -93,15 +93,14 @@ export const DashboardEmbedAction = ({
       return (
         <>
           {targetButton}
-          {isOpen && (
-            <DashboardSharingEmbeddingModal
-              key="dashboard-embed"
-              dashboard={dashboard}
-              enabled={isOpen}
-              onClose={onClose}
-              isLinkEnabled={true}
-            />
-          )}
+          <DashboardSharingEmbeddingModal
+            key="dashboard-embed"
+            dashboard={dashboard}
+            enabled={isOpen}
+            onClose={onClose}
+            isLinkEnabled={true}
+          />
+          )
         </>
       );
     }

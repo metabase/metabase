@@ -47,7 +47,6 @@ class DashboardSharingEmbeddingModal extends Component {
       updateEnableEmbedding,
       updateEmbeddingParams,
       onClose,
-      triggerElement,
       ...props
     } = this.props;
     if (!enabled) {
