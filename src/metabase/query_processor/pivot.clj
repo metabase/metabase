@@ -231,29 +231,25 @@
                                        column-split-columns)
                                (let [metadata-provider (or (:lib/metadata query)
                                                            (lib.metadata.jvm/application-database-metadata-provider (:database query)))
-                                     mlv2-query        (lib/query metadata-provider (lib.convert/->pMBQL query))
-                                     breakout-refs     (into []
-                                                             (map-indexed (fn [i a-ref]
-                                                                            (-> a-ref
-                                                                                (lib/with-temporal-bucket nil)
-                                                                                (vary-meta assoc ::i i))))
-                                                             (lib/breakouts mlv2-query -1))]
+                                     mlv2-query        (lib/query metadata-provider query)
+                                     breakouts         (into []
+                                                             (map-indexed (fn [i col]
+                                                                            (assoc col ::i i)))
+                                                             (lib/breakouts-metadata mlv2-query))]
                                  (fn [legacy-ref]
-                                   (let [pmbql-ref (lib.convert/->pMBQL legacy-ref)]
-                                     (try
-                                       (when-let [breakout-ref (lib.equality/find-closest-matching-ref
-                                                                mlv2-query
-                                                                pmbql-ref
-                                                                breakout-refs)]
-                                         (::i (meta breakout-ref)))
-                                       (catch Throwable e
-                                         (log/errorf e "Error finding matching column for ref %s" (pr-str legacy-ref))
-                                         nil))))))
-
-        pivot-rows (when column-split-rows
-                     (into [] (keep index-in-breakouts) column-split-rows))
-        pivot-cols (when column-split-columns
-                     (into [] (keep index-in-breakouts) column-split-columns))]
+                                   (try
+                                     (::i (lib.equality/find-column-for-legacy-ref
+                                           mlv2-query
+                                           -1
+                                           legacy-ref
+                                           breakouts))
+                                     (catch Throwable e
+                                       (log/errorf e "Error finding matching column for ref %s" (pr-str legacy-ref))
+                                       nil)))))
+        pivot-rows           (when column-split-rows
+                               (into [] (keep index-in-breakouts) column-split-rows))
+        pivot-cols           (when column-split-columns
+                               (into [] (keep index-in-breakouts) column-split-columns))]
     {:pivot-rows pivot-rows
      :pivot-cols pivot-cols}))
 
