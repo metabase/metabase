@@ -9,26 +9,21 @@ import type * as Lib from "metabase-lib";
 
 export const FKFilterDrill: Drill<Lib.FKFilterDrillThruInfo> = ({
   drill,
+  drillDisplayInfo,
   applyDrill,
-  question,
-  clicked,
 }) => {
-  if (!drill || !clicked?.column) {
+  if (!drill) {
     return [];
   }
 
-  const columnName = singularize(stripId(clicked.column?.display_name));
-  const tableName = question.table()?.display_name;
-
-  if (!tableName) {
-    return [];
-  }
+  const { tableName, columnName } = drillDisplayInfo;
   const tableTitle = pluralize(tableName);
+  const columnTitle = singularize(stripId(columnName));
 
   return [
     {
       name: "view-fks",
-      title: t`View this ${columnName}'s ${tableTitle}`,
+      title: t`View this ${columnTitle}'s ${tableTitle}`,
       section: "standalone_filter",
       icon: "filter",
       buttonType: "horizontal",
