@@ -754,7 +754,6 @@
                                                                              :parameters "[]"
                                                                              :created_at :%now
                                                                              :updated_at :%now}))
-
             dash-subscription-id (first (t2/insert-returning-pks! :pulse {:name            "A dashboard subscription"
                                                                           :creator_id      user-id
                                                                           :dashboard_id    dashboard-id
