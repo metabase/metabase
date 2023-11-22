@@ -88,6 +88,17 @@ export const PRODUCT_VENDOR_VALUES: FieldValuesResult = {
   has_more_values: true,
 };
 
+export const PRODUCT_TITLE_VALUES: FieldValuesResult = {
+  field_id: PRODUCTS.TITLE,
+  values: [
+    ["Aerodynamic Bronze Hat"],
+    ["Durable Copper Clock"],
+    ["Mediocre Paper Car"],
+    ["Sleek Plastic Toucan"],
+  ],
+  has_more_values: false,
+};
+
 export const PEOPLE_SOURCE_VALUES: FieldValuesResult = {
   field_id: PEOPLE.SOURCE,
   values: [["Affiliate"], ["Facebook"], ["Google"], ["Organic"], ["Twitter"]],
