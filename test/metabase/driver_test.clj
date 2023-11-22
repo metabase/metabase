@@ -84,37 +84,37 @@
 (deftest check-can-connect-before-sync-test
   (testing "Database sync should short-circuit and fail if the database connection is not available"
     (mt/test-drivers (mt/normal-drivers)
-        (let [database-name (mt/random-name)
-              dbdef         (basic-table-definition database-name)]
-          (mt/dataset dbdef
-            (let [db (mt/db)
-                  find-log-match (fn []
-                                   (some
-                                    (fn [[log-level throwable message]]
-                                      (and (= log-level :warn)
-                                           (instance? clojure.lang.ExceptionInfo throwable)
-                                           (re-matches #"^Cannot sync Database (.+): (.+)" message)))
-                                    (mt/with-log-messages-for-level :warn
-                                      (#'task.sync-databases/sync-and-analyze-database!* (u/the-id db)))))]
-              (binding [h2/*allow-testing-h2-connections* true]
-                (sync/sync-database! db))
-              (testing "sense checks before deleting the database"
-                (testing "sense check 1: sync-and-analyze-database! should not log a warning"
-                  (is (nil? (find-log-match))))
-                (testing "2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should succeed"
-                  (is (= {:status "ok"}
-                         (mt/user-http-request :crowberto :post 200 (str "/database/" (u/the-id db) "/sync_schema"))))))
+      (let [database-name (mt/random-name)
+            dbdef         (basic-table-definition database-name)]
+        (mt/dataset dbdef
+          (let [db (mt/db)
+                find-log-match (fn []
+                                 (some
+                                  (fn [[log-level throwable message]]
+                                    (and (= log-level :warn)
+                                         (instance? clojure.lang.ExceptionInfo throwable)
+                                         (re-matches #"^Cannot sync Database (.+): (.+)" message)))
+                                  (mt/with-log-messages-for-level :warn
+                                    (#'task.sync-databases/sync-and-analyze-database!* (u/the-id db)))))]
+            (binding [h2/*allow-testing-h2-connections* true]
+              (sync/sync-database! db))
+            (testing "sense checks before deleting the database"
+              (testing "sense check 1: sync-and-analyze-database! should not log a warning"
+                (is (nil? (find-log-match))))
+              (testing "2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should succeed"
+                (is (= {:status "ok"}
+                       (mt/user-http-request :crowberto :post 200 (str "/database/" (u/the-id db) "/sync_schema"))))))
               ;; release db resources like connection pools we don't have to wait to finish syncing before destroying the db
-              (driver/notify-database-updated driver/*driver* db)
+            (driver/notify-database-updated driver/*driver* db)
               ;; destroy the db
-              (tx/destroy-db! driver/*driver* dbdef)
-              (testing "after deleting a database, sync should fail"
-                (testing "1: sync-and-analyze-database! should log a warning and fail early"
-                  (is (some? (find-log-match))))
-                (testing "2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should fail"
-                  (mt/user-http-request :crowberto :post 422 (str "/database/" (u/the-id db) "/sync_schema"))))
+            (tx/destroy-db! driver/*driver* dbdef)
+            (testing "after deleting a database, sync should fail"
+              (testing "1: sync-and-analyze-database! should log a warning and fail early"
+                (is (some? (find-log-match))))
+              (testing "2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should fail"
+                (mt/user-http-request :crowberto :post 422 (str "/database/" (u/the-id db) "/sync_schema"))))
               ;; clean up the database
-              (t2/delete! :model/Database (u/the-id db))))))))
+            (t2/delete! :model/Database (u/the-id db))))))))
 
 (deftest supports-table-privileges-matches-implementations-test
   (mt/test-drivers (mt/normal-drivers-with-feature :table-privileges)
