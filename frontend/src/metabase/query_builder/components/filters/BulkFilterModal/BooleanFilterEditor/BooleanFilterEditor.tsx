@@ -49,7 +49,7 @@ export function BooleanFilterEditor({
     if (value !== previousValue) {
       onChange(getFilterClause());
     }
-  });
+  }, [value, previousValue, onChange, getFilterClause]);
 
   return (
     <Grid grow>

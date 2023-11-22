@@ -52,7 +52,14 @@ export function NumberFilterEditor({
     if (operator !== previousOperator || !_.isEqual(values, previousValues)) {
       onChange(getFilterClause());
     }
-  });
+  }, [
+    operator,
+    values,
+    previousOperator,
+    previousValues,
+    onChange,
+    getFilterClause,
+  ]);
 
   return (
     <Grid grow>
