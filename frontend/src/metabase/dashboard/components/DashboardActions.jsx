@@ -4,6 +4,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 
 import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import { DashboardEmbedAction } from "metabase/dashboard/components/DashboardEmbedAction/DashboardEmbedAction";
+import DashboardSharingEmbeddingModal from "metabase/dashboard/containers/DashboardSharingEmbeddingModal";
 import {
   FullScreenButtonIcon,
   NightModeButtonIcon,
@@ -73,7 +74,20 @@ export const getDashboardActions = (
     }
 
     if (canShareDashboard) {
-      buttons.push(<DashboardEmbedAction dashboard={dashboard} />);
+      buttons.push(
+        <DashboardEmbedAction
+          resource_uuid={dashboard.public_uuid}
+          modal={onClose => (
+            <DashboardSharingEmbeddingModal
+              key="dashboard-embed"
+              dashboard={dashboard}
+              enabled={true}
+              onClose={onClose}
+              isLinkEnabled={true}
+            />
+          )}
+        />,
+      );
     }
   }
 

@@ -1,8 +1,6 @@
 import { useState } from "react";
-import type { Dashboard } from "metabase-types/api";
 import { DashboardEmbedHeaderButton } from "metabase/dashboard/components/DashboardEmbedHeaderButton";
 import { DashboardEmbedHeaderMenu } from "metabase/dashboard/components/DashboardEmbedHeaderMenu";
-import DashboardSharingEmbeddingModal from "metabase/dashboard/containers/DashboardSharingEmbeddingModal";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -38,9 +36,13 @@ const getClickBehavior = ({
 };
 
 export const DashboardEmbedAction = ({
-  dashboard,
+  resource_uuid,
+  modal,
+  onOpenModal,
 }: {
-  dashboard: Dashboard;
+  resource_uuid?: string | null;
+  modal?: (onClose?: () => void) => JSX.Element;
+  onOpenModal?: () => void;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -49,7 +51,7 @@ export const DashboardEmbedAction = ({
   );
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const hasPublicLink = !!dashboard.public_uuid;
+  const hasPublicLink = !!resource_uuid;
 
   const initialClickBehavior: EmbedButtonClickBehavior = getClickBehavior({
     isAdmin,
@@ -62,7 +64,12 @@ export const DashboardEmbedAction = ({
   const onMenuSelect = (clickBehavior?: EmbedButtonClickBehavior) => {
     setIsOpen(true);
     if (clickBehavior) {
-      setClickBehavior(clickBehavior);
+      if (onOpenModal && clickBehavior === "embed-modal") {
+        onOpenModal?.();
+        setClickBehavior(initialClickBehavior);
+      } else {
+        setClickBehavior(clickBehavior);
+      }
     }
   };
 
@@ -73,7 +80,13 @@ export const DashboardEmbedAction = ({
 
   const targetButton = (
     <DashboardEmbedHeaderButton
-      onClick={() => (isOpen ? onClose() : onMenuSelect())}
+      onClick={() => {
+        if (isOpen) {
+          onClose();
+        } else {
+          onMenuSelect();
+        }
+      }}
     />
   );
 
@@ -93,14 +106,7 @@ export const DashboardEmbedAction = ({
       return (
         <>
           {targetButton}
-          <DashboardSharingEmbeddingModal
-            key="dashboard-embed"
-            dashboard={dashboard}
-            enabled={isOpen}
-            onClose={onClose}
-            isLinkEnabled={true}
-          />
-          )
+          {isOpen && modal && modal(onClose)}
         </>
       );
     }

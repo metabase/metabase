@@ -17,18 +17,6 @@ interface SetupProps {
   publicLinksEnabled?: boolean;
 }
 
-// Mock embedding modal as we don't need its content for the tests and causes
-// some issues with routing for one or two tests.
-jest.mock(
-  "metabase/dashboard/containers/DashboardSharingEmbeddingModal",
-  () => {
-    return {
-      __esModule: true,
-      default: () => <div data-testid="dashboard-sharing-embedding-modal" />,
-    };
-  },
-);
-
 const setup = ({
   isAdmin,
   hasPublicLink,
@@ -40,14 +28,20 @@ const setup = ({
 
   const TEST_USER = createMockUser({ is_superuser: isAdmin });
 
-  renderWithProviders(<DashboardEmbedAction dashboard={testDashboard} />, {
-    storeInitialState: createMockState({
-      currentUser: TEST_USER,
-      settings: createMockSettingsState({
-        "enable-public-sharing": publicLinksEnabled,
+  renderWithProviders(
+    <DashboardEmbedAction
+      resource_uuid={testDashboard.public_uuid}
+      modal={() => <div data-testid="dashboard-sharing-embedding-modal" />}
+    />,
+    {
+      storeInitialState: createMockState({
+        currentUser: TEST_USER,
+        settings: createMockSettingsState({
+          "enable-public-sharing": publicLinksEnabled,
+        }),
       }),
-    }),
-  });
+    },
+  );
 };
 
 describe("DashboardEmbedHeaderButton", () => {

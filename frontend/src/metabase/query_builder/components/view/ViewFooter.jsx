@@ -5,9 +5,8 @@ import cx from "classnames";
 import ButtonBar from "metabase/components/ButtonBar";
 
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
-import QuestionEmbedWidget, {
-  QuestionEmbedWidgetTrigger,
-} from "metabase/query_builder/components/QuestionEmbedWidget";
+import QuestionEmbedWidget from "metabase/query_builder/components/QuestionEmbedWidget";
+import { DashboardEmbedAction } from "metabase/dashboard/components/DashboardEmbedAction";
 import ViewButton from "./ViewButton";
 
 import QuestionAlertWidget from "./QuestionAlertWidget";
@@ -144,9 +143,10 @@ const ViewFooter = ({
             />
           ),
           QuestionEmbedWidget.shouldRender({ question, isAdmin }) && (
-            <QuestionEmbedWidgetTrigger
+            <DashboardEmbedAction
               key="embeds"
-              onClick={() =>
+              resource_uuid={question.publicUUID()}
+              onOpenModal={() =>
                 question.isSaved()
                   ? onOpenModal("embed")
                   : onOpenModal("save-question-before-embed")
