@@ -89,7 +89,7 @@
                   nil
                   (catch Throwable e
                     e))]
-      (log/warnf ex "Cannot sync Database {0}: {1}" (:name database) (ex-message ex))
+      (log/warnf ex "Cannot sync Database %s: %s" (:name database) (ex-message ex))
       (do
         (sync-metadata/sync-db-metadata! database)
           ;; only run analysis if this is a "full sync" database

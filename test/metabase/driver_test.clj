@@ -5,7 +5,6 @@
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.impl :as driver.impl]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.plugins.classloader :as classloader]
    [metabase.sync :as sync]
    [metabase.task.sync-databases :as task.sync-databases]
@@ -27,9 +26,9 @@
   (is (not (driver/database-supports? ::test-driver :foreign-keys "not-dummy")))
   (is (not (driver/database-supports? ::test-driver :expressions "dummy")))
   (is (thrown-with-msg?
-       java.lang.Exception
-       #"Invalid driver feature: .*"
-       (driver/database-supports? ::test-driver :some-made-up-thing "dummy"))))
+        java.lang.Exception
+        #"Invalid driver feature: .*"
+        (driver/database-supports? ::test-driver :some-made-up-thing "dummy"))))
 
 (deftest the-driver-test
   (testing (str "calling `the-driver` should set the context classloader, important because driver plugin code exists "
@@ -75,47 +74,49 @@
                        :tables
                        (some :schema))))))))
 
+(defn- basic-table-definition [table-name]
+  (tx/map->DatabaseDefinition
+   {:database-name     (str table-name "_db")
+    :table-definitions [{:table-name        table-name
+                         :field-definitions [{:field-name "foo", :base-type :type/Text}]
+                         :rows              [["bar"]]}]}))
+
 (deftest check-can-connect-before-sync-test
   (testing "Database sync should short-circuit and fail if the database connection is not available"
     (mt/test-drivers (mt/normal-drivers)
-      (let [;; create a database with a table and sync
-            database-name      (name (gensym))
-            empty-dbdef        {:database-name database-name}
-            _                  (tx/create-db! driver/*driver* empty-dbdef)
-            connection-details (tx/dbdef->connection-details driver/*driver* :db empty-dbdef)
-            db                 (first (t2/insert-returning-instances! :model/Database {:name       database-name
-                                                                                       :engine     (u/qualified-name driver/*driver*)
-                                                                                       :details    connection-details}))
-            log-match?         (fn [[log-level throwable message]]
-                                 (and (= log-level :warn)
-                                      (instance? clojure.lang.ExceptionInfo throwable)
-                                      (re-matches #"^Cannot sync Database (.+): (.+)" message)))]
-        (binding [h2/*allow-testing-h2-connections* true]
-          (sync/sync-database! db))
-        (testing "sense checks before deleting the database"
-          (testing "sense check 1: sync-and-analyze-database! should not log a warning"
-            (is (not-any?
-                 log-match?
-                 (mt/with-log-messages-for-level :warn
-                   (#'task.sync-databases/sync-and-analyze-database!* (u/the-id db))))))
-          (testing "sense check 2: sync-schema should return true and start a sync"
-            (is (= {:status "ok"}
-                   (mt/user-http-request :crowberto :post 200 (str "/database/" (u/the-id db) "/sync_schema"))))))
-        ;; invalidate the connection pool so we don't have to wait to finish syncing before destroying the db
-        (when (isa? driver/hierarchy driver/*driver* :sql-jdbc)
-          (sql-jdbc.conn/invalidate-pool-for-db! db))
-        ;; delete the db
-        (tx/destroy-db! driver/*driver* empty-dbdef)
-        (testing "after deleting a database, sync should fail"
-          (testing "1: sync-and-analyze-database! should log a warning and fail early"
-            (is (some
-                 log-match?
-                 (mt/with-log-messages-for-level :warn
-                   (#'task.sync-databases/sync-and-analyze-database!* (u/the-id db))))))
-          (testing "2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should fail"
-            (mt/user-http-request :crowberto :post 422 (str "/database/" (u/the-id db) "/sync_schema"))))
-        ;; clean up the database
-        (t2/delete! :model/Database (u/the-id db))))))
+        (let [database-name (mt/random-name)
+              dbdef         (basic-table-definition database-name)]
+          (mt/dataset dbdef
+            (let [db (mt/db) ;; create a database with a table and sync
+                  log-match?         (fn [[log-level throwable message]]
+                                       (and (= log-level :warn)
+                                            (instance? clojure.lang.ExceptionInfo throwable)
+                                            (re-matches #"^Cannot sync Database (.+): (.+)" message)))]
+              (binding [h2/*allow-testing-h2-connections* true]
+                (sync/sync-database! db))
+              (testing "sense checks before deleting the database"
+                (testing "sense check 1: sync-and-analyze-database! should not log a warning"
+                  (is (not-any?
+                       log-match?
+                       (mt/with-log-messages-for-level :warn
+                         (#'task.sync-databases/sync-and-analyze-database!* (u/the-id db))))))
+                (testing "2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should succeed"
+                  (is (= {:status "ok"}
+                         (mt/user-http-request :crowberto :post 200 (str "/database/" (u/the-id db) "/sync_schema"))))))
+              ;; release db resources like connection pools we don't have to wait to finish syncing before destroying the db
+              (driver/notify-database-updated driver/*driver* db)
+              ;; destroy the db
+              (tx/destroy-db! driver/*driver* dbdef)
+              (testing "after deleting a database, sync should fail"
+                (testing "1: sync-and-analyze-database! should log a warning and fail early"
+                  (is (some
+                       log-match?
+                       (mt/with-log-messages-for-level :warn
+                         (#'task.sync-databases/sync-and-analyze-database!* (u/the-id db))))))
+                (testing "2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should fail"
+                  (mt/user-http-request :crowberto :post 422 (str "/database/" (u/the-id db) "/sync_schema"))))
+              ;; clean up the database
+              (t2/delete! :model/Database (u/the-id db))))))))
 
 (deftest supports-table-privileges-matches-implementations-test
   (mt/test-drivers (mt/normal-drivers-with-feature :table-privileges)
@@ -123,31 +124,31 @@
 
 (deftest nonsql-dialects-return-original-query-test
   (mt/test-driver :mongo
-    (testing "Passing a mongodb query through [[driver/prettify-native-form]] returns the original query (#31122)"
-      (let [query [{"$group"  {"_id" {"created_at" {"$let" {"vars" {"parts" {"$dateToParts" {"timezone" "UTC"
-                                                                                             "date"     "$created_at"}}}
-                                                            "in"   {"$dateFromParts" {"timezone" "UTC"
-                                                                                      "year"     "$$parts.year"
-                                                                                      "month"    "$$parts.month"
-                                                                                      "day"      "$$parts.day"}}}}}
-                               "sum" {"$sum" "$tax"}}}
-                   {"$sort"    {"_id" 1}}
-                   {"$project" {"_id" false
-                                "created_at" "$_id.created_at"
-                                "sum" true}}]
-            formatted-query (driver/prettify-native-form :mongo query)]
+                  (testing "Passing a mongodb query through [[driver/prettify-native-form]] returns the original query (#31122)"
+                    (let [query [{"$group"  {"_id" {"created_at" {"$let" {"vars" {"parts" {"$dateToParts" {"timezone" "UTC"
+                                                                                                           "date"     "$created_at"}}}
+                                                                          "in"   {"$dateFromParts" {"timezone" "UTC"
+                                                                                                    "year"     "$$parts.year"
+                                                                                                    "month"    "$$parts.month"
+                                                                                                    "day"      "$$parts.day"}}}}}
+                                             "sum" {"$sum" "$tax"}}}
+                                 {"$sort"    {"_id" 1}}
+                                 {"$project" {"_id" false
+                                              "created_at" "$_id.created_at"
+                                              "sum" true}}]
+                          formatted-query (driver/prettify-native-form :mongo query)]
 
-        (testing "Formatting a non-sql query returns the same query"
-          (is (= query formatted-query)))
+                      (testing "Formatting a non-sql query returns the same query"
+                        (is (= query formatted-query)))
 
         ;; TODO(qnkhuat): do we really need to handle case where wrong driver is passed?
-        (let [;; This is a mongodb query, but if you pass in the wrong driver it will attempt the format
+                      (let [;; This is a mongodb query, but if you pass in the wrong driver it will attempt the format
               ;; This is a corner case since the system should always be using the right driver
-              weird-formatted-query (driver/prettify-native-form :postgres (json/generate-string query))]
-          (testing "The wrong formatter will change the format..."
-            (is (not= query weird-formatted-query)))
-          (testing "...but the resulting data is still the same"
+                            weird-formatted-query (driver/prettify-native-form :postgres (json/generate-string query))]
+                        (testing "The wrong formatter will change the format..."
+                          (is (not= query weird-formatted-query)))
+                        (testing "...but the resulting data is still the same"
             ;; Bottom line - Use the right driver, but if you use the wrong
             ;; one it should be harmless but annoying
-            (is (= query
-                   (json/parse-string weird-formatted-query)))))))))
+                          (is (= query
+                                 (json/parse-string weird-formatted-query)))))))))
