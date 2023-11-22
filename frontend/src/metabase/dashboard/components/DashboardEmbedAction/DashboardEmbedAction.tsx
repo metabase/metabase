@@ -51,14 +51,13 @@ export const DashboardEmbedAction = ({
 
   const hasPublicLink = !!dashboard.public_uuid;
 
-  const initialClickBehavior = getClickBehavior({
+  const initialClickBehavior: EmbedButtonClickBehavior = getClickBehavior({
     isAdmin,
     isPublicSharingEnabled,
     hasPublicLink,
   });
 
-  const [clickBehavior, setClickBehavior] =
-    useState<EmbedButtonClickBehavior>(initialClickBehavior);
+  const [clickBehavior, setClickBehavior] = useState(initialClickBehavior);
 
   const onMenuSelect = (clickBehavior: EmbedButtonClickBehavior) => {
     setIsOpen(true);
@@ -70,25 +69,25 @@ export const DashboardEmbedAction = ({
     setClickBehavior(initialClickBehavior);
   };
 
-  const getEmbedElement = (clickBehavior: EmbedButtonClickBehavior) => {
+  const targetButton = (
+    <DashboardEmbedHeaderButton onClick={() => setIsOpen(true)} />
+  );
+
+  const getEmbedContent = (clickBehavior: EmbedButtonClickBehavior) => {
     if (clickBehavior === "embed-menu") {
       return (
         <DashboardEmbedHeaderMenu
           hasPublicLink={hasPublicLink}
           openPublicLinkPopover={() => onMenuSelect("public-link-popover")}
           openEmbedModal={() => onMenuSelect("embed-modal")}
-          target={
-            <div>
-              <DashboardEmbedHeaderButton />
-            </div>
-          }
+          target={<div>{targetButton}</div>}
         />
       );
     }
     if (clickBehavior === "embed-modal") {
       return (
         <>
-          <DashboardEmbedHeaderButton onClick={() => setIsOpen(true)} />
+          {targetButton}
           {isOpen && (
             <DashboardSharingEmbeddingModal
               key="dashboard-embed"
@@ -103,11 +102,11 @@ export const DashboardEmbedAction = ({
     }
     if (clickBehavior === "public-link-popover") {
       // TODO: Add public link popover here.
-      return null;
+      return targetButton;
     }
 
     return null;
   };
 
-  return getEmbedElement(clickBehavior);
+  return getEmbedContent(clickBehavior);
 };

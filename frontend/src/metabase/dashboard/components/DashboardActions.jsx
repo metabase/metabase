@@ -73,12 +73,7 @@ export const getDashboardActions = (
     }
 
     if (canShareDashboard) {
-      buttons.push(
-        <DashboardEmbedAction
-          dashboard={dashboard}
-          hasPublicLink={dashboard.public_uuid}
-        />,
-      );
+      buttons.push(<DashboardEmbedAction dashboard={dashboard} />);
     }
   }
 
