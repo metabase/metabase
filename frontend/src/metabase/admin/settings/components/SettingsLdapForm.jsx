@@ -117,10 +117,10 @@ const SettingsLdapForm = ({
                 groupPlaceholder={t`Group Name`}
               />
               <FormTextInput {...fields["ldap-group-base"]} />
-              <FormTextInput {...fields["ldap-group-membership-filter"]} />
-              {/*TODO: ldap-group-membership-filter only if hasPremiumFeature("sso_ldap")*/}
+              {"ldap-group-membership-filter" in settingValues && (
+                <FormTextInput {...fields["ldap-group-membership-filter"]} />
+              )}
               {/*TODO: ldap-user-filter has custom validations for parentheses*/}
-              {/*TODO: ldap-sync-admin-group onnly if hasPremiumFeature("sso_ldap") but not present on master */}
             </Stack>
           </FormSection>
           <LdapFormFooter>
@@ -157,12 +157,13 @@ const LDAP_ATTRS = [
   // Group Schema
   "ldap-group-sync",
   "ldap-group-base",
-  "ldap-group-membership-filter", // if hasPremiumFeature("sso_ldap")
-  "ldap-sync-admin-group", // if hasPremiumFeature("sso_ldap")
+  "ldap-group-membership-filter",
 ];
 
 const getAttributeValues = values => {
-  return Object.fromEntries(LDAP_ATTRS.map(key => [key, values[key]]));
+  return Object.fromEntries(
+    LDAP_ATTRS.filter(key => key in values).map(key => [key, values[key]]),
+  );
 };
 
 SettingsLdapForm.propTypes = propTypes;
