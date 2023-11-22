@@ -78,14 +78,7 @@ describe("DashboardEmbedHeaderButton", () => {
         expect(screen.queryByLabelText("share icon")).not.toBeInTheDocument();
       });
 
-      it("should only render the button if there is a public link", () => {
-        setup({
-          hasPublicLink: true,
-          isAdmin: false,
-          publicLinksEnabled: true,
-        });
-        expect(screen.getByLabelText("share icon")).toBeInTheDocument();
-      });
+      // TODO: Test for rendering button for non-admins when a public link is created
     });
   });
 
@@ -122,6 +115,7 @@ describe("DashboardEmbedHeaderButton", () => {
         ).toBeInTheDocument();
         expect(await screen.findByText("Embed")).toBeInTheDocument();
       });
+
       it("should render the menu with `Public link` option if a public link has been created", async () => {
         setup({
           hasPublicLink: true,

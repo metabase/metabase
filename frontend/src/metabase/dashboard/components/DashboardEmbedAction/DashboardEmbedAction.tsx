@@ -6,7 +6,6 @@ import DashboardSharingEmbeddingModal from "metabase/dashboard/containers/Dashbo
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Popover } from "metabase/ui";
 
 export type EmbedButtonClickBehavior =
   | "embed-menu"
@@ -52,57 +51,32 @@ export const DashboardEmbedAction = ({
 
   const hasPublicLink = !!dashboard.public_uuid;
 
-  const originalClickBehavior = getClickBehavior({
+  const initialClickBehavior = getClickBehavior({
     isAdmin,
     isPublicSharingEnabled,
     hasPublicLink,
   });
 
-  const [clickBehavior, setClickBehavior] = useState<EmbedButtonClickBehavior>(
-    originalClickBehavior,
-  );
+  const [clickBehavior, setClickBehavior] =
+    useState<EmbedButtonClickBehavior>(initialClickBehavior);
 
-  const resetClickBehavior = () => {
-    setClickBehavior(originalClickBehavior);
+  const onMenuSelect = (clickBehavior: EmbedButtonClickBehavior) => {
+    setIsOpen(true);
+    setClickBehavior(clickBehavior);
   };
 
-  const props = {
-    onClick: () => setIsOpen(true),
-    hasPublicLink,
+  const onClose = () => {
+    setIsOpen(false);
+    setClickBehavior(initialClickBehavior);
   };
 
   const getEmbedElement = (clickBehavior: EmbedButtonClickBehavior) => {
-    if (clickBehavior === "embed-modal") {
-      return (
-        <>
-          <DashboardEmbedHeaderButton {...props} />
-          {isOpen && (
-            <DashboardSharingEmbeddingModal
-              key="dashboard-embed"
-              dashboard={dashboard}
-              enabled={isOpen}
-              onClose={() => {
-                resetClickBehavior();
-                setIsOpen(false);
-              }}
-              isLinkEnabled={true}
-            />
-          )}
-        </>
-      );
-    }
     if (clickBehavior === "embed-menu") {
       return (
         <DashboardEmbedHeaderMenu
-          {...props}
-          openPublicLinkPopover={() => {
-            setIsOpen(true);
-            setClickBehavior("public-link-popover");
-          }}
-          openEmbedModal={() => {
-            setIsOpen(true);
-            setClickBehavior("embed-modal");
-          }}
+          hasPublicLink={hasPublicLink}
+          openPublicLinkPopover={() => onMenuSelect("public-link-popover")}
+          openEmbedModal={() => onMenuSelect("embed-modal")}
           target={
             <div>
               <DashboardEmbedHeaderButton />
@@ -111,19 +85,25 @@ export const DashboardEmbedAction = ({
         />
       );
     }
-    if (clickBehavior === "public-link-popover") {
+    if (clickBehavior === "embed-modal") {
       return (
-        <Popover onClose={resetClickBehavior}>
-          <Popover.Target>
-            <div>
-              <DashboardEmbedHeaderButton />
-            </div>
-          </Popover.Target>
-          <Popover.Dropdown>
-            <div>popover</div>
-          </Popover.Dropdown>
-        </Popover>
+        <>
+          <DashboardEmbedHeaderButton onClick={() => setIsOpen(true)} />
+          {isOpen && (
+            <DashboardSharingEmbeddingModal
+              key="dashboard-embed"
+              dashboard={dashboard}
+              enabled={isOpen}
+              onClose={onClose}
+              isLinkEnabled={true}
+            />
+          )}
+        </>
       );
+    }
+    if (clickBehavior === "public-link-popover") {
+      // TODO: Add public link popover here.
+      return null;
     }
 
     return null;
