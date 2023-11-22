@@ -462,7 +462,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findByText(/Sort order/).should("not.be.visible");
   });
 
-  it("should allow sorting fields", { tags: "@flaky" }, () => {
+  it("should allow sorting fields", () => {
     // Pivot by a single column with many values (100 bins).
     // Having many values hides values that are sorted to the end.
     // This lets us assert on presence of a certain value.
