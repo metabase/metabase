@@ -4,6 +4,7 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import * as Lib from "metabase-lib";
 import { NumberFilterEditor } from "./NumberFilterEditor";
 import { StringFilterEditor } from "./StringFilterEditor";
+import { TimeFilterEditor } from "./TimeFilterEditor";
 
 interface ColumnFilterSectionProps {
   query: Lib.Query;
@@ -55,7 +56,7 @@ function getFilterWidget(column: Lib.ColumnMetadata) {
     return NotImplementedWidget;
   }
   if (Lib.isTime(column)) {
-    return NotImplementedWidget;
+    return TimeFilterEditor;
   }
   if (Lib.isDate(column)) {
     return NotImplementedWidget;
