@@ -87,19 +87,20 @@
         (let [database-name (mt/random-name)
               dbdef         (basic-table-definition database-name)]
           (mt/dataset dbdef
-            (let [db (mt/db) ;; create a database with a table and sync
-                  log-match?         (fn [[log-level throwable message]]
-                                       (and (= log-level :warn)
-                                            (instance? clojure.lang.ExceptionInfo throwable)
-                                            (re-matches #"^Cannot sync Database (.+): (.+)" message)))]
+            (let [db (mt/db)
+                  find-log-match (fn []
+                                   (some
+                                    (fn [[log-level throwable message]]
+                                      (and (= log-level :warn)
+                                           (instance? clojure.lang.ExceptionInfo throwable)
+                                           (re-matches #"^Cannot sync Database (.+): (.+)" message)))
+                                    (mt/with-log-messages-for-level :warn
+                                      (#'task.sync-databases/sync-and-analyze-database!* (u/the-id db)))))]
               (binding [h2/*allow-testing-h2-connections* true]
                 (sync/sync-database! db))
               (testing "sense checks before deleting the database"
                 (testing "sense check 1: sync-and-analyze-database! should not log a warning"
-                  (is (not-any?
-                       log-match?
-                       (mt/with-log-messages-for-level :warn
-                         (#'task.sync-databases/sync-and-analyze-database!* (u/the-id db))))))
+                  (is (nil? (find-log-match))))
                 (testing "2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should succeed"
                   (is (= {:status "ok"}
                          (mt/user-http-request :crowberto :post 200 (str "/database/" (u/the-id db) "/sync_schema"))))))
@@ -109,10 +110,7 @@
               (tx/destroy-db! driver/*driver* dbdef)
               (testing "after deleting a database, sync should fail"
                 (testing "1: sync-and-analyze-database! should log a warning and fail early"
-                  (is (some
-                       log-match?
-                       (mt/with-log-messages-for-level :warn
-                         (#'task.sync-databases/sync-and-analyze-database!* (u/the-id db))))))
+                  (is (some? (find-log-match))))
                 (testing "2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should fail"
                   (mt/user-http-request :crowberto :post 422 (str "/database/" (u/the-id db) "/sync_schema"))))
               ;; clean up the database
