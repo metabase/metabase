@@ -59,9 +59,11 @@ export const DashboardEmbedAction = ({
 
   const [clickBehavior, setClickBehavior] = useState(initialClickBehavior);
 
-  const onMenuSelect = (clickBehavior: EmbedButtonClickBehavior) => {
+  const onMenuSelect = (clickBehavior?: EmbedButtonClickBehavior) => {
     setIsOpen(true);
-    setClickBehavior(clickBehavior);
+    if (clickBehavior) {
+      setClickBehavior(clickBehavior);
+    }
   };
 
   const onClose = () => {
@@ -70,7 +72,9 @@ export const DashboardEmbedAction = ({
   };
 
   const targetButton = (
-    <DashboardEmbedHeaderButton onClick={() => setIsOpen(true)} />
+    <DashboardEmbedHeaderButton
+      onClick={() => (isOpen ? onClose() : onMenuSelect())}
+    />
   );
 
   const getEmbedContent = (clickBehavior: EmbedButtonClickBehavior) => {
@@ -78,7 +82,8 @@ export const DashboardEmbedAction = ({
       return (
         <DashboardEmbedHeaderMenu
           hasPublicLink={hasPublicLink}
-          openPublicLinkPopover={() => onMenuSelect("public-link-popover")}
+          /* TODO: Change to `onMenuSelect("public-link-popover")}` when public link popover is implemented */
+          openPublicLinkPopover={() => onClose()}
           openEmbedModal={() => onMenuSelect("embed-modal")}
           target={<div>{targetButton}</div>}
         />
