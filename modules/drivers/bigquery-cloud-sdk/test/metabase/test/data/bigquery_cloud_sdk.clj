@@ -47,15 +47,17 @@
 
 (defn normalize-name
   "Returns a normalized name for a test database or table"
-  ^String [db-or-table identifier]
-  (let [s (str/replace (name identifier) "-" "_")]
-    (case db-or-table
-      ;; All databases created during test runs by this JVM instance get a suffix based on the timestamp from when
-      ;; this namespace was loaded. This dataset will not be deleted after this test run finishes, since there is no
-      ;; reasonable hook to do so (from this test extension namespace), so instead we will rely on each run cleaning
-      ;; up outdated, transient datasets via the `transient-dataset-outdated?` mechanism.
-      :db    (str "v3_" s "__transient_" ns-load-time)
-      :table s)))
+  [identifier]
+  (str/replace (name identifier) "-" "_"))
+
+(defn test-dataset-id
+  "All databases created during test runs by this JVM instance get a suffix based on the timestamp from when
+   this namespace was loaded. This dataset will not be deleted after this test run finishes, since there is no
+   reasonable hook to do so (from this test extension namespace), so instead we will rely on each run cleaning
+  up outdated, transient datasets via the `transient-dataset-outdated?` mechanism."
+  [database-name]
+  (let [s (normalize-name database-name)]
+    (str "v3_" s "__transient_" ns-load-time)))
 
 (defn- test-db-details []
   (reduce
@@ -80,7 +82,7 @@
 
 (defmethod tx/dbdef->connection-details :bigquery-cloud-sdk
   [_driver _context {:keys [database-name]}]
-  (assoc (test-db-details) :dataset-id (normalize-name :db database-name) :include-user-id-and-hash true))
+  (assoc (test-db-details) :dataset-id (test-dataset-id database-name) :include-user-id-and-hash true))
 
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
@@ -281,14 +283,14 @@
       (assoc (zipmap field-names row)
              :id (inc i)))))
 
-(defn- load-tabledef! [dataset-name {:keys [table-name field-definitions], :as tabledef}]
-  (let [table-name (normalize-name :table table-name)]
-    (create-table! dataset-name table-name (fielddefs->field-name->base-type field-definitions))
+(defn- load-tabledef! [dataset-id {:keys [table-name field-definitions], :as tabledef}]
+  (let [table-name (normalize-name table-name)]
+    (create-table! dataset-id table-name (fielddefs->field-name->base-type field-definitions))
     ;; retry the `insert-data!` step up to 5 times because it seens to fail silently a lot. Since each row is given a
     ;; unique key it shouldn't result in duplicates.
     (loop [num-retries 5]
       (let [^Throwable e (try
-                           (insert-data! dataset-name table-name (tabledef->prepared-rows tabledef))
+                           (insert-data! dataset-id table-name (tabledef->prepared-rows tabledef))
                            nil
                            (catch Throwable e
                              e))]
@@ -304,12 +306,12 @@
     (.. dataset getDatasetId getDataset)))
 
 (defn- transient-dataset-outdated?
-  "Checks whether the given `dataset-name` is a transient dataset that is outdated, and should be deleted.  Note that
+  "Checks whether the given `dataset-id` is a transient dataset that is outdated, and should be deleted.  Note that
   this doesn't need any domain specific knowledge about which transient datasets are
   outdated. The fact that a *created* dataset (i.e. created on BigQuery) is transient has already been encoded by a
   suffix, so we can just look for that here."
-  [dataset-name]
-  (when-let [[_ ^String ds-timestamp-str] (re-matches #".*__transient_(\d+)$" dataset-name)]
+  [dataset-id]
+  (when-let [[_ ^String ds-timestamp-str] (re-matches #".*__transient_(\d+)$" dataset-id)]
     ;; millis to hours
     (< (* 1000 60 60 2) (- ns-load-time (Long. ds-timestamp-str)))))
 
@@ -320,7 +322,7 @@
     (log/info (u/format-color 'blue "Deleting temporary dataset more than two hours old: %s`." outdated))
     (u/ignore-exceptions
      (destroy-dataset! outdated)))
-  (let [dataset-id (normalize-name :db database-name)]
+  (let [dataset-id (test-dataset-id database-name)]
     (u/auto-retry 2
      (try
        (log/infof "Creating dataset %s..." (pr-str dataset-id))
@@ -340,7 +342,7 @@
 
 (defmethod tx/destroy-db! :bigquery-cloud-sdk
   [_ {:keys [database-name]}]
-  (destroy-dataset! (normalize-name :db database-name)))
+  (destroy-dataset! (test-dataset-id database-name)))
 
 (defmethod tx/aggregate-column-info :bigquery-cloud-sdk
   ([driver aggregation-type]
