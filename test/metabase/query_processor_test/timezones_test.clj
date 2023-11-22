@@ -285,7 +285,9 @@
                                             {:temporal-unit trunc-unit}])
                                          [[:field (mt/id :alldates :dt)]])
                                :order-by [[:asc (mt/id :alldates :id)]]})
-                            #_(mt/rows) (->> (mt/formatted-rows [identity int]))
+                            #_(mt/rows)
+                            #_(mt/format-rows-by (concat (repeat 9 int) (repeat 8 str)))
+                            (mt/formatted-rows (concat (repeat 9 int) (repeat 8 str)))
                             (map (fn [row]
                                    (map vector
                                         (concat
