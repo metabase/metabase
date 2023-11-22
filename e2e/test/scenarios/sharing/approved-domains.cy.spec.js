@@ -47,8 +47,7 @@ describeEE(
       cy.findByText(alertError);
     });
 
-    // Adding test on Quarantine to understand a bit better some H2 Lock issue.
-    it.skip("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
+    it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
       visitDashboard(ORDERS_DASHBOARD_ID);
       cy.icon("subscription").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
