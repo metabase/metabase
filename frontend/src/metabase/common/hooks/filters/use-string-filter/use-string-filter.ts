@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { usePrevious } from "react-use";
 import * as Lib from "metabase-lib";
 import { getAvailableOperatorOptions } from "../utils";
 import type { StringPickerOperator } from "./types";
@@ -20,6 +21,8 @@ export function useStringFilter({
   filter,
   defaultOperator = "=",
 }: UseStringFilterOpts) {
+  const previousFilter = usePrevious(filter);
+
   const filterParts = useMemo(
     () => (filter ? Lib.stringFilterParts(query, stageIndex, filter) : null),
     [query, stageIndex, filter],
@@ -42,6 +45,14 @@ export function useStringFilter({
   const [options, setOptions] = useState(
     filterParts ? filterParts.options : {},
   );
+
+  useEffect(() => {
+    if (previousFilter && !filter) {
+      _setOperator(defaultOperator);
+      setValues(getDefaultValues(defaultOperator));
+      setOptions({});
+    }
+  }, [filter, previousFilter, defaultOperator]);
 
   const { valueCount, hasMultipleValues, hasCaseSensitiveOption } =
     OPERATOR_OPTIONS[operator];

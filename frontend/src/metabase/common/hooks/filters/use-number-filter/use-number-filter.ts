@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { usePrevious } from "react-use";
 import * as Lib from "metabase-lib";
 import { getAvailableOperatorOptions } from "../utils";
 import type { NumberPickerOperator } from "./types";
@@ -20,6 +21,8 @@ export function useNumberFilter({
   filter,
   defaultOperator = "=",
 }: UseNumberFilterOpts) {
+  const previousFilter = usePrevious(filter);
+
   const filterParts = useMemo(
     () => (filter ? Lib.numberFilterParts(query, stageIndex, filter) : null),
     [query, stageIndex, filter],
@@ -38,6 +41,13 @@ export function useNumberFilter({
   const [values, setValues] = useState(() =>
     getDefaultValues(operator, filterParts?.values),
   );
+
+  useEffect(() => {
+    if (previousFilter && !filter) {
+      _setOperator(defaultOperator);
+      setValues(getDefaultValues(defaultOperator));
+    }
+  }, [filter, previousFilter, defaultOperator]);
 
   const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
   const isValid = hasValidValues(operator, values);

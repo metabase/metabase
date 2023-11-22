@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePrevious } from "react-use";
 import { checkNotNull } from "metabase/lib/types";
 import type * as Lib from "metabase-lib";
 import { getAvailableOperatorOptions } from "../utils";
@@ -18,6 +19,8 @@ export function useBooleanFilter({
   column,
   filter,
 }: UseBooleanFilterOpts) {
+  const previousFilter = usePrevious(filter);
+
   const options = useMemo(
     () => getAvailableOperatorOptions(query, stageIndex, column, OPTIONS),
     [query, stageIndex, column],
@@ -27,10 +30,19 @@ export function useBooleanFilter({
     getOptionType(query, stageIndex, filter),
   );
 
-  const setOption = (type: string) => {
-    const option = checkNotNull(options.find(option => option.type === type));
-    setOptionType(option.type);
-  };
+  const setOption = useCallback(
+    (type: string) => {
+      const option = checkNotNull(options.find(option => option.type === type));
+      setOptionType(option.type);
+    },
+    [options],
+  );
+
+  useEffect(() => {
+    if (previousFilter && !filter) {
+      setOptionType(getOptionType(query, stageIndex));
+    }
+  }, [query, stageIndex, filter, previousFilter, setOption]);
 
   return {
     value: optionType,
