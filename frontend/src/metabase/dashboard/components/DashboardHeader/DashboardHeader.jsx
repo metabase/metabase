@@ -208,11 +208,11 @@ class DashboardHeaderContainer extends Component {
   }
 
   onRevert() {
-    this.props.fetchDashboard(
-      this.props.dashboard.id,
-      this.props.location.query,
-      { preserveParameters: true },
-    );
+    this.props.fetchDashboard({
+      dashId: this.props.dashboard.id,
+      queryParams: this.props.location.query,
+      options: { preserveParameters: true },
+    });
   }
 
   async onSave() {
