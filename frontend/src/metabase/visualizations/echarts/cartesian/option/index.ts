@@ -41,7 +41,7 @@ export const getCartesianChartOption = (
     goalSeriesOption,
     trendSeriesOptions,
     dataSeriesOptions,
-  ].flatMap(option => (option == null ? [] : option));
+  ].flatMap(option => option ?? []);
 
   // dataset option
   const dimensions = [
@@ -50,7 +50,7 @@ export const getCartesianChartOption = (
   ];
   const echartsDataset = [
     { source: chartModel.transformedDataset, dimensions },
-    ...(trendDatasets ?? []), // TODO maybe better type safety solutinon for this?
+    ...(trendDatasets ?? []),
   ];
 
   return {

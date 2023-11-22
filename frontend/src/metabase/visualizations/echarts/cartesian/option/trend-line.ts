@@ -83,7 +83,7 @@ function normalizeTrendDatasets(
   // For each row in the chart dataset (e.g. question results), compute the sum
   // of the trend line value at that row for all series.
   const rowCount = trendDatasets[0].length;
-  const totals = _.range(rowCount).map(rowIndex =>
+  const trendLineTotals = _.range(rowCount).map(rowIndex =>
     trendDatasets.reduce(
       (total, trendDataset) =>
         total + trendDataset[rowIndex][TREND_LINE_DATA_KEY],
@@ -95,7 +95,7 @@ function normalizeTrendDatasets(
     trendDataset.map((row, rowIndex) => ({
       ...row,
       [TREND_LINE_DATA_KEY]:
-        (row[TREND_LINE_DATA_KEY] as number) / totals[rowIndex],
+        row[TREND_LINE_DATA_KEY] / trendLineTotals[rowIndex],
     })),
   );
 }
