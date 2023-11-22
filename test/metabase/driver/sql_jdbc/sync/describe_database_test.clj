@@ -183,3 +183,25 @@
            (fn [{schema-name :schema}]
              (testing (format "schema name = %s" (pr-str schema-name))
                (is (not= \v (first schema-name)))))))))))
+
+(deftest ^:parallel have-select-privilege?-test
+  (testing "cheking select privilege works with and without auto commit (#36040)"
+    (let [default-have-slect-privilege?
+          #(identical? (get-method sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc)
+                       (get-method sql-jdbc.sync.interface/have-select-privilege? %))]
+      (mt/test-drivers (into #{}
+                             (filter default-have-slect-privilege?)
+                             (descendants driver/hierarchy :sql-jdbc))
+        (let [{schema :schema, table-name :name} (t2/select-one :model/Table :db_id (mt/id))]
+          (doseq [auto-commit [true false]]
+            (testing (str "auto-commit " auto-commit)
+              (sql-jdbc.execute/do-with-connection-with-options
+               driver/*driver*
+               (mt/db)
+               nil
+               (fn [^java.sql.Connection conn]
+                 (.setAutoCommit conn auto-commit)
+                 (is (true? (sql-jdbc.sync.interface/have-select-privilege?
+                             driver/*driver* conn schema table-name)))
+                 (is (false? (sql-jdbc.sync.interface/have-select-privilege?
+                              driver/*driver* conn schema (str table-name "_should_not_exists")))))))))))))
