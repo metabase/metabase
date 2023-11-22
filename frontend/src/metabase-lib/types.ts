@@ -359,6 +359,7 @@ export type PivotDrillDetails = {
 export type QuickFilterDrillThruDetails = {
   query: Query;
   column: ColumnMetadata;
+  stageIndex: number;
   value: unknown;
 };
 
