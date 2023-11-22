@@ -14,12 +14,14 @@ type Option<T> = {
 interface FilterOperatorPickerProps<T> {
   value: T;
   options: Option<T>[];
+  disabled?: boolean;
   onChange: (operator: T) => void;
 }
 
 export function FilterOperatorPicker<T extends string>({
   value,
   options,
+  disabled,
   onChange,
 }: FilterOperatorPickerProps<T>) {
   const label = useMemo(() => {
@@ -32,13 +34,14 @@ export function FilterOperatorPicker<T extends string>({
       <Menu.Target>
         <Button
           variant="subtle"
+          disabled={disabled}
           color="brand.1"
-          td="underline"
+          td={disabled ? "none" : "underline"}
           p="xs"
           aria-label={t`Filter operator`}
         >
           {label}
-          <DropdownIcon name="chevrondown" size={8} />
+          {!disabled && <DropdownIcon name="chevrondown" size={8} />}
         </Button>
       </Menu.Target>
       <Menu.Dropdown>
