@@ -15,8 +15,7 @@
    "Collection"
    "Dashboard"
    "NativeQuerySnippet"
-   "Timeline"
-   "Pulse"])
+   "Timeline"])
 
 (def exported-models
   "The list of all models exported by serialization by default. Used for production code and by tests."
@@ -33,9 +32,7 @@
    "DashboardTab"
    "Dimension"
    "ParameterCard"
-   "TimelineEvent"
-   "PulseChannel"
-   "PulseCard"])
+   "TimelineEvent"])
 
 (def excluded-models
   "List of models which are not going to be serialized ever."
@@ -62,6 +59,9 @@
    "PermissionsGroupMembership"
    "PermissionsRevision"
    "PersistedInfo"
+   "Pulse"
+   "PulseCard"
+   "PulseChannel"
    "PulseChannelRecipient"
    "Query"
    "QueryAction"

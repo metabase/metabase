@@ -14,7 +14,8 @@
                           serdes.models/excluded-models))
              (set (map name (v2.entity-ids/toucan-models))))))
 
-    (let [should-have-entity-id (set (concat serdes.models/data-model serdes.models/content))]
+    (let [should-have-entity-id (set (concat serdes.models/data-model serdes.models/content))
+          excluded (set serdes.models/excluded-models)]
       (doseq [model (v2.entity-ids/toucan-models)]
         (let [custom-entity-id?   (not= (get-method serdes/entity-id (name model))
                                         (get-method serdes/entity-id :default))
@@ -22,11 +23,13 @@
                                         (get-method serdes/hash-fields :default))
               random-entity-id?   (and custom-hash-fields?
                                        (serdes.backfill/has-entity-id? model))]
-          (if (contains? should-have-entity-id (name model))
-            (testing (str "Model either has entity_id or a hash key: " (name model))
+          ;; we're not checking inline-models for anything here, since some of them have (and use) entity_id, like
+          ;; dashcards, and some (ParameterCard) do not
+          (when (contains? should-have-entity-id (name model))
+            (testing (str "Model should either have entity_id or a hash key: " (name model))
               ;; `not=` is effectively `xor`
-              (is (not= custom-entity-id? random-entity-id?)))
+              (is (not= custom-entity-id? random-entity-id?))))
+          (when (contains? excluded (name model))
             (testing (str "Model shouldn't have entity_id defined: " (name model))
-              ;; we're not checking for `random-entity-id?` here, since some inline models (like dashcards) need
-              ;; entity_id to sync
-              (is (not custom-entity-id?)))))))))
+              (is (not custom-entity-id?))
+              (is (not random-entity-id?)))))))))
