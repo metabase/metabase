@@ -49,8 +49,8 @@ export const EditUserModal = ({ onClose, params }: EditUserModalProps) => {
 
 const getInitialValues = (user?: UserType) => {
   return {
-    first_name: user?.first_name || "",
-    last_name: user?.last_name || "",
+    first_name: user?.first_name ?? "",
+    last_name: user?.last_name ?? "",
     email: user?.email,
     user_group_memberships: user?.user_group_memberships || [],
     login_attributes: user?.login_attributes || {},

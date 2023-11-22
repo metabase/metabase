@@ -64,7 +64,7 @@ export const MembershipSelect = ({
 }: MembershipSelectProps) => {
   const selectedGroupIds = Array.from(memberships.keys());
   const triggerElement = (
-    <div className="flex align-center">
+    <div className="flex align-center" aria-label="group-summary">
       <span className="mr1 text-medium">
         <GroupSummary groups={groups} selectedGroupIds={selectedGroupIds} />
       </span>
@@ -116,6 +116,7 @@ export const MembershipSelect = ({
                 <MembershipSelectItem
                   isDisabled={isDisabled}
                   key={group.id}
+                  aria-label={group.name}
                   onClick={() =>
                     isDisabled ? undefined : handleToggleMembership(group.id)
                   }

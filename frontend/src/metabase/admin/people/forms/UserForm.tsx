@@ -64,6 +64,7 @@ export const UserForm = ({
             title={t`Email`}
             placeholder="nicetoseeyou@email.com"
             label={t`Email`}
+            required
             mb="1rem"
           />
           <FormGroupsWidget name="user_group_memberships" />

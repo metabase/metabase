@@ -103,6 +103,7 @@ export const MappingEditor = ({
                     variant="subtle"
                     onClick={() => onChange(removeMapping(mapping, key))}
                     color={"text"}
+                    data-testId="remove-mapping"
                   />
                 </td>
               )}
