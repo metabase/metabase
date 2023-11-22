@@ -984,14 +984,14 @@
   ;; just wrap this in a future so it happens async
   (let [db (api/write-check (t2/select-one Database :id id))]
     (events/publish-event! :event/database-manual-sync {:object db :user-id api/*current-user-id*})
-    (if-let [ex (try (do
-                       ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
-                       ;; purposes of creating a new H2 database.
-                       (binding [h2/*allow-testing-h2-connections* true]
-                         (driver.u/can-connect-with-details? (:engine db) (:details db) :throw-exceptions))
-                       nil)
-                     (catch Throwable e
-                       e))]
+    (if-let [ex (try
+                  ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
+                  ;; purposes of creating a new H2 database.
+                  (binding [h2/*allow-testing-h2-connections* true]
+                    (driver.u/can-connect-with-details? (:engine db) (:details db) :throw-exceptions))
+                  nil
+                  (catch Throwable e
+                    e))]
       (throw (ex-info (ex-message ex) {:status-code 422}))
       (do
         (future
