@@ -5,7 +5,7 @@ import _ from "underscore";
 import { connect } from "react-redux";
 import { updateLdapSettings } from "metabase/admin/settings/settings";
 
-import { Stack, Radio } from "metabase/ui";
+import { Stack, Group, Radio } from "metabase/ui";
 import {
   FormErrorMessage,
   FormProvider,
@@ -81,9 +81,11 @@ const SettingsLdapForm = ({
               <FormTextInput {...fields["ldap-host"]} />
               <FormTextInput {...fields["ldap-port"]} />
               <FormRadioGroup {...fields["ldap-security"]}>
-                <Radio value="none" label="None" />
-                <Radio value="ssl" label="SSL" />
-                <Radio value="starttls" label="StartTLS" />
+                <Group mt={"xs"}>
+                  <Radio value="none" label="None" />
+                  <Radio value="ssl" label="SSL" />
+                  <Radio value="starttls" label="StartTLS" />
+                </Group>
               </FormRadioGroup>
               <FormTextInput {...fields["ldap-bind-dn"]} />
               <FormTextInput {...fields["ldap-password"]} type="password" />
