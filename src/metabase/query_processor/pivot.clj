@@ -2,7 +2,6 @@
   "Pivot table actions for the query processor"
   (:require
    [clojure.core.async :as a]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
