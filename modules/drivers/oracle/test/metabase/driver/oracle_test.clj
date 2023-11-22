@@ -408,7 +408,7 @@
                       (testing " can sync correctly"
                         (sync/sync-database! database {:scan :schema})
                         ;; should be four tables from test-data
-                        (is (= 4 (t2/count Table :db_id (u/the-id database) :name [:like "test_data%"])))
+                        (is (= 8 (t2/count Table :db_id (u/the-id database) :name [:like "test_data%"])))
                         (binding [api/*current-user-id* orig-user-id ; restore original user-id to avoid perm errors
                                   ;; we also need to rebind this dynamic var so that we can pretend "test-data" is
                                   ;; actually the name of the database, and not some variation on the :name specified

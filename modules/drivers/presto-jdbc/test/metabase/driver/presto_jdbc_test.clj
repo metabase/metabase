@@ -34,7 +34,11 @@
     (is (= {:tables #{{:name "test_data_categories" :schema "default"}
                       {:name "test_data_venues" :schema "default"}
                       {:name "test_data_checkins" :schema "default"}
-                      {:name "test_data_users" :schema "default"}}}
+                      {:name "test_data_users" :schema "default"}
+                      {:name "test_data_orders" :schema "default"}
+                      {:name "test_data_people" :schema "default"}
+                      {:name "test_data_products" :schema "default"}
+                      {:name "test_data_reviews" :schema "default"}}}
            (-> (driver/describe-database :presto-jdbc (mt/db))
                (update :tables (comp set (partial filter (comp #{"test_data_categories"
                                                                  "test_data_venues"

@@ -184,7 +184,11 @@
     (is (= #{{:schema nil, :name "checkins"}
              {:schema nil, :name "categories"}
              {:schema nil, :name "users"}
-             {:schema nil, :name "venues"}}
+             {:schema nil, :name "venues"}
+             {:schema nil, :name "orders"}
+             {:schema nil, :name "people"}
+             {:schema nil, :name "products"}
+             {:schema nil, :name "reviews"}}
             (:tables (driver/describe-database :mongo (mt/db)))))))
 
 (deftest describe-table-test
@@ -308,7 +312,11 @@
     (is (= [{:active true, :name "categories"}
             {:active true, :name "checkins"}
             {:active true, :name "users"}
-            {:active true, :name "venues"}]
+            {:active true, :name "venues"}
+            {:active true, :name "orders"}
+            {:active true, :name "people"}
+            {:active true, :name "products"}
+            {:active true, :name "reviews"}]
            (for [field (t2/select [Table :name :active]
                          :db_id (mt/id)
                          {:order-by [:name]})]

@@ -83,7 +83,11 @@
                       #{{:name "users",      :schema "PUBLIC", :description nil}
                         {:name "venues",     :schema "PUBLIC", :description nil}
                         {:name "checkins",   :schema "PUBLIC", :description nil}
-                        {:name "categories", :schema "PUBLIC", :description nil}}}]
+                        {:name "categories", :schema "PUBLIC", :description nil}
+                        {:name "orders",     :schema "PUBLIC", :description nil}
+                        {:name "people",     :schema "PUBLIC", :description nil}
+                        {:name "products",   :schema "PUBLIC", :description nil}
+                        {:name "reviews",    :schema "PUBLIC", :description nil}}}]
         (testing "should work with normal details"
           (is (= expected
                  (driver/describe-database :snowflake (mt/db)))))
