@@ -20,6 +20,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.sync :as sync]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as field-values]
@@ -365,11 +366,12 @@
 (deftest create-db-audit-log-test
   (testing "POST /api/database"
     (testing "The id captured in the database-create event matches the new db's id"
-      (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
-        (let [{:keys [id] :as _db} (create-db-via-api! {:id 19999999})
-              audit-entry (mt/latest-audit-log-entry "database-create")]
-          (is (= id (-> audit-entry :model_id)))
-          (is (= id (-> audit-entry :details :id))))))))
+      (premium-features-test/with-premium-features #{:audit-app}
+        (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
+          (let [{:keys [id] :as _db} (create-db-via-api! {:id 19999999})
+                audit-entry (mt/latest-audit-log-entry "database-create")]
+            (is (= id (-> audit-entry :model_id)))
+            (is (= id (-> audit-entry :details :id)))))))))
 
 (deftest disallow-creating-h2-database-test
   (testing "POST /api/database/:id"
@@ -395,8 +397,8 @@
   (deftest delete-database-audit-log-test
     (testing "DELETE /api/database/:id"
       (testing "Check that an audit log entry is created when someone deletes a Database"
-        (t2.with-temp/with-temp [Database db]
-          (mt/with-model-cleanup [:model/AuditLog :model/Activity]
+        (premium-features-test/with-premium-features #{:audit-app}
+          (t2.with-temp/with-temp [Database db]
             (mt/user-http-request :crowberto :delete 204 (format "database/%d" (:id db)))
             (is (= (audit-log/model-details db :model/Database)
                    (->> (mt/latest-audit-log-entry "database-delete")
@@ -469,17 +471,18 @@
 
 (deftest update-database-audit-log-test
   (testing "Check that we get audit log entries that match the db when updating a Database"
-    (t2.with-temp/with-temp [Database {db-id :id}]
-      (with-redefs [driver/can-connect? (constantly true)]
-        (is (= "Original Database Name" (:name (api-update-database! 200 db-id {:name "Original Database Name"})))
-            "A db update occured")
-        (is (= "Updated Database Name" (:name (api-update-database! 200 db-id {:name "Updated Database Name"})))
-            "A db update occured")
-        (let [audit-log-entry (mt/latest-audit-log-entry)]
-          (is (partial=
-               {:previous {:name "Original Database Name"}
-                :new      {:name "Updated Database Name"}}
-               (:details audit-log-entry))))))))
+    (premium-features-test/with-premium-features #{:audit-app}
+      (t2.with-temp/with-temp [Database {db-id :id}]
+        (with-redefs [driver/can-connect? (constantly true)]
+          (is (= "Original Database Name" (:name (api-update-database! 200 db-id {:name "Original Database Name"})))
+              "A db update occured")
+          (is (= "Updated Database Name" (:name (api-update-database! 200 db-id {:name "Updated Database Name"})))
+              "A db update occured")
+          (let [audit-log-entry (mt/latest-audit-log-entry)]
+            (is (partial=
+                 {:previous {:name "Original Database Name"}
+                  :new      {:name "Updated Database Name"}}
+                 (:details audit-log-entry)))))))))
 
 (deftest disallow-updating-h2-database-details-test
   (testing "PUT /api/database/:id"
@@ -1107,7 +1110,7 @@
   (testing "Can we trigger a metadata sync for a DB?"
     (let [sync-called?    (promise)
           analyze-called? (promise)]
-      (mt/with-model-cleanup [:model/AuditLog :model/Activity]
+      (premium-features-test/with-premium-features #{:audit-app}
         (t2.with-temp/with-temp [Database {db-id :id :as db} {:engine "h2", :details (:details (mt/db))}]
           (with-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db)
                         analyze/analyze-db!             (deliver-when-db analyze-called? db)]
@@ -1148,17 +1151,18 @@
 
 (deftest can-rescan-fieldvalues-for-a-db
   (testing "Can we RESCAN all the FieldValues for a DB?"
-    (let [update-field-values-called? (promise)]
-      (t2.with-temp/with-temp [Database db {:engine "h2", :details (:details (mt/db))}]
-        (with-redefs [field-values/update-field-values! (fn [synced-db]
-                                                          (when (= (u/the-id synced-db) (u/the-id db))
-                                                            (deliver update-field-values-called? :sync-called)))]
-          (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
-          (is (= :sync-called
-                 (deref update-field-values-called? long-timeout :sync-never-called)))
-          (is (= (:id db) (:model_id (mt/latest-audit-log-entry "database-manual-scan"))))
-          (is (= (:id db) (-> (mt/latest-audit-log-entry "database-manual-scan")
-                              :details :id))))))))
+    (premium-features-test/with-premium-features #{:audit-app}
+      (let [update-field-values-called? (promise)]
+        (t2.with-temp/with-temp [Database db {:engine "h2", :details (:details (mt/db))}]
+          (with-redefs [field-values/update-field-values! (fn [synced-db]
+                                                            (when (= (u/the-id synced-db) (u/the-id db))
+                                                              (deliver update-field-values-called? :sync-called)))]
+            (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
+            (is (= :sync-called
+                   (deref update-field-values-called? long-timeout :sync-never-called)))
+            (is (= (:id db) (:model_id (mt/latest-audit-log-entry "database-manual-scan"))))
+            (is (= (:id db) (-> (mt/latest-audit-log-entry "database-manual-scan")
+                                :details :id)))))))))
 
 (deftest nonadmins-cant-trigger-rescan
   (testing "Non-admins should not be allowed to trigger re-scan"
@@ -1184,9 +1188,9 @@
                (t2/exists? FieldValues :id (u/the-id values-2))))))))
 
 (deftest discard-db-fieldvalues-audit-log-test
-  (testing "Can we DISCARD all the FieldValues for a DB?"
-    (mt/with-model-cleanup [:model/AuditLog :model/Activity]
-      (mt/with-temp [Database db    {:engine "h2", :details (:details (mt/db))}]
+  (testing "Do we get an audit log entry when we discard all the FieldValues for a DB?"
+    (premium-features-test/with-premium-features #{:audit-app}
+      (mt/with-temp [Database db {:engine "h2", :details (:details (mt/db))}]
         (is (= {:status "ok"} (mt/user-http-request :crowberto :post 200 (format "database/%d/discard_values" (u/the-id db)))))
         (is (= (:id db) (:model_id (mt/latest-audit-log-entry))))))))
 

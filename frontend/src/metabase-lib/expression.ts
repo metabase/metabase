@@ -20,6 +20,17 @@ export function expression(
   return ML.expression(query, stageIndex, expressionName, clause);
 }
 
+export function expressionName(clause: ExpressionClause): string {
+  return ML.expression_name(clause);
+}
+
+export function withExpressionName(
+  clause: ExpressionClause,
+  newName: string,
+): ExpressionClause {
+  return ML.with_expression_name(clause, newName);
+}
+
 export function expressions(
   query: Query,
   stageIndex: number,
@@ -49,4 +60,24 @@ export function expressionClause(
   options: ExpressionOptions | null = null,
 ): ExpressionClause {
   return ML.expression_clause(operator, args, options);
+}
+
+export function expressionClauseForLegacyExpression(
+  query: Query,
+  stageIndex: number,
+  mbql: any,
+): ExpressionClause {
+  return ML.expression_clause_for_legacy_expression(query, stageIndex, mbql);
+}
+
+export function legacyExpressionForExpressionClause(
+  query: Query,
+  stageIndex: number,
+  expressionClause: ExpressionClause,
+): any {
+  return ML.legacy_expression_for_expression_clause(
+    query,
+    stageIndex,
+    expressionClause,
+  );
 }

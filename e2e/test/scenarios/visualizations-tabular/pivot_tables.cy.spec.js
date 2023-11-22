@@ -462,7 +462,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findByText(/Sort order/).should("not.be.visible");
   });
 
-  it("should allow sorting fields", { tags: "@flaky" }, () => {
+  it("should allow sorting fields", () => {
     // Pivot by a single column with many values (100 bins).
     // Having many values hides values that are sorted to the end.
     // This lets us assert on presence of a certain value.
@@ -487,21 +487,18 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     // open settings and expand Total column settings
     cy.findByTestId("viz-settings-button").click();
-    openColumnSettings(/Total/);
 
-    // sort descending
-    cy.icon("arrow_down").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("158 – 160");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("8 – 10").should("not.exist");
+    sortColumnResults("Total", "descending");
+    cy.findAllByTestId("pivot-table").within(() => {
+      cy.findByText("158 – 160").should("be.visible");
+      cy.findByText("8 – 10").should("not.exist");
+    });
 
-    // sort ascending
-    cy.icon("arrow_up").realClick();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("8 – 10");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("158 – 160").should("not.exist");
+    sortColumnResults("Total", "ascending");
+    cy.findAllByTestId("pivot-table").within(() => {
+      cy.findByText("8 – 10").should("be.visible");
+      cy.findByText("158 – 160").should("not.exist");
+    });
   });
 
   it("should display an error message for native queries", () => {
@@ -1247,4 +1244,27 @@ function openColumnSettings(columnName) {
     .findByText(columnName)
     .siblings("[data-testid$=settings-button]")
     .click();
+}
+
+/**
+ * @param {string} column
+ * @param {("ascending"|"descending")} direction
+ */
+function sortColumnResults(column, direction) {
+  const iconName = direction === "ascending" ? "arrow_up" : "arrow_down";
+
+  cy.findByTestId("sidebar-content")
+    .findByTestId(`${column}-settings-button`)
+    .click();
+
+  popover().icon(iconName).click();
+  // Click anywhere to dismiss the popover from UI
+  cy.get("body").click("topLeft");
+
+  cy.location("hash").then(hash => {
+    // Get rid of the leading `#`
+    const base64EncodedQuery = hash.slice(1);
+    const decodedQuery = atob(base64EncodedQuery);
+    expect(decodedQuery).to.include(direction);
+  });
 }

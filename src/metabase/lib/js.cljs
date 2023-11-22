@@ -695,6 +695,16 @@
   [a-query stage-number expression-name an-expression-clause]
   (lib.core/expression a-query stage-number expression-name an-expression-clause))
 
+(defn ^:export expression-name
+  "Return the name of `an-expression-clause`."
+  [an-expression-clause]
+  (lib.core/expression-name an-expression-clause))
+
+(defn ^:export with-expression-name
+  "Return an new expressions clause like `an-expression-clause` but with name `new-name`."
+  [an-expression-clause new-name]
+  (lib.core/with-expression-name an-expression-clause new-name))
+
 (defn ^:export expressions
   "Get the expressions map from a given stage of a `query`."
   [a-query stage-number]
@@ -979,6 +989,17 @@
   [a-query stage-number a-drill-thru & args]
   (apply lib.core/drill-thru a-query stage-number a-drill-thru args))
 
+(defn ^:export column-filter-drill-details
+  "Returns a JS object with opaque CLJS things in it, which are needed to render the complex UI for `column-filter`
+  drills. Since the query might need an extra stage appended, this returns a possibly updated `query` and `stageNumber`,
+  as well as a `column` as returned by [[filterable-columns]]."
+  [{a-query :query
+    :keys [column stage-number]
+    :as _column-filter-drill}]
+  #js {"column"      column
+       "query"       a-query
+       "stageNumber" stage-number})
+
 (defn ^:export pivot-types
   "Returns an array of pivot types that are available in this drill-thru, which must be a pivot drill-thru."
   [a-drill-thru]
@@ -1046,3 +1067,15 @@
    Falls back to the full filter display-name"
   [a-query stage-number a-filter-clause]
   (lib.core/filter-args-display-name a-query stage-number a-filter-clause))
+
+(defn ^:export expression-clause-for-legacy-expression
+  "Create an expression clause from `legacy-expression` at stage `stage-number` of `a-query`."
+  [a-query stage-number legacy-expression]
+  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
+    (lib.convert/->pMBQL legacy-expression)))
+
+(defn ^:export legacy-expression-for-expression-clause
+  "Create a legacy expression from `an-expression-clause` at stage `stage-number` of `a-query`."
+  [a-query stage-number an-expression-clause]
+  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
+    (lib.convert/->legacy-MBQL an-expression-clause)))

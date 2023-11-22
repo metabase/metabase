@@ -106,6 +106,6 @@ const metadata = createMockMetadata({
   ],
 });
 
-export const query = metadata.table(TABLE_ID).query();
-export const expressionOpts = { query, startRule: "expression" };
-export const aggregationOpts = { query, startRule: "aggregation" };
+export const legacyQuery = metadata.table(TABLE_ID).query();
+export const expressionOpts = { legacyQuery, startRule: "expression" };
+export const aggregationOpts = { legacyQuery, startRule: "aggregation" };

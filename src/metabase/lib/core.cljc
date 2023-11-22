@@ -115,10 +115,12 @@
   find-matching-column]
  [lib.expression
   expression
+  expression-name
   expressions
   expressions-metadata
   expressionable-columns
   expression-ref
+  with-expression-name
   +
   -
   *
