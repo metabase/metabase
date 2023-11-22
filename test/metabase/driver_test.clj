@@ -3,10 +3,8 @@
    [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.driver.h2 :as h2]
    [metabase.driver.impl :as driver.impl]
    [metabase.plugins.classloader :as classloader]
-   [metabase.sync :as sync]
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
@@ -76,17 +74,20 @@
 
 (defn- basic-table-definition [table-name]
   (tx/map->DatabaseDefinition
-   {:database-name     (str table-name "_db")
+   {:database-name     table-name
     :table-definitions [{:table-name        table-name
                          :field-definitions [{:field-name "foo", :base-type :type/Text}]
                          :rows              [["bar"]]}]}))
 
 (deftest check-can-connect-before-sync-test
-  (testing "Database sync should short-circuit and fail if the database connection is not available"
-    ;; TODO:
-    ;; This only works with this subset of drivers for now. We should expand it to all drivers once we
-    ;; correctly implement the can-connect? check.
-    (mt/test-drivers (filter #{:mongo :mysql :postgres :sqlite :sparksql :sqlserver} (mt/normal-drivers))
+  (testing "Database sync should short-circuit and fail if the database at the connection has been deleted (metabase#7526)"
+    (mt/test-drivers (->> (mt/normal-drivers)
+                          ;; TODO: This only works with this subset of drivers. We should expand it to more drivers once we
+                          ;; correctly implement the can-connect? check.
+                          (filter #{:mongo :mysql :postgres :sqlite :sparksql :sqlserver :snowflake})
+                          ;; athena is a special case because connections aren't made with a single database,
+                          ;; but to an S3 bucket that may contain many databases
+                          (remove #{:athena}))
       (let [database-name (mt/random-name)
             dbdef         (basic-table-definition database-name)]
         (mt/dataset dbdef
@@ -99,8 +100,6 @@
                                          (re-matches #"^Cannot sync Database (.+): (.+)" message)))
                                   (mt/with-log-messages-for-level :warn
                                     (#'task.sync-databases/sync-and-analyze-database*! (u/the-id db)))))]
-            (binding [h2/*allow-testing-h2-connections* true]
-              (sync/sync-database! db))
             (testing "sense checks before deleting the database"
               (testing "sense check 1: sync-and-analyze-database! should not log a warning"
                 (is (nil? (find-log-match))))
