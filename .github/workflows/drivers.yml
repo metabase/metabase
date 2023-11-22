@@ -384,7 +384,6 @@ jobs:
           # Try adjusting container env as per https://hub.docker.com/r/circleci/mysql
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: circle_test
-          MYSQL_USER: root
         ports:
         - "3306:3306"
     steps:
