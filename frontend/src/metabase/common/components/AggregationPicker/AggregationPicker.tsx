@@ -213,7 +213,7 @@ export function AggregationPicker({
   if (isEditingExpression) {
     return (
       <ExpressionWidget
-        query={legacyQuery}
+        legacyQuery={legacyQuery}
         name={AGGREGATION.getName(legacyClause)}
         expression={AGGREGATION.getContent(legacyClause)}
         withName

@@ -2,9 +2,12 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [goog.object :as gobject]
+   [metabase.lib.core :as lib]
    [metabase.lib.js :as lib.js]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.test-runner.assert-exprs.approximately-equal]
    [metabase.test.util.js :as test.js]))
 
 (deftest ^:parallel query=-test
@@ -133,3 +136,20 @@
 (deftest ^:parallel is-column-metadata-test
   (is (true? (lib.js/is-column-metadata (meta/field-metadata :venues :id))))
   (is (false? (lib.js/is-column-metadata 1))))
+
+(deftest ^:parallel cljs-key->js-key-test
+  (is (= "isManyPks"
+         (#'lib.js/cljs-key->js-key :many-pks?))))
+
+(deftest ^:parallel expression-clause-<->-legacy-expression-test
+  (let [query (-> lib.tu/venues-query
+                  (lib/expression "double-price" (lib/* (meta/field-metadata :venues :price) 2))
+                  (lib/aggregate (lib/sum [:expression {:lib/uuid (str (random-uuid))} "double-price"])))
+        agg-uuid (-> query lib/aggregations first lib.options/uuid)
+        legacy-expr [:> [:aggregation 0] 100]
+        pmbql-expr (lib.js/expression-clause-for-legacy-expression query -1 legacy-expr)
+        legacy-expr' (lib.js/legacy-expression-for-expression-clause query -1 pmbql-expr)]
+    (testing "from legacy expression"
+      (is (=? [:> {} [:aggregation {} agg-uuid] 100] pmbql-expr)))
+    (testing "from pMBQL expression"
+      (is (=? legacy-expr legacy-expr')))))

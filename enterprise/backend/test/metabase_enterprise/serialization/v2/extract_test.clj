@@ -1344,6 +1344,8 @@
                                                               :db_id       db-id
                                                               :schema      "PUBLIC"}
                        Field      {field-id :id}             {:name "Other Field" :table_id schema-id}
+                       Field      {field-id2 :id}            {:name "Field To Click 1" :table_id schema-id}
+                       Field      {field-id3 :id}            {:name "Field To Click 2" :table_id schema-id}
 
                        ;; One dashboard and three cards in each of the three collections:
                        ;; Two cards contained in the dashboard and one freestanding.
@@ -1475,15 +1477,42 @@
                                                                  {:click_behavior {:type "link"
                                                                                    :linkType "question"
                                                                                    :targetId c3-2-id
-                                                                                   :parameterMapings {}}}}
+                                                                                   :parameterMappings {}}}}
+                       ;;; stress-test that exporting various visualization_settings does not break
                        DashboardCard _                          {:card_id c3-1-id
                                                                  :dashboard_id clickdash-id
                                                                  :visualization_settings
                                                                  {:column_settings
                                                                   {(str "[\"ref\",[\"field\"," field-id ",null]]")
-                                                                   {:click_behavior {:type     "link"
-                                                                                     :linkType "dashboard"
-                                                                                     :targetId dash4-id}}}}}]
+                                                                   {:click_behavior
+                                                                    {:type     "link"
+                                                                     :linkType "dashboard"
+                                                                     :targetId dash4-id}}
+                                                                   (str "[\"ref\",[\"field\"," field-id2 ",null]]")
+                                                                   {:click_behavior
+                                                                    {:type "crossfilter"
+                                                                     :parameterMapping
+                                                                     {"abcdef" {:id "abcdef"
+                                                                                :source {:type "column"
+                                                                                         :id field-id2
+                                                                                         :name "Field To Click 1"}
+                                                                                :target {:type "parameter"
+                                                                                         :id "abcdef"}}}}}
+                                                                   (str "[\"ref\",[\"field\"," field-id3 ",null]]")
+                                                                   (let [mapping-id (format "[\"dimension\",[\"fk->\",[\"field\",%d,null],[\"field\",%d,null]]]" field-id3 field-id)
+                                                                         dimension [:dimension [:field field-id {:source-field field-id3}]]]
+                                                                     {:click_behavior
+                                                                      {:type "link"
+                                                                       :linkType "question"
+                                                                       :targetId c4-id
+                                                                       :parameterMapping
+                                                                       {mapping-id {:id mapping-id
+                                                                                    :source {:type "column"
+                                                                                             :id   "Category_ID"
+                                                                                             :name "Category ID"}
+                                                                                    :target {:type      "dimension"
+                                                                                             :id        mapping-id
+                                                                                             :dimension dimension}}}}})}}}]
 
       (testing "selecting a collection includes settings and data model by default"
         (is (= #{"Card" "Collection" "Dashboard" "Database" "Setting"}
@@ -1614,7 +1643,7 @@
                                                      :collection_id coll2-id
                                                      :dataset_query {:query {:source-table (str "card__" card1-id)
                                                                              :aggregation  [[:count]]}}}]
-      (testing "Complain about card to available for exporting"
+      (testing "Complain about card not available for exporting"
         (is (some #(str/starts-with? % "Failed to export Dashboard")
                   (into #{}
                         (map (fn [[_log-level _error message]] message))
@@ -1623,7 +1652,7 @@
                                             :no-settings   true
                                             :no-data-model true}))))))
 
-      (testing "Complain about card depending on a card"
+      (testing "Complain about card depending on an outside card"
         (is (some #(str/starts-with? % "Failed to export Cards")
                   (into #{}
                         (map (fn [[_log-level _error message]] message))

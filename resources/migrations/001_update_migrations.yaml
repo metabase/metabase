@@ -3902,6 +3902,21 @@ databaseChangeLog:
             sql: drop view if exists v_view_log;
 
   - changeSet:
+      id: v48.00-045
+      author: qwef
+      comment: Added 0.48.0 - add is_sandboxed to query_execution
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: is_sandboxed
+                  type: boolean
+                  remarks: "Is query from a sandboxed user"
+                  constraints:
+                    nullable: true
+
+  - changeSet:
       id: v48.00-046
       author: noahmoss
       comment: Added 0.48.0 - new indexes to optimize audit v2 queries
@@ -4099,6 +4114,14 @@ databaseChangeLog:
                     nullable: true
                   remarks: 'The context of the view, can be collection, question, or dashboard. Only for cards.'
 
+  - changeSet:
+      id: v48.00-059
+      author: qwef
+      comment: 'Update the namespace of any audit collections that are already loaded'
+      changes:
+        - sql:
+            sql: UPDATE collection SET namespace = 'analytics' WHERE entity_id = 'okNLSZKdSxaoG58JSQY54' OR entity_id = 'vG58R8k-QddHWA7_47umn'
+      rollback: # not necessary
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

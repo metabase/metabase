@@ -22,8 +22,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.jdbc :as t2.jdbc]
-   [toucan2.map-backend.honeysql2 :as t2.honeysql]
+   [toucan2.honeysql2 :as t2.honeysql]
+   [toucan2.jdbc.options :as t2.jdbc.options]
    [toucan2.pipeline :as t2.pipeline])
   (:import
    (liquibase.exception LockException)))
@@ -168,7 +168,7 @@
          :dialect      ::application-db
          :quoted-snake false})
 
-(reset! t2.jdbc/global-options
+(reset! t2.jdbc.options/global-options
         {:read-columns mdb.jdbc-protocols/read-columns
          :label-fn     u/lower-case-en})
 

@@ -23,6 +23,7 @@ import { addUndo } from "metabase/redux/undo";
 import { INITIAL_DASHBOARD_STATE } from "../constants";
 import { getDashCardById } from "../selectors";
 import { trackCardMoved } from "../analytics";
+import { calculateDashCardRowAfterUndo } from "../utils";
 import { getDashCardMoveToTabUndoMessage, getExistingDashCards } from "./utils";
 
 type CreateNewTabPayload = { tabId: DashboardTabId };
@@ -375,7 +376,7 @@ export const tabsReducer = createReducer<DashboardState>(
       ) => {
         const dashCard = state.dashcards[dashCardId];
 
-        dashCard.row = originalRow;
+        dashCard.row = calculateDashCardRowAfterUndo(originalRow);
         dashCard.col = originalCol;
         dashCard.dashboard_tab_id = originalTabId;
         dashCard.isDirty = true;
