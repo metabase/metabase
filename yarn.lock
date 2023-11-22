@@ -4210,6 +4210,79 @@
     "@svgr/plugin-jsx" "8.0.1"
     "@svgr/plugin-svgo" "8.0.1"
 
+"@swc/core-darwin-arm64@1.3.99":
+  version "1.3.99"
+  resolved "https://registry.yarnpkg.com/@swc/core-darwin-arm64/-/core-darwin-arm64-1.3.99.tgz#def204349ac645b8de21a800fa784907642a6c91"
+  integrity sha512-Qj7Jct68q3ZKeuJrjPx7k8SxzWN6PqLh+VFxzA+KwLDpQDPzOlKRZwkIMzuFjLhITO4RHgSnXoDk/Syz0ZeN+Q==
+
+"@swc/core-darwin-x64@1.3.99":
+  version "1.3.99"
+  resolved "https://registry.yarnpkg.com/@swc/core-darwin-x64/-/core-darwin-x64-1.3.99.tgz#2633f1ac1668ec569f34f86eb5250d56fcacd952"
+  integrity sha512-wR7m9QVJjgiBu1PSOHy7s66uJPa45Kf9bZExXUL+JAa9OQxt5y+XVzr+n+F045VXQOwdGWplgPnWjgbUUHEVyw==
+
+"@swc/core-linux-arm64-gnu@1.3.99":
+  version "1.3.99"
+  resolved "https://registry.yarnpkg.com/@swc/core-linux-arm64-gnu/-/core-linux-arm64-gnu-1.3.99.tgz#871c2f049a3a5d88bcc7317ac004230517a08ba4"
+  integrity sha512-gcGv1l5t0DScEONmw5OhdVmEI/o49HCe9Ik38zzH0NtDkc+PDYaCcXU5rvfZP2qJFaAAr8cua8iJcOunOSLmnA==
+
+"@swc/core-linux-arm64-musl@1.3.99":
+  version "1.3.99"
+  resolved "https://registry.yarnpkg.com/@swc/core-linux-arm64-musl/-/core-linux-arm64-musl-1.3.99.tgz#28ed1622e92bc13aab4b650f2af695af8695289b"
+  integrity sha512-XL1/eUsTO8BiKsWq9i3iWh7H99iPO61+9HYiWVKhSavknfj4Plbn+XyajDpxsauln5o8t+BRGitymtnAWJM4UQ==
+
+"@swc/core-linux-x64-gnu@1.3.99":
+  version "1.3.99"
+  resolved "https://registry.yarnpkg.com/@swc/core-linux-x64-gnu/-/core-linux-x64-gnu-1.3.99.tgz#8e07add9cc8b76d542959e3240340effa6c6e446"
+  integrity sha512-fGrXYE6DbTfGNIGQmBefYxSk3rp/1lgbD0nVg4rl4mfFRQPi7CgGhrrqSuqZ/ezXInUIgoCyvYGWFSwjLXt/Qg==
+
+"@swc/core-linux-x64-musl@1.3.99":
+  version "1.3.99"
+  resolved "https://registry.yarnpkg.com/@swc/core-linux-x64-musl/-/core-linux-x64-musl-1.3.99.tgz#677eb82d6862605cb0a81ec5b732bef2a9861b16"
+  integrity sha512-kvgZp/mqf3IJ806gUOL6gN6VU15+DfzM1Zv4Udn8GqgXiUAvbQehrtruid4Snn5pZTLj4PEpSCBbxgxK1jbssA==
+
+"@swc/core-win32-arm64-msvc@1.3.99":
+  version "1.3.99"
+  resolved "https://registry.yarnpkg.com/@swc/core-win32-arm64-msvc/-/core-win32-arm64-msvc-1.3.99.tgz#6c9bf96dd4cb81b5960884906766dc47a49efb0d"
+  integrity sha512-yt8RtZ4W/QgFF+JUemOUQAkVW58cCST7mbfKFZ1v16w3pl3NcWd9OrtppFIXpbjU1rrUX2zp2R7HZZzZ2Zk/aQ==
+
+"@swc/core-win32-ia32-msvc@1.3.99":
+  version "1.3.99"
+  resolved "https://registry.yarnpkg.com/@swc/core-win32-ia32-msvc/-/core-win32-ia32-msvc-1.3.99.tgz#6940a602b65137eee30f09ced7cd9fcb6e162b88"
+  integrity sha512-62p5fWnOJR/rlbmbUIpQEVRconICy5KDScWVuJg1v3GPLBrmacjphyHiJC1mp6dYvvoEWCk/77c/jcQwlXrDXw==
+
+"@swc/core-win32-x64-msvc@1.3.99":
+  version "1.3.99"
+  resolved "https://registry.yarnpkg.com/@swc/core-win32-x64-msvc/-/core-win32-x64-msvc-1.3.99.tgz#7fcdfe6577f015604f7e69f71dda99822e946385"
+  integrity sha512-PdppWhkoS45VGdMBxvClVgF1hVjqamtvYd82Gab1i4IV45OSym2KinoDCKE1b6j3LwBLOn2J9fvChGSgGfDCHQ==
+
+"@swc/core@^1.3.99":
+  version "1.3.99"
+  resolved "https://registry.yarnpkg.com/@swc/core/-/core-1.3.99.tgz#24a2ff0aaa1096b31046c8099b043936db0c4ca6"
+  integrity sha512-8O996RfuPC4ieb4zbYMfbyCU9k4gSOpyCNnr7qBQ+o7IEmh8JCV6B8wwu+fT/Om/6Lp34KJe1IpJ/24axKS6TQ==
+  dependencies:
+    "@swc/counter" "^0.1.1"
+    "@swc/types" "^0.1.5"
+  optionalDependencies:
+    "@swc/core-darwin-arm64" "1.3.99"
+    "@swc/core-darwin-x64" "1.3.99"
+    "@swc/core-linux-arm64-gnu" "1.3.99"
+    "@swc/core-linux-arm64-musl" "1.3.99"
+    "@swc/core-linux-x64-gnu" "1.3.99"
+    "@swc/core-linux-x64-musl" "1.3.99"
+    "@swc/core-win32-arm64-msvc" "1.3.99"
+    "@swc/core-win32-ia32-msvc" "1.3.99"
+    "@swc/core-win32-x64-msvc" "1.3.99"
+
+"@swc/counter@^0.1.1":
+  version "0.1.2"
+  resolved "https://registry.yarnpkg.com/@swc/counter/-/counter-0.1.2.tgz#bf06d0770e47c6f1102270b744e17b934586985e"
+  integrity sha512-9F4ys4C74eSTEUNndnER3VJ15oru2NumfQxS8geE+f3eB5xvfxpWyqE5XlVnxb/R14uoXi6SLbBwwiDSkv+XEw==
+
+"@swc/types@^0.1.5":
+  version "0.1.5"
+  resolved "https://registry.yarnpkg.com/@swc/types/-/types-0.1.5.tgz#043b731d4f56a79b4897a3de1af35e75d56bc63a"
+  integrity sha512-myfUej5naTBWnqOCc/MdVOLVjXUXtIA+NpDrDBKJtLLg2shUjBu3cZmB/85RyitKc55+lUUyl7oRfLOvkr2hsw==
+
 "@szmarczak/http-timer@^1.1.2":
   version "1.1.2"
   resolved "https://registry.yarnpkg.com/@szmarczak/http-timer/-/http-timer-1.1.2.tgz#b1665e2c461a2cd92f4c1bbf50d5454de0d4b421"

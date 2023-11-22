@@ -16,11 +16,12 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/user/`
 
-Fetch a list of `Users`. By default returns every active user but only active users.
+Fetch a list of `Users` for admins or group managers.
+  By default returns only active users for admins and only active users within groups that the group manager is managing for group managers.
 
    - If `status` is `deactivated`, include deactivated users only.
    - If `status` is `all`, include all users (active and inactive).
@@ -37,13 +38,13 @@ Fetch a list of `Users`. By default returns every active user but only active us
 
 ### PARAMS:
 
-*  **`status`** value may be nil, or if non-nil, value must be a string.
+*  **`status`** nullable string
 
-*  **`query`** value may be nil, or if non-nil, value must be a string.
+*  **`query`** nullable string
 
-*  **`group_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`group_id`** nullable value must be an integer greater than zero.
 
-*  **`include_deactivated`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`include_deactivated`** nullable value must be a valid boolean string ('true' or 'false').
 
 ## `GET /api/user/:id`
 
@@ -51,7 +52,7 @@ Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group M
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/user/current`
 
@@ -73,18 +74,15 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`first_name`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`first_name`** nullable value must be a non-blank string.
 
-*  **`last_name`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`last_name`** nullable value must be a non-blank string.
 
 *  **`email`** value must be a valid email address.
 
-*  **`user_group_memberships`** value may be nil, or if non-nil, value must be an array. Each value must be a map with schema: (
-  is_group_manager (optional) : value must be a boolean.
-  id : value must be an integer greater than zero.
-)
+*  **`user_group_memberships`** nullable sequence of map where {:id -> <value must be an integer greater than zero.>, :is_group_manager (optional) -> <boolean>}
 
-*  **`login_attributes`** value may be nil, or if non-nil, login attribute keys must be a keyword or string
+*  **`login_attributes`** nullable login attribute keys must be a keyword or string
 
 ## `POST /api/user/:id/send_invite`
 
@@ -104,26 +102,23 @@ Update an existing, active `User`.
 
 ### PARAMS:
 
-*  **`email`** value may be nil, or if non-nil, value must be a valid email address.
+*  **`email`** nullable value must be a valid email address.
 
-*  **`first_name`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`first_name`** nullable value must be a non-blank string.
 
-*  **`is_group_manager`** value may be nil, or if non-nil, value must be a boolean.
+*  **`is_group_manager`** nullable boolean
 
-*  **`locale`** value may be nil, or if non-nil, String must be a valid two-letter ISO language or language-country code e.g. en or en_US.
+*  **`locale`** nullable String must be a valid two-letter ISO language or language-country code e.g. en or en_US.
 
-*  **`user_group_memberships`** value may be nil, or if non-nil, value must be an array. Each value must be a map with schema: (
-  is_group_manager (optional) : value must be a boolean.
-  id : value must be an integer greater than zero.
-)
+*  **`user_group_memberships`** nullable sequence of map where {:id -> <value must be an integer greater than zero.>, :is_group_manager (optional) -> <boolean>}
 
-*  **`id`** 
+*  **`id`** value must be an integer greater than zero.
 
-*  **`is_superuser`** value may be nil, or if non-nil, value must be a boolean.
+*  **`is_superuser`** nullable boolean
 
-*  **`login_attributes`** value may be nil, or if non-nil, login attribute keys must be a keyword or string
+*  **`login_attributes`** nullable login attribute keys must be a keyword or string
 
-*  **`last_name`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`last_name`** nullable value must be a non-blank string.
 
 ## `PUT /api/user/:id/modal/:modal`
 
@@ -131,7 +126,7 @@ Indicate that a user has been informed about the vast intricacies of 'the' Query
 
 ### PARAMS:
 
-*  **`id`** 
+*  **`id`** value must be an integer greater than zero.
 
 *  **`modal`**
 
@@ -141,7 +136,7 @@ Update a user's password.
 
 ### PARAMS:
 
-*  **`id`** 
+*  **`id`** value must be an integer greater than zero.
 
 *  **`password`** password is too common.
 
@@ -157,7 +152,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ---
 
