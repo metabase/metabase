@@ -365,6 +365,7 @@
                                                     :card                       (merge api.card-test/card-defaults-no-hydrate
                                                                                        {:name                   "Dashboard Test Card"
                                                                                         :creator_id             (mt/user->id :rasta)
+                                                                                        :can_write              false ;; hydrate :can_write for issue #35077
                                                                                         :collection_id          true
                                                                                         :display                "table"
                                                                                         :entity_id              (:entity_id card)
@@ -425,47 +426,47 @@
                                                                                :target       [:dimension [:field field-id nil]]}]}]]
         (with-dashboards-in-readable-collection [dashboard-id]
           (api.card-test/with-cards-in-readable-collection [card-id]
-            (is (= (merge dashboard-defaults
-                          {:name                       "Test Dashboard"
-                           :creator_id                 (mt/user->id :rasta)
-                           :collection_id              true
-                           :collection_authority_level nil
-                           :can_write                  false
-                           :param_values               nil
-                           :param_fields               {field-id {:id               field-id
-                                                                  :table_id         table-id
-                                                                  :display_name     display-name
-                                                                  :base_type        "type/Text"
-                                                                  :semantic_type    nil
-                                                                  :has_field_values "search"
-                                                                  :name_field       nil
-                                                                  :dimensions       []}}
-                           :ordered_tabs               []
-                           :ordered_cards              [{:size_x                     4
-                                                         :size_y                     4
-                                                         :col                        0
-                                                         :row                        0
-                                                         :updated_at                 true
-                                                         :created_at                 true
-                                                         :entity_id                  (:entity_id dashcard)
-                                                         :collection_authority_level nil
-                                                         :parameter_mappings         [{:card_id      1
-                                                                                       :parameter_id "foo"
-                                                                                       :target       ["dimension" ["field" field-id nil]]}]
-                                                         :visualization_settings     {}
-                                                         :dashboard_tab_id           nil
-                                                         :card                       (merge api.card-test/card-defaults-no-hydrate
-                                                                                            {:name                   "Dashboard Test Card"
-                                                                                             :creator_id             (mt/user->id :rasta)
-                                                                                             :collection_id          true
-                                                                                             :collection             false
-                                                                                             :entity_id              (:entity_id card)
-                                                                                             :display                "table"
-                                                                                             :query_type             nil
-                                                                                             :visualization_settings {}
-                                                                                             :result_metadata        nil})
-                                                         :series                     []}]})
-                   (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
+            (is (=? (merge dashboard-defaults
+                           {:name                       "Test Dashboard"
+                            :creator_id                 (mt/user->id :rasta)
+                            :collection_id              true
+                            :collection_authority_level nil
+                            :can_write                  false
+                            :param_values               nil
+                            :param_fields               {field-id {:id               field-id
+                                                                   :table_id         table-id
+                                                                   :display_name     display-name
+                                                                   :base_type        "type/Text"
+                                                                   :semantic_type    nil
+                                                                   :has_field_values "search"
+                                                                   :name_field       nil
+                                                                   :dimensions       []}}
+                            :ordered_tabs               []
+                            :ordered_cards              [{:size_x                     4
+                                                          :size_y                     4
+                                                          :col                        0
+                                                          :row                        0
+                                                          :updated_at                 true
+                                                          :created_at                 true
+                                                          :entity_id                  (:entity_id dashcard)
+                                                          :collection_authority_level nil
+                                                          :parameter_mappings         [{:card_id      1
+                                                                                        :parameter_id "foo"
+                                                                                        :target       ["dimension" ["field" field-id nil]]}]
+                                                          :visualization_settings     {}
+                                                          :dashboard_tab_id           nil
+                                                          :card                       (merge api.card-test/card-defaults-no-hydrate
+                                                                                             {:name                   "Dashboard Test Card"
+                                                                                              :creator_id             (mt/user->id :rasta)
+                                                                                              :collection_id          true
+                                                                                              :collection             false
+                                                                                              :entity_id              (:entity_id card)
+                                                                                              :display                "table"
+                                                                                              :query_type             nil
+                                                                                              :visualization_settings {}
+                                                                                              :result_metadata        nil})
+                                                          :series                     []}]})
+                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
     (testing "fetch a dashboard from an official collection includes the collection type"
       (mt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
                       Card          [{card-id :id}      {:name "Dashboard Test Card"}]

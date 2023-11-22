@@ -595,15 +595,28 @@
          :serdes/meta  [{:model "Dashboard"    :id (:entity_id dashboard)}
                         {:model "DashboardTab" :id (:entity_id tab)}]))
 
+(defn- drop-excessive-nested!
+  "Remove nested entities which are not present in incoming serialization load"
+  [hydration-key ingested local]
+  (let [local-nested    (get (t2/hydrate local hydration-key) hydration-key)
+        ingested-nested (get ingested hydration-key)
+        to-remove       (set/difference (set (map :entity_id local-nested))
+                                        (set (map :entity_id ingested-nested)))
+        model           (t2/model (first local-nested))]
+    (when (seq to-remove)
+      (t2/delete! model :entity_id [:in to-remove]))))
+
 ;; Call the default load-one! for the Dashboard, then for each DashboardCard.
 (defmethod serdes/load-one! "Dashboard" [ingested maybe-local]
   (let [dashboard ((get-method serdes/load-one! :default) (dissoc ingested :ordered_cards :ordered_tabs) maybe-local)]
+    (drop-excessive-nested! :ordered_tabs ingested dashboard)
     (doseq [tab (:ordered_tabs ingested)]
       (serdes/load-one! (dashtab-for tab dashboard)
                         (t2/select-one :model/DashboardTab :entity_id (:entity_id tab))))
+    (drop-excessive-nested! :ordered_cards ingested dashboard)
     (doseq [dashcard (:ordered_cards ingested)]
       (serdes/load-one! (dashcard-for dashcard dashboard)
-                        (t2/select-one 'DashboardCard :entity_id (:entity_id dashcard))))))
+                        (t2/select-one :model/DashboardCard :entity_id (:entity_id dashcard))))))
 
 (defn- serdes-deps-dashcard
   [{:keys [action_id card_id parameter_mappings visualization_settings]}]
@@ -621,12 +634,12 @@
        (set/union (serdes/parameters-deps parameters))))
 
 (defmethod serdes/descendants "Dashboard" [_model-name id]
-  (let [dashcards (t2/select ['DashboardCard :card_id :action_id :parameter_mappings]
+  (let [dashcards (t2/select ['DashboardCard :card_id :action_id :parameter_mappings :visualization_settings]
                              :dashboard_id id)
         dashboard (t2/select-one Dashboard :id id)]
     (set/union
       ;; DashboardCards are inlined into Dashboards, but we need to capture what those those DashboardCards rely on
-      ;; here. So their actions, and their cards both direct and mentioned in their parameters
+      ;; here. So their actions, and their cards both direct and mentioned in their parameters or viz settings.
      (set (for [{:keys [card_id parameter_mappings]} dashcards
                  ;; Capture all card_ids in the parameters, plus this dashcard's card_id if non-nil.
                 card-id (cond-> (set (keep :card_id parameter_mappings))
@@ -635,6 +648,9 @@
      (set (for [{:keys [action_id]} dashcards
                 :when action_id]
             ["Action" action_id]))
+     (reduce set/union #{}
+             (for [dc dashcards]
+               (serdes/visualization-settings-descendants (:visualization_settings dc))))
       ;; parameter with values_source_type = "card" will depend on a card
      (set (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
             ["Card" card-id])))))
