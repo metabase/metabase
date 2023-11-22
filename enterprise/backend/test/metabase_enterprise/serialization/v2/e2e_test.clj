@@ -738,19 +738,21 @@
 
 (deftest pivot-export-test
   (testing "Pivot table export and load correctly"
-    (let [card1s (atom nil)]
+    (let [old-ids (atom nil)
+          card1s  (atom nil)]
       (ts/with-random-dump-dir [dump-dir "serdesv2-"]
         (ts/with-source-and-dest-dbs
           (ts/with-source-db
             (mt/dataset sample-dataset
+              ;; ensuring field ids are stable by loading dataset in db first
+              (mt/db)
               (mt/$ids nil
                 (t2.with-temp/with-temp
-                  [Database   {db-id :id}    {:name "Pivot Database"}
-                   Collection {coll-id :id}  {:name "Pivot Collection"}
+                  [Collection {coll-id :id}  {:name "Pivot Collection"}
                    Card       card           {:name          "Pivot Card"
                                               :collection_id coll-id
                                               :dataset_query {:type     :query
-                                                              :database db-id
+                                                              :database (mt/id)
                                                               :query    {:source-table $$orders
                                                                          :aggregation  [:sum [:field %orders.id nil]]
                                                                          :breakout     [[:field %orders.user_id nil]]}}
@@ -764,27 +766,41 @@
                                                :column_settings
                                                {(format "[\"ref\",[\"field\",%s,null]]" %people.name)
                                                 {:pivot_table.column_sort_order "descending"}}}}]
+                  (reset! old-ids {:people.name       %people.name
+                                   :orders.user_id    %orders.user_id
+                                   :products.title    %products.title
+                                   :orders.product_id %orders.product_id})
                   (reset! card1s card)
-                  (-> (serdes/with-cache (into [] (extract/extract {})))
-                      (storage/store! dump-dir))))))
+                  (storage/store! (extract/extract {}) dump-dir)))))
 
           (ts/with-dest-db
+            ;; ensure there is something in db so that sample-dataset gets different field ids for sure
+            (mt/dataset office-checkins
+              (mt/db))
+
             (mt/dataset sample-dataset
+              ;; ensuring field ids are stable by loading dataset in db first
+              (mt/db)
               (mt/$ids nil
-                (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                (testing "Column ids are different in different dbs")
+                (is (not= @old-ids
+                          {:people.name       %people.name
+                           :orders.user_id    %orders.user_id
+                           :products.title    %products.title
+                           :orders.product_id %orders.product_id}))
+
+                (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))
 
                 (let [viz (t2/select-one-fn :visualization_settings Card :entity_id (:entity_id @card1s))]
-                  (is (contains? viz :pivot_table.column_split))
-                  ;; column ids are different in different dbs
-                  (is (not= (get-in @card1s [:visualization_settings :pivot_table.column_split :rows 0 1])
-                            (get-in viz [:pivot_table.column_split :rows 0 1])))
-                  (is (= [[:field %people.name {:base-type    :type/Text
-                                                :source-field %orders.user_id}]]
-                         (get-in viz [:pivot_table.column_split :rows])))
-                  (is (= [[:field %products.title {:base-type    :type/Text
-                                                   :source-field %orders.product_id}]]
-                         (get-in viz [:pivot_table.column_split :columns])))
-                  (is (= "descending"
-                         (get-in viz [:column_settings
-                                      (format "[\"ref\",[\"field\",%s,null]]" %people.name)
-                                      :pivot_table.column_sort_order]))))))))))))
+                  (testing "column ids inside pivot table transferred"
+                    (is (= [[:field %people.name {:base-type    :type/Text
+                                                  :source-field %orders.user_id}]]
+                           (get-in viz [:pivot_table.column_split :rows])))
+                    (is (= [[:field %products.title {:base-type    :type/Text
+                                                     :source-field %orders.product_id}]]
+                           (get-in viz [:pivot_table.column_split :columns]))))
+                  (testing "column sort order restored"
+                    (is (= "descending"
+                           (get-in viz [:column_settings
+                                        (format "[\"ref\",[\"field\",%s,null]]" %people.name)
+                                        :pivot_table.column_sort_order])))))))))))))
