@@ -11,6 +11,7 @@ interface GetPathNameFromQueryBuilderModeOptions {
   queryBuilderMode: QueryBuilderMode;
   datasetEditorTab?: DatasetEditorTab;
 }
+
 export function getPathNameFromQueryBuilderMode({
   pathname,
   queryBuilderMode,
@@ -34,8 +35,13 @@ export function getCurrentQueryParams() {
 }
 
 type QueryParams = ReturnType<typeof getCurrentQueryParams>;
+
 export function getURLForCardState(
-  { card }: { card: Card },
+  {
+    card,
+  }: {
+    card: Card;
+  },
   dirty: boolean,
   query: QueryParams = {},
   objectId: string,
@@ -45,6 +51,7 @@ export function getURLForCardState(
     query: QueryParams;
     objectId?: string;
   }
+
   const options: Options = {
     hash: card && dirty ? serializeCardForUrl(card) : "",
     query,
@@ -127,4 +134,16 @@ export const isNavigationAllowed = ({
   }
 
   return true;
+};
+
+export const shouldRenderEmbedButton = ({
+  isAdmin,
+  isPublicSharingEnabled,
+  hasPublicLink,
+}: {
+  isAdmin: boolean;
+  isPublicSharingEnabled: boolean;
+  hasPublicLink: boolean;
+}) => {
+  return isAdmin || (isPublicSharingEnabled && hasPublicLink);
 };

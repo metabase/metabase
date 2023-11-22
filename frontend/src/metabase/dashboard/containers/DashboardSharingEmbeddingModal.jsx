@@ -18,6 +18,7 @@ import { ModalTrigger } from "./DashboardSharingEmbeddingModal.styled";
 
 const defaultProps = {
   isLinkEnabled: true,
+  triggerElement: null,
 };
 
 const mapStateToProps = (state, props) => ({
@@ -46,6 +47,7 @@ class DashboardSharingEmbeddingModal extends Component {
       updateEnableEmbedding,
       updateEmbeddingParams,
       onClose,
+      triggerElement,
       ...props
     } = this.props;
     if (!enabled) {

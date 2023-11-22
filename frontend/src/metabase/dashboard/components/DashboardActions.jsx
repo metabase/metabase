@@ -1,10 +1,9 @@
 import { t } from "ttag";
 
-import MetabaseSettings from "metabase/lib/settings";
 import Tooltip from "metabase/core/components/Tooltip";
 
 import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
-import { DashboardEmbedHeaderButton } from "metabase/dashboard/components/DashboardEmbedHeaderButton/DashboardEmbedHeaderButton";
+import { DashboardEmbedAction } from "metabase/dashboard/components/DashboardEmbedAction/DashboardEmbedAction";
 import {
   FullScreenButtonIcon,
   NightModeButtonIcon,
@@ -32,8 +31,6 @@ export const getDashboardActions = (
     hasNightModeToggle,
   },
 ) => {
-  const isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing");
-
   const buttons = [];
 
   const isLoaded = !!dashboard;
@@ -77,11 +74,9 @@ export const getDashboardActions = (
 
     if (canShareDashboard) {
       buttons.push(
-        <DashboardEmbedHeaderButton
+        <DashboardEmbedAction
           dashboard={dashboard}
-          publicLinksEnabled={isPublicLinksEnabled}
-          admin={isAdmin}
-          linkEnabled={canShareDashboard}
+          hasPublicLink={dashboard.public_uuid}
         />,
       );
     }
