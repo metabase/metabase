@@ -10,7 +10,7 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { RowValue } from "metabase-types/api";
+import type { RowValue, SeriesSettings } from "metabase-types/api";
 import type { Insight } from "metabase-types/api/insight";
 
 import { applySquareRootScaling, replaceValues } from "../model/dataset";
@@ -56,15 +56,27 @@ function getSingleSeriesTrendDataset(
  * stacked bar chart. Otherwise, it will just return the input datasets without any transformation.
  *
  * @param {TrendDataset[]} trendDatasets - Datasets for the trend lines for each series
+ * @param {CartesianChartModel} chartModel - Locally computed chart data
  * @param {ComputedVisualizationSettings} settings - Locally computed visualization settings for the chart
  * @returns {TrendDataset[]} Resultant trend line datasets
  */
 function normalizeTrendDatasets(
   trendDatasets: TrendDataset[],
+  chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
 ): TrendDataset[] {
   if (settings["stackable.stack_type"] !== "normalized") {
-    // TODO confirm all series are bar
+    return trendDatasets;
+  }
+
+  // The chart should not be stacked if the series aren't either all bars, or all areas
+  const seriesSettings: SeriesSettings[] = chartModel.seriesModels.map(
+    ({ legacySeriesSettingsObjectKey }) =>
+      settings.series(legacySeriesSettingsObjectKey),
+  );
+  const allBar = seriesSettings.every(({ display }) => display === "bar");
+  const allArea = seriesSettings.every(({ display }) => display === "area");
+  if (!(allBar || allArea)) {
     return trendDatasets;
   }
 
@@ -166,7 +178,11 @@ export function getTrendLineOptionsAndDatasets(
   const rawDatasets = chartModel.insights.map(insight =>
     getSingleSeriesTrendDataset(insight, chartModel),
   );
-  const normalizedDatasets = normalizeTrendDatasets(rawDatasets, settings);
+  const normalizedDatasets = normalizeTrendDatasets(
+    rawDatasets,
+    chartModel,
+    settings,
+  );
   const scaledDatasets = squareRootScaleDatasets(normalizedDatasets, settings);
 
   return {
