@@ -390,8 +390,8 @@ function assertLinkMatchesUrl(text, url) {
 // TODO: Remove this temporary function once the question embed popover is implemented
 function ensureDashboardEmbeddingIsDisabled() {
   // This is implicit assertion - it would've failed if embedding was enabled
-  cy.findByTestId("embed-header-menu").findByText(/Embed/).click();
-  cy.findByText(/Embed in your application/).closest(".disabled");
+  cy.findByTestId("embed-header-menu").findByText("Embed").click();
+  cy.findByText("Embed in your application").closest(".disabled");
 
   // Let's make sure embedding stays disabled after we enable public sharing
   enableSharing();
