@@ -123,3 +123,21 @@ export const findAggregationOperator = (
   }
   return operator;
 };
+
+export const findDrillThru = (
+  query: ML.Query,
+  stageIndex: number,
+  drills: ML.DrillThru[],
+  drillType: ML.DrillThruType,
+): ML.DrillThru => {
+  const drill = drills.find(drill => {
+    const drillInfo = ML.displayInfo(query, stageIndex, drill);
+    return drillInfo.type === drillType;
+  });
+
+  if (!drill) {
+    throw new Error(`Could not find drill ${drillType}`);
+  }
+
+  return drill;
+};

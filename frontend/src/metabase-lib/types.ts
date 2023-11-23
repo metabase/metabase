@@ -267,9 +267,11 @@ export type DrillThruType =
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
+export type QuickFilterDrillThruOperator = "=" | "≠" | "<" | ">";
+
 export type QuickFilterDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/quick-filter"> & {
-    operators: Array<"=" | "≠" | "<" | ">">;
+    operators: Array<QuickFilterDrillThruOperator>;
   };
 
 type ObjectDetailsDrillThruInfo<Type extends DrillThruType> =
@@ -288,26 +290,23 @@ export type FKFilterDrillThruInfo = BaseDrillThruInfo<"drill-thru/fk-filter">;
 export type DistributionDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/distribution">;
 
+export type SortDrillThruDirection = "asc" | "desc";
+
 export type SortDrillThruInfo = BaseDrillThruInfo<"drill-thru/sort"> & {
-  directions: Array<"asc" | "desc">;
+  directions: Array<SortDrillThruDirection>;
 };
 
-export type SummarizeColumnDrillAggregationOperator =
-  | "sum"
-  | "avg"
-  | "distinct";
+export type SummarizeColumnDrillThruOperator = "sum" | "avg" | "distinct";
 
 export type SummarizeColumnDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/summarize-column"> & {
-    aggregations: Array<SummarizeColumnDrillAggregationOperator>;
+    aggregations: Array<SummarizeColumnDrillThruOperator>;
   };
 export type SummarizeColumnByTimeDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/summarize-column-by-time">;
 
 export type ColumnFilterDrillThruInfo =
-  BaseDrillThruInfo<"drill-thru/column-filter"> & {
-    initialOp: { short: string } | null; // null gets returned for date column
-  };
+  BaseDrillThruInfo<"drill-thru/column-filter">;
 
 export type UnderlyingRecordsDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/underlying-records"> & {
@@ -335,12 +334,12 @@ export type DrillThruDisplayInfo =
   | UnderlyingRecordsDrillThruInfo
   | ZoomTimeseriesDrillThruInfo;
 
-export interface Dimension {
-  column: DatasetColumn;
-  value?: RowValue;
-}
-
 export type DataRow = Array<{
   col: DatasetColumn | ColumnMetadata | null;
   value: RowValue;
 }>;
+
+export interface DataDimension {
+  column: DatasetColumn;
+  value?: RowValue;
+}

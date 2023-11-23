@@ -3,7 +3,7 @@ import type { DatasetColumn, RowValue } from "metabase-types/api";
 import type {
   ColumnMetadata,
   DataRow,
-  Dimension,
+  DataDimension,
   DrillThru,
   Query,
 } from "./types";
@@ -14,9 +14,9 @@ export function availableDrillThrus(
   query: Query,
   stageIndex: number,
   column: ColumnMetadata | DatasetColumn | undefined,
-  value: RowValue | undefined,
-  row: DataRow | undefined,
-  dimensions: Dimension[] | undefined,
+  value?: RowValue,
+  row?: DataRow,
+  dimensions?: DataDimension[],
 ): DrillThru[] {
   return ML.available_drill_thrus(
     query,
