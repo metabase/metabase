@@ -1060,6 +1060,14 @@
   [a-query]
   (lib.core/stage-count a-query))
 
+(defn ^:export filter-args-display-name
+  "Provides a reasonable display name for the `filter-clause` excluding the column-name.
+   Can be expanded as needed but only currently defined for a narrow set of date filters.
+
+   Falls back to the full filter display-name"
+  [a-query stage-number a-filter-clause]
+  (lib.core/filter-args-display-name a-query stage-number a-filter-clause))
+
 (defn ^:export expression-clause-for-legacy-expression
   "Create an expression clause from `legacy-expression` at stage `stage-number` of `a-query`."
   [a-query stage-number legacy-expression]
