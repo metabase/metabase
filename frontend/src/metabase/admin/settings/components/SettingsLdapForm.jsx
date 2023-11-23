@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
+import * as Yup from "yup";
 
 import { updateLdapSettings } from "metabase/admin/settings/settings";
 
@@ -26,11 +27,17 @@ const propTypes = {
   onSubmit: PropTypes.func.isRequired,
 };
 
-const validateParentheses = value => {
-  return (value?.match(/\(/g) || []).length !==
-    (value?.match(/\)/g) || []).length
-    ? t`Check your parentheses`
-    : null;
+const testParentheses = {
+  name: "test-parentheses",
+  message: "Check your parentheses",
+  test: value =>
+    (value?.match(/\(/g) || []).length === (value?.match(/\)/g) || []).length,
+};
+
+const testPort = {
+  name: "test-port",
+  message: "That's not a valid port number",
+  test: value => value?.match(/^\d+$/),
 };
 
 const SettingsLdapForm = ({
@@ -73,6 +80,11 @@ const SettingsLdapForm = ({
     <FormProvider
       initialValues={attributeValues}
       onSubmit={handleSubmit}
+      validationSchema={Yup.object({
+        "ldap-port": Yup.string().test(testPort),
+        "ldap-user-filter": Yup.string().test(testParentheses),
+        "ldap-group-membership-filter": Yup.string().test(testParentheses),
+      })}
       enableReinitialize
     >
       {({ dirty }) => (
@@ -102,10 +114,7 @@ const SettingsLdapForm = ({
           <FormSection title={"User Schema"}>
             <Stack gap="md">
               <FormTextInput {...fields["ldap-user-base"]} />
-              <FormTextInput
-                {...fields["ldap-user-filter"]}
-                validate={validateParentheses}
-              />
+              <FormTextInput {...fields["ldap-user-filter"]} />
             </Stack>
           </FormSection>
           <FormSection title={"Attributes"} collapsible>
@@ -128,10 +137,7 @@ const SettingsLdapForm = ({
               />
               <FormTextInput {...fields["ldap-group-base"]} />
               {"ldap-group-membership-filter" in fields && (
-                <FormTextInput
-                  {...fields["ldap-group-membership-filter"]}
-                  validate={validateParentheses}
-                />
+                <FormTextInput {...fields["ldap-group-membership-filter"]} />
               )}
             </Stack>
           </FormSection>
