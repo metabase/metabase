@@ -1,6 +1,5 @@
 import { forwardRef, useCallback } from "react";
 import type { ChangeEvent, FocusEvent, Ref } from "react";
-import type { FieldValidator } from "formik";
 import { useField } from "formik";
 import { TextInput } from "metabase/ui";
 import type { TextInputProps } from "metabase/ui";
@@ -11,7 +10,6 @@ export interface FormTextInputProps
   name: string;
   nullable?: boolean;
   hasCopyButton?: boolean;
-  validate?: FieldValidator;
 }
 
 export const FormTextInput = forwardRef(function FormTextInput(
@@ -19,17 +17,14 @@ export const FormTextInput = forwardRef(function FormTextInput(
     name,
     nullable,
     hasCopyButton,
-    validate,
     onChange,
     onBlur,
     ...props
   }: FormTextInputProps,
   ref: Ref<HTMLInputElement>,
 ) {
-  const [{ value }, { error, touched }, { setValue, setTouched }] = useField({
-    name,
-    validate,
-  });
+  const [{ value }, { error, touched }, { setValue, setTouched }] =
+    useField(name);
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
