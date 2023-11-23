@@ -1,23 +1,54 @@
-/* eslint-disable react/prop-types */
 import _ from "underscore";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
+import type React from "react";
+import { Button, TextInput } from "metabase/ui";
+import { Icon } from "metabase/core/components/Icon";
 
-const DefaultRenderInput = ({ value, onChange, placeholder }) => (
-  <input
-    className="input"
-    value={value}
+type DefaultRenderInputProps = {
+  value: MappingValue;
+  onChange: (val: string) => void;
+  placeholder: string;
+};
+
+const DefaultRenderInput = ({
+  value,
+  onChange,
+  placeholder,
+}: DefaultRenderInputProps) => (
+  <TextInput
+    value={value || ""}
     placeholder={placeholder}
     onChange={e => onChange(e.target.value)}
   />
 );
 
-const MappingEditor = ({
-  value,
+type MappingValue = string | null;
+type MappingType = Record<string, MappingValue>;
+
+interface MappingEditorProps {
+  value: MappingType;
+  onChange: (val: MappingType) => void;
+  className?: string;
+  style?: React.CSSProperties;
+  keyHeader?: JSX.Element;
+  valueHeader?: JSX.Element;
+  keyPlaceholder?: string;
+  valuePlaceholder?: string;
+  renderKeyInput?: (input: DefaultRenderInputProps) => JSX.Element;
+  renderValueInput?: (input: DefaultRenderInputProps) => JSX.Element;
+  divider?: JSX.Element;
+  canAdd?: boolean;
+  canDelete?: boolean;
+  addText?: string;
+  swapKeyAndValue?: boolean;
+}
+
+export const MappingEditor = ({
+  value: mapping,
   onChange,
-  className,
-  style,
+  className = "",
+  style = {},
   keyHeader,
   valueHeader,
   keyPlaceholder = t`Key`,
@@ -29,8 +60,7 @@ const MappingEditor = ({
   canDelete = true,
   addText = "Add",
   swapKeyAndValue,
-}) => {
-  const mapping = value;
+}: MappingEditorProps) => {
   const entries = Object.entries(mapping);
   return (
     <table className={className} style={style}>
@@ -69,10 +99,11 @@ const MappingEditor = ({
               {canDelete && (
                 <td>
                   <Button
-                    icon="close"
-                    type="button" // prevent submit. should be the default but it's not
-                    borderless
+                    leftIcon={<Icon name="close" />}
+                    variant="subtle"
                     onClick={() => onChange(removeMapping(mapping, key))}
+                    color={"text"}
+                    data-testId="remove-mapping"
                   />
                 </td>
               )}
@@ -85,10 +116,8 @@ const MappingEditor = ({
             <tr>
               <td colSpan={2}>
                 <Button
-                  icon="add"
-                  type="button" // prevent submit. should be the default but it's not
-                  borderless
-                  className="text-brand p0 py1"
+                  leftIcon={<Icon name="add" />}
+                  variant="subtle"
                   onClick={() => onChange(addMapping(mapping))}
                 >
                   {addText}
@@ -101,26 +130,32 @@ const MappingEditor = ({
   );
 };
 
-const addMapping = mappings => {
+const addMapping = (mappings: MappingType) => {
   return { ...mappings, "": null };
 };
 
-const removeMapping = (mappings, prevKey) => {
+const removeMapping = (mappings: MappingType, prevKey: string) => {
   mappings = { ...mappings };
   delete mappings[prevKey];
   return mappings;
 };
 
-const replaceMappingValue = (mappings, oldKey, newValue) => {
+const replaceMappingValue = (
+  mappings: MappingType,
+  oldKey: string,
+  newValue: MappingValue,
+) => {
   return { ...mappings, [oldKey]: newValue };
 };
 
-const replaceMappingKey = (mappings, oldKey, newKey) => {
-  const newMappings = {};
+const replaceMappingKey = (
+  mappings: MappingType,
+  oldKey: string,
+  newKey: string,
+) => {
+  const newMappings: MappingType = {};
   for (const key in mappings) {
     newMappings[key === oldKey ? newKey : key] = mappings[key];
   }
   return newMappings;
 };
-
-export default MappingEditor;
