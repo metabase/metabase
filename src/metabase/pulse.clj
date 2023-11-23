@@ -8,11 +8,8 @@
    [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.integrations.slack :as slack]
-   [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
-   [metabase.models.dashboard-card
-    :as dashboard-card
-    :refer [DashboardCard]]
+   [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as pulse :refer [Pulse]]
@@ -27,6 +24,7 @@
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.server.middleware.session :as mw.session]
+   [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.shared.parameters.parameters :as shared.params]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
@@ -72,7 +70,7 @@
   (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (try
     (let [card-id (u/the-id card-or-id)
-          card    (t2/select-one Card :id card-id)
+          card    (t2/select-one :model/Card :id card-id)
           result  (qp.dashboard/run-query-for-dashcard-async
                    :dashboard-id  (u/the-id dashboard)
                    :card-id       card-id
@@ -89,7 +87,12 @@
       (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty]) (is-card-empty? result))
         {:card     card
          :dashcard dashcard
-         :result   result
+         :result   (update-in result
+                              [:data :viz-settings]
+                              (fn [viz-settings]
+                                (merge viz-settings
+                                       (mb.viz/db->norm
+                                        (:visualization_settings dashcard)))))
          :type     :card}))
     (catch Throwable e
       (log/warn e (trs "Error running query for Card {0}" card-or-id)))))
@@ -183,8 +186,8 @@
   [dashcards pulse dashboard]
   (let [ordered-dashcards (sort dashboard-card/dashcard-comparator dashcards)]
     (doall (for [dashcard ordered-dashcards
-                 :let  [part (dashcard->part dashcard pulse dashboard)]
-                 :when (some? part)]
+                 :let     [part (dashcard->part dashcard pulse dashboard)]
+                 :when    (some? part)]
              part))))
 
 (defn- tab->part
@@ -203,7 +206,7 @@
         (let [tabs-with-cards (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)]
          (doall (flatten (for [{:keys [cards] :as tab} tabs-with-cards]
                            (concat [(tab->part tab)] (dashcards->part cards pulse dashboard))))))
-        (dashcards->part (t2/select DashboardCard :dashboard_id dashboard-id) pulse dashboard)))))
+        (dashcards->part (t2/select :model/DashboardCard :dashboard_id dashboard-id) pulse dashboard)))))
 
 (defn- database-id [card]
   (or (:database_id card)
@@ -211,7 +214,7 @@
 
 (mu/defn defaulted-timezone :- :string
   "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
-  [card :- (mi/InstanceOf Card)]
+  [card :- (mi/InstanceOf :model/Card)]
   (or (some->> card database-id (t2/select-one Database :id) qp.timezone/results-timezone-id)
       (qp.timezone/system-timezone-id)))
 
