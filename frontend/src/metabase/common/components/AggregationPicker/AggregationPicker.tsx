@@ -202,12 +202,19 @@ export function AggregationPicker({
   );
 
   const handleExpressionChange = useCallback(
-    (name: string, expression: LegacyExpressionClause) => {
-      const aggregation = AGGREGATION.setName(expression, name);
-      onSelectLegacy(aggregation as LegacyAggregationClause);
+    (
+      name: string,
+      _expression: LegacyExpressionClause,
+      expressionClause: Lib.ExpressionClause,
+    ) => {
+      const updatedExpressionClause = Lib.withExpressionName(
+        expressionClause,
+        name,
+      );
+      onSelect(updatedExpressionClause);
       onClose?.();
     },
-    [onSelectLegacy, onClose],
+    [onSelect, onClose],
   );
 
   if (isEditingExpression) {
