@@ -57,7 +57,7 @@
 (mu/defn ^:private query-from-existing :- ::lib.schema/query
   [metadata-providerable :- lib.metadata/MetadataProviderable
    query                 :- lib.util/LegacyOrPMBQLQuery]
-  (let [query (lib.util/pipeline query)]
+  (let [query (lib.convert/->pMBQL query)]
     (query-with-stages metadata-providerable (:stages query))))
 
 (defmulti ^:private ->query
