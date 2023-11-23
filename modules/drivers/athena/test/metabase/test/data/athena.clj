@@ -31,7 +31,10 @@
 ;; names.
 (defmethod ddl.i/format-name :athena
   [driver database-or-table-or-field-name]
-  ((get-method ddl.i/format-name :sql-jdbc) driver (str/replace database-or-table-or-field-name #"-" "_")))
+  (let [name' ((get-method ddl.i/format-name :sql-jdbc) driver (str/replace database-or-table-or-field-name #"-" "_"))]
+    (if (= name' "test_data")
+      "v2_test_data"
+      name')))
 
 (defmethod tx/dbdef->connection-details :athena
   [driver _context {:keys [database-name], :as _dbdef}]
