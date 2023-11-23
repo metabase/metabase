@@ -198,7 +198,6 @@ jobs:
         junit-name: 'be-tests-mariadb-latest-ee'
 
   be-tests-mongo-4-4-ee:
-    if: github.event.pull_request.draft == false
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -482,9 +481,6 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-postgres-ee:
-    if: |
-      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
-      needs.external-filter.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -548,7 +544,6 @@ jobs:
         junit-name: 'be-tests-postgres-latest-ee'
 
   be-tests-presto-jdbc-ee:
-    if: github.event.pull_request.draft == false
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -619,7 +614,6 @@ jobs:
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-snowflake-ee:
-    if: github.event.pull_request.draft == false
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
