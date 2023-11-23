@@ -11,7 +11,7 @@ export interface FormTextInputProps
   name: string;
   nullable?: boolean;
   hasCopyButton?: boolean;
-  validate: FieldValidator;
+  validate?: FieldValidator;
 }
 
 export const FormTextInput = forwardRef(function FormTextInput(
