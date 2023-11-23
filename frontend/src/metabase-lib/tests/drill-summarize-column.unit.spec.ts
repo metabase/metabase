@@ -1,4 +1,5 @@
 import {
+  createOrdersCreatedAtDatasetColumn,
   createOrdersTotalDatasetColumn,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
@@ -8,23 +9,37 @@ import {
   queryDrillThru,
 } from "metabase-lib/test-helpers";
 
-describe("drill-thru/column-filter", () => {
-  const drillType = "drill-thru/column-filter";
+describe("drill-thru/summarize-column", () => {
+  const drillType = "drill-thru/summarize-column";
   const initialQuery = createQuery();
   const stageIndex = 0;
   const column = createOrdersTotalDatasetColumn();
 
   describe("availableDrillThrus", () => {
-    it("should allow to drill when clicked on a column header", () => {
+    it("should allow to drill when the column is summable", () => {
       const { drillInfo } = findDrillThru(
         drillType,
         initialQuery,
         stageIndex,
         column,
       );
-
       expect(drillInfo).toMatchObject({
         type: drillType,
+        aggregations: ["distinct", "sum", "avg"],
+      });
+    });
+
+    it("should allow to drill when the column is not summable", () => {
+      const column = createOrdersCreatedAtDatasetColumn();
+      const { drillInfo } = findDrillThru(
+        drillType,
+        initialQuery,
+        stageIndex,
+        column,
+      );
+      expect(drillInfo).toMatchObject({
+        type: drillType,
+        aggregations: ["distinct"],
       });
     });
 

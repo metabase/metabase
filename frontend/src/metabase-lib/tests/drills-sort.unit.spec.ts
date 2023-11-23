@@ -21,7 +21,7 @@ describe("drill-thru/sort", () => {
   );
 
   describe("availableDrillThrus", () => {
-    it("should allow to drill when query is not sorted", () => {
+    it("should allow to drill when the query is not sorted", () => {
       const { drillInfo } = findDrillThru(
         drillType,
         initialQuery,
@@ -34,7 +34,7 @@ describe("drill-thru/sort", () => {
       });
     });
 
-    it("should allow to drill when query is sorted ascending", () => {
+    it("should allow to drill when the query is sorted ascending", () => {
       const query = Lib.orderBy(
         initialQuery,
         stageIndex,
@@ -48,7 +48,7 @@ describe("drill-thru/sort", () => {
       });
     });
 
-    it("should allow to drill when query is sorted descending", () => {
+    it("should allow to drill when the query is sorted descending", () => {
       const query = Lib.orderBy(
         initialQuery,
         stageIndex,
@@ -115,6 +115,10 @@ describe("drill-thru/sort", () => {
           database: 100,
           query: { "source-table": 101 },
         },
+      });
+      const column = createOrdersTotalDatasetColumn({
+        id: 102,
+        field_ref: ["field", 102, { "base-type": "type/Float" }],
       });
       const drill = queryDrillThru(drillType, query, stageIndex, column);
       expect(drill).toBeNull();
