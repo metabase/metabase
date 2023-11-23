@@ -106,7 +106,7 @@
               (testing "sense check 2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should succeed"
                 (is (= {:status "ok"}
                        (mt/user-http-request :crowberto :post 200 (str "/database/" (u/the-id db) "/sync_schema"))))))
-            ;; release db resources like connection pools we don't have to wait to finish syncing before destroying the db
+            ;; release db resources like connection pools so we don't have to wait to finish syncing before destroying the db
             (driver/notify-database-updated driver/*driver* db)
             ;; destroy the db
             (if (contains? #{:redshift :snowflake} driver/*driver*)
