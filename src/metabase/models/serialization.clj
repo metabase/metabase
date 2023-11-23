@@ -952,6 +952,16 @@
           (m/update-existing    :click_behavior import-viz-click-behavior-link)
           (m/update-existing-in [:click_behavior :parameterMapping] import-viz-click-behavior-mappings)))
 
+(defn- export-pivot-table [settings]
+  (some-> settings
+          (m/update-existing-in [:pivot_table.column_split :rows] ids->fully-qualified-names)
+          (m/update-existing-in [:pivot_table.column_split :columns] ids->fully-qualified-names)))
+
+(defn- import-pivot-table [settings]
+  (some-> settings
+          (m/update-existing-in [:pivot_table.column_split :rows] mbql-fully-qualified-names->ids)
+          (m/update-existing-in [:pivot_table.column_split :columns] mbql-fully-qualified-names->ids)))
+
 (defn- export-visualizations [entity]
   (mbql.u/replace
    entity
@@ -998,6 +1008,7 @@
         export-visualizations
         export-viz-link-card
         export-viz-click-behavior
+        export-pivot-table
         (update :column_settings export-column-settings))))
 
 (defn- import-viz-link-card
@@ -1046,6 +1057,7 @@
         import-visualizations
         import-viz-link-card
         import-viz-click-behavior
+        import-pivot-table
         (update :column_settings import-column-settings))))
 
 (defn- viz-link-card-deps
