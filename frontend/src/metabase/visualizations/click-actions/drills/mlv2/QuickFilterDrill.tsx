@@ -82,14 +82,14 @@ function getActionOverrides(
         return {
           ...action,
           title: t`Contains…`,
-          popover: getFilterPopover({ question, query, column, stageIndex }),
+          popover: getFilterPopover({ question, query, stageIndex, column }),
         };
       }
       case "does-not-contain": {
         return {
           ...action,
           title: t`Does not contain…`,
-          popover: getFilterPopover({ question, query, column, stageIndex }),
+          popover: getFilterPopover({ question, query, stageIndex, column }),
         };
       }
       default: {

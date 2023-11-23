@@ -6,8 +6,8 @@ import type Question from "metabase-lib/Question";
 interface FilterPopoverOpts {
   question: Question;
   query: Lib.Query;
-  column: Lib.ColumnMetadata;
   stageIndex: number;
+  column: Lib.ColumnMetadata;
   initialFilter?: Lib.FilterClause;
 }
 
