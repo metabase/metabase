@@ -420,7 +420,7 @@ function visitAndEnableSharing(object) {
     visitDashboard(ORDERS_DASHBOARD_ID);
 
     cy.icon("share").click();
-    cy.findByTestId("embed-header-menu").findByText(/Embed/).click();
+    cy.findByTestId("embed-header-menu").findByText("Embed").click();
     cy.findByText(/Embed in your application/).click();
   }
 }
