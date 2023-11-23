@@ -1,4 +1,7 @@
-import { createOrdersTotalDatasetColumn } from "metabase-types/api/mocks/presets";
+import {
+  createOrdersTotalDatasetColumn,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
 import {
   columnFinder,
@@ -88,6 +91,34 @@ describe("drill-thru/sort", () => {
 
       expect(drill).toBeNull();
     });
+
+    it("should not allow to drill with a native query", () => {
+      const query = createQuery({
+        query: {
+          type: "native",
+          database: SAMPLE_DB_ID,
+          native: { query: "SELECT * FROM ORDERS" },
+        },
+      });
+      const column = createOrdersTotalDatasetColumn({
+        id: undefined,
+        field_ref: ["field", "TOTAL", { "base-type": "type/Float" }],
+      });
+      const drill = queryDrillThru(drillType, query, stageIndex, column);
+      expect(drill).toBeNull();
+    });
+
+    it("should not allow to drill with a non-editable query", () => {
+      const query = createQuery({
+        query: {
+          type: "query",
+          database: 100,
+          query: { "source-table": 101 },
+        },
+      });
+      const drill = queryDrillThru(drillType, query, stageIndex, column);
+      expect(drill).toBeNull();
+    });
   });
 });
 
@@ -138,6 +169,34 @@ describe("drill-thru/column-filter", () => {
         row,
       );
 
+      expect(drill).toBeNull();
+    });
+
+    it("should not allow to drill with a native query", () => {
+      const query = createQuery({
+        query: {
+          type: "native",
+          database: SAMPLE_DB_ID,
+          native: { query: "SELECT * FROM ORDERS" },
+        },
+      });
+      const column = createOrdersTotalDatasetColumn({
+        id: undefined,
+        field_ref: ["field", "TOTAL", { "base-type": "type/Float" }],
+      });
+      const drill = queryDrillThru(drillType, query, stageIndex, column);
+      expect(drill).toBeNull();
+    });
+
+    it("should not allow to drill with a non-editable query", () => {
+      const query = createQuery({
+        query: {
+          type: "query",
+          database: 100,
+          query: { "source-table": 101 },
+        },
+      });
+      const drill = queryDrillThru(drillType, query, stageIndex, column);
       expect(drill).toBeNull();
     });
   });
