@@ -1,4 +1,5 @@
 import type React from "react";
+import type { IconName } from "metabase/core/components/Icon";
 import type { Dispatch, GetState } from "metabase-types/store";
 import type {
   Series,
@@ -42,11 +43,16 @@ export type ClickActionSection =
   | "summarize"
   | "zoom";
 
+export type ClickActionSectionDirection = "row" | "column";
+
 export type ClickActionBase = {
   name: string;
   title?: React.ReactNode;
   section: ClickActionSection;
-  icon?: React.ReactNode;
+  sectionTitle?: string;
+  sectionDirection?: ClickActionSectionDirection;
+  icon?: IconName;
+  iconText?: string;
   buttonType: ClickActionButtonType;
   default?: boolean;
   tooltip?: string;

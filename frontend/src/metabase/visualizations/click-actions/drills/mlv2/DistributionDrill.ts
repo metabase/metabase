@@ -6,10 +6,6 @@ export const DistributionDrill: Drill<Lib.DistributionDrillThruInfo> = ({
   drill,
   applyDrill,
 }) => {
-  if (!drill) {
-    return [];
-  }
-
   return [
     {
       name: "distribution",

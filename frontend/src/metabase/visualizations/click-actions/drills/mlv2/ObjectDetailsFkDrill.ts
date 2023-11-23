@@ -7,10 +7,6 @@ export const ObjectDetailsFkDrill: Drill<Lib.FKDetailsDrillThruInfo> = ({
   drillDisplayInfo,
   applyDrill,
 }) => {
-  if (!drill) {
-    return [];
-  }
-
   const { objectId, isManyPks } = drillDisplayInfo;
 
   return [

@@ -9,10 +9,6 @@ export const ObjectDetailsZoomDrill: Drill<Lib.ZoomDrillThruInfo> = ({
   clicked,
   applyDrill,
 }) => {
-  if (!drill) {
-    return [];
-  }
-
   const dashboard = clicked?.extraData?.dashboard;
   const { objectId, isManyPks } = drillDisplayInfo;
 

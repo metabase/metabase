@@ -5,10 +5,6 @@ import type * as Lib from "metabase-lib";
 export const SummarizeColumnByTimeDrill: Drill<
   Lib.SummarizeColumnByTimeDrillThruInfo
 > = ({ drill, applyDrill }) => {
-  if (!drill) {
-    return [];
-  }
-
   return [
     {
       name: "summarize-by-time",

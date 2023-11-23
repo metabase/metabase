@@ -7,10 +7,6 @@ export const ObjectDetailsPkDrill: Drill<Lib.PKDrillThruInfo> = ({
   drillDisplayInfo,
   applyDrill,
 }) => {
-  if (!drill) {
-    return [];
-  }
-
   const { objectId } = drillDisplayInfo;
 
   return [

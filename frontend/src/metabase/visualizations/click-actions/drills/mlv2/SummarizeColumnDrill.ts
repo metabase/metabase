@@ -32,10 +32,6 @@ export const SummarizeColumnDrill: Drill<Lib.SummarizeColumnDrillThruInfo> = ({
   drillDisplayInfo,
   applyDrill,
 }) => {
-  if (!drill) {
-    return [];
-  }
-
   const { aggregations } = drillDisplayInfo;
 
   return aggregations.map(operator => ({

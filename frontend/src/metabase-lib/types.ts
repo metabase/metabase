@@ -270,9 +270,18 @@ export type DrillThruType =
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
+export type QuickFilterDrillThruOperator =
+  | "="
+  | "≠"
+  | "<"
+  | ">"
+  | "contains"
+  | "does-not-contain";
+
 export type QuickFilterDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/quick-filter"> & {
-    operators: Array<"=" | "≠" | "<" | ">">;
+    value: unknown;
+    operators: Array<QuickFilterDrillThruOperator>;
   };
 
 type ObjectDetailsDrillThruInfo<Type extends DrillThruType> =
@@ -287,7 +296,11 @@ export type FKDetailsDrillThruInfo =
 
 export type PivotDrillThruInfo = BaseDrillThruInfo<"drill-thru/pivot">;
 
-export type FKFilterDrillThruInfo = BaseDrillThruInfo<"drill-thru/fk-filter">;
+export type FKFilterDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/fk-filter"> & {
+    tableName: string;
+    columnName: string;
+  };
 export type DistributionDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/distribution">;
 
@@ -338,13 +351,15 @@ export type DrillThruDisplayInfo =
   | UnderlyingRecordsDrillThruInfo
   | ZoomTimeseriesDrillThruInfo;
 
-export type ColumnFilterDrillDetails = {
+export type FilterDrillDetails = {
   query: Query;
   column: ColumnMetadata;
+  stageIndex: number;
 };
 
 export type PivotDrillDetails = {
   query: Query;
+  stageIndex: number;
   columns: ColumnMetadata[];
 };
 

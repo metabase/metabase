@@ -11,11 +11,7 @@ import {
 } from "metabase-lib/urls";
 
 export const AutomaticInsightsDrill: Drill = ({ drill, applyDrill }) => {
-  if (!drill) {
-    return [];
-  }
-
-  const clickActions: RegularClickAction[] = [
+  const actions: RegularClickAction[] = [
     {
       name: "exploratory-dashboard",
       title: t`X-ray`,
@@ -35,7 +31,7 @@ export const AutomaticInsightsDrill: Drill = ({ drill, applyDrill }) => {
   ];
 
   const DrillPopover = ({ onClick }: ClickActionPopoverProps) => {
-    return <ClickActionsView clickActions={clickActions} onClick={onClick} />;
+    return <ClickActionsView clickActions={actions} onClick={onClick} />;
   };
 
   return [

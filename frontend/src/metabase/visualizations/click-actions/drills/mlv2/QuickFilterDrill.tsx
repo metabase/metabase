@@ -1,146 +1,116 @@
-import type * as React from "react";
 import { t } from "ttag";
-import type { DatasetColumn, RowValue } from "metabase-types/api";
 import type {
-  ClickActionButtonType,
+  ClickAction,
   Drill,
 } from "metabase/visualizations/types/click-actions";
-import type * as Lib from "metabase-lib";
-import { isBoolean, isDate, isNumeric } from "metabase-lib/types/utils/isa";
-import { TextIcon } from "./QuickFilterDrill.styled";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/Question";
+import { getFilterPopover } from "./utils";
 
-type FilterOperator = "=" | "≠" | "<" | ">";
-type DateQuickFilterOperatorType = "<" | ">" | "=" | "≠";
-type FilterValueType = "null" | "numeric" | "date" | "boolean" | "text";
+export const QuickFilterDrill: Drill<Lib.QuickFilterDrillThruInfo> = ({
+  question,
+  drill,
+  drillDisplayInfo,
+  applyDrill,
+}) => {
+  const { value, operators } = drillDisplayInfo;
+  const { query, stageIndex, column } = Lib.filterDrillDetails(drill);
 
-const DateButtonTitleMap: Record<DateQuickFilterOperatorType, string> = {
-  ["<"]: t`Before`,
-  [">"]: t`After`,
-  ["="]: t`On`,
-  ["≠"]: t`Not on`,
+  return operators.map(operator => ({
+    name: operator,
+    title: operator,
+    section: "filter",
+    sectionDirection: "row",
+    buttonType: "token-filter",
+    question: () => applyDrill(drill, operator),
+    ...getActionOverrides(question, query, stageIndex, column, operator, value),
+  }));
 };
 
-const SPECIFIC_VALUE_TITLE_MAX_LENGTH = 20;
+function getActionOverrides(
+  question: Question,
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+  operator: Lib.QuickFilterDrillThruOperator,
+  value: unknown,
+): Partial<ClickAction> {
+  if (Lib.isDate(column) && value != null) {
+    const action: Partial<ClickAction> = {
+      sectionTitle: t`Filter by this date`,
+      sectionDirection: "column",
+      buttonType: "horizontal",
+    };
+
+    switch (operator) {
+      case "=":
+        return { ...action, title: t`On` };
+      case "≠":
+        return { ...action, title: t`Not on` };
+      case ">":
+        return { ...action, title: t`After` };
+      case "<":
+        return { ...action, title: t`Before` };
+      default:
+        return action;
+    }
+  }
+
+  if (Lib.isString(column) && typeof value === "string") {
+    const columnName = Lib.displayInfo(query, stageIndex, column).displayName;
+    const valueTitle = getTextValueTitle(value);
+    const action: Partial<ClickAction> = {
+      sectionTitle: t`Filter by ${columnName}`,
+      sectionDirection: "column",
+      buttonType: "horizontal",
+    };
+
+    switch (operator) {
+      case "=":
+        return {
+          ...action,
+          title: t`Is ${valueTitle}`,
+          iconText: operator,
+        };
+      case "≠":
+        return {
+          ...action,
+          title: t`Is not ${valueTitle}`,
+          iconText: operator,
+        };
+      case "contains": {
+        return {
+          ...action,
+          title: t`Contains…`,
+          popover: getFilterPopover({ question, query, stageIndex, column }),
+        };
+      }
+      case "does-not-contain": {
+        return {
+          ...action,
+          title: t`Does not contain…`,
+          popover: getFilterPopover({ question, query, stageIndex, column }),
+        };
+      }
+      default: {
+        return action;
+      }
+    }
+  }
+
+  return {};
+}
+
+const LONG_TEXT_VALUE_LENGTH = 20;
 
 const getTextValueTitle = (value: string): string => {
   if (value.length === 0) {
     return t`empty`;
   }
 
-  if (value.length > SPECIFIC_VALUE_TITLE_MAX_LENGTH) {
+  if (value.length > LONG_TEXT_VALUE_LENGTH) {
     return t`this`;
   }
 
   return value;
-};
-
-const getOperatorOverrides = (
-  operator: FilterOperator,
-  valueType: FilterValueType,
-  value: RowValue | undefined,
-): {
-  title?: string;
-  icon?: React.ReactNode;
-  buttonType?: ClickActionButtonType;
-} | null => {
-  if (valueType === "text" && typeof value === "string") {
-    const textValue = getTextValueTitle(value);
-
-    if (operator === "=") {
-      return {
-        title: t`Is ${textValue}`,
-        icon: <TextIcon>=</TextIcon>,
-        buttonType: "horizontal",
-      };
-    }
-    if (operator === "≠") {
-      return {
-        title: t`Is not ${textValue}`,
-        icon: <TextIcon>≠</TextIcon>,
-        buttonType: "horizontal",
-      };
-    }
-    // if (operator === "contains") {
-    //   return {
-    //     title: t`Contains…`,
-    //     icon: "filter",
-    //     buttonType: "horizontal",
-    //   };
-    // }
-    // if (operator === "does-not-contain") {
-    //   return {
-    //     title: t`Does not contain…`,
-    //     icon: <TextIcon>≠</TextIcon>,
-    //     buttonType: "horizontal",
-    //   };
-    // }
-  }
-
-  if (valueType === "date") {
-    return {
-      title: DateButtonTitleMap[operator],
-      buttonType: "horizontal",
-    };
-  }
-
-  return null;
-};
-
-export const QuickFilterDrill: Drill<Lib.QuickFilterDrillThruInfo> = ({
-  drill,
-  drillDisplayInfo,
-  applyDrill,
-  clicked,
-}) => {
-  if (!drill || !clicked || !clicked.column) {
-    return [];
-  }
-
-  const { operators } = drillDisplayInfo;
-  const { value, column } = clicked;
-
-  const columnValueType = getValueType(value, column);
-
-  return operators.map(operator => {
-    const overrides = getOperatorOverrides(operator, columnValueType, value);
-
-    return {
-      name: operator,
-      title: operator,
-      section: "filter",
-      buttonType: "token-filter",
-
-      question: () => applyDrill(drill, operator),
-
-      extra: () => ({
-        valueType: columnValueType,
-        columnName: clicked.column?.display_name,
-      }),
-
-      ...overrides,
-    };
-  });
-};
-
-const getValueType = (
-  value: unknown,
-  column: DatasetColumn,
-): FilterValueType => {
-  if (value == null) {
-    return "null";
-  }
-
-  if (isNumeric(column)) {
-    return "numeric";
-  }
-
-  if (isDate(column)) {
-    return "date";
-  }
-
-  if (isBoolean(column)) {
-    return "boolean";
-  }
-
-  return "text";
 };
