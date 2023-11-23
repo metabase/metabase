@@ -116,8 +116,8 @@
 
   (defsetting help-link
   (deferred-tru "TODO")
-  :default    ""
-  :type       :string
+  :default    :metabase_default
+  :type       :keyword
   :audit      :getter
   :visibility :public)
 

@@ -89,8 +89,9 @@ if (hasPremiumFeature("whitelabel")) {
               {t` by default.`}
             </p>
           ),
+
           widget: HelpLinkRadio,
-          defaultValue: true,
+          defaultValue: "metabase_default",
         },
         {
           // TODO: custom input with validation

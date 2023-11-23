@@ -1,4 +1,5 @@
 import {
+  appBar,
   describeEE,
   popover,
   restore,
@@ -161,15 +162,17 @@ describeEE("formatting > whitelabel", () => {
     beforeEach(() => {
       cy.intercept("PUT", "/api/setting/help-link").as("putHelpLink");
       cy.intercept("PUT", "/api/setting/help-link-custom-destination").as(
-        "getHelpLinkUrl",
+        "putHelpLinkUrl",
       );
     });
 
     it("should allow customising the help link", () => {
-      cy.log("HIDE HELP LINK");
+      cy.log("Hide Help link");
 
       cy.signInAsAdmin();
       cy.visit("/admin/settings/whitelabel");
+
+      cy.findByLabelText("Link to Metabase help").should("be.checked");
 
       cy.findByTestId("help-link-setting").findByText("Hide it").click();
       cy.wait("@putHelpLink");
@@ -180,7 +183,7 @@ describeEE("formatting > whitelabel", () => {
       openSettingsMenu();
       helpLink().should("not.exist");
 
-      cy.log("SET CUSTOM HELP LINK");
+      cy.log("Set custom Help link");
 
       cy.signInAsAdmin();
       cy.visit("/admin/settings/whitelabel");
@@ -194,7 +197,7 @@ describeEE("formatting > whitelabel", () => {
         .type("https://example.org/custom-destination")
         .blur();
 
-      cy.wait("@getHelpLinkUrl");
+      cy.wait("@putHelpLinkUrl");
 
       cy.signInAsNormalUser();
       cy.visit("/");
@@ -205,7 +208,7 @@ describeEE("formatting > whitelabel", () => {
         "https://example.org/custom-destination",
       );
 
-      cy.log("SET DEFAULT HELP LINK");
+      cy.log("Set default Help link");
 
       cy.signInAsAdmin();
       cy.visit("/admin/settings/whitelabel");
@@ -246,7 +249,6 @@ function setApplicationFontTo(font) {
   });
 }
 
-const openSettingsMenu = () =>
-  cy.findByLabelText("Navigation bar").icon("gear").click();
+const openSettingsMenu = () => appBar().icon("gear").click();
 
 const helpLink = () => popover().findByRole("link", { name: "Help" });
