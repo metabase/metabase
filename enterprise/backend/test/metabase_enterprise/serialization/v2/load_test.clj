@@ -1,5 +1,6 @@
 (ns ^:mb/once metabase-enterprise.serialization.v2.load-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.serialization.test-util :as ts]
@@ -1005,16 +1006,24 @@
                 extracted (into [] (serdes.extract/extract {}))]
 
             (ts/with-dest-db
-              (let [other (ts/create! NativeQuerySnippet :name unique-name)]
+              (let [other (ts/create! NativeQuerySnippet :name unique-name)
+                    new-snippet (atom nil)]
                 (is (= (:entity_id other)
                        (t2/select-one-fn :entity_id NativeQuerySnippet :name unique-name)))
-                (serdes.load/load-metabase! (ingestion-in-memory extracted))
-                ;; old snippet was replaced with new one since snippet name is unique
-                (is (= (:entity_id snippet)
-                       (t2/select-one-fn :entity_id NativeQuerySnippet :name unique-name)))
-                ;; old snippet's name was changed
-                (is (= (str (:name other) "-" (:id other))
-                       (t2/select-one-fn :name NativeQuerySnippet :entity_id (:entity_id other))))))))))))
+                (testing "loading serialized data"
+                  (serdes.load/load-metabase! (ingestion-in-memory extracted))
+                  (testing "old snippet is in place"
+                    (is (= (:entity_id other)
+                           (t2/select-one-fn :entity_id NativeQuerySnippet :name unique-name))))
+                  (testing "new snippet's name was changed"
+                    (reset! new-snippet (t2/select-one NativeQuerySnippet :entity_id (:entity_id snippet)))
+                    (is (str/starts-with? (:name @new-snippet)
+                                          (str (:name snippet) "-")))))
+                (testing "updating existing snippet with name conflicts works"
+                  (serdes.load/load-metabase! (ingestion-in-memory extracted))
+                  (testing "on update it renames to {name}-{id}"
+                    (is (= (str (:name snippet) "-" (:id @new-snippet))
+                           (t2/select-one-fn :name NativeQuerySnippet :entity_id (:entity_id snippet))))))))))))))
 
 (deftest load-action-test
   (let [serialized (atom nil)

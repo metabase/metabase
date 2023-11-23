@@ -103,21 +103,13 @@
   (let [{:keys [id label]} (-> snippet serdes/path last)]
     ["snippets" (serdes/storage-leaf-file-name id label)]))
 
-(defmethod serdes/generate-path "NativeQuerySnippet" [model-name entity]
-  [(-> (serdes/maybe-labeled model-name entity :name)
-       first
-       (assoc :name (:name entity)))])
-
-(defmethod serdes/load-find-local "NativeQuerySnippet" [path]
-  (let [this (last path)
-        res (t2/select :model/NativeQuerySnippet {:where [:or
-                                                          [:= :name (:name this)]
-                                                          [:= :entity_id (:entity_id this)]]})]
-    (if (or (> (count res) 1)
-            (not= (:entity_id (first res)) (:entity_id this)))
-      (do
-        (t2/update! :model/NativeQuerySnippet {:name      (:name this)
-                                               :entity_id [:!= (:entity_id this)]}
-                    {:name [:|| :name "-" :id]})
-        (recur path))
-      (first res))))
+(defmethod serdes/load-one! "NativeQuerySnippet" [ingested maybe-local]
+  (if (and (not (and maybe-local
+                     (= (:name ingested) (:name maybe-local))))
+           (t2/select-one :model/NativeQuerySnippet
+                          :name (:name ingested) :entity_id [:!= (:entity_id ingested)]))
+    (recur (update ingested :name
+                   #(str % "-" (or (:id maybe-local)
+                                   (subs (:entity_id ingested) (- (count (:entity_id ingested)) 4)))))
+           maybe-local)
+    (serdes/default-load-one! ingested maybe-local)))
