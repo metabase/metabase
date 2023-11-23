@@ -1110,18 +1110,19 @@
 (deftest ^:parallel do-not-cast-to-timestamp-if-column-if-timestamp-tz-or-date-test
   (testing "Don't cast a DATE or TIMESTAMPTZ to TIMESTAMP, it's not necessary (#19816)"
     (mt/test-driver :postgres
-      (let [query (mt/mbql-query people
-                    {:fields [!month.birth_date
-                              !month.created_at
-                              !month.id]
-                     :limit  1})]
-        (is (sql= '{:select [DATE_TRUNC ("month" people.birth_date)             AS birth_date
-                             DATE_TRUNC ("month" people.created_at)             AS created_at
-                             ;; non-temporal types should still get casted.
-                             DATE_TRUNC ("month" CAST (people.id AS timestamp)) AS id]
-                    :from   [people]
-                    :limit  [1]}
-                  query))))))
+      (mt/dataset test-data
+        (let [query (mt/mbql-query people
+                      {:fields [!month.birth_date
+                                !month.created_at
+                                !month.id]
+                       :limit  1})]
+          (is (sql= '{:select [DATE_TRUNC ("month" people.birth_date)             AS birth_date
+                               DATE_TRUNC ("month" people.created_at)             AS created_at
+                               ;; non-temporal types should still get casted.
+                               DATE_TRUNC ("month" CAST (people.id AS timestamp)) AS id]
+                      :from   [people]
+                      :limit  [1]}
+                    query)))))))
 
 (deftest postgres-ssl-connectivity-test
   (mt/test-driver :postgres
@@ -1217,17 +1218,18 @@
         (is (= #{"public"}
                (driver/syncable-schemas driver/*driver* (mt/db))))))
     (testing "metabase_cache schemas should be excluded"
-      (mt/with-persistence-enabled [persist-models!]
-        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-          (mt/with-temp [:model/Card _ {:name "model"
-                                        :dataset true
-                                        :dataset_query (mt/mbql-query categories)
-                                        :database_id (mt/id)}]
-            (persist-models!)
-            (is (some (partial re-matches #"metabase_cache(.*)")
-                      (map :schema_name (jdbc/query conn-spec "SELECT schema_name from INFORMATION_SCHEMA.SCHEMATA;"))))
-            (is (nil? (some (partial re-matches #"metabase_cache(.*)")
-                            (driver/syncable-schemas driver/*driver* (mt/db)))))))))))
+      (mt/dataset test-data
+        (mt/with-persistence-enabled [persist-models!]
+          (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+            (mt/with-temp [:model/Card _ {:name "model"
+                                          :dataset true
+                                          :dataset_query (mt/mbql-query categories)
+                                          :database_id (mt/id)}]
+              (persist-models!)
+              (is (some (partial re-matches #"metabase_cache(.*)")
+                        (map :schema_name (jdbc/query conn-spec "SELECT schema_name from INFORMATION_SCHEMA.SCHEMATA;"))))
+              (is (nil? (some (partial re-matches #"metabase_cache(.*)")
+                              (driver/syncable-schemas driver/*driver* (mt/db))))))))))))
 
 (deftest table-privileges-test
   (mt/test-driver :postgres
