@@ -193,7 +193,7 @@
                              (filter default-have-slect-privilege?)
                              (descendants driver/hierarchy :sql-jdbc))
         (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :users))]
-          (mt/with-native-query-testing-context (mt/mbql-query users)
+          (testing (sql-jdbc.describe-database/simple-select-probe-query driver/*driver* schema table-name)
             (doseq [auto-commit [true false]]
                 (testing (pr-str {:auto-commit auto-commit :schema schema :name table-name})
                   (sql-jdbc.execute/do-with-connection-with-options
@@ -203,6 +203,6 @@
                    (fn [^java.sql.Connection conn]
                      (.setAutoCommit conn auto-commit)
                      (is (false? (sql-jdbc.sync.interface/have-select-privilege?
-                                  driver/*driver* conn schema (str table-name "_should_not_exists"))))
+                                  driver/*driver* conn schema (str table-name "_should_not_exist"))))
                      (is (true? (sql-jdbc.sync.interface/have-select-privilege?
                                  driver/*driver* conn schema table-name)))))))))))))
