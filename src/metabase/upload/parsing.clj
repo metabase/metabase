@@ -12,10 +12,13 @@
 
 (def currency-regex "Supported currency signs" #"[$€£¥₹₪₩₿¢\s]")
 
-(defn get-number-separators
-  "Setting-dependent number separators. Defaults to `.` and `,`. Stored/returned as a string."
+(defn get-settings
+  "Settings that determine how the CSV is parsed.
+
+  Includes:
+    - number-separators: Decimal delimiter defaults to `.` and group delimiter defaults to `,`. Stored/returned as a string."
   []
-  (get-in (public-settings/custom-formatting) [:type/Number :number_separators] ".,"))
+  {:number-separators (get-in (public-settings/custom-formatting) [:type/Number :number_separators] ".,")})
 
 (defn parse-bool
   "Parses a boolean value (true/t/yes/y/1 and false/f/no/n/0). Case-insensitive."

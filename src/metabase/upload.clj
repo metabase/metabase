@@ -230,7 +230,7 @@
                                (mbql.u/uniquify-names)
                                (map keyword))
         column-count      (count normalized-header)
-        settings          {:number-separators (upload-parsing/get-number-separators)}]
+        settings          (upload-parsing/get-settings)]
     (->> rows
          (map #(row->types % settings))
          (reduce coalesce-types (repeat column-count nil))
@@ -246,8 +246,8 @@
 (defn- parse-rows
   "Returns a lazy seq of parsed rows from the `reader`. Replaces empty strings with nil."
   [col->upload-type rows]
-  (let [[_header & rows] rows
-        parsers          (map upload-parsing/upload-type->parser (vals col->upload-type))]
+  (let [settings (upload-parsing/get-settings)
+        parsers  (map #(upload-parsing/upload-type->parser % settings) (vals col->upload-type))]
     (for [row rows]
       (for [[value parser] (map-with-nils vector row parsers)]
         (when (not (str/blank? value))
