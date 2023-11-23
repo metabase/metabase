@@ -162,7 +162,7 @@ export const findDrillThru = (
   value?: RowValue,
   row?: ML.DataRow,
   dimensions?: ML.DataDimension[],
-): ML.DrillThru => {
+) => {
   const drill = queryDrillThru(
     drillType,
     query,
@@ -176,5 +176,6 @@ export const findDrillThru = (
     throw new Error(`Could not find drill ${drillType}`);
   }
 
-  return drill;
+  const drillInfo = ML.displayInfo(query, stageIndex, drill);
+  return { drill, drillInfo };
 };

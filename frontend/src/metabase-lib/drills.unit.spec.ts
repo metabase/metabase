@@ -1,4 +1,3 @@
-import type { DatasetColumn, RowValue } from "metabase-types/api";
 import { createOrdersTotalDatasetColumn } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
 import {
@@ -6,7 +5,7 @@ import {
   createQuery,
   findDrillThru,
   queryDrillThru,
-} from "./test-helpers";
+} from "metabase-lib/test-helpers";
 
 describe("drill-thru/sort", () => {
   const drillType = "drill-thru/sort";
@@ -20,7 +19,7 @@ describe("drill-thru/sort", () => {
 
   describe("availableDrillThrus", () => {
     it("should allow to drill when query is not sorted", () => {
-      const { drillInfo } = findDrillInfo(
+      const { drillInfo } = findDrillThru(
         drillType,
         initialQuery,
         stageIndex,
@@ -39,7 +38,7 @@ describe("drill-thru/sort", () => {
         findColumn("ORDERS", "TOTAL"),
         "asc",
       );
-      const { drillInfo } = findDrillInfo(drillType, query, stageIndex, column);
+      const { drillInfo } = findDrillThru(drillType, query, stageIndex, column);
       expect(drillInfo).toMatchObject({
         type: drillType,
         directions: ["desc"],
@@ -53,7 +52,7 @@ describe("drill-thru/sort", () => {
         findColumn("ORDERS", "TOTAL"),
         "desc",
       );
-      const { drillInfo } = findDrillInfo(drillType, query, stageIndex, column);
+      const { drillInfo } = findDrillThru(drillType, query, stageIndex, column);
       expect(drillInfo).toMatchObject({
         type: drillType,
         directions: ["asc"],
@@ -100,7 +99,7 @@ describe("drill-thru/column-filter", () => {
 
   describe("availableDrillThrus", () => {
     it("should allow to drill when clicked on a column header", () => {
-      const { drillInfo } = findDrillInfo(
+      const { drillInfo } = findDrillThru(
         drillType,
         initialQuery,
         stageIndex,
@@ -143,25 +142,3 @@ describe("drill-thru/column-filter", () => {
     });
   });
 });
-
-function findDrillInfo(
-  drillType: Lib.DrillThruType,
-  query: Lib.Query,
-  stageIndex: number,
-  column: DatasetColumn,
-  value?: RowValue,
-  row?: Lib.DataRow,
-  dimensions?: Lib.DataDimension[],
-) {
-  const drill = findDrillThru(
-    drillType,
-    query,
-    stageIndex,
-    column,
-    value,
-    row,
-    dimensions,
-  );
-  const drillInfo = Lib.displayInfo(query, 0, drill);
-  return { drill, drillInfo };
-}
