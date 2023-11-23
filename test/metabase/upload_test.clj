@@ -709,7 +709,7 @@
            "upload_test"
            (csv-file-with ["id,column_that_has_one_value,column_that_doesnt_have_a_value"
                            "1,2"
-                           "2,,"]))
+                           "2,  ,\n"]))
           (testing "Table and Fields exist after sync"
             (sync/sync-database! (mt/db))
             (let [table (t2/select-one Table :db_id (mt/id))]
