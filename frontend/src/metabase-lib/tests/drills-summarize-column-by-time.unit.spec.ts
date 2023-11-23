@@ -1,8 +1,13 @@
 import {
   createOrdersCreatedAtDatasetColumn,
+  createOrdersIdField,
+  createOrdersTable,
   createOrdersTotalDatasetColumn,
+  createOrdersTotalField,
+  createSampleDatabase,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
+import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import {
   createQuery,
@@ -32,6 +37,23 @@ describe("drill-thru/summarize-column-by-time", () => {
     it("should not allow to drill with a non-summable column", () => {
       const column = createOrdersCreatedAtDatasetColumn();
       const drill = queryDrillThru(drillType, initialQuery, stageIndex, column);
+      expect(drill).toBeNull();
+    });
+
+    it("should not allow to drill when there is no date column", () => {
+      const metadata = createMockMetadata({
+        databases: [
+          createSampleDatabase({
+            tables: [
+              createOrdersTable({
+                fields: [createOrdersIdField(), createOrdersTotalField()],
+              }),
+            ],
+          }),
+        ],
+      });
+      const query = createQuery({ metadata });
+      const drill = queryDrillThru(drillType, query, stageIndex, column);
       expect(drill).toBeNull();
     });
 
