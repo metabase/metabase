@@ -96,7 +96,6 @@ export const DashboardEmbedAction = ({
             onClose={onClose}
             isLinkEnabled={true}
           />
-          )
         </>
       );
     }
