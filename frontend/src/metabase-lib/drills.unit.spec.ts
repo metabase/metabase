@@ -13,7 +13,7 @@ describe("drill-thru/sort", () => {
 
   describe("availableDrillThrus", () => {
     it("should return directions for unsorted query", () => {
-      const drillInfo = getDrillInfo(
+      const { drillInfo } = getDrillInfo(
         initialQuery,
         createOrdersTotalDatasetColumn(),
         drillType,
@@ -31,7 +31,7 @@ describe("drill-thru/sort", () => {
         findColumn("ORDERS", "TOTAL"),
         "asc",
       );
-      const drillInfo = getDrillInfo(
+      const { drillInfo } = getDrillInfo(
         query,
         createOrdersTotalDatasetColumn(),
         drillType,
@@ -49,7 +49,7 @@ describe("drill-thru/sort", () => {
         findColumn("ORDERS", "TOTAL"),
         "desc",
       );
-      const drillInfo = getDrillInfo(
+      const { drillInfo } = getDrillInfo(
         query,
         createOrdersTotalDatasetColumn(),
         drillType,
@@ -69,5 +69,6 @@ function getDrillInfo(
 ) {
   const drills = Lib.availableDrillThrus(query, 0, column);
   const drill = findDrillThru(query, 0, drills, drillType);
-  return drill ? Lib.displayInfo(query, 0, drill) : null;
+  const drillInfo = Lib.displayInfo(query, 0, drill);
+  return { drill, drillInfo };
 }
