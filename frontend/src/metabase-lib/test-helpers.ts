@@ -1,7 +1,12 @@
 /* istanbul ignore file */
 
 import { createMockMetadata } from "__support__/metadata";
-import type { DatabaseId, DatasetQuery } from "metabase-types/api";
+import type {
+  DatabaseId,
+  DatasetQuery,
+  DatasetColumn,
+  RowValue,
+} from "metabase-types/api";
 import {
   createSampleDatabase,
   ORDERS_ID,
@@ -124,17 +129,49 @@ export const findAggregationOperator = (
   return operator;
 };
 
-export const findDrillThru = (
+export const queryDrillThru = (
+  drillType: ML.DrillThruType,
   query: ML.Query,
   stageIndex: number,
-  drills: ML.DrillThru[],
-  drillType: ML.DrillThruType,
-): ML.DrillThru => {
+  column: DatasetColumn,
+  value?: RowValue,
+  row?: ML.DataRow,
+  dimensions?: ML.DataDimension[],
+): ML.DrillThru | null => {
+  const drills = ML.availableDrillThrus(
+    query,
+    stageIndex,
+    column,
+    value,
+    row,
+    dimensions,
+  );
   const drill = drills.find(drill => {
     const drillInfo = ML.displayInfo(query, stageIndex, drill);
     return drillInfo.type === drillType;
   });
 
+  return drill ?? null;
+};
+
+export const findDrillThru = (
+  drillType: ML.DrillThruType,
+  query: ML.Query,
+  stageIndex: number,
+  column: DatasetColumn,
+  value?: RowValue,
+  row?: ML.DataRow,
+  dimensions?: ML.DataDimension[],
+): ML.DrillThru => {
+  const drill = queryDrillThru(
+    drillType,
+    query,
+    stageIndex,
+    column,
+    value,
+    row,
+    dimensions,
+  );
   if (!drill) {
     throw new Error(`Could not find drill ${drillType}`);
   }
