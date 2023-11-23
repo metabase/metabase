@@ -98,12 +98,13 @@
       :query-type     :aggregated
       :column-name    "sum"
       :drill-type     :drill-thru/quick-filter
-      :expected       {:type       :drill-thru/quick-filter
-                       :operators  [{:name "<"}
-                                    {:name ">"}
-                                    {:name "="}
-                                    {:name "≠"}]
-                       :new-stage? true}
+      :expected       {:type         :drill-thru/quick-filter
+                       :operators    [{:name "<"}
+                                      {:name ">"}
+                                      {:name "="}
+                                      {:name "≠"}]
+                       :query        {:stages [{} {}]}
+                       :stage-number -1}
       :drill-args     ["="]
       :expected-query {:stages [{}
                                 {:filters [[:= {}
@@ -117,12 +118,13 @@
       :query-type     :aggregated
       :column-name    "CREATED_AT"
       :drill-type     :drill-thru/quick-filter
-      :expected       {:type       :drill-thru/quick-filter
-                       :operators  [{:name "<"}
-                                    {:name ">"}
-                                    {:name "="}
-                                    {:name "≠"}]
-                       :new-stage? false}
+      :expected       {:type         :drill-thru/quick-filter
+                       :operators    [{:name "<"}
+                                      {:name ">"}
+                                      {:name "="}
+                                      {:name "≠"}]
+                       :query        {:stages [{}]}
+                       :stage-number -1}
       :drill-args     ["<"]
       :expected-query {:stages [{:filters [[:< {}
                                             [:field {:temporal-unit :month} (meta/id :orders :created-at)]
@@ -135,10 +137,11 @@
       :query-type     :aggregated
       :column-name    "max"
       :drill-type     :drill-thru/quick-filter
-      :expected       {:type      :drill-thru/quick-filter
-                       :operators [{:name "=", :filter [:is-null {} [:field {} "max"]]}
-                                   {:name "≠", :filter [:not-null {} [:field {} "max"]]}]
-                       :new-stage? true}
+      :expected       {:type         :drill-thru/quick-filter
+                       :operators    [{:name "=", :filter [:is-null {} [:field {} "max"]]}
+                                      {:name "≠", :filter [:not-null {} [:field {} "max"]]}]
+                       :query        {:stages [{} {}]}
+                       :stage-number -1}
       :drill-args     ["≠"]
       :expected-query {:stages [{}
                                 {:filters [[:not-null {} [:field {} "max"]]]}]}})))

@@ -989,13 +989,13 @@
   [a-query stage-number a-drill-thru & args]
   (apply lib.core/drill-thru a-query stage-number a-drill-thru args))
 
-(defn ^:export column-filter-drill-details
+(defn ^:export filter-drill-details
   "Returns a JS object with opaque CLJS things in it, which are needed to render the complex UI for `column-filter`
-  drills. Since the query might need an extra stage appended, this returns a possibly updated `query` and `stageNumber`,
-  as well as a `column` as returned by [[filterable-columns]]."
+  and some `quick-filter` drills. Since the query might need an extra stage appended, this returns a possibly updated
+  `query` and `stageNumber`, as well as a `column` as returned by [[filterable-columns]]."
   [{a-query :query
     :keys [column stage-number]
-    :as _column-filter-drill}]
+    :as _filter-drill}]
   #js {"column"      column
        "query"       a-query
        "stageNumber" stage-number})
