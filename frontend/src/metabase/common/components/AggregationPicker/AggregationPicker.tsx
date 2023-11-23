@@ -9,10 +9,7 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 
-import type {
-  Aggregation as LegacyAggregationClause,
-  Expression as LegacyExpressionClause,
-} from "metabase-types/api";
+import type { Expression as LegacyExpressionClause } from "metabase-types/api";
 import * as Lib from "metabase-lib";
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import type LegacyAggregation from "metabase-lib/queries/structured/Aggregation";
@@ -40,7 +37,6 @@ interface AggregationPickerProps {
   legacyClause?: LegacyAggregation;
   maxHeight?: number;
   onSelect: (operator: Lib.Aggregatable) => void;
-  onSelectLegacy: (operator: LegacyAggregationClause) => void;
   onClose?: () => void;
 }
 
@@ -75,7 +71,6 @@ export function AggregationPicker({
   legacyClause,
   maxHeight = DEFAULT_MAX_HEIGHT,
   onSelect,
-  onSelectLegacy,
   onClose,
 }: AggregationPickerProps) {
   const [

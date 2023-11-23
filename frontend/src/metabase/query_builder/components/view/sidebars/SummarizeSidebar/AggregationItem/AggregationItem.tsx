@@ -13,7 +13,6 @@ interface AggregationItemProps {
   legacyQuery: StructuredQuery;
   onUpdate: (nextAggregation: Lib.Aggregatable) => void;
   onRemove: () => void;
-  onLegacyQueryChange: (nextLegacyQuery: StructuredQuery) => void;
 }
 
 export function AggregationItem({
@@ -23,7 +22,6 @@ export function AggregationItem({
   legacyQuery,
   onUpdate,
   onRemove,
-  onLegacyQueryChange,
 }: AggregationItemProps) {
   const { displayName } = Lib.displayInfo(query, STAGE_INDEX, aggregation);
 
@@ -56,15 +54,6 @@ export function AggregationItem({
           legacyClause={legacyClause}
           onSelect={nextAggregation => {
             onUpdate(nextAggregation);
-            closePopover();
-          }}
-          onSelectLegacy={legacyAggregation => {
-            onLegacyQueryChange(
-              legacyQuery.updateAggregation(
-                aggregationIndex,
-                legacyAggregation,
-              ),
-            );
             closePopover();
           }}
         />

@@ -51,14 +51,6 @@ export function SummarizeSidebar({
   const aggregations = Lib.aggregations(query, STAGE_INDEX);
   const hasAggregations = aggregations.length > 0;
 
-  const handleLegacyQueryChange = useCallback(
-    (nextLegacyQuery: StructuredQuery) => {
-      const nextQuery = nextLegacyQuery.question()._getMLv2Query();
-      onQueryChange(nextQuery);
-    },
-    [onQueryChange],
-  );
-
   const handleAddAggregation = useCallback(
     (aggregation: Lib.Aggregatable) => {
       const nextQuery = Lib.aggregate(query, STAGE_INDEX, aggregation);
@@ -155,14 +147,12 @@ export function SummarizeSidebar({
               handleUpdateAggregation(aggregation, nextAggregation)
             }
             onRemove={() => handleRemoveAggregation(aggregation)}
-            onLegacyQueryChange={handleLegacyQueryChange}
           />
         ))}
         <AddAggregationButton
           query={query}
           legacyQuery={legacyQuery}
           onAddAggregation={handleAddAggregation}
-          onLegacyQueryChange={handleLegacyQueryChange}
         />
       </AggregationsContainer>
       {hasAggregations && (

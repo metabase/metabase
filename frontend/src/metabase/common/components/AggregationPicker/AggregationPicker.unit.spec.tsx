@@ -141,7 +141,6 @@ function setup({
     : baseOperators;
 
   const onSelect = jest.fn();
-  const onSelectLegacy = jest.fn();
 
   function handleSelect(clause: Lib.Aggregatable) {
     const nextQuery = Lib.aggregate(query, 0, clause);
@@ -159,7 +158,6 @@ function setup({
       operators={operators}
       hasExpressionInput={hasExpressionInput}
       onSelect={handleSelect}
-      onSelectLegacy={onSelectLegacy}
     />,
   );
 
@@ -168,7 +166,7 @@ function setup({
     return lastCall?.[0];
   }
 
-  return { metadata, getRecentClause, onSelectLegacy };
+  return { metadata, getRecentClause, onSelect };
 }
 
 describe("AggregationPicker", () => {
@@ -392,7 +390,7 @@ describe("AggregationPicker", () => {
 
   describe("custom expressions", () => {
     it("should allow to enter a custom expression", async () => {
-      const { onSelectLegacy } = setup();
+      const { onSelect } = setup();
 
       userEvent.click(screen.getByText("Custom Expression"));
       userEvent.type(screen.getByLabelText("Expression"), "1 + 1");
@@ -400,7 +398,7 @@ describe("AggregationPicker", () => {
       userEvent.click(screen.getByRole("button", { name: "Done" }));
 
       await waitFor(() =>
-        expect(onSelectLegacy).toHaveBeenCalledWith([
+        expect(onSelect).toHaveBeenCalledWith([
           "aggregation-options",
           ["+", 1, 1],
           { "display-name": "My expression", name: "My expression" },
