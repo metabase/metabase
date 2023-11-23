@@ -22,15 +22,11 @@ const getClickBehavior = ({
   isPublicSharingEnabled: boolean;
   hasPublicLink: boolean;
 }): EmbedButtonClickBehavior => {
-  if (!isPublicSharingEnabled) {
-    return isAdmin ? "embed-modal" : null;
-  }
-
   if (isAdmin) {
-    return "embed-menu";
+    return isPublicSharingEnabled ? "embed-menu" : "embed-modal";
   }
 
-  if (hasPublicLink) {
+  if (isPublicSharingEnabled && hasPublicLink) {
     return "public-link-popover";
   }
 
