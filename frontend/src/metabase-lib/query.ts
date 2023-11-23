@@ -30,6 +30,10 @@ export function suggestedName(query: Query): string {
   return ML.suggestedName(query);
 }
 
+export function stageCount(query: Query): number {
+  return ML.stage_count(query);
+}
+
 export function appendStage(query: Query): Query {
   return ML.append_stage(query);
 }

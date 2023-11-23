@@ -16,6 +16,7 @@ export interface DatasetColumn {
   display_name: string;
   description?: string | null;
   source: string;
+  aggregation_index?: number;
   coercion_strategy?: string | null;
   visibility_type?: FieldVisibilityType;
   table_id?: TableId;

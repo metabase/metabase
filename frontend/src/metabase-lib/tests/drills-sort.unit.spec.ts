@@ -120,4 +120,17 @@ describe("drill-thru/sort", () => {
       expect(drill).toBeNull();
     });
   });
+
+  describe("drillThru", () => {
+    it("should drill with an unsorted query", () => {
+      const { drill } = findDrillThru(
+        drillType,
+        initialQuery,
+        stageIndex,
+        column,
+      );
+      const newQuery = Lib.drillThru(initialQuery, stageIndex, drill, "asc");
+      expect(Lib.orderBys(newQuery, stageIndex)).toHaveLength(1);
+    });
+  });
 });
