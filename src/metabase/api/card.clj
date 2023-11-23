@@ -644,20 +644,20 @@ saved later when it is ready."
 
 (defn- delete-alerts-if-needed! [old-card {card-id :id :as new-card}]
   ;; If there are alerts, we need to check to ensure the card change doesn't invalidate the alert
-  (when-let [alerts (seq (pulse/retrieve-alerts-for-cards {:card-ids [card-id]}))]
+  (when-let [alerts (seq (binding [pulse/*allow-hydrate-archived-cards* true]
+                           (pulse/retrieve-alerts-for-cards {:card-ids [card-id]})))]
     (cond
+     (card-archived? old-card new-card)
+     (delete-alert-and-notify-archived! alerts)
 
-      (card-archived? old-card new-card)
-      (delete-alert-and-notify-archived! alerts)
+     (or (display-change-broke-alert? old-card new-card)
+         (goal-missing? old-card new-card)
+         (multiple-breakouts? new-card))
+     (delete-alert-and-notify-changed! alerts)
 
-      (or (display-change-broke-alert? old-card new-card)
-          (goal-missing? old-card new-card)
-          (multiple-breakouts? new-card))
-      (delete-alert-and-notify-changed! alerts)
-
-      ;; The change doesn't invalidate the alert, do nothing
-      :else
-      nil)))
+     ;; The change doesn't invalidate the alert, do nothing
+     :else
+     nil)))
 
 (defn- card-is-verified?
   "Return true if card is verified, false otherwise. Assumes that moderation reviews are ordered so that the most recent

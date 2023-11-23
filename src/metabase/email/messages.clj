@@ -685,8 +685,11 @@
 (defn send-alert-stopped-because-archived-email!
   "Email to notify users when a card associated to their alert has been archived"
   [alert user {:keys [first_name last_name] :as _archiver}]
-  (let [deletion-text (format "the question was archived by %s %s" first_name last_name)]
-    (send-email! user not-working-subject stopped-template (assoc (common-alert-context alert) :deletionCause deletion-text))))
+  (let [deletion-text (format "the question was archived by %s %s" first_name last_name)
+        {card-id :id card-name :name} (first-card alert)]
+    (send-email! user not-working-subject stopped-template {:questionURL   (urls/archive-url)
+                                                            :questionName  (format "%s (id=%d)" card-name card-id)
+                                                            :deletionCause deletion-text})))
 
 (defn send-alert-stopped-because-changed-email!
   "Email to notify users when a card associated to their alert changed in a way that invalidates their alert"
