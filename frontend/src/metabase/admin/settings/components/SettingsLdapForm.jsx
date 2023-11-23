@@ -42,7 +42,7 @@ const testPort = {
 
 const LDAP_SCHEMA = Yup.object({
   "ldap-port": Yup.string().test(testPort),
-  "ldap-user-filter": Yup.string().optional().test(testParentheses),
+  "ldap-user-filter": Yup.string().test(testParentheses),
   "ldap-group-membership-filter": Yup.string().test(testParentheses),
 });
 
