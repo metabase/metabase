@@ -10,6 +10,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database Table]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.store :as qp.store]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
@@ -193,8 +194,9 @@
                              (filter default-have-slect-privilege?)
                              (descendants driver/hierarchy :sql-jdbc))
         (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :users))]
-          (testing (sql-jdbc.describe-database/simple-select-probe-query driver/*driver* schema table-name)
-            (doseq [auto-commit [true false]]
+          (qp.store/with-metadata-provider (mt/id)
+            (testing (sql-jdbc.describe-database/simple-select-probe-query driver/*driver* schema table-name)
+              (doseq [auto-commit [true false]]
                 (testing (pr-str {:auto-commit auto-commit :schema schema :name table-name})
                   (sql-jdbc.execute/do-with-connection-with-options
                    driver/*driver*
@@ -205,4 +207,4 @@
                      (is (false? (sql-jdbc.sync.interface/have-select-privilege?
                                   driver/*driver* conn schema (str table-name "_should_not_exist"))))
                      (is (true? (sql-jdbc.sync.interface/have-select-privilege?
-                                 driver/*driver* conn schema table-name)))))))))))))
+                                 driver/*driver* conn schema table-name))))))))))))))
