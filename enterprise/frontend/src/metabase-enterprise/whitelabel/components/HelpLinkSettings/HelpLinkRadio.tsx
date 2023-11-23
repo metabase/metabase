@@ -1,10 +1,10 @@
 import { t } from "ttag";
 import { useCallback } from "react";
 import { Radio, Stack } from "metabase/ui";
+import type { HomeLinkSetting } from "metabase-types/api";
 
 interface Props {
-  // TODO: create/find generic Setting[Prop] type
-  setting: { value: string; default: string };
+  setting: { value?: HomeLinkSetting; default: HomeLinkSetting };
   onChange: (value: string) => void;
 }
 
