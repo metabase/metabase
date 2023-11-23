@@ -3,7 +3,6 @@
    [clj-bom.core :as bom]
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
-   [clojure.set :as set]
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [flatland.ordered.set :as ordered-set]
@@ -51,7 +50,8 @@
 
 (def ^:private type->parent
   ;; listed in depth-first order
-  {::varchar-255              ::text
+  {::text                     nil
+   ::varchar-255              ::text
    ::float                    ::varchar-255
    ::int                      ::float
    ::int-pk                   ::int
@@ -67,8 +67,7 @@
    ::int         ::int-pk})
 
 (def ^:private types
-  (set/union (set (keys type->parent))
-             (set (vals type->parent))))
+  (keys type->parent))
 
 (def ^:private pk-base-types
   (set (keys base-type->pk-type)))
@@ -77,7 +76,7 @@
   (into {} (for [type types]
              [type (loop [ret (ordered-set/ordered-set)
                           type type]
-                     (if-let [parent (type->parent type)]
+                     (if-some [parent (type->parent type)]
                        (recur (conj ret parent) parent)
                        ret))])))
 
@@ -131,9 +130,6 @@
 (defn- offset-datetime-string? [s]
   (applies-without-throwing? upload-parsing/parse-offset-datetime s))
 
-(defn- fits-in-varchar-255? [s]
-  (<= (count s) 255))
-
 (defn- boolean-string? [s]
   (boolean (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" s)))
 
@@ -164,9 +160,9 @@
       (offset-datetime-string? trimmed)                         ::offset-datetime
       (datetime-string? trimmed)                                ::datetime
       (date-string? trimmed)                                    ::date
-      (boolean (re-matches (int-regex number-separators) trimmed))               ::int
-      (boolean (re-matches (float-regex number-separators) trimmed))                 ::float
-      (fits-in-varchar-255? value)                              ::varchar-255
+      (re-matches (int-regex number-separators) trimmed)        ::int
+      (re-matches (float-regex number-separators) trimmed)      ::float
+      (<= (count trimmed) 255)                                  ::varchar-255
       :else                                                     ::text)))
 
 (defn- row->types
@@ -247,20 +243,13 @@
 ;;;; |  Parsing values  |
 ;;;; +------------------+
 
-(defn- pad
-  "Lengthen `values` until it is of length `n` by filling it with nils."
-  [n values]
-  (first (partition n n (repeat nil) values)))
-
-(defn- parsed-rows
-  "Returns a lazy seq of parsed rows from the `reader`.
-   Replaces empty strings with nil."
-  [col->upload-type reader]
-  (let [[header & rows] (csv/read-csv reader)
-        column-count    (count header)
-        parsers         (map upload-parsing/upload-type->parser (vals col->upload-type))]
+(defn- parse-rows
+  "Returns a lazy seq of parsed rows from the `reader`. Replaces empty strings with nil."
+  [col->upload-type rows]
+  (let [[_header & rows] rows
+        parsers          (map upload-parsing/upload-type->parser (vals col->upload-type))]
     (for [row rows]
-      (for [[value parser] (map vector (pad column-count row) parsers)]
+      (for [[value parser] (map-with-nils vector row parsers)]
         (when (not (str/blank? value))
           (parser value))))))
 
@@ -322,7 +311,9 @@
     (driver/create-table! driver db-id table-name col-to-create->col-spec)
     (try
       (with-open [reader (io/reader csv-file)]
-        (let [rows (parsed-rows col-to-insert->upload-type reader)]
+        (let [rows (->> (csv/read-csv reader)
+                        (drop 1) ; drop header
+                        (parse-rows col-to-insert->upload-type))]
           (driver/insert-into! driver db-id table-name csv-col-names rows)
           {:num-rows          (count rows)
            :num-columns       (count csv-col-names)
