@@ -192,16 +192,17 @@
       (mt/test-drivers (into #{}
                              (filter default-have-slect-privilege?)
                              (descendants driver/hierarchy :sql-jdbc))
-        (let [{schema :schema, table-name :name} (t2/select-one :model/Table :db_id (mt/id))]
-          (doseq [auto-commit [true false]]
-            (testing (pr-str {:auto-commit auto-commit :schema schema :name table-name})
-              (sql-jdbc.execute/do-with-connection-with-options
-               driver/*driver*
-               (mt/db)
-               nil
-               (fn [^java.sql.Connection conn]
-                 (.setAutoCommit conn auto-commit)
-                 (is (false? (sql-jdbc.sync.interface/have-select-privilege?
-                              driver/*driver* conn schema (str table-name "_should_not_exists"))))
-                 (is (true? (sql-jdbc.sync.interface/have-select-privilege?
-                             driver/*driver* conn schema table-name))))))))))))
+        (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :users))]
+          (mt/with-native-query-testing-context (mt/mbql-query users)
+            (doseq [auto-commit [true false]]
+                (testing (pr-str {:auto-commit auto-commit :schema schema :name table-name})
+                  (sql-jdbc.execute/do-with-connection-with-options
+                   driver/*driver*
+                   (mt/db)
+                   nil
+                   (fn [^java.sql.Connection conn]
+                     (.setAutoCommit conn auto-commit)
+                     (is (false? (sql-jdbc.sync.interface/have-select-privilege?
+                                  driver/*driver* conn schema (str table-name "_should_not_exists"))))
+                     (is (true? (sql-jdbc.sync.interface/have-select-privilege?
+                                 driver/*driver* conn schema table-name)))))))))))))
