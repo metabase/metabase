@@ -33,13 +33,22 @@ export interface ExpressionWidgetProps {
   query?: Lib.Query;
   stageIndex?: number;
   expression: Expression | undefined;
+  /**
+   * Presence of this prop is not enforced due to backwards-compatibility
+   * with ExpressionWidget usages outside of GUI editor.
+   */
+  expressionClause?: Lib.ExpressionClause | undefined;
   name?: string;
   withName?: boolean;
   startRule?: string;
   reportTimezone?: string;
   header?: ReactNode;
 
-  onChangeExpression: (name: string, expression: Expression) => void;
+  onChangeExpression: (
+    name: string,
+    expression: Expression,
+    expressionClause: Lib.ExpressionClause,
+  ) => void;
   onRemoveExpression?: (name: string) => void;
   onClose?: () => void;
 }
@@ -51,6 +60,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
     stageIndex,
     name: initialName,
     expression: initialExpression,
+    expressionClause: initialExpressionClause,
     withName = false,
     startRule,
     reportTimezone,
@@ -64,6 +74,8 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
   const [expression, setExpression] = useState<Expression | null>(
     initialExpression || null,
   );
+  const [expressionClause, setExpressionClause] =
+    useState<Lib.ExpressionClause | null>(initialExpressionClause || null);
   const [error, setError] = useState<string | null>(null);
 
   const helpTextTargetRef = useRef(null);
@@ -73,15 +85,22 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
 
   const isValid = !error && isValidName && isValidExpression;
 
-  const handleCommit = (expression: Expression | null) => {
-    if (isValid && isNotNull(expression)) {
-      onChangeExpression(name, expression);
-      onClose && onClose();
+  const handleCommit = (
+    expression: Expression | null,
+    expressionClause: Lib.ExpressionClause | null,
+  ) => {
+    if (isValid && isNotNull(expression) && isNotNull(expressionClause)) {
+      onChangeExpression(name, expression, expressionClause);
+      onClose?.();
     }
   };
 
-  const handleExpressionChange = (parsedExpression: Expression | null) => {
-    setExpression(parsedExpression);
+  const handleExpressionChange = (
+    expression: Expression | null,
+    expressionClause: Lib.ExpressionClause | null,
+  ) => {
+    setExpression(expression);
+    setExpressionClause(expressionClause);
     setError(null);
   };
 
@@ -134,7 +153,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
             onChange={event => setName(event.target.value)}
             onKeyPress={e => {
               if (e.key === "Enter") {
-                handleCommit(expression);
+                handleCommit(expression, expressionClause);
               }
             }}
           />
@@ -147,7 +166,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
           <Button
             primary={isValid}
             disabled={!isValid}
-            onClick={() => handleCommit(expression)}
+            onClick={() => handleCommit(expression, expressionClause)}
           >
             {initialName ? t`Update` : t`Done`}
           </Button>

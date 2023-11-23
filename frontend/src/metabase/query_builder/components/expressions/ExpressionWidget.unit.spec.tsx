@@ -164,8 +164,9 @@ function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
     onChangeExpression: jest.fn(),
   };
 
-  const props = {
+  const props: ExpressionWidgetProps = {
     expression: undefined,
+    expressionClause: undefined,
     name: undefined,
     legacyQuery: createMockLegacyQueryForExpressions(),
     query: createQuery(),
