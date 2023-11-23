@@ -182,13 +182,12 @@ describeEE("audit > auditing", () => {
       cy.contains(year);
     });
 
-    // [quarantine] flaky
-    it.skip("should load both tabs in Schemas", () => {
-      // Overview tab
+    // Overview tab
+    it("should load both tabs in Schemas", () => {
       cy.visit("/admin/audit/schemas/overview");
-      cy.get("svg").should("have.length", 2);
       cy.findAllByText("Sample Database PUBLIC");
       cy.findAllByText("No results!").should("not.exist");
+      cy.findAllByTestId("dashcard").should("have.length", 2);
 
       // All schemas tab
       cy.visit("/admin/audit/schemas/all");
