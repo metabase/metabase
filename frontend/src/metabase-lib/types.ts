@@ -280,6 +280,7 @@ export type QuickFilterDrillThruOperator =
 
 export type QuickFilterDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/quick-filter"> & {
+    value: unknown;
     operators: Array<QuickFilterDrillThruOperator>;
   };
 
@@ -350,7 +351,7 @@ export type DrillThruDisplayInfo =
   | UnderlyingRecordsDrillThruInfo
   | ZoomTimeseriesDrillThruInfo;
 
-export type ColumnFilterDrillDetails = {
+export type FilterDrillDetails = {
   query: Query;
   column: ColumnMetadata;
   stageIndex: number;
@@ -360,13 +361,6 @@ export type PivotDrillDetails = {
   query: Query;
   stageIndex: number;
   columns: ColumnMetadata[];
-};
-
-export type QuickFilterDrillThruDetails = {
-  query: Query;
-  column: ColumnMetadata;
-  stageIndex: number;
-  value: unknown;
 };
 
 export interface Dimension {

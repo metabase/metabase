@@ -13,8 +13,8 @@ export const QuickFilterDrill: Drill<Lib.QuickFilterDrillThruInfo> = ({
   drillDisplayInfo,
   applyDrill,
 }) => {
-  const { operators } = drillDisplayInfo;
-  const drillInfo = Lib.quickFilterDrillDetails(drill);
+  const { value, operators } = drillDisplayInfo;
+  const { query, stageIndex, column } = Lib.filterDrillDetails(drill);
 
   return operators.map(operator => ({
     name: operator,
@@ -23,14 +23,17 @@ export const QuickFilterDrill: Drill<Lib.QuickFilterDrillThruInfo> = ({
     sectionDirection: "row",
     buttonType: "token-filter",
     question: () => applyDrill(drill, operator),
-    ...getActionOverrides(question, drillInfo, operator),
+    ...getActionOverrides(question, query, stageIndex, column, operator, value),
   }));
 };
 
 function getActionOverrides(
   question: Question,
-  { query, column, stageIndex, value }: Lib.QuickFilterDrillThruDetails,
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
   operator: Lib.QuickFilterDrillThruOperator,
+  value: unknown,
 ): Partial<ClickAction> {
   if (Lib.isDate(column) && value != null) {
     const action: Partial<ClickAction> = {
