@@ -9,6 +9,7 @@ import {
   setTokenFeatures,
   setupSMTP,
   sidebar,
+  popover,
 } from "e2e/support/helpers";
 
 import { USERS } from "e2e/support/cypress_data";
@@ -133,36 +134,41 @@ describeEE("scenarios > admin > permissions > application", () => {
         cy.signInAsNormalUser();
       });
 
-      // Adding this test to quarantine. When it was failing was making all the subsequents to fail.
-      // More details can be found on the Thread https://metaboat.slack.com/archives/CKZEMT1MJ/p1649272824618149
-      it.skip("allows accessing tools, audit, and troubleshooting for non-admins", () => {
+      it("allows accessing tools, audit, and troubleshooting for non-admins", () => {
         cy.visit("/");
         cy.icon("gear").click();
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Admin settings").click();
+        popover().findByText("Admin settings").click();
 
-        // Tools smoke test
-        cy.url().should("include", "/admin/tools/errors");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Questions that errored when last run");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("broken_question");
+        cy.log("Tools smoke test");
+        cy.location("pathname").should("eq", "/admin/tools/errors");
+        cy.findByRole("heading", {
+          name: "Questions that errored when last run",
+        });
+        cy.findAllByRole("cell").should("contain", "broken_question");
 
-        // Audit smoke test
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Audit").click();
-        cy.url().should("include", "/admin/audit/members/overview");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("All members").click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(getFullName(admin));
+        cy.log("Audit smoke test");
+        cy.findByRole("navigation")
+          .findByRole("link", { name: "Audit" })
+          .click();
+        cy.location("pathname").should("eq", "/admin/audit/members/overview");
+        cy.findByRole("heading", {
+          name: "Team members",
+        });
+        cy.findByRole("radiogroup").contains("Audit log").click();
+        cy.location("pathname").should("eq", "/admin/audit/members/log");
+        cy.findAllByRole("cell")
+          .should("contain", "broken_question")
+          .and("contain", getFullName(admin));
 
-        // Troubleshooting smoke test
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Troubleshooting").click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Diagnostic Info");
+        cy.log("Troubleshooting smoke test");
+        cy.findByRole("navigation")
+          .findByRole("link", { name: "Troubleshooting" })
+          .click();
+        cy.location("pathname").should("eq", "/admin/troubleshooting/help");
+        cy.get("main")
+          .should("contain", "Help")
+          .and("contain", "Diagnostic Info");
       });
     });
 
