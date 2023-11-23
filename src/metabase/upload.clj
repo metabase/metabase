@@ -21,7 +21,6 @@
 
 (set! *warn-on-reflection* true)
 
-
 ;;;; <pre><code>
 ;;;;
 ;;;; +------------------+
@@ -82,22 +81,13 @@
                        (recur (conj ret parent) parent)
                        ret))])))
 
-(defn- date-string? [s]
-  (try (t/local-date s)
-       true
-       (catch Exception _
-         false)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; [[value->type]] helpers
 
-(defn- datetime-string? [s]
-  (try (upload-parsing/parse-datetime s)
+(defn- applies-without-throwing? [f & args]
+  (try (apply f args)
        true
-       (catch Exception _
-         false)))
-
-(defn- offset-datetime-string? [s]
-  (try (upload-parsing/parse-offset-datetime s)
-       true
-       (catch Exception _
+       (catch Throwable _
          false)))
 
 (defn- with-parens
@@ -132,7 +122,25 @@
         ", " #"\d[\d \u00A0]*\,[\d.]+"
         ".’" #"\d[\d’]*\.[\d.]+"))))
 
-(defn value->type
+(defn- date-string? [s]
+  (applies-without-throwing? t/local-date s))
+
+(defn- datetime-string? [s]
+  (applies-without-throwing? upload-parsing/parse-datetime s))
+
+(defn- offset-datetime-string? [s]
+  (applies-without-throwing? upload-parsing/parse-offset-datetime s))
+
+(defn- fits-in-varchar-255? [s]
+  (<= (count s) 255))
+
+(defn- boolean-string? [s]
+  (boolean (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" s)))
+
+;; end [[value->type]] helpers
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn- value->type
   "The most-specific possible type for a given value. Possibilities are:
 
     - `::boolean`
@@ -148,23 +156,22 @@
     1. ints/floats are assumed to use the separators and decimal points corresponding to the locale defined in the
        application settings
     2. 0 and 1 are assumed to be booleans, not ints."
-  [value]
-  (let [number-separators (upload-parsing/get-number-separators)
-        trimmed-val       (str/trim value)]
+  [value {:keys [number-separators] :as _settings}]
+  (let [trimmed (str/trim value)]
     (cond
-      (str/blank? value)                                            nil
-      (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" trimmed-val) ::boolean
-      (offset-datetime-string? trimmed-val)                         ::offset-datetime
-      (datetime-string? trimmed-val)                                ::datetime
-      (date-string? trimmed-val)                                    ::date
-      (re-matches (int-regex number-separators) trimmed-val)        ::int
-      (re-matches (float-regex number-separators) trimmed-val)      ::float
-      (re-matches #".{1,255}" value)                                ::varchar-255
-      :else                                                         ::text)))
+      (str/blank? value)                                        nil
+      (boolean-string? trimmed)                                 ::boolean
+      (offset-datetime-string? trimmed)                         ::offset-datetime
+      (datetime-string? trimmed)                                ::datetime
+      (date-string? trimmed)                                    ::date
+      (boolean (re-matches (int-regex number-separators) trimmed))               ::int
+      (boolean (re-matches (float-regex number-separators) trimmed))                 ::float
+      (fits-in-varchar-255? value)                              ::varchar-255
+      :else                                                     ::text)))
 
 (defn- row->types
-  [row]
-  (map value->type row))
+  [row settings]
+  (map #(value->type % settings) row))
 
 (defn- lowest-common-member [[x & xs :as all-xs] ys]
   (cond
@@ -181,15 +188,21 @@
     (contains? (type->ancestors type-b) type-a) type-a
     :else (lowest-common-member (type->ancestors type-a) (type->ancestors type-b))))
 
-(defn- coalesce-types
-  [types-so-far new-types]
-  (->> (map vector types-so-far new-types)
-       (mapv (partial apply lowest-common-ancestor))))
+(defn- map-with-nils
+  "like map with two args except it continues to apply f until ALL of the colls are
+  exhausted. if colls are of uneven length, nils are supplied."
+  [f c1 c2]
+  (lazy-seq
+   (let [s1 (seq c1) s2 (seq c2)]
+     (when (or s1 s2)
+       (cons (f (first s1) (first s2))
+             (map-with-nils f (rest s1) (rest s2)))))))
 
-(defn- pad
-  "Lengthen `values` until it is of length `n` by filling it with nils."
-  [n values]
-  (first (partition n n (repeat nil) values)))
+(defn- coalesce-types
+  "compares types-a and types-b pairwise, finding the lowest-common-ancestor for each pair.
+  types-a and types-b can be different lengths."
+  [types-a types-b]
+  (map-with-nils lowest-common-ancestor types-a types-b))
 
 (defn- normalize-column-name
   [raw-name]
@@ -214,25 +227,30 @@
      :generated-columns (ordered-map/ordered-map :id ::auto-incrementing-int-pk)}))
 
 (defn- rows->schema
+  "rows should be a lazy-seq"
   [header rows]
   (let [normalized-header (->> header
                                (map normalize-column-name)
                                (mbql.u/uniquify-names)
                                (map keyword))
-        column-count      (count normalized-header)]
+        column-count      (count normalized-header)
+        settings          {:number-separators (upload-parsing/get-number-separators)}]
     (->> rows
-         (map row->types)
-         (map (partial pad column-count))
+         (map #(row->types % settings))
          (reduce coalesce-types (repeat column-count nil))
          (map #(or % ::text))
          (map vector normalized-header)
          (->ordered-maps-with-pk-column))))
 
+
 ;;;; +------------------+
 ;;;; |  Parsing values  |
 ;;;; +------------------+
 
-
+(defn- pad
+  "Lengthen `values` until it is of length `n` by filling it with nils."
+  [n values]
+  (first (partition n n (repeat nil) values)))
 
 (defn- parsed-rows
   "Returns a lazy seq of parsed rows from the `reader`.
@@ -298,9 +316,9 @@
   [driver db-id table-name ^File csv-file]
   (let [{col-to-insert->upload-type :extant-columns
          gen-col->upload-type       :generated-columns} (detect-schema csv-file)
-        col-to-create->col-spec                         (upload-type->col-specs driver
-                                                                                (merge gen-col->upload-type col-to-insert->upload-type))
-        csv-col-names                                   (keys col-to-insert->upload-type)]
+        cols->upload-type       (merge gen-col->upload-type col-to-insert->upload-type)
+        col-to-create->col-spec (upload-type->col-specs driver cols->upload-type)
+        csv-col-names           (keys col-to-insert->upload-type)]
     (driver/create-table! driver db-id table-name col-to-create->col-spec)
     (try
       (with-open [reader (io/reader csv-file)]

@@ -119,57 +119,58 @@
 (defmulti upload-type->parser
   "Returns a function for the given `metabase.upload` type that will parse a string value (from a CSV) into a value
   suitable for insertion."
-  {:arglists '([upload-type])}
-  identity)
+  {:arglists '([upload-type settings])}
+  (fn [upload-type _]
+    upload-type))
 
 (defmethod upload-type->parser :metabase.upload/varchar-255
-  [_]
+  [_ _]
   identity)
 
 (defmethod upload-type->parser :metabase.upload/text
-  [_]
+  [_ _]
   identity)
 
 (defmethod upload-type->parser :metabase.upload/int
-  [_]
-  (partial parse-number (get-number-separators)))
+  [_ {:keys [number-separators]}]
+  (partial parse-number number-separators))
 
 (defmethod upload-type->parser :metabase.upload/float
-  [_]
-  (partial parse-number (get-number-separators)))
+  [_ {:keys [number-separators]}]
+  (partial parse-number number-separators))
 
 (defmethod upload-type->parser :metabase.upload/int-pk
-  [_]
-  (partial parse-number (get-number-separators)))
+  [_ {:keys [number-separators]}]
+  (partial parse-number number-separators))
 
 (defmethod upload-type->parser :metabase.upload/auto-incrementing-int-pk
-  [_]
-  (partial parse-number (get-number-separators)))
+  [_ {:keys [number-separators]}]
+  (partial parse-number number-separators))
 
 (defmethod upload-type->parser :metabase.upload/string-pk
-  [_]
+  [_ _]
   identity)
 
 (defmethod upload-type->parser :metabase.upload/boolean
-  [_]
+  [_ _]
   (comp
    parse-bool
    str/trim))
 
 (defmethod upload-type->parser :metabase.upload/date
-  [_]
+  [_ _]
   (comp
    parse-date
    str/trim))
 
 (defmethod upload-type->parser :metabase.upload/datetime
-  [_]
+  [_ _]
   (comp
    parse-as-datetime
    str/trim))
 
 (defmethod upload-type->parser :metabase.upload/offset-datetime
-  [_]
+  [_ _]
   (comp
    parse-offset-datetime
    str/trim))
