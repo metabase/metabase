@@ -38,7 +38,6 @@
 }
 
 :local(.parameter) input {
-  flex-basis: 142px;
   flex-grow: 1;
   border-radius: 0;
 }
