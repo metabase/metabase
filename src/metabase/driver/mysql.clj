@@ -422,12 +422,6 @@
      [:convert_tz expr (or source-timezone (qp.timezone/results-timezone-id)) target-timezone]
      "datetime")))
 
-(defmethod sql.qp/->honeysql [:mysql :temporal-extract]
-  [driver args]
-  (let [res ((get-method sql.qp/->honeysql [:sql :temporal-extract]) driver args)]
-    [:cast res :decimal]
-    #_res))
-
 (defn- timestampdiff-dates [unit x y]
   [:timestampdiff [:raw (name unit)] (h2x/->date x) (h2x/->date y)])
 
