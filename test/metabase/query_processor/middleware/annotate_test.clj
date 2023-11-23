@@ -846,3 +846,30 @@
                      (map
                       #(select-keys % [:display_name :field_ref :source_alias])
                       metadata))))))))))
+
+(deftest ^:parallel correct-source-alias-with-nested-query-e2e-test
+  (testing "`:source-alias` in `:cols` should be set only for columns coming from a join (#35290, #33427, etc.)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+      (mt/dataset sample-dataset
+        (let [results (mt/run-mbql-query orders
+                                         {:source-query {:source-table $$orders
+                                                         :joins [{:source-table $$orders
+                                                                  :condition    [:= $id &Orders.id]
+                                                                  :alias        "Orders"
+                                                                  :fields [&Orders.id &Orders.subtotal]}]
+                                                         :fields [$id $subtotal &Orders.id &Orders.subtotal]
+                                                         :limit  4}})]
+          (is (=? (mt/$ids orders
+                           [{:id           %id
+                             :name         "ID"
+                             :source_alias (symbol "nil #_\"key is not present.\"")}
+                            {:id           %subtotal
+                             :name         "SUBTOTAL"
+                             :source_alias (symbol "nil #_\"key is not present.\"")}
+                            {:id           %Orders.id
+                             :name         "ID_2"
+                             :source_alias "Orders"}
+                            {:id           %Orders.subtotal
+                             :name         "SUBTOTAL_2"
+                             :source_alias "Orders"}])
+                  (-> results :data :cols))))))))

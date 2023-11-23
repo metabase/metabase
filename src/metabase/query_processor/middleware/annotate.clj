@@ -24,6 +24,7 @@
    [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
@@ -234,6 +235,8 @@
                                                    opts))]
     ;; TODO -- I think we actually need two `:field_ref` columns -- one for referring to the Field at the SAME
     ;; level, and one for referring to the Field from the PARENT level.
+    ;; NOTE: The above TODO is old. Rather, `:field_ref` should no longer be precomputed - instead the field refs should
+    ;; be calculated in context by MLv2, eg. [[metabase.lib.ref/ref]].
     (cond-> {:field_ref (mbql.u/remove-namespaced-options clause)}
       (:base-type opts)
       (assoc :base_type (:base-type opts))
@@ -437,17 +440,34 @@
     (map merge-source-metadata-col source-metadata cols)
     cols))
 
+(defn- matching-metadata-for-field [source-metadatas-for-field col]
+  (case (count source-metadatas-for-field)
+    0 nil
+    1 (first source-metadatas-for-field)
+    ;; Disambiguate based on matching `:source_alias`.
+    (let [matches (filter #(= (:source_alias %) (:source_alias col)) source-metadatas-for-field)]
+      (if (= (count matches) 1)
+        (first matches)
+        ;; If there are no matches, or more than 1, emit a warning and use the `last` metadata.
+        ;; This duplicates the old behavior where they were matched with `m/index-by` on `qp.util/field-ref->key`, so
+        ;; the last one won ties.
+        (do
+          (log/info "Could not disambiguate source metadata" {:metadatas source-metadatas-for-field, :col col})
+          (last source-metadatas-for-field))))))
+
 (defn- flow-field-metadata
   "Merge information about fields from `source-metadata` into the returned `cols`."
   [source-metadata cols dataset?]
-  (let [by-key (m/index-by (comp qp.util/field-ref->key :field_ref) source-metadata)]
+  (let [by-key (group-by (comp qp.util/field-ref->key :field_ref) source-metadata)]
     (for [{:keys [field_ref source] :as col} cols]
-     ;; aggregation fields are not from the source-metadata and their field_ref
-     ;; are not unique for a nested query. So do not merge them otherwise the metadata will be messed up.
-     ;; TODO: I think the best option here is to introduce a parent_field_ref so that
-     ;; we could preserve metadata such as :sematic_type or :unit from the source field.
+      ;; aggregation fields are not from the source-metadata and their field_ref
+      ;; are not unique for a nested query. So do not merge them otherwise the metadata will be messed up.
+      ;; TODO: I think the best option here is to introduce a parent_field_ref so that
+      ;; we could preserve metadata such as :sematic_type or :unit from the source field.
       (if-let [source-metadata-for-field (and (not= :aggregation source)
-                                              (get by-key (qp.util/field-ref->key field_ref)))]
+                                              (matching-metadata-for-field
+                                                (get by-key (qp.util/field-ref->key field_ref))
+                                                col))]
         (merge-source-metadata-col source-metadata-for-field
                                    (merge col
                                           (when dataset?
