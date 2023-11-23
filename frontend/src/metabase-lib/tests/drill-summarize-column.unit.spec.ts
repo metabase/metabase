@@ -3,6 +3,7 @@ import {
   createOrdersTotalDatasetColumn,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
+import * as Lib from "metabase-lib";
 import {
   createQuery,
   findDrillThru,
@@ -16,7 +17,7 @@ describe("drill-thru/summarize-column", () => {
   const column = createOrdersTotalDatasetColumn();
 
   describe("availableDrillThrus", () => {
-    it("should allow to drill when the column is summable", () => {
+    it("should allow to drill with a summable column", () => {
       const { drillInfo } = findDrillThru(
         drillType,
         initialQuery,
@@ -29,7 +30,7 @@ describe("drill-thru/summarize-column", () => {
       });
     });
 
-    it("should allow to drill when the column is not summable", () => {
+    it("should allow to drill with a non-summable column", () => {
       const column = createOrdersCreatedAtDatasetColumn();
       const { drillInfo } = findDrillThru(
         drillType,
@@ -104,6 +105,43 @@ describe("drill-thru/summarize-column", () => {
       });
       const drill = queryDrillThru(drillType, query, stageIndex, column);
       expect(drill).toBeNull();
+    });
+  });
+
+  describe("drillThru", () => {
+    it.each<Lib.SummarizeColumnDrillThruOperator>(["distinct", "sum", "avg"])(
+      'should drill with a summable column and "%s" operator',
+      operator => {
+        const { drill } = findDrillThru(
+          drillType,
+          initialQuery,
+          stageIndex,
+          column,
+        );
+        const newQuery = Lib.drillThru(
+          initialQuery,
+          stageIndex,
+          drill,
+          operator,
+        );
+        expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+      },
+    );
+
+    it('should drill with a non-summable column and "distinct" operator', () => {
+      const { drill } = findDrillThru(
+        drillType,
+        initialQuery,
+        stageIndex,
+        createOrdersCreatedAtDatasetColumn(),
+      );
+      const newQuery = Lib.drillThru(
+        initialQuery,
+        stageIndex,
+        drill,
+        "distinct",
+      );
+      expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
     });
   });
 });

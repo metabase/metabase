@@ -126,15 +126,38 @@ describe("drill-thru/sort", () => {
   });
 
   describe("drillThru", () => {
-    it("should drill with an unsorted query", () => {
-      const { drill } = findDrillThru(
-        drillType,
-        initialQuery,
-        stageIndex,
-        column,
-      );
-      const newQuery = Lib.drillThru(initialQuery, stageIndex, drill, "asc");
-      expect(Lib.orderBys(newQuery, stageIndex)).toHaveLength(1);
-    });
+    it.each<Lib.OrderByDirection>(["asc", "desc"])(
+      'should drill with a non-aggregated query and "%s" direction',
+      direction => {
+        const { drill } = findDrillThru(
+          drillType,
+          initialQuery,
+          stageIndex,
+          column,
+        );
+        const newQuery = Lib.drillThru(
+          initialQuery,
+          stageIndex,
+          drill,
+          direction,
+        );
+        expect(Lib.orderBys(newQuery, stageIndex)).toHaveLength(1);
+      },
+    );
+
+    it.each<Lib.OrderByDirection>(["asc", "desc"])(
+      'should drill with an aggregated query and "%s" direction',
+      direction => {
+        const query = Lib.orderBy(
+          initialQuery,
+          stageIndex,
+          findColumn("ORDERS", "TOTAL"),
+          direction === "asc" ? "desc" : "asc",
+        );
+        const { drill } = findDrillThru(drillType, query, stageIndex, column);
+        const newQuery = Lib.drillThru(query, stageIndex, drill, direction);
+        expect(Lib.orderBys(newQuery, stageIndex)).toHaveLength(1);
+      },
+    );
   });
 });
