@@ -1,4 +1,4 @@
-import type { DatasetColumn } from "metabase-types/api";
+import type { DatasetColumn, RowValue } from "metabase-types/api";
 import { createOrdersTotalDatasetColumn } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery, findDrillThru } from "./test-helpers";
@@ -14,9 +14,9 @@ describe("drill-thru/sort", () => {
   describe("availableDrillThrus", () => {
     it("should return directions for unsorted query", () => {
       const { drillInfo } = getDrillInfo(
+        drillType,
         initialQuery,
         createOrdersTotalDatasetColumn(),
-        drillType,
       );
       expect(drillInfo).toMatchObject({
         type: drillType,
@@ -32,9 +32,9 @@ describe("drill-thru/sort", () => {
         "asc",
       );
       const { drillInfo } = getDrillInfo(
+        drillType,
         query,
         createOrdersTotalDatasetColumn(),
-        drillType,
       );
       expect(drillInfo).toMatchObject({
         type: drillType,
@@ -50,9 +50,9 @@ describe("drill-thru/sort", () => {
         "desc",
       );
       const { drillInfo } = getDrillInfo(
+        drillType,
         query,
         createOrdersTotalDatasetColumn(),
-        drillType,
       );
       expect(drillInfo).toMatchObject({
         type: drillType,
@@ -63,11 +63,21 @@ describe("drill-thru/sort", () => {
 });
 
 function getDrillInfo(
+  drillType: Lib.DrillThruType,
   query: Lib.Query,
   column: DatasetColumn,
-  drillType: Lib.DrillThruType,
+  value?: RowValue,
+  row?: Lib.DataRow,
+  dimensions?: Lib.DataDimension[],
 ) {
-  const drills = Lib.availableDrillThrus(query, 0, column);
+  const drills = Lib.availableDrillThrus(
+    query,
+    0,
+    column,
+    value,
+    row,
+    dimensions,
+  );
   const drill = findDrillThru(query, 0, drills, drillType);
   const drillInfo = Lib.displayInfo(query, 0, drill);
   return { drill, drillInfo };
