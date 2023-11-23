@@ -67,7 +67,7 @@ const buildMapping = (entries: Entry[]): MappingType =>
 
 const entryError = (entries: Entry[], key: string) =>
   entries.filter(e => e.key === key).length > 1
-    ? t`Attribute keys must be unique`
+    ? t`Attribute keys can't have the same name`
     : false;
 
 const hasError = (entries: Entry[]) => {
@@ -181,7 +181,9 @@ const addEntry = (entries: Entry[]) => {
 };
 
 const removeEntry = (entries: Entry[], index: number) => {
-  return entries.toSpliced(index, 1);
+  const entriesCopy = [...entries];
+  entriesCopy.splice(index, 1);
+  return entriesCopy;
 };
 
 const replaceEntryValue = (

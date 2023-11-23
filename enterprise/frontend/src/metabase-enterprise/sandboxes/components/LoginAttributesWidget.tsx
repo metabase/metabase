@@ -21,7 +21,7 @@ export const LoginAttributesWidget = ({
 
   const handleError = (error: boolean) => {
     if (error) {
-      setError("bad");
+      setError(t`Duplicate login attribute keys`);
     }
   };
 
