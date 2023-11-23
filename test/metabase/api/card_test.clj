@@ -1517,87 +1517,89 @@
                            :body    body-map}))
 
 (deftest alert-deletion-test
-  (doseq [{:keys [message card deleted? expected-email f]}
-          [{:message        "Archiving a Card should trigger Alert deletion"
-            :deleted?       true
-            :expected-email "the question was archived by Rasta Toucan"
-            :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))}
-           {:message        "Validate changing a display type triggers alert deletion"
-            :card           {:display :table}
-            :deleted?       true
-            :expected-email "the question was edited by Rasta Toucan"
-            :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :line}))}
-           {:message        "Changing the display type from line to table should force a delete"
-            :card           {:display :line}
-            :deleted?       true
-            :expected-email "the question was edited by Rasta Toucan"
-            :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :table}))}
-           {:message        "Removing the goal value will trigger the alert to be deleted"
-            :card           {:display                :line
-                             :visualization_settings {:graph.goal_value 10}}
-            :deleted?       true
-            :expected-email "the question was edited by Rasta Toucan"
-            :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:visualization_settings {:something "else"}}))}
-           {:message        "Adding an additional breakout does not cause the alert to be removed if no goal is set"
-            :card           {:display                :line
-                             :visualization_settings {}
-                             :dataset_query          (assoc-in
-                                                      (mbql-count-query (mt/id) (mt/id :checkins))
-                                                      [:query :breakout]
-                                                      [[:field
-                                                        (mt/id :checkins :date)
-                                                        {:temporal-unit :hour}]])}
-            :deleted?       false
-            :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
-                                                    {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
-                                                                              [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
-                                                                                                  [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}
-           {:message        "Adding an additional breakout will cause the alert to be removed if a goal is set"
-            :card           {:display                :line
-                             :visualization_settings {:graph.goal_value 10}
-                             :dataset_query          (assoc-in
-                                                      (mbql-count-query (mt/id) (mt/id :checkins))
-                                                      [:query :breakout]
-                                                      [[:field
-                                                        (mt/id :checkins :date)
-                                                        {:temporal-unit :hour}]])}
-            :deleted?       true
-            :expected-email "the question was edited by Crowberto Corv"
-            :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
-                                                    {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
-                                                                              [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
-                                                                                                  [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}]]
+  (doseq [{:keys [message card deleted? expected-email-rg f]}
+          [{:message           "Archiving a Card should trigger Alert deletion"
+            :deleted?          true
+            :expected-email-rg #"Alerts about <a href=\"https?://[^\/]+\/archive\">([^<]+) \(id=(\d+)\)<\/a> have stopped because the question was archived by Rasta Toucan"
+            :f                 (fn [{:keys [card]}]
+                                 (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))}
+           {:message           "Validate changing a display type triggers alert deletion"
+            :card              {:display :table}
+            :deleted?          true
+            :expected-email-rg #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
+            :f                 (fn [{:keys [card]}]
+                                (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :line}))}
+           {:message           "Changing the display type from line to table should force a delete"
+            :card              {:display :line}
+            :deleted?          true
+            :expected-email-rg #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
+            :f                 (fn [{:keys [card]}]
+                                (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :table}))}
+           {:message           "Removing the goal value will trigger the alert to be deleted"
+            :card              {:display                :line
+                                :visualization_settings {:graph.goal_value 10}}
+            :deleted?          true
+            :expected-email-rg #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
+            :f                 (fn [{:keys [card]}]
+                                (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:visualization_settings {:something "else"}}))}
+           {:message           "Adding an additional breakout does not cause the alert to be removed if no goal is set"
+            :card              {:display                :line
+                                :visualization_settings {}
+                                :dataset_query          (assoc-in
+                                                         (mbql-count-query (mt/id) (mt/id :checkins))
+                                                         [:query :breakout]
+                                                         [[:field
+                                                           (mt/id :checkins :date)
+                                                           {:temporal-unit :hour}]])}
+            :expected-email-rg #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Crowberto Corv"
+            :deleted?          false
+            :f                 (fn [{:keys [card]}]
+                                (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
+                                                      {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
+                                                                                [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
+                                                                                                    [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}
+           {:message           "Adding an additional breakout will cause the alert to be removed if a goal is set"
+            :card              {:display                :line
+                                :visualization_settings {:graph.goal_value 10}
+                                :dataset_query          (assoc-in
+                                                         (mbql-count-query (mt/id) (mt/id :checkins))
+                                                         [:query :breakout]
+                                                         [[:field
+                                                           (mt/id :checkins :date)
+                                                           {:temporal-unit :hour}]])}
+            :deleted?          true
+            :expected-email-rg #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Crowberto Corv"
+            :f                 (fn [{:keys [card]}]
+                                (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
+                                                      {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
+                                                                                [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
+                                                                                                    [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}]]
     (testing message
-      (mt/with-temp [:model/Card           card  card
-                     Pulse                 pulse {:alert_condition  "rows"
-                                                  :alert_first_only false
-                                                  :creator_id       (mt/user->id :rasta)
-                                                  :name             "Original Alert Name"}
+      (mt/with-temp!
+        [:model/Card           card  card
+         Pulse                 pulse {:alert_condition  "rows"
+                                      :alert_first_only false
+                                      :creator_id       (mt/user->id :rasta)
+                                      :name             "Original Alert Name"}
 
-                     PulseCard             _     {:pulse_id (u/the-id pulse)
-                                                  :card_id  (u/the-id card)
-                                                  :position 0}
-                     PulseChannel          pc    {:pulse_id (u/the-id pulse)}
-                     PulseChannelRecipient _     {:user_id          (mt/user->id :crowberto)
-                                                  :pulse_channel_id (u/the-id pc)}
-                     PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
-                                                  :pulse_channel_id (u/the-id pc)}]
+         PulseCard             _     {:pulse_id (u/the-id pulse)
+                                      :card_id  (u/the-id card)
+                                      :position 0}
+         PulseChannel          pc    {:pulse_id (u/the-id pulse)}
+         PulseChannelRecipient _     {:user_id          (mt/user->id :crowberto)
+                                      :pulse_channel_id (u/the-id pc)}
+         PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
+                                      :pulse_channel_id (u/the-id pc)}]
         (with-cards-in-writeable-collection card
           (mt/with-fake-inbox
             (when deleted?
               (u/with-timeout 5000
                 (mt/with-expected-messages 2
                   (f {:card card}))
-               (is (= (merge (crowberto-alert-not-working {expected-email true})
-                             (rasta-alert-not-working     {expected-email true}))
-                      (mt/regex-email-bodies (re-pattern expected-email)))
-                   (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email)))))
+                (is (= (merge (crowberto-alert-not-working {(str expected-email-rg) true})
+                              (rasta-alert-not-working     {(str expected-email-rg) true}))
+                       (mt/regex-email-bodies expected-email-rg))
+                    (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email-rg)))))
             (if deleted?
               (is (= nil (t2/select-one Pulse :id (u/the-id pulse)))
                   "Alert should have been deleted")

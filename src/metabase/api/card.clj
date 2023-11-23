@@ -644,8 +644,8 @@ saved later when it is ready."
 
 (defn- delete-alerts-if-needed! [old-card {card-id :id :as new-card}]
   ;; If there are alerts, we need to check to ensure the card change doesn't invalidate the alert
-  (when-let [alerts (seq (binding [pulse/*allow-hydrate-archived-cards* true]
-                           (pulse/retrieve-alerts-for-cards {:card-ids [card-id]})))]
+  (when-let [alerts (binding [pulse/*allow-hydrate-archived-cards* true]
+                      (seq (pulse/retrieve-alerts-for-cards {:card-ids [card-id]})))]
     (cond
      (card-archived? old-card new-card)
      (delete-alert-and-notify-archived! alerts)
@@ -702,7 +702,6 @@ saved later when it is ready."
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
   included, otherwise the metadata will be saved to the database asynchronously."
   [{:keys [id] :as card-before-update} card-updates]
-  ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
   (t2/with-transaction [_conn]
    (api/maybe-reconcile-collection-position! card-before-update card-updates)
 
