@@ -18,12 +18,12 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic ^com.mongodb.MongoClient *mongo-client*
-  "Client used to connect to a Mongo database. Bound by top-level `with-mongo-connection` so it may be reused within its body."
-  nil)
-
 (def ^:dynamic ^com.mongodb.DB *mongo-connection*
   "Connection to a Mongo database. Bound by top-level `with-mongo-connection` so it may be reused within its body."
+  nil)
+
+(def ^:dynamic ^com.mongodb.MongoClient *mongo-client*
+  "Client used to connect to a Mongo database. Bound by top-level `with-mongo-connection` so it may be reused within its body."
   nil)
 
 ;; the code below is done to support "additional connection options" the way some of the JDBC drivers do.
@@ -223,7 +223,7 @@
 
 (defn do-with-mongo-connection
   "Run `f` with a new connection (bound to [[*mongo-connection*]]) to `database`. Don't use this directly; use
-  [[with-mongo-connection]]."
+  [[with-mongo-connection]]. Also dynamically binds the Mongo client to [[*mongo-client*]]."
   [f database]
   (let [details (database->details database)]
     (ssh/with-ssh-tunnel [details-with-tunnel details]
@@ -242,6 +242,8 @@
   "Open a new MongoDB connection to ``database-or-connection-string`, bind connection to `binding`, execute `body`, and
   close the connection. The DB connection is re-used by subsequent calls to [[with-mongo-connection]] within
   `body`. (We're smart about it: `database` isn't even evaluated if [[*mongo-connection*]] is already bound.)
+
+  [[*mongo-client*]] is also dynamically bound to the MongoClient instance.
 
     ;; delay isn't derefed if *mongo-connection* is already bound
     (with-mongo-connection [^com.mongodb.DB conn @(:db (sel :one Table ...))]
