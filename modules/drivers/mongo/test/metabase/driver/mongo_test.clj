@@ -311,12 +311,12 @@
   (mt/test-driver :mongo
     (is (= [{:active true, :name "categories"}
             {:active true, :name "checkins"}
-            {:active true, :name "users"}
-            {:active true, :name "venues"}
             {:active true, :name "orders"}
             {:active true, :name "people"}
             {:active true, :name "products"}
-            {:active true, :name "reviews"}]
+            {:active true, :name "reviews"}
+            {:active true, :name "users"}
+            {:active true, :name "venues"}]
            (for [field (t2/select [Table :name :active]
                          :db_id (mt/id)
                          {:order-by [:name]})]
