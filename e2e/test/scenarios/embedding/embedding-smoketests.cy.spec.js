@@ -396,7 +396,7 @@ function ensureDashboardEmbeddingIsDisabled() {
   // Let's make sure embedding stays disabled after we enable public sharing
   enableSharing();
 
-  cy.findByText(/Embed in your application/).closest(".disabled");
+  cy.findByText("Embed in your application").closest(".disabled");
 }
 
 function ensureEmbeddingIsDisabled() {
