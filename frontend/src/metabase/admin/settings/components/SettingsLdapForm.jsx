@@ -37,8 +37,14 @@ const testParentheses = {
 const testPort = {
   name: "test-port",
   message: "That's not a valid port number",
-  test: value => value?.match(/^\d+$/),
+  test: value => (value || "").match(/^\d*$/),
 };
+
+const LDAP_SCHEMA = Yup.object({
+  "ldap-port": Yup.string().test(testPort),
+  "ldap-user-filter": Yup.string().optional().test(testParentheses),
+  "ldap-group-membership-filter": Yup.string().test(testParentheses),
+});
 
 const SettingsLdapForm = ({
   elements = [],
@@ -80,11 +86,7 @@ const SettingsLdapForm = ({
     <FormProvider
       initialValues={attributeValues}
       onSubmit={handleSubmit}
-      validationSchema={Yup.object({
-        "ldap-port": Yup.string().test(testPort),
-        "ldap-user-filter": Yup.string().test(testParentheses),
-        "ldap-group-membership-filter": Yup.string().test(testParentheses),
-      })}
+      validationSchema={LDAP_SCHEMA}
       enableReinitialize
     >
       {({ dirty }) => (
