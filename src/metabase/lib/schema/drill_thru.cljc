@@ -80,9 +80,10 @@
   [:merge
    ::drill-thru.common
    [:map
-    [:type       [:= :drill-thru/quick-filter]]
-    [:operators  [:sequential ::drill-thru.quick-filter.operator]]
+    [:type         [:= :drill-thru/quick-filter]]
+    [:operators    [:sequential ::drill-thru.quick-filter.operator]]
     [:column       [:ref ::lib.schema.metadata/column]]
+    [:value        [:maybe :any]]
     [:query        [:ref ::lib.schema/query]]
     [:stage-number number?]]])
 

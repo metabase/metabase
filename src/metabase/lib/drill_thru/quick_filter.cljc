@@ -60,7 +60,8 @@
     (let [adjusted (lib.drill-thru.column-filter/filter-drill-adjusted-query query stage-number column)]
       (merge {:lib/type   :metabase.lib.drill-thru/drill-thru
               :type       :drill-thru/quick-filter
-              :operators  (operators-for (:column adjusted) value)}
+              :operators  (operators-for (:column adjusted) value)
+              :value      value}
              adjusted))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/quick-filter

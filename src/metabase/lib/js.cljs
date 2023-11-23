@@ -994,11 +994,12 @@
   and some `quick-filter` drills. Since the query might need an extra stage appended, this returns a possibly updated
   `query` and `stageNumber`, as well as a `column` as returned by [[filterable-columns]]."
   [{a-query :query
-    :keys [column stage-number]
+    :keys [column stage-number value]
     :as _filter-drill}]
   #js {"column"      column
        "query"       a-query
-       "stageNumber" stage-number})
+       "stageNumber" stage-number
+       "value"       (if (= value :null) nil value)})
 
 (defn ^:export pivot-types
   "Returns an array of pivot types that are available in this drill-thru, which must be a pivot drill-thru."
