@@ -215,7 +215,7 @@
   (t2/select PulseChannel, :pulse_id (u/the-id notification-or-id)))
 
 (def ^:dynamic *allow-hydrate-archived-cards*
-  "By default the :cards hydration methdo only returns active cards,
+  "By default the :cards hydration method only return active cards,
   but in cases we need to send email after a card is archived, we need to be able to hydrate archived card as well."
   false)
 
