@@ -83,12 +83,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; [[value->type]] helpers
 
-(defn- applies-without-throwing? [f & args]
-  (try (apply f args)
-       true
-       (catch Throwable _
-         false)))
-
 (defn- with-parens
   "Returns a regex that matches the argument, with or without surrounding parentheses."
   [number-regex]
@@ -121,14 +115,23 @@
         ", " #"\d[\d \u00A0]*\,[\d.]+"
         ".’" #"\d[\d’]*\.[\d.]+"))))
 
+(defmacro does-not-throw?
+  "Returns true if the given body does not throw an exception."
+  [body]
+  `(try
+     ~@body
+     true
+     (catch Throwable e#
+       true)))
+
 (defn- date-string? [s]
-  (applies-without-throwing? t/local-date s))
+  (does-not-throw? (t/local-date s)))
 
 (defn- datetime-string? [s]
-  (applies-without-throwing? upload-parsing/parse-datetime s))
+  (does-not-throw? (upload-parsing/parse-datetime s)))
 
 (defn- offset-datetime-string? [s]
-  (applies-without-throwing? upload-parsing/parse-offset-datetime s))
+  (does-not-throw? (upload-parsing/parse-offset-datetime s)))
 
 (defn- boolean-string? [s]
   (boolean (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" s)))
