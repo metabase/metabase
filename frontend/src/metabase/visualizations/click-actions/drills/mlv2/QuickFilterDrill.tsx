@@ -23,13 +23,12 @@ export const QuickFilterDrill: Drill<Lib.QuickFilterDrillThruInfo> = ({
     sectionDirection: "row",
     buttonType: "token-filter",
     question: () => applyDrill(drill, operator),
-    ...getActionOverrides(question, drill, drillInfo, operator),
+    ...getActionOverrides(question, drillInfo, operator),
   }));
 };
 
 function getActionOverrides(
   question: Question,
-  drill: Lib.DrillThru,
   { query, column, stageIndex, value }: Lib.QuickFilterDrillThruDetails,
   operator: Lib.QuickFilterDrillThruOperator,
 ): Partial<ClickAction> {
@@ -79,14 +78,14 @@ function getActionOverrides(
       case "contains": {
         return {
           ...action,
-          title: `Contains…`,
+          title: t`Contains…`,
           popover: getFilterPopover({ question, query, column, stageIndex }),
         };
       }
       case "does-not-contain": {
         return {
           ...action,
-          title: `Does not contain…`,
+          title: t`Does not contain…`,
           popover: getFilterPopover({ question, query, column, stageIndex }),
         };
       }
@@ -99,12 +98,14 @@ function getActionOverrides(
   return {};
 }
 
+const LONG_TEXT_VALUE_LENGTH = 20;
+
 const getTextValueTitle = (value: string): string => {
   if (value.length === 0) {
     return t`empty`;
   }
 
-  if (value.length > 20) {
+  if (value.length > LONG_TEXT_VALUE_LENGTH) {
     return t`this`;
   }
 

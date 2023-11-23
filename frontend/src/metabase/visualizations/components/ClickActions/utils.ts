@@ -92,7 +92,7 @@ export const getSectionTitle = (
 ): string | null => {
   switch (sectionKey) {
     case "filter":
-      return actions[0].sectionTitle ?? `Filter by this value`;
+      return actions[0]?.sectionTitle ?? `Filter by this value`;
 
     case "sum":
       return t`Summarize`;
@@ -118,7 +118,7 @@ export const getSectionContentDirection = (
       return "row";
 
     case "filter": {
-      return actions[0].sectionDirection ?? "column";
+      return actions[0]?.sectionDirection ?? "column";
     }
 
     case "sort": {
