@@ -76,15 +76,13 @@ describe("scenarios > question > null", () => {
           },
         ],
       },
-      cardDetails: {
-        size_x: 11,
-        size_y: 6,
-      },
     }).then(({ body: { card_id, dashboard_id } }) => {
       addOrUpdateDashboardCard({
         card_id,
         dashboard_id,
         card: {
+          size_x: 12,
+          size_y: 8,
           parameter_mappings: [
             {
               parameter_id: "1f97c149",
