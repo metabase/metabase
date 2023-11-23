@@ -65,10 +65,11 @@
 (defn- descendants-closure [targets]
   (loop [to-chase (set targets)
          chased   #{}]
-    (let [[m i :as item] (first to-chase)
-          desc           (serdes/descendants m i)
-          chased         (conj chased item)
-          to-chase       (set/union (disj to-chase item) (set/difference desc chased))]
+    (let [[m i opts :as item] (first to-chase)
+          desc                (when-not (:no-descendants opts)
+                                (serdes/descendants m i))
+          chased              (conj chased [m i])
+          to-chase            (set/union (disj to-chase item) (set/difference desc chased))]
       (if (empty? to-chase)
         chased
         (recur to-chase chased)))))
