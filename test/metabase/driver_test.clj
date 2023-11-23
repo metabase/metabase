@@ -86,20 +86,20 @@
                           ;; but to an S3 bucket that may contain many databases
                           ;; TODO: other drivers are still failing with this test. For these drivers there's a good chance there's a bug in
                           ;; test.data.<driver> code, and not with the driver itself.
-                          (remove #{:athena :presto-jdbc :oracle :vertica}))
+                          (remove #{:athena :oracle :vertica}))
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
           (let [db (mt/db)
                 cant-sync-logged? (fn []
-                                 (some?
-                                  (some
-                                   (fn [[log-level throwable message]]
-                                     (and (= log-level :warn)
-                                          (instance? clojure.lang.ExceptionInfo throwable)
-                                          (re-matches #"^Cannot sync Database (.+): (.+)" message)))
-                                   (mt/with-log-messages-for-level :warn
-                                     (#'task.sync-databases/sync-and-analyze-database*! (u/the-id db))))))]
+                                    (some?
+                                     (some
+                                      (fn [[log-level throwable message]]
+                                        (and (= log-level :warn)
+                                             (instance? clojure.lang.ExceptionInfo throwable)
+                                             (re-matches #"^Cannot sync Database (.+): (.+)" message)))
+                                      (mt/with-log-messages-for-level :warn
+                                        (#'task.sync-databases/sync-and-analyze-database*! (u/the-id db))))))]
             (testing "sense checks before deleting the database"
               (testing "sense check 1: sync-and-analyze-database! should not log a warning"
                 (is (false? (cant-sync-logged?))))
@@ -109,11 +109,13 @@
             ;; release db resources like connection pools so we don't have to wait to finish syncing before destroying the db
             (driver/notify-database-updated driver/*driver* db)
             ;; destroy the db
-            (if (contains? #{:redshift :snowflake} driver/*driver*)
+            (if (contains? #{:redshift :snowflake :presto-jdbc} driver/*driver*)
               ;; in the case of some cloud databases, the test database is never created, and shouldn't be destroyed.
               ;; so fake it by redefining the database name on the dbdef
               (t2/update! :model/Database (u/the-id db)
-                          {:details (assoc (:details (mt/db)) :db "fake-db-name-that-definitely-wont-be-used")})
+                          {:details (case driver/*driver*
+                                      :presto-jdbc (assoc (:details (mt/db)) :catalog "fake-db-name-that-definitely-wont-be-used")
+                                      (assoc (:details (mt/db)) :db "fake-db-name-that-definitely-wont-be-used"))})
               (tx/destroy-db! driver/*driver* dbdef))
             (testing "after deleting a database, sync should fail"
               (testing "1: sync-and-analyze-database! should log a warning and fail early"

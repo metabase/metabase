@@ -92,7 +92,7 @@
       (log/warnf ex "Cannot sync Database %s: %s" (:name database) (ex-message ex))
       (do
         (sync-metadata/sync-db-metadata! database)
-          ;; only run analysis if this is a "full sync" database
+        ;; only run analysis if this is a "full sync" database
         (when (:is_full_sync database)
           (let [results (analyze/analyze-db! database)]
             (when (and (:refingerprint database) (should-refingerprint-fields? results))

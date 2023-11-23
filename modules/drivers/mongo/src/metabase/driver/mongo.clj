@@ -58,9 +58,13 @@
     (let [db-stats (-> (cmd/db-stats conn)
                        (m.conversion/from-db-object :keywordize))
           db-names (mg/get-db-names mongo.util/*mongo-client*)]
-      (and (= (float (:ok db-stats))
-              1.0)
-           (contains? db-names (:db db-stats))))))
+      (and
+       ;; 1. check db.dbStats command completes successfully
+       (= (float (:ok db-stats))
+          1.0)
+       ;; 2. check the database is actually on the server
+       ;; (this is required because (1) is true even if the database doesn't exist)
+       (contains? db-names (:db db-stats))))))
 
 (defmethod driver/humanize-connection-error-message
   :mongo
