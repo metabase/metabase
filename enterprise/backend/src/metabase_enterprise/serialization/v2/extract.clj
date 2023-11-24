@@ -62,13 +62,13 @@
     (eduction (map #(serdes/extract-all % extract-opts)) cat (model-set opts))))
 
 ;; TODO Properly support "continue" - it should be contagious. Eg. a Dashboard with an illegal Card gets excluded too.
-(defn- traverse-with [targets traverse-fn]
-  (loop [to-traverse (set targets)
+(defn- traverse-with [nodes traverse-fn]
+  (loop [to-traverse (set nodes)
          traversed   #{}]
     (let [[m i :as item] (first to-traverse)
-          res            (traverse-fn m i)
+          found          (traverse-fn m i)
           traversed      (conj traversed item)
-          to-traverse    (set/union (disj to-traverse item) (set/difference res traversed))]
+          to-traverse    (set/union (disj to-traverse item) (set/difference found traversed))]
       (if (empty? to-traverse)
         traversed
         (recur to-traverse traversed)))))
