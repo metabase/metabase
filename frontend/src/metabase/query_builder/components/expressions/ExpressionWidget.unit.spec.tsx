@@ -9,6 +9,7 @@ import {
   createSampleDatabase,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
+import * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 import type { ExpressionWidgetProps } from "./ExpressionWidget";
@@ -55,7 +56,18 @@ describe("ExpressionWidget", () => {
   });
 
   it("should trigger onChangeExpression if expression is valid", () => {
-    const { onChangeExpression } = setup();
+    const onChangeExpression = jest.fn(
+      (_name, expression, expressionClause) => {
+        expect(
+          Lib.legacyExpressionForExpressionClause(
+            createQuery(),
+            0,
+            expressionClause,
+          ),
+        ).toEqual(expression);
+      },
+    );
+    setup({ onChangeExpression });
 
     const doneButton = screen.getByRole("button", { name: "Done" });
     expect(doneButton).toBeDisabled();
@@ -71,7 +83,11 @@ describe("ExpressionWidget", () => {
     userEvent.click(doneButton);
 
     expect(onChangeExpression).toHaveBeenCalledTimes(1);
-    expect(onChangeExpression).toHaveBeenCalledWith("", ["+", 1, 1]);
+    expect(onChangeExpression).toHaveBeenCalledWith(
+      "",
+      ["+", 1, 1],
+      expect.anything(), // asserted inside onChangeExpression mock
+    );
   });
 
   it(`should render interactive header if it is passed`, () => {
