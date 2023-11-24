@@ -1060,14 +1060,22 @@
   [a-query]
   (lib.core/stage-count a-query))
 
+(defn ^:export filter-args-display-name
+  "Provides a reasonable display name for the `filter-clause` excluding the column-name.
+   Can be expanded as needed but only currently defined for a narrow set of date filters.
+
+   Falls back to the full filter display-name"
+  [a-query stage-number a-filter-clause]
+  (lib.core/filter-args-display-name a-query stage-number a-filter-clause))
+
 (defn ^:export expression-clause-for-legacy-expression
   "Create an expression clause from `legacy-expression` at stage `stage-number` of `a-query`."
   [a-query stage-number legacy-expression]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (lib.convert/->pMBQL legacy-expression)))
+    (lib.convert/->pMBQL (lib.core/normalize (js->clj legacy-expression :keywordize-keys true)))))
 
 (defn ^:export legacy-expression-for-expression-clause
   "Create a legacy expression from `an-expression-clause` at stage `stage-number` of `a-query`."
   [a-query stage-number an-expression-clause]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (lib.convert/->legacy-MBQL an-expression-clause)))
+    (-> an-expression-clause lib.convert/->legacy-MBQL clj->js)))
