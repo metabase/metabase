@@ -26,14 +26,11 @@ export const DashboardEmbedHeaderButton = ({
       }
       offset={8}
     >
-      {/*Needs to be wrapped in a div so the Mantine Menu can still calculate the dropdown position */}
-      <div>
-        <DashboardHeaderButton
-          key="dashboard-embed-button"
-          icon="share"
-          onClick={onClick}
-        />
-      </div>
+      <DashboardHeaderButton
+        key="dashboard-embed-button"
+        icon="share"
+        onClick={onClick}
+      />
     </Tooltip>
   );
 };

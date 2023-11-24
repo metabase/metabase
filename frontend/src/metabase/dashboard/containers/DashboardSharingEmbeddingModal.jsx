@@ -5,7 +5,6 @@ import { connect } from "react-redux";
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
 import { getParameters } from "metabase/dashboard/selectors";
 import * as Urls from "metabase/lib/urls";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import Modal from "metabase/components/Modal";
 import {
@@ -55,26 +54,10 @@ class DashboardSharingEmbeddingModal extends Component {
       <Modal
         full
         disabled={!isLinkEnabled}
-        as={ModalTrigger}
-        triggerElement={
-          <span
-            className={linkClassNames}
-            aria-disabled={!isLinkEnabled}
-            onClick={() => {
-              if (isLinkEnabled) {
-                MetabaseAnalytics.trackStructEvent(
-                  "Sharing / Embedding",
-                  "dashboard",
-                  "Sharing Link Clicked",
-                );
-              }
-            }}
-          >
-            {linkText}
-          </span>
-        }
         triggerClasses={className}
         className="scroll-y"
+        as={ModalTrigger}
+        onClose={onClose}
       >
         <EmbedModalContent
           {...props}

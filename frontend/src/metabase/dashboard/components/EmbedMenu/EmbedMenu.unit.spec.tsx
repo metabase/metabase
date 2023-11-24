@@ -1,12 +1,11 @@
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
+import { EmbedMenu } from "metabase/dashboard/components/EmbedMenu/EmbedMenu";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
+import { createMockUser } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { DashboardEmbedAction } from "metabase/dashboard/components/DashboardEmbedAction/DashboardEmbedAction";
 
 interface SetupProps {
   isAdmin: boolean;
@@ -20,18 +19,8 @@ interface SetupProps {
 
 // Mock embedding modal as we don't need its content for the tests and causes
 // some issues with routing for one or two tests.
-const TestEmbeddingModalComponent = ({
-  triggerElement,
-}: {
-  triggerElement: JSX.Element;
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  return (
-    <div>
-      <div onClick={() => setIsOpen(true)}>{triggerElement}</div>
-      {isOpen && <div data-testid="dashboard-sharing-embedding-modal" />}
-    </div>
-  );
+const TestEmbeddingModalComponent = () => {
+  return <div data-testid="dashboard-sharing-embedding-modal" />;
 };
 
 jest.mock(
@@ -49,21 +38,28 @@ const setup = ({
   hasPublicLink,
   publicLinksEnabled = false,
 }: SetupProps) => {
-  const testDashboard = createMockDashboard({
-    public_uuid: hasPublicLink ? "mock-uuid" : undefined,
-  });
-
-  renderWithProviders(<DashboardEmbedAction dashboard={testDashboard} />, {
-    storeInitialState: createMockState({
-      currentUser: createMockUser({ is_superuser: isAdmin }),
-      settings: createMockSettingsState({
-        "enable-public-sharing": publicLinksEnabled,
+  const onModalOpen = jest.fn();
+  renderWithProviders(
+    <EmbedMenu
+      resource_uuid={hasPublicLink ? "mock-uuid" : null}
+      onModalOpen={onModalOpen}
+    />,
+    {
+      storeInitialState: createMockState({
+        currentUser: createMockUser({ is_superuser: isAdmin }),
+        settings: createMockSettingsState({
+          "enable-public-sharing": publicLinksEnabled,
+        }),
       }),
-    }),
-  });
+    },
+  );
+
+  return {
+    onModalOpen,
+  };
 };
 
-describe("DashboardEmbedAction", () => {
+describe("EmbedMenu", () => {
   describe("which label should be rendered", () => {
     it("should have a `Sharing` tooltip if public sharing is true", () => {
       setup({ isAdmin: true, publicLinksEnabled: true });
