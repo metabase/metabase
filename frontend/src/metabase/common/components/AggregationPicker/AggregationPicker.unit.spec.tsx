@@ -129,13 +129,14 @@ function setup({
   query = createQuery({ metadata }),
   hasExpressionInput = true,
 }: SetupOpts = {}) {
+  const stageIndex = 0;
   const dataset_query = Lib.toLegacyQuery(query) as StructuredDatasetQuery;
   const question = new Question(createAdHocCard({ dataset_query }), metadata);
   const legacyQuery = question.query() as StructuredQuery;
 
-  const clause = Lib.aggregations(query, 0)[0];
+  const clause = Lib.aggregations(query, stageIndex)[0];
 
-  const baseOperators = Lib.availableAggregationOperators(query, 0);
+  const baseOperators = Lib.availableAggregationOperators(query, stageIndex);
   const operators = clause
     ? Lib.selectedAggregationOperators(baseOperators, clause)
     : baseOperators;
@@ -147,7 +148,7 @@ function setup({
       query={query}
       legacyQuery={legacyQuery}
       legacyClause={legacyQuery.aggregations()[0]}
-      stageIndex={0}
+      stageIndex={stageIndex}
       operators={operators}
       hasExpressionInput={hasExpressionInput}
       onSelect={onSelect}
@@ -156,12 +157,12 @@ function setup({
 
   function getRecentClause() {
     expect(onSelect).toHaveBeenCalled();
-    const lastCall = onSelect.mock.calls.at(-1);
-    return lastCall[0];
+    const [operator] = onSelect.mock.calls.at(-1);
+    return operator;
   }
 
   function getRecentClauseInfo() {
-    return Lib.displayInfo(query, 0, getRecentClause());
+    return Lib.displayInfo(query, stageIndex, getRecentClause());
   }
 
   return { metadata, getRecentClause, getRecentClauseInfo, onSelect };
