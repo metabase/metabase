@@ -323,6 +323,9 @@ function getInitialOperator(
 }
 
 function isExpressionEditorInitiallyOpen(legacyClause?: LegacyAggregation) {
+  // TODO: we need to add more information to AggregationOperatorDisplayInfo
+  // to be able to migrate legacyClause to MLv2 Lib.Aggregatable.
+  // This requires changes in Clojure code.
   return (
     legacyClause &&
     (AGGREGATION.isCustom(legacyClause) || AGGREGATION.isNamed(legacyClause))
