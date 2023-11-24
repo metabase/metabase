@@ -185,7 +185,7 @@ export const ChartSettingAddRemoveColumns = ({
               {columnGroup.displayName}
             </Text>
             {showAddRemoveAll(columnGroup.columns) && (
-              <Box mb="1rem">
+              <Box mb="1.5rem">
                 {areAllColumnsInQuery(columnGroup.columns) ? (
                   <Checkbox
                     variant="stacked"
@@ -194,7 +194,7 @@ export const ChartSettingAddRemoveColumns = ({
                       <Text
                         fw={700}
                         ml="0.375rem"
-                        lh="1.5rem"
+                        lh="1rem"
                       >{t`Remove all`}</Text>
                     }
                     checked={true}
@@ -207,11 +207,7 @@ export const ChartSettingAddRemoveColumns = ({
                     variant="stacked"
                     size="xs"
                     label={
-                      <Text
-                        fw={700}
-                        ml="0.375rem"
-                        lh="1.5rem"
-                      >{t`Add all`}</Text>
+                      <Text fw={700} ml="0.375rem" lh="1rem">{t`Add all`}</Text>
                     }
                     checked={false}
                     onClick={() => addAllColumnsFromTable(columnGroup.columns)}
@@ -225,7 +221,7 @@ export const ChartSettingAddRemoveColumns = ({
                   label={
                     <Flex ml="0.25rem" align="center">
                       <Icon name={getColumnIcon(columnItem.column)}></Icon>
-                      <Text span ml="0.5rem" lh="1.5rem" fw={400}>
+                      <Text span ml="0.5rem" lh="1rem" fw={400}>
                         {columnItem.displayName}
                       </Text>
                     </Flex>
@@ -233,7 +229,7 @@ export const ChartSettingAddRemoveColumns = ({
                   checked={columnInQuery(columnItem)}
                   onClick={() => toggleColumn(columnItem)}
                   disabled={columnItem.isBreakout || columnItem.isAggregation}
-                  mb="1rem"
+                  mb="1.5rem"
                   size="xs"
                 />
               </Box>

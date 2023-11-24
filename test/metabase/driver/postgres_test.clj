@@ -1094,7 +1094,7 @@
       (str/replace #"\"" "")
       (str/replace #"public\." "")))
 
-(deftest do-not-cast-to-date-if-column-is-already-a-date-test
+(deftest ^:parallel do-not-cast-to-date-if-column-is-already-a-date-test
   (testing "Don't wrap Field in date() if it's already a DATE (#11502)"
     (mt/test-driver :postgres
       (mt/dataset attempted-murders
@@ -1107,7 +1107,7 @@
                       "ORDER BY attempts.date ASC")
                  (some-> (qp/compile query) :query pretty-sql))))))))
 
-(deftest do-not-cast-to-timestamp-if-column-if-timestamp-tz-or-date-test
+(deftest ^:parallel do-not-cast-to-timestamp-if-column-if-timestamp-tz-or-date-test
   (testing "Don't cast a DATE or TIMESTAMPTZ to TIMESTAMP, it's not necessary (#19816)"
     (mt/test-driver :postgres
       (mt/dataset sample-dataset

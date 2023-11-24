@@ -204,7 +204,7 @@ describe("scenarios > dashboard card resizing", () => {
 
   it(
     "should display all visualization cards with their default sizes",
-    { tags: "@flaky" },
+    { requestTimeout: 15000, tags: "@slow" },
     () => {
       TEST_QUESTIONS.forEach(question => {
         cy.createQuestion(question);
@@ -217,8 +217,27 @@ describe("scenarios > dashboard card resizing", () => {
           cy.findByLabelText("Add questions").click();
         });
 
-        TEST_QUESTIONS.forEach(question => {
-          cy.findByLabelText(question.name).click();
+        /**
+         * Metabase sorts all questions in the sidebar alphabetically.
+         * It makes sense to sort them out here as well in order to avoid
+         * Cypress "jumping" up and down while clicking on them.
+         * It will go in order from top to the bottom, which scrolls the
+         * sidebar naturally. This prevents acting on an element that's not visible.
+         */
+        const sortedCards = TEST_QUESTIONS.sort((a, b) =>
+          a.name.localeCompare(b.name),
+        );
+
+        /**
+         * After each card is added to the dashboard from the sidebar, there is a
+         * request to load the card query. We need to wait for each of those before
+         * we attempt to add a new card. Otherwise the save dashboard might fail
+         * because Cypress is too fast.
+         */
+        cy.intercept("POST", "/api/card/**/query").as("cardQuery");
+        sortedCards.forEach(question => {
+          cy.findByLabelText(question.name).should("be.visible").click();
+          cy.wait("@cardQuery");
         });
 
         saveDashboard();
@@ -236,7 +255,7 @@ describe("scenarios > dashboard card resizing", () => {
 
   it(
     `should not allow cards to be resized smaller than min height`,
-    { tags: "@flaky" },
+    { requestTimeout: 15000, tags: "@slow" },
     () => {
       const cardIds = [];
       TEST_QUESTIONS.forEach(question => {

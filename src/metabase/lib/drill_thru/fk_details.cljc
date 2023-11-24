@@ -15,11 +15,11 @@
   (select-keys drill-thru [:many-pks? :object-id :type]))
 
 (defmethod lib.drill-thru.common/drill-thru-method :drill-thru/fk-details
-  [query _stage-number {:keys [column object-id]} & _]
+  [query stage-number {:keys [column object-id]} & _]
   ;; generate a NEW query against the FK target table and column, e.g. if the original query was
   ;; ORDERS/ORDERS.USER_ID, the new query should by PEOPLE/PEOPLE.ID.
-  (let [fk-column-id     (:fk-target-field-id column)
-        fk-column        (some->> fk-column-id (lib.metadata/field query))
-        fk-column-table  (some->> (:table-id fk-column) (lib.metadata/table query))]
+  (let [fk-column-id    (:fk-target-field-id column)
+        fk-column       (some->> fk-column-id (lib.metadata/field query))
+        fk-column-table (some->> (:table-id fk-column) (lib.metadata/table query))]
     (-> (lib.query/query query fk-column-table)
-        (lib.filter/filter (lib.filter/= fk-column object-id)))))
+        (lib.filter/filter stage-number (lib.filter/= fk-column object-id)))))

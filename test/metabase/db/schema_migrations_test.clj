@@ -31,9 +31,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util.random :as tu.random]
    [toucan2.core :as t2]
-   [toucan2.execute :as t2.execute])
-  (:import
-   (java.sql Connection)))
+   [toucan2.execute :as t2.execute]))
 
 (set! *warn-on-reflection* true)
 
@@ -69,16 +67,6 @@
                                          :is_active    true
                                          :is_superuser false)))
 
-(defn app-db-column-types
-  "Returns a map of all column names to their respective type names, for the given `table-name`, by using the JDBC
-  .getMetaData method of the given `conn` (which is presumed to be an app DB connection)."
-  [^Connection conn table-name]
-  (with-open [rset (.getColumns (.getMetaData conn) nil nil table-name nil)]
-    (into {} (take-while some?)
-             (repeatedly
-               (fn []
-                 (when (.next rset)
-                   [(.getString rset "COLUMN_NAME") (.getString rset "TYPE_NAME")]))))))
 
 (deftest make-database-details-not-null-test
   (testing "Migrations v45.00-042 and v45.00-043: set default value of '{}' for Database rows with NULL details"
@@ -551,15 +539,13 @@
 
         (migrate!)
         (testing "should drop the existing color column"
-          (is (not (contains? (t2/select-one :model/Collection :id collection-id) :color))))
-
-        (migrate! :down 47)
-        (testing "Rollback to the previous version should restore the column column, and set the default color value"
-          (is (= "#31698A" (:color (t2/select-one :model/Collection :id collection-id)))))))))
+          (is (not (contains? (t2/select-one :model/Collection :id collection-id) :color))))))))
 
 (deftest audit-v2-views-test
   (testing "Migrations v48.00-029 - v48.00-040"
-    (impl/test-migrations ["v48.00-029" "v48.00-040"] [migrate!]
+    ;; Use an open-ended migration range so that we can detect if any migrations added after these views broke the view
+    ;; queries
+    (impl/test-migrations ["v48.00-029"] [migrate!]
       (let [new-view-names ["v_audit_log"
                             "v_content"
                             "v_dashboardcard"

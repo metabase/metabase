@@ -56,3 +56,20 @@ export function getTargetFieldFromCard(
   const field = getParameterTargetField(target, metadata, question);
   return field ?? null;
 }
+
+export function compareMappingOptionTargets(
+  target1: ParameterTarget,
+  target2: ParameterTarget,
+  card1: Card,
+  card2: Card,
+  metadata: Metadata,
+) {
+  if (!isDimensionTarget(target1) || !isDimensionTarget(target2)) {
+    return false;
+  }
+
+  const fieldReference1 = getTargetFieldFromCard(target1, card1, metadata);
+  const fieldReference2 = getTargetFieldFromCard(target2, card2, metadata);
+
+  return fieldReference1?.id === fieldReference2?.id;
+}

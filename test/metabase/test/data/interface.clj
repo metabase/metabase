@@ -683,7 +683,8 @@
    (db-test-env-var driver env-var nil))
 
   ([driver env-var default]
-   (get env/env (db-test-env-var-keyword driver env-var) default)))
+   (or (not-empty (get env/env (db-test-env-var-keyword driver env-var)))
+       default)))
 
 (defn db-test-env-var!
   "Update or the value of a test env var. A `nil` new-value removes the env var value."

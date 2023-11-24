@@ -3834,3 +3834,42 @@
               (is (= {:values          [["Abbeville"] ["Aberdeen"] ["Abilene"] ["Abiquiu"] ["Ackworth"]]
                       :has_more_values true}
                      (update response :values (partial take 5)))))))))))
+
+(deftest param-values-expression-test
+  (testing "Ensure param value lookup works for when the value is an expression"
+    (mt/dataset sample-dataset
+      (mt/with-temp-copy-of-db
+        (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+        (perms/grant-permissions! (perms-group/all-users) (perms/table-read-path (mt/id :products)))
+        (mt/with-temp [Dashboard {dashboard-id :id} {:name       "Test Dashboard"
+                                                     :parameters [{:name      "Vendor Title"
+                                                                   :slug      "vendor_title"
+                                                                   :id        "_VENDOR_TITLE_"
+                                                                   :type      :string/=
+                                                                   :sectionId "string"}]}
+                       Card {base-card-id :id} {:dataset_query {:database (mt/id)
+                                                                :type     :query
+                                                                :query    {:source-table (mt/id :products)}}}
+                       Card {final-card-id :id} {:dataset_query {:database (mt/id)
+                                                                 :type     :query
+                                                                 :query    {:expressions  {"VendorTitle" [:concat
+                                                                                                          [:field
+                                                                                                           "vendor"
+                                                                                                           {:base-type :type/Text}]
+                                                                                                          "🦜🦜🦜"
+                                                                                                          [:field
+                                                                                                           "title"
+                                                                                                           {:base-type :type/Text}]]},
+                                                                            :source-table (format "card__%s" base-card-id)}}}
+                       DashboardCard {_ :id} {:dashboard_id       dashboard-id
+                                              :card_id            final-card-id
+                                              :parameter_mappings [{:card_id      final-card-id
+                                                                    :parameter_id "_VENDOR_TITLE_"
+                                                                    :target       [:dimension [:expression "VendorTitle"]]}]}]
+          (let [param "_VENDOR_TITLE_"
+                url   (str "dashboard/" dashboard-id "/params/" param "/values")
+                {:keys [values has_more_values]} (mt/user-http-request :rasta :get 200 url)]
+            (is (false? has_more_values))
+            (testing "We have values and they all match the expression concatenation"
+              (is (pos? (count values)))
+              (is (every? (partial re-matches #"[^🦜]+🦜🦜🦜[^🦜]+") (map first values))))))))))
