@@ -100,7 +100,7 @@ describe(
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("That's not a valid port number").should("exist");
 
-      enterLdapPort("123 ");
+      enterLdapPort("389 ");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("That's not a valid port number").should("not.exist");
 
