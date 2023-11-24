@@ -187,7 +187,7 @@ export interface OpenAiModel {
   owned_by: string;
 }
 
-export type HelpLinkSetting = "metabase_default" | "hidden" | "custom";
+export type HelpLinkSetting = "metabase_default" | "hidden" | string;
 
 export interface Settings {
   "active-users-count"?: number;
@@ -226,7 +226,6 @@ export interface Settings {
   "has-user-setup": boolean;
   "hide-embed-branding?": boolean;
   "help-link": HelpLinkSetting;
-  "help-link-custom-destination": string;
   "is-hosted?": boolean;
   "is-metabot-enabled": boolean;
   "jwt-enabled"?: boolean;

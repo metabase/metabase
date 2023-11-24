@@ -36,19 +36,16 @@ function setup({
   isHosted = false,
   isPaidPlan = true,
   helpLinkSetting = "metabase_default",
-  helpLinkCustomDestinationSetting = "https://custom-destination.com/help",
 }: {
   isAdmin?: boolean;
   isHosted?: boolean;
   isPaidPlan?: boolean;
   helpLinkSetting?: HelpLinkSetting;
-  helpLinkCustomDestinationSetting?: string;
 }) {
   const settings = mockSettings({
     "is-hosted?": isHosted,
     "token-status": createMockTokenStatus({ valid: isPaidPlan }),
     "help-link": helpLinkSetting,
-    "help-link-custom-destination": helpLinkCustomDestinationSetting,
   });
 
   const admin = createMockAdminState({
@@ -134,11 +131,10 @@ describe("ProfileLink", () => {
       });
     });
 
-    describe("when the setting is `custom`", () => {
+    describe("when the setting is a custom url", () => {
       it("should return  the custom destination", () => {
         setup({
-          helpLinkSetting: "custom",
-          helpLinkCustomDestinationSetting: "https://custom.example.org/help",
+          helpLinkSetting: "https://custom.example.org/help",
         });
         openMenu();
 

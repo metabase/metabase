@@ -94,17 +94,6 @@ if (hasPremiumFeature("whitelabel")) {
           defaultValue: "metabase_default",
         },
         {
-          // TODO: custom input with validation
-          key: "help-link-custom-destination",
-          ariaLabel: "Help link custom destination",
-          noHeader: true,
-          type: "string",
-          defaultValue: "",
-          getHidden: settings => {
-            return settings["help-link"] !== "custom";
-          },
-        },
-        {
           key: "show-metabot",
           display_name: t`Metabot greeting`,
           description: null,

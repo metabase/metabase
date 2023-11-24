@@ -161,9 +161,6 @@ describeEE("formatting > whitelabel", () => {
   describe("Help link", () => {
     beforeEach(() => {
       cy.intercept("PUT", "/api/setting/help-link").as("putHelpLink");
-      cy.intercept("PUT", "/api/setting/help-link-custom-destination").as(
-        "putHelpLinkUrl",
-      );
     });
 
     it("should allow customising the help link", () => {
@@ -193,11 +190,18 @@ describeEE("formatting > whitelabel", () => {
         .click();
 
       cy.findByLabelText("Help link custom destination")
-        // .should("have.focus") // temporarily off, should come back
+        .should("have.focus")
         .type("https://example.org/custom-destination")
         .blur();
 
-      cy.wait("@putHelpLinkUrl");
+      cy.wait("@putHelpLink");
+
+      cy.log("Check that on page load the text field is not focused");
+      cy.reload();
+
+      cy.findByLabelText("Help link custom destination").should(
+        "not.have.focus",
+      );
 
       cy.signInAsNormalUser();
       cy.visit("/");

@@ -62,7 +62,6 @@ const mapStateToProps = (state, props) => {
     isHomepageDashboard:
       getSetting(state, "custom-homepage") &&
       getSetting(state, "custom-homepage-dashboard") === props.dashboard?.id,
-    helpLink: getSetting(state, "help-link-custom-destination"),
   };
 };
 
