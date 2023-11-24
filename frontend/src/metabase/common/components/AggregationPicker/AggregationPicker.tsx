@@ -11,7 +11,6 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 
-import type { Expression as LegacyExpressionClause } from "metabase-types/api";
 import * as Lib from "metabase-lib";
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import type LegacyAggregation from "metabase-lib/queries/structured/Aggregation";
@@ -201,12 +200,8 @@ export function AggregationPicker({
     [openExpressionEditor],
   );
 
-  const handleExpressionChange = useCallback(
-    (
-      name: string,
-      _expression: LegacyExpressionClause,
-      expressionClause: Lib.ExpressionClause,
-    ) => {
+  const handleExpressionClauseChange = useCallback(
+    (name: string, expressionClause: Lib.ExpressionClause) => {
       const updatedExpressionClause = Lib.withExpressionName(
         expressionClause,
         name,
@@ -228,7 +223,7 @@ export function AggregationPicker({
         withName
         startRule="aggregation"
         header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
-        onChangeExpression={handleExpressionChange}
+        onChangeExpressionClause={handleExpressionClauseChange}
         onClose={closeExpressionEditor}
       />
     );

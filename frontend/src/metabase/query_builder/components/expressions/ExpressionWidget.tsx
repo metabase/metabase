@@ -32,7 +32,10 @@ export interface ExpressionWidgetProps {
   legacyQuery: StructuredQuery;
   query?: Lib.Query;
   stageIndex?: number;
-  expression: Expression | undefined;
+  /**
+   * expression should not be present in components migrated to MLv2
+   */
+  expression?: Expression | undefined;
   /**
    * Presence of this prop is not enforced due to backwards-compatibility
    * with ExpressionWidget usages outside of GUI editor.
@@ -44,9 +47,9 @@ export interface ExpressionWidgetProps {
   reportTimezone?: string;
   header?: ReactNode;
 
-  onChangeExpression: (
+  onChangeExpression?: (name: string, expression: Expression) => void;
+  onChangeExpressionClause?: (
     name: string,
-    expression: Expression,
     expressionClause: Lib.ExpressionClause,
   ) => void;
   onRemoveExpression?: (name: string) => void;
@@ -66,6 +69,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
     reportTimezone,
     header,
     onChangeExpression,
+    onChangeExpressionClause,
     onRemoveExpression,
     onClose,
   } = props;
@@ -81,16 +85,25 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
   const helpTextTargetRef = useRef(null);
 
   const isValidName = withName ? name.trim().length > 0 : true;
-  const isValidExpression = !!expression && isExpression(expression);
+  const isValid = !error && isValidName;
 
-  const isValid = !error && isValidName && isValidExpression;
+  const handleCommit = () => {
+    if (!isValid) {
+      return;
+    }
 
-  const handleCommit = (
-    expression: Expression | null,
-    expressionClause: Lib.ExpressionClause | null,
-  ) => {
-    if (isValid && isNotNull(expression) && isNotNull(expressionClause)) {
-      onChangeExpression(name, expression, expressionClause);
+    const isValidExpression = isNotNull(expression) && isExpression(expression);
+    const isValidExpressionClause = isNotNull(expressionClause);
+
+    if (isValidExpression) {
+      onChangeExpression?.(name, expression);
+    }
+
+    if (isValidExpressionClause) {
+      onChangeExpressionClause?.(name, expressionClause);
+    }
+
+    if (isValidExpression || isValidExpressionClause) {
       onClose?.();
     }
   };
@@ -153,7 +166,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
             onChange={event => setName(event.target.value)}
             onKeyPress={e => {
               if (e.key === "Enter") {
-                handleCommit(expression, expressionClause);
+                handleCommit();
               }
             }}
           />
@@ -166,7 +179,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
           <Button
             primary={isValid}
             disabled={!isValid}
-            onClick={() => handleCommit(expression, expressionClause)}
+            onClick={() => handleCommit()}
           >
             {initialName ? t`Update` : t`Done`}
           </Button>
