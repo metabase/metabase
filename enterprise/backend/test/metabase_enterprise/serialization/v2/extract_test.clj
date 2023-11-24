@@ -1682,19 +1682,3 @@
                (by-model "Collection" ser)))
         (is (= #{ncard-eid}
                (by-model "Card" ser)))))))
-
-(comment
-  (def p (ts/create! Collection {:name "top-level"}))
-  (def n (ts/create! Collection {:name "inner"
-                                 :location (format "/%s/" (:id p))}))
-  (def nc (ts/create! Card {:name "inner card"
-                            :collection_id (:id n)}))
-  (def pc (ts/create! Card {:name "top card"
-                            :collection_id (:id p)}))
-
-  (serdes/descendants "Collection" (:id n))
-  (#'extract/descendants-closure [["Collection" (:id n)]])
-  (by-model "Collection"
-            (extract/extract {:targets       [["Collection" (:id n)]]
-                              :no-settings   true
-                              :no-data-model true})))
