@@ -179,11 +179,9 @@ describe("AggregationPicker", () => {
     userEvent.click(screen.getByText("Common Metrics"));
     userEvent.click(screen.getByText(TEST_METRIC.name));
 
-    expect(getRecentClauseInfo()).toEqual(
-      expect.objectContaining({
-        displayName: metric.displayName(),
-      }),
-    );
+    expect(getRecentClauseInfo()).toMatchObject({
+      displayName: metric.displayName(),
+    });
   });
 
   describe("basic operators", () => {
@@ -226,12 +224,10 @@ describe("AggregationPicker", () => {
 
       userEvent.click(screen.getByText("Count of rows"));
 
-      expect(getRecentClauseInfo()).toEqual(
-        expect.objectContaining({
-          name: "count",
-          displayName: "Count",
-        }),
-      );
+      expect(getRecentClauseInfo()).toMatchObject({
+        name: "count",
+        displayName: "Count",
+      });
     });
 
     it("should apply an operator requiring columns", () => {
@@ -240,12 +236,10 @@ describe("AggregationPicker", () => {
       userEvent.click(screen.getByText("Average of ..."));
       userEvent.click(screen.getByText("Quantity"));
 
-      expect(getRecentClauseInfo()).toEqual(
-        expect.objectContaining({
-          name: "avg",
-          displayName: "Average of Quantity",
-        }),
-      );
+      expect(getRecentClauseInfo()).toMatchObject({
+        name: "avg",
+        displayName: "Average of Quantity",
+      });
     });
 
     it("should allow picking a foreign column", () => {
@@ -255,12 +249,10 @@ describe("AggregationPicker", () => {
       userEvent.click(screen.getByText("Product"));
       userEvent.click(screen.getByText("Rating"));
 
-      expect(getRecentClauseInfo()).toEqual(
-        expect.objectContaining({
-          name: "avg",
-          displayName: "Average of Rating",
-        }),
-      );
+      expect(getRecentClauseInfo()).toMatchObject({
+        name: "avg",
+        displayName: "Average of Rating",
+      });
     });
 
     it("should highlight selected operator", () => {
@@ -306,12 +298,10 @@ describe("AggregationPicker", () => {
       userEvent.click(screen.getByText("Average of ..."));
       userEvent.click(screen.getByText("Quantity"));
 
-      expect(getRecentClauseInfo()).toEqual(
-        expect.objectContaining({
-          name: "avg",
-          displayName: "Average of Quantity",
-        }),
-      );
+      expect(getRecentClauseInfo()).toMatchObject({
+        name: "avg",
+        displayName: "Average of Quantity",
+      });
     });
 
     it("should allow to change a column for existing aggregation", () => {
@@ -321,12 +311,10 @@ describe("AggregationPicker", () => {
 
       userEvent.click(screen.getByText("Discount"));
 
-      expect(getRecentClauseInfo()).toEqual(
-        expect.objectContaining({
-          name: "max",
-          displayName: "Max of Discount",
-        }),
-      );
+      expect(getRecentClauseInfo()).toMatchObject({
+        name: "max",
+        displayName: "Max of Discount",
+      });
     });
   });
 
@@ -378,11 +366,9 @@ describe("AggregationPicker", () => {
 
       userEvent.click(screen.getByText(TEST_METRIC.name));
 
-      expect(getRecentClauseInfo()).toEqual(
-        expect.objectContaining({
-          displayName: metric.displayName(),
-        }),
-      );
+      expect(getRecentClauseInfo()).toMatchObject({
+        displayName: metric.displayName(),
+      });
     });
   });
 
@@ -398,9 +384,7 @@ describe("AggregationPicker", () => {
       userEvent.type(screen.getByLabelText("Name"), expressionName);
       userEvent.click(screen.getByRole("button", { name: "Done" }));
 
-      expect(getRecentClauseInfo()).toEqual(
-        expect.objectContaining({ displayName: expression }),
-      );
+      expect(getRecentClauseInfo()).toMatchObject({ displayName: expression });
       expect(Lib.expressionName(getRecentClause())).toBe(expressionName);
     });
 
