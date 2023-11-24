@@ -153,3 +153,14 @@
       (is (=? [:> {} [:aggregation {} agg-uuid] 100] pmbql-expr)))
     (testing "from pMBQL expression"
       (is (= (js->clj legacy-expr) (js->clj legacy-expr'))))))
+
+(deftest ^:parallel filter-drill-details-test
+  (testing ":value field on the filter drill"
+    (testing "returns directly for most values"
+      (is (=? 7
+              (.-value (lib.js/filter-drill-details {:value 7}))))
+      (is (=? "some string"
+              (.-value (lib.js/filter-drill-details {:value "some string"})))))
+    (testing "converts :null keyword used by drill-thrus back to JS null"
+      (is (=? nil
+              (.-value (lib.js/filter-drill-details {:value :null})))))))
