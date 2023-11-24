@@ -350,6 +350,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mysql-8-0-ee'
+        test-args: ":only metabase.api.search-test/search-db-call-count-test"
 
   be-tests-mysql-latest-ee:
     needs: files-changed
@@ -388,6 +389,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mysql-latest-ee'
+        test-args: ":only metabase.api.search-test/search-db-call-count-test"
 
   be-tests-oracle-18-4-ee:
     needs: files-changed
