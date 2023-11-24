@@ -104,12 +104,11 @@
     ["snippets" (serdes/storage-leaf-file-name id label)]))
 
 (defmethod serdes/load-one! "NativeQuerySnippet" [ingested maybe-local]
-  (if (and (not (and maybe-local
-                     (= (:name ingested) (:name maybe-local))))
-           (t2/select-one :model/NativeQuerySnippet
-                          :name (:name ingested) :entity_id [:!= (:entity_id ingested)]))
-    (recur (update ingested :name
-                   #(str % "-" (or (:id maybe-local)
-                                   (subs (:entity_id ingested) (- (count (:entity_id ingested)) 4)))))
+  ;; if we got local snippet in db and it has same name as incoming one, we can be sure
+  ;; there will be no conflicts and skip the query to the db
+  (if (and (not= (:name ingested) (:name maybe-local))
+           (t2/exists? :model/NativeQuerySnippet
+                       :name (:name ingested) :entity_id [:!= (:entity_id ingested)]))
+    (recur (update ingested :name str " (copy)")
            maybe-local)
     (serdes/default-load-one! ingested maybe-local)))

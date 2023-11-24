@@ -1,6 +1,5 @@
 (ns ^:mb/once metabase-enterprise.serialization.v2.load-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.serialization.test-util :as ts]
@@ -998,32 +997,34 @@
                        :snippet-id)))))))))
 
 (deftest snippet-with-unique-name
-  (let [unique-name "some snippet"]
-    (testing "Snippets with the same name should be replaced/removed on deserialization"
-      (ts/with-source-and-dest-dbs
-        (ts/with-source-db
-          (let [snippet   (ts/create! NativeQuerySnippet :name unique-name)
-                extracted (into [] (serdes.extract/extract {}))]
+  (testing "Snippets with the same name should be replaced/removed on deserialization"
+    (mt/with-empty-h2-app-db
+      (let [unique-name "some snippet"
+            snippet     (ts/create! NativeQuerySnippet :name unique-name)
+            extracted   (serdes/extract-one "NativeQuerySnippet" {} snippet)
+            id1         (u/generate-nano-id)
+            id2         (u/generate-nano-id)
+            load!       #(serdes.load/load-metabase! (ingestion-in-memory [(-> extracted
+                                                                               (assoc :entity_id %)
+                                                                               (assoc-in [:serdes/meta 0 :id] %))]))]
 
-            (ts/with-dest-db
-              (let [other (ts/create! NativeQuerySnippet :name unique-name)
-                    new-snippet (atom nil)]
-                (is (= (:entity_id other)
-                       (t2/select-one-fn :entity_id NativeQuerySnippet :name unique-name)))
-                (testing "loading serialized data"
-                  (serdes.load/load-metabase! (ingestion-in-memory extracted))
-                  (testing "old snippet is in place"
-                    (is (= (:entity_id other)
-                           (t2/select-one-fn :entity_id NativeQuerySnippet :name unique-name))))
-                  (testing "new snippet's name was changed"
-                    (reset! new-snippet (t2/select-one NativeQuerySnippet :entity_id (:entity_id snippet)))
-                    (is (str/starts-with? (:name @new-snippet)
-                                          (str (:name snippet) "-")))))
-                (testing "updating existing snippet with name conflicts works"
-                  (serdes.load/load-metabase! (ingestion-in-memory extracted))
-                  (testing "on update it renames to {name}-{id}"
-                    (is (= (str (:name snippet) "-" (:id @new-snippet))
-                           (t2/select-one-fn :name NativeQuerySnippet :entity_id (:entity_id snippet))))))))))))))
+        (testing "setup is correct"
+          (is (= (:entity_id snippet)
+                 (t2/select-one-fn :entity_id NativeQuerySnippet :name unique-name))))
+
+        (testing "loading snippet with same name will get it renamed"
+          (load! id1)
+          (testing "old snippet is in place"
+            (is (= (:entity_id snippet)
+                   (t2/select-one-fn :entity_id NativeQuerySnippet :name unique-name))))
+          (testing "new one got new name"
+            (is (= (str unique-name " (copy)")
+                   (t2/select-one-fn :name NativeQuerySnippet :entity_id id1)))))
+
+        (testing "can handle multiple name conflicts"
+          (load! id2)
+          (is (= (str unique-name " (copy) (copy)")
+                 (t2/select-one-fn :name NativeQuerySnippet :entity_id id2))))))))
 
 (deftest load-action-test
   (let [serialized (atom nil)
