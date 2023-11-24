@@ -115,7 +115,18 @@ describe("ExpressionWidget", () => {
 
     it("should validate name value", () => {
       const expression: Expression = ["+", 1, 1];
-      const { onChangeExpression } = setup({ expression, withName: true });
+      const onChangeExpression = jest.fn(
+        (_name, expression, expressionClause) => {
+          expect(
+            Lib.legacyExpressionForExpressionClause(
+              createQuery(),
+              0,
+              expressionClause,
+            ),
+          ).toEqual(expression);
+        },
+      );
+      setup({ expression, withName: true, onChangeExpression });
 
       const doneButton = screen.getByRole("button", { name: "Done" });
       const expressionNameInput = screen.getByPlaceholderText(
@@ -156,6 +167,7 @@ describe("ExpressionWidget", () => {
       expect(onChangeExpression).toHaveBeenCalledWith(
         "Some n_am!e 2q$w&YzT(6i~#sLXv7+HjP}Ku1|9c*RlF@4o5N=e8;G*-bZ3/U0:Qa'V,t(W-_D",
         expression,
+        expect.anything(), // asserted inside onChangeExpression mock
       );
     });
   });
