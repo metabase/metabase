@@ -56,18 +56,7 @@ describe("ExpressionWidget", () => {
   });
 
   it("should trigger onChangeExpression if expression is valid", () => {
-    const onChangeExpression = jest.fn(
-      (_name, expression, expressionClause) => {
-        expect(
-          Lib.legacyExpressionForExpressionClause(
-            createQuery(),
-            0,
-            expressionClause,
-          ),
-        ).toEqual(expression);
-      },
-    );
-    setup({ onChangeExpression });
+    const { onChangeExpression, getRecentExpressionClauseInfo } = setup();
 
     const doneButton = screen.getByRole("button", { name: "Done" });
     expect(doneButton).toBeDisabled();
@@ -86,8 +75,11 @@ describe("ExpressionWidget", () => {
     expect(onChangeExpression).toHaveBeenCalledWith(
       "",
       ["+", 1, 1],
-      expect.anything(), // asserted inside onChangeExpression mock
+      expect.anything(),
     );
+    expect(getRecentExpressionClauseInfo()).toMatchObject({
+      displayName: "1 + 1",
+    });
   });
 
   it(`should render interactive header if it is passed`, () => {
@@ -115,18 +107,10 @@ describe("ExpressionWidget", () => {
 
     it("should validate name value", () => {
       const expression: Expression = ["+", 1, 1];
-      const onChangeExpression = jest.fn(
-        (_name, expression, expressionClause) => {
-          expect(
-            Lib.legacyExpressionForExpressionClause(
-              createQuery(),
-              0,
-              expressionClause,
-            ),
-          ).toEqual(expression);
-        },
-      );
-      setup({ expression, withName: true, onChangeExpression });
+      const { onChangeExpression, getRecentExpressionClauseInfo } = setup({
+        expression,
+        withName: true,
+      });
 
       const doneButton = screen.getByRole("button", { name: "Done" });
       const expressionNameInput = screen.getByPlaceholderText(
@@ -167,8 +151,11 @@ describe("ExpressionWidget", () => {
       expect(onChangeExpression).toHaveBeenCalledWith(
         "Some n_am!e 2q$w&YzT(6i~#sLXv7+HjP}Ku1|9c*RlF@4o5N=e8;G*-bZ3/U0:Qa'V,t(W-_D",
         expression,
-        expect.anything(), // asserted inside onChangeExpression mock
+        expect.anything(),
       );
+      expect(getRecentExpressionClauseInfo()).toMatchObject({
+        displayName: "1 + 1",
+      });
     });
   });
 });
@@ -192,19 +179,37 @@ function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
     onChangeExpression: jest.fn(),
   };
 
+  const query = createQuery();
+  const stageIndex = 0;
+
   const props: ExpressionWidgetProps = {
     expression: undefined,
     expressionClause: undefined,
     name: undefined,
     legacyQuery: createMockLegacyQueryForExpressions(),
-    query: createQuery(),
-    stageIndex: 0,
+    query,
+    stageIndex,
     reportTimezone: "UTC",
     ...mocks,
     ...additionalProps,
   };
 
+  function getRecentExpressionClause() {
+    expect(mocks.onChangeExpression).toHaveBeenCalled();
+    const [_name, _expression, expressionClause] =
+      mocks.onChangeExpression.mock.calls.at(-1);
+    return expressionClause;
+  }
+
+  function getRecentExpressionClauseInfo() {
+    return Lib.displayInfo(query, stageIndex, getRecentExpressionClause());
+  }
+
   render(<ExpressionWidget {...props} />);
 
-  return mocks;
+  return {
+    ...mocks,
+    getRecentExpressionClause,
+    getRecentExpressionClauseInfo,
+  };
 }
