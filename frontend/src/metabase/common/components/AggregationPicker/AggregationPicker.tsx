@@ -5,6 +5,8 @@ import AccordionList from "metabase/core/components/AccordionList";
 import { Icon } from "metabase/core/components/Icon";
 
 import { useToggle } from "metabase/hooks/use-toggle";
+import { useSelector } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
@@ -73,6 +75,7 @@ export function AggregationPicker({
   onSelect,
   onClose,
 }: AggregationPickerProps) {
+  const metadata = useSelector(getMetadata);
   const [
     isEditingExpression,
     { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
@@ -96,9 +99,9 @@ export function AggregationPicker({
     const sections: Section[] = [];
 
     const metrics = Lib.availableMetrics(query);
-    const canUseExpressions = legacyQuery
-      .database()
-      ?.hasFeature("expression-aggregations");
+    const databaseId = Lib.databaseID(query);
+    const database = metadata.database(databaseId);
+    const canUseExpressions = database?.hasFeature("expression-aggregations");
 
     if (operators.length > 0) {
       sections.push({
@@ -132,7 +135,7 @@ export function AggregationPicker({
     }
 
     return sections;
-  }, [query, legacyQuery, stageIndex, operators, hasExpressionInput]);
+  }, [metadata, query, stageIndex, operators, hasExpressionInput]);
 
   const checkIsItemSelected = useCallback(
     (item: ListItem) => item.selected,
