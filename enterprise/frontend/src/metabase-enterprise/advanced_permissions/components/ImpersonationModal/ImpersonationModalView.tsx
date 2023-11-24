@@ -74,6 +74,7 @@ export const ImpersonationModalView = ({
     <ImpersonationModalViewRoot>
       <h2>{t`Map a user attribute to database roles`}</h2>
       <ImpersonationDescription>
+        {/* XXX: Don't replace the application name. This is admin settings */}
         {t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database role you associate with the user attribute.`}{" "}
         <ExternalLink
           className="link"

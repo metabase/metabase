@@ -8,6 +8,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 export const ApplicationPermissionsHelp = () => (
   <Flex direction="column" py="1.375rem" px="1.5rem">
     <Title order={4}>{t`Applications permissions`}</Title>
+    {/* XXX: Don't replace the application name. This is admin settings */}
     <Text my="1rem">{t`People can be members of multiple groups, and Metabase grants them the most permissive level of access across all of a person's groups.`}</Text>
 
     <Title order={5}>{t`Applications permissions`}</Title>

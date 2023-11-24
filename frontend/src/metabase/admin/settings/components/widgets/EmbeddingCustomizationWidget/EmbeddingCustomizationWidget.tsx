@@ -10,6 +10,7 @@ export const EmbeddingCustomizationWidget = () => {
   );
 
   const setting = {
+    // XXX: Don't replace the application name. This is admin settings
     description: jt`In order to remove the Metabase logo from embeds, you can always upgrade to ${(
       <ExternalLink key="upgrade-link" href={upgradeUrl}>
         {t`one of our paid plans.`}

@@ -89,6 +89,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
           </SAMLFormCaption>
           <SAMLFormSection>
             <h3 className="mb0">{t`Configure your identity provider (IdP)`}</h3>
+            {/* XXX: Don't replace the application name. This is admin settings */}
             <p className="mb4 mt1 text-medium">{t`Your identity provider will need the following info about Metabase.`}</p>
 
             <FormTextInput

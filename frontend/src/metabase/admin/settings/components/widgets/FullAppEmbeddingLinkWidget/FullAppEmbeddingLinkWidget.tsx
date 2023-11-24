@@ -11,6 +11,7 @@ export const FullAppEmbeddingLinkWidget = () => {
 
   const setting = {
     display_name: t`embedding the entire metabase app`,
+    // XXX: Don't replace the application name. This is admin settings
     description: jt`With ${(
       <ExternalLink key="upgrade-link" href={upgradeUrl}>
         {t`some of our paid plans,`}

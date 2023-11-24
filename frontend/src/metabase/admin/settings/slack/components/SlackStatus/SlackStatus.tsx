@@ -48,6 +48,7 @@ const SlackStatus = ({
     <StatusRoot>
       <StatusHeader>
         <StatusPrimary>
+          {/* XXX: Don't replace the application name. This is admin settings */}
           <StatusTitle>{t`Metabase on Slack`}</StatusTitle>
           <StatusMessage>
             <SlackBadge isValid={isValid} />{" "}

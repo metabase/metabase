@@ -19,6 +19,7 @@ export const DataPermissionsHelp = () => {
     <Flex direction="column" py="1.375rem" px="1rem">
       <Box px="0.75rem">
         <Title order={4}>{t`Data permissions`}</Title>
+        {/* XXX: Don't replace the application name. This is admin settings */}
         <Text my="1rem">{t`People can be members of multiple groups, and Metabase grants them the most permissive level of access across all of a person's groups.`}</Text>
       </Box>
 

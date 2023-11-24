@@ -294,6 +294,7 @@ const NoValidDatabasesMessage = () => (
       {t`None of your databases are compatible with this version of the uploads feature.`}
     </p>
     <p>
+      {/* XXX: Don't replace the application name. This is admin settings */}
       {jt`Metabase currently supports ${(
         <strong key="db-types">{t`Postgres, MySQL, and H2`}</strong>
       )} for uploads and needs a connection with write privileges.`}

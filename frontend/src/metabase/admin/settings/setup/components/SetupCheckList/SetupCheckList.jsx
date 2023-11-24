@@ -121,6 +121,7 @@ class SetupCheckList extends Component {
       <SetupListRoot>
         <div className="px2">
           <h2>{t`Getting set up`}</h2>
+          {/* XXX: Don't replace the application name. This is admin settings */}
           <p className="mt1">{t`A few things you can do to get the most out of Metabase.`}</p>
           <LoadingAndErrorWrapper
             loading={!this.state.tasks}

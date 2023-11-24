@@ -14,6 +14,7 @@ const mapStateToProps = (state: State): StateProps => ({
   type: "google",
   name: t`Google Sign-in`,
   title: t`Sign in with Google`,
+  // XXX: Don't replace the application name. This is admin settings
   description: t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`,
   isConfigured: getSetting(state, "google-auth-configured"),
 });

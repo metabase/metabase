@@ -44,6 +44,7 @@ class TasksAppInner extends Component {
           <SectionTitle>
             <AdminHeader title={t`Troubleshooting logs`} />
             <Tooltip
+              // XXX: Don't replace the application name. This is admin settings
               tooltip={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
             >
               <InfoIcon name="info" />

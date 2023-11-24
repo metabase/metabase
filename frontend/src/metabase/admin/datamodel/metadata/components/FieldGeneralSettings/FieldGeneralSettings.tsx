@@ -142,6 +142,7 @@ const FieldVisibilitySection = ({
     <MetadataSection>
       <MetadataSectionHeader
         title={t`Visibility`}
+        /* XXX: Don't replace the application name. This is admin settings */
         description={t`Where this field will appear throughout Metabase`}
       />
       <div style={{ maxWidth: 400 }}>

@@ -9,6 +9,7 @@ import { LDAP_SCHEMA } from "../../constants";
 const mapStateToProps = (state: State) => ({
   type: "ldap",
   name: t`LDAP`,
+  // XXX: Don't replace the application name. This is admin settings
   description: t`Allows users within your LDAP directory to log in to Metabase with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups.`,
   isConfigured: getSetting(state, "ldap-configured?"),
 });

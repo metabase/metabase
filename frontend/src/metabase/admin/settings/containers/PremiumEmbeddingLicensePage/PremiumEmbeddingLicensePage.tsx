@@ -103,6 +103,7 @@ const PremiumEmbeddingLicensePage = ({
         </PremiumEmbeddingDescription>
         {!tokenStatus?.isValid && (
           <LicenseInputTitle>
+            {/* XXX: We're discussing whether this page should be removed https://metaboat.slack.com/archives/C01LQQ2UW03/p1700834883302349*/}
             {t`Enter the token you bought from the Metabase Store below.`}
           </LicenseInputTitle>
         )}

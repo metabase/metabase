@@ -103,6 +103,7 @@ const MetadataTableSettings = ({
         <MetadataSection>
           <MetadataSectionHeader
             title={t`Cached field values`}
+            /* XXX: Don't replace the application name. This is admin settings */
             description={t`Metabase can scan the values in this table to enable checkbox filters in dashboards and questions.`}
           />
           <ActionButton

@@ -29,6 +29,7 @@ export const EmbeddingAppSameSiteCookieDescription = () => {
     <Stack mb="1rem" spacing="sm">
       <Text fw="bold">{t`SameSite cookie setting`}</Text>
       {shouldDisplayNote && <AuthorizedOriginsNote />}
+      {/* XXX: Don't replace the application name. This is admin settings */}
       <Text>{t`Determines whether or not cookies are allowed to be sent on cross-site requests. You’ll likely need to change this to None if your embedding application is hosted under a different domain than Metabase. Otherwise, leave it set to Lax, as it's more secure.`}</Text>
       <Text>{jt`If you set this to None, you'll have to use HTTPS (unless you're just embedding locally), or browsers will reject the request. ${(
         <ExternalLink key="learn-more" href={docsUrl}>

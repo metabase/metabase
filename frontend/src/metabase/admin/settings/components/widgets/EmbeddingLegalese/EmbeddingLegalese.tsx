@@ -21,6 +21,7 @@ const EmbeddingLegalese = ({ setting, onChange }: EmbeddingLegaleseProps) => (
   <div className="text-measure">
     <Header>{t`Embedding`}</Header>
     <Paragraph>
+      {/* XXX: Don't replace the application name. This is admin settings */}
       {t`Embed dashboards, questions, or the entire Metabase app into your application. Integrate with your server code to create a secure environment, limited to specific users or organizations.`}
     </Paragraph>
 

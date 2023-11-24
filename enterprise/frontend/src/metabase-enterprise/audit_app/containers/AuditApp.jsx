@@ -39,6 +39,7 @@ const DeprecationSection = () => {
                   key="link"
                   to={`/collection/${auditCollection.id}`}
                 >
+                  {/* XXX: Don't replace the application name. This is admin settings */}
                   {t`Metabase Analytics Collection`}
                 </Link>
               )}
