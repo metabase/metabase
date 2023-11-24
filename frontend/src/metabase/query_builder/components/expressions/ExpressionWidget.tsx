@@ -72,10 +72,10 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
 
   const [name, setName] = useState(initialName || "");
   const [expression, setExpression] = useState<Expression | null>(
-    initialExpression || null,
+    initialExpression ?? null,
   );
   const [expressionClause, setExpressionClause] =
-    useState<Lib.ExpressionClause | null>(initialExpressionClause || null);
+    useState<Lib.ExpressionClause | null>(initialExpressionClause ?? null);
   const [error, setError] = useState<string | null>(null);
 
   const helpTextTargetRef = useRef(null);
