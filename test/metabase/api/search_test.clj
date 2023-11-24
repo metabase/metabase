@@ -24,7 +24,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
-   [toucan2.execute :as t2.execute]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- ordered-subset?
@@ -805,7 +804,13 @@
       Segment   _              {:table_id table-id
                                 :name     "segment count test 3"}]
      (mt/with-current-user (mt/user->id :crowberto)
-       (t2.execute/with-call-count [call-count]
+       ;; try warming it up
+       (#'api.search/search {:search-string      "count test"
+                             :archived?          false
+                             :models             search.config/all-models
+                             :current-user-perms #{"/"}
+                             :limit-int          100})
+       (t2/with-call-count [call-count]
          (#'api.search/search {:search-string      "count test"
                                :archived?          false
                                :models             search.config/all-models
