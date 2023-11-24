@@ -69,7 +69,7 @@
     (thunk)
     (do
       (testing "with local_infile on"
-        (do-with-mysql-local-infile-off thunk))
+        (do-with-mysql-local-infile-on thunk))
       (testing "with local_infile off"
         (do-with-mysql-local-infile-off thunk)))))
 
