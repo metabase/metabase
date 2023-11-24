@@ -35,13 +35,12 @@
 
 (defn- local-infile-on? []
   (= "ON" (-> (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-              (jdbc/query ["show global variables like 'local_infile'"])
+              (jdbc/query "show global variables like 'local_infile'")
               first
               :value)))
 
 (defn- set-local-infile! [on?]
-  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-              (str "set global local_infile = " (if on? 1 0))))
+  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (mt/db)) (str "set global local_infile = " (if on? 1 0))))
 
 (defn- do-with-mysql-local-infile-on
   [thunk]
@@ -55,7 +54,7 @@
 
 (defn- do-with-mysql-local-infile-off
   [thunk]
-  (if (local-infile-on?)
+  (if-not (local-infile-on?)
     (thunk)
     (try
       (set-local-infile! false)
@@ -420,46 +419,46 @@
 (deftest load-from-csv-test
   (testing "Upload a CSV file"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-      (mt/with-empty-db
-        (with-mysql-local-infile-on-and-off
+      (with-mysql-local-infile-on-and-off
+        (mt/with-empty-db
           (upload/load-from-csv!
            driver/*driver*
            (mt/id)
            "upload_test"
            (csv-file-with ["id    ,nulls,string ,bool ,number       ,date      ,datetime"
                            "2\t   ,,          a ,true ,1.1\t        ,2022-01-01,2022-01-01T00:00:00"
-                           "\" 3\",,           b,false,\"$ 1,000.1\",2022-02-01,2022-02-01T00:00:00"])))
-        (testing "Table and Fields exist after sync"
-          (sync/sync-database! (mt/db))
-          (let [table (t2/select-one Table :db_id (mt/id))]
-            (is (=? {:name         #"(?i)upload_test"
-                     :display_name "Upload Test"}
-                    table))
-            (is (=? {:name          #"(?i)id"
-                     :semantic_type :type/PK
-                     :base_type     :type/BigInteger}
-                    (t2/select-one Field :database_position 0 :table_id (:id table))))
-            (is (=? {:name      #"(?i)nulls"
-                     :base_type :type/Text}
-                    (t2/select-one Field :database_position 1 :table_id (:id table))))
-            (is (=? {:name      #"(?i)string"
-                     :base_type :type/Text}
-                    (t2/select-one Field :database_position 2 :table_id (:id table))))
-            (is (=? {:name      #"(?i)bool"
-                     :base_type :type/Boolean}
-                    (t2/select-one Field :database_position 3 :table_id (:id table))))
-            (is (=? {:name      #"(?i)number"
-                     :base_type :type/Float}
-                    (t2/select-one Field :database_position 4 :table_id (:id table))))
-            (is (=? {:name      #"(?i)date"
-                     :base_type :type/Date}
-                    (t2/select-one Field :database_position 5 :table_id (:id table))))
-            (is (=? {:name      #"(?i)datetime"
-                     :base_type (if (= driver/*driver* :mysql) :type/DateTimeWithLocalTZ :type/DateTime)}
-                    (t2/select-one Field :database_position 6 :table_id (:id table))))
-            (testing "Check the data was uploaded into the table"
-              (is (= 2
-                     (count (rows-for-table table)))))))))))
+                           "\" 3\",,           b,false,\"$ 1,000.1\",2022-02-01,2022-02-01T00:00:00"]))
+          (testing "Table and Fields exist after sync"
+            (sync/sync-database! (mt/db))
+            (let [table (t2/select-one Table :db_id (mt/id))]
+              (is (=? {:name         #"(?i)upload_test"
+                       :display_name "Upload Test"}
+                      table))
+              (is (=? {:name          #"(?i)id"
+                       :semantic_type :type/PK
+                       :base_type     :type/BigInteger}
+                      (t2/select-one Field :database_position 0 :table_id (:id table))))
+              (is (=? {:name      #"(?i)nulls"
+                       :base_type :type/Text}
+                      (t2/select-one Field :database_position 1 :table_id (:id table))))
+              (is (=? {:name      #"(?i)string"
+                       :base_type :type/Text}
+                      (t2/select-one Field :database_position 2 :table_id (:id table))))
+              (is (=? {:name      #"(?i)bool"
+                       :base_type :type/Boolean}
+                      (t2/select-one Field :database_position 3 :table_id (:id table))))
+              (is (=? {:name      #"(?i)number"
+                       :base_type :type/Float}
+                      (t2/select-one Field :database_position 4 :table_id (:id table))))
+              (is (=? {:name      #"(?i)date"
+                       :base_type :type/Date}
+                      (t2/select-one Field :database_position 5 :table_id (:id table))))
+              (is (=? {:name      #"(?i)datetime"
+                       :base_type (if (= driver/*driver* :mysql) :type/DateTimeWithLocalTZ :type/DateTime)}
+                      (t2/select-one Field :database_position 6 :table_id (:id table))))
+              (testing "Check the data was uploaded into the table"
+                (is (= 2
+                       (count (rows-for-table table))))))))))))
 
 (deftest load-from-csv-date-test
   (testing "Upload a CSV file with a datetime column"
@@ -839,8 +838,7 @@
       (do-with-mysql-local-infile-on
        (fn []
          (is (= "ON" (-> (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                         (jdbc/query
-                          ["show global variables like 'local_infile'"])
+                         (jdbc/query "show global variables like 'local_infile'")
                          first
                          :value)))))))
   (testing "Ensure that local_infile is set to false for better MySQL testing"
@@ -848,7 +846,6 @@
       (do-with-mysql-local-infile-off
        (fn []
          (is (= "OFF" (-> (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                          (jdbc/query
-                           ["show global variables like 'local_infile'"])
+                          (jdbc/query "show global variables like 'local_infile'")
                           first
                           :value))))))))
