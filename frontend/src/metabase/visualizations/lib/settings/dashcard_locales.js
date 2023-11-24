@@ -601,8 +601,8 @@ const TITLE_LOCALES_BN = {
     'bn' : 'বাতিলকৃত'
   },
   'tms.session.processing.finished.application' : {
-    'en' : 'Processing Finished',
-    'bn' : 'মনোনীত'
+    'en' : 'Selected',
+    'bn' : 'নির্বাচিত'
   },
   'tms.session.approved.application' : {
     'en' : 'Approved',
@@ -634,19 +634,27 @@ const TITLE_LOCALES_BN = {
   },
   'tms.session.different.steps.applications' : {
     'en' : 'Applications in different stages',
-    'bn' : 'বিভিন্ন ধাপে আবেদন'
+    'bn' : 'বিভিন্ন ধাপে অপেক্ষমাণ আবেদন সমুহ'
   },
   'tms.session.applicant.gender' : {
     'en' : 'Statistics of Applicants Gender',
     'bn' : 'জেন্ডার ভিত্তিক আবেদন'
   },
   'tms.session.application.teacher.type' : {
-    'en' : 'General and Substitute Transfer',
-    'bn' : 'সাধারণ ও সাবস্টিটিউট বদলি'
+    'en' : 'General vs Substitute Transfer',
+    'bn' : 'সাধারণ বনাম সাবস্টিটিউট বদলি'
   },
   'tms.session.abandoned.application' : {
     'en' : 'Abandoned',
     'bn' : 'পরিত্যক্ত'
+  },
+  'tms.gender.wise.application.statistics' : {
+    'en' : 'General Wise Application Statistics',
+    'bn' : 'জেন্ডার ভিত্তিক আবেদনের পরিসংখ্যান '
+  },
+  'tms.session.criteria.wise.application' : {
+    'en' : 'Criteria Wise Application Statistics',
+    'bn' : 'ক্রাইটেরিয়া ভিত্তিক আবেদনের পরিসংখ্যান'
   },
 }
 
