@@ -199,6 +199,13 @@ const config = (module.exports = {
         },
       },
     },
+    minimizer: [
+      new TerserPlugin({
+        minify: TerserPlugin.swcMinify,
+        parallel: true,
+        test: /\.(tsx?|jsx?)($|\?)/i,
+      }),
+    ],
   },
 
   plugins: [
@@ -341,9 +348,5 @@ if (WEBPACK_BUNDLE !== "production") {
     }),
   );
 } else {
-  config.plugins.push(
-    new TerserPlugin({ parallel: true, test: /\.(tsx?|jsx?)($|\?)/i }),
-  );
-
   config.devtool = "source-map";
 }

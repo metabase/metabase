@@ -984,10 +984,10 @@
                        (str location id "/"))
                      "/")]
     (-> contents
-        serdes/load-xform-basics
         (dissoc :parent_id)
         (assoc :location loc)
-        (update :personal_owner_id serdes/*import-user*))))
+        (update :personal_owner_id serdes/*import-user*)
+        serdes/load-xform-basics)))
 
 (defmethod serdes/dependencies "Collection"
   [{:keys [parent_id]}]

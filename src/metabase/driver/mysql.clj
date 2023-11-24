@@ -685,6 +685,10 @@
   [_driver val]
   (str val))
 
+(defmethod value->string nil
+  [_driver _val]
+  nil)
+
 (defmethod value->string Boolean
   [_driver val]
   (if val
@@ -715,10 +719,12 @@
   ;; you must specify two backslashes for the value to be interpreted as a single backslash. The escape sequences
   ;; '\t' and '\n' specify tab and newline characters, respectively.
   [v]
-  (str/replace v #"\\|\n|\r|\t" {"\\" "\\\\"
-                                 "\n" "\\n"
-                                 "\r" "\\r"
-                                 "\t" "\\t"}))
+  (if (nil? v)
+    "\\N"
+    (str/replace v #"\\|\n|\r|\t" {"\\" "\\\\"
+                                   "\n" "\\n"
+                                   "\r" "\\r"
+                                   "\t" "\\t"})))
 
 (defn- row->tsv
   [driver column-count row]
