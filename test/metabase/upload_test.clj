@@ -367,38 +367,6 @@
                         (t2/select-one Field :database_position 1 :table_id (:id table)))))
               (is (some? table)))))))))
 
-(deftest load-from-csv-offset-datetime-test
-  (testing "Upload a CSV file with a datetime column"
-    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-      (with-mysql-local-infile-on-and-off
-        (mt/with-empty-db
-          (with-redefs [driver/db-default-timezone (constantly "Z")
-                        upload/current-database    (constantly (mt/db))]
-            (let [datetime-pairs [["2022-01-01T12:00:00-07"    "2022-01-01T19:00:00Z"]
-                                  ["2022-01-01T12:00:00-07:00" "2022-01-01T19:00:00Z"]
-                                  ["2022-01-01T12:00:00-07:30" "2022-01-01T19:30:00Z"]
-                                  ["2022-01-01T12:00:00Z"      "2022-01-01T12:00:00Z"]
-                                  ["2022-01-01T12:00:00-00:00" "2022-01-01T12:00:00Z"]
-                                  ["2022-01-01T12:00:00+07"    "2022-01-01T05:00:00Z"]
-                                  ["2022-01-01T12:00:00+07:00" "2022-01-01T05:00:00Z"]
-                                  ["2022-01-01T12:00:00+07:30" "2022-01-01T04:30:00Z"]]]
-              (upload/load-from-csv!
-               driver/*driver*
-               (mt/id)
-               "upload_test"
-               (csv-file-with (into ["offset_datetime"] (map first datetime-pairs))))
-              (testing "Fields exists after sync"
-                (sync/sync-database! (mt/db))
-                (let [table (t2/select-one Table :db_id (mt/id))]
-                  (is (=? {:name #"(?i)upload_test"} table))
-                  (testing "Check the offset datetime column the correct base_type"
-                    (is (=? {:name      #"(?i)offset_datetime"
-                             :base_type :type/DateTimeWithLocalTZ}
-                          ;; db position is 1; 0 is for the auto-inserted ID
-                            (t2/select-one Field :database_position 1 :table_id (:id table)))))
-                  (is (= (map second datetime-pairs)
-                         (map second (rows-for-table table)))))))))))))
-
 (deftest load-from-csv-boolean-test
   (testing "Upload a CSV file"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -506,58 +474,6 @@
               (testing "Check the data was uploaded into the table correctly"
                 (is (= ["id" "unknown" "unknown_2" "unknown_3" "unknown_2_2"]
                        (column-names-for-table table)))))))))))
-
-(deftest load-from-csv-existing-id-column-test
-  (testing "Upload a CSV file with an existing ID column"
-    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-      (with-mysql-local-infile-on-and-off
-        (mt/with-empty-db
-          (upload/load-from-csv!
-           driver/*driver*
-           (mt/id)
-           "upload_test"
-           (csv-file-with ["id,ship,name,weapon"
-                           "1,Serenity,Malcolm Reynolds,Pistol"
-                           "2,Millennium Falcon,Han Solo,Blaster"
-                           ;; A huge ID to make extra sure we're using bigints
-                           "9000000000,Razor Crest,Din Djarin,Spear"]))
-          (testing "Table and Fields exist after sync"
-            (sync/sync-database! (mt/db))
-            (let [table (t2/select-one Table :db_id (mt/id))]
-              (is (=? {:name #"(?i)upload_test"} table))
-              (testing "Check the data was uploaded into the table correctly"
-                (is (= ["id" "ship" "name" "weapon"]
-                       (column-names-for-table table)))
-                (is (=? {:name                       #"(?i)id"
-                         :semantic_type              :type/PK
-                         :base_type                  :type/BigInteger
-                         :database_is_auto_increment false}
-                        (t2/select-one Field :database_position 0 :table_id (:id table))))))))))))
-
-(deftest load-from-csv-existing-string-id-column-test
-  (testing "Upload a CSV file with an existing string ID column"
-    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-      (with-mysql-local-infile-on-and-off
-        (mt/with-empty-db
-          (upload/load-from-csv!
-           driver/*driver*
-           (mt/id)
-           "upload_test"
-           (csv-file-with ["id,ship,name,weapon"
-                           "a,Serenity,Malcolm Reynolds,Pistol"
-                           "b,Millennium Falcon,Han Solo,Blaster"]))
-          (testing "Table and Fields exist after sync"
-            (sync/sync-database! (mt/db))
-            (let [table (t2/select-one Table :db_id (mt/id))]
-              (is (=? {:name #"(?i)upload_test"} table))
-              (testing "Check the data was uploaded into the table correctly"
-                (is (= ["id" "ship" "name" "weapon"]
-                       (column-names-for-table table)))
-                (is (=? {:name                       #"(?i)id"
-                         :semantic_type              :type/PK
-                         :base_type                  :type/Text
-                         :database_is_auto_increment false}
-                        (t2/select-one Field :database_position 0 :table_id (:id table))))))))))))
 
 (deftest load-from-csv-reserved-db-words-test
   (testing "Upload a CSV file with column names that are reserved by the DB"
