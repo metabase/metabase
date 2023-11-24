@@ -89,7 +89,7 @@ const AppBarSmall = ({
             </AppBarSearchContainer>
             {isProfileLinkVisible && (
               <AppBarProfileLinkContainer>
-                <ProfileLink user={currentUser} onLogout={onLogout} />
+                <ProfileLink onLogout={onLogout} />
               </AppBarProfileLinkContainer>
             )}
           </AppBarMainContainer>

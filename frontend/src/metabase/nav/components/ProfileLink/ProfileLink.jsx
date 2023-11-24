@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { connect } from "react-redux";
@@ -7,8 +7,7 @@ import _ from "underscore";
 import { capitalize } from "metabase/lib/formatting";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
-import { UtilApi } from "metabase/services";
-import { getIsPaidPlan, getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/selectors/settings";
 
 import * as Urls from "metabase/lib/urls";
 import Modal from "metabase/components/Modal";
@@ -16,7 +15,7 @@ import Modal from "metabase/components/Modal";
 import LogoIcon from "metabase/components/LogoIcon";
 import EntityMenu from "metabase/components/EntityMenu";
 import { getAdminPaths } from "metabase/admin/app/selectors";
-import { getHelpLink } from "./utils";
+import { useHelpLink } from "./useHelpLink";
 
 // generate the proper set of list items for the current user
 // based on whether they're an admin or not
@@ -26,17 +25,11 @@ const mapStateToProps = state => ({
 
 export default connect(mapStateToProps)(ProfileLink);
 
-function ProfileLink({ user, adminItems, onLogout }) {
+function ProfileLink({ adminItems, onLogout }) {
   const [modalOpen, setModalOpen] = useState(null);
-  const [bugReportDetails, setBugReportDetails] = useState(null);
   const version = useSelector(state => getSetting(state, "version"));
   const { tag, date, ...versionExtra } = version;
-  const isPaidPlan = useSelector(getIsPaidPlan);
-
-  const helpLinkSetting = useSelector(state => getSetting(state, "help-link"));
-  const helpLinkCustomDestinationSetting = useSelector(state =>
-    getSetting(state, "help-link-custom-destination"),
-  );
+  const helpLink = useHelpLink();
 
   const openModal = modalName => {
     setModalOpen(modalName);
@@ -47,20 +40,7 @@ function ProfileLink({ user, adminItems, onLogout }) {
   };
 
   const generateOptionsForUser = () => {
-    const isAdmin = user.is_superuser;
     const showAdminSettingsItem = adminItems?.length > 0;
-    const compactBugReportDetailsForUrl = encodeURIComponent(
-      JSON.stringify(bugReportDetails),
-    );
-
-    const helpLink = getHelpLink({
-      helpLinkSetting,
-      helpLinkCustomDestinationSetting,
-      isAdmin,
-      isPaidPlan,
-      tag,
-      bugReportDetails: compactBugReportDetailsForUrl,
-    });
 
     return [
       {
@@ -96,13 +76,6 @@ function ProfileLink({ user, adminItems, onLogout }) {
       },
     ].filter(Boolean);
   };
-
-  useEffect(() => {
-    const isAdmin = user.is_superuser;
-    if (isAdmin && isPaidPlan) {
-      UtilApi.bug_report_details().then(setBugReportDetails);
-    }
-  }, [user.is_superuser, isPaidPlan]);
 
   // don't show trademark if application name is whitelabeled
   const showTrademark = t`Metabase` === "Metabase";
@@ -167,7 +140,6 @@ function ProfileLink({ user, adminItems, onLogout }) {
 }
 
 ProfileLink.propTypes = {
-  user: PropTypes.object.isRequired,
   adminItems: PropTypes.array,
   onLogout: PropTypes.func.isRequired,
 };

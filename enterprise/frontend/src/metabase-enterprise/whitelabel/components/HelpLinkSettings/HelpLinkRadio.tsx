@@ -1,9 +1,9 @@
 import { t } from "ttag";
 import { Radio, Stack } from "metabase/ui";
-import type { HomeLinkSetting } from "metabase-types/api";
+import type { HelpLinkSetting } from "metabase-types/api";
 
 interface Props {
-  setting: { value?: HomeLinkSetting; default: HomeLinkSetting };
+  setting: { value?: HelpLinkSetting; default: HelpLinkSetting };
   onChange: (value: string) => void;
 }
 
