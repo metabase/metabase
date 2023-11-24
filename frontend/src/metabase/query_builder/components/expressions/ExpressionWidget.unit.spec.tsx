@@ -56,7 +56,7 @@ describe("ExpressionWidget", () => {
   });
 
   it("should trigger onChangeExpression if expression is valid", () => {
-    const { onChangeExpression, getRecentExpressionClauseInfo } = setup();
+    const { getRecentExpressionClauseInfo, onChangeExpression } = setup();
 
     const doneButton = screen.getByRole("button", { name: "Done" });
     expect(doneButton).toBeDisabled();
@@ -107,7 +107,7 @@ describe("ExpressionWidget", () => {
 
     it("should validate name value", () => {
       const expression: Expression = ["+", 1, 1];
-      const { onChangeExpression, getRecentExpressionClauseInfo } = setup({
+      const { getRecentExpressionClauseInfo, onChangeExpression } = setup({
         expression,
         withName: true,
       });
@@ -174,30 +174,15 @@ const createMockLegacyQueryForExpressions = () => {
 };
 
 function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
-  const mocks = {
-    onClose: jest.fn(),
-    onChangeExpression: jest.fn(),
-  };
-
   const query = createQuery();
   const stageIndex = 0;
-
-  const props: ExpressionWidgetProps = {
-    expression: undefined,
-    expressionClause: undefined,
-    name: undefined,
-    legacyQuery: createMockLegacyQueryForExpressions(),
-    query,
-    stageIndex,
-    reportTimezone: "UTC",
-    ...mocks,
-    ...additionalProps,
-  };
+  const onChangeExpression = jest.fn();
+  const onClose = jest.fn();
 
   function getRecentExpressionClause() {
-    expect(mocks.onChangeExpression).toHaveBeenCalled();
+    expect(onChangeExpression).toHaveBeenCalled();
     const [_name, _expression, expressionClause] =
-      mocks.onChangeExpression.mock.calls.at(-1);
+      onChangeExpression.mock.calls.at(-1);
     return expressionClause;
   }
 
@@ -205,11 +190,24 @@ function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
     return Lib.displayInfo(query, stageIndex, getRecentExpressionClause());
   }
 
-  render(<ExpressionWidget {...props} />);
+  render(
+    <ExpressionWidget
+      expression={undefined}
+      expressionClause={undefined}
+      legacyQuery={createMockLegacyQueryForExpressions()}
+      name={undefined}
+      query={query}
+      reportTimezone="UTC"
+      stageIndex={stageIndex}
+      onChangeExpression={onChangeExpression}
+      onClose={onClose}
+      {...additionalProps}
+    />,
+  );
 
   return {
-    ...mocks,
-    getRecentExpressionClause,
     getRecentExpressionClauseInfo,
+    onChangeExpression,
+    onClose,
   };
 }
