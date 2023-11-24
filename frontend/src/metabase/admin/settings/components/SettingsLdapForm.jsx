@@ -37,7 +37,7 @@ const testParentheses = {
 const testPort = {
   name: "test-port",
   message: "That's not a valid port number",
-  test: value => (value || "").match(/^\d*$/),
+  test: value => (value || "").trim().match(/^\d*$/),
 };
 
 const LDAP_SCHEMA = Yup.object({
@@ -77,7 +77,11 @@ const SettingsLdapForm = ({
 
   const handleSubmit = useCallback(
     values => {
-      return onSubmit({ ...values, "ldap-enabled": true });
+      return onSubmit({
+        ...values,
+        "ldap-port": values["ldap-port"]?.trim(),
+        "ldap-enabled": true,
+      });
     },
     [onSubmit],
   );

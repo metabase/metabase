@@ -97,16 +97,17 @@ describe(
       cy.findByText("That's not a valid port number").should("exist");
 
       enterLdapPort("21.3");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("That's not a valid port number").should("exist");
+
+      enterLdapPort("123 ");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("That's not a valid port number").should("not.exist");
+
       cy.button("Save and enable").click();
       cy.wait("@updateLdapSettings");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText('For input string: "21.3"').should("exist");
-
-      enterLdapPort("123 ");
-      cy.button("Save failed").click();
-      cy.wait("@updateLdapSettings");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText('For input string: "123 "').should("exist");
+      cy.findByText("Success").should("exist");
     });
 
     it("should allow user login on OSS when LDAP is enabled", () => {
