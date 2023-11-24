@@ -119,7 +119,7 @@
   "Returns true if the given body does not throw an exception."
   [body]
   `(try
-     ~@body
+     ~body
      true
      (catch Throwable e#
        false)))
