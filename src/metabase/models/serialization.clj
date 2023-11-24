@@ -391,6 +391,17 @@
 (defmethod descendants :default [_ _]
   nil)
 
+(defmulti ascendants
+  "Return set of `[model-name database-id]` pairs for all entities containing this entity, required to successfully
+  load this entity in destination db.
+
+  Dispatched on model-name."
+  {:arglists '([model-name db-id])}
+  (fn [model-name _] model-name))
+
+(defmethod ascendants :default [_ _]
+  nil)
+
 ;;; # Import Process
 ;;; Deserialization is split into two stages, mirroring serialization. They are called *ingestion* and *loading*.
 ;;; Ingestion turns whatever serialized form was produced by storage (eg. a tree of YAML files) into Clojure maps with

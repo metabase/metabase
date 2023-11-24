@@ -998,17 +998,19 @@
 (defmethod serdes/generate-path "Collection" [_ coll]
   (serdes/maybe-labeled "Collection" coll :slug))
 
+(defmethod serdes/ascendants "Collection" [_ id]
+  (let [location    (t2/select-one-fn :location Collection :id id)]
+    (set (map vector (repeat "Collection") (location-path->ids location)))))
+
 (defmethod serdes/descendants "Collection" [_model-name id]
   (let [location    (t2/select-one-fn :location Collection :id id)
-        parents     (set (for [coll-id (rest (str/split location #"/"))]
-                           ["Collection" (parse-long coll-id) {:no-descendants true}]))
         child-colls (set (for [child-id (t2/select-pks-set Collection {:where [:like :location (str location id "/%")]})]
                            ["Collection" child-id]))
         dashboards  (set (for [dash-id (t2/select-pks-set 'Dashboard :collection_id id)]
                            ["Dashboard" dash-id]))
         cards       (set (for [card-id (t2/select-pks-set 'Card      :collection_id id)]
                            ["Card" card-id]))]
-    (set/union parents child-colls dashboards cards)))
+    (set/union child-colls dashboards cards)))
 
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
   (let [parental (get collections (:entity_id coll))]

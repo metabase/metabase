@@ -1666,19 +1666,22 @@
 
 (deftest recursive-colls-test
   (mt/with-empty-h2-app-db
-    (ts/with-temp-dpc [Collection {parent-id :id
-                                   parent-eid :entity_id} {:name "Top-Level Collection"}
-                       Collection {nested-id :id
-                                   nested-eid :entity_id} {:name     "Nested Collection"
-                                                           :location (format "/%s/" parent-id)}
-                       Card       {_pcard-eid :entity_id} {:name          "Card To Skip"
-                                                           :collection_id parent-id}
-                       Card       {ncard-eid :entity_id}  {:name          "Card To Export"
-                                                           :collection_id nested-id}]
+    (mt/with-temp [Collection {parent-id  :id
+                               parent-eid :entity_id} {:name "Top-Level Collection"}
+                   Collection {middle-id  :id
+                               middle-eid :entity_id} {:name     "Nested Collection"
+                                                       :location (format "/%s/" parent-id)}
+                   Collection {nested-id  :id
+                               nested-eid :entity_id} {:name     "Nested Collection"
+                                                       :location (format "/%s/%s/" parent-id middle-id)}
+                   Card       _                       {:name          "Card To Skip"
+                                                       :collection_id parent-id}
+                   Card       {ncard-eid :entity_id}  {:name          "Card To Export"
+                                                       :collection_id nested-id}]
       (let [ser (extract/extract {:targets       [["Collection" nested-id]]
                                   :no-settings   true
                                   :no-data-model true})]
-        (is (= #{parent-eid nested-eid}
+        (is (= #{parent-eid middle-eid nested-eid}
                (by-model "Collection" ser)))
         (is (= #{ncard-eid}
                (by-model "Card" ser)))))))
