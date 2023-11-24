@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.email.messages :as messages]
    [metabase.models
     :refer [Card
@@ -902,42 +901,40 @@
             :content-type :csv
             :content      output-string})))]))
 
+(defn- metadata->field-ref
+  [{:keys [name field_ref]} enabled?]
+  {:name name :field_ref field_ref :enabled enabled?})
+
 (deftest dashboard-subscription-attachments-test
-  (testing "Dashboard subscription attachments respect viz-settings"
+  (testing "Dashboard subscription attachments respect dashcard viz settings."
     (mt/with-fake-inbox
-      (mt/with-temp [Card          {card-id :id}
-                     {:dataset_query {:type     :native,
-                                      :native
-                                      {:query "SELECT 'a' AS column1, 1 AS column2;"}
-                                      :database (mt/id)}}
-                     Dashboard     {dashboard-id :id, :as dashboard} {:name "just dash"}
-                     DashboardCard {dashboard-card-id :id}
-                     {:dashboard_id dashboard-id
-                      :card_id      card-id
-                      :visualization_settings
-                      {:table.columns
-                       [{:name "column1" :fieldRef [:field "column1" {:base-type :type/Text}] :enabled true}
-                        {:name "column2" :fieldRef [:field "column2" {:base-type :type/Integer}] :enabled false}]}}
-                     Pulse         {pulse-id :id, :as pulse}  {:name         "just pulse"
-                                                               :dashboard_id (u/the-id dashboard)}
-                     PulseCard     _ {:pulse_id          pulse-id
-                                      :card_id           card-id
-                                      :position          0
-                                      :dashboard_card_id dashboard-card-id
-                                      :include_csv       true}
-                     PulseChannel  {pc-id :id} {:pulse_id pulse-id}
-                     PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
-                                              :pulse_channel_id pc-id}]
-        (with-redefs [messages/result-attachment result-attachment]
-          (metabase.pulse/send-pulse! pulse)
-          (is (= 1
-                 (-> @mt/inbox
-                     (get (:email (mt/fetch-user :rasta)))
-                     last
-                     :body
-                     last
-                     :content
-                     str/split-lines
-                     (->> (mapv #(str/split % #",")))
-                     first
-                     count))))))))
+      (mt/with-temp [Card {card-id :id :as c} (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+                     Dashboard     {dash-id :id} {:name "just dash"}]
+        (let [viz {:table.columns (mapv metadata->field-ref (:result_metadata c) [true false])}]
+          (mt/with-temp [DashboardCard {dash-card-id :id}
+                         {:dashboard_id           dash-id
+                          :card_id                card-id
+                          :visualization_settings viz}
+                         Pulse         {pulse-id :id, :as pulse}  {:name         "just pulse"
+                                                                   :dashboard_id dash-id}
+                         PulseCard     _ {:pulse_id          pulse-id
+                                          :card_id           card-id
+                                          :position          0
+                                          :dashboard_card_id dash-card-id
+                                          :include_csv       true}
+                         PulseChannel  {pc-id :id} {:pulse_id pulse-id}
+                         PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                  :pulse_channel_id pc-id}]
+            (with-redefs [messages/result-attachment result-attachment]
+              (metabase.pulse/send-pulse! pulse)
+              (is (= 1
+                     (-> @mt/inbox
+                         (get (:email (mt/fetch-user :rasta)))
+                         last
+                         :body
+                         last
+                         :content
+                         str/split-lines
+                         (->> (mapv #(str/split % #",")))
+                         first
+                         count))))))))))
