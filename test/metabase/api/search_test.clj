@@ -819,7 +819,7 @@
         ;; the call count number here are expected to change if we change the search api
         ;; we have this test here just to keep tracks this number to remind us to put effort
         ;; into keep this number as low as we can
-         (is (= 11 (call-count))))))))
+         (is (= 9 (call-count))))))))
 
 (deftest snowplow-new-search-query-event-test
   (testing "Send a snowplow event when a search query is triggered and context is passed"
