@@ -616,51 +616,6 @@
 
 (sql/register-clause! ::load format-load :insert-into)
 
-(defn- offset-datetime->unoffset-datetime
-  "Remove the offset from a datetime, returning a string representation in whatever timezone the `database` is
-  configured to use. This is necessary since MariaDB doesn't support timestamp-with-time-zone literals and so we need
-  to calculate one by hand."
-  [driver database ^OffsetDateTime offset-time]
-  (let [zone-id (t/zone-id (driver/db-default-timezone driver database))]
-    (t/local-date-time offset-time zone-id )))
-
-(defmulti ^:private value->string
-  "Convert a value into a string that's safe for insertion"
-  {:arglists '([driver val])}
-  (fn [_ val] (type val)))
-
-(defmethod value->string :default
-  [_driver val]
-  (str val))
-
-(defmethod value->string nil
-  [_driver _val]
-  nil)
-
-(defmethod value->string Boolean
-  [_driver val]
-  (if val
-    "1"
-    "0"))
-
-(defmethod value->string LocalDateTime
-  [_driver val]
-  (t/format :iso-local-date-time val))
-
-(let [zulu-fmt         "yyyy-MM-dd'T'HH:mm:ss"
-      offset-fmt       "XXX"
-      zulu-formatter   (DateTimeFormatter/ofPattern zulu-fmt)
-      offset-formatter (DateTimeFormatter/ofPattern (str zulu-fmt offset-fmt))]
-  (defmethod value->string OffsetDateTime
-    [driver ^OffsetDateTime val]
-    (let [uploads-db (upload/current-database)]
-      (if (mariadb? uploads-db)
-        (offset-datetime->unoffset-datetime driver uploads-db val)
-        (t/format (if (.equals (.getOffset val) ZoneOffset/UTC)
-                    zulu-formatter
-                    offset-formatter)
-                  val)))))
-
 (defn- sanitize-value
   ;; Per https://dev.mysql.com/doc/refman/8.0/en/load-data.html#load-data-field-line-handling
   ;; Backslash is the MySQL escape character within strings in SQL statements. Thus, to specify a literal backslash,
