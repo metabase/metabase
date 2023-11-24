@@ -122,7 +122,7 @@
      ~@body
      true
      (catch Throwable e#
-       true)))
+       false)))
 
 (defn- date-string? [s]
   (does-not-throw? (t/local-date s)))
