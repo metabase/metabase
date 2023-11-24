@@ -805,22 +805,21 @@
          Segment   _              {:table_id table-id
                                    :name     (str "segment 3 " search-string)}]
         (mt/with-current-user (mt/user->id :crowberto)
-       ;; try warming it up, just to make sure there's no caching
-          (#'api.search/search {:search-string      search-string
-                                :archived?          false
-                                :models             search.config/all-models
-                                :current-user-perms #{"/"}
-                                :limit-int          100})
-          (t2/with-call-count [call-count]
-            (#'api.search/search {:search-string      search-string
-                                  :archived?          false
-                                  :models             search.config/all-models
-                                  :current-user-perms #{"/"}
-                                  :limit-int          100})
-        ;; the call count number here are expected to change if we change the search api
-        ;; we have this test here just to keep tracks this number to remind us to put effort
-        ;; into keep this number as low as we can
-            (is (= 11 (call-count)))))))))
+          (let [do-search (fn []
+                            (#'api.search/search {:search-string      search-string
+                                                  :archived?          false
+                                                  :models             search.config/all-models
+                                                  :current-user-perms #{"/"}
+                                                  :limit-int          100}))]
+            ;; warm it up, in case the DB call depends on the order of test execution and it needs to
+            ;; do some initialization
+            (do-search)
+            (t2/with-call-count [call-count]
+              (do-search)
+              ;; the call count number here are expected to change if we change the search api
+              ;; we have this test here just to keep tracks this number to remind us to put effort
+              ;; into keep this number as low as we can
+              (is (= 9 (call-count))))))))))
 
 (deftest snowplow-new-search-query-event-test
   (testing "Send a snowplow event when a search query is triggered and context is passed"
