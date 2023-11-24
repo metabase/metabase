@@ -393,7 +393,8 @@
 
 (defmulti ascendants
   "Return set of `[model-name database-id]` pairs for all entities containing this entity, required to successfully
-  load this entity in destination db.
+  load this entity in destination db. Notice that ascendants are searched recursively, but their descendants are not
+  analyzed.
 
   Dispatched on model-name."
   {:arglists '([model-name db-id])}

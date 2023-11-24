@@ -999,7 +999,8 @@
   (serdes/maybe-labeled "Collection" coll :slug))
 
 (defmethod serdes/ascendants "Collection" [_ id]
-  (let [location    (t2/select-one-fn :location Collection :id id)]
+  (let [location (t2/select-one-fn :location Collection :id id)]
+    ;; it would work returning just one, but why not return all if it's cheap
     (set (map vector (repeat "Collection") (location-path->ids location)))))
 
 (defmethod serdes/descendants "Collection" [_model-name id]

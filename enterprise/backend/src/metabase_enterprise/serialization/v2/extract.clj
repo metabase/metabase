@@ -62,17 +62,21 @@
     (eduction (map #(serdes/extract-all % extract-opts)) cat (model-set opts))))
 
 ;; TODO Properly support "continue" - it should be contagious. Eg. a Dashboard with an illegal Card gets excluded too.
-(defn- descendants-closure [targets]
+(defn- chase-for [targets func]
   (loop [to-chase (set targets)
          chased   #{}]
     (let [[m i :as item] (first to-chase)
-          asc                 (serdes/ascendants m i)
-          desc                (serdes/descendants m i)
-          chased              (-> (conj chased item) (into asc))
-          to-chase            (set/union (disj to-chase item) (set/difference desc chased))]
+          res            (func m i)
+          chased         (conj chased item)
+          to-chase       (set/union (disj to-chase item) (set/difference res chased))]
       (if (empty? to-chase)
         chased
         (recur to-chase chased)))))
+
+(defn- gather-lineage [targets]
+  (set/union
+   (chase-for targets serdes/ascendants)
+   (chase-for targets serdes/descendants)))
 
 (defn- escape-analysis
   "Given a target seq, explore the contents of any collections looking for \"leaks\". For example, a
@@ -170,7 +174,7 @@ Eg. if Dashboard B includes a Card A that is derived from a
     ;; If that is non-nil, emit the report.
     (escape-report analysis)
     ;; If it's nil, there are no errors, and we can proceed to do the dump.
-    (let [closure     (descendants-closure targets)
+    (let [closure     (gather-lineage targets)
           models      (model-set opts)
           ;; filter the selected models based on user options
           by-model    (-> (group-by first closure)
