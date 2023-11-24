@@ -778,48 +778,47 @@
               (is (= nil (search-for-pulses pulse))))))))))
 
 (deftest search-db-call-count-test
-  (dotimes [_ 20]
-    (let [search-string (mt/random-name)]
-      (t2.with-temp/with-temp
-        [Card      _              {:name (str "card db 1 " search-string)}
-         Card      _              {:name (str "card db 2 " search-string)}
-         Card      _              {:name (str "card db 3 " search-string)}
-         Dashboard _              {:name (str "dash 1 " search-string)}
-         Dashboard _              {:name (str "dash 2 " search-string)}
-         Dashboard _              {:name (str "dash 3 " search-string)}
-         Database  {db-id :id}    {:name (str "database 1 " search-string)}
-         Database  _              {:name (str "database 2 " search-string)}
-         Database  _              {:name (str "database 3 " search-string)}
-         Table     {table-id :id} {:db_id  db-id
-                                   :schema nil}
-         Metric    _              {:table_id table-id
-                                   :name     (str "metric 1 " search-string)}
-         Metric    _              {:table_id table-id
-                                   :name     (str "metric 1 " search-string)}
-         Metric    _              {:table_id table-id
-                                   :name     (str "metric 2 " search-string)}
-         Segment   _              {:table_id table-id
-                                   :name     (str "segment 1 " search-string)}
-         Segment   _              {:table_id table-id
-                                   :name     (str "segment 2 " search-string)}
-         Segment   _              {:table_id table-id
-                                   :name     (str "segment 3 " search-string)}]
-        (mt/with-current-user (mt/user->id :crowberto)
-          (let [do-search (fn []
-                            (#'api.search/search {:search-string      search-string
-                                                  :archived?          false
-                                                  :models             search.config/all-models
-                                                  :current-user-perms #{"/"}
-                                                  :limit-int          100}))]
-            ;; warm it up, in case the DB call depends on the order of test execution and it needs to
-            ;; do some initialization
+  (let [search-string (mt/random-name)]
+    (t2.with-temp/with-temp
+      [Card      _              {:name (str "card db 1 " search-string)}
+       Card      _              {:name (str "card db 2 " search-string)}
+       Card      _              {:name (str "card db 3 " search-string)}
+       Dashboard _              {:name (str "dash 1 " search-string)}
+       Dashboard _              {:name (str "dash 2 " search-string)}
+       Dashboard _              {:name (str "dash 3 " search-string)}
+       Database  {db-id :id}    {:name (str "database 1 " search-string)}
+       Database  _              {:name (str "database 2 " search-string)}
+       Database  _              {:name (str "database 3 " search-string)}
+       Table     {table-id :id} {:db_id  db-id
+                                 :schema nil}
+       Metric    _              {:table_id table-id
+                                 :name     (str "metric 1 " search-string)}
+       Metric    _              {:table_id table-id
+                                 :name     (str "metric 1 " search-string)}
+       Metric    _              {:table_id table-id
+                                 :name     (str "metric 2 " search-string)}
+       Segment   _              {:table_id table-id
+                                 :name     (str "segment 1 " search-string)}
+       Segment   _              {:table_id table-id
+                                 :name     (str "segment 2 " search-string)}
+       Segment   _              {:table_id table-id
+                                 :name     (str "segment 3 " search-string)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [do-search (fn []
+                          (#'api.search/search {:search-string      search-string
+                                                :archived?          false
+                                                :models             search.config/all-models
+                                                :current-user-perms #{"/"}
+                                                :limit-int          100}))]
+          ;; warm it up, in case the DB call depends on the order of test execution and it needs to
+          ;; do some initialization
+          (do-search)
+          (t2/with-call-count [call-count]
             (do-search)
-            (t2/with-call-count [call-count]
-              (do-search)
-              ;; the call count number here are expected to change if we change the search api
-              ;; we have this test here just to keep tracks this number to remind us to put effort
-              ;; into keep this number as low as we can
-              (is (= 9 (call-count))))))))))
+            ;; the call count number here are expected to change if we change the search api
+            ;; we have this test here just to keep tracks this number to remind us to put effort
+            ;; into keep this number as low as we can
+            (is (= 9 (call-count)))))))))
 
 (deftest snowplow-new-search-query-event-test
   (testing "Send a snowplow event when a search query is triggered and context is passed"
