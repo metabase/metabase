@@ -1,10 +1,10 @@
 import { useState } from "react";
+import { PublicLinkPopover } from "metabase/dashboard/components/PublicLinkPopover";
 import { DashboardEmbedHeaderButton } from "metabase/dashboard/components/DashboardEmbedHeaderButton";
 import { DashboardEmbedHeaderMenu } from "metabase/dashboard/components/DashboardEmbedHeaderMenu";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Popover } from "metabase/ui";
 
 export type EmbedMenuModes =
   | "embed-menu"
@@ -53,7 +53,7 @@ export const EmbedMenu = ({
     isPublicSharingEnabled,
     hasPublicLink,
   });
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
   const [menuMode, setMenuMode] = useState(initialMenuMode);
 
   // console.log(menuMode)
@@ -98,18 +98,14 @@ export const EmbedMenu = ({
 
   const renderPublicLinkPopover = () => {
     return (
-      <Popover opened={isOpen} onClose={onClose}>
-        <Popover.Target>
-          <div>
-            {targetButton({
-              onClick: isOpen ? onClose : () => setIsOpen(true),
-            })}
-          </div>
-        </Popover.Target>
-        <Popover.Dropdown>
-          <div>Public Link Popover</div>
-        </Popover.Dropdown>
-      </Popover>
+      <PublicLinkPopover
+        isOpen={isOpen}
+        onClose={onClose}
+        target={targetButton({
+          onClick: isOpen ? onClose : () => setIsOpen(true),
+        })}
+        resource_uuid={resource_uuid}
+      />
     );
   };
 
@@ -122,15 +118,16 @@ export const EmbedMenu = ({
     });
 
   const getEmbedContent = (menuMode: EmbedMenuModes) => {
-    if (menuMode === "embed-menu") {
-      return renderEmbedMenu();
-    } else if (menuMode === "embed-modal") {
-      return renderEmbedModalTrigger();
-    } else if (menuMode === "public-link-popover") {
-      return renderPublicLinkPopover();
-    }
-
-    return null;
+    // if (menuMode === "embed-menu") {
+    //   return renderEmbedMenu();
+    // } else if (menuMode === "embed-modal") {
+    //   return renderEmbedModalTrigger();
+    // } else if (menuMode === "public-link-popover") {
+    //   return renderPublicLinkPopover();
+    // }
+    //
+    // return null;
+    return renderPublicLinkPopover();
   };
 
   return getEmbedContent(menuMode);
