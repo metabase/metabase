@@ -62,21 +62,16 @@
     (eduction (map #(serdes/extract-all % extract-opts)) cat (model-set opts))))
 
 ;; TODO Properly support "continue" - it should be contagious. Eg. a Dashboard with an illegal Card gets excluded too.
-(defn- chase-for [targets func]
-  (loop [to-chase (set targets)
-         chased   #{}]
-    (let [[m i :as item] (first to-chase)
-          res            (func m i)
-          chased         (conj chased item)
-          to-chase       (set/union (disj to-chase item) (set/difference res chased))]
-      (if (empty? to-chase)
-        chased
-        (recur to-chase chased)))))
-
-(defn- gather-lineage [targets]
-  (set/union
-   (chase-for targets serdes/ascendants)
-   (chase-for targets serdes/descendants)))
+(defn- traverse-with [targets traverse-fn]
+  (loop [to-traverse (set targets)
+         traversed   #{}]
+    (let [[m i :as item] (first to-traverse)
+          res            (traverse-fn m i)
+          traversed      (conj traversed item)
+          to-traverse    (set/union (disj to-traverse item) (set/difference res traversed))]
+      (if (empty? to-traverse)
+        traversed
+        (recur to-traverse traversed)))))
 
 (defn- escape-analysis
   "Given a target seq, explore the contents of any collections looking for \"leaks\". For example, a
@@ -174,10 +169,12 @@ Eg. if Dashboard B includes a Card A that is derived from a
     ;; If that is non-nil, emit the report.
     (escape-report analysis)
     ;; If it's nil, there are no errors, and we can proceed to do the dump.
-    (let [closure     (gather-lineage targets)
+    (let [nodes       (set/union
+                       (traverse-with targets serdes/ascendants)
+                       (traverse-with targets serdes/descendants))
           models      (model-set opts)
           ;; filter the selected models based on user options
-          by-model    (-> (group-by first closure)
+          by-model    (-> (group-by first nodes)
                           (select-keys models)
                           (update-vals #(set (map second %))))
           extract-ids (fn [[model ids]]
