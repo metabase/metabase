@@ -146,6 +146,7 @@ function setup({
   render(
     <AggregationPicker
       query={query}
+      clause={clause}
       legacyQuery={legacyQuery}
       legacyClause={legacyQuery.aggregations()[0]}
       stageIndex={stageIndex}

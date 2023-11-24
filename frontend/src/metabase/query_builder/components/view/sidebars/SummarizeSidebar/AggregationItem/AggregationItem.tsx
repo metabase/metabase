@@ -47,6 +47,7 @@ export function AggregationItem({
       popoverContent={({ closePopover }) => (
         <AggregationPicker
           query={query}
+          clause={aggregation}
           stageIndex={STAGE_INDEX}
           operators={operators}
           hasExpressionInput={false}

@@ -32,6 +32,7 @@ const DEFAULT_MAX_HEIGHT = 610;
 interface AggregationPickerProps {
   className?: string;
   query: Lib.Query;
+  clause?: Lib.AggregationClause;
   stageIndex: number;
   operators: Lib.AggregationOperator[];
   hasExpressionInput?: boolean;

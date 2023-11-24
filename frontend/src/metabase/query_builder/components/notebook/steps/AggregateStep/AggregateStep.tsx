@@ -128,6 +128,7 @@ function AggregationPopover({
   return (
     <AggregationPicker
       query={query}
+      clause={clause}
       legacyQuery={legacyQuery}
       legacyClause={legacyClause}
       stageIndex={stageIndex}
