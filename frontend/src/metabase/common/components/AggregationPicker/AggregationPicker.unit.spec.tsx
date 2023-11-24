@@ -1,7 +1,7 @@
 import _ from "underscore";
 import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
-import { render, screen, waitFor, within } from "__support__/ui";
+import { render, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 
 import type { Metric, StructuredDatasetQuery } from "metabase-types/api";
@@ -142,13 +142,6 @@ function setup({
 
   const onSelect = jest.fn();
 
-  function handleSelect(clause: Lib.Aggregatable) {
-    const nextQuery = Lib.aggregate(query, 0, clause);
-    const aggregations = Lib.aggregations(nextQuery, 0);
-    const recentAggregation = aggregations[aggregations.length - 1];
-    onSelect(Lib.displayInfo(nextQuery, 0, recentAggregation));
-  }
-
   render(
     <AggregationPicker
       query={query}
@@ -157,22 +150,27 @@ function setup({
       stageIndex={0}
       operators={operators}
       hasExpressionInput={hasExpressionInput}
-      onSelect={handleSelect}
+      onSelect={onSelect}
     />,
   );
 
   function getRecentClause() {
-    const [lastCall] = onSelect.mock.calls.slice(-1);
-    return lastCall?.[0];
+    expect(onSelect).toHaveBeenCalled();
+    const lastCall = onSelect.mock.calls.at(-1);
+    return lastCall[0];
   }
 
-  return { metadata, getRecentClause, onSelect };
+  function getRecentClauseInfo() {
+    return Lib.displayInfo(query, 0, getRecentClause());
+  }
+
+  return { metadata, getRecentClause, getRecentClauseInfo, onSelect };
 }
 
 describe("AggregationPicker", () => {
   it("should allow switching between aggregation approaches", () => {
     const metadata = createMetadata({ metrics: [TEST_METRIC] });
-    const { getRecentClause } = setup({
+    const { getRecentClauseInfo } = setup({
       query: createQueryWithCountAggregation({ metadata }),
       metadata,
     });
@@ -181,7 +179,7 @@ describe("AggregationPicker", () => {
     userEvent.click(screen.getByText("Common Metrics"));
     userEvent.click(screen.getByText(TEST_METRIC.name));
 
-    expect(getRecentClause()).toEqual(
+    expect(getRecentClauseInfo()).toEqual(
       expect.objectContaining({
         displayName: metric.displayName(),
       }),
@@ -224,11 +222,11 @@ describe("AggregationPicker", () => {
     });
 
     it("should apply a column-less operator", () => {
-      const { getRecentClause } = setup();
+      const { getRecentClauseInfo } = setup();
 
       userEvent.click(screen.getByText("Count of rows"));
 
-      expect(getRecentClause()).toEqual(
+      expect(getRecentClauseInfo()).toEqual(
         expect.objectContaining({
           name: "count",
           displayName: "Count",
@@ -237,12 +235,12 @@ describe("AggregationPicker", () => {
     });
 
     it("should apply an operator requiring columns", () => {
-      const { getRecentClause } = setup();
+      const { getRecentClauseInfo } = setup();
 
       userEvent.click(screen.getByText("Average of ..."));
       userEvent.click(screen.getByText("Quantity"));
 
-      expect(getRecentClause()).toEqual(
+      expect(getRecentClauseInfo()).toEqual(
         expect.objectContaining({
           name: "avg",
           displayName: "Average of Quantity",
@@ -251,13 +249,13 @@ describe("AggregationPicker", () => {
     });
 
     it("should allow picking a foreign column", () => {
-      const { getRecentClause } = setup();
+      const { getRecentClauseInfo } = setup();
 
       userEvent.click(screen.getByText("Average of ..."));
       userEvent.click(screen.getByText("Product"));
       userEvent.click(screen.getByText("Rating"));
 
-      expect(getRecentClause()).toEqual(
+      expect(getRecentClauseInfo()).toEqual(
         expect.objectContaining({
           name: "avg",
           displayName: "Average of Rating",
@@ -300,7 +298,7 @@ describe("AggregationPicker", () => {
     });
 
     it("should allow to change an operator for existing aggregation", () => {
-      const { getRecentClause } = setup({
+      const { getRecentClauseInfo } = setup({
         query: createQueryWithMaxAggregation(),
       });
 
@@ -308,7 +306,7 @@ describe("AggregationPicker", () => {
       userEvent.click(screen.getByText("Average of ..."));
       userEvent.click(screen.getByText("Quantity"));
 
-      expect(getRecentClause()).toEqual(
+      expect(getRecentClauseInfo()).toEqual(
         expect.objectContaining({
           name: "avg",
           displayName: "Average of Quantity",
@@ -317,13 +315,13 @@ describe("AggregationPicker", () => {
     });
 
     it("should allow to change a column for existing aggregation", () => {
-      const { getRecentClause } = setup({
+      const { getRecentClauseInfo } = setup({
         query: createQueryWithMaxAggregation(),
       });
 
       userEvent.click(screen.getByText("Discount"));
 
-      expect(getRecentClause()).toEqual(
+      expect(getRecentClauseInfo()).toEqual(
         expect.objectContaining({
           name: "max",
           displayName: "Max of Discount",
@@ -375,12 +373,12 @@ describe("AggregationPicker", () => {
 
     it("should allow picking a metric", () => {
       const metadata = createMetadata({ metrics: [TEST_METRIC] });
-      const { getRecentClause } = setupMetrics({ metadata });
+      const { getRecentClauseInfo } = setupMetrics({ metadata });
       const metric = checkNotNull(metadata.metric(TEST_METRIC.id));
 
       userEvent.click(screen.getByText(TEST_METRIC.name));
 
-      expect(getRecentClause()).toEqual(
+      expect(getRecentClauseInfo()).toEqual(
         expect.objectContaining({
           displayName: metric.displayName(),
         }),
@@ -390,20 +388,20 @@ describe("AggregationPicker", () => {
 
   describe("custom expressions", () => {
     it("should allow to enter a custom expression", async () => {
-      const { onSelect } = setup();
+      const { getRecentClause, getRecentClauseInfo } = setup();
+
+      const expression = "1 + 1";
+      const expressionName = "My expression";
 
       userEvent.click(screen.getByText("Custom Expression"));
-      userEvent.type(screen.getByLabelText("Expression"), "1 + 1");
-      userEvent.type(screen.getByLabelText("Name"), "My expression");
+      userEvent.type(screen.getByLabelText("Expression"), expression);
+      userEvent.type(screen.getByLabelText("Name"), expressionName);
       userEvent.click(screen.getByRole("button", { name: "Done" }));
 
-      await waitFor(() =>
-        expect(onSelect).toHaveBeenCalledWith([
-          "aggregation-options",
-          ["+", 1, 1],
-          { "display-name": "My expression", name: "My expression" },
-        ]),
+      expect(getRecentClauseInfo()).toEqual(
+        expect.objectContaining({ displayName: expression }),
       );
+      expect(Lib.expressionName(getRecentClause())).toBe(expressionName);
     });
 
     it("should open the editor when an expression is used", async () => {
