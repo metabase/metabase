@@ -149,15 +149,15 @@
            [" 2022-01-01T01:00:00.00Z "       (t/offset-date-time "2022-01-01T01:00+00:00") offset-dt-type]
            [" 2022-01-01t01:00:00.00Z "       (t/offset-date-time "2022-01-01T01:00+00:00") offset-dt-type]
            [" 2022-01-01 01:00:00.00Z "       (t/offset-date-time "2022-01-01T01:00+00:00") offset-dt-type]]]
-    (mt/with-temporary-setting-values [custom-formatting (when seps {:type/Number {:number_separators seps}})]
-      (let [type   (upload/value->type string-value)
-            parser (#'upload-parsing/upload-type->parser type)]
-        (testing (format "\"%s\" is a %s" string-value type)
-          (is (= expected-type
-                 type)))
-        (testing (format "\"%s\" is parsed into %s" string-value expected-value)
-          (is (= expected-value
-                 (parser string-value))))))))
+    (let [settings {:number-separators (or seps ".,")}
+          type     (#'upload/value->type string-value settings)
+          parser   (upload-parsing/upload-type->parser type settings)]
+      (testing (format "\"%s\" is a %s" string-value type)
+        (is (= expected-type
+               type)))
+      (testing (format "\"%s\" is parsed into %s" string-value expected-value)
+        (is (= expected-value
+               (parser string-value)))))))
 
 (deftest ^:parallel type-coalescing-test
   (doseq [[type-a          type-b        expected]
