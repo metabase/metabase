@@ -67,6 +67,7 @@ function isOperatorListItem(item: ListItem): item is OperatorListItem {
 export function AggregationPicker({
   className,
   query,
+  clause,
   stageIndex,
   operators,
   hasExpressionInput = true,
@@ -222,7 +223,7 @@ export function AggregationPicker({
         legacyQuery={legacyQuery}
         query={query}
         stageIndex={stageIndex}
-        name={AGGREGATION.getName(legacyClause)}
+        name={clause ? Lib.displayName(query, clause) : clause}
         expression={AGGREGATION.getContent(legacyClause)}
         withName
         startRule="aggregation"
