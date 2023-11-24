@@ -414,8 +414,9 @@ class ExpressionEditorTextfield extends React.Component<
     const cursor = selection.getCursor();
 
     const {
-      legacyQuery,
+      query,
       reportTimezone,
+      stageIndex,
       metadata,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
     } = this.props;
@@ -425,8 +426,8 @@ class ExpressionEditorTextfield extends React.Component<
       startRule,
       source,
       targetOffset: cursor.column,
-      query: legacyQuery.question()._getMLv2Query(),
-      stageIndex: legacyQuery.getQueryStageIndex(),
+      query,
+      stageIndex,
       metadata,
       getColumnIcon,
     });
