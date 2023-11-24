@@ -193,7 +193,8 @@
                              (filter default-have-slect-privilege?)
                              (descendants driver/hierarchy :sql-jdbc))
         (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :users))]
-          (qp.store/with-metadata-provider (mt/id)
+          (qp.store/with-store
+            (qp.store/fetch-and-store-database! (mt/id))
             (testing (sql-jdbc.describe-database/simple-select-probe-query driver/*driver* schema table-name)
               (doseq [auto-commit [true false]]
                 (testing (pr-str {:auto-commit auto-commit :schema schema :name table-name})
