@@ -2,12 +2,17 @@ import type { RefObject } from "react";
 import * as React from "react";
 import { t } from "ttag";
 import _ from "underscore";
+import { connect } from "react-redux";
 import type { ICommand, IMarker } from "react-ace";
 import AceEditor from "react-ace";
 import * as ace from "ace-builds/src-noconflict/ace";
 import type { Ace } from "ace-builds";
+import type * as Lib from "metabase-lib";
 import type { Expression } from "metabase-types/api";
 import ExplicitSize from "metabase/components/ExplicitSize";
+import type { State } from "metabase-types/store";
+import { getMetadata } from "metabase/selectors/metadata";
+import { getColumnIcon } from "metabase/common/utils/columns";
 import { format } from "metabase-lib/expressions/format";
 import { processSource } from "metabase-lib/expressions/process";
 import { diagnose } from "metabase-lib/expressions/diagnostics";
@@ -18,6 +23,7 @@ import { suggest } from "metabase-lib/expressions/suggest";
 import type { HelpText } from "metabase-lib/expressions/types";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
+import type Metadata from "metabase-lib/metadata/Metadata";
 import ExpressionEditorHelpText from "../ExpressionEditorHelpText";
 import ExpressionEditorSuggestions from "../ExpressionEditorSuggestions";
 import ExpressionMode from "../ExpressionMode";
@@ -47,6 +53,9 @@ interface ExpressionEditorTextfieldProps {
   expression: Expression | undefined;
   name: string;
   legacyQuery: StructuredQuery;
+  query: Lib.Query;
+  stageIndex: number;
+  metadata: Metadata;
   startRule?: string;
   width?: number;
   reportTimezone?: string;
@@ -91,6 +100,10 @@ function transformPropsToState(
     hasChanges: false,
   };
 }
+
+const mapStateToProps = (state: State) => ({
+  metadata: getMetadata(state),
+});
 
 class ExpressionEditorTextfield extends React.Component<
   ExpressionEditorTextfieldProps,
@@ -403,15 +416,19 @@ class ExpressionEditorTextfield extends React.Component<
     const {
       legacyQuery,
       reportTimezone,
+      metadata,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
     } = this.props;
     const { source } = this.state;
     const { suggestions, helpText } = suggest({
-      legacyQuery,
       reportTimezone,
       startRule,
       source,
       targetOffset: cursor.column,
+      query: legacyQuery.question()._getMLv2Query(),
+      stageIndex: legacyQuery.getQueryStageIndex(),
+      metadata,
+      getColumnIcon,
     });
 
     this.setState({ helpText: helpText || null });
@@ -531,4 +548,7 @@ class ExpressionEditorTextfield extends React.Component<
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ExplicitSize()(ExpressionEditorTextfield);
+export default _.compose(
+  ExplicitSize(),
+  connect(mapStateToProps),
+)(ExpressionEditorTextfield);

@@ -120,7 +120,7 @@ export function formatDimensionName(dimension, options) {
 }
 
 /**
- * TODO -- this doesn't really return the dimension *name*, does it? It returns the 'rendered' dimension decscription
+ * TODO -- this doesn't really return the dimension *name*, does it? It returns the 'rendered' dimension description
  * with the FK symbol (→) replaced with a different character.
  */
 export function getDimensionName(
@@ -128,6 +128,13 @@ export function getDimensionName(
   separator = EDITOR_FK_SYMBOLS.default,
 ) {
   return dimension.render().replace(` ${FK_SYMBOL} `, separator);
+}
+
+export function getDisplayNameWithSeparator(
+  displayName,
+  separator = EDITOR_FK_SYMBOLS.default,
+) {
+  return displayName.replace(` ${FK_SYMBOL} `, separator);
 }
 
 // STRING LITERALS
