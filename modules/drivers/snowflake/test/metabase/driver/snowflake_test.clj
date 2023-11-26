@@ -342,7 +342,6 @@
                                 :target [:dimension [:field (mt/id :users :id) nil]]
                                 :value  ["1" "2" "3"]}]
                   :info {:executed-by  1000
-                         :database-id  1
                          :card-id      1234
                          :dashboard-id 5678
                          :context      :ad-hoc
