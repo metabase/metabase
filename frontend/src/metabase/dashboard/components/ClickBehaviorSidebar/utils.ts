@@ -11,21 +11,21 @@ import type { IconName } from "metabase/core/components/Icon";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 type ClickBehaviorOption = {
-  value: ClickBehaviorType | "menu";
+  value: ClickBehaviorType;
   icon: IconName;
 };
 
 export const clickBehaviorOptions: ClickBehaviorOption[] = [
-  { value: "menu", icon: "popover" },
+  { value: "actionMenu", icon: "popover" },
   { value: "link", icon: "link" },
   { value: "crossfilter", icon: "filter" },
 ];
 
 export function getClickBehaviorOptionName(
-  value: ClickBehaviorType | "menu",
+  value: ClickBehaviorType,
   dashcard: DashboardCard,
 ) {
-  if (value === "menu") {
+  if (value === "actionMenu") {
     return hasActionsMenu(dashcard)
       ? t`Open the Metabase drill-through menu`
       : t`Do nothing`;

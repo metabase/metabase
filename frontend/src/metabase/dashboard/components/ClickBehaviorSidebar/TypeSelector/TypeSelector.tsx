@@ -86,15 +86,11 @@ export function TypeSelector({
         <div key={value} className="mb1">
           <BehaviorOption
             option={getClickBehaviorOptionName(value, dashcard)}
-            selected={
-              value === "menu"
-                ? clickBehavior.type === "actionMenu"
-                : clickBehavior.type === value
-            }
+            selected={clickBehavior.type === value}
             disabled={value === "crossfilter" && parameters.length === 0}
             onClick={() => handleSelect(value)}
             icon={icon}
-            hasNextStep={value !== "menu"}
+            hasNextStep={value !== "actionMenu"}
           />
         </div>
       ))}
