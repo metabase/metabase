@@ -133,7 +133,8 @@ describe("scenarios > admin > people", () => {
       // first modal
       cy.findByLabelText("First name").type(first_name);
       cy.findByLabelText("Last name").type(last_name);
-      cy.findByLabelText("Email").type(email);
+      //
+      cy.findByLabelText(/Email/).type(email);
       clickButton("Create");
 
       // second modal
@@ -154,7 +155,7 @@ describe("scenarios > admin > people", () => {
       cy.visit("/admin/people");
       clickButton("Invite someone");
 
-      cy.findByLabelText("Email").type(email);
+      cy.findByLabelText(/Email/).type(email);
       clickButton("Create");
 
       // second modal
@@ -176,7 +177,7 @@ describe("scenarios > admin > people", () => {
 
       cy.findByLabelText("First name").type(first_name + "New");
       cy.findByLabelText("Last name").type(last_name + "New");
-      cy.findByLabelText("Email").type(email.toUpperCase());
+      cy.findByLabelText(/Email/).type(email.toUpperCase());
       clickButton("Create");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Email address already in use.");
@@ -345,7 +346,7 @@ describe("scenarios > admin > people", () => {
         // first modal
         cy.findByLabelText("First name").type(first_name);
         cy.findByLabelText("Last name").type(last_name);
-        cy.findByLabelText("Email").type(email);
+        cy.findByLabelText(/Email/).type(email);
         clickButton("Create");
 
         // second modal
@@ -516,7 +517,7 @@ describeEE("scenarios > admin > people", () => {
     // first modal
     cy.findByLabelText("First name").type(first_name);
     cy.findByLabelText("Last name").type(last_name);
-    cy.findByLabelText("Email").type(email);
+    cy.findByLabelText(/Email/).type(email);
     clickButton("Create");
 
     // second modal

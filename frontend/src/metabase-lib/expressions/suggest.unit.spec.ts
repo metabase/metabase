@@ -96,7 +96,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           suggest({
             source: "User",
-            query: ordersTable.query(),
+            legacyQuery: ordersTable.query(),
             startRule: "expression",
           }),
         ).toEqual([
@@ -121,7 +121,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           suggest({
             source: "Foo",
-            query: ordersTable.query().join({
+            legacyQuery: ordersTable.query().join({
               alias: "Foo",
               "source-table": REVIEWS_ID,
             }),
@@ -141,7 +141,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           suggest({
             source: "T",
-            query: ordersTable
+            legacyQuery: ordersTable
               .query()
               .aggregate(["count"])
               .breakout(ordersTotalField)
@@ -162,7 +162,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           helpText({
             source: "substring(",
-            query: ordersTable.query(),
+            legacyQuery: ordersTable.query(),
             startRule: "expression",
           }),
         ).toMatchObject({
@@ -176,7 +176,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           helpText({
             source: "lower", // doesn't need to be "lower(" since it's a unique match
-            query: ordersTable.query(),
+            legacyQuery: ordersTable.query(),
             startRule: "expression",
           }),
         ).toMatchObject({
@@ -190,7 +190,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           helpText({
             source: "trim(Total ",
-            query: ordersTable.query(),
+            legacyQuery: ordersTable.query(),
             startRule: "expression",
           })?.name,
         ).toEqual("trim");
@@ -200,7 +200,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           helpText({
             source: "coalesce(Total ",
-            query: ordersTable.query(),
+            legacyQuery: ordersTable.query(),
             startRule: "expression",
           })?.name,
         ).toEqual("coalesce");
@@ -256,7 +256,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           suggest({
             source: "to",
-            query: ordersTable.query(),
+            legacyQuery: ordersTable.query(),
             startRule: "aggregation",
           }),
         ).toEqual([
@@ -269,7 +269,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           suggest({
             source: "cou",
-            query: ordersTable.query(),
+            legacyQuery: ordersTable.query(),
             startRule: "aggregation",
           }),
         ).toEqual([
@@ -282,7 +282,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           helpText({
             source: "Sum(",
-            query: ordersTable.query(),
+            legacyQuery: ordersTable.query(),
             startRule: "aggregation",
           }),
         ).toMatchObject({ name: "sum", example: "Sum([Subtotal])" });
@@ -294,7 +294,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           suggest({
             source: "c",
-            query: ordersTable.query(),
+            legacyQuery: ordersTable.query(),
             startRule: "boolean",
           }),
         ).toEqual([
@@ -315,7 +315,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           suggest({
             source: "ca",
-            query: ordersTable.query(),
+            legacyQuery: ordersTable.query(),
             startRule: "boolean",
           }),
         ).toEqual([
@@ -328,7 +328,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           suggest({
             source: "[",
-            query: ordersTable.query(),
+            legacyQuery: ordersTable.query(),
             startRule: "boolean",
           }),
         ).toEqual([...FIELDS_ORDERS, ...SEGMENTS_ORDERS].sort(suggestionSort));
@@ -338,7 +338,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           helpText({
             source: "Contains(Total ",
-            query: ordersTable.query(),
+            legacyQuery: ordersTable.query(),
             startRule: "boolean",
           }),
         ).toMatchObject({

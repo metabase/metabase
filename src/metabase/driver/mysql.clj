@@ -473,7 +473,7 @@
     :TINYTEXT   :type/Text
     :VARBINARY  :type/*
     :VARCHAR    :type/Text
-    :YEAR       :type/Date
+    :YEAR       :type/Integer
     :JSON       :type/JSON}
    ;; strip off " UNSIGNED" from end if present
    (keyword (str/replace (name database-type) #"\sUNSIGNED$" ""))))
@@ -604,12 +604,15 @@
         (catch Throwable _
           (.getString rs i))))))
 
+;; Mysql 8.1+ returns results of YEAR(..) function having a YEAR type. In Mysql 8.0.33, return value of that function
+;; has an integral type. Let's make the returned values consistent over mysql versions.
+;; Context: https://dev.mysql.com/doc/connector-j/en/connector-j-YEAR.html
 (defmethod sql-jdbc.execute/read-column-thunk [:mysql Types/DATE]
   [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (if (= "YEAR" (.getColumnTypeName rsmeta i))
     (fn read-time-thunk []
       (when-let [x (.getObject rs i)]
-        (.toLocalDate ^java.sql.Date x)))
+        (.getYear (.toLocalDate ^java.sql.Date x))))
     (let [parent-thunk ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/DATE]) driver rs rsmeta i)]
       parent-thunk)))
 
@@ -682,6 +685,10 @@
   [_driver val]
   (str val))
 
+(defmethod value->string nil
+  [_driver _val]
+  nil)
+
 (defmethod value->string Boolean
   [_driver val]
   (if val
@@ -712,10 +719,12 @@
   ;; you must specify two backslashes for the value to be interpreted as a single backslash. The escape sequences
   ;; '\t' and '\n' specify tab and newline characters, respectively.
   [v]
-  (str/replace v #"\\|\n|\r|\t" {"\\" "\\\\"
-                                 "\n" "\\n"
-                                 "\r" "\\r"
-                                 "\t" "\\t"}))
+  (if (nil? v)
+    "\\N"
+    (str/replace v #"\\|\n|\r|\t" {"\\" "\\\\"
+                                   "\n" "\\n"
+                                   "\r" "\\r"
+                                   "\t" "\\t"})))
 
 (defn- row->tsv
   [driver column-count row]
