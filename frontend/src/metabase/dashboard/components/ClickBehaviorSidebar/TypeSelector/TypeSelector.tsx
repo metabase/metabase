@@ -101,7 +101,7 @@ export function TypeSelector({
             disabled={value === "crossfilter" && parameters.length === 0}
             onClick={() => handleSelect(value)}
             icon={icon}
-            hasNextStep={value !== "menu"}
+            hasNextStep={value !== "actionMenu"}
           />
         </div>
       ))}
