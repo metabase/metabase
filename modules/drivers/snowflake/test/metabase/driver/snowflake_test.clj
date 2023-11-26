@@ -32,15 +32,15 @@
   (str/split-lines (driver/prettify-native-form :snowflake sql)))
 
 (defn- query->native [query]
-  (let [native-query (atom nil)
-        check-sql-fn (fn [_ _ sql & _]
-                       (reset! native-query sql)
-                       (throw (Exception. "done")))]
+  (let [check-sql-fn (fn [_ _ sql & _]
+                       (throw (ex-info "done" {::native-query sql})))]
     (with-redefs [sql-jdbc.execute/prepared-statement check-sql-fn
                   sql-jdbc.execute/execute-statement! check-sql-fn]
-      (u/ignore-exceptions
-        (qp/process-query query))
-      @native-query)))
+      (try
+        (qp/process-query query)
+        (is false "no statement created")
+        (catch Exception e
+          (-> e u/all-ex-data ::native-query))))))
 
 (use-fixtures :each (fn [thunk]
                       ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
@@ -329,7 +329,7 @@
                                  "  OR (\"PUBLIC\".\"users\".\"id\" = 2)"
                                  "  OR (\"PUBLIC\".\"users\".\"id\" = 3)"
                                  "LIMIT"
-                                 "  2000 -- {\"pulseId\":null,\"serverId\":\"{{site-uuid}}\",\"client\":\"Metabase\",\"queryHash\":\"cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2\",\"actionId\":null,\"queryType\":\"query\",\"cardId\":1234,\"dashboardId\":5678,\"context\":\"ad-hoc\",\"userId\":1000,\"databaseId\":1}"]]
+                                 "  2000 -- {\"pulseId\":null,\"serverId\":\"{{site-uuid}}\",\"client\":\"Metabase\",\"queryHash\":\"cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2\",\"queryType\":\"query\",\"cardId\":1234,\"dashboardId\":5678,\"context\":\"ad-hoc\",\"userId\":1000,\"databaseId\":1}"]]
                        (-> line
                            (str/replace #"\Q{{site-uuid}}\E" (public-settings/site-uuid))
                            (str/replace #"\Q{{database_prefix}}\E" (test.data.snowflake/*database-prefix-fn*))))]
