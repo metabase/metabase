@@ -6,15 +6,14 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.config :as config]
-   [metabase.models.setting :as setting]
-   [metabase.models.setting.multi-setting
-    :refer [define-multi-setting-impl]]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.task-history :as task-history]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.task :as task]
-   [metabase.task.truncate-audit-tables.interface
-    :as truncate-audit-tables.i]
+   [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -24,23 +23,49 @@
 (when config/ee-available?
   (classloader/require 'metabase-enterprise.task.truncate-audit-tables))
 
-(define-multi-setting-impl truncate-audit-tables.i/audit-max-retention-days :oss
-  :getter (fn []
-            (if-not (premium-features/is-hosted?)
-              ##Inf
-              (let [env-var-value      (setting/get-value-of-type :integer :audit-max-retention-days)
-                    min-retention-days truncate-audit-tables.i/min-retention-days]
-                (cond
-                  ((some-fn nil? zero?) env-var-value) ##Inf
-                  (< env-var-value min-retention-days) (do
-                                                         (truncate-audit-tables.i/log-minimum-value-warning env-var-value)
-                                                         min-retention-days)
-                  :else                                env-var-value)))))
+(def min-retention-days
+  "Minimum allowed value for `audit-max-retention-days`."
+  30)
+
+(def default-retention-days
+  "Default value for `audit-max-retention-days`."
+  720)
+
+(defn log-minimum-value-warning
+  "Logs a warning that the value for `audit-max-retention-days` is below the allowed minimum and will be overriden."
+  [env-var-value]
+  (log/warn (trs "MB_AUDIT_MAX_RETENTION_DAYS is set to {0}; using the minimum value of {1} instead."
+                 env-var-value
+                 min-retention-days)))
+
+(defsetting audit-max-retention-days
+  (deferred-tru "Number of days to retain data in audit-related tables. Minimum value is 30; set to 0 to retain data indefinitely.")
+  :visibility :internal
+  :setter     :none
+  :audit      :never
+  :getter     (fn []
+                (let [env-var-value (setting/get-value-of-type :integer :audit-max-retention-days)]
+                  (def env-var-value env-var-value)
+                  (cond
+                    (nil? env-var-value)
+                    default-retention-days
+
+                    ;; Treat 0 as an alias for infinity
+                    (zero? env-var-value)
+                    ##Inf
+
+                    (< env-var-value min-retention-days)
+                    (do
+                      (log-minimum-value-warning env-var-value)
+                      min-retention-days)
+
+                    :else
+                    env-var-value))))
 
 (defn- truncate-table!
   "Given a model, deletes all rows older than the configured threshold"
   [model time-column]
-  (when-not (infinite? (truncate-audit-tables.i/audit-max-retention-days))
+  (when-not (infinite? (audit-max-retention-days))
     (let [table-name (name (t2/table-name model))]
       (task-history/with-task-history {:task "task-history-cleanup"}
         (try
@@ -48,7 +73,7 @@
           (let [rows-deleted (t2/delete!
                               model
                               time-column
-                              [:<= (t/minus (t/offset-date-time) (t/days (truncate-audit-tables.i/audit-max-retention-days)))])]
+                              [:<= (t/minus (t/offset-date-time) (t/days (audit-max-retention-days)))])]
             (if (> rows-deleted 0)
               (log/infof "%s cleanup successful, %d rows were deleted" table-name rows-deleted)
               (log/infof "%s cleanup successful, no rows were deleted" table-name)))

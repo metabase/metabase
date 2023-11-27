@@ -2,37 +2,14 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.models.setting :as setting]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
    [metabase.query-processor.util :as qp.util]
    [metabase.task.truncate-audit-tables :as task.truncate-audit-tables]
-   [metabase.task.truncate-audit-tables.interface
-    :as truncate-audit-tables.i]
    [metabase.test :as mt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
-
-(deftest audit-max-retention-days-test
-  ;; Tests for the OSS & Cloud implementations are in `metabase.task.truncate-audit-tables-test`
-  (premium-features-test/with-premium-features #{:audit-app}
-    (is (= ##Inf (truncate-audit-tables.i/audit-max-retention-days)))
-
-    (mt/with-temp-env-var-value [mb-audit-max-retention-days 0]
-      (is (= ##Inf (truncate-audit-tables.i/audit-max-retention-days))))
-
-    (mt/with-temp-env-var-value [mb-audit-max-retention-days 100]
-      (is (= 100 (truncate-audit-tables.i/audit-max-retention-days))))
-
-    ;; Acceptable values have a lower bound of 30
-    (mt/with-temp-env-var-value [mb-audit-max-retention-days 1]
-      (is (= 30 (truncate-audit-tables.i/audit-max-retention-days))))
-
-    (is (thrown-with-msg?
-         java.lang.UnsupportedOperationException
-         #"You cannot set audit-max-retention-days"
-         (setting/set! :audit-max-retention-days 30)))))
 
 (defn- query-execution-defaults
   []

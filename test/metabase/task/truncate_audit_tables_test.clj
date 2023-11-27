@@ -8,8 +8,6 @@
     :as premium-features-test]
    [metabase.query-processor.util :as qp.util]
    [metabase.task.truncate-audit-tables :as task.truncate-audit-tables]
-   [metabase.task.truncate-audit-tables.interface
-    :as truncate-audit-tables.i]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]
@@ -18,37 +16,23 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest audit-max-retention-days-test
-  ;; Tests for the EE implementation are in `metabase-enterprise.task.truncate-audit-tables-test`
-  (premium-features-test/with-premium-features #{}
-    (testing "Self-hosted OSS instances default to infinite retention and cannot be changed"
-      (is (= ##Inf (truncate-audit-tables.i/audit-max-retention-days)))
+  (mt/with-temp-env-var-value [mb-audit-max-retention-days nil]
+    (is (= 720 (task.truncate-audit-tables/audit-max-retention-days))))
 
-      (mt/with-temp-env-var-value [mb-audit-max-retention-days 30]
-        (is (= ##Inf (truncate-audit-tables.i/audit-max-retention-days))))
+  (mt/with-temp-env-var-value [mb-audit-max-retention-days 0]
+    (is (= ##Inf (task.truncate-audit-tables/audit-max-retention-days))))
 
-      (is (thrown-with-msg?
-           java.lang.UnsupportedOperationException
-           #"You cannot set audit-max-retention-days"
-           (setting/set! :audit-max-retention-days 30))))
+  (mt/with-temp-env-var-value [mb-audit-max-retention-days 100]
+    (is (= 100 (task.truncate-audit-tables/audit-max-retention-days))))
 
-    (testing "Cloud instances can have their value set by env var only, and default to 365"
-      (with-redefs [premium-features/is-hosted? (constantly true)]
-        (is (= ##Inf (truncate-audit-tables.i/audit-max-retention-days)))
+  ;; Acceptable values have a lower bound of 30
+  (mt/with-temp-env-var-value [mb-audit-max-retention-days 1]
+    (is (= 30 (task.truncate-audit-tables/audit-max-retention-days))))
 
-        (mt/with-temp-env-var-value [mb-audit-max-retention-days 0]
-          (is (= ##Inf (truncate-audit-tables.i/audit-max-retention-days))))
-
-        (mt/with-temp-env-var-value [mb-audit-max-retention-days 100]
-          (is (= 100 (truncate-audit-tables.i/audit-max-retention-days))))
-
-        ;; Acceptable values have a lower bound of 30
-        (mt/with-temp-env-var-value [mb-audit-max-retention-days 1]
-          (is (= 30 (truncate-audit-tables.i/audit-max-retention-days))))
-
-        (is (thrown-with-msg?
-             java.lang.UnsupportedOperationException
-             #"You cannot set audit-max-retention-days"
-             (setting/set! :audit-max-retention-days 30)))))))
+  (is (thrown-with-msg?
+       java.lang.UnsupportedOperationException
+       #"You cannot set audit-max-retention-days"
+       (setting/set! :audit-max-retention-days 30))))
 
 (defn- query-execution-defaults
   []
