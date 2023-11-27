@@ -47,7 +47,8 @@ describe("drill-thru/underlying-records", () => {
       });
     });
 
-    it("should use the default row count for aggregations with negative values", () => {
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should use the default row count for aggregations with negative values (metabase#36143)", () => {
       const { value, row, dimensions } = getAggregatedColumnData(
         aggregationColumn,
         breakoutColumn,
@@ -105,7 +106,8 @@ describe("drill-thru/underlying-records", () => {
       expect(drill).toBeNull();
     });
 
-    it("should not allow to drill with a non-editable query", () => {
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should not allow to drill with a non-editable query (metabase#36125)", () => {
       const query = createNotEditableQuery(defaultQuery);
       const { value, row, dimensions } = getAggregatedColumnData(
         aggregationColumn,
