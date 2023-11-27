@@ -37,7 +37,7 @@ describe("drill-thru/pk", () => {
   const defaultColumn = createOrdersIdDatasetColumn();
 
   describe("availableDrillThrus", () => {
-    it("should allow to drill when clicked on a value and there are multiple PKs", () => {
+    it("should allow to drill when clicked on a PK value and there are multiple PKs", () => {
       const value = 10;
       const row = [{ col: defaultColumn, value }];
       const { drillInfo } = findDrillThru(
@@ -54,7 +54,7 @@ describe("drill-thru/pk", () => {
       });
     });
 
-    it("should allow to drill when the column is not a PK but there are other PK columns", () => {
+    it("should allow to drill when the column is not a PK but there are multiple other PK columns", () => {
       const value = 10;
       const column = createOrdersTotalDatasetColumn();
       const row = [{ col: column, value }];
