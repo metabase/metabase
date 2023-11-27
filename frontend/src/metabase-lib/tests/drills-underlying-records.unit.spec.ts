@@ -39,6 +39,30 @@ describe("drill-thru/underlying-records", () => {
         tableName: "Orders",
       });
     });
+
+    it("should use the default row count for aggregations with negative values", () => {
+      const { value, row, dimensions } = getColumnData(
+        aggregationColumn,
+        breakoutColumn,
+        -10,
+      );
+
+      const { drillInfo } = findDrillThru(
+        drillType,
+        defaultQuery,
+        stageIndex,
+        aggregationColumn,
+        value,
+        row,
+        dimensions,
+      );
+
+      expect(drillInfo).toMatchObject({
+        type: drillType,
+        rowCount: 2,
+        tableName: "Orders",
+      });
+    });
   });
 
   describe("drillThru", () => {
