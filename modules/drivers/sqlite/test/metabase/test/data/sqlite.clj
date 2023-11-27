@@ -11,12 +11,12 @@
 
 (defmethod tx/supports-timestamptz-type? :sqlite [_driver] false)
 
-(defn- file-name [dbdef]
+(defn- db-file-name [dbdef]
   (str (tx/escaped-database-name dbdef) ".sqlite"))
 
 (defmethod tx/dbdef->connection-details :sqlite
   [_driver _context dbdef]
-  {:db (file-name dbdef)})
+  {:db (db-file-name dbdef)})
 
 (doseq [[base-type sql-type] {:type/BigInteger "BIGINT"
                               :type/Boolean    "BOOLEAN"
@@ -53,7 +53,6 @@
 
 (defmethod tx/destroy-db! :sqlite
   [_driver dbdef]
-  (let [fname (file-name dbdef)
-        file  (io/file fname)]
+  (let [file (io/file (db-file-name dbdef))]
     (when (.exists file)
       (.delete file))))
