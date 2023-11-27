@@ -57,7 +57,7 @@ describe("drill-thru/pk", () => {
     });
 
     // eslint-disable-next-line jest/no-disabled-tests
-    it.skip("should allow to drill when the column is not a PK but there are multiple other PK columns (metabase#35618)", () => {
+    it.skip("should allow to drill when the column is not a PK or FK and there are multiple other PK columns (metabase#35618)", () => {
       const value = 10;
       const column = createOrdersTotalDatasetColumn();
       const row = [{ col: column, value }];
