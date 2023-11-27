@@ -1,5 +1,4 @@
 import type { DatasetColumn, RowValue } from "metabase-types/api";
-import { createOrdersCreatedAtDatasetColumn } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
 import {
   columnFinder,
@@ -7,28 +6,27 @@ import {
   findAggregationOperator,
   findDrillThru,
 } from "metabase-lib/test-helpers";
-import { createCountColumn } from "./drills-common";
+import { createAggregationColumn, createBreakoutColumn } from "./drills-common";
 
 describe("drill-thru/underlying-records", () => {
   const drillType = "drill-thru/underlying-records";
   const defaultQuery = createQueryWithAggregation();
   const stageIndex = 0;
-  const metricColumn = createCountColumn();
-  const dimensionColumn = createOrdersCreatedAtDatasetColumn();
+  const aggregationColumn = createAggregationColumn();
+  const breakoutColumn = createBreakoutColumn();
 
   describe("availableDrillThrus", () => {
+    const { value, row, dimensions } = getColumnData(
+      aggregationColumn,
+      breakoutColumn,
+      10,
+    );
     it("should allow to drill an aggregated query", () => {
-      const { value, row, dimensions } = getColumnData(
-        metricColumn,
-        dimensionColumn,
-        10,
-      );
-
       const { drillInfo } = findDrillThru(
         drillType,
         defaultQuery,
         stageIndex,
-        metricColumn,
+        aggregationColumn,
         value,
         row,
         dimensions,
@@ -45,15 +43,15 @@ describe("drill-thru/underlying-records", () => {
   describe("drillThru", () => {
     it("should drill an aggregated query", () => {
       const { value, row, dimensions } = getColumnData(
-        metricColumn,
-        dimensionColumn,
+        aggregationColumn,
+        breakoutColumn,
         10,
       );
       const { drill } = findDrillThru(
         drillType,
         defaultQuery,
         stageIndex,
-        metricColumn,
+        aggregationColumn,
         value,
         row,
         dimensions,
@@ -81,20 +79,20 @@ function createQueryWithAggregation() {
     columnFinder(
       queryWithAggregation,
       Lib.breakoutableColumns(queryWithAggregation, stageIndex),
-    )("ORDERS", "TOTAL"),
+    )("ORDERS", "CREATED_AT"),
   );
 }
 
 function getColumnData(
-  metricColumn: DatasetColumn,
-  dimensionColumn: DatasetColumn,
+  aggregationColumn: DatasetColumn,
+  breakoutColumn: DatasetColumn,
   value: RowValue,
 ) {
   const row = [
-    { key: "Created At", col: dimensionColumn, value: "2020-01-01" },
-    { key: "Count", col: metricColumn, value },
+    { key: "Created At", col: breakoutColumn, value: "2020-01-01" },
+    { key: "Count", col: aggregationColumn, value },
   ];
-  const dimensions = [{ column: metricColumn, value }];
+  const dimensions = [{ column: breakoutColumn, value }];
 
   return { value, row, dimensions };
 }
