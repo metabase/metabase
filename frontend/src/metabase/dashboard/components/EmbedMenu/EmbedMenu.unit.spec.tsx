@@ -1,7 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import { EmbedMenu } from "metabase/dashboard/components/EmbedMenu/EmbedMenu";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockDashboard,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
@@ -33,15 +37,19 @@ jest.mock(
   },
 );
 
+const TEST_DASHBOARD = createMockDashboard();
+
 const setup = ({
   isAdmin,
-  hasPublicLink,
+  hasPublicLink = false,
   publicLinksEnabled = false,
 }: SetupProps) => {
   const onModalOpen = jest.fn();
   renderWithProviders(
     <EmbedMenu
-      resource_uuid={hasPublicLink ? "mock-uuid" : null}
+      resource={TEST_DASHBOARD}
+      resourceType="dashboard"
+      hasPublicLink={hasPublicLink}
       onModalOpen={onModalOpen}
     />,
     {
@@ -101,7 +109,14 @@ describe("EmbedMenu", () => {
         expect(screen.queryByLabelText("share icon")).not.toBeInTheDocument();
       });
 
-      // TODO: Test for rendering button for non-admins when a public link is created
+      it("should render the button if there is a public link", () => {
+        setup({
+          hasPublicLink: true,
+          isAdmin: false,
+          publicLinksEnabled: true,
+        });
+        expect(screen.getByLabelText("share icon")).toBeInTheDocument();
+      })
     });
   });
 
@@ -152,6 +167,29 @@ describe("EmbedMenu", () => {
         expect(await screen.findByText("Embed")).toBeInTheDocument();
       });
     });
+
+    describe("when user is non-admin", () => {
+      it("should render not render the button if a link hasn't been created", async () => {
+        setup({
+          hasPublicLink: false,
+          publicLinksEnabled: true,
+          isAdmin: false,
+        });
+        expect(screen.queryByLabelText("share icon")).not.toBeInTheDocument();
+      });
+
+      it("should render the public link popover immediately on button click if a public link has been created", async () => {
+        setup({
+          hasPublicLink: true,
+          publicLinksEnabled: true,
+          isAdmin: false,
+        });
+
+        userEvent.click(screen.getByLabelText("share icon"));
+
+        expect(await screen.findByText("Public link")).toBeInTheDocument();
+      });
+    })
 
     // TODO: Write tests for showing the popover when the user is non-admin and a public link has/hasn't been created
   });

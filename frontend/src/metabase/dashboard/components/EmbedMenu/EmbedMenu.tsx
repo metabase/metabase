@@ -111,14 +111,14 @@ export const EmbedMenu = ({
     return resourceType === "dashboard" ? (
       <DashboardPublicLinkPopover
         dashboard={resource}
-        target={targetButton()}
+        target={<div>{targetButton()}</div>}
         isOpen={isOpen}
         onClose={onClose}
       />
     ) : (
       <QuestionPublicLinkPopover
         question={resource}
-        target={targetButton()}
+        target={<div>{targetButton()}</div>}
         isOpen={isOpen}
         onClose={onClose}
       />

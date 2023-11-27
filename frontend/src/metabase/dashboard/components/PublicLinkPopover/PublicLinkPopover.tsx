@@ -1,15 +1,33 @@
+import {
+  PublicLinkCopyButton,
+  PublicLinkTextContainer,
+} from "metabase/dashboard/components/PublicLinkPopover/PublicLinkPopover.styled";
 import { useState } from "react";
 import { useAsync } from "react-use";
 import { t } from "ttag";
-import CopyButton from "metabase/components/CopyButton";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import type { exportFormats } from "metabase/lib/urls";
 import { ExtensionOption } from "metabase/public/components/widgets/SharingPane.styled";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Anchor, Box, Button, Group, Popover, Text, Title } from "metabase/ui";
+import { Anchor, Box, Group, Popover, Text, Title } from "metabase/ui";
 
-export type ExportFormatType = typeof exportFormats[number];
+export type ExportFormatType = typeof exportFormats[number] | null;
+
+export type PublicLinkPopoverProps = {
+  target: JSX.Element;
+  isOpen: boolean;
+  onClose: () => void;
+  createPublicLink: () => void;
+  deletePublicLink: () => void;
+  uuid: string | null;
+  getPublicLink: ({
+    exportFormat,
+  }: {
+    exportFormat: ExportFormatType;
+  }) => string | null;
+  extensions?: ExportFormatType[];
+};
 
 export const PublicLinkPopover = ({
   target,
@@ -20,21 +38,14 @@ export const PublicLinkPopover = ({
   isOpen,
   onClose,
   extensions = [],
-}: {
-  target: JSX.Element;
-  isOpen: boolean;
-  onClose: () => void;
-  createPublicLink: () => void;
-  deletePublicLink: () => void;
-  uuid: string | null;
-  getPublicLink: (exportFormat?: ExportFormatType) => string | null;
-  extensions?: ExportFormatType[];
-}) => {
+}: PublicLinkPopoverProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const [exportFormat, setExportFormat] = useState<ExportFormatType | null>();
+  const [exportFormat, setExportFormat] = useState<ExportFormatType | null>(
+    null,
+  );
 
-  const url = getPublicLink();
+  const url = getPublicLink({ exportFormat });
 
   const { loading } = useAsync(async () => {
     if (isOpen && !uuid) {
@@ -60,30 +71,28 @@ export const PublicLinkPopover = ({
           <Group
             noWrap
             w="28rem"
-            pl="sm"
-            pr="xs"
+            p="sm"
+            align="center"
             style={{
               border: `1px solid ${color("border")}`,
               borderRadius: "0.25rem",
             }}
           >
             {loading ? (
-              <Box style={{ flex: 1, overflow: "hidden" }}>
-                <Text truncate>{t`Loading…`}</Text>
-              </Box>
+              <PublicLinkTextContainer>
+                <Text truncate c="text.0">{t`Loading…`}</Text>
+              </PublicLinkTextContainer>
             ) : (
               <>
-                <Box style={{ flex: 1, overflow: "hidden" }}>
+                <PublicLinkTextContainer>
                   <Text truncate>{url}</Text>
-                </Box>
-                <Button variant="unstyled" c="text.2">
-                  <CopyButton value={url} />
-                </Button>
+                </PublicLinkTextContainer>
+                <PublicLinkCopyButton value={url} />
               </>
             )}
           </Group>
           {extensions && extensions.length > 0 && (
-            <Group>
+            <Group my="sm">
               {extensions.map(extension => (
                 <ExtensionOption
                   key={extension}

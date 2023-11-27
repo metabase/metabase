@@ -2,7 +2,6 @@ import type { Dashboard } from "metabase-types/api";
 import { createPublicLink, deletePublicLink } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import { publicDashboard as getPublicDashboardUrl } from "metabase/lib/urls";
-import type { ExportFormatType } from "./PublicLinkPopover";
 import { PublicLinkPopover } from "./PublicLinkPopover";
 
 export const DashboardPublicLinkPopover = ({
@@ -19,7 +18,7 @@ export const DashboardPublicLinkPopover = ({
   const dispatch = useDispatch();
 
   const uuid = dashboard.public_uuid;
-  const getPublicLink = (exportFormat?: ExportFormatType) => {
+  const getPublicLink = () => {
     if (!uuid) {
       return null;
     }

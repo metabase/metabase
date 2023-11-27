@@ -25,7 +25,11 @@ export const QuestionPublicLinkPopover = ({
   const dispatch = useDispatch();
 
   const uuid = question.publicUUID();
-  const getPublicLink = (exportFormat?: ExportFormatType) => {
+  const getPublicLink = ({
+    exportFormat,
+  }: {
+    exportFormat: ExportFormatType;
+  }) => {
     return getPublicQuestionUrl({
       uuid,
       type: exportFormat,
