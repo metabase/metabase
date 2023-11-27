@@ -623,6 +623,8 @@
   ;; '\t' and '\n' specify tab and newline characters, respectively.
   [v]
   (cond
+    (nil? v)
+    "\\N"
     (string? v)
     (str/replace v #"\\|\n|\r|\t" {"\\" "\\\\"
                                    "\n" "\\n"
