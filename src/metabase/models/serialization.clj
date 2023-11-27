@@ -345,7 +345,9 @@
   (fn [ingested _]
     (ingested-model ingested)))
 
-(defmethod load-one! :default [ingested maybe-local]
+(defn default-load-one!
+  "Default implementation of `load-one!`"
+  [ingested maybe-local]
   (let [model    (ingested-model ingested)
         adjusted (load-xform ingested)]
     (binding [mi/*deserializing?* true]
@@ -353,6 +355,8 @@
         (load-insert! model adjusted)
         (load-update! model adjusted maybe-local)))))
 
+(defmethod load-one! :default [ingested maybe-local]
+  (default-load-one! ingested maybe-local))
 
 (defn entity-id?
   "Checks if the given string is a 21-character NanoID. Useful for telling entity IDs apart from identity hashes."
