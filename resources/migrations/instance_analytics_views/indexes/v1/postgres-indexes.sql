@@ -36,7 +36,3 @@ create index if not exists idx_view_log_timestamp
 
 create index if not exists idx_view_log_entity_qualified_id
     on view_log((model || '_' || model_id));
-
--- tasks
-create index if not exists idx_task_history_started_at
-    on task_history(started_at);

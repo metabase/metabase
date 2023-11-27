@@ -4145,6 +4145,18 @@ databaseChangeLog:
             sql: UPDATE collection SET namespace = 'analytics' WHERE entity_id = 'okNLSZKdSxaoG58JSQY54' OR entity_id = 'vG58R8k-QddHWA7_47umn'
       rollback: # not necessary
 
+  - changeSet:
+      id: v48.00-060
+      author: noahmoss
+      comment: Added 0.48.0 - task_history.started_at
+      changes:
+        - createIndex:
+            indexName: idx_task_history_started_at
+            tableName: task_history
+            columns:
+              - column:
+                  name: started_at
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 
