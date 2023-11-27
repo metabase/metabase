@@ -3,6 +3,7 @@
    [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.h2 :as h2]
    [metabase.driver.impl :as driver.impl]
    [metabase.plugins.classloader :as classloader]
    [metabase.task.sync-databases :as task.sync-databases]
@@ -90,22 +91,26 @@
         (mt/dataset dbdef
           (let [db (mt/db)
                 details (tx/dbdef->connection-details driver/*driver* :db dbdef)]
+            (#'task.sync-databases/sync-and-analyze-database*! (u/the-id db))
             (testing "can-connect? should return true before deleting the database"
-              (true? (driver/can-connect? driver/*driver* details)))
+              (true? (binding [h2/*allow-testing-h2-connections* true]
+                       (driver/can-connect? driver/*driver* details))))
             ;; release db resources like connection pools so we don't have to wait to finish syncing before destroying the db
             (driver/notify-database-updated driver/*driver* db)
-            ;; destroy the db
-            (if (contains? #{:redshift :snowflake} driver/*driver*)
-              ;; in the case of some cloud databases, the test database is never created, and shouldn't be destroyed.
-              ;; so fake it by redefining the database name on the dbdef
-              (t2/update! :model/Database (u/the-id db)
-                          {:details (assoc (:details (mt/db)) :db "fake-db-name-that-definitely-wont-be-used")})
-              (tx/destroy-db! driver/*driver* dbdef))
             (testing "after deleting a database, can-connect? should return false or throw an exception"
-              (false? (try
-                        (driver/can-connect? driver/*driver* details)
-                        (catch Exception _
-                          false))))
+              (let [;; in the case of some cloud databases, the test database is never created, and shouldn't be destroyed.
+                    ;; so fake it by redefining the database name on the dbdef
+                    details (if (contains? #{:redshift :snowflake} driver/*driver*)
+                              (assoc details :db "fake-db-name-that-definitely-wont-be-used")
+                              ;; otherwise destroy the db and use the original details
+                              (do
+                                (tx/destroy-db! driver/*driver* dbdef)
+                                details))]
+                (false? (try
+                          (binding [h2/*allow-testing-h2-connections* true]
+                            (driver/can-connect? driver/*driver* details))
+                          (catch Exception _
+                            false)))))
             ;; clean up the database
             (t2/delete! :model/Database (u/the-id db))))))))
 
