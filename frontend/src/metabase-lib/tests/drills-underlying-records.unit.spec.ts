@@ -17,7 +17,7 @@ import { createAggregationColumn, createBreakoutColumn } from "./drills-common";
 
 describe("drill-thru/underlying-records", () => {
   const drillType = "drill-thru/underlying-records";
-  const defaultQuery = createQueryWithAggregation();
+  const defaultQuery = createQueryWithAggregationAndBreakout();
   const stageIndex = 0;
   const aggregationColumn = createAggregationColumn();
   const breakoutColumn = createBreakoutColumn();
@@ -154,7 +154,7 @@ describe("drill-thru/underlying-records", () => {
   });
 });
 
-function createQueryWithAggregation() {
+function createQueryWithAggregationAndBreakout() {
   const stageIndex = 0;
   const defaultQuery = createQuery();
   const queryWithAggregation = Lib.aggregate(
