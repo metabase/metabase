@@ -1,1 +1,2 @@
-export * from "./PublicLinkPopover"
+export { QuestionPublicLinkPopover } from "./QuestionPublicLinkPopover";
+export { DashboardPublicLinkPopover } from "./DashboardPublicLinkPopover";

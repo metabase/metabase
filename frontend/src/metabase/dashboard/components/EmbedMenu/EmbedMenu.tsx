@@ -52,7 +52,6 @@ export const EmbedMenu = ({
   resourceType,
   hasPublicLink,
   onModalOpen,
-  onModalClose,
 }: ResourceType & {
   hasPublicLink: boolean;
   onModalOpen?: () => void;
