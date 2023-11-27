@@ -91,10 +91,15 @@ export function BulkFilterModal({
     [initialQuery, query],
   );
 
+  const resetUnsavedChanges = useCallback(
+    () => setQuery(initialQuery),
+    [initialQuery],
+  );
+
   const handleClose = useCallback(() => {
-    setQuery(initialQuery); // reset unsaved changes
+    resetUnsavedChanges();
     onClose();
-  }, [initialQuery, onClose]);
+  }, [resetUnsavedChanges, onClose]);
 
   const handleSubmit = useCallback(() => {
     onSubmit(query);

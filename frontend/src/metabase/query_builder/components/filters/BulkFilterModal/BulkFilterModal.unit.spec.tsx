@@ -134,16 +134,19 @@ describe("BulkFilterModal", () => {
 
   it("should reset changes on close", async () => {
     const { onSubmit } = setup();
+    const applyButton = screen.getByRole("button", { name: "Apply filters" });
 
     let createdAtShortcut = screen.getByRole("button", { name: "Today" });
     userEvent.click(createdAtShortcut);
     expect(createdAtShortcut).toHaveAttribute("aria-selected", "true");
+    expect(applyButton).toBeEnabled();
 
     userEvent.click(screen.getByLabelText("Close"));
     userEvent.click(screen.getByRole("button", { name: "Show modal" }));
     createdAtShortcut = await screen.findByRole("button", { name: "Today" });
     expect(createdAtShortcut).toHaveAttribute("aria-selected", "false");
 
+    expect(applyButton).toBeDisabled();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
