@@ -12,7 +12,9 @@ import {
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import {
+  columnFinder,
   createQuery,
+  findAggregationOperator,
   findDrillThru,
   queryDrillThru,
 } from "metabase-lib/test-helpers";
@@ -73,6 +75,36 @@ describe("drill-thru/pk", () => {
       expect(drillInfo).toMatchObject({
         type: drillType,
       });
+    });
+
+    it("should not allow to drill when the column is not a PK or FK and the query is aggregated", () => {
+      const queryWithAggregation = Lib.aggregate(
+        defaultQuery,
+        stageIndex,
+        Lib.aggregationClause(findAggregationOperator(defaultQuery, "count")),
+      );
+      const queryWithBreakout = Lib.breakout(
+        queryWithAggregation,
+        stageIndex,
+        columnFinder(
+          queryWithAggregation,
+          Lib.breakoutableColumns(queryWithAggregation, stageIndex),
+        )("ORDERS", "TOTAL"),
+      );
+      const value = 10;
+      const column = createOrdersTotalDatasetColumn();
+      const row = [{ col: column, value }];
+
+      const drill = queryDrillThru(
+        drillType,
+        queryWithBreakout,
+        stageIndex,
+        column,
+        value,
+        row,
+      );
+
+      expect(drill).toBeNull();
     });
 
     it("should not allow to drill when the column is a FK", () => {
