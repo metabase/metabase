@@ -90,7 +90,7 @@ jobs:
         uses: ./.github/actions/run-snowplow-micro
 
       - name: Run OSS-specific Cypress tests
-        if: matrix.edition == 'oss' && github.event_name != 'schedule'
+        if: matrix.edition == 'oss'
         run: |
           yarn run test-cypress-run \
           --env grepTags=@OSS,grepOmitFiltered=true \
@@ -98,7 +98,7 @@ jobs:
           --browser "replay-chromium"
 
       - name: Run slow and resource-intensive Cypress tests
-        if: matrix.name == 'slow' && github.event_name != 'schedule'
+        if: matrix.name == 'slow'
         run: |
           yarn run test-cypress-run \
           --env grepTags="@slow",grepOmitFiltered=true \
@@ -106,7 +106,7 @@ jobs:
           --browser "replay-chromium"
 
       - name: Run EE Cypress tests on ${{ matrix.name }}
-        if: matrix.context == 'folder' && github.event_name != 'schedule'
+        if: matrix.context == 'folder'
         run: |
           yarn run test-cypress-run \
           --env grepTags="-@slow+-@mongo --@quarantine",grepOmitFiltered=true \
