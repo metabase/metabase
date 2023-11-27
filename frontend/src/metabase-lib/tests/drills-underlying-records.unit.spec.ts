@@ -1,4 +1,4 @@
-import type { DatasetColumn } from "metabase-types/api";
+import type { DatasetColumn, RowValue } from "metabase-types/api";
 import { createOrdersCreatedAtDatasetColumn } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
 import {
@@ -41,6 +41,30 @@ describe("drill-thru/underlying-records", () => {
       });
     });
   });
+
+  describe("drillThru", () => {
+    it("should drill an aggregated query", () => {
+      const { value, row, dimensions } = getColumnData(
+        metricColumn,
+        dimensionColumn,
+        10,
+      );
+      const { drill } = findDrillThru(
+        drillType,
+        defaultQuery,
+        stageIndex,
+        metricColumn,
+        value,
+        row,
+        dimensions,
+      );
+
+      const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
+
+      expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(0);
+      expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
+    });
+  });
 });
 
 function createQueryWithAggregation() {
@@ -64,7 +88,7 @@ function createQueryWithAggregation() {
 function getColumnData(
   metricColumn: DatasetColumn,
   dimensionColumn: DatasetColumn,
-  value: number,
+  value: RowValue,
 ) {
   const row = [
     { key: "Created At", col: dimensionColumn, value: "2020-01-01" },
