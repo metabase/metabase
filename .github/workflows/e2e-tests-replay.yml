@@ -38,6 +38,7 @@ jobs:
       CYPRESS_REPLAYIO_ENABLED: 1
       RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
       RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ github.run_id }}
+      REPLAY_API_KEY: ${{ secrets.REPLAY_IO_TOKEN }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.e2e-matrix-builder.outputs.matrix) }}
@@ -119,7 +120,6 @@ jobs:
         if: github.event_name == 'schedule' && !cancelled()
         uses: replayio/action-upload@v0.5.1
         with:
-          api-key: ${{ secrets.REPLAY_IO_TOKEN }}
           public: false
 
       - name: Upload Cypress Artifacts upon failure
