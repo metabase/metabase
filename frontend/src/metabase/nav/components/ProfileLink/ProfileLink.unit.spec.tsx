@@ -1,6 +1,7 @@
-import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 
 import fetchMock from "fetch-mock";
+import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "__support__/ui";
 import { mockSettings } from "__support__/settings";
 
@@ -189,4 +190,4 @@ describe("ProfileLink", () => {
 });
 
 const openMenu = () =>
-  fireEvent.click(screen.getByRole("img", { name: /gear/i }));
+  userEvent.click(screen.getByRole("img", { name: /gear/i }));
