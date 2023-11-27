@@ -12,10 +12,13 @@
 
 (def currency-regex "Supported currency signs" #"[$€£¥₹₪₩₿¢\s]")
 
-(defn get-number-separators
-  "Setting-dependent number separators. Defaults to `.` and `,`. Stored/returned as a string."
+(defn get-settings
+  "Settings that determine how the CSV is parsed.
+
+  Includes:
+    - number-separators: Decimal delimiter defaults to `.` and group delimiter defaults to `,`. Stored/returned as a string."
   []
-  (get-in (public-settings/custom-formatting) [:type/Number :number_separators] ".,"))
+  {:number-separators (get-in (public-settings/custom-formatting) [:type/Number :number_separators] ".,")})
 
 (defn parse-bool
   "Parses a boolean value (true/t/yes/y/1 and false/f/no/n/0). Case-insensitive."
@@ -119,57 +122,58 @@
 (defmulti upload-type->parser
   "Returns a function for the given `metabase.upload` type that will parse a string value (from a CSV) into a value
   suitable for insertion."
-  {:arglists '([upload-type])}
-  identity)
+  {:arglists '([upload-type settings])}
+  (fn [upload-type _]
+    upload-type))
 
 (defmethod upload-type->parser :metabase.upload/varchar-255
-  [_]
+  [_ _]
   identity)
 
 (defmethod upload-type->parser :metabase.upload/text
-  [_]
+  [_ _]
   identity)
 
 (defmethod upload-type->parser :metabase.upload/int
-  [_]
-  (partial parse-number (get-number-separators)))
+  [_ {:keys [number-separators]}]
+  (partial parse-number number-separators))
 
 (defmethod upload-type->parser :metabase.upload/float
-  [_]
-  (partial parse-number (get-number-separators)))
+  [_ {:keys [number-separators]}]
+  (partial parse-number number-separators))
 
 (defmethod upload-type->parser :metabase.upload/int-pk
-  [_]
-  (partial parse-number (get-number-separators)))
+  [_ {:keys [number-separators]}]
+  (partial parse-number number-separators))
 
 (defmethod upload-type->parser :metabase.upload/auto-incrementing-int-pk
-  [_]
-  (partial parse-number (get-number-separators)))
+  [_ {:keys [number-separators]}]
+  (partial parse-number number-separators))
 
 (defmethod upload-type->parser :metabase.upload/string-pk
-  [_]
+  [_ _]
   identity)
 
 (defmethod upload-type->parser :metabase.upload/boolean
-  [_]
+  [_ _]
   (comp
    parse-bool
    str/trim))
 
 (defmethod upload-type->parser :metabase.upload/date
-  [_]
+  [_ _]
   (comp
    parse-date
    str/trim))
 
 (defmethod upload-type->parser :metabase.upload/datetime
-  [_]
+  [_ _]
   (comp
    parse-as-datetime
    str/trim))
 
 (defmethod upload-type->parser :metabase.upload/offset-datetime
-  [_]
+  [_ _]
   (comp
    parse-offset-datetime
    str/trim))
