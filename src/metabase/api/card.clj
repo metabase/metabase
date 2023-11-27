@@ -156,7 +156,6 @@
   (-> card
       (t2/hydrate :creator
                   :dashboard_count
-                  :parameter_usage_count
                   :can_write
                   :average_query_time
                   :last_query_start
@@ -175,6 +174,8 @@
         card (-> raw-card
                  api/read-check
                  hydrate-for-frontend
+                 ;; Cal 2023-11-27: why is parameter_usage_count not hydrated for other endpoints? Maybe it should be
+                 (t2/hydrate :parameter_usage_count)
                  collection.root/hydrate-root-collection)]
     (u/prog1 card
       (when-not ignore_view
