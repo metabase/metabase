@@ -1,8 +1,11 @@
 import {
   createOrdersIdDatasetColumn,
   createOrdersProductIdDatasetColumn,
+  createSampleDatabase,
+  SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
+import { createMockMetadata } from "__support__/metadata";
 import {
   createQuery,
   findDrillThru,
@@ -73,6 +76,33 @@ describe("drill-thru/fk-details", () => {
         row,
       );
 
+      expect(drill).toBeNull();
+    });
+
+    it("should not allow to drill with a native query", () => {
+      const query = createQuery({
+        query: {
+          type: "native",
+          database: SAMPLE_DB_ID,
+          native: { query: "SELECT * FROM ORDERS" },
+        },
+      });
+      const column = createOrdersProductIdDatasetColumn({
+        id: undefined,
+        field_ref: ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
+      });
+
+      const drill = queryDrillThru(drillType, query, stageIndex, column);
+
+      expect(drill).toBeNull();
+    });
+
+    it("should not allow to drill with a non-editable query", () => {
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase({ tables: [] })],
+      });
+      const query = createQuery({ metadata });
+      const drill = queryDrillThru(drillType, query, stageIndex, defaultColumn);
       expect(drill).toBeNull();
     });
   });
