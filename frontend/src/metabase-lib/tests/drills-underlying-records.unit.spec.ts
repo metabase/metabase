@@ -28,7 +28,7 @@ describe("drill-thru/underlying-records", () => {
 
   describe("availableDrillThrus", () => {
     it("should allow to drill an aggregated query", () => {
-      const { value, row, dimensions } = getAggregatedColumnData(
+      const { value, row, dimensions } = getCellData(
         aggregationColumn,
         breakoutColumn,
         10,
@@ -54,18 +54,7 @@ describe("drill-thru/underlying-records", () => {
     // eslint-disable-next-line jest/no-disabled-tests
     it.skip("should allow to drill via a pivot cell (metabase#35394)", () => {
       const query = createQueryWithMultipleBreakouts();
-      const secondBreakoutColumn = createOrdersQuantityDatasetColumn({
-        source: "breakout",
-      });
-      const row = [
-        { col: breakoutColumn, value: "2020-01-01" },
-        { col: secondBreakoutColumn, value: 0 },
-        { col: aggregationColumn, value: 76 },
-      ];
-      const dimensions = [
-        { column: breakoutColumn, value: "2020-01-01" },
-        { column: secondBreakoutColumn, value: 0 },
-      ];
+      const { value, row, dimensions } = getPivotCellData();
 
       const { drillInfo } = findDrillThru(
         drillType,
@@ -79,7 +68,7 @@ describe("drill-thru/underlying-records", () => {
 
       expect(drillInfo).toMatchObject({
         type: drillType,
-        rowCount: 76,
+        rowCount: value,
         tableName: "Orders",
       });
     });
@@ -87,9 +76,7 @@ describe("drill-thru/underlying-records", () => {
     // eslint-disable-next-line jest/no-disabled-tests
     it.skip("should allow to drill via a legend item (metabase#35343)", () => {
       const query = createQueryWithMultipleBreakouts();
-      const column = createOrdersQuantityDatasetColumn({ source: "breakout" });
-      const value = 10;
-      const dimensions = [{ column, value }];
+      const { value, dimensions } = getLegendItemData();
 
       const { drillInfo } = findDrillThru(
         drillType,
@@ -110,7 +97,7 @@ describe("drill-thru/underlying-records", () => {
 
     // eslint-disable-next-line jest/no-disabled-tests
     it.skip("should use the default row count for aggregations with negative values (metabase#36143)", () => {
-      const { value, row, dimensions } = getAggregatedColumnData(
+      const { value, row, dimensions } = getCellData(
         aggregationColumn,
         breakoutColumn,
         -10,
@@ -135,7 +122,8 @@ describe("drill-thru/underlying-records", () => {
 
     it("should not allow to drill when there is no aggregation", () => {
       const column = createOrdersTotalDatasetColumn();
-      const { value, row } = getRawColumnData(column, 10);
+      const value = 10;
+      const row = [{ col: column, value }];
 
       const drill = queryDrillThru(
         drillType,
@@ -170,7 +158,7 @@ describe("drill-thru/underlying-records", () => {
     // eslint-disable-next-line jest/no-disabled-tests
     it.skip("should not allow to drill with a non-editable query (metabase#36125)", () => {
       const query = createNotEditableQuery(defaultQuery);
-      const { value, row, dimensions } = getAggregatedColumnData(
+      const { value, row, dimensions } = getCellData(
         aggregationColumn,
         breakoutColumn,
         -10,
@@ -192,7 +180,7 @@ describe("drill-thru/underlying-records", () => {
 
   describe("drillThru", () => {
     it("should drill an aggregated query", () => {
-      const { value, row, dimensions } = getAggregatedColumnData(
+      const { value, row, dimensions } = getCellData(
         aggregationColumn,
         breakoutColumn,
         10,
@@ -260,12 +248,7 @@ function createNotEditableQuery(query: Lib.Query) {
   });
 }
 
-function getRawColumnData(column: DatasetColumn, value: RowValue) {
-  const row = [{ col: column, value }];
-  return { value, row };
-}
-
-function getAggregatedColumnData(
+function getCellData(
   aggregationColumn: DatasetColumn,
   breakoutColumn: DatasetColumn,
   value: RowValue,
@@ -277,4 +260,34 @@ function getAggregatedColumnData(
   const dimensions = [{ column: breakoutColumn, value }];
 
   return { value, row, dimensions };
+}
+
+function getPivotCellData() {
+  const aggregationColumn = createAggregationColumn();
+  const breakoutColumn1 = createOrdersCreatedAtDatasetColumn({
+    source: "breakout",
+  });
+  const breakoutColumn2 = createOrdersQuantityDatasetColumn({
+    source: "breakout",
+  });
+
+  const value = 76;
+  const row = [
+    { col: breakoutColumn1, value: "2020-01-01" },
+    { col: breakoutColumn2, value: 0 },
+    { col: aggregationColumn, value },
+  ];
+  const dimensions = [
+    { column: breakoutColumn1, value: "2020-01-01" },
+    { column: breakoutColumn2, value: 0 },
+  ];
+
+  return { value, row, dimensions };
+}
+
+function getLegendItemData() {
+  const column = createOrdersQuantityDatasetColumn({ source: "breakout" });
+  const value = 10;
+  const dimensions = [{ column, value }];
+  return { value, dimensions };
 }
