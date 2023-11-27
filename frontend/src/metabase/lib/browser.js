@@ -7,7 +7,14 @@ function parseQueryStringOptions(s) {
     if (options[name] === "") {
       options[name] = true;
     } else if (/^(true|false|-?\d+(\.\d+)?)$/.test(options[name])) {
-      options[name] = JSON.parse(options[name]);
+      let parsed;
+
+      try {
+        parsed = JSON.parse(options[name]);
+        options[name] = parsed;
+      } catch (e) {
+        console.warn("Failed to parse queryString option", name, options[name]);
+      }
     }
   }
 
