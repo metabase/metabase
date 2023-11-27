@@ -68,7 +68,7 @@ export const EmbedMenu = ({
     isPublicSharingEnabled,
     hasPublicLink,
   });
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const [menuMode, setMenuMode] = useState(initialMenuMode);
 
   const onMenuSelect = (menuMode?: EmbedMenuModes) => {
