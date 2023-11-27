@@ -5,6 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import { updateSettings } from "metabase/admin/settings/settings";
 import {
+  Form,
   FormErrorMessage,
   FormProvider,
   FormSecretKey,
@@ -15,7 +16,7 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { Stack } from "metabase/ui";
 import { FormSection } from "metabase/containers/FormikForm";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
-import { JWTForm, JWTFormFooter } from "./SettingsJWTForm.styled";
+import { JWTFormFooter } from "./SettingsJWTForm.styled";
 
 const propTypes = {
   elements: PropTypes.array,
@@ -66,7 +67,7 @@ const SettingsJWTForm = ({
       enableReinitialize
     >
       {({ dirty }) => (
-        <JWTForm>
+        <Form m={"0 1rem"} maw={"32.5rem"}>
           <Breadcrumbs
             className="mb3"
             crumbs={[
@@ -116,7 +117,7 @@ const SettingsJWTForm = ({
               variant="filled"
             />
           </JWTFormFooter>
-        </JWTForm>
+        </Form>
       )}
     </FormProvider>
   );
