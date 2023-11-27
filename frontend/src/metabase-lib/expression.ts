@@ -25,10 +25,9 @@ export function expressionName(clause: ExpressionClause): string {
   return ML.expression_name(clause);
 }
 
-export function withExpressionName(
-  clause: ExpressionClause,
-  newName: string,
-): ExpressionClause {
+export function withExpressionName<
+  Clause extends AggregationClause | ExpressionClause,
+>(clause: Clause, newName: string): Clause {
   return ML.with_expression_name(clause, newName);
 }
 
