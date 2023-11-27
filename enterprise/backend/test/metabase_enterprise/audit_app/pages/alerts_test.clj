@@ -1,4 +1,4 @@
-(ns metabase-enterprise.audit-app.pages.alerts-test
+(ns ^:mb/once metabase-enterprise.audit-app.pages.alerts-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -8,8 +8,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (defn- alerts [card-name]
   (mt/with-test-user :crowberto
@@ -23,7 +22,7 @@
   (is (= []
          (mt/rows (alerts (mt/random-name)))))
   (let [card-name (mt/random-name)]
-    (t2.with-temp/with-temp [Collection {collection-id :id, collection-name :name}]
+    (mt/with-temp! [Collection {collection-id :id, collection-name :name}]
       ;; test with both the Root Collection and a non-Root Collection
       (doseq [{:keys [collection-id collection-name]} [{:collection-id   collection-id
                                                         :collection-name collection-name}
@@ -38,7 +37,7 @@
                                                                    :pulse_id pulse-id}
                          PulseChannel          {channel-id :id}   {:pulse_id       pulse-id
                                                                    :channel_type   "email"
-                                                                   :details        {:emails ["amazing@fake.com"]}
+                                                                   :details        {:emails ["amazing@metabase.com"]}
                                                                    :schedule_type  "monthly"
                                                                    :schedule_frame "first"
                                                                    :schedule_day   "mon"

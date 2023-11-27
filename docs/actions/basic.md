@@ -56,6 +56,12 @@ See [Actions in dashboards](../dashboards/actions.md).
 
 Because basic actions are made of magic, you cannot archive them. You can just toggle them on or off. From the model detail page, next to the **New action** button, click on the **...** menu and click **Disable basic actions**.
 
+## Basic actions from object detail view
+
+If you have basic actions enabled for a model, you can click on an individual record to view its object detail. From that object detail model, you can click on the ellipses (**...**) and select update or delete to modify that specific record.
+
+![Update record from object detail view](./images/update-record.png)
+
 ## Further reading
 
 - [Introduction to actions](./introduction.md)

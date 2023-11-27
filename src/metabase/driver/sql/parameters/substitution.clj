@@ -40,7 +40,7 @@
   "Returns a `PreparedStatementSubstitution` (see schema below) for `x` and the given driver. This allows driver
   specific parameters and SQL replacement text (usually just ?). The param value is already prepared and ready for
   inlcusion in the query, such as what's needed for SQLite and timestamps."
-  {:arglists '([driver x])}
+  {:added "0.34.0" :arglists '([driver x])}
   (fn [driver x] [(driver/dispatch-on-initialized-driver driver) (class x)])
   :hierarchy #'driver/hierarchy)
 
@@ -94,6 +94,19 @@
   [_driver t]
   (make-stmt-subs "?" [t]))
 
+(defmulti align-temporal-unit-with-param-type
+  "Returns a suitable temporal unit conversion keyword for `field`, `param-type` and the given driver. The resulting keyword
+  will be used to call the corresponding `metabase.driver.sql.query-processor/date` implementation to convert the `field`.
+  Returns `nil` if the conversion is not necessary for this `field` and `param-type` combination."
+  {:added "0.48.0" :arglists '([driver field param-type])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod align-temporal-unit-with-param-type :default
+  [_driver _field param-type]
+  (when (params.dates/date-type? param-type)
+    :day))
+
 
 ;;; ------------------------------------------- ->replacement-snippet-info -------------------------------------------
 
@@ -106,7 +119,7 @@
   `:prepared-statement-args`.
 
     (->replacement-snippet-info :h2 \"ABC\") -> {:replacement-snippet \"?\", :prepared-statement-args \"ABC\"}"
-  {:arglists '([driver value])}
+  {:added "0.33.4" :arglists '([driver value])}
   (fn [driver v] [(driver/the-initialized-driver driver) (class v)])
   :hierarchy #'driver/hierarchy)
 
@@ -224,7 +237,7 @@
      :prepared-statement-args args}))
 
 (mu/defn ^:private field->clause :- mbql.s/field
-  [_driver    :- :keyword
+  [driver     :- :keyword
    field      :- lib.metadata/ColumnMetadata
    param-type :- ::mbql.s/ParameterType]
   ;; The [[metabase.query-processor.middleware.parameters/substitute-parameters]] QP middleware actually happens before
@@ -236,8 +249,7 @@
   [:field
    (u/the-id field)
    {:base-type                (:base-type field)
-    :temporal-unit            (when (params.dates/date-type? param-type)
-                                :day)
+    :temporal-unit            (align-temporal-unit-with-param-type driver field param-type)
     ::add/source-table        (:table-id field)
     ;; in case anyone needs to know we're compiling a Field filter.
     ::compiling-field-filter? true}])

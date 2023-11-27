@@ -1,5 +1,6 @@
 import { t, jt } from "ttag";
 import { connect } from "react-redux";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -131,7 +132,7 @@ const LicenseAndBillingSettings = ({
           <>
             <Text color="text.1">
               {t`To manage your billing preferences, please email `}
-              <Anchor span href="mailto:billing@metabase.com">
+              <Anchor href="mailto:billing@metabase.com">
                 billing@metabase.com
               </Anchor>
             </Text>

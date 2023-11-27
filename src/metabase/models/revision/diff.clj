@@ -119,14 +119,13 @@
   (when-let [[before after] (data/diff o1 o2)]
     (let [ks         (keys (or after before))
           model-name (model-str->i18n-str model)]
-      (filter identity
-              (map-indexed (fn [i k]
-                             (diff-string k (k before) (k after)
-                                          (if (zero? i) (deferred-tru "this {0}" model-name) (deferred-tru "it"))))
-                           ks)))))
-:used-underscored-binding
-
-(let [x 1 y 2]
-  (clojure.core.match/match [:name x y]
-    [:name _ _]
-    "Ok"))
+      (loop [ks               ks
+             identifier-count 0
+             strings          []]
+        (if-not (seq ks)
+          strings
+          (let [k          (first ks)
+                identifier (if (zero? identifier-count) (deferred-tru "this {0}" model-name) (deferred-tru "it"))]
+            (if-let [diff-str (diff-string k (k before) (k after) identifier)]
+              (recur (rest ks) (inc identifier-count) (conj strings diff-str))
+              (recur (rest ks) identifier-count strings))))))))

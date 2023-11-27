@@ -4,7 +4,7 @@
   (:refer-clojure :exclude [format range])
   (:require
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [java-time.core :as t.core]
    [metabase.util.date-2.common :as u.date.common]
    [metabase.util.date-2.parse :as u.date.parse]
@@ -162,7 +162,8 @@
                             (some-> t class .getCanonicalName))
                        {:t t}))))))
 
-(def ^:private add-units
+(def add-units
+  "A list of units that can be added to a temporal value."
   #{:millisecond :second :minute :hour :day :week :month :quarter :year})
 
 (s/defn add :- Temporal

@@ -17,6 +17,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.string :as u.str]
    [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]))
 
@@ -73,6 +74,7 @@
   (deferred-tru "Cached number of active users. Refresh every 5 minutes.")
   :visibility :admin
   :type       :integer
+  :audit      :never
   :default    0
   :getter     (fn []
                 (if-not ((requiring-resolve 'metabase.db/db-is-set-up?))
@@ -92,50 +94,55 @@
    [:error-details {:optional true} [:maybe ms/NonBlankString]]
    [:features      {:optional true} [:sequential ms/NonBlankString]]
    [:trial         {:optional true} :boolean]
-   [:valid_thru    {:optional true} ms/NonBlankString]]) ; ISO 8601 timestamp
+   [:valid-thru    {:optional true} ms/NonBlankString]]) ; ISO 8601 timestamp
 
 (defn- fetch-token-and-parse-body
   [token base-url]
   (some-> (token-status-url token base-url)
-          (http/get {:query-params {:users     (cached-active-users-count)
-                                    :site-uuid (setting/get :site-uuid-for-premium-features-token-checks)}})
+          (http/get {:query-params {:users      (cached-active-users-count)
+                                    :site-uuid  (setting/get :site-uuid-for-premium-features-token-checks)
+                                    :mb-version (:tag config/mb-version-info)}})
           :body
           (json/parse-string keyword)))
 
 (mu/defn ^:private fetch-token-status* :- TokenStatus
   "Fetch info about the validity of `token` from the MetaStore."
-  [token :- ValidToken]
+  [token :- :string]
   ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
   ;; reasonable amount of time throw a timeout exception
-  (log/info (trs "Checking with the MetaStore to see whether {0} is valid..."
-                 ;; ValidToken will ensure the length of token is 64 chars long
-                 (str (subs token 0 4) "..." (subs token 60 64))))
-  (let [fut    (future
-                 (try (fetch-token-and-parse-body token token-check-url)
-                      (catch Exception e1
-                        (log/error e1 (trs "Error fetching token status from {0}:" token-check-url))
-                        ;; Try the fallback URL, which was the default URL prior to 45.2
-                        (try (fetch-token-and-parse-body token store-url)
-                             ;; if there was an error fetching the token from both the normal and fallback URLs, log the
-                             ;; first error and return a generic message about the token being invalid. This message
-                             ;; will get displayed in the Settings page in the admin panel so we do not want something
-                             ;; complicated
-                             (catch Exception e2
-                               (log/error e2 (trs "Error fetching token status from {0}:" store-url))
-                               (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
-                                 (or
-                                  body
-                                  {:valid         false
-                                   :status        (tru "Unable to validate token")
-                                   :error-details (.getMessage e1)})))))))
-        result (deref fut fetch-token-status-timeout-ms ::timed-out)]
-    (if (= result ::timed-out)
-      (do
-        (future-cancel fut)
-        {:valid         false
-         :status        (tru "Unable to validate token")
-         :error-details (tru "Token validation timed out.")})
-      result)))
+  (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
+  (if-not (mc/validate ValidToken token)
+    (do
+      (log/error (u/format-color 'red "Invalid token format!"))
+      {:valid         false
+       :status        "invalid"
+       :error-details (trs "Token should be 64 hexadecimal characters.")})
+    (let [fut    (future
+                   (try (fetch-token-and-parse-body token token-check-url)
+                        (catch Exception e1
+                          (log/error e1 (trs "Error fetching token status from {0}:" token-check-url))
+                          ;; Try the fallback URL, which was the default URL prior to 45.2
+                          (try (fetch-token-and-parse-body token store-url)
+                               ;; if there was an error fetching the token from both the normal and fallback URLs, log the
+                               ;; first error and return a generic message about the token being invalid. This message
+                               ;; will get displayed in the Settings page in the admin panel so we do not want something
+                               ;; complicated
+                               (catch Exception e2
+                                 (log/error e2 (trs "Error fetching token status from {0}:" store-url))
+                                 (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
+                                   (or
+                                     body
+                                     {:valid         false
+                                      :status        (tru "Unable to validate token")
+                                      :error-details (.getMessage e1)})))))))
+          result (deref fut fetch-token-status-timeout-ms ::timed-out)]
+      (if (= result ::timed-out)
+        (do
+          (future-cancel fut)
+          {:valid         false
+           :status        (tru "Unable to validate token")
+           :error-details (tru "Token validation timed out.")})
+        result))))
 
 (def ^{:arglists '([token])} fetch-token-status
   "TTL-memoized version of `fetch-token-status*`. Caches API responses for 5 minutes. This is important to avoid making
@@ -187,6 +194,7 @@
   (deferred-tru "Cached token status for premium features. This is to avoid an API request on the the first page load.")
   :visibility :admin
   :type       :json
+  :audit      :never
   :setter     :none
   :getter     (fn [] (some-> (premium-embedding-token) (fetch-token-status))))
 
@@ -196,6 +204,7 @@
 
 (defsetting premium-embedding-token     ; TODO - rename this to premium-features-token?
   (deferred-tru "Token for premium features. Go to the MetaStore to get yours!")
+  :audit :never
   :setter
   (fn [new-value]
     ;; validate the new value if we're not unsetting it
@@ -252,13 +261,19 @@
 
 (mu/defn assert-has-feature
   "Check if an token with `feature` is present. If not, throw an error with a message using `feature-name`.
-   `feature-name` should be a localized string unless used in a CLI context.
-
+  `feature-name` should be a localized string unless used in a CLI context.
   (assert-has-feature :sandboxes (tru \"Sandboxing\"))
   => throws an error with a message using \"Sandboxing\" as the feature name."
   [feature-flag :- keyword?
    feature-name :- [:or string? mu/localized-string-schema]]
   (when-not (has-feature? feature-flag)
+    (throw (ee-feature-error feature-name))))
+
+(mu/defn assert-has-any-features
+  "Check if has at least one of feature in `features`. Throw an error if none of the features are available."
+  [feature-flag :- [:sequential keyword?]
+   feature-name :- [:or string? mu/localized-string-schema]]
+  (when-not (some has-feature? feature-flag)
     (throw (ee-feature-error feature-name))))
 
 (defn- default-premium-feature-getter [feature]
@@ -277,6 +292,7 @@
   (let [options (merge {:type       :boolean
                         :visibility :public
                         :setter     :none
+                        :audit      :never
                         :getter     `(default-premium-feature-getter ~(some-> feature name))}
                        options)]
     `(do
@@ -376,13 +392,14 @@
 
 (define-premium-feature ^{:added "0.47.0"} enable-email-restrict-recipients?
   "Enable restrict email recipients?"
-  :serialization)
+  :email-restrict-recipients)
 
 (defsetting is-hosted?
   "Is the Metabase instance running in the cloud?"
   :type       :boolean
   :visibility :public
   :setter     :none
+  :audit      :never
   :getter     (fn [] (boolean ((token-features) "hosting")))
   :doc        false)
 
@@ -511,14 +528,14 @@
 
 (s/def ::defenterprise-args
   (s/cat :docstr  (s/? string?)
-            :ee-ns   (s/? symbol?)
-            :options (s/? ::defenterprise-options)
-            :fn-tail (s/* any?)))
+         :ee-ns   (s/? symbol?)
+         :options (s/? ::defenterprise-options)
+         :fn-tail (s/* any?)))
 
 (s/def ::defenterprise-schema-args
   (s/cat :return-schema      (s/? (s/cat :- #{:-}
                                              :schema any?))
-            :defenterprise-args (s/? ::defenterprise-args)))
+         :defenterprise-args (s/? ::defenterprise-args)))
 
 (defmacro defenterprise
   "Defines a function that has separate implementations between the Metabase Community Edition (aka OSS) and

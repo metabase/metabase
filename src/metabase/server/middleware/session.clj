@@ -2,7 +2,7 @@
   "Ring middleware related to session (binding current user and permissions)."
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.api.common
     :as api
     :refer [*current-user*
@@ -68,6 +68,42 @@
                                                        metabase-embedded-session-cookie
                                                        metabase-session-timeout-cookie]))
 
+(def ^:private possible-session-cookie-samesite-values
+  #{:lax :none :strict nil})
+
+(defn- normalized-session-cookie-samesite [value]
+  (some-> value name u/lower-case-en keyword))
+
+(defn- valid-session-cookie-samesite?
+  [normalized-value]
+  (contains? possible-session-cookie-samesite-values normalized-value))
+
+(defsetting session-cookie-samesite
+  (deferred-tru "Value for the session cookie's `SameSite` directive.")
+  :type :keyword
+  :visibility :settings-manager
+  :default :lax
+  :getter (fn session-cookie-samesite-getter []
+            (let [value (normalized-session-cookie-samesite
+                         (setting/get-raw-value :session-cookie-samesite))]
+              (if (valid-session-cookie-samesite? value)
+                value
+                (throw (ex-info "Invalid value for session cookie samesite"
+                                {:possible-values possible-session-cookie-samesite-values
+                                 :session-cookie-samesite value})))))
+  :setter (fn session-cookie-samesite-setter
+            [new-value]
+            (let [normalized-value (normalized-session-cookie-samesite new-value)]
+              (if (valid-session-cookie-samesite? normalized-value)
+                (setting/set-value-of-type!
+                 :keyword
+                 :session-cookie-samesite
+                 normalized-value)
+                (throw (ex-info (tru "Invalid value for session cookie samesite")
+                                {:possible-values possible-session-cookie-samesite-values
+                                 :session-cookie-samesite normalized-value
+                                 :http-status 400}))))))
+
 (defmulti default-session-cookie-attributes
   "The appropriate cookie attributes to persist a newly created Session to `response`."
   {:arglists '([session-type request])}
@@ -81,7 +117,7 @@
 (defmethod default-session-cookie-attributes :normal
   [_ request]
   (merge
-   {:same-site config/mb-session-cookie-samesite
+   {:same-site (session-cookie-samesite)
     ;; TODO - we should set `site-path` as well. Don't want to enable this yet so we don't end
     ;; up breaking things
     :path      "/" #_(site-path)}
@@ -156,7 +192,7 @@
                         ;; max-session age-is in minutes; Max-Age= directive should be in seconds
                         (when (use-permanent-cookies? request)
                           {:max-age (* 60 (config/config-int :max-session-age))}))]
-    (when (and (= config/mb-session-cookie-samesite :none) (not (request.u/https? request)))
+    (when (and (= (session-cookie-samesite) :none) (not (request.u/https? request)))
       (log/warn
        (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions.")
             " "

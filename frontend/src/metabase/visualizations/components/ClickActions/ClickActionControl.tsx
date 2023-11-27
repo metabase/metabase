@@ -60,7 +60,7 @@ export const ClickActionControl = ({
         <Tooltip tooltip={action.tooltip}>
           <SortControl onlyIcon onClick={() => onClick(action)}>
             {typeof action.icon === "string" && (
-              <Icon size={12} name={action.icon as unknown as IconName} />
+              <Icon size={14} name={action.icon as unknown as IconName} />
             )}
           </SortControl>
         </Tooltip>

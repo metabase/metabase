@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.wrap-value-literals-test
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]

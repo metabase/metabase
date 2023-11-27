@@ -464,9 +464,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     openNotebook();
 
     join();
-    popover().findByText("Orders model").click();
-    popover().findByText("ID").click();
-    popover().findByText("Product ID").click();
+    popover().findByText("Products model").click();
 
     visualize();
   });

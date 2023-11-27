@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
@@ -124,7 +123,7 @@
             (cond
               (and (string? native)
                    (isa? driver/hierarchy driver :sql))
-              (mdb.query/format-sql native driver)
+              (driver/prettify-native-form driver native)
 
               (string? native)
               native

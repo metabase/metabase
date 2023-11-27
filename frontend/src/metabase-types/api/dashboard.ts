@@ -1,4 +1,5 @@
 import type {
+  Collection,
   Parameter,
   ParameterId,
   ParameterTarget,
@@ -14,12 +15,13 @@ export type DashboardId = number | string;
 
 export interface Dashboard {
   id: DashboardId;
+  collection?: Collection | null;
   collection_id: number | null;
   name: string;
   description: string | null;
   model?: string;
-  ordered_cards: (DashboardOrderedCard | ActionDashboardCard)[];
-  ordered_tabs?: DashboardOrderedTab[];
+  dashcards: (DashboardCard | ActionDashboardCard)[];
+  tabs?: DashboardTab[];
   parameters?: Parameter[] | null;
   can_write: boolean;
   cache_ttl: number | null;
@@ -36,7 +38,7 @@ export interface Dashboard {
 
 export type DashCardId = number;
 
-export type BaseDashboardOrderedCard = {
+export type BaseDashboardCard = {
   id: DashCardId;
   dashboard_id: DashboardId;
   dashboard_tab_id?: DashboardTabId;
@@ -61,7 +63,7 @@ export type VirtualCard = Partial<Card> & {
   display: VirtualCardDisplay;
 };
 
-export type DashboardOrderedCard = BaseDashboardOrderedCard & {
+export type DashboardCard = BaseDashboardCard & {
   card_id: CardId | null;
   card: Card;
   parameter_mappings?: DashboardParameterMapping[] | null;
@@ -70,7 +72,7 @@ export type DashboardOrderedCard = BaseDashboardOrderedCard & {
 
 export type DashboardTabId = number;
 
-export type DashboardOrderedTab = {
+export type DashboardTab = {
   id: DashboardTabId;
   dashboard_id: DashboardId;
   entity_id: string;

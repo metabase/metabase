@@ -6,7 +6,7 @@
   methods from here) let's rename this `metabase.driver.sql.unprepare` when we get a chance."
   (:require
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
@@ -20,7 +20,7 @@
 (defmulti unprepare-value
   "Convert a single argument to appropriate raw SQL for splicing directly into a SQL query. Dispatches on both driver
   and the class of `value`."
-  {:arglists '(^String [driver value])}
+  {:added "0.32.0" :arglists '(^String [driver value])}
   (fn [driver value]
     [(driver/the-initialized-driver driver) (class value)])
   :hierarchy #'driver/hierarchy)
@@ -86,7 +86,7 @@
 
   Drivers likely do not need to implement this method themselves -- instead, you should only need to provide
   implementations of `unprepare-value` for the cases where it is needed."
-  {:arglists '([driver [sql & args]]), :style/indent 1}
+  {:added "0.32.0", :arglists '([driver [sql & args]]), :style/indent 1}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 

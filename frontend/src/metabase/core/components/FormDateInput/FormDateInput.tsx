@@ -1,6 +1,8 @@
 import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import type { Moment } from "moment-timezone";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import { useField } from "formik";
 import { useUniqueId } from "metabase/hooks/use-unique-id";

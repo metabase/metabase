@@ -9,7 +9,6 @@ import { usePrevious } from "react-use";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
-import Confirm from "metabase/components/Confirm";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
 
@@ -304,6 +303,7 @@ function DatasetEditor(props) {
   );
 
   const handleCancelEdit = () => {
+    setShowCancelEditWarning(false);
     onCancelDatasetChanges();
     setQueryBuilderMode("view");
   };
@@ -312,11 +312,15 @@ function DatasetEditor(props) {
     setShowCancelEditWarning(false);
   };
 
-  const handleRequestCancelEdit = () => {
-    if (isDirty) {
-      setShowCancelEditWarning(true);
+  const handleCancelClick = () => {
+    if (dataset.isSaved()) {
+      if (isDirty) {
+        setShowCancelEditWarning(true);
+      } else {
+        handleCancelEdit();
+      }
     } else {
-      handleCancelEdit();
+      onCancelCreateNewModel();
     }
   };
 
@@ -441,23 +445,11 @@ function DatasetEditor(props) {
           />
         }
         buttons={[
-          dataset.isSaved() ? (
-            <Button
-              key="cancel"
-              small
-              onClick={handleRequestCancelEdit}
-            >{t`Cancel`}</Button>
-          ) : (
-            <Confirm
-              key="cancel"
-              action={onCancelCreateNewModel}
-              title={t`Discard changes?`}
-              message={t`Your model won't be created.`}
-              confirmButtonText={t`Discard`}
-            >
-              <Button small>{t`Cancel`}</Button>
-            </Confirm>
-          ),
+          <Button
+            key="cancel"
+            small
+            onClick={handleCancelClick}
+          >{t`Cancel`}</Button>,
           <ActionButton
             key="save"
             disabled={!canSaveChanges}

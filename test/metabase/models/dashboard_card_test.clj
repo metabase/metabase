@@ -214,7 +214,7 @@
                    DashboardCard dashcard-3 {:dashboard_id dashboard-id :card_id card-id}
                    Card          {series-id-1 :id} {:name "Series Card 1"}
                    Card          {series-id-2 :id} {:name "Series Card 2"}]
-      (let [dashboard (t2/hydrate dashboard [:ordered_cards :series :card])]
+      (let [dashboard (t2/hydrate dashboard [:dashcards :series :card])]
         (testing "Should have fewer DB calls if there are no changes to the dashcards"
           (t2/with-call-count [call-count]
             (dashboard/update-dashcards! dashboard [dashcard-1 dashcard-2 dashcard-3])

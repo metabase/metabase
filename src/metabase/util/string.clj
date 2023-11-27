@@ -1,8 +1,8 @@
 (ns metabase.util.string
   "Util for building strings"
   (:require
+   [clojure.string :as str]
    [metabase.util.i18n :refer [deferred-tru]]))
-
 
 (defn build-sentence
   "Join parts of a sentence together to build a compound one.
@@ -29,3 +29,22 @@
        (= (count parts) 1) (str (first parts) (when stop? \.))
        (= (count parts) 2) (str (first parts) " " (deferred-tru "and")  " " (second parts) (when stop? \.))
        :else               (str (first parts) ", " (build-sentence (rest parts) options))))))
+
+(defn mask
+  "Mask string value behind 'start...end' representation.
+
+  First four and last four symbols are shown. Even less if string is shorter
+  than 8 chars."
+  ([s]
+   (mask s 4))
+  ([s start-limit]
+   (mask s start-limit 4))
+  ([s start-limit end-limit]
+   (if (str/blank? s)
+     s
+     (let [cnt (count s)]
+       (str
+        (subs s 0 (max 1 (min start-limit (- cnt 2))))
+        "..."
+        (when (< (+ end-limit start-limit) cnt)
+          (subs s (- cnt end-limit) cnt)))))))

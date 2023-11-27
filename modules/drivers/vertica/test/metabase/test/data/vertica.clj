@@ -5,7 +5,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -38,7 +38,8 @@
                               :type/Float          "FLOAT"
                               :type/Integer        "INTEGER"
                               :type/Text           "VARCHAR(1024)"
-                              :type/Time           "TIME"}]
+                              :type/Time           "TIME"
+                              :type/TimeWithTZ     "TIMETZ"}]
   (defmethod sql.tx/field-base-type->sql-type [:vertica base-type] [_ _] sql-type))
 
 (defn- db-name []

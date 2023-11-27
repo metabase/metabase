@@ -8,7 +8,7 @@
    [honeysql.core :as hsql]
    [honeysql.format :as hformat]
    [honeysql.helpers :as hh]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]

@@ -92,12 +92,7 @@ export function DashboardSidebars({
 
   switch (sidebar.name) {
     case SIDEBAR_NAME.addQuestion:
-      return (
-        <AddCardSidebar
-          initialCollection={dashboard.collection_id}
-          onSelect={handleAddCard}
-        />
-      );
+      return <AddCardSidebar onSelect={handleAddCard} />;
     case SIDEBAR_NAME.action: {
       const onUpdateVisualizationSettings = settings =>
         onUpdateDashCardVisualizationSettings(

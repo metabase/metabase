@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [honeysql.format :as hformat]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.api.database :as api.database]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]

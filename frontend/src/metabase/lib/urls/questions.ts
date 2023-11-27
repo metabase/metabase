@@ -121,12 +121,18 @@ export function newQuestion({
   }
 }
 
-export function publicQuestion(
-  uuid: string,
-  type: string | null = null,
-  query?: string,
-) {
-  const siteUrl = MetabaseSettings.get("site-url");
+export function publicQuestion({
+  uuid,
+  type = null,
+  query,
+  includeSiteUrl = true,
+}: {
+  uuid: string;
+  type: string | null;
+  query?: string;
+  includeSiteUrl?: boolean;
+}) {
+  const siteUrl = includeSiteUrl ? MetabaseSettings.get("site-url") : "";
   const searchQuery = query ? `?${query}` : "";
   return (
     `${siteUrl}/public/question/${uuid}` +
@@ -136,8 +142,7 @@ export function publicQuestion(
 }
 
 export function embedCard(token: string, type: string | null = null) {
-  const siteUrl = MetabaseSettings.get("site-url");
-  return `${siteUrl}/embed/question/${token}` + (type ? `.${type}` : ``);
+  return `/embed/question/${token}` + (type ? `.${type}` : ``);
 }
 
 export function tableRowsQuery(

@@ -5,7 +5,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.driver :as driver]

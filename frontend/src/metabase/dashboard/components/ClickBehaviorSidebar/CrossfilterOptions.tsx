@@ -5,14 +5,14 @@ import ClickMappings from "metabase/dashboard/components/ClickMappings";
 import type {
   ClickBehavior,
   Dashboard,
-  DashboardOrderedCard,
+  DashboardCard,
 } from "metabase-types/api";
 
 import { Heading, SidebarContent } from "./ClickBehaviorSidebar.styled";
 
 interface Props {
   dashboard: Dashboard;
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   clickBehavior: ClickBehavior;
   updateSettings: (settings: ClickBehavior) => void;
 }
@@ -29,7 +29,7 @@ function CrossfilterOptions({
       <ClickMappings
         object={dashboard}
         dashcard={dashcard}
-        isDash
+        isDashboard
         clickBehavior={clickBehavior}
         updateSettings={updateSettings}
         excludeParametersSources

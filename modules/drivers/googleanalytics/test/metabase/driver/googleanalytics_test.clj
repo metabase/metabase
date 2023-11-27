@@ -2,7 +2,7 @@
   "Tests for the Google Analytics driver and query processor."
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.googleanalytics]

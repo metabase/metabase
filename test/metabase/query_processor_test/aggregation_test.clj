@@ -301,6 +301,24 @@
                  {:aggregation [[:distinct $name]
                                 [:distinct $price]]})))))))
 
+(deftest ^:parallel aggregate-boolean-without-type-test
+  (testing "Legacy breakout on boolean field should work correctly (#34286)"
+    (mt/dataset places-cam-likes
+      (is (= {false 1, true 2}
+             (into {}
+                   (mt/formatted-rows [boolean int]
+                     (mt/run-mbql-query places
+                       {:breakout     [[:field %liked nil]]
+                        :aggregation  [["count"]]})))))))
+  (testing "Legacy breakout on boolean field with explicit type should work correctly (#34286)"
+    (mt/dataset places-cam-likes
+      (is (= {false 1, true 2}
+             (into {}
+                   (mt/formatted-rows [boolean int]
+                     (mt/run-mbql-query places
+                       {:breakout     [[:field %liked {:base-type :type/Boolean}]]
+                        :aggregation  [["count"]]}))))))))
+
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !                                                                                                                   !
 ;; !                    tests for named aggregations can be found in `expression-aggregations-test`                    !

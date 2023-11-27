@@ -2,7 +2,7 @@
   "Logic for rendering datetimes inside Pulses."
   (:require
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.public-settings :as public-settings]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util.date-2 :as u.date]

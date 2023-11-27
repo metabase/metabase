@@ -11,8 +11,10 @@ import {
 import { createCard } from "metabase/lib/card";
 
 import { getVisualizationRaw } from "metabase/visualizations";
+import { autoWireParametersToNewCard } from "metabase/dashboard/actions/auto-wire-parameters/actions";
 import { trackCardCreated } from "../analytics";
 import { getDashCardById } from "../selectors";
+import { isVirtualDashCard } from "../utils";
 import {
   ADD_CARD_TO_DASH,
   REMOVE_CARD_FROM_DASH,
@@ -20,29 +22,15 @@ import {
 } from "./core";
 import { cancelFetchCardData, fetchCardData } from "./data-fetching";
 import { loadMetadataForDashboard } from "./metadata";
+import { getExistingDashCards } from "./utils";
 
 export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
 export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
 
 let tempId = -1;
+
 function generateTemporaryDashcardId() {
   return tempId--;
-}
-
-function getExistingDashCards(state, dashId, tabId) {
-  const { dashboards, dashcards } = state.dashboard;
-  const dashboard = dashboards[dashId];
-  return dashboard.ordered_cards
-    .map(id => dashcards[id])
-    .filter(dc => {
-      if (dc.isRemoved) {
-        return false;
-      }
-      if (tabId != null) {
-        return dc.dashboard_tab_id === tabId;
-      }
-      return true;
-    });
 }
 
 export const addCardToDashboard =
@@ -55,15 +43,23 @@ export const addCardToDashboard =
     const visualization = getVisualizationRaw([{ card }]);
     const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
 
+    const dashboardState = getState().dashboard;
+
+    const dashcardId = generateTemporaryDashcardId();
     const dashcard = {
-      id: generateTemporaryDashcardId(),
+      id: dashcardId,
       dashboard_id: dashId,
       dashboard_tab_id: tabId ?? null,
       card_id: card.id,
       card: card,
       series: [],
       ...getPositionForNewDashCard(
-        getExistingDashCards(getState(), dashId, tabId),
+        getExistingDashCards(
+          dashboardState.dashboards,
+          dashboardState.dashcards,
+          dashId,
+          tabId,
+        ),
         createdCardSize.width,
         createdCardSize.height,
       ),
@@ -74,6 +70,13 @@ export const addCardToDashboard =
     dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
 
     dispatch(loadMetadataForDashboard([dashcard]));
+
+    dispatch(
+      autoWireParametersToNewCard({
+        dashboard_id: dashId,
+        dashcard_id: dashcardId,
+      }),
+    );
   };
 
 export const removeCardFromDashboard = createThunkAction(
@@ -92,7 +95,9 @@ export const undoRemoveCardFromDashboard = createThunkAction(
       const dashcard = getDashCardById(getState(), dashcardId);
       const card = dashcard.card;
 
-      dispatch(fetchCardData(card, dashcard));
+      if (!isVirtualDashCard(dashcard)) {
+        dispatch(fetchCardData(card, dashcard));
+      }
 
       return { dashcardId };
     },
@@ -107,6 +112,8 @@ export const addDashCardToDashboard = function ({
     const visualization = getVisualizationRaw([dashcardOverrides]);
     const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
 
+    const dashboardState = getState().dashboard;
+
     const dashcard = {
       id: generateTemporaryDashcardId(),
       card_id: null,
@@ -115,7 +122,12 @@ export const addDashCardToDashboard = function ({
       dashboard_tab_id: tabId ?? null,
       series: [],
       ...getPositionForNewDashCard(
-        getExistingDashCards(getState(), dashId, tabId),
+        getExistingDashCards(
+          dashboardState.dashboards,
+          dashboardState.dashcards,
+          dashId,
+          tabId,
+        ),
         createdCardSize.width,
         createdCardSize.height,
       ),

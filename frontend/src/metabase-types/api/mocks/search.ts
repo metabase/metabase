@@ -36,6 +36,12 @@ export const createMockSearchResult = (
     dashboard_count: null,
     context: null,
     scores: [createMockSearchScore()],
+    created_at: "2022-01-01T00:00:00.000Z",
+    creator_common_name: "Testy Tableton",
+    creator_id: 2,
+    last_edited_at: "2023-01-01T00:00:00.000Z",
+    last_editor_common_name: "Bobby Tables",
+    last_editor_id: 1,
     ...options,
   };
 };

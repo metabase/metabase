@@ -50,6 +50,7 @@
      metabase.test/with-all-users-permission
      metabase.test/with-column-remappings
      metabase.test/with-discarded-collections-perms-changes
+     metabase.test/with-ensure-with-temp-no-transaction!
      metabase.test/with-env-keys-renamed-by
      metabase.test/with-expected-messages
      metabase.test/with-fake-inbox
@@ -63,13 +64,12 @@
      metabase.test/with-persistence-enabled
      metabase.test/with-single-admin-user
      metabase.test/with-system-timezone-id
-     metabase.test/with-temp
+     metabase.test/with-temp!
      metabase.test/with-temp-env-var-value
      metabase.test/with-temp-vals-in-db
      metabase.test/with-temporary-raw-setting-values
      metabase.test/with-temporary-setting-values
-     metabase.test/with-user-in-groups
-     toucan2.tools.with-temp/with-temp})
+     metabase.test/with-user-in-groups})
 
 ;;; TODO -- we should disallow `metabase.test/user-http-request` with any method other than `:get`
 
@@ -91,6 +91,24 @@
      clojure.core/volatile!
      clojure.core/vreset!
      clojure.core/vswap!
+     clojure.core.async/<!
+     clojure.core.async/<!!
+     clojure.core.async/>!
+     clojure.core.async/>!!
+     clojure.core.async/alt!
+     clojure.core.async/alt!!
+     clojure.core.async/alts!
+     clojure.core.async/alts!!
+     clojure.core.async/close!
+     clojure.core.async/ioc-alts!
+     clojure.core.async/offer!
+     clojure.core.async/onto-chan!
+     clojure.core.async/onto-chan!!
+     clojure.core.async/poll!
+     clojure.core.async/put!
+     clojure.core.async/take!
+     clojure.core.async/to-chan!
+     clojure.core.async/to-chan!!
      metabase.query-processor/process-query-and-save-execution!
      metabase.query-processor/process-query-and-save-with-max-results-constraints!
      metabase.query-processor.store/store-database!})
@@ -217,9 +235,18 @@
 
               nil)))))))
 
+(defn- warn-about-schema= [{[_is assertion-node] :children, :as _is-node}]
+  (let [{[assertion-symb-node] :children} assertion-node]
+    (when (and (hooks/token-node? assertion-symb-node)
+               (= (hooks/sexpr assertion-symb-node) 'schema=))
+      (hooks/reg-finding! (assoc (meta assertion-symb-node)
+                                 :message "Use =? or malli= instead of schema="
+                                 :type :metabase/warn-about-schema=)))))
+
 (defn is [{:keys [node lang]}]
   (when (= lang :cljs)
     (warn-about-missing-test-expr-requires-in-cljs node))
+  (warn-about-schema= node)
   {:node node})
 
 (defn use-fixtures [{:keys [node]}]

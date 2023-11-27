@@ -2,7 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.models.task-history :refer [TaskHistory]]
    [metabase.models.task-history-test :as tht]
    [metabase.task.task-history-cleanup :as cleanup-task]

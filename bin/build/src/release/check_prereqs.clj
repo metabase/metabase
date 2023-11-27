@@ -44,7 +44,10 @@
       (throw (ex-info "Docker is not running. Please start it and try again." {})))
     (u/announce "Docker is running.")))
 
-(defn check-prereqs []
+(defn check-prereqs
+  "Make sure we have all the commands we need are available, env vars are set, Docker is running, etc. before starting
+  the build process."
+  []
   (u/step "Check prereqs"
     (check-for-required-commands)
     (check-for-required-env-vars)

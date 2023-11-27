@@ -11,7 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    [metabase.query-processor.util :as qp.util]
-   [metabase.search.util :as search]
+   [metabase.search.util :as search.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -26,13 +26,11 @@
   - [[value1], [value2]]
   - [[value2, label2], [value2, label2]] - we search using label in this case"
   [query values]
-  (let [normalized-query (search/normalize query)]
-    (filter (fn [v]
-              (str/includes? (search/normalize (if (= (count v) 1)
-                                                 (first v)
-                                                 (second v)))
-                             normalized-query))
-            values)))
+  (let [normalized-query (search.util/normalize query)]
+    (filter (fn [v] (str/includes? (search.util/normalize (if (= (count v) 1)
+                                                            (first v)
+                                                            (second v)))
+                                   normalized-query)) values)))
 
 (defn- static-list-values
   [{values-source-options :values_source_config :as _param} query]
@@ -54,13 +52,16 @@
 
 (defn- values-from-card-query
   [card value-field query]
-  (let [value-base-type (:base_type (qp.util/field->field-info value-field (:result_metadata card)))]
+  (let [value-base-type (:base_type (qp.util/field->field-info value-field (:result_metadata card)))
+        expressions (get-in card [:dataset_query :query :expressions])]
     {:database (:database_id card)
      :type     :query
      :query    (merge
-                 {:source-table (format "card__%d" (:id card))
-                  :breakout     [value-field]
-                  :limit        *max-rows*}
+                 (cond-> {:source-table (format "card__%d" (:id card))
+                          :breakout     [value-field]
+                          :limit        *max-rows*}
+                   expressions
+                   (assoc :expressions expressions))
                  {:filter [:and
                            [(if (isa? value-base-type :type/Text)
                               :not-empty

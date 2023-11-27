@@ -89,7 +89,7 @@ const getDatasetParams = ({
   if (isPublicQuestion) {
     return {
       method: "GET",
-      url: Urls.publicQuestion(uuid, type),
+      url: Urls.publicQuestion({ uuid, type, includeSiteUrl: false }),
       params: new URLSearchParams({
         parameters: JSON.stringify(result?.json_query?.parameters ?? []),
       }),
@@ -128,17 +128,25 @@ const getDatasetParams = ({
   };
 };
 
+export function getDatasetDownloadUrl(url: string) {
+  // make url relative if it's not
+  url = url.replace(api.basename, "");
+  const requestUrl = new URL(api.basename + url, location.origin);
+
+  return requestUrl.href;
+}
+
 const getDatasetResponse = ({
   url,
   method,
   params,
 }: DownloadQueryResultsParams) => {
-  const requestUrl = new URL(api.basename + url, location.origin);
+  const requestUrl = getDatasetDownloadUrl(url);
 
   if (method === "POST") {
-    return fetch(requestUrl.href, { method, body: params });
+    return fetch(requestUrl, { method, body: params });
   } else {
-    return fetch(`${requestUrl.href}?${params}`);
+    return fetch(`${requestUrl}?${params}`);
   }
 };
 

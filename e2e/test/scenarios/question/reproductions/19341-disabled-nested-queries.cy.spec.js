@@ -38,8 +38,17 @@ describe("issue 19341", () => {
       // Ensure the search doesn't list saved questions
       cy.findByPlaceholderText("Search for a table…").type("Ord");
       cy.findByText("Loading...").should("not.exist");
-      cy.findAllByText(/Saved question in/i).should("not.exist");
-      cy.findAllByText(/Table in/i).should("exist");
+
+      cy.findAllByTestId("search-result-item").then($result => {
+        const searchResults = $result.toArray();
+        const modelTypes = new Set(
+          searchResults.map(k => k.getAttribute("data-model-type")),
+        );
+
+        expect(modelTypes).not.to.include("card");
+        expect(modelTypes).to.include("table");
+      });
+
       cy.icon("close").click();
 
       cy.findByText("Sample Database").click();

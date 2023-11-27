@@ -1,6 +1,6 @@
 (ns metabase.models.timeline
   (:require
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
@@ -22,15 +22,14 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-;;;; schemas
+;;;; transforms
 
-(def Icons
-  "Timeline and TimelineEvent icon string Schema"
- [:enum "star" "balloons" "mail" "warning" "bell" "cloud"])
-
-(def DefaultIcon
-  "Timeline default icon"
-  "star")
+(t2/define-after-select :model/Timeline
+  [timeline]
+  ;; We used to have a "balloons" icon but we removed it.
+  ;; Use the default icon instead. (metabase#34586, metabase#35129)
+  (update timeline :icon (fn [icon]
+                           (if (= icon "balloons") timeline-event/default-icon icon))))
 
 ;;;; functions
 

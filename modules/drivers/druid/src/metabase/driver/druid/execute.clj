@@ -2,7 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.math.numeric-tower :as math]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver.druid.query-processor :as druid.qp]
    [metabase.lib.metadata :as lib.metadata]

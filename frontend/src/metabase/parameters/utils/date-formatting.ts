@@ -1,5 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 
 import { DATE_OPERATORS } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePicker";
@@ -100,7 +101,7 @@ const prefixedOperators = new Set([
   "not-empty",
 ]);
 
-function getFilterTitle(filter: any[]) {
+export function getFilterTitle(filter: any[]) {
   const values = generateTimeFilterValuesDescriptions(filter);
   const desc =
     values.length > 2

@@ -3,6 +3,7 @@ import { MantineProvider } from "@mantine/core";
 import { withEmotionCache } from "@emotion/react";
 import type { EmotionCache } from "@emotion/react";
 import { getThemeOverrides } from "../../../theme";
+import { DatesProvider } from "../DatesProvider";
 
 interface ThemeProviderProps {
   children: ReactNode;
@@ -14,7 +15,7 @@ export const ThemeProvider = withEmotionCache(
 
     return (
       <MantineProvider theme={theme} emotionCache={cache}>
-        {children}
+        <DatesProvider>{children}</DatesProvider>
       </MantineProvider>
     );
   },

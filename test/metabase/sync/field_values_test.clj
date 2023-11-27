@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.models :refer [Field FieldValues Table]]
    [metabase.models.field-values :as field-values]

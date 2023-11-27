@@ -12,13 +12,14 @@ import type {
   CardId,
   DashCardId,
   Dashboard,
-  DashboardOrderedCard,
+  DashboardCard,
   Database,
   Dataset,
   NativeDatasetQuery,
   Parameter,
   StructuredDatasetQuery,
   ActionDashboardCard,
+  EmbedDataset,
 } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
 import Question from "metabase-lib/Question";
@@ -54,7 +55,7 @@ export function expandInlineDashboard(dashboard: Partial<Dashboard>) {
     name: "",
     parameters: [],
     ...dashboard,
-    ordered_cards: dashboard.ordered_cards?.map(dashcard => ({
+    dashcards: dashboard.dashcards?.map(dashcard => ({
       visualization_settings: {},
       parameter_mappings: [],
       ...dashcard,
@@ -76,26 +77,26 @@ export function expandInlineCard(card?: Card) {
   };
 }
 
-export function isVirtualDashCard(dashcard: DashboardOrderedCard) {
+export function isVirtualDashCard(dashcard: DashboardCard) {
   return _.isObject(dashcard?.visualization_settings?.virtual_card);
 }
 
-export function getVirtualCardType(dashcard: DashboardOrderedCard) {
+export function getVirtualCardType(dashcard: DashboardCard) {
   return dashcard?.visualization_settings?.virtual_card?.display;
 }
 
-export function isLinkDashCard(dashcard: DashboardOrderedCard) {
+export function isLinkDashCard(dashcard: DashboardCard) {
   return getVirtualCardType(dashcard) === "link";
 }
 
-export function isNativeDashCard(dashcard: DashboardOrderedCard) {
+export function isNativeDashCard(dashcard: DashboardCard) {
   return dashcard.card && new Question(dashcard.card).isNative();
 }
 
 // For a virtual (text) dashcard without any parameters, returns a boolean indicating whether we should display the
 // info text about parameter mapping in the card itself or as a tooltip.
 export function showVirtualDashCardInfoText(
-  dashcard: DashboardOrderedCard,
+  dashcard: DashboardCard,
   isMobile: boolean,
 ) {
   if (isVirtualDashCard(dashcard)) {
@@ -120,7 +121,7 @@ export function getNativeDashCardEmptyMappingText(parameter: Parameter) {
 export function getAllDashboardCards(dashboard: Dashboard) {
   const results = [];
   if (dashboard) {
-    for (const dashcard of dashboard.ordered_cards) {
+    for (const dashcard of dashboard.dashcards) {
       const cards = [dashcard.card].concat((dashcard as any).series || []);
       results.push(...cards.map(card => ({ card, dashcard })));
     }
@@ -175,7 +176,7 @@ export function getDatasetQueryParams(
 }
 
 export function isDashcardLoading(
-  dashcard: DashboardOrderedCard,
+  dashcard: DashboardCard,
   dashcardsData: Record<DashCardId, Record<CardId, Dataset | null>>,
 ) {
   if (isVirtualDashCard(dashcard)) {
@@ -225,19 +226,21 @@ const isDashcardDataLoaded = (
   return data != null && Object.values(data).every(result => result != null);
 };
 
-const hasRows = (dashcardData: Record<CardId, Dataset>) => {
+const hasRows = (dashcardData: Record<CardId, Dataset | EmbedDataset>) => {
   const queryResults = dashcardData
     ? Object.values(dashcardData).filter(Boolean)
     : [];
 
   return (
     queryResults.length > 0 &&
-    queryResults.every(queryResult => queryResult.data.rows.length > 0)
+    queryResults.every(
+      queryResult => "data" in queryResult && queryResult.data.rows.length > 0,
+    )
   );
 };
 
 const shouldHideCard = (
-  dashcard: DashboardOrderedCard,
+  dashcard: DashboardCard,
   dashcardData: Record<CardId, Dataset | null>,
   wasVisible: boolean,
 ) => {
@@ -260,7 +263,7 @@ const shouldHideCard = (
 };
 
 export const getVisibleCardIds = (
-  cards: DashboardOrderedCard[],
+  cards: DashboardCard[],
   dashcardsData: Record<DashCardId, Record<CardId, Dataset | null>>,
   prevVisibleCardIds = new Set<number>(),
 ) => {
@@ -283,3 +286,13 @@ export const getActionIsEnabledInDatabase = (
 ): boolean => {
   return !!card.action?.database_enabled_actions;
 };
+
+/**
+ * When you remove a dashcard from a dashboard (either via removing or via moving it to another tab),
+ * another dashcard can take its place. This small offset ensures that the grid will put this dashcard
+ * in the correct place, pushing back down the other card.
+ * This is a "best effort" solution, it doesn't always work but it's good enough for the most common case
+ * see https://github.com/metabase/metabase/pull/35502
+ */
+export const calculateDashCardRowAfterUndo = (originalRow: number) =>
+  originalRow - 0.1;

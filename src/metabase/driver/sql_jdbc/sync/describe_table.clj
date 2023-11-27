@@ -197,7 +197,8 @@
   Ref: https://docs.oracle.com/javase/8/docs/api/java/sql/DatabaseMetaData.html#getPrimaryKeys-java.lang.String-java.lang.String-java.lang.String-
 
   Note: If db-name, schema, and table-name are not passed, this may return _all_ pks that the metadata's connection can access."
-  {:added    "0.45.0"
+  {:changelog-test/ignore true
+   :added    "0.45.0"
    :arglists '([driver ^Connection conn db-name-or-nil table])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

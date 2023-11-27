@@ -1,27 +1,35 @@
+/* eslint-disable react/prop-types */
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { setupSearchEndpoints } from "__support__/server-mocks";
-import type {
-  SearchResult,
-  SearchResults as SearchResultsType,
-} from "metabase-types/api";
-import { createMockSearchResult } from "metabase-types/api/mocks";
-import { checkNotNull } from "metabase/core/utils/types";
+import {
+  setupCollectionByIdEndpoint,
+  setupSearchEndpoints,
+  setupUserRecipientsEndpoint,
+} from "__support__/server-mocks";
+import type { SearchResult } from "metabase-types/api";
+import {
+  createMockCollection,
+  createMockSearchResult,
+  createMockUser,
+} from "metabase-types/api/mocks";
+import { checkNotNull } from "metabase/lib/types";
+import type { SearchResultsFooter } from "metabase/nav/components/search/SearchResults";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
 
 type SearchResultsSetupProps = {
   searchResults?: SearchResult[];
   forceEntitySelect?: boolean;
   searchText?: string;
-  footer?: ((metadata: Omit<SearchResultsType, "data">) => JSX.Element) | null;
+  footer?: SearchResultsFooter;
 };
 
-const TEST_FOOTER = (metadata: Omit<SearchResultsType, "data">) => (
+const TEST_FOOTER: SearchResultsFooter = ({ metadata }) => (
   <div data-testid="footer">
     <div data-testid="test-total">{metadata.total}</div>
   </div>
@@ -40,7 +48,11 @@ const setup = async ({
   searchText = "test",
   footer = null,
 }: SearchResultsSetupProps = {}) => {
+  setupUserRecipientsEndpoint({ users: [createMockUser()] });
   setupSearchEndpoints(searchResults);
+  setupCollectionByIdEndpoint({
+    collections: [createMockCollection()],
+  });
 
   const onEntitySelect = jest.fn();
 
@@ -165,5 +177,10 @@ describe("SearchResults", () => {
     expect(screen.getByTestId("test-total")).toHaveTextContent(
       TEST_SEARCH_RESULTS.length.toString(),
     );
+  });
+
+  it("should only call the /api/user/recipients endpoint once even if there are multiple search results", async () => {
+    await setup();
+    expect(fetchMock.calls("path:/api/user/recipients").length).toBe(1);
   });
 });

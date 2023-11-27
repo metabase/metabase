@@ -13,9 +13,11 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.util :as mbql.u]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
+   [metabase.models.table :as table]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -50,6 +52,10 @@
     (when (contains? <> :creator_id)
       (when (not= (:creator_id <>) (t2/select-one-fn :creator_id Metric :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Metric.")))))))
+
+(t2/define-before-delete :model/Metric
+  [{:keys [id] :as _metric}]
+  (t2/delete! :model/Revision :model "Metric" :model_id id))
 
 (defmethod mi/perms-objects-set Metric
   [metric read-or-write]
@@ -176,3 +182,15 @@
         serdes/table->path
         serdes/storage-table-path-prefix
         (concat ["metrics" (serdes/storage-leaf-file-name id label)]))))
+
+
+;;; ------------------------------------------------ Audit Log --------------------------------------------------------
+
+(defmethod audit-log/model-details :model/Metric
+  [metric _event-type]
+  (let [table-id (:table_id metric)
+        db-id    (table/table-id->database-id table-id)]
+    (assoc
+     (select-keys metric [:name :description :revision_message])
+     :table_id    table-id
+     :database_id db-id)))

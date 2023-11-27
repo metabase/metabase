@@ -1,6 +1,7 @@
 /// code to "apply" chart tooltips. (How does one apply a tooltip?)
 
 import d3 from "d3";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import { getIn } from "icepick";
 import _ from "underscore";
@@ -48,7 +49,7 @@ function isDashboardAddedSeries(series, seriesIndex, dashboard) {
   const { card: addedSeriesCard } = series[seriesIndex];
 
   // find the dashcard associated with the first series
-  const dashCard = dashboard.ordered_cards.find(
+  const dashCard = dashboard.dashcards.find(
     dashCard => dashCard.card_id === firstCardInSeries.id,
   );
 

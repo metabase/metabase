@@ -72,10 +72,13 @@ filters:
 groups:
 - Overview:
     title: Transactions per source over time
+    score: 90
 - Financial:
     title: Orders and income per source
+    score: 80
 - UserAcquisition:
     title: Where users are coming from
+    score: 70
 dashboard_filters:
 - SourceMedium
 - SourceLarge

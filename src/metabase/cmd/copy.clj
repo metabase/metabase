@@ -9,7 +9,6 @@
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.db.data-migrations :refer [DataMigrations]]
    [metabase.db.setup :as mdb.setup]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
@@ -43,7 +42,7 @@
   `(do-step ~msg (fn [] ~@body)))
 
 (def entities
-  "Entities in the order they should be serialized/deserialized. This is done so we make sure that we load load
+  "Entities in the order they should be serialized/deserialized. This is done so we make sure that we load
   instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before `Fields`."
   (concat
    [:model/Database
@@ -95,13 +94,12 @@
     :model/ModelIndex
     :model/ModelIndexValue
     ;; 48+
-    :model/TablePrivileges]
+    :model/TablePrivileges
+    :model/AuditLog
+    :model/RecentViews]
    (when config/ee-available?
      [:model/GroupTableAccessPolicy
-      :model/ConnectionImpersonation])
-   ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed
-   ;; above this line)
-   [DataMigrations]))
+      :model/ConnectionImpersonation])))
 
 (defn- objects->colums+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
@@ -313,7 +311,6 @@
   "Entities that do NOT use an auto incrementing ID column."
   #{:model/Setting
     :model/Session
-    :model/DataMigrations
     :model/ImplicitAction
     :model/HTTPAction
     :model/QueryAction
@@ -388,8 +385,7 @@
   ;;
   ;; don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
   (step (trs "Set up {0} target database and run migrations..." (name target-db-type))
-    (binding [mdb.setup/*disable-data-migrations* true]
-      (mdb.setup/setup-db! target-db-type target-data-source true)))
+    (mdb.setup/setup-db! target-db-type target-data-source true))
   ;; make sure target DB is empty
   (step (trs "Testing if target {0} database is already populated..." (name target-db-type))
     (assert-db-empty target-data-source))

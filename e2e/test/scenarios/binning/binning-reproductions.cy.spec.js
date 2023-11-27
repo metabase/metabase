@@ -9,6 +9,7 @@ import {
   summarize,
   openOrdersTable,
   getNotebookStep,
+  rightSidebar,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -161,9 +162,7 @@ describe("binning related reproductions", () => {
     getNotebookStep("summarize")
       .findByText("Pick a column to group by")
       .click();
-    popover()
-      .findByText(/Question \d/)
-      .click();
+    popover().findByText("18646").click();
 
     popover().within(() => {
       cy.findByRole("option", { name: "CREATED_AT" })
@@ -172,14 +171,15 @@ describe("binning related reproductions", () => {
       cy.findByRole("option", { name: "CREATED_AT" }).click();
     });
 
-    getNotebookStep("summarize").findByText(/Question \d+ → Created At: Month/);
+    getNotebookStep("summarize").findByText(
+      "18646 - Product → Created At: Month",
+    );
 
     visualize();
     cy.get("circle");
   });
 
-  it("should display date granularity on Summarize when opened from saved question (metabase#11439)", () => {
-    // save "Orders" as question
+  it("should display date granularity on Summarize when opened from saved question (metabase#10441, metabase#11439)", () => {
     cy.createQuestion({
       name: "11439",
       query: { "source-table": ORDERS_ID },
@@ -188,34 +188,24 @@ describe("binning related reproductions", () => {
     // it is essential for this repro to find question following these exact steps
     // (for example, visiting `/collection/root` would yield different result)
     startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved Questions").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("11439").click();
-    visualize();
+    popover().within(() => {
+      cy.findByText("Saved Questions").click();
+      cy.findByText("11439").click();
+    });
 
+    visualize();
     summarize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Group by")
-      .parent()
-      .within(() => {
-        cy.log("Reported failing since v0.33.5.1");
-        cy.log(
-          "**Marked as regression of [#10441](https://github.com/metabase/metabase/issues/10441)**",
-        );
+    rightSidebar().within(() => {
+      cy.findByRole("listitem", { name: "Created At" })
+        .findByLabelText("Temporal bucket")
+        .click();
+    });
 
-        cy.findAllByText("Created At")
-          .eq(0)
-          .closest("li")
-          .contains("by month")
-          // realHover() or mousemove don't work for whatever reason
-          // have to use this ugly hack for now
-          .click({ force: true });
-      });
-    // // this step is maybe redundant since it fails to even find "by month"
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Hour of day");
+    popover().within(() => {
+      cy.button("More…").click();
+      cy.findByText("Hour of day").should("exist");
+    });
   });
 
   it("shouldn't duplicate the breakout field (metabase#22382)", () => {

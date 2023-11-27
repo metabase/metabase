@@ -1,7 +1,7 @@
 import type {
   Card,
   Dashboard,
-  DashboardOrderedCard,
+  DashboardCard,
   VirtualCard,
   ActionDashboardCard,
 } from "metabase-types/api";
@@ -11,7 +11,7 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   id: 1,
   collection_id: null,
   name: "Dashboard",
-  ordered_cards: [],
+  dashcards: [],
   can_write: true,
   description: "",
   cache_ttl: null,
@@ -27,9 +27,9 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   ...opts,
 });
 
-export const createMockDashboardOrderedCard = (
-  opts?: Partial<DashboardOrderedCard>,
-): DashboardOrderedCard => ({
+export const createMockDashboardCard = (
+  opts?: Partial<DashboardCard>,
+): DashboardCard => ({
   id: 1,
   dashboard_id: 1,
   col: 0,
@@ -50,7 +50,7 @@ export const createMockDashboardOrderedCard = (
 export const createMockActionDashboardCard = (
   opts?: Partial<ActionDashboardCard>,
 ): ActionDashboardCard => ({
-  ...createMockDashboardOrderedCard(),
+  ...createMockDashboardCard(),
   action: undefined,
   card: createMockCard({ display: "action" }),
   visualization_settings: {
@@ -63,8 +63,8 @@ export const createMockActionDashboardCard = (
 });
 
 export const createMockTextDashboardCard = (
-  opts?: Partial<DashboardOrderedCard> & { text?: string },
-): DashboardOrderedCard => ({
+  opts?: Partial<DashboardCard> & { text?: string },
+): DashboardCard => ({
   ...createMockDashboardCardWithVirtualCard({
     visualization_settings: {
       text: opts?.text ?? "Body Text",
@@ -81,8 +81,8 @@ export const createMockTextDashboardCard = (
 });
 
 export const createMockHeadingDashboardCard = (
-  opts?: Partial<DashboardOrderedCard> & { text?: string },
-): DashboardOrderedCard => ({
+  opts?: Partial<DashboardCard> & { text?: string },
+): DashboardCard => ({
   ...createMockDashboardCardWithVirtualCard({
     visualization_settings: {
       text: opts?.text ?? "Heading Text",
@@ -99,8 +99,8 @@ export const createMockHeadingDashboardCard = (
 });
 
 export const createMockLinkDashboardCard = (
-  opts?: Partial<DashboardOrderedCard> & { url?: string },
-): DashboardOrderedCard => ({
+  opts?: Partial<DashboardCard> & { url?: string },
+): DashboardCard => ({
   ...createMockDashboardCardWithVirtualCard({
     id: 1,
     visualization_settings: {
@@ -120,9 +120,9 @@ export const createMockLinkDashboardCard = (
 });
 
 export const createMockDashboardCardWithVirtualCard = (
-  opts?: Partial<DashboardOrderedCard>,
-): DashboardOrderedCard => ({
-  ...createMockDashboardOrderedCard(),
+  opts?: Partial<DashboardCard>,
+): DashboardCard => ({
+  ...createMockDashboardCard(),
   card: {
     query_average_duration: null,
     display: opts?.visualization_settings?.virtual_card?.display ?? "text",

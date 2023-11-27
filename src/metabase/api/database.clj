@@ -13,6 +13,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -591,6 +592,7 @@
   :visibility :public
   :type       :keyword
   :default    :substring
+  :audit      :raw-value
   :setter     (fn [v]
                 (let [v (cond-> v (string? v) keyword)]
                   (if (autocomplete-matching-options v)
@@ -786,15 +788,18 @@
                                           (sync.schedules/default-randomized-schedule)))
                                        (when (some? auto_run_queries)
                                          {:auto_run_queries auto_run_queries})))))
-        (events/publish-event! :event/database-create <>)
+        (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})
         (snowplow/track-event! ::snowplow/database-connection-successful
                                api/*current-user-id*
-                               {:database engine, :database-id (u/the-id <>), :source :admin}))
+                               {:database     engine
+                                :database-id  (u/the-id <>)
+                                :source       :admin
+                                :dbms-version (:version (driver/dbms-version (keyword engine) <>))}))
       ;; failed to connect, return error
       (do
         (snowplow/track-event! ::snowplow/database-connection-failed
                                api/*current-user-id*
-                               {:database engine, :source :setup})
+                               {:database engine :source :setup})
         {:status 400
          :body   (dissoc details-or-error :valid)}))))
 
@@ -949,7 +954,9 @@
           (t2/update! Database id {:cache_ttl cache_ttl}))
 
         (let [db (t2/select-one Database :id id)]
-          (events/publish-event! :event/database-update db)
+          (events/publish-event! :event/database-update {:object db
+                                                         :user-id api/*current-user-id*
+                                                         :previous-object existing-database})
           ;; return the DB with the expanded schedules back in place
           (add-expanded-schedules db))))))
 
@@ -962,10 +969,10 @@
   {id ms/PositiveInt}
   (api/check-superuser)
   (api/let-404 [db (t2/select-one Database :id id)]
+    (api/check-403 (mi/can-write? db))
     (t2/delete! Database :id id)
-    (events/publish-event! :event/database-delete db))
+    (events/publish-event! :event/database-delete {:object db :user-id api/*current-user-id*}))
   api/generic-204-no-content)
-
 
 ;;; ------------------------------------------ POST /api/database/:id/sync_schema -------------------------------------------
 
@@ -976,10 +983,21 @@
   {id ms/PositiveInt}
   ;; just wrap this in a future so it happens async
   (let [db (api/write-check (t2/select-one Database :id id))]
-    (future
-      (sync-metadata/sync-db-metadata! db)
-      (analyze/analyze-db! db)))
-  {:status :ok})
+    (events/publish-event! :event/database-manual-sync {:object db :user-id api/*current-user-id*})
+    (if-let [ex (try
+                  ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
+                  ;; purposes of creating a new H2 database.
+                  (binding [h2/*allow-testing-h2-connections* true]
+                    (driver.u/can-connect-with-details? (:engine db) (:details db) :throw-exceptions))
+                  nil
+                  (catch Throwable e
+                    e))]
+      (throw (ex-info (ex-message ex) {:status-code 422}))
+      (do
+        (future
+          (sync-metadata/sync-db-metadata! db)
+          (analyze/analyze-db! db))
+        {:status :ok}))))
 
 (api/defendpoint POST "/:id/dismiss_spinner"
   "Manually set the initial sync status of the `Database` and corresponding
@@ -1011,6 +1029,7 @@
   {id ms/PositiveInt}
   ;; just wrap this is a future so it happens async
   (let [db (api/write-check (t2/select-one Database :id id))]
+    (events/publish-event! :event/database-manual-scan {:object db :user-id api/*current-user-id*})
     ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
@@ -1039,7 +1058,9 @@
   "Discards all saved field values for this `Database`."
   [id]
   {id ms/PositiveInt}
-  (delete-all-field-values-for-database! (api/write-check (t2/select-one Database :id id)))
+  (let [db (api/write-check (t2/select-one Database :id id))]
+    (events/publish-event! :event/database-discard-field-values {:object db :user-id api/*current-user-id*})
+    (delete-all-field-values-for-database! db))
   {:status :ok})
 
 

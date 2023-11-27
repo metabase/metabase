@@ -15,6 +15,9 @@ const PAGE_PADDING = 10;
 // Popover padding and border
 const POPOVER_BODY_PADDING = 2;
 
+/**
+ * @deprecated prefer Popover from "metabase/ui" instead
+ */
 export default class Popover extends Component {
   constructor(props, context) {
     super(props, context);

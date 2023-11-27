@@ -3,7 +3,7 @@
   response with all the metadata for `:api`."
   (:require
    [cheshire.core :as json]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.util.date-2 :as u.date])

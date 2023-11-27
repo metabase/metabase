@@ -52,8 +52,9 @@
   [token premium-features-response]
   (http-fake/with-fake-routes-in-isolation
     {{:address      (#'premium-features/token-status-url token @#'premium-features/token-check-url)
-      :query-params {:users     (str (#'premium-features/cached-active-users-count))
-                     :site-uuid (public-settings/site-uuid-for-premium-features-token-checks)}}
+      :query-params {:users      (str (#'premium-features/cached-active-users-count))
+                     :site-uuid  (public-settings/site-uuid-for-premium-features-token-checks)
+                     :mb-version (:tag config/mb-version-info)}}
      (constantly premium-features-response)}
     (#'premium-features/fetch-token-status* token)))
 

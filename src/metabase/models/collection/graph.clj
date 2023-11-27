@@ -9,7 +9,8 @@
     :as c-perm-revision
     :refer [CollectionPermissionGraphRevision]]
    [metabase.models.permissions :as perms :refer [Permissions]]
-   [metabase.models.permissions-group :refer [PermissionsGroup]]
+   [metabase.models.permissions-group :as perms-group :as perms-group :refer [PermissionsGroup]]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -65,7 +66,7 @@
         honeysql-form           {:select [[:id :id]]
                                  :from   [:collection]
                                  :where  (into [:and
-                                                [:= :namespace (u/qualified-name collection-namespace)]
+                                                (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
                                                 [:= :personal_owner_id nil]]
                                                (for [collection-id personal-collection-ids]
                                                  [:not [:like :location (h2x/literal (format "/%d/%%" collection-id))]]))}]
@@ -81,6 +82,15 @@
                            {group-id (group-permissions-graph collection-namespace
                                                               (group-id->perms group-id)
                                                               collection-ids)}))})))
+
+(defn- modify-instance-analytics-for-admins
+  "In the graph, override the instance analytics collection within the admin group to read."
+  [graph]
+  (let [admin-group-id      (:id (perms-group/admin))
+        audit-collection-id (:id (perms/default-audit-collection))]
+    (if (nil? audit-collection-id)
+      graph
+      (assoc-in graph [:groups admin-group-id audit-collection-id] :read))))
 
 (mu/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every group and all permissioned collections. This
@@ -102,8 +112,8 @@
    (t2/with-transaction [_conn]
      (-> collection-namespace
          non-personal-collection-ids
-         (collection-permission-graph collection-namespace)))))
-
+         (collection-permission-graph collection-namespace)
+         modify-instance-analytics-for-admins))))
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
@@ -131,6 +141,11 @@
   (doseq [[collection-id new-perms] new-group-perms]
     (update-collection-permissions! collection-namespace group-id collection-id new-perms)))
 
+(defenterprise update-audit-collection-permissions!
+  "OSS implementation of `audit-db/update-audit-collection-permissions!`, which is an enterprise feature, so does nothing in the OSS
+  version."
+  metabase-enterprise.audit-app.permissions [_ _] ::noop)
+
 (mu/defn update-graph!
   "Update the Collections permissions graph for Collections of `collection-namespace` (default `nil`, the 'default'
   namespace). This works just like [[metabase.models.permission/update-data-perms-graph!]], but for Collections;
@@ -153,6 +168,7 @@
      (when (seq changes)
        (t2/with-transaction [_conn]
          (doseq [[group-id changes] changes]
+           (update-audit-collection-permissions! group-id changes)
            (update-group-permissions! collection-namespace group-id changes))
          (perms/save-perms-revision! CollectionPermissionGraphRevision (:revision old-graph)
                                       (assoc old-graph :namespace collection-namespace) changes))))))

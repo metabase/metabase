@@ -1,6 +1,6 @@
 (ns metabase.sync.sync-metadata.sync-timezone
   (:require
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.expression.temporal

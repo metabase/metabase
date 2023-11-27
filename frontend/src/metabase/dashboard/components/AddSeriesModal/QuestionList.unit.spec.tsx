@@ -4,7 +4,7 @@ import _ from "underscore";
 import userEvent from "@testing-library/user-event";
 import {
   createMockCard,
-  createMockDashboardOrderedCard,
+  createMockDashboardCard,
 } from "metabase-types/api/mocks";
 import type { Card, GetCompatibleCardsPayload } from "metabase-types/api";
 import { QuestionList } from "./QuestionList";
@@ -47,7 +47,7 @@ describe("QuestionList", () => {
     mockCompatibleCardsPage(compatibleCardsFirstPage);
 
     const onSelect = jest.fn();
-    const dashcard = createMockDashboardOrderedCard({ card_id: 1 });
+    const dashcard = createMockDashboardCard({ card_id: 1 });
 
     render(
       <QuestionList
@@ -81,7 +81,7 @@ describe("QuestionList", () => {
     mockCompatibleCardsPage(compatibleCardsFirstPage);
 
     const onSelect = jest.fn();
-    const dashcard = createMockDashboardOrderedCard({ card_id: 1 });
+    const dashcard = createMockDashboardCard({ card_id: 1 });
     const selectedCard = createMockCard({
       id: 500,
       name: "search text selected card",
@@ -120,7 +120,7 @@ describe("QuestionList", () => {
     mockCompatibleCardsPage([createMockCard({ id: 3, name: "fetched card" })]);
 
     const cards = [createMockCard({ id: 2, name: "added card" })];
-    const dashcard = createMockDashboardOrderedCard({ card_id: 1 });
+    const dashcard = createMockDashboardCard({ card_id: 1 });
 
     render(
       <QuestionList

@@ -104,7 +104,7 @@ describe("issue 12928", () => {
         lhsTable: SOURCE_QUESTION_NAME,
         rhsTable: JOINED_QUESTION_NAME,
         lhsSampleColumn: "Products → Category",
-        rhsSampleColumn: `Question ${joinedQuestionId} → Category`,
+        rhsSampleColumn: `${JOINED_QUESTION_NAME} - Products → Category → Category`,
       });
     });
 

@@ -1,5 +1,6 @@
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
+import { within } from "@testing-library/react";
 import { useDispatch } from "metabase/lib/redux";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
@@ -16,6 +17,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { delay } from "metabase/lib/promise";
 import type Database from "metabase-lib/metadata/Database";
 import type Table from "metabase-lib/metadata/Table";
 import { useEntityListQuery } from "./use-entity-list-query";
@@ -23,7 +25,7 @@ import { useEntityListQuery } from "./use-entity-list-query";
 const TEST_DB = createMockDatabase();
 const TEST_TABLE = createMockTable();
 
-const TestComponent = () => {
+const TestComponent = ({ testId }: { testId?: string }) => {
   const {
     data = [],
     isLoading,
@@ -44,11 +46,17 @@ const TestComponent = () => {
   const handleInvalidate = () => dispatch(Databases.actions.invalidateLists());
 
   if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <LoadingAndErrorWrapper
+        loading={isLoading}
+        error={error}
+        data-testid={testId}
+      />
+    );
   }
 
   return (
-    <div>
+    <div data-testid={testId}>
       <button onClick={handleInvalidate}>Invalidate databases</button>
       {data.map(database => (
         <div key={database.id}>{database.name}</div>
@@ -165,6 +173,43 @@ describe("useEntityListQuery", () => {
     await waitFor(() => {
       expect(fetchMock.calls("path:/api/table")).toHaveLength(2);
     });
+    await waitForLoaderToBeRemoved();
+
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
+  });
+
+  it("should not remove loader in case second api call is cached", async () => {
+    fetchMock.get(
+      "path:/api/database",
+      delay(100).then(() => {
+        return [TEST_DB];
+      }),
+      { overwriteRoutes: true },
+    );
+
+    const { rerender } = setup();
+
+    expect(fetchMock.calls("path:/api/database")).toHaveLength(1);
+
+    rerender(
+      <>
+        <TestComponent />
+        <TestComponent testId="test2" />
+      </>,
+    );
+
+    // second component should not create extra request, make sure that caching works as expected
+    expect(fetchMock.calls("path:/api/database")).toHaveLength(1);
+
+    expect(
+      within(screen.getByTestId("test2")).getByTestId("loading-spinner"),
+    ).toBeInTheDocument();
+
+    await delay(100); // trigger fetch request to be resolved
+
+    await delay(0); // trigger extra event loop to make sure React state has been updated
+
+    expect(fetchMock.calls("path:/api/database")).toHaveLength(1);
+    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
   });
 });

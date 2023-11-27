@@ -442,7 +442,12 @@
   [modelable row-map]
   {:pre [(map? row-map)]}
   (let [model (t2/resolve-model modelable)]
-    (t2/select-one model (t2.identity-query/identity-query [row-map]))))
+    (try
+      (t2/select-one model (t2.identity-query/identity-query [row-map]))
+      (catch Throwable e
+        (throw (ex-info (format "Error doing after-select for model %s: %s" model (ex-message e))
+                        {:model model}
+                        e))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |

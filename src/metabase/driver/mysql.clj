@@ -7,7 +7,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [honey.sql :as sql]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.db.spec :as mdb.spec]
@@ -37,7 +37,8 @@
   (:import
    (java.io File)
    (java.sql DatabaseMetaData ResultSet ResultSetMetaData Types)
-   (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime)))
+   (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
+   (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
 
@@ -244,8 +245,29 @@
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal expr))
 
-(defn- date-format [format-str expr] [:date_format expr (h2x/literal format-str)])
-(defn- str-to-date [format-str expr] [:str_to_date expr (h2x/literal format-str)])
+(defn- date-format [format-str expr]
+  [:date_format expr (h2x/literal format-str)])
+
+(defn- str-to-date
+  "From the dox:
+
+  > STR_TO_DATE() returns a DATETIME value if the format string contains both date and time parts, or a DATE or TIME
+  > value if the string contains only date or time parts.
+
+  See https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_date-format for a list of format
+  specifiers."
+  [format-str expr]
+  (let [contains-date-parts? (some #(str/includes? format-str %)
+                                   ["%a" "%b" "%c" "%D" "%d" "%e" "%j" "%M" "%m" "%U"
+                                    "%u" "%V" "%v" "%W" "%w" "%X" "%x" "%Y" "%y"])
+        contains-time-parts? (some #(str/includes? format-str %)
+                                   ["%f" "%H" "%h" "%I" "%i" "%k" "%l" "%p" "%r" "%S" "%s" "%T"])
+        database-type        (cond
+                               (and contains-date-parts? (not contains-time-parts?)) "date"
+                               (and contains-time-parts? (not contains-date-parts?)) "time"
+                               :else                                                 "datetime")]
+    (-> [:str_to_date expr (h2x/literal format-str)]
+        (h2x/with-database-type-info database-type))))
 
 (defmethod sql.qp/->float :mysql
   [_ value]
@@ -336,10 +358,22 @@
   (-> [:makedate year-expr (sql.qp/inline-num number-of-days)]
       (h2x/with-database-type-info "date")))
 
+(defmethod sql.qp/date [:mysql :minute]
+  [_driver _unit expr]
+  (let [format-str (if (= (h2x/database-type expr) "time")
+                     "%H:%i"
+                     "%Y-%m-%d %H:%i")]
+    (trunc-with-format format-str expr)))
+
+(defmethod sql.qp/date [:mysql :hour]
+  [_driver _unit expr]
+  (let [format-str (if (= (h2x/database-type expr) "time")
+                     "%H"
+                     "%Y-%m-%d %H")]
+    (trunc-with-format format-str expr)))
+
 (defmethod sql.qp/date [:mysql :default]         [_ _ expr] expr)
-(defmethod sql.qp/date [:mysql :minute]          [_ _ expr] (trunc-with-format "%Y-%m-%d %H:%i" expr))
 (defmethod sql.qp/date [:mysql :minute-of-hour]  [_ _ expr] (h2x/minute expr))
-(defmethod sql.qp/date [:mysql :hour]            [_ _ expr] (trunc-with-format "%Y-%m-%d %H" expr))
 (defmethod sql.qp/date [:mysql :hour-of-day]     [_ _ expr] (h2x/hour expr))
 (defmethod sql.qp/date [:mysql :day]             [_ _ expr] (->date expr))
 (defmethod sql.qp/date [:mysql :day-of-month]    [_ _ expr] [:dayofmonth expr])
@@ -439,7 +473,7 @@
     :TINYTEXT   :type/Text
     :VARBINARY  :type/*
     :VARCHAR    :type/Text
-    :YEAR       :type/Date
+    :YEAR       :type/Integer
     :JSON       :type/JSON}
    ;; strip off " UNSIGNED" from end if present
    (keyword (str/replace (name database-type) #"\sUNSIGNED$" ""))))
@@ -570,12 +604,15 @@
         (catch Throwable _
           (.getString rs i))))))
 
+;; Mysql 8.1+ returns results of YEAR(..) function having a YEAR type. In Mysql 8.0.33, return value of that function
+;; has an integral type. Let's make the returned values consistent over mysql versions.
+;; Context: https://dev.mysql.com/doc/connector-j/en/connector-j-YEAR.html
 (defmethod sql-jdbc.execute/read-column-thunk [:mysql Types/DATE]
   [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (if (= "YEAR" (.getColumnTypeName rsmeta i))
     (fn read-time-thunk []
       (when-let [x (.getObject rs i)]
-        (.toLocalDate ^java.sql.Date x)))
+        (.getYear (.toLocalDate ^java.sql.Date x))))
     (let [parent-thunk ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/DATE]) driver rs rsmeta i)]
       parent-thunk)))
 
@@ -608,13 +645,17 @@
 (defmethod driver/upload-type->database-type :mysql
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar_255 "VARCHAR(255)"
-    ::upload/text        "TEXT"
-    ::upload/int         "BIGINT"
-    ::upload/float       "DOUBLE"
-    ::upload/boolean     "BOOLEAN"
-    ::upload/date        "DATE"
-    ::upload/datetime    "TIMESTAMP"))
+    ::upload/varchar-255              [[:varchar 255]]
+    ::upload/text                     [:text]
+    ::upload/int                      [:bigint]
+    ::upload/int-pk                   [:bigint :primary-key]
+    ::upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment :primary-key]
+    ::upload/string-pk                [[:varchar 255] :primary-key]
+    ::upload/float                    [:double]
+    ::upload/boolean                  [:boolean]
+    ::upload/date                     [:date]
+    ::upload/datetime                 [:timestamp]
+    ::upload/offset-datetime          [:timestamp]))
 
 (defmethod driver/table-name-length-limit :mysql
   [_driver]
@@ -627,29 +668,70 @@
 
 (sql/register-clause! ::load format-load :insert-into)
 
+(defn- offset-datetime->unoffset-datetime
+  "Remove the offset from a datetime, returning a string representation in whatever timezone the `database` is
+  configured to use. This is necessary since MariaDB doesn't support timestamp-with-time-zone literals and so we need
+  to calculate one by hand."
+  [driver database ^OffsetDateTime offset-time]
+  (let [zone-id (t/zone-id (driver/db-default-timezone driver database))]
+    (t/local-date-time offset-time zone-id )))
+
+(defmulti ^:private value->string
+  "Convert a value into a string that's safe for insertion"
+  {:arglists '([driver val])}
+  (fn [_ val] (type val)))
+
+(defmethod value->string :default
+  [_driver val]
+  (str val))
+
+(defmethod value->string nil
+  [_driver _val]
+  nil)
+
+(defmethod value->string Boolean
+  [_driver val]
+  (if val
+    "1"
+    "0"))
+
+(defmethod value->string LocalDateTime
+  [_driver val]
+  (t/format :iso-local-date-time val))
+
+(let [zulu-fmt         "yyyy-MM-dd'T'HH:mm:ss"
+      offset-fmt       "XXX"
+      zulu-formatter   (DateTimeFormatter/ofPattern zulu-fmt)
+      offset-formatter (DateTimeFormatter/ofPattern (str zulu-fmt offset-fmt))]
+  (defmethod value->string OffsetDateTime
+    [driver ^OffsetDateTime val]
+    (let [uploads-db (upload/current-database)]
+      (if (mariadb? uploads-db)
+        (offset-datetime->unoffset-datetime driver uploads-db val)
+        (t/format (if (.equals (.getOffset val) ZoneOffset/UTC)
+                    zulu-formatter
+                    offset-formatter)
+                  val)))))
+
 (defn- sanitize-value
   ;; Per https://dev.mysql.com/doc/refman/8.0/en/load-data.html#load-data-field-line-handling
   ;; Backslash is the MySQL escape character within strings in SQL statements. Thus, to specify a literal backslash,
   ;; you must specify two backslashes for the value to be interpreted as a single backslash. The escape sequences
   ;; '\t' and '\n' specify tab and newline characters, respectively.
   [v]
-  (cond
-    (string? v)
+  (if (nil? v)
+    "\\N"
     (str/replace v #"\\|\n|\r|\t" {"\\" "\\\\"
                                    "\n" "\\n"
                                    "\r" "\\r"
-                                   "\t" "\\t"})
-    (boolean? v)
-    (if v 1 0)
-    :else
-    v))
+                                   "\t" "\\t"})))
 
 (defn- row->tsv
-  [column-count row]
+  [driver column-count row]
   (when (not= column-count (count row))
     (throw (Exception. (format "ERROR: missing data in row \"%s\"" (str/join "," row)))))
   (->> row
-       (map sanitize-value)
+       (map (comp sanitize-value (partial value->string driver)))
        (str/join "\t")))
 
 (defn- get-global-variable
@@ -671,10 +753,10 @@
     (let [temp-file (File/createTempFile table-name ".tsv")
           file-path (.getAbsolutePath temp-file)]
       (try
-        (let [tsvs (map (partial row->tsv (count column-names)) values)
+        (let [tsvs (map (partial row->tsv driver (count column-names)) values)
               sql  (sql/format {::load   [file-path (keyword table-name)]
                                 :columns (map keyword column-names)}
-                               :quoted true
+                               :quoted  true
                                :dialect (sql.qp/quote-style driver))]
           (with-open [^java.io.Writer writer (jio/writer file-path)]
             (doseq [value (interpose \newline tsvs)]

@@ -7,7 +7,7 @@ import {
 import { createMockMetadata } from "__support__/metadata";
 import { setupFieldValuesEndpoints } from "__support__/server-mocks";
 
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 
 import {
   createSampleDatabase,

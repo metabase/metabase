@@ -1,6 +1,6 @@
 import { useLayoutEffect } from "react";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -24,12 +24,20 @@ interface DatabaseLoaderProps {
 }
 
 interface DispatchProps {
-  onSelectDatabase: (databaseId: DatabaseId) => void;
+  onSelectDatabase: (
+    databaseId: DatabaseId,
+    options: { useReplace?: boolean },
+  ) => void;
 }
 
 const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
-  onSelectDatabase: databaseId =>
-    dispatch(push(Urls.dataModelDatabase(databaseId))),
+  // When navigating programatically, use replace so that the browser back button works
+  onSelectDatabase: (databaseId, { useReplace = false } = {}) =>
+    dispatch(
+      useReplace
+        ? replace(Urls.dataModelDatabase(databaseId))
+        : push(Urls.dataModelDatabase(databaseId)),
+    ),
 });
 
 type MetadataHeaderProps = OwnProps & DatabaseLoaderProps & DispatchProps;
@@ -43,7 +51,7 @@ const MetadataHeader = ({
 }: MetadataHeaderProps) => {
   useLayoutEffect(() => {
     if (databases.length > 0 && selectedDatabaseId == null) {
-      onSelectDatabase(databases[0].id);
+      onSelectDatabase(databases[0].id, { useReplace: true });
     }
   }, [databases, selectedDatabaseId, onSelectDatabase]);
 

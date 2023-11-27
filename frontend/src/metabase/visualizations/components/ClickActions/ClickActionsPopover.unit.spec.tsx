@@ -1,15 +1,12 @@
 import userEvent from "@testing-library/user-event";
 import { waitFor } from "@testing-library/react";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import {
-  createOrdersCreatedAtDatasetColumn,
-  createOrdersDiscountDatasetColumn,
-  createOrdersIdDatasetColumn,
-  createOrdersProductIdDatasetColumn,
-  createOrdersQuantityDatasetColumn,
-  createOrdersTableDatasetColumns,
-  createOrdersTotalDatasetColumn,
-  createOrdersUserIdDatasetColumn,
+  getIcon,
+  queryIcon,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
+import {
   ORDERS,
   ORDERS_ID,
   SAMPLE_DB_ID,
@@ -17,8 +14,14 @@ import {
 import { ClickActionsPopover } from "metabase/visualizations/components/ClickActions/ClickActionsPopover";
 import type { RegularClickAction } from "metabase/visualizations/types";
 import { getMode } from "metabase/visualizations/click-actions/lib/modes";
-import { checkNotNull } from "metabase/core/utils/types";
-import type { DatasetQuery, Filter, Series } from "metabase-types/api";
+import { checkNotNull } from "metabase/lib/types";
+import type {
+  DatasetColumn,
+  DatasetQuery,
+  Filter,
+  RowValue,
+  Series,
+} from "metabase-types/api";
 import registerVisualizations from "metabase/visualizations/register";
 import { POPOVER_TEST_ID } from "metabase/visualizations/click-actions/actions/ColumnFormattingAction/ColumnFormattingAction";
 import { createMockSingleSeries } from "metabase-types/api/mocks";
@@ -27,27 +30,25 @@ import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Dimension from "metabase-lib/Dimension";
+import {
+  ORDERS_COLUMNS,
+  ORDERS_COLUMNS_LIST,
+  ORDERS_DATASET_QUERY,
+  ORDERS_ROW_VALUES,
+} from "metabase-lib/tests/drills-common";
 
 registerVisualizations();
-
-const ORDERS_COLUMNS = createOrdersTableDatasetColumns();
-const ORDERS_ROW_VALUES = {
-  ID: "3",
-  USER_ID: "1",
-  PRODUCT_ID: "105",
-  SUBTOTAL: 52.723521442619514,
-  TAX: 2.9,
-  TOTAL: 49.206842233769756,
-  DISCOUNT: 6.416679208849759,
-  CREATED_AT: "2025-12-06T22:22:48.544+02:00",
-  QUANTITY: 2,
-};
 
 describe("ClickActionsPopover", function () {
   describe("apply click actions", () => {
     describe("ColumnFormattingAction", () => {
       it("should apply column formatting to default ORDERS question on header click", async () => {
-        const { props } = await setup();
+        const { props } = await setup({
+          clicked: {
+            column: ORDERS_COLUMNS.ID,
+            value: undefined,
+          },
+        });
 
         const gearIconButton = getIcon("gear");
         expect(gearIconButton).toBeInTheDocument();
@@ -62,9 +63,10 @@ describe("ClickActionsPopover", function () {
         expect(props.onUpdateVisualizationSettings).toHaveBeenCalledTimes(1);
         expect(props.onUpdateVisualizationSettings).toHaveBeenLastCalledWith({
           column_settings: {
-            [`["ref",["field",${ORDERS.ID},null]]`]: {
-              column_title: "ID NEW NAME",
-            },
+            [`["ref",["field",${ORDERS.ID},{\"base-type\":\"type/Integer\"}]]`]:
+              {
+                column_title: "ID NEW NAME",
+              },
           },
         });
       });
@@ -73,7 +75,12 @@ describe("ClickActionsPopover", function () {
     describe("ColumnFilterDrill", () => {
       it("should apply ColumnFilterDrill to default ORDERS question on header click", async () => {
         const filterValue = 10;
-        const { props } = await setup();
+        const { props } = await setup({
+          clicked: {
+            column: ORDERS_COLUMNS.ID,
+            value: undefined,
+          },
+        });
 
         const filterDrill = screen.getByText("Filter by this column");
         expect(filterDrill).toBeInTheDocument();
@@ -92,7 +99,11 @@ describe("ClickActionsPopover", function () {
             dataset_query: {
               database: SAMPLE_DB_ID,
               query: {
-                filter: ["=", ["field", ORDERS.ID, null], filterValue],
+                filter: [
+                  "=",
+                  ["field", ORDERS.ID, { "base-type": "type/Integer" }],
+                  filterValue,
+                ],
                 "source-table": ORDERS_ID,
               },
               type: "query",
@@ -104,24 +115,88 @@ describe("ClickActionsPopover", function () {
     });
 
     describe("SortDrill", () => {
-      it("should apply SortDrill to default ORDERS question on header click", async () => {
-        const { props } = await setup();
+      it("should display proper sorting controls", async () => {
+        await setup({
+          clicked: {
+            column: ORDERS_COLUMNS.ID,
+            value: undefined,
+          },
+        });
 
         const sortDesc = getIcon("arrow_down");
         expect(sortDesc).toBeInTheDocument();
 
+        userEvent.hover(sortDesc);
+        expect(screen.getByText("Sort descending")).toBeInTheDocument();
+
+        const sortAsc = getIcon("arrow_up");
+        expect(sortAsc).toBeInTheDocument();
+
+        userEvent.hover(sortAsc);
+        expect(screen.getByText("Sort ascending")).toBeInTheDocument();
+      });
+
+      it("should display specific sorting control when only one sorting direction is available", async () => {
+        await setup({
+          question: Question.create({
+            metadata: SAMPLE_METADATA,
+            dataset_query: {
+              ...ORDERS_DATASET_QUERY,
+              query: {
+                ...ORDERS_DATASET_QUERY.query,
+                "order-by": [
+                  [
+                    "asc",
+                    ["field", ORDERS.ID, { "base-type": "type/Integer" }],
+                  ],
+                ],
+              },
+            },
+          }),
+          clicked: {
+            column: ORDERS_COLUMNS.ID,
+            value: undefined,
+          },
+          rowValues: undefined,
+        });
+
+        expect(queryIcon("arrow_up")).not.toBeInTheDocument();
+
+        const sortDesc = getIcon("arrow_down");
+        expect(sortDesc).toBeInTheDocument();
+      });
+
+      it("should apply SortDrill to default ORDERS question on ID column header click", async () => {
+        const { props } = await setup({
+          clicked: {
+            column: ORDERS_COLUMNS.ID,
+            value: undefined,
+          },
+        });
+
+        const sortDesc = getIcon("arrow_down");
         userEvent.click(sortDesc);
 
         expect(props.onChangeCardAndRun).toHaveBeenCalledTimes(1);
         expect(props.onChangeCardAndRun).toHaveBeenLastCalledWith({
           nextCard: expect.objectContaining({
             dataset_query: {
-              database: SAMPLE_DB_ID,
+              ...ORDERS_DATASET_QUERY,
               query: {
-                "order-by": [["desc", ["field", ORDERS.ID, null]]],
-                "source-table": ORDERS_ID,
+                ...ORDERS_DATASET_QUERY.query,
+                "order-by": [
+                  [
+                    "desc",
+                    [
+                      "field",
+                      ORDERS.ID,
+                      {
+                        "base-type": "type/Integer",
+                      },
+                    ],
+                  ],
+                ],
               },
-              type: "query",
             },
             display: "table",
           }),
@@ -132,25 +207,25 @@ describe("ClickActionsPopover", function () {
     describe("SummarizeColumnByTimeDrill", () => {
       it.each([
         {
-          column: createOrdersTotalDatasetColumn(),
-          columnName: createOrdersTotalDatasetColumn().name,
+          column: ORDERS_COLUMNS.TOTAL,
+          columnName: ORDERS_COLUMNS.TOTAL.name,
           expectedCard: {
             dataset_query: getSummarizedOverTimeResultDatasetQuery(
               ORDERS.TOTAL,
               "type/Float",
             ),
-            display: "table",
+            display: "line",
           },
         },
         {
-          column: createOrdersQuantityDatasetColumn(),
-          columnName: createOrdersQuantityDatasetColumn().name,
+          column: ORDERS_COLUMNS.QUANTITY,
+          columnName: ORDERS_COLUMNS.QUANTITY.name,
           expectedCard: {
             dataset_query: getSummarizedOverTimeResultDatasetQuery(
               ORDERS.QUANTITY,
               "type/Integer",
             ),
-            display: "table",
+            display: "line",
           },
         },
       ])(
@@ -179,8 +254,8 @@ describe("ClickActionsPopover", function () {
     describe("FKFilterDrill", () => {
       it.each([
         {
-          column: createOrdersUserIdDatasetColumn(),
-          columnName: createOrdersUserIdDatasetColumn().name,
+          column: ORDERS_COLUMNS.USER_ID,
+          columnName: ORDERS_COLUMNS.USER_ID.name,
           cellValue: "1",
           drillTitle: "View this User's Orders",
           expectedCard: {
@@ -193,8 +268,8 @@ describe("ClickActionsPopover", function () {
           },
         },
         {
-          column: createOrdersProductIdDatasetColumn(),
-          columnName: createOrdersProductIdDatasetColumn().name,
+          column: ORDERS_COLUMNS.PRODUCT_ID,
+          columnName: ORDERS_COLUMNS.PRODUCT_ID.name,
           cellValue: "111",
           drillTitle: "View this Product's Orders",
           expectedCard: {
@@ -208,7 +283,7 @@ describe("ClickActionsPopover", function () {
         },
       ])(
         "should apply drill on $columnName cell click",
-        async ({ column, columnName, cellValue, drillTitle, expectedCard }) => {
+        async ({ column, cellValue, drillTitle, expectedCard }) => {
           const { props } = await setup({
             clicked: {
               column,
@@ -232,14 +307,15 @@ describe("ClickActionsPopover", function () {
     describe("QuickFilterDrill", () => {
       it.each([
         {
-          column: createOrdersTotalDatasetColumn(),
-          columnName: createOrdersTotalDatasetColumn().name,
+          column: ORDERS_COLUMNS.TOTAL,
+          columnName: ORDERS_COLUMNS.TOTAL.name,
           cellValue: ORDERS_ROW_VALUES.TOTAL,
           drillTitle: ">",
           expectedCard: {
             dataset_query: getQuickFilterResultDatasetQuery({
               filteredColumnId: ORDERS.TOTAL,
               filterOperator: ">",
+              filterColumnType: "type/Float",
               cellValue: ORDERS_ROW_VALUES.TOTAL,
             }),
             display: "table",
@@ -247,14 +323,15 @@ describe("ClickActionsPopover", function () {
         },
 
         {
-          column: createOrdersCreatedAtDatasetColumn(),
-          columnName: createOrdersCreatedAtDatasetColumn().name,
+          column: ORDERS_COLUMNS.CREATED_AT,
+          columnName: ORDERS_COLUMNS.CREATED_AT.name,
           cellValue: ORDERS_ROW_VALUES.CREATED_AT,
           drillTitle: "Before",
           expectedCard: {
             dataset_query: getQuickFilterResultDatasetQuery({
               filteredColumnId: ORDERS.CREATED_AT,
               filterOperator: "<",
+              filterColumnType: "type/DateTime",
               cellValue: ORDERS_ROW_VALUES.CREATED_AT,
             }),
             display: "table",
@@ -262,14 +339,15 @@ describe("ClickActionsPopover", function () {
         },
 
         {
-          column: createOrdersDiscountDatasetColumn(),
-          columnName: createOrdersDiscountDatasetColumn().name,
+          column: ORDERS_COLUMNS.DISCOUNT,
+          columnName: ORDERS_COLUMNS.DISCOUNT.name,
           cellValue: null,
           drillTitle: "=",
           expectedCard: {
             dataset_query: getQuickFilterResultDatasetQuery({
               filteredColumnId: ORDERS.DISCOUNT,
               filterOperator: "is-null",
+              filterColumnType: "type/Float",
               cellValue: null,
             }),
             display: "table",
@@ -304,21 +382,21 @@ describe("ClickActionsPopover", function () {
 
 async function setup({
   question = Question.create({
-    databaseId: SAMPLE_DB_ID,
-    tableId: ORDERS_ID,
     metadata: SAMPLE_METADATA,
+    dataset_query: ORDERS_DATASET_QUERY,
   }),
-  clicked = {
-    column: createOrdersIdDatasetColumn(),
-    value: undefined,
-  },
+  clicked,
   settings = {},
   dimension: inputDimension,
+  columns = ORDERS_COLUMNS_LIST,
+  rowValues = ORDERS_ROW_VALUES,
 }: Partial<{
   question: Question;
-  clicked: ClickObject | undefined;
+  clicked: ClickObject;
   settings: Record<string, any>;
   dimension?: Dimension;
+  columns?: DatasetColumn[];
+  rowValues?: Record<string, RowValue>;
 }> = {}) {
   const mode = checkNotNull(getMode(question));
 
@@ -334,9 +412,7 @@ async function setup({
   };
 
   const clickActions = mode.actionsForClick(
-    {
-      ...clicked,
-    },
+    clicked,
     settings,
   ) as RegularClickAction[];
 
@@ -353,12 +429,12 @@ async function setup({
       },
       {
         data: {
-          cols: [...ORDERS_COLUMNS],
+          cols: [...columns],
           rows: [],
           requested_timezone: "UTC",
           results_timezone: "Asia/Nicosia",
           results_metadata: {
-            columns: [...ORDERS_COLUMNS],
+            columns: [...columns],
           },
         },
       },
@@ -438,7 +514,6 @@ function getSummarizedOverTimeResultDatasetQuery(
           "field",
           ORDERS.CREATED_AT,
           {
-            "base-type": "type/DateTime",
             "temporal-unit": "month",
           },
         ],
@@ -477,17 +552,22 @@ function getFKFilteredResultDatasetQuery(
 function getQuickFilterResultDatasetQuery({
   filteredColumnId,
   filterOperator,
+  filterColumnType,
   cellValue,
 }: {
   filteredColumnId: number;
   filterOperator: "=" | "!=" | ">" | "<" | "is-null" | "not-null";
-  cellValue: string | number | null | undefined;
+  filterColumnType: string;
+  cellValue: RowValue;
 }): DatasetQuery {
   const filterClause = ["is-null", "not-null"].includes(filterOperator)
-    ? ([filterOperator, ["field", filteredColumnId, null]] as Filter)
+    ? ([
+        filterOperator,
+        ["field", filteredColumnId, { "base-type": filterColumnType }],
+      ] as Filter)
     : ([
         filterOperator,
-        ["field", filteredColumnId, null],
+        ["field", filteredColumnId, { "base-type": filterColumnType }],
         cellValue,
       ] as Filter);
 

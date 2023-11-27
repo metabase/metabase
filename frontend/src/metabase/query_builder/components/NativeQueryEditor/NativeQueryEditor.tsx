@@ -12,15 +12,9 @@ import "ace/ace";
 import "ace/ext-language_tools";
 import "ace/ext-searchbox";
 import "ace/mode-sql";
-import "ace/mode-mysql";
-import "ace/mode-pgsql";
-import "ace/mode-sqlserver";
 import "ace/mode-json";
 import "ace/snippets/text";
 import "ace/snippets/sql";
-import "ace/snippets/mysql";
-import "ace/snippets/pgsql";
-import "ace/snippets/sqlserver";
 import "ace/snippets/json";
 
 import { Flex } from "metabase/ui";
@@ -37,7 +31,7 @@ import Questions from "metabase/entities/questions";
 
 import { getSetting } from "metabase/selectors/settings";
 
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { isEventOverElement } from "metabase/lib/dom";
 import { getEngineNativeAceMode } from "metabase/lib/engine";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";

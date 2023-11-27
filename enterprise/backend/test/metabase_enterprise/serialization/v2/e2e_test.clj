@@ -14,8 +14,8 @@
                             Dashboard
                             DashboardCard
                             Database
-                            ParameterCard
                             Field
+                            ParameterCard
                             Table]]
    [metabase.models.action :as action]
    [metabase.models.serialization :as serdes]
@@ -27,9 +27,9 @@
    [reifyhealth.specmonstah.core :as rs]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
- (:import
-  (java.io File)
-  (java.nio.file Path)))
+  (:import
+   (java.io File)
+   (java.nio.file Path)))
 
 (set! *warn-on-reflection* true)
 
@@ -318,7 +318,7 @@
                          (set (ingest/ingest-list (ingest/ingest-yaml dump-dir)))))))
 
               (testing "doing ingestion"
-                (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
+                (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                     "successful"))
 
               (testing "for Actions"
@@ -433,7 +433,7 @@
       (ts/with-source-and-dest-dbs
         (ts/with-source-db
           ;; preparation
-          (mt/with-temp
+          (mt/with-temp!
             [Database   db1s {:name "my-db"}
              Collection coll1s {:name "My Collection"}
              Table      table1s {:name  "CUSTOMERS"
@@ -490,34 +490,34 @@
 
                 (storage/store! (seq extraction) dump-dir)))
 
-            (testing "ingest and load"
-              (ts/with-dest-db
-                ;; ingest
-                (testing "doing ingestion"
-                  (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
-                      "successful"))
+           (testing "ingest and load"
+             (ts/with-dest-db
+               ;; ingest
+               (testing "doing ingestion"
+                 (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                     "successful"))
 
-                (let [dash1d (t2/select-one Dashboard :name (:name dash1s))
-                      card1d (t2/select-one Card :name (:name card1s))
-                      card2d (t2/select-one Card :name (:name card2s))
-                      field1d (t2/select-one Field :name (:name field1s))]
-                  (testing "parameter on dashboard is loaded correctly"
-                    (is (= {:card_id     (:id card1d),
-                            :value_field [:field (:id field1d) nil]}
-                           (-> dash1d
-                               :parameters
-                               first
-                               :values_source_config)))
-                    (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
+               (let [dash1d (t2/select-one Dashboard :name (:name dash1s))
+                     card1d (t2/select-one Card :name (:name card1s))
+                     card2d (t2/select-one Card :name (:name card2s))
+                     field1d (t2/select-one Field :name (:name field1s))]
+                 (testing "parameter on dashboard is loaded correctly"
+                   (is (= {:card_id     (:id card1d),
+                           :value_field [:field (:id field1d) nil]}
+                          (-> dash1d
+                              :parameters
+                              first
+                              :values_source_config)))
+                   (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
 
-                  (testing "parameter on card is loaded correctly"
-                    (is (= {:card_id     (:id card1d),
-                            :value_field [:field (:id field1d) nil]}
-                           (-> card2d
-                               :parameters
-                               first
-                               :values_source_config)))
-                    (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d))))))))))))))
+                 (testing "parameter on card is loaded correctly"
+                   (is (= {:card_id     (:id card1d),
+                           :value_field [:field (:id field1d) nil]}
+                          (-> card2d
+                              :parameters
+                              first
+                              :values_source_config)))
+                   (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d))))))))))))))
 
 (deftest dashcards-with-link-cards-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -528,7 +528,7 @@
                                        :link         {:entity {:id    id
                                                                :model model}}})
               dashboard->link-cards (fn [dashboard]
-                                      (map #(get-in % [:visualization_settings :link :entity]) (:ordered_cards dashboard)))]
+                                      (map #(get-in % [:visualization_settings :link :entity]) (:dashcards dashboard)))]
           (t2.with-temp/with-temp
             [Collection    {coll-id   :id
                             coll-name :name
@@ -602,7 +602,7 @@
               ;; ingest
               (ts/with-dest-db
                 (testing "doing ingestion"
-                  (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
+                  (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                       "successful"))
 
                 (doseq [[name model]
@@ -628,7 +628,7 @@
                             {:id new-card-id  :model "card"}
                             {:id new-model-id :model "dataset"}]
                            (-> (t2/select-one Dashboard :name dashboard-name)
-                               (t2/hydrate :ordered_cards)
+                               (t2/hydrate :dashcards)
                                dashboard->link-cards)))))))))))))
 
 (deftest dashboard-with-tabs-test
@@ -667,10 +667,10 @@
              (ts/with-dest-db
                ;; ingest
                (testing "doing ingestion"
-                 (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
+                 (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                      "successful"))
                (let [new-dashboard (-> (t2/select-one Dashboard :entity_id dashboard-eid)
-                                       (t2/hydrate :ordered_tabs :ordered_cards))
+                                       (t2/hydrate :tabs :dashcards))
                      new-tab-id-1  (t2/select-one-pk :model/DashboardTab :entity_id tab-eid-1)
                      new-tab-id-2  (t2/select-one-pk :model/DashboardTab :entity_id tab-eid-2)
                      new-card-id-1 (t2/select-one-pk Card :entity_id card-eid-1)
@@ -684,7 +684,7 @@
                            :dashboard_id (:id new-dashboard)
                            :name         "Tab 2"
                            :position     1}]
-                         (:ordered_tabs new-dashboard)))
+                         (:tabs new-dashboard)))
                  (is (=? [{:card_id          new-card-id-1
                            :dashboard_id     (:id new-dashboard)
                            :dashboard_tab_id new-tab-id-1}
@@ -697,7 +697,7 @@
                           {:card_id          new-card-id-2
                            :dashboard_id     (:id new-dashboard)
                            :dashboard_tab_id new-tab-id-2}]
-                         (:ordered_cards new-dashboard))))))))))))
+                         (:dashcards new-dashboard))))))))))))
 
 (deftest premium-features-test
   (testing "with :serialization enabled on the token"
@@ -708,13 +708,13 @@
             ;; preparation
             (t2.with-temp/with-temp [Dashboard _ {:name "some dashboard"}]
               (testing "export (v2-dump) command"
-                (is (cmd/v2-dump dump-dir {})
+                (is (cmd/v2-dump! dump-dir {})
                     "works"))
 
               (testing "import (v2-load) command"
                 (ts/with-dest-db
                   (testing "doing ingestion"
-                    (is (cmd/v2-load dump-dir {})
+                    (is (cmd/v2-load! dump-dir {})
                         "works"))))))))))
 
   (testing "without :serialization feature enabled"
@@ -726,12 +726,81 @@
             (t2.with-temp/with-temp [Dashboard _ {:name "some dashboard"}]
               (testing "export (v2-dump) command"
                 (is (thrown-with-msg? Exception #"Please upgrade"
-                                      (cmd/v2-dump dump-dir {}))
+                                      (cmd/v2-dump! dump-dir {}))
                     "throws"))
 
               (testing "import (v2-load) command"
                 (ts/with-dest-db
                   (testing "doing ingestion"
                     (is (thrown-with-msg? Exception #"Please upgrade"
-                                          (cmd/v2-load dump-dir {}))
+                                          (cmd/v2-load! dump-dir {}))
                         "throws")))))))))))
+
+(deftest pivot-export-test
+  (testing "Pivot table export and load correctly"
+    (let [old-ids (atom nil)
+          card1s  (atom nil)]
+      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+        (ts/with-source-and-dest-dbs
+          (ts/with-source-db
+            (mt/dataset sample-dataset
+              ;; ensuring field ids are stable by loading dataset in db first
+              (mt/db)
+              (mt/$ids nil
+                (t2.with-temp/with-temp
+                  [Collection {coll-id :id}  {:name "Pivot Collection"}
+                   Card       card           {:name          "Pivot Card"
+                                              :collection_id coll-id
+                                              :dataset_query {:type     :query
+                                                              :database (mt/id)
+                                                              :query    {:source-table $$orders
+                                                                         :aggregation  [:sum [:field %orders.id nil]]
+                                                                         :breakout     [[:field %orders.user_id nil]]}}
+                                              :visualization_settings
+                                              {:pivot_table.column_split
+                                               {:rows    [[:field %people.name {:base-type    :type/Text
+                                                                                :source-field %orders.user_id}]]
+                                                :columns [[:field %products.title {:base-type    :type/Text
+                                                                                   :source-field %orders.product_id}]]
+                                                :values  [[:aggregation 0]]}
+                                               :column_settings
+                                               {(format "[\"ref\",[\"field\",%s,null]]" %people.name)
+                                                {:pivot_table.column_sort_order "descending"}}}}]
+                  (reset! old-ids {:people.name       %people.name
+                                   :orders.user_id    %orders.user_id
+                                   :products.title    %products.title
+                                   :orders.product_id %orders.product_id})
+                  (reset! card1s card)
+                  (storage/store! (extract/extract {}) dump-dir)))))
+
+          (ts/with-dest-db
+            ;; ensure there is something in db so that sample-dataset gets different field ids for sure
+            (mt/dataset office-checkins
+              (mt/db))
+
+            (mt/dataset sample-dataset
+              ;; ensuring field ids are stable by loading dataset in db first
+              (mt/db)
+              (mt/$ids nil
+                (testing "Column ids are different in different dbs")
+                (is (not= @old-ids
+                          {:people.name       %people.name
+                           :orders.user_id    %orders.user_id
+                           :products.title    %products.title
+                           :orders.product_id %orders.product_id}))
+
+                (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))
+
+                (let [viz (t2/select-one-fn :visualization_settings Card :entity_id (:entity_id @card1s))]
+                  (testing "column ids inside pivot table transferred"
+                    (is (= [[:field %people.name {:base-type    :type/Text
+                                                  :source-field %orders.user_id}]]
+                           (get-in viz [:pivot_table.column_split :rows])))
+                    (is (= [[:field %products.title {:base-type    :type/Text
+                                                     :source-field %orders.product_id}]]
+                           (get-in viz [:pivot_table.column_split :columns]))))
+                  (testing "column sort order restored"
+                    (is (= "descending"
+                           (get-in viz [:column_settings
+                                        (format "[\"ref\",[\"field\",%s,null]]" %people.name)
+                                        :pivot_table.column_sort_order])))))))))))))

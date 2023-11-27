@@ -6,22 +6,9 @@
    [clojure.test :refer :all]
    [metabase.api.collection :as api.collection]
    [metabase.models
-    :refer [Card
-            Collection
-            Dashboard
-            DashboardCard
-            ModerationReview
-            NativeQuerySnippet
-            PermissionsGroup
-            PermissionsGroupMembership
-            Pulse
-            PulseCard
-            PulseChannel
-            PulseChannelRecipient
-            Revision
-            Timeline
-            TimelineEvent
-            User]]
+    :refer [Card Collection Dashboard DashboardCard ModerationReview
+            NativeQuerySnippet PermissionsGroup PermissionsGroupMembership Pulse
+            PulseCard PulseChannel PulseChannelRecipient Revision Timeline TimelineEvent User]]
    [metabase.models.collection :as collection]
    [metabase.models.collection-test :as collection-test]
    [metabase.models.collection.graph :as graph]
@@ -35,11 +22,10 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-   (java.time ZonedDateTime ZoneId)))
+   (java.time ZoneId ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -89,8 +75,9 @@
                  :can_write           true
                  :name                "Our analytics"
                  :authority_level     nil
+                 :is_personal         false
                  :id                  "root"}
-                (assoc (into {} collection) :can_write true)]
+                (assoc (into {:is_personal false} collection) :can_write true)]
                (filter #(#{(:id collection) "root"} (:id %))
                        (mt/user-http-request :crowberto :get 200 "collection"))))))))
 
@@ -116,34 +103,6 @@
                     (filter #((set (map mt/user->id [:crowberto :lucky :rasta :trashbird])) (:personal_owner_id %)))
                     (map :name)
                     sort)))))))
-
-(deftest list-collections-visible-collections-test
-  (testing "GET /api/collection"
-    (testing "You should only see your collection and public collections"
-      (let [admin-user-id  (u/the-id (test.users/fetch-user :crowberto))
-            crowberto-root (t2/select-one Collection :personal_owner_id admin-user-id)]
-        (t2.with-temp/with-temp [Collection collection          {}
-                                 Collection {collection-id :id} {:name "Collection with Items"}
-                                 Collection _                   {:name            "subcollection"
-                                                                 :location        (format "/%d/" collection-id)
-                                                                 :authority_level "official"}
-                                 Collection _                   {:name     "Crowberto's Child Collection"
-                                                                 :location (collection/location-path crowberto-root)}]
-          (let [public-collections       #{"Our analytics" (:name collection) "Collection with Items" "subcollection"}
-                crowbertos               (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
-                crowbertos-with-excludes (set (map :name (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)))
-                luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))
-                ;; TODO better IA test data
-                hide-ia-user             #(set (remove #{"Instance Analytics" "Audit" "a@a.a a@a.a's Personal Collection" "a@a.a's Personal Collection"} %))]
-            (is (= (hide-ia-user (into (t2/select-fn-set :name Collection) public-collections))
-                   (hide-ia-user crowbertos)))
-            (is (= (into public-collections #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"})
-                   (hide-ia-user crowbertos-with-excludes)))
-            (is (contains? crowbertos "Lucky Pigeon's Personal Collection"))
-            (is (not (contains? crowbertos-with-excludes "Lucky Pigeon's Personal Collection")))
-            (is (= (conj public-collections (:name collection) "Lucky Pigeon's Personal Collection")
-                   (hide-ia-user luckys)))
-            (is (not (contains? luckys "Crowberto Corv's Personal Collection")))))))))
 
 (deftest list-collections-personal-collection-locale-test
   (testing "GET /api/collection"
@@ -425,7 +384,6 @@
                       (select-keys collection [:name :children]))))
                 (mt/user-http-request :rasta :get 200 "collection/tree"))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              GET /collection/:id                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -649,21 +607,22 @@
 
 (deftest collection-items-revision-history-and-ordering-test
   (testing "GET /api/collection/:id/items"
-    (t2.with-temp/with-temp [Collection {collection-id :id}      {:name "Collection with Items"}
-                             User       {user1-id :id}           {:first_name "Test" :last_name "AAAA" :email "aaaa@example.com"}
-                             User       {user2-id :id}           {:first_name "Test" :last_name "ZZZZ" :email "zzzz@example.com"}
-                             Card       {card1-id :id :as card1} {:name "Card with history 1" :collection_id collection-id}
-                             Card       {card2-id :id :as card2} {:name "Card with history 2" :collection_id collection-id}
-                             Card       _                        {:name "ZZ" :collection_id collection-id}
-                             Card       _                        {:name "AA" :collection_id collection-id}
-                             Revision   revision1                {:model    "Card"
-                                                                  :model_id card1-id
-                                                                  :user_id  user2-id
-                                                                  :object   (revision/serialize-instance card1 card1-id card1)}
-                             Revision   _revision2               {:model    "Card"
-                                                                  :model_id card2-id
-                                                                  :user_id  user1-id
-                                                                  :object   (revision/serialize-instance card2 card2-id card2)}]
+    (mt/with-temp!
+      [Collection {collection-id :id}      {:name "Collection with Items"}
+       User       {user1-id :id}           {:first_name "Test" :last_name "AAAA" :email "aaaa@example.com"}
+       User       {user2-id :id}           {:first_name "Test" :last_name "ZZZZ" :email "zzzz@example.com"}
+       Card       {card1-id :id :as card1} {:name "Card with history 1" :collection_id collection-id}
+       Card       {card2-id :id :as card2} {:name "Card with history 2" :collection_id collection-id}
+       Card       _                        {:name "ZZ" :collection_id collection-id}
+       Card       _                        {:name "AA" :collection_id collection-id}
+       Revision   revision1                {:model    "Card"
+                                            :model_id card1-id
+                                            :user_id  user2-id
+                                            :object   (revision/serialize-instance card1 card1-id card1)}
+       Revision   _revision2               {:model    "Card"
+                                            :model_id card2-id
+                                            :user_id  user1-id
+                                            :object   (revision/serialize-instance card2 card2-id card2)}]
       ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
       (is (= 1
              (t2/query-one {:update :revision
@@ -903,10 +862,12 @@
                            :name                                     "Our analytics"
                            :id                                       "root"
                            :authority_level                          nil
-                           :can_write                                true}]
+                           :can_write                                true
+                           :is_personal                              false}]
     :effective_location  "/"
     :parent_id           nil
-    :location            "/"}
+    :location            "/"
+    :is_personal         true}
    (select-keys (collection/user->personal-collection (mt/user->id :lucky))
                 [:id :entity_id :created_at])))
 
@@ -1093,7 +1054,8 @@
                  :authority_level                          nil,
                  :name                                     "Our analytics",
                  :id                                       false,
-                 :can_write                                true}
+                 :can_write                                true
+                 :is_personal                              false}
                 {:name              "Rasta Toucan's Personal Collection",
                  :id                true,
                  :personal_owner_id root-owner-id,
@@ -1113,7 +1075,8 @@
               :effective_location  nil
               :effective_ancestors []
               :authority_level     nil
-              :parent_id           nil}
+              :parent_id           nil
+              :is_personal         false}
              (with-some-children-of-collection nil
                (mt/user-http-request :crowberto :get 200 "collection/root")))))))
 
@@ -1484,13 +1447,12 @@
     (testing "\nShould be able to create a Collection in a different namespace"
       (let [collection-name (mt/random-name)]
         (try
-          (is (schema= {:name      (s/eq collection-name)
-                        :namespace (s/eq "snippets")
-                        s/Keyword  s/Any}
-                       (mt/user-http-request :crowberto :post 200 "collection"
-                                             {:name       collection-name
-                                              :descrption "My SQL Snippets"
-                                              :namespace  "snippets"})))
+          (is (=? {:name      collection-name
+                   :namespace "snippets"}
+                  (mt/user-http-request :crowberto :post 200 "collection"
+                                        {:name       collection-name
+                                         :descrption "My SQL Snippets"
+                                         :namespace  "snippets"})))
           (finally
             (t2/delete! Collection :name collection-name)))))))
 

@@ -1,6 +1,7 @@
 (ns metabase.query-processor.card-test
   "There are more e2e tests in [[metabase.api.card-test]]."
   (:require
+   [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.models :refer [Card Dashboard Database]]
@@ -10,7 +11,6 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn run-query-for-card
@@ -22,7 +22,7 @@
     (qp.card/run-query-for-card-async
      card-id :api
      :run (fn [query info]
-            (qp/process-query (assoc query :async? false) info)))))
+            (qp/process-query (assoc query :async? false, :info info))))))
 
 (deftest query-cache-ttl-hierarchy-test
   (mt/discard-setting-changes [enable-query-caching]
@@ -125,15 +125,14 @@
                                                          :type  :date/single
                                                          :value "2016-01-01"}])))
       (testing "As an API request"
-        (is (schema= {:message            #"Invalid parameter: Card [\d,]+ does not have a template tag named \"fake\".+"
-                      :invalid-parameter  (s/eq {:id "_FAKE_", :name "fake", :type "date/single", :value "2016-01-01"})
-                      :allowed-parameters (s/eq ["date"])
-                      s/Keyword           s/Any}
-                     (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
-                                           {:parameters [{:id    "_FAKE_"
-                                                          :name  "fake"
-                                                          :type  :date/single
-                                                          :value "2016-01-01"}]})))))
+        (is (=? {:message            #"Invalid parameter: Card [\d,]+ does not have a template tag named \"fake\".+"
+                 :invalid-parameter  {:id "_FAKE_", :name "fake", :type "date/single", :value "2016-01-01"}
+                 :allowed-parameters ["date"]}
+                (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
+                                      {:parameters [{:id    "_FAKE_"
+                                                     :name  "fake"
+                                                     :type  :date/single
+                                                     :value "2016-01-01"}]})))))
 
     (testing "Should disallow parameters with types not allowed for the widget type"
       (letfn [(validate [param-type]
@@ -165,3 +164,14 @@
                                                                 :name  "date"
                                                                 :type  :date/single
                                                                 :value "2016-01-01"}]})))))))
+
+(deftest bad-viz-settings-should-still-work-test
+  (testing "We should still be able to run a query that has Card bad viz settings referencing a column not in the query (#34950)"
+    (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query          (mt/mbql-query venues
+                                                                                  {:aggregation [[:count]]})
+                                                        :visualization_settings {:column_settings {(json/generate-string
+                                                                                                    [:ref [:field Integer/MAX_VALUE {:base-type :type/DateTime, :temporal-unit :month}]])
+                                                                                                   {:date_abbreviate true
+                                                                                                    :some_other_key [:ref [:field Integer/MAX_VALUE {:base-type :type/DateTime, :temporal-unit :month}]]}}}}]
+      (is (= [[100]]
+             (mt/rows (run-query-for-card card-id)))))))

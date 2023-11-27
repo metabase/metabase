@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.models :refer [LoginHistory User]]
    [metabase.models.login-history :as login-history]
    [metabase.public-settings :as public-settings]
@@ -40,7 +40,7 @@
 
 (deftest send-email-on-first-login-from-new-device-test
   (testing "User should get an email the first time they log in from a new device (#14313, #15603, #17495)"
-    (t2.with-temp/with-temp [User {user-id :id, email :email, first-name :first_name}]
+    (mt/with-temp! [User {user-id :id, email :email, first-name :first_name}]
       (let [device              (str (random-uuid))
             original-maybe-send (var-get #'login-history/maybe-send-login-from-new-device-email)]
         (testing "send email on first login from *new* device (but not first login ever)"

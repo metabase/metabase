@@ -2,13 +2,13 @@
   (:require
    [clojure.test :refer :all]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.context.default :as context.default]
    [metabase.query-processor.middleware.add-rows-truncated
     :as add-rows-truncated]
+   [metabase.query-processor.reducible :as qp.reducible]
    [metabase.test :as mt]))
 
 (defn- add-rows-truncated [query rows]
-  (let [rff (add-rows-truncated/add-rows-truncated query context.default/default-rff)
+  (let [rff (add-rows-truncated/add-rows-truncated query qp.reducible/default-rff)
         rf  (rff nil)]
     (transduce identity rf rows)))
 

@@ -18,7 +18,7 @@ import {
   ModalRight,
 } from "metabase/actions/containers/ActionCreator/ActionCreator.styled";
 
-import { isNotNull } from "metabase/core/utils/types";
+import { isNotNull } from "metabase/lib/types";
 import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 
 import type { ActionCreatorUIProps, SideView } from "./types";

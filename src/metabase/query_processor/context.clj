@@ -98,15 +98,6 @@
   {:pre [(int? timeout*)]}
   timeout*)
 
-(defn rff
-  "Reducing function.
-
-    (rff metadata) -> rf"
-  {:arglists '([context])}
-  [{rff* :rff}]
-  {:pre [(fn? rff*)]}
-  rff*)
-
 (defn canceled-chan
   "Gets a message if query is canceled."
   {:arglists '([context])}

@@ -1,9 +1,18 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
+import type { CollectionItem } from "metabase-types/api";
+
 import { useDispatch, useSelector } from "metabase/lib/redux";
 
-import type { CollectionItem } from "metabase-types/api";
+import Search from "metabase/entities/search";
+import { useListSelect } from "metabase/hooks/use-list-select";
+import { useSearchListQuery } from "metabase/common/hooks";
+import { isSmallScreen, getMainElement } from "metabase/lib/dom";
+
+import { openNavbar } from "metabase/redux/app";
+import { getIsNavbarOpen } from "metabase/selectors/app";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { Button } from "metabase/ui";
@@ -13,15 +22,6 @@ import PageHeading from "metabase/components/type/PageHeading";
 import { StackedCheckBox } from "metabase/components/StackedCheckBox";
 import VirtualizedList from "metabase/components/VirtualizedList";
 import { ArchivedItem } from "metabase/components/ArchivedItem/ArchivedItem";
-
-import Search from "metabase/entities/search";
-import { useListSelect } from "metabase/hooks/use-list-select";
-import { useSearchListQuery } from "metabase/common/hooks";
-
-import { openNavbar } from "metabase/redux/app";
-import { getIsNavbarOpen } from "metabase/selectors/app";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import { isSmallScreen, getMainElement } from "metabase/lib/dom";
 
 import {
   ArchiveBarContent,
@@ -54,12 +54,19 @@ export function ArchiveApp() {
     useListSelect<CollectionItem>(item => `${item.model}:${item.id}`);
 
   const list = useMemo(() => {
-    clear();
-    return data ?? [];
-  }, [data, clear]);
+    clear(); // clear selected items if data is ever refreshed
+
+    if (!Array.isArray(data)) {
+      return [];
+    }
+
+    return data;
+  }, [clear, data]);
+
   const selectAllItems = useCallback(() => {
     selectOnlyTheseItems(list);
   }, [list, selectOnlyTheseItems]);
+
   const allSelected = useMemo(
     () => selected.length === list.length,
     [selected, list],

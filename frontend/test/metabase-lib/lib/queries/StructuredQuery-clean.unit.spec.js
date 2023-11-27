@@ -5,7 +5,6 @@ import {
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
-  PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 
@@ -17,83 +16,11 @@ const metadata = createMockMetadata({
 const db = metadata.database(SAMPLE_DB_ID);
 const ordersTable = metadata.table(ORDERS_ID);
 
-const ORDERS_PRODUCT_ID_FIELD_REF = ["field", ORDERS.ID, null];
-const PRODUCT_ID_FIELD_REF = [
-  "field",
-  PRODUCTS.ID,
-  { "join-alias": "Products" },
-];
-
-function getJoin({
-  sourceTable = PRODUCTS_ID,
-  alias = "Products",
-  condition = ["=", ORDERS_PRODUCT_ID_FIELD_REF, PRODUCT_ID_FIELD_REF],
-  fields = "all",
-} = {}) {
-  return {
-    "source-table": sourceTable,
-    alias,
-    condition,
-    fields,
-  };
-}
-
 describe("StructuredQuery", () => {
   describe("clean", () => {
     it("should not return a new instance of the same query", () => {
       const q = ordersTable.query();
       expect(q.clean() === q).toBe(true);
-    });
-
-    describe("joins", () => {
-      it("should not remove join referencing valid field ID", () => {
-        const q = ordersTable.query().join(getJoin());
-        expect(q.clean().query()).toEqual(q.query());
-      });
-
-      it("should clean invalid parts of multiple field joins and keep the valid ones", () => {
-        const VALID_CONDITION = [
-          "=",
-          ORDERS_PRODUCT_ID_FIELD_REF,
-          PRODUCT_ID_FIELD_REF,
-        ];
-        const join = getJoin({
-          condition: [
-            "and",
-            VALID_CONDITION,
-            ["=", ORDERS_PRODUCT_ID_FIELD_REF, null],
-            ["=", null, PRODUCT_ID_FIELD_REF],
-            ["=", null, null],
-          ],
-        });
-        const q = ordersTable.query().join(join);
-
-        expect(q.clean().query()).toEqual({
-          "source-table": ORDERS_ID,
-          joins: [{ ...join, condition: VALID_CONDITION }],
-        });
-      });
-
-      it("should remove join without any condition", () => {
-        const q = ordersTable.query().join(getJoin({ condition: null }));
-        expect(q.clean().query()).toEqual({ "source-table": ORDERS_ID });
-      });
-
-      it("should remove join referencing invalid source field", () => {
-        const q = ordersTable
-          .query()
-          .join(getJoin({ condition: ["=", null, PRODUCT_ID_FIELD_REF] }));
-        expect(q.clean().query()).toEqual({ "source-table": ORDERS_ID });
-      });
-
-      it("should remove join referencing invalid join field", () => {
-        const q = ordersTable
-          .query()
-          .join(
-            getJoin({ condition: ["=", ORDERS_PRODUCT_ID_FIELD_REF, null] }),
-          );
-        expect(q.clean().query()).toEqual({ "source-table": ORDERS_ID });
-      });
     });
 
     describe("filters", () => {
@@ -190,14 +117,6 @@ describe("StructuredQuery", () => {
           ]);
         expect(q.clean().query()).toEqual(q.query());
         expect(q.clean() === q).toBe(true);
-      });
-
-      it("should not remove breakout referencing valid joined fields", () => {
-        const q = ordersTable
-          .query()
-          .join(getJoin())
-          .breakout(["field", PRODUCTS.TITLE, { "join-alias": "Products" }]);
-        expect(q.clean().query()).toEqual(q.query());
       });
     });
 

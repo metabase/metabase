@@ -2,7 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.connection-pool :as connection-pool]
    [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.db.data-source :as mdb.data-source]

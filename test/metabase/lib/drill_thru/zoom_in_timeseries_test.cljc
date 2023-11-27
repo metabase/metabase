@@ -1,10 +1,10 @@
 (ns metabase.lib.drill-thru.zoom-in-timeseries-test
   (:require
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
-   [metabase.lib.drill-thru.zoom-in-timeseries
-    :as lib.drill-thru.zoom-in-timeseries]
+   [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
+   [metabase.lib.drill-thru.zoom-in-timeseries :as lib.drill-thru.zoom-in-timeseries]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
@@ -14,24 +14,32 @@
 (deftest ^:parallel zoom-in-timeseries-e2e-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                   (lib/aggregate (lib/count))
-                  (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :day))
+                  (lib/breakout (meta/field-metadata :products :category))
                   (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year)))]
     (is (=? {:stages [{:aggregation [[:count {}]]
-                       :breakout    [[:field {:temporal-unit :day} (meta/id :orders :created-at)]
+                       :breakout    [[:field {} (meta/id :products :category)]
                                      [:field {:temporal-unit :year} (meta/id :orders :created-at)]]}]}
             query))
-    (let [created-at (m/find-first #(and (= (:id %) (meta/id :orders :created-at))
+    (let [columns    (lib/returned-columns query)
+          created-at (m/find-first #(and (= (:id %) (meta/id :orders :created-at))
                                          (= (lib.temporal-bucket/raw-temporal-bucket %) :year))
                                    (lib/returned-columns query))
           _          (assert created-at)
-          drill      (lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill query
-                                                                                 -1
-                                                                                 {:column created-at
-                                                                                  :value  2022})]
+          count-col  (m/find-first #(= (:name %) "count") columns)
+          _          (assert count-col)
+          drill      (lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill
+                       query -1
+                       {:column     count-col
+                        :column-ref (lib/ref count-col)
+                        :value 200
+                        :dimensions [{:column     created-at
+                                      :column-ref (lib/ref created-at)
+                                      :value      2022}]})]
       (is (=? {:type         :drill-thru/zoom-in.timeseries
-               :column       {:id                               (meta/id :orders :created-at)
-                              :metabase.lib.field/temporal-unit :year}
-               :value        2022
+               :dimension    {:column     {:id                               (meta/id :orders :created-at)
+                                           :metabase.lib.field/temporal-unit :year}
+                              :column-ref [:field {} (meta/id :orders :created-at)]
+                              :value      2022}
                :next-unit    :quarter
                :display-name "See this year by quarter"}
               drill))
@@ -39,25 +47,31 @@
               (lib/display-info query -1 drill)))
       (let [query' (lib/drill-thru query drill)]
         (is (=? {:stages [{:aggregation [[:count {}]]
-                           :breakout    [[:field {:temporal-unit :day} (meta/id :orders :created-at)]
+                           :breakout    [[:field {} (meta/id :products :category)]
                                          [:field {:temporal-unit :quarter} (meta/id :orders :created-at)]]
                            :filters     [[:=
                                           {}
                                           [:field {:temporal-unit :year} (meta/id :orders :created-at)]
                                           2022]]}]}
                 query'))
-        (let [created-at (m/find-first #(and (= (:id %) (meta/id :orders :created-at))
+        (let [columns    (lib/returned-columns query')
+              created-at (m/find-first #(and (= (:id %) (meta/id :orders :created-at))
                                              (= (lib.temporal-bucket/raw-temporal-bucket %) :quarter))
-                                       (lib/returned-columns query'))
+                                       columns)
               _          (assert created-at)
-              drill      (lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill query'
-                                                                                     -1
-                                                                                     {:column created-at
-                                                                                      :value  "2022-04-01T00:00:00"})]
+              drill      (lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill
+                           query' -1
+                           {:column     count-col
+                            :column-ref (lib/ref count-col)
+                            :value      19
+                            :dimensions [{:column     created-at
+                                          :column-ref (lib/ref created-at)
+                                          :value      "2022-04-01T00:00:00"}]})]
           (is (=? {:type         :drill-thru/zoom-in.timeseries
-                   :column       {:id                               (meta/id :orders :created-at)
-                                  :metabase.lib.field/temporal-unit :quarter}
-                   :value        "2022-04-01T00:00:00"
+                   :dimension    {:column     {:id                               (meta/id :orders :created-at)
+                                               :metabase.lib.field/temporal-unit :quarter}
+                                  :column-ref [:field {} (meta/id :orders :created-at)]
+                                  :value      "2022-04-01T00:00:00"}
                    :next-unit    :month
                    :display-name "See this quarter by month"}
                   drill))
@@ -65,7 +79,7 @@
                   (lib/display-info query' -1 drill)))
           (let [query'' (lib/drill-thru query' drill)]
             (is (=? {:stages [{:aggregation [[:count {}]]
-                               :breakout    [[:field {:temporal-unit :day} (meta/id :orders :created-at)]
+                               :breakout    [[:field {} (meta/id :products :category)]
                                              [:field {:temporal-unit :month} (meta/id :orders :created-at)]]
                                ;; if we were SMART we could remove the first filter clause since it's not adding any
                                ;; value, but it won't hurt anything other than performance to keep it there. QP can
@@ -79,3 +93,30 @@
                                               [:field {:temporal-unit :quarter} (meta/id :orders :created-at)]
                                               "2022-04-01T00:00:00"]]}]}
                     query''))))))))
+
+(deftest ^:parallel returns-zoom-in-timeseries-test-1
+  (testing "zoom-in.timeseries should be returned for aggregated query metric click (#33811)"
+    (lib.drill-thru.tu/test-returns-drill
+     {:drill-type  :drill-thru/zoom-in.timeseries
+      :click-type  :cell
+      :query-type  :aggregated
+      :column-name "count"
+      :expected    {:type :drill-thru/zoom-in.timeseries}})))
+
+(deftest ^:parallel returns-zoom-in-timeseries-test-2
+  (testing "zoom-in.timeseries should be returned for aggregated query metric click (#33811)"
+    (lib.drill-thru.tu/test-returns-drill
+     {:drill-type  :drill-thru/zoom-in.timeseries
+      :click-type  :cell
+      :query-type  :aggregated
+      :column-name "max"
+      :expected    {:type :drill-thru/zoom-in.timeseries}})))
+
+(deftest ^:parallel returns-zoom-in-timeseries-test-3
+  (testing "zoom-in.timeseries should be returned for aggregated query metric click (#33811)"
+    (lib.drill-thru.tu/test-returns-drill
+     {:drill-type  :drill-thru/zoom-in.timeseries
+      :click-type  :cell
+      :query-type  :aggregated
+      :column-name "sum"
+      :expected    {:type :drill-thru/zoom-in.timeseries}})))
