@@ -55,8 +55,8 @@ describe("ExpressionWidget", () => {
     ).toBeInTheDocument();
   });
 
-  it("should trigger onChangeExpressionClause if expression is valid", () => {
-    const { getRecentExpressionClauseInfo, onChangeExpressionClause } = setup();
+  it("should trigger onChangeClause if expression is valid", () => {
+    const { getRecentExpressionClauseInfo, onChangeClause } = setup();
 
     const doneButton = screen.getByRole("button", { name: "Done" });
     expect(doneButton).toBeDisabled();
@@ -71,8 +71,8 @@ describe("ExpressionWidget", () => {
 
     userEvent.click(doneButton);
 
-    expect(onChangeExpressionClause).toHaveBeenCalledTimes(1);
-    expect(onChangeExpressionClause).toHaveBeenCalledWith(
+    expect(onChangeClause).toHaveBeenCalledTimes(1);
+    expect(onChangeClause).toHaveBeenCalledWith(
       "",
       ["+", 1, 1],
       expect.anything(),
@@ -110,7 +110,7 @@ describe("ExpressionWidget", () => {
       const {
         getRecentExpressionClauseInfo,
         onChangeExpression,
-        onChangeExpressionClause,
+        onChangeClause,
       } = setup({
         expression,
         withName: true,
@@ -125,8 +125,8 @@ describe("ExpressionWidget", () => {
 
       userEvent.type(screen.getByDisplayValue("1 + 1"), "{enter}");
 
-      // enter in expression editor should not trigger "onChangeExpressionClause" as popover is not valid with empty "name"
-      expect(onChangeExpressionClause).toHaveBeenCalledTimes(0);
+      // enter in expression editor should not trigger "onChangeClause" as popover is not valid with empty "name"
+      expect(onChangeClause).toHaveBeenCalledTimes(0);
 
       // The name must not be empty
       userEvent.type(expressionNameInput, "");
@@ -156,8 +156,8 @@ describe("ExpressionWidget", () => {
         "Some n_am!e 2q$w&YzT(6i~#sLXv7+HjP}Ku1|9c*RlF@4o5N=e8;G*-bZ3/U0:Qa'V,t(W-_D",
         expression,
       );
-      expect(onChangeExpressionClause).toHaveBeenCalledTimes(1);
-      expect(onChangeExpressionClause).toHaveBeenCalledWith(
+      expect(onChangeClause).toHaveBeenCalledTimes(1);
+      expect(onChangeClause).toHaveBeenCalledWith(
         "Some n_am!e 2q$w&YzT(6i~#sLXv7+HjP}Ku1|9c*RlF@4o5N=e8;G*-bZ3/U0:Qa'V,t(W-_D",
         expect.anything(),
       );
@@ -185,14 +185,13 @@ function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
   const query = createQuery();
   const stageIndex = 0;
   const onChangeExpression = jest.fn();
-  const onChangeExpressionClause = jest.fn();
+  const onChangeClause = jest.fn();
   const onClose = jest.fn();
 
   function getRecentExpressionClause() {
-    expect(onChangeExpressionClause).toHaveBeenCalled();
-    const [_name, expressionClause] =
-      onChangeExpressionClause.mock.calls.at(-1);
-    return expressionClause;
+    expect(onChangeClause).toHaveBeenCalled();
+    const [_name, clause] = onChangeClause.mock.calls.at(-1);
+    return clause;
   }
 
   function getRecentExpressionClauseInfo() {
@@ -202,14 +201,14 @@ function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
   render(
     <ExpressionWidget
       expression={undefined}
-      expressionClause={undefined}
+      clause={undefined}
       legacyQuery={createMockLegacyQueryForExpressions()}
       name={undefined}
       query={query}
       reportTimezone="UTC"
       stageIndex={stageIndex}
       onChangeExpression={onChangeExpression}
-      onChangeExpressionClause={onChangeExpressionClause}
+      onChangeClause={onChangeClause}
       onClose={onClose}
       {...additionalProps}
     />,
@@ -218,7 +217,7 @@ function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
   return {
     getRecentExpressionClauseInfo,
     onChangeExpression,
-    onChangeExpressionClause,
+    onChangeClause,
     onClose,
   };
 }
