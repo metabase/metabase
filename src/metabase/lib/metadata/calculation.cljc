@@ -277,7 +277,7 @@
 
 (mr/register! ::display-info
               [:map
-               [:display-name :string]
+               [:display-name {:optional true} :string]
                [:long-display-name {:optional true} :string]
    ;; for things that have a Table, e.g. a Field
                [:table {:optional true} [:maybe [:ref ::display-info]]]
