@@ -79,7 +79,7 @@
                          :field-definitions [{:field-name "foo", :base-type :type/Text}]
                          :rows              [["bar"]]}]}))
 
-(deftest check-can-connect-with-destroy-db-test
+(deftest can-connect-with-destroy-db-test
   (testing "Database sync should short-circuit and fail if the database at the connection has been deleted (metabase#7526)"
     (mt/test-drivers (->> (mt/normal-drivers)
                           ;; athena is a special case because connections aren't made with a single database,
