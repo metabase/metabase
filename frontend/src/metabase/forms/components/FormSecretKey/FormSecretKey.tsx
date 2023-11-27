@@ -3,13 +3,11 @@ import type { ChangeEvent, FocusEvent, Ref } from "react";
 import { useField } from "formik";
 import { t } from "ttag";
 
-import { TextInput, Button } from "metabase/ui";
+import { Flex, TextInput, Button } from "metabase/ui";
 import type { TextInputProps } from "metabase/ui";
 
 import Confirm from "metabase/components/Confirm";
 import { UtilApi } from "metabase/services";
-
-import { SecretKeyRoot } from "./FormSecretKey.styled";
 
 export interface FormSecretKeyProps
   extends Omit<TextInputProps, "value" | "error"> {
@@ -61,7 +59,7 @@ export const FormSecretKey = forwardRef(function FormSecretKey(
   };
 
   return (
-    <SecretKeyRoot>
+    <Flex align="end" gap="1rem">
       <TextInput
         {...props}
         ref={ref}
@@ -86,6 +84,6 @@ export const FormSecretKey = forwardRef(function FormSecretKey(
           onClick={generateToken}
         >{t`Generate key`}</Button>
       )}
-    </SecretKeyRoot>
+    </Flex>
   );
 });
