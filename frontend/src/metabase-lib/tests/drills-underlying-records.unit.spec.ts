@@ -52,6 +52,39 @@ describe("drill-thru/underlying-records", () => {
     });
 
     // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should allow to drill via a pivot cell (metabase#35394)", () => {
+      const query = createQueryWithMultipleBreakouts();
+      const secondBreakoutColumn = createOrdersQuantityDatasetColumn({
+        source: "breakout",
+      });
+      const row = [
+        { col: breakoutColumn, value: "2020-01-01" },
+        { col: secondBreakoutColumn, value: 0 },
+        { col: aggregationColumn, value: 76 },
+      ];
+      const dimensions = [
+        { column: breakoutColumn, value: "2020-01-01" },
+        { column: secondBreakoutColumn, value: 0 },
+      ];
+
+      const { drillInfo } = findDrillThru(
+        drillType,
+        query,
+        stageIndex,
+        undefined,
+        undefined,
+        row,
+        dimensions,
+      );
+
+      expect(drillInfo).toMatchObject({
+        type: drillType,
+        rowCount: 76,
+        tableName: "Orders",
+      });
+    });
+
+    // eslint-disable-next-line jest/no-disabled-tests
     it.skip("should allow to drill via a legend item (metabase#35343)", () => {
       const query = createQueryWithMultipleBreakouts();
       const column = createOrdersQuantityDatasetColumn({ source: "breakout" });
