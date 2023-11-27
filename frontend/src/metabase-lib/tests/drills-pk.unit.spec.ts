@@ -9,6 +9,7 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
 import {
   createQuery,
   findDrillThru,
@@ -139,6 +140,41 @@ describe("drill-thru/pk", () => {
       });
       const drill = queryDrillThru(drillType, query, stageIndex, column);
       expect(drill).toBeNull();
+    });
+  });
+
+  describe("drillThru", () => {
+    it("should drill with a PK column", () => {
+      const value = 10;
+      const row = [{ col: defaultColumn, value }];
+      const { drill } = findDrillThru(
+        drillType,
+        defaultQuery,
+        stageIndex,
+        defaultColumn,
+        value,
+        row,
+      );
+      const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
+      expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
+    });
+
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should drill with a non-PK column (metabase#35618)", () => {
+      const value = 10;
+      const column = createOrdersTotalDatasetColumn();
+      const row = [{ col: column, value }];
+      const { drill } = findDrillThru(
+        drillType,
+        defaultQuery,
+        stageIndex,
+        column,
+        value,
+        row,
+      );
+
+      const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
+      expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
     });
   });
 });

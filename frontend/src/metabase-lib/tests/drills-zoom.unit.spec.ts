@@ -9,6 +9,7 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
 import {
   createQuery,
   findDrillThru,
@@ -145,6 +146,44 @@ describe("drill-thru/zoom", () => {
       const query = createQuery({ metadata });
       const drill = queryDrillThru(drillType, query, stageIndex, defaultColumn);
       expect(drill).toBeNull();
+    });
+  });
+
+  describe("drillThru", () => {
+    it("should drill with a PK column", () => {
+      const value = 10;
+      const row = [{ col: defaultColumn, value }];
+      const { drill } = findDrillThru(
+        drillType,
+        defaultQuery,
+        stageIndex,
+        defaultColumn,
+        value,
+        row,
+      );
+
+      const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
+
+      expect(newQuery).toBeDefined();
+    });
+
+    it("should allow to drill with a native query", () => {
+      const query = createQuery({
+        query: {
+          type: "native",
+          database: SAMPLE_DB_ID,
+          native: { query: "SELECT * FROM ORDERS" },
+        },
+      });
+      const column = createOrdersIdDatasetColumn({
+        id: undefined,
+        field_ref: ["field", "ID", { "base-type": "type/Integer" }],
+      });
+
+      const { drill } = findDrillThru(drillType, query, stageIndex, column);
+      const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
+
+      expect(newQuery).toBeDefined();
     });
   });
 });
