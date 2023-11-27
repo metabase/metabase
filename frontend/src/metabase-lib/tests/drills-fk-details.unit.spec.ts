@@ -1,6 +1,7 @@
 import {
   createOrdersIdDatasetColumn,
   createOrdersProductIdDatasetColumn,
+  createOrdersTotalDatasetColumn,
   createSampleDatabase,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
@@ -38,6 +39,22 @@ describe("drill-thru/fk-details", () => {
 
     it("should not allow to drill with a PK column value", () => {
       const column = createOrdersIdDatasetColumn();
+      const value = 10;
+      const row = [{ col: column, value }];
+      const drill = queryDrillThru(
+        drillType,
+        defaultQuery,
+        stageIndex,
+        column,
+        value,
+        row,
+      );
+
+      expect(drill).toBeNull();
+    });
+
+    it("should not allow to drill with a non-key column value", () => {
+      const column = createOrdersTotalDatasetColumn();
       const value = 10;
       const row = [{ col: column, value }];
       const drill = queryDrillThru(
