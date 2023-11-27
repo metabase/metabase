@@ -84,13 +84,13 @@
   "List of models to truncate. OSS implementation only truncates `query_execution` table."
   metabase-enterprise.task.truncate-audit-tables
   []
-  {:model/QueryExecution :started_at})
+  [{:model :model/QueryExecution :timestamp-col :started_at}])
 
 (defn- truncate-audit-tables!
   []
   (run!
-   (fn [[model time-column]]
-     (truncate-table! model time-column))
+   (fn [{:keys [model timestamp-col]}]
+     (truncate-table! model timestamp-col))
    (audit-models-to-truncate)))
 
 (jobs/defjob ^{:doc "Triggers the removal of `query_execution` rows older than the configured threshold."} TruncateAuditTables [_]

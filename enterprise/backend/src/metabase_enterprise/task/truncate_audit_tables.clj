@@ -7,6 +7,6 @@
   `audit_log` and `view_log` truncation"
   :feature :audit-app
   []
-  {:model/QueryExecution :started_at
-   :model/AuditLog       :timestamp
-   :model/ViewLog        :timestamp})
+  [{:model :model/QueryExecution :timestamp-col :started_at}
+   {:model :model/AuditLog       :timestamp-col :timestamp}
+   {:model :model/ViewLog        :timestamp-col :timestamp}])
