@@ -3,7 +3,7 @@ name: E2E Tests using Replay.io browser
 on:
   # We'll record runs using Replay.io and their browser on a schedule as an experiment
   schedule:
-    - cron: '0 22 * * *'
+    - cron: '0 */3 * * *'
 
 jobs:
   test-run-id:
