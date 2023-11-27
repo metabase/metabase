@@ -33,8 +33,17 @@ export const updateEmbeddingParams = createAction(
 );
 
 export const CREATE_PUBLIC_LINK = "metabase/dashboard/CREATE_PUBLIC_LINK";
+
 export const createPublicLink = createAction(
   CREATE_PUBLIC_LINK,
+  /**
+   * @param {import("metabase-types/api").Dashboard} payload - The dashboard to create a public link for
+   *
+   * @returns {Promise<{
+   *     id: import("metabase-types/api").DashboardId,
+   *     uuid: string,
+   * }>} Resolves to the dashboard id and its corresponding public uuid
+   */
   async ({ id }) => {
     const { uuid } = await DashboardApi.createPublicLink({ id });
     return { id, uuid };
@@ -44,6 +53,11 @@ export const createPublicLink = createAction(
 export const DELETE_PUBLIC_LINK = "metabase/dashboard/DELETE_PUBLIC_LINK";
 export const deletePublicLink = createAction(
   DELETE_PUBLIC_LINK,
+  /**
+   * @param {import("metabase-types/api").Dashboard} payload - The dashboard to create a public link for
+   *
+   * @returns {Promise<{id: import("metabase-types/api").DashCardId}>} Resolves to the dashboard id
+   */
   async ({ id }) => {
     await DashboardApi.deletePublicLink({ id });
     return { id };

@@ -13,7 +13,9 @@ export const DashboardEmbedAction = ({
   return (
     <>
       <EmbedMenu
-        resource_uuid={dashboard.public_uuid}
+        resource={dashboard}
+        resourceType="dashboard"
+        hasPublicLink={!!dashboard.public_uuid}
         onModalOpen={() => setIsModalOpen(true)}
         onModalClose={() => setIsModalOpen(false)}
       />

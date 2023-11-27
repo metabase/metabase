@@ -144,7 +144,9 @@ const ViewFooter = ({
           ),
           QuestionEmbedWidget.shouldRender({ question, isAdmin }) && (
             <EmbedMenu
-              resource_uuid={question.publicUUID()}
+              resource={question}
+              resourceType="question"
+              hasPublicLink={!!question.publicUUID()}
               onModalOpen={() =>
                 question.isSaved()
                   ? onOpenModal("embed")

@@ -1,16 +1,31 @@
 import { useState } from "react";
-import { PublicLinkPopover } from "metabase/dashboard/components/PublicLinkPopover";
+import type { Dashboard } from "metabase-types/api";
+import {
+  DashboardPublicLinkPopover,
+  QuestionPublicLinkPopover,
+} from "metabase/dashboard/components/PublicLinkPopover";
 import { DashboardEmbedHeaderButton } from "metabase/dashboard/components/DashboardEmbedHeaderButton";
 import { DashboardEmbedHeaderMenu } from "metabase/dashboard/components/DashboardEmbedHeaderMenu";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import type Question from "metabase-lib/Question";
 
 export type EmbedMenuModes =
   | "embed-menu"
   | "embed-modal"
   | "public-link-popover"
   | null;
+
+type ResourceType =
+  | {
+      resource: Dashboard;
+      resourceType: "dashboard";
+    }
+  | {
+      resource: Question;
+      resourceType: "question";
+    };
 
 const getEmbedMenuMode = ({
   isAdmin,
@@ -33,11 +48,13 @@ const getEmbedMenuMode = ({
 };
 
 export const EmbedMenu = ({
-  resource_uuid,
+  resource,
+  resourceType,
+  hasPublicLink,
   onModalOpen,
   onModalClose,
-}: {
-  resource_uuid?: string | null;
+}: ResourceType & {
+  hasPublicLink: boolean;
   onModalOpen?: () => void;
   onModalClose?: () => void;
 }) => {
@@ -46,8 +63,6 @@ export const EmbedMenu = ({
   );
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const hasPublicLink = !!resource_uuid;
-
   const initialMenuMode: EmbedMenuModes = getEmbedMenuMode({
     isAdmin,
     isPublicSharingEnabled,
@@ -55,8 +70,6 @@ export const EmbedMenu = ({
   });
   const [isOpen, setIsOpen] = useState(true);
   const [menuMode, setMenuMode] = useState(initialMenuMode);
-
-  // console.log(menuMode)
 
   const onMenuSelect = (menuMode?: EmbedMenuModes) => {
     setIsOpen(true);
@@ -85,7 +98,6 @@ export const EmbedMenu = ({
   const renderEmbedMenu = () => (
     <DashboardEmbedHeaderMenu
       hasPublicLink={hasPublicLink}
-      /* TODO: Change to `onMenuSelect("public-link-popover")}` when public link popover is implemented */
       openPublicLinkPopover={() => onMenuSelect("public-link-popover")}
       openEmbedModal={() => {
         onModalOpen && onModalOpen();
@@ -97,14 +109,19 @@ export const EmbedMenu = ({
   );
 
   const renderPublicLinkPopover = () => {
-    return (
-      <PublicLinkPopover
+    return resourceType === "dashboard" ? (
+      <DashboardPublicLinkPopover
+        dashboard={resource}
+        target={targetButton()}
         isOpen={isOpen}
         onClose={onClose}
-        target={targetButton({
-          onClick: isOpen ? onClose : () => setIsOpen(true),
-        })}
-        resource_uuid={resource_uuid}
+      />
+    ) : (
+      <QuestionPublicLinkPopover
+        question={resource}
+        target={targetButton()}
+        isOpen={isOpen}
+        onClose={onClose}
       />
     );
   };
@@ -118,16 +135,15 @@ export const EmbedMenu = ({
     });
 
   const getEmbedContent = (menuMode: EmbedMenuModes) => {
-    // if (menuMode === "embed-menu") {
-    //   return renderEmbedMenu();
-    // } else if (menuMode === "embed-modal") {
-    //   return renderEmbedModalTrigger();
-    // } else if (menuMode === "public-link-popover") {
-    //   return renderPublicLinkPopover();
-    // }
-    //
-    // return null;
-    return renderPublicLinkPopover();
+    if (menuMode === "embed-menu") {
+      return renderEmbedMenu();
+    } else if (menuMode === "embed-modal") {
+      return renderEmbedModalTrigger();
+    } else if (menuMode === "public-link-popover") {
+      return renderPublicLinkPopover();
+    }
+
+    return null;
   };
 
   return getEmbedContent(menuMode);

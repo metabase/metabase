@@ -2,13 +2,30 @@ import { createAction } from "redux-actions";
 import { CardApi } from "metabase/services";
 
 export const CREATE_PUBLIC_LINK = "metabase/card/CREATE_PUBLIC_LINK";
-export const createPublicLink = createAction(CREATE_PUBLIC_LINK, ({ id }) =>
-  CardApi.createPublicLink({ id }),
+
+export const createPublicLink = createAction(
+  CREATE_PUBLIC_LINK,
+  /**
+   * @param {import("metabase-types/api").Card} payload - The dashboard to create a public link for
+   *
+   * @returns {Promise<{
+   *     id: import("metabase-types/api").CardId,
+   *     uuid: string,
+   * }>} Resolves to the dashboard id and its corresponding public uuid
+   */
+  ({ id }) => {
+    return CardApi.createPublicLink({ id });
+  },
 );
 
 export const DELETE_PUBLIC_LINK = "metabase/card/DELETE_PUBLIC_LINK";
-export const deletePublicLink = createAction(DELETE_PUBLIC_LINK, ({ id }) =>
-  CardApi.deletePublicLink({ id }),
+
+export const deletePublicLink = createAction(
+  DELETE_PUBLIC_LINK,
+  /**
+   * @param {import("metabase-types/api").Card} payload - The card to create a public link for
+   */
+  ({ id }) => CardApi.deletePublicLink({ id }),
 );
 
 export const UPDATE_ENABLE_EMBEDDING = "metabase/card/UPDATE_ENABLE_EMBEDDING";
