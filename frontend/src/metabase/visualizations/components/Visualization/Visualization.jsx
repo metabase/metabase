@@ -4,6 +4,9 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import { assoc } from "icepick";
 import _ from "underscore";
+import { Box, Button, Modal } from "metabase/ui";
+import Link from "metabase/core/components/Link";
+import * as Urls from "metabase/lib/urls";
 
 import { Mode } from "metabase/visualizations/click-actions/Mode";
 import ExplicitSize from "metabase/components/ExplicitSize";
@@ -78,6 +81,7 @@ class Visualization extends PureComponent {
     series: null,
     visualization: null,
     computedSettings: {},
+    showZoomed: false,
   };
 
   UNSAFE_componentWillMount() {
@@ -472,7 +476,12 @@ class Visualization extends PureComponent {
           data-testid="visualization-root"
         >
           {!!hasHeader && (
-            <VisualizationHeader>
+            <VisualizationHeader
+              onClick={ev => {
+                ev.preventDefault();
+                this.setState({ showZoomed: true });
+              }}
+            >
               <ChartCaption
                 series={series}
                 settings={settings}
@@ -480,9 +489,12 @@ class Visualization extends PureComponent {
                 actionButtons={extra}
                 width={width}
                 onChangeCardAndRun={
-                  this.props.onChangeCardAndRun && !replacementContent
-                    ? this.handleOnChangeCardAndRun
-                    : null
+                  () => {
+                    this.setState({ showZoomed: true });
+                  }
+                  // this.props.onChangeCardAndRun && !replacementContent
+                  //   ? this.handleOnChangeCardAndRun
+                  //   : null
                 }
               />
             </VisualizationHeader>
@@ -501,37 +513,117 @@ class Visualization extends PureComponent {
           ) : loading ? (
             <LoadingView expectedDuration={expectedDuration} isSlow={isSlow} />
           ) : (
-            <div
-              data-card-key={getCardKey(series[0].card?.id)}
-              className="flex flex-column flex-full"
-            >
-              <CardVisualization
-                {...this.props}
-                // NOTE: CardVisualization class used to target ExplicitSize HOC
-                className="CardVisualization flex-full flex-basis-none"
-                isPlaceholder={isPlaceholder}
-                isMobile={isMobile}
-                series={series}
-                settings={settings}
-                card={series[0].card} // convenience for single-series visualizations
-                data={series[0].data} // convenience for single-series visualizations
-                hovered={hovered}
-                clicked={clicked}
-                headerIcon={hasHeader ? null : headerIcon}
-                onHoverChange={this.handleHoverChange}
-                onVisualizationClick={this.handleVisualizationClick}
-                visualizationIsClickable={this.visualizationIsClickable}
-                onRenderError={this.onRenderError}
-                onRender={this.onRender}
-                onActionDismissal={this.hideActions}
-                gridSize={gridSize}
-                onChangeCardAndRun={
-                  this.props.onChangeCardAndRun
-                    ? this.handleOnChangeCardAndRun
-                    : null
-                }
-              />
-            </div>
+            <>
+              <div
+                data-card-key={getCardKey(series[0].card?.id)}
+                className="flex flex-column flex-full"
+              >
+                <CardVisualization
+                  {...this.props}
+                  // NOTE: CardVisualization class used to target ExplicitSize HOC
+                  className="CardVisualization flex-full flex-basis-none"
+                  isPlaceholder={isPlaceholder}
+                  isMobile={isMobile}
+                  series={series}
+                  settings={settings}
+                  card={series[0].card} // convenience for single-series visualizations
+                  data={series[0].data} // convenience for single-series visualizations
+                  hovered={hovered}
+                  clicked={clicked}
+                  headerIcon={hasHeader ? null : headerIcon}
+                  onHoverChange={this.handleHoverChange}
+                  onVisualizationClick={this.handleVisualizationClick}
+                  visualizationIsClickable={this.visualizationIsClickable}
+                  onRenderError={this.onRenderError}
+                  onRender={this.onRender}
+                  onActionDismissal={this.hideActions}
+                  gridSize={gridSize}
+                  onChangeCardAndRun={() => {
+                    this.setState({ showZoomed: true });
+                  }}
+                />
+              </div>
+              <Modal
+                opened={this.state.showZoomed}
+                onClose={() => this.setState({ showZoomed: false })}
+                size="auto"
+                title={title}
+              >
+                <div
+                  data-card-key={getCardKey(series[0].card?.id)}
+                  className="flex flex-full border-top"
+                  style={{ height: 800, minWidth: 1400 }}
+                >
+                  <CardVisualization
+                    {...this.props}
+                    // NOTE: CardVisualization class used to target ExplicitSize HOC
+                    className="CardVisualization flex-full flex-basis-none"
+                    isPlaceholder={isPlaceholder}
+                    isMobile={isMobile}
+                    series={series}
+                    settings={settings}
+                    card={series[0].card} // convenience for single-series visualizations
+                    data={series[0].data} // convenience for single-series visualizations
+                    hovered={hovered}
+                    clicked={clicked}
+                    headerIcon={hasHeader ? null : headerIcon}
+                    onHoverChange={this.handleHoverChange}
+                    onVisualizationClick={this.handleVisualizationClick}
+                    visualizationIsClickable={this.visualizationIsClickable}
+                    onRenderError={this.onRenderError}
+                    onRender={this.onRender}
+                    onActionDismissal={this.hideActions}
+                    gridSize={gridSize}
+                    onChangeCardAndRun={
+                      this.props.onChangeCardAndRun
+                        ? this.handleOnChangeCardAndRun
+                        : null
+                    }
+                  />
+                  <Box
+                    p="2"
+                    style={{ minWidth: 200 }}
+                    className="border-left bg-light"
+                  >
+                    <Button onClick={() => this.handleOnChangeCardAndRun()}>
+                      <Link to={Urls.question(series[0].card)}>
+                        View in Query builder
+                      </Link>
+                    </Button>
+                    <Button onClick={() => this.handleOnChangeCardAndRun()}>
+                      Compare...
+                    </Button>
+                    <Box>
+                      <h4>Description</h4>
+                      <p>{series[0].card.description || "No description"}</p>
+                    </Box>
+
+                    <Box>
+                      <h4>Creator</h4>
+                      <p>{series[0].card.creator_id}</p>
+                    </Box>
+
+                    <Box>
+                      <h4>Created At</h4>
+                      <p>
+                        {new Date(
+                          series[0].card.created_at,
+                        ).toLocaleDateString()}
+                      </p>
+                    </Box>
+
+                    <Box>
+                      <h4>Updated At</h4>
+                      <p>
+                        {new Date(
+                          series[0].card.updated_at,
+                        ).toLocaleDateString()}
+                      </p>
+                    </Box>
+                  </Box>
+                </div>
+              </Modal>
+            </>
           )}
           <ChartTooltip series={series} hovered={hovered} settings={settings} />
           {this.props.onChangeCardAndRun && (
