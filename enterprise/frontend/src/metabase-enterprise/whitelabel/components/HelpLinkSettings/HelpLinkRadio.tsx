@@ -27,42 +27,39 @@ const getRadioValue = (setting: HelpLinkSetting | undefined | null) => {
 };
 
 export const HelpLinkRadio = ({ setting, onChange }: Props) => {
-  const [radioValue, setRadioValue] = useState(getRadioValue(setting.value));
-  const [textValue, setTextValue] = useState(
+  const [helpLinkType, setHelpLinkType] = useState(
+    getRadioValue(setting.value),
+  );
+  const [customUrl, setCustomUrl] = useState(
     getRadioValue(setting.value) === "custom" ? setting.value : "",
   );
 
   const handleRadioChange = (value: string) => {
-    setRadioValue(value);
-    switch (value) {
-      case "metabase_default":
-      case "hidden":
-        onChange(value);
-        break;
-      case "custom":
-      // we don't emit it here, it's the input text that emits the full url
+    setHelpLinkType(value);
+    if (["metabase_default", "hidden"].includes(value)) {
+      onChange(value);
     }
   };
-  const textInputVisible = radioValue === "custom";
+  const isTextInputVisible = helpLinkType === "custom";
   return (
     <Stack>
-      <Radio.Group value={radioValue} onChange={handleRadioChange}>
+      <Radio.Group value={helpLinkType} onChange={handleRadioChange}>
         <Stack>
-          <Radio label={t`Link to Metabase help`} value={"metabase_default"} />
-          <Radio label={t`Hide it`} value={"hidden"} />
-          <Radio label={t`Go to a custom destination...`} value={"custom"} />
+          <Radio label={t`Link to Metabase help`} value="metabase_default" />
+          <Radio label={t`Hide it`} value="hidden" />
+          <Radio label={t`Go to a custom destination...`} value="custom" />
         </Stack>
       </Radio.Group>
-      {textInputVisible && (
+      {isTextInputVisible && (
         <InputBlurChange
-          value={textValue}
+          value={customUrl}
           // this makes it autofocus only when the value wasn't originally a custom destination
           // this prevents it to be focused on page load
           autoFocus={getRadioValue(setting.originalValue) !== "custom"}
           aria-label={t`Help link custom destination`}
           placeholder={t`Enter a URL`}
           onBlurChange={e => {
-            setTextValue(e.target.value);
+            setCustomUrl(e.target.value);
             onChange(e.target.value);
           }}
         />
