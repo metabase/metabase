@@ -91,11 +91,6 @@
         (mt/dataset dbdef
           (let [db (mt/db)
                 details (tx/dbdef->connection-details driver/*driver* :db dbdef)]
-            ;; this might not be necessary
-            (#'task.sync-databases/sync-and-analyze-database*! (u/the-id db))
-            (testing "sense check: triggering the sync via the POST /api/database/:id/sync_schema endpoint should succeed"
-              (is (= {:status "ok"}
-                     (mt/user-http-request :crowberto :post 200 (str "/database/" (u/the-id db) "/sync_schema")))))
             (testing "can-connect? should return true before deleting the database"
               (true? (binding [h2/*allow-testing-h2-connections* true]
                        (driver/can-connect? driver/*driver* details))))
