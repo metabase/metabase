@@ -28,10 +28,18 @@ const EXPRESSIONS_DOCUMENTATION_URL = MetabaseSettings.docsUrl(
   "questions/query-builder/expressions",
 );
 
-export interface ExpressionWidgetProps {
-  legacyQuery: StructuredQuery;
-  query: Lib.Query | null;
+interface LegacyQueryProps {
+  query?: never;
+  stageIndex?: never;
+}
+
+interface QueryProps {
+  query: Lib.Query;
   stageIndex: number;
+}
+
+export type ExpressionWidgetProps = {
+  legacyQuery: StructuredQuery;
   expression: Expression | undefined;
   name?: string;
   withName?: boolean;
@@ -42,7 +50,7 @@ export interface ExpressionWidgetProps {
   onChangeExpression: (name: string, expression: Expression) => void;
   onRemoveExpression?: (name: string) => void;
   onClose?: () => void;
-}
+} & (QueryProps | LegacyQueryProps);
 
 export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
   const {

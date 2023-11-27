@@ -111,6 +111,7 @@ function setup(
     step,
     color: "#93A1AB",
     query,
+    stageIndex: step.stageIndex,
     topLevelQuery: step.topLevelQuery,
     updateQuery,
     isLastOpened: false,
