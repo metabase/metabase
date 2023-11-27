@@ -71,3 +71,18 @@ export function createOrdersSerializedJSONField() {
 export function createOrdersSerializedJSONColumn() {
   return createMockColumn(FIELDS.serializedJSON);
 }
+
+export function createCountColumn() {
+  return createMockColumn({
+    id: undefined,
+    table_id: undefined,
+    name: "count",
+    display_name: "Count",
+    source: "aggregation",
+    aggregation_index: 0,
+    field_ref: ["aggregation", 0],
+    base_type: "type/BigInteger",
+    effective_type: "type/BigInteger",
+    semantic_type: "type/Quantity",
+  });
+}
