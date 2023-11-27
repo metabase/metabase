@@ -1,5 +1,7 @@
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 import {
+  createOrdersCreatedAtDatasetColumn,
+  createOrdersQuantityDatasetColumn,
   createOrdersTotalDatasetColumn,
   createSampleDatabase,
   SAMPLE_DB_ID,
@@ -13,14 +15,16 @@ import {
   findDrillThru,
   queryDrillThru,
 } from "metabase-lib/test-helpers";
-import { createAggregationColumn, createBreakoutColumn } from "./drills-common";
+import { createAggregationColumn } from "./drills-common";
 
 describe("drill-thru/underlying-records", () => {
   const drillType = "drill-thru/underlying-records";
-  const defaultQuery = createQueryWithAggregationAndBreakout();
+  const defaultQuery = createQueryWithBreakout();
   const stageIndex = 0;
   const aggregationColumn = createAggregationColumn();
-  const breakoutColumn = createBreakoutColumn();
+  const breakoutColumn = createOrdersCreatedAtDatasetColumn({
+    source: "breakout",
+  });
 
   describe("availableDrillThrus", () => {
     it("should allow to drill an aggregated query", () => {
@@ -37,6 +41,30 @@ describe("drill-thru/underlying-records", () => {
         aggregationColumn,
         value,
         row,
+        dimensions,
+      );
+
+      expect(drillInfo).toMatchObject({
+        type: drillType,
+        rowCount: value,
+        tableName: "Orders",
+      });
+    });
+
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should allow to drill via a legend item (metabase#35343)", () => {
+      const query = createQueryWithMultipleBreakouts();
+      const column = createOrdersQuantityDatasetColumn({ source: "breakout" });
+      const value = 10;
+      const dimensions = [{ column, value }];
+
+      const { drillInfo } = findDrillThru(
+        drillType,
+        query,
+        stageIndex,
+        undefined,
+        undefined,
+        undefined,
         dimensions,
       );
 
@@ -154,7 +182,7 @@ describe("drill-thru/underlying-records", () => {
   });
 });
 
-function createQueryWithAggregationAndBreakout() {
+function createQueryWithBreakout() {
   const stageIndex = 0;
   const defaultQuery = createQuery();
   const queryWithAggregation = Lib.aggregate(
@@ -169,6 +197,18 @@ function createQueryWithAggregationAndBreakout() {
       queryWithAggregation,
       Lib.breakoutableColumns(queryWithAggregation, stageIndex),
     )("ORDERS", "CREATED_AT"),
+  );
+}
+
+function createQueryWithMultipleBreakouts() {
+  const query = createQueryWithBreakout();
+  return Lib.breakout(
+    query,
+    -1,
+    columnFinder(query, Lib.breakoutableColumns(query, -1))(
+      "ORDERS",
+      "QUANTITY",
+    ),
   );
 }
 

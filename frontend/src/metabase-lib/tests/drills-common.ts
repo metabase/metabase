@@ -1,8 +1,5 @@
 import { createMockColumn, createMockField } from "metabase-types/api/mocks";
-import {
-  createOrdersCreatedAtDatasetColumn,
-  ORDERS_ID,
-} from "metabase-types/api/mocks/presets";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 const FIELDS = {
   description: {
@@ -87,11 +84,5 @@ export function createAggregationColumn() {
     base_type: "type/BigInteger",
     effective_type: "type/BigInteger",
     semantic_type: "type/Quantity",
-  });
-}
-
-export function createBreakoutColumn() {
-  return createOrdersCreatedAtDatasetColumn({
-    source: "breakout",
   });
 }
