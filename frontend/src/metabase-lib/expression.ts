@@ -34,8 +34,12 @@ declare function WithExpressionName(
   newName: string,
 ): ExpressionClause;
 
-export const withExpressionName: typeof WithExpressionName =
-  ML.with_expression_name;
+export const withExpressionName: typeof WithExpressionName = (
+  clause,
+  newName,
+) => {
+  return ML.with_expression_name(clause, newName);
+};
 
 export function expressions(
   query: Query,
