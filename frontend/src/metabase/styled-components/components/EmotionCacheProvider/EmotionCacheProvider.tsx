@@ -14,6 +14,7 @@ export const EmotionCacheProvider = ({
     () => createCache({ key: "emotion", nonce: window.MetabaseNonce }),
     [],
   );
+  emotionCache.compat = true;
 
   return <CacheProvider value={emotionCache}>{children}</CacheProvider>;
 };
