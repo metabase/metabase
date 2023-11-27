@@ -13,10 +13,9 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { Stack } from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
 import { FormSection } from "metabase/containers/FormikForm";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
-import { JWTFormFooter } from "./SettingsJWTForm.styled";
 
 const propTypes = {
   elements: PropTypes.array,
@@ -109,14 +108,14 @@ const SettingsJWTForm = ({
             />
           </FormSection>
 
-          <JWTFormFooter>
+          <Flex direction={"column"} align={"start"} gap={"1rem"}>
             <FormErrorMessage />
             <FormSubmitButton
               disabled={!dirty}
               label={isEnabled ? t`Save changes` : t`Save and enable`}
               variant="filled"
             />
-          </JWTFormFooter>
+          </Flex>
         </Form>
       )}
     </FormProvider>
