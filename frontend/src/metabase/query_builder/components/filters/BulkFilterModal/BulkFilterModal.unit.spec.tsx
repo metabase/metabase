@@ -1,6 +1,8 @@
 import userEvent from "@testing-library/user-event";
-import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen } from "__support__/ui";
+import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { getMetadata } from "metabase/selectors/metadata";
 import type { FieldReference } from "metabase-types/api";
 import {
   createSampleDatabase,
@@ -9,14 +11,24 @@ import {
   PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
+  PRODUCT_CATEGORY_VALUES,
+  PRODUCT_TITLE_VALUES,
+  PRODUCT_VENDOR_VALUES,
 } from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase-types/store/mocks";
 import * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
 import { BulkFilterModal } from "./BulkFilterModal";
 
-const metadata = createMockMetadata({
-  databases: [createSampleDatabase()],
+const db = createSampleDatabase();
+
+const storeInitialState = createMockState({
+  entities: createMockEntitiesState({
+    databases: [db],
+  }),
 });
+
+const metadata = getMetadata(storeInitialState);
 
 type SetupOpts = {
   query?: Lib.Query;
@@ -26,6 +38,12 @@ function setup({ query = createQuery({ metadata }) }: SetupOpts = {}) {
   const onSubmit = jest.fn();
   const onClose = jest.fn();
 
+  setupFieldsValuesEndpoints([
+    PRODUCT_CATEGORY_VALUES,
+    PRODUCT_TITLE_VALUES,
+    PRODUCT_VENDOR_VALUES,
+  ]);
+
   renderWithProviders(
     <BulkFilterModal
       query={query}
@@ -33,6 +51,7 @@ function setup({ query = createQuery({ metadata }) }: SetupOpts = {}) {
       onSubmit={onSubmit}
       onClose={onClose}
     />,
+    { storeInitialState },
   );
 
   function getNextQuery() {
@@ -47,7 +66,7 @@ function setup({ query = createQuery({ metadata }) }: SetupOpts = {}) {
     );
   }
 
-  return { getNextFilterParts, onSubmit, onClose };
+  return { getNextQuery, getNextFilterParts, onSubmit, onClose };
 }
 
 describe("BulkFilterModal", () => {
@@ -113,10 +132,40 @@ describe("BulkFilterModal", () => {
     expect(applyButton).toBeDisabled();
   });
 
+  it("should disable the clear filters button when there're no filters", () => {
+    setup();
+    const clearButton = screen.getByRole("button", {
+      name: "Clear all filters",
+    });
+    expect(clearButton).toBeDisabled();
+  });
+
   it("should close", () => {
     const { onClose } = setup();
     userEvent.click(screen.getByLabelText("Close"));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("should clean all filters", async () => {
+    const { getNextQuery } = setup({ query: createTwoStageQuery() });
+
+    userEvent.click(screen.getByText("Product"));
+    expect(await screen.findByLabelText("Doohickey")).toBeChecked();
+    userEvent.click(screen.getByText("Summaries"));
+    // There's a "Count > 5" filter
+    expect(screen.getByDisplayValue("5")).toBeInTheDocument();
+
+    userEvent.click(screen.getByText("Clear all filters"));
+
+    expect(screen.queryByLabelText("5")).not.toBeInTheDocument();
+    userEvent.click(screen.getByText("Product"));
+    expect(screen.getByLabelText("Doohickey")).not.toBeChecked();
+
+    userEvent.click(screen.getByText("Apply filters"));
+
+    const nextQuery = getNextQuery();
+    expect(Lib.filters(nextQuery, 0)).toHaveLength(0);
+    expect(Lib.filters(nextQuery, 1)).toHaveLength(0);
   });
 
   describe("multi-stage query", () => {
