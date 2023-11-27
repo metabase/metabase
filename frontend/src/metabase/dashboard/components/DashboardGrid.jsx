@@ -42,6 +42,12 @@ import { DashCard } from "./DashCard/DashCard";
 
 const mapDispatchToProps = { addUndo };
 
+const OUTSIDE_DRAGGED_LAYOUT_ITEM_PLACEHOLDER = {
+  id: null,
+  card: {},
+  series: [],
+};
+
 class DashboardGrid extends Component {
   static contextType = ContentViewportContext;
 
@@ -157,9 +163,9 @@ class DashboardGrid extends Component {
     const changes = [];
 
     layout.forEach(layoutItem => {
-      const dashboardCard = this.getVisibleCards().find(
-        card => String(card.id) === layoutItem.i,
-      );
+      const dashboardCard =
+        this.getVisibleCards().find(card => String(card.id) === layoutItem.i) ||
+        OUTSIDE_DRAGGED_LAYOUT_ITEM_PLACEHOLDER;
 
       const keys = ["h", "w", "x", "y"];
       const changed = !_.isEqual(
@@ -187,6 +193,16 @@ class DashboardGrid extends Component {
   };
 
   getLayoutForDashCard = dashcard => {
+    const isDraggingFromOutside = !dashcard;
+
+    if (isDraggingFromOutside) {
+      return {
+        i: "dropping",
+        w: DEFAULT_CARD_SIZE.width,
+        h: DEFAULT_CARD_SIZE.height,
+      };
+    }
+
     const visualization = getVisualizationRaw([{ card: dashcard.card }]);
     const initialSize = DEFAULT_CARD_SIZE;
     const minSize = visualization.minSize || DEFAULT_CARD_SIZE;
@@ -421,9 +437,16 @@ class DashboardGrid extends Component {
   };
 
   renderGrid() {
-    const { width } = this.props;
+    const {
+      dashboard,
+      selectedTabId,
+      outsideDraggedCardId,
+      width,
+      addCardToDashboard,
+    } = this.props;
     const { layouts } = this.state;
     const rowHeight = this.getRowHeight();
+
     return (
       <GridLayout
         className={cx("DashboardGrid", {
@@ -437,8 +460,44 @@ class DashboardGrid extends Component {
         margin={{ desktop: [6, 6], mobile: [6, 10] }}
         containerPadding={[0, 0]}
         rowHeight={rowHeight}
+        isDroppable
+        droppingItem={{ i: String(outsideDraggedCardId), w: 4, h: 2 }}
         onLayoutChange={this.onLayoutChange}
         onDrag={this.onDrag}
+        onDrop={(nextLayout, item, event) => {
+          console.log("### onDrop", {
+            layout: layouts.desktop,
+            nextLayout,
+            item,
+            outsideDraggedCardId,
+            addCardToDashboard: {
+              dashId: dashboard.id,
+              cardId: outsideDraggedCardId,
+              tabId: selectedTabId,
+              position: {
+                col: item.x,
+                row: item.y,
+                size_x: item.w,
+                size_y: item.h,
+              },
+            },
+          });
+
+          addCardToDashboard({
+            dashId: dashboard.id,
+            cardId: outsideDraggedCardId,
+            tabId: selectedTabId,
+            position: {
+              col: item.x,
+              row: item.y,
+              size_x: item.w,
+              size_y: item.h,
+            },
+          });
+
+          // `breakpoint: "desktop"` because dragging isn't enabled on mobile
+          this.onLayoutChange({ layout: nextLayout, breakpoint: "desktop" });
+        }}
         onDragStop={this.onDragStop}
         isEditing={this.isEditingLayout}
         compactType="vertical"

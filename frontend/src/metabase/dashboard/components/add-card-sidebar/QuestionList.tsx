@@ -9,6 +9,9 @@ import SelectList from "metabase/components/SelectList";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import PaginationControls from "metabase/components/PaginationControls";
 import { usePagination } from "metabase/hooks/use-pagination";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+
+import { setOutsideDraggedCardId } from "metabase/dashboard/actions";
 
 import type {
   CollectionId,
@@ -45,6 +48,8 @@ export function QuestionList({
   hasCollections,
   showOnlyPublicCollections,
 }: QuestionListProps) {
+  const dispatch = useDispatch();
+
   const [queryOffset, setQueryOffset] = useState(0);
   const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
 
@@ -119,6 +124,19 @@ export function QuestionList({
                   rightIcon={PLUGIN_MODERATION.getStatusIcon(
                     item.moderated_status ?? undefined,
                   )}
+                  draggable
+                  unselectable="on"
+                  // this is a hack for firefox
+                  // Firefox requires some kind of initialization
+                  // which we can do by adding this attribute
+                  // @see https://bugzilla.mozilla.org/show_bug.cgi?id=568313
+                  onDragStart={e => {
+                    e.dataTransfer.setData("text/plain", "");
+                    dispatch(setOutsideDraggedCardId(item.id));
+                  }}
+                  onDragEnd={() => {
+                    dispatch(setOutsideDraggedCardId(null));
+                  }}
                 />
               ))}
             </SelectList>

@@ -24,3 +24,6 @@ export const getDashCardById = (state: State, dashcardId: DashCardId) => {
   const dashcards = getDashcards(state);
   return dashcards[dashcardId];
 };
+
+export const getOutsideDraggedCardId = (state: State) =>
+  state.dashboard.outsideDraggedCardId;

@@ -4,7 +4,9 @@ import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
 
 import { BaseItemRoot } from "./SelectListItem.styled";
 
-export interface BaseSelectListItemProps {
+type BaseProps = Omit<React.HTMLAttributes<HTMLLIElement>, "id" | "onSelect">;
+
+export interface BaseSelectListItemProps extends BaseProps {
   id: string | number;
   name: string;
   onSelect: (id: string | number) => void;

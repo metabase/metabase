@@ -1,6 +1,7 @@
 import { assoc, dissoc, assocIn, updateIn, chain, merge } from "icepick";
 import reduceReducers from "reduce-reducers";
 import _ from "underscore";
+import { createReducer } from "@reduxjs/toolkit";
 
 import produce from "immer";
 import { handleActions, combineReducers } from "metabase/lib/redux";
@@ -45,6 +46,7 @@ import {
   tabsReducer,
   FETCH_CARD_DATA_PENDING,
   fetchDashboard,
+  setOutsideDraggedCardId,
 } from "./actions";
 import {
   calculateDashCardRowAfterUndo,
@@ -491,6 +493,13 @@ export const autoApplyFilters = handleActions(
   INITIAL_DASHBOARD_STATE.autoApplyFilters,
 );
 
+export const outsideDraggedCardId = createReducer(null, builder => {
+  builder.addCase(
+    setOutsideDraggedCardId,
+    (state, { payload: cardId }) => cardId,
+  );
+});
+
 export const dashboardReducers = reduceReducers(
   INITIAL_DASHBOARD_STATE,
   combineReducers({
@@ -509,6 +518,7 @@ export const dashboardReducers = reduceReducers(
     sidebar,
     missingActionParameters,
     autoApplyFilters,
+    outsideDraggedCardId,
     // Combined reducer needs to init state for every slice
     selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,
     tabDeletions: (state = INITIAL_DASHBOARD_STATE.tabDeletions) => state,

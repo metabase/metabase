@@ -2,6 +2,7 @@ export * from "./cards";
 export * from "./core";
 export * from "./data-fetching";
 export * from "./navigation";
+export * from "./outside-dragged-card-id";
 export * from "./parameters";
 export * from "./revisions";
 export * from "./save";

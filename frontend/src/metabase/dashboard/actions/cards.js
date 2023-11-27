@@ -34,7 +34,7 @@ function generateTemporaryDashcardId() {
 }
 
 export const addCardToDashboard =
-  ({ dashId, cardId, tabId }) =>
+  ({ dashId, cardId, tabId, position }) =>
   async (dispatch, getState) => {
     await dispatch(Questions.actions.fetch({ id: cardId }));
     const card = Questions.selectors
@@ -46,14 +46,10 @@ export const addCardToDashboard =
     const dashboardState = getState().dashboard;
 
     const dashcardId = generateTemporaryDashcardId();
-    const dashcard = {
-      id: dashcardId,
-      dashboard_id: dashId,
-      dashboard_tab_id: tabId ?? null,
-      card_id: card.id,
-      card: card,
-      series: [],
-      ...getPositionForNewDashCard(
+
+    const positionProps =
+      position ||
+      getPositionForNewDashCard(
         getExistingDashCards(
           dashboardState.dashboards,
           dashboardState.dashcards,
@@ -62,7 +58,16 @@ export const addCardToDashboard =
         ),
         createdCardSize.width,
         createdCardSize.height,
-      ),
+      );
+
+    const dashcard = {
+      id: dashcardId,
+      dashboard_id: dashId,
+      dashboard_tab_id: tabId ?? null,
+      card_id: card.id,
+      card: card,
+      series: [],
+      ...positionProps,
       parameter_mappings: [],
       visualization_settings: {},
     };

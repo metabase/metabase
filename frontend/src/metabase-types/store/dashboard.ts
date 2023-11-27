@@ -1,4 +1,5 @@
 import type {
+  CardId,
   Dashboard,
   DashboardId,
   DashboardCard,
@@ -81,4 +82,6 @@ export interface DashboardState {
     toastDashboardId: number | null;
   };
   tabDeletions: Record<TabDeletionId, TabDeletion>;
+
+  outsideDraggedCardId: CardId | null;
 }
