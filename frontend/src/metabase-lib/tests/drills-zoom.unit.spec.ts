@@ -93,7 +93,7 @@ describe("drill-thru/zoom", () => {
       expect(drill).toBeNull();
     });
 
-    it("should allow to drill with a native query", () => {
+    it("should not allow to drill with a native query", () => {
       const query = createQuery({
         query: {
           type: "native",
@@ -106,11 +106,9 @@ describe("drill-thru/zoom", () => {
         field_ref: ["field", "ID", { "base-type": "type/Integer" }],
       });
 
-      const { drillInfo } = findDrillThru(drillType, query, stageIndex, column);
+      const drill = queryDrillThru(drillType, query, stageIndex, column);
 
-      expect(drillInfo).toMatchObject({
-        type: drillType,
-      });
+      expect(drill).toBeNull();
     });
 
     it("should not allow to drill when clicked on a column", () => {
