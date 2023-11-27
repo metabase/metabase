@@ -529,6 +529,7 @@ dashcards:
       : click_behavior:
           linkTemplate: /dashboard/{{entity_id}}
           linkType: url
+          targetId: null
           type: link
 - entity_id: o3Trjmdzp8iKpQDhuYUtG
   card_id: ezcT88-OmH-5HFOFNqmX7

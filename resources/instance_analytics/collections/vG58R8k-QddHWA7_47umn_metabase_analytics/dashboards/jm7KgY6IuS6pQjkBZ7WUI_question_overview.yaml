@@ -207,7 +207,7 @@ dashcards:
                 id: 6b3da96f
                 type: parameter
           tabId: 1
-          targetId: 5
+          targetId: DHMhMa1FYxiyIgM7_xdgR
           type: link
 - entity_id: PljXyyyfScG10byiLANCg
   card_id: YiHMsA2dv3iQob11DLTIz
@@ -301,22 +301,7 @@ dashcards:
         link_url: /browse/{{entity_id_3}}
         view_as: link
       ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - User"}]]'
-      : click_behavior:
-          linkType: dashboard
-          parameterMapping:
-            6b3da96f:
-              id: 6b3da96f
-              source:
-                id: user_id
-                name: People - User → User ID
-                type: column
-              target:
-                id: 6b3da96f
-                type: parameter
-          tabId: 1
-          targetId: 5
-          type: link
-        column_title: User name
+      : column_title: User name
       ? '["ref",["field",["Internal Metabase Database","public","v_users","user_id"],{"base-type":"type/Integer","join-alias":"People - User"}]]'
       : column_title: User ID
     table.cell_column: running_time_seconds
