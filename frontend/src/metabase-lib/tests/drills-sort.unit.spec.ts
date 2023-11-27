@@ -9,6 +9,7 @@ import {
   findDrillThru,
   queryDrillThru,
 } from "metabase-lib/test-helpers";
+import { COLUMNS, METADATA } from "./drills-common";
 
 describe("drill-thru/sort", () => {
   const drillType = "drill-thru/sort";
@@ -121,6 +122,21 @@ describe("drill-thru/sort", () => {
         field_ref: ["field", 102, { "base-type": "type/Float" }],
       });
       const drill = queryDrillThru(drillType, query, stageIndex, column);
+      expect(drill).toBeNull();
+    });
+
+    it('should not allow to drill with "type/Structured" type', () => {
+      const query = createQuery({
+        metadata: METADATA,
+      });
+
+      const drill = queryDrillThru(
+        drillType,
+        query,
+        stageIndex,
+        COLUMNS.structured,
+      );
+
       expect(drill).toBeNull();
     });
   });

@@ -9,6 +9,7 @@ import {
   findDrillThru,
   queryDrillThru,
 } from "metabase-lib/test-helpers";
+import { COLUMNS, METADATA } from "./drills-common";
 
 describe("drill-thru/summarize-column", () => {
   const drillType = "drill-thru/summarize-column";
@@ -74,6 +75,19 @@ describe("drill-thru/summarize-column", () => {
       expect(drill).toBeNull();
     });
 
+    it('should not allow to drill with "type/Structured" type', () => {
+      const query = createQuery({
+        metadata: METADATA,
+      });
+      const drill = queryDrillThru(
+        drillType,
+        query,
+        stageIndex,
+        COLUMNS.structured,
+      );
+      expect(drill).toBeNull();
+    });
+
     it("should not allow to drill with a native query", () => {
       const query = createQuery({
         query: {
@@ -90,8 +104,7 @@ describe("drill-thru/summarize-column", () => {
       expect(drill).toBeNull();
     });
 
-    // eslint-disable-next-line jest/no-disabled-tests
-    it.skip("should not allow to drill with a non-editable query", () => {
+    it("should not allow to drill with a non-editable query", () => {
       const query = createQuery({
         query: {
           type: "query",
