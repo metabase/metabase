@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { usePrevious } from "react-use";
 import * as Lib from "metabase-lib";
 import { getAvailableOperatorOptions } from "../utils";
 import type { TimePickerOperator } from "./types";
@@ -20,6 +21,8 @@ export function useTimeFilter({
   filter,
   defaultOperator = "<",
 }: UseTimeFilterOpts) {
+  const previousFilter = usePrevious(filter);
+
   const filterParts = useMemo(() => {
     return filter ? Lib.timeFilterParts(query, stageIndex, filter) : null;
   }, [query, stageIndex, filter]);
@@ -37,6 +40,13 @@ export function useTimeFilter({
   const [values, setValues] = useState(() =>
     getDefaultValues(operator, filterParts?.values),
   );
+
+  useEffect(() => {
+    if (previousFilter && !filter) {
+      _setOperator(defaultOperator);
+      setValues(getDefaultValues(defaultOperator));
+    }
+  }, [filter, previousFilter, defaultOperator]);
 
   const { valueCount } = OPERATOR_OPTIONS[operator];
 

@@ -61,11 +61,11 @@ export function BulkFilterModal({
     setQuery(initialQuery);
   }, [initialQuery]);
 
-  const columnGroups: ColumnGroupListItem[] = useMemo(() => {
-    const stageCount = Lib.stageCount(query);
-    const lastStageIndex = stageCount - 1;
-    const hasPreviousStage = stageCount > 1;
+  const stageCount = Lib.stageCount(query);
+  const lastStageIndex = stageCount - 1;
+  const hasPreviousStage = stageCount > 1;
 
+  const columnGroups: ColumnGroupListItem[] = useMemo(() => {
     const lastStageColumns = Lib.filterableColumns(query, lastStageIndex);
     const previousStageColumns = hasPreviousStage
       ? Lib.filterableColumns(query, lastStageIndex - 1)
@@ -84,7 +84,22 @@ export function BulkFilterModal({
         toGroupListItem(query, lastStageIndex, group),
       ),
     ];
-  }, [query]);
+  }, [query, lastStageIndex, hasPreviousStage]);
+
+  const hasFilters = useMemo(() => {
+    const hasLastStageFilters = Lib.filters(query, lastStageIndex).length > 0;
+
+    if (hasLastStageFilters) {
+      return true;
+    }
+    if (!hasPreviousStage) {
+      return false;
+    }
+
+    const hasPreviousStageFilters =
+      Lib.filters(query, lastStageIndex - 1).length > 0;
+    return hasLastStageFilters && hasPreviousStageFilters;
+  }, [query, lastStageIndex, hasPreviousStage]);
 
   const canSubmit = useMemo(
     () => !Lib.areQueriesEqual(initialQuery, query),
@@ -105,6 +120,14 @@ export function BulkFilterModal({
     onSubmit(query);
     onClose();
   }, [query, onSubmit, onClose]);
+
+  const handleClearAll = useCallback(() => {
+    let nextQuery = Lib.clearFilters(query, lastStageIndex);
+    nextQuery = hasPreviousStage
+      ? Lib.clearFilters(nextQuery, lastStageIndex - 1)
+      : nextQuery;
+    setQuery(nextQuery);
+  }, [query, lastStageIndex, hasPreviousStage]);
 
   const hasNavigation = columnGroups.length > 1;
 
@@ -143,7 +166,13 @@ export function BulkFilterModal({
             </Flex>
           </Tabs>
         </ModalBody>
-        <ModalFooter justify="flex-end">
+        <ModalFooter justify="space-between">
+          <Button
+            variant="subtle"
+            color="text.1"
+            disabled={!hasFilters}
+            onClick={handleClearAll}
+          >{t`Clear all filters`}</Button>
           <Button
             variant="filled"
             disabled={!canSubmit}
