@@ -111,14 +111,26 @@ export const EmbedMenu = ({
     return resourceType === "dashboard" ? (
       <DashboardPublicLinkPopover
         dashboard={resource}
-        target={<div>{targetButton()}</div>}
+        target={
+          <div>
+            {targetButton({
+              onClick: () => setIsOpen(!isOpen),
+            })}
+          </div>
+        }
         isOpen={isOpen}
         onClose={onClose}
       />
     ) : (
       <QuestionPublicLinkPopover
         question={resource}
-        target={<div>{targetButton()}</div>}
+        target={
+          <div>
+            {targetButton({
+              onClick: () => setIsOpen(!isOpen),
+            })}
+          </div>
+        }
         isOpen={isOpen}
         onClose={onClose}
       />
