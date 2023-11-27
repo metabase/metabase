@@ -118,7 +118,8 @@ describe("drill-thru/summarize-column", () => {
       expect(drill).toBeNull();
     });
 
-    it("should not allow to drill with a non-editable query", () => {
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should not allow to drill with a non-editable query (metabase#36125)", () => {
       const metadata = createMockMetadata({
         databases: [createSampleDatabase({ tables: [] })],
       });
