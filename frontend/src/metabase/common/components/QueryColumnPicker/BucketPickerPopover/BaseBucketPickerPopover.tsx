@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
 import { useMemo } from "react";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import type { ColorName } from "metabase/lib/colors/types";
 import * as Lib from "metabase-lib";
 import {
@@ -25,7 +27,7 @@ export interface BaseBucketPickerPopoverProps {
   hasArrowIcon?: boolean;
   color?: ColorName;
   checkBucketIsSelected: (item: BucketListItem) => boolean;
-  renderTriggerContent: (bucket?: Lib.BucketDisplayInfo) => void;
+  renderTriggerContent: (bucket?: Lib.BucketDisplayInfo) => ReactNode;
   onSelect: (column: Lib.Bucket | NoBucket) => void;
 }
 
@@ -65,7 +67,9 @@ function _BaseBucketPickerPopover({
           // Prefer using a11y role selectors
           data-testid="dimension-list-item-binning"
         >
-          {renderTriggerContent(triggerContentBucketDisplayInfo)}
+          <Ellipsified>
+            {renderTriggerContent(triggerContentBucketDisplayInfo)}
+          </Ellipsified>
           {hasArrowIcon && <TriggerIcon name="chevronright" />}
         </TriggerButton>
       )}

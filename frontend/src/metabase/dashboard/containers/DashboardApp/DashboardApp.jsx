@@ -25,8 +25,6 @@ import {
   getUserIsAdmin,
 } from "metabase/selectors/user";
 
-import { getEmbedOptions } from "metabase/selectors/embed";
-
 import { parseHashOptions } from "metabase/lib/browser";
 import * as Urls from "metabase/lib/urls";
 
@@ -103,7 +101,6 @@ const mapStateToProps = state => {
     isLoadingComplete: getIsLoadingComplete(state),
     isHeaderVisible: getIsHeaderVisible(state),
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
-    embedOptions: getEmbedOptions(state),
     selectedTabId: getSelectedTabId(state),
     isAutoApplyFilters: getIsAutoApplyFilters(state),
     isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),

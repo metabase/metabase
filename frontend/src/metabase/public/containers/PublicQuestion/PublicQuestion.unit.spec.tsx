@@ -8,7 +8,7 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 import {
   createMockPublicCard,
-  createMockPublicDataset,
+  createMockEmbedDataset,
 } from "metabase-types/api/mocks";
 
 import { PublicQuestion } from "./PublicQuestion";
@@ -24,7 +24,7 @@ async function setup() {
   );
   setupPublicCardQueryEndpoints(
     FAKE_UUID,
-    createMockPublicDataset({
+    createMockEmbedDataset({
       data: { rows: [["John W."]] },
     }),
   );

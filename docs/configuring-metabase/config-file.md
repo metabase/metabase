@@ -81,7 +81,7 @@ config:
       details:
         host: localhost
         port: 5432
-        username: db
+        user: dbuser
         password: "{{ env POSTGRES_TEST_DATA_PASSWORD }}"
         dbname: test-data
 {% endraw %}

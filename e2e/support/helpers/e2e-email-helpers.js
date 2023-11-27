@@ -54,6 +54,13 @@ export const clearInbox = () => {
   return cy.request("DELETE", `http://localhost:${WEB_PORT}/email/all`);
 };
 
+export const viewEmailPage = emailSubject => {
+  const webmailInterface = `http://localhost:${WEB_PORT}`;
+
+  cy.window().then(win => (win.location.href = webmailInterface));
+  cy.findByText(emailSubject).click();
+};
+
 export const openEmailPage = emailSubject => {
   const webmailInterface = `http://localhost:${WEB_PORT}`;
 

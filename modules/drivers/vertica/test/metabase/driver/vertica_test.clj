@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor :as qp]
@@ -27,7 +26,7 @@
 
 (defn- compile-query [query]
   (-> (qp/compile query)
-      (update :query #(str/split-lines (mdb.query/format-sql % :vertica)))))
+      (update :query #(str/split-lines (driver/prettify-native-form :vertica %)))))
 
 (deftest ^:parallel percentile-test
   (mt/test-driver :vertica

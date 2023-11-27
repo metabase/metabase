@@ -409,9 +409,11 @@
                       :aggregation  [[:sum [:field (:id @field1d) nil]]]}
                      (:definition @metric1d))))))))))
 
+#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest dashboard-card-test
   ;; DashboardCard.parameter_mappings and Card.parameter_mappings are JSON-encoded lists of parameter maps, which
   ;; contain field IDs - these need to be converted to a portable form and read back in.
+  ;; DashboardCard.visualization_settings contains JSON with several places where IDs are embedded.
   ;; This test has a database, table and fields, that exist on both sides with different IDs, and expects a Card and
   ;; DashboardCard to be correctly loaded with the dest IDs.
   (testing "parameter_mappings are portable"
@@ -421,7 +423,9 @@
           table1s    (atom nil)
           field1s    (atom nil)
           field2s    (atom nil)
+          field3s    (atom nil)
           dash1s     (atom nil)
+          dash2s     (atom nil)
           card1s     (atom nil)
           dashcard1s (atom nil)
           user1s     (atom nil)
@@ -446,60 +450,77 @@
             (reset! table1s  (ts/create! Table :name "orders" :db_id (:id @db1s)))
             (reset! field1s  (ts/create! Field :name "subtotal" :table_id (:id @table1s)))
             (reset! field2s  (ts/create! Field :name "invoice" :table_id (:id @table1s)))
+            (reset! field3s  (ts/create! Field :name "discount" :table_id (:id @table1s)))
             (reset! user1s   (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             (reset! dash1s   (ts/create! Dashboard :name "My Dashboard" :collection_id (:id @coll1s) :creator_id (:id @user1s)))
-            (reset! card1s   (ts/create! Card :name "The Card" :database_id (:id @db1s) :table_id (:id @table1s)
-                                         :collection_id (:id @coll1s) :creator_id (:id @user1s)
-                                         :visualization_settings
-                                         {:table.pivot_column "SOURCE"
-                                          :table.cell_column "sum"
-                                          :table.columns
-                                          [{:name "SOME_FIELD"
-                                            :fieldRef [:field (:id @field1s) nil]
-                                            :enabled true}
-                                           {:name "sum"
-                                            :fieldRef [:field "sum" {:base-type :type/Float}]
-                                            :enabled true}
-                                           {:name "count"
-                                            :fieldRef [:field "count" {:base-type :type/BigInteger}]
-                                            :enabled true}
-                                           {:name "Average order total"
-                                            :fieldRef [:field "Average order total" {:base-type :type/Float}]
-                                            :enabled true}]
-                                          :column_settings
-                                          {(str "[\"ref\",[\"field\"," (:id @field2s) ",null]]") {:column_title "Locus"}}}
-                                         :parameter_mappings [{:parameter_id "12345678"
-                                                               :target [:dimension [:field (:id @field1s) {:source-field (:id @field2s)}]]}]))
-            (reset! dashcard1s (ts/create! DashboardCard :dashboard_id (:id @dash1s) :card_id (:id @card1s)
+            (reset! dash2s   (ts/create! Dashboard :name "Linked dashboard" :collection_id (:id @coll1s) :creator_id (:id @user1s)))
+            (let [columns           [{:name     "SOME_FIELD"
+                                      :fieldRef [:field (:id @field1s) nil]
+                                      :enabled  true}
+                                     {:name     "sum"
+                                      :fieldRef [:field "sum" {:base-type :type/Float}]
+                                      :enabled  true}
+                                     {:name     "count"
+                                      :fieldRef [:field "count" {:base-type :type/BigInteger}]
+                                      :enabled  true}
+                                     {:name     "Average order total"
+                                      :fieldRef [:field "Average order total" {:base-type :type/Float}]
+                                      :enabled  true}]
+                  mapping-id        (format "[\"dimension\",[\"fk->\",[\"field\",%d,null],[\"field\",%d,null]]]" (:id @field1s) (:id @field2s))
+                  mapping-dimension [:dimension [:field (:id @field2s) {:source-field (:id @field1s)}]]]
+              (reset! card1s   (ts/create! Card :name "The Card" :database_id (:id @db1s) :table_id (:id @table1s)
+                                           :collection_id (:id @coll1s) :creator_id (:id @user1s)
                                            :visualization_settings
                                            {:table.pivot_column "SOURCE"
-                                            :table.cell_column "sum"
-                                            :table.columns
-                                            [{:name "SOME_FIELD"
-                                              :fieldRef [:field (:id @field1s) nil]
-                                              :enabled true}
-                                             {:name "sum"
-                                              :fieldRef [:field "sum" {:base-type :type/Float}]
-                                              :enabled true}
-                                             {:name "count"
-                                              :fieldRef [:field "count" {:base-type :type/BigInteger}]
-                                              :enabled true}
-                                             {:name "Average order total"
-                                              :fieldRef [:field "Average order total" {:base-type :type/Float}]
-                                              :enabled true}]
+                                            :table.cell_column  "sum"
+                                            :table.columns      columns
                                             :column_settings
                                             {(str "[\"ref\",[\"field\"," (:id @field2s) ",null]]") {:column_title "Locus"}}}
-                                           :parameter_mappings [{:parameter_id "deadbeef"
-                                                                 :card_id (:id @card1s)
-                                                                 :target [:dimension [:field (:id @field1s) {:source-field (:id @field2s)}]]}]))
+                                           :parameter_mappings [{:parameter_id "12345678"
+                                                                 :target       [:dimension [:field (:id @field1s) {:source-field (:id @field2s)}]]}]))
+              (reset! dashcard1s (ts/create! DashboardCard :dashboard_id (:id @dash1s) :card_id (:id @card1s)
+                                             :visualization_settings
+                                             {:table.pivot_column "SOURCE"
+                                              :table.cell_column  "sum"
+                                              :table.columns      columns
+                                              :column_settings
+                                              {(str "[\"ref\",[\"field\"," (:id @field1s) ",null]]")
+                                               {:click_behavior {:type     "link"
+                                                                 :linkType "dashboard"
+                                                                 :targetId (:id @dash2s)}}
+                                               (str "[\"ref\",[\"field\"," (:id @field2s) ",null]]")
+                                               {:column_title "Locus"
+                                                :click_behavior
+                                                {:type     "link"
+                                                 :linkType "question"
+                                                 :targetId (:id @card1s)
+                                                 :parameterMapping
+                                                 {mapping-id {:id     mapping-id
+                                                              :source {:type "column" :id "Category_ID" :name "Category ID"}
+                                                              :target {:type "dimension" :id mapping-id :dimension mapping-dimension}}}}}
+                                               (str "[\"ref\",[\"field\"," (:id @field3s) ",null]]")
+                                               {:click_behavior
+                                                {:type     "link"
+                                                 :linkType "question"
+                                                 :targetId (:id @card1s)
+                                                 :parameterMapping
+                                                 {"qweqwe" {:id     "qweqwe"
+                                                            :source {:id "DISCOUNT" :name "Discount" :type "column"}
+                                                            :target {:id "amount_between" :type "variable"}}}}}}
+                                              :click_behavior     {:type     "link"
+                                                                   :linkType "question"
+                                                                   :targetId (:id @card1s)}}
+                                             :parameter_mappings [{:parameter_id "deadbeef"
+                                                                   :card_id      (:id @card1s)
+                                                                   :target       [:dimension [:field (:id @field1s) {:source-field (:id @field2s)}]]}])))
 
             (reset! serialized (into [] (serdes.extract/extract {})))
             (let [card (-> @serialized (by-model "Card") first)
                   dash (-> @serialized (by-model "Dashboard") first)]
               (testing "exported :parameter_mappings are properly converted"
                 (is (= [{:parameter_id "12345678"
-                         :target [:dimension [:field ["my-db" nil "orders" "subtotal"]
-                                              {:source-field ["my-db" nil "orders" "invoice"]}]]}]
+                         :target       [:dimension [:field ["my-db" nil "orders" "subtotal"]
+                                                    {:source-field ["my-db" nil "orders" "invoice"]}]]}]
                        (:parameter_mappings card)))
                 (is (schema= [{:parameter_mappings [{:parameter_id (s/eq "deadbeef")
                                                      :card_id      (s/eq (:entity_id @card1s))
@@ -509,26 +530,59 @@
                        (:ordered_cards dash))))
 
               (testing "exported :visualization_settings are properly converted"
-                (let [expected {:table.pivot_column "SOURCE"
-                                :table.cell_column "sum"
-                                :table.columns
-                                [{:name "SOME_FIELD"
-                                  :fieldRef [:field ["my-db" nil "orders" "subtotal"] nil]
-                                  :enabled true}
-                                 {:name "sum"
-                                  :fieldRef [:field "sum" {:base-type :type/Float}]
-                                  :enabled true}
-                                 {:name "count"
-                                  :fieldRef [:field "count" {:base-type :type/BigInteger}]
-                                  :enabled true}
-                                 {:name "Average order total"
-                                  :fieldRef [:field "Average order total" {:base-type :type/Float}]
-                                  :enabled true}]
-                                :column_settings
-                                {"[\"ref\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],null]]" {:column_title "Locus"}}}]
-                  (is (= expected
+                (let [exp-card     {:table.pivot_column "SOURCE"
+                                    :table.cell_column  "sum"
+                                    :table.columns
+                                    [{:name     "SOME_FIELD"
+                                      :fieldRef [:field ["my-db" nil "orders" "subtotal"] nil]
+                                      :enabled  true}
+                                     {:name     "sum"
+                                      :fieldRef [:field "sum" {:base-type :type/Float}]
+                                      :enabled  true}
+                                     {:name     "count"
+                                      :fieldRef [:field "count" {:base-type :type/BigInteger}]
+                                      :enabled  true}
+                                     {:name     "Average order total"
+                                      :fieldRef [:field "Average order total" {:base-type :type/Float}]
+                                      :enabled  true}]
+                                    :column_settings
+                                    {"[\"ref\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],null]]" {:column_title "Locus"}}}
+                      dimension    [:dimension [:field ["my-db" nil "orders" "invoice"] {:source-field ["my-db" nil "orders" "subtotal"]}]]
+                      dimension-id "[\"dimension\",[\"fk->\",[\"field\",[\"my-db\",null,\"orders\",\"subtotal\"],null],[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],null]]]"
+                      exp-dashcard (-> exp-card
+                                       (assoc :click_behavior {:type     "link"
+                                                               :linkType "question"
+                                                               :targetId (:entity_id @card1s)})
+                                       (assoc-in [:column_settings
+                                                  "[\"ref\",[\"field\",[\"my-db\",null,\"orders\",\"subtotal\"],null]]"
+                                                  :click_behavior]
+                                                 {:type     "link"
+                                                  :linkType "dashboard"
+                                                  :targetId (:entity_id @dash2s)})
+                                       (assoc-in [:column_settings
+                                                  "[\"ref\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],null]]"
+                                                  :click_behavior]
+                                                 {:type     "link"
+                                                  :linkType "question"
+                                                  :targetId (:entity_id @card1s)
+                                                  :parameterMapping
+                                                  {dimension-id
+                                                   {:id     dimension-id
+                                                    :source {:type "column" :id "Category_ID" :name "Category ID"}
+                                                    :target {:type "dimension" :id dimension-id :dimension dimension}}}})
+                                       (assoc-in [:column_settings
+                                                  "[\"ref\",[\"field\",[\"my-db\",null,\"orders\",\"discount\"],null]]"
+                                                  :click_behavior]
+                                                 {:type "link"
+                                                  :linkType "question"
+                                                  :targetId (:entity_id @card1s)
+                                                  :parameterMapping
+                                                  {"qweqwe" {:id "qweqwe"
+                                                             :source {:id "DISCOUNT" :name "Discount" :type "column"}
+                                                             :target {:id "amount_between" :type "variable"}}}}))]
+                  (is (= exp-card
                          (:visualization_settings card)))
-                  (is (= expected
+                  (is (= exp-dashcard
                          (-> dash :ordered_cards first :visualization_settings))))))))
 
 
@@ -913,7 +967,7 @@
                                                                                 :type :snippet,
                                                                                 :snippet-name "filtered data",
                                                                                 :snippet-id (:id @snippet1s)}}}}))
-        (ts/create! User :first_name "Geddy" :last_name "Lee"     :email "glee@rush.yyz")
+        (ts/create! User :first_name "Geddy" :last_name "Lee" :email "glee@rush.yyz")
 
         (testing "on extraction"
           (reset! extracted (serdes/extract-one "Card" {} @card1s))
@@ -931,6 +985,40 @@
                        :template-tags
                        (get "snippet: things")
                        :snippet-id)))))))))
+
+(deftest snippet-with-unique-name
+  (testing "Snippets with the same name should be replaced/removed on deserialization"
+    (mt/with-empty-h2-app-db
+      (let [unique-name "some snippet"
+            snippet     (ts/create! NativeQuerySnippet :name unique-name)
+            id1         (u/generate-nano-id)
+            id2         (u/generate-nano-id)
+            load!       #(serdes.load/load-metabase
+                          (ingestion-in-memory [(serdes/extract-one "NativeQuerySnippet" {} %)]))]
+
+        (testing "setup is correct"
+          (is (= (:entity_id snippet)
+                 (t2/select-one-fn :entity_id NativeQuerySnippet :name unique-name))))
+
+        (testing "loading snippet with same name will get it renamed"
+          (load! (assoc snippet :entity_id id1))
+          (testing "old snippet is in place"
+            (is (= (:entity_id snippet)
+                   (t2/select-one-fn :entity_id NativeQuerySnippet :name unique-name))))
+          (testing "new one got new name"
+            (is (= (str unique-name " (copy)")
+                   (t2/select-one-fn :name NativeQuerySnippet :entity_id id1)))))
+
+        (testing "can handle multiple name conflicts"
+          (load! (assoc snippet :entity_id id2))
+          (is (= (str unique-name " (copy) (copy)")
+                 (t2/select-one-fn :name NativeQuerySnippet :entity_id id2))))
+
+        (testing "will still update original one"
+          (load! (assoc snippet :content "11 = 11"))
+          (is (=? {:name unique-name
+                   :content "11 = 11"}
+                  (t2/select-one NativeQuerySnippet :entity_id (:entity_id snippet)))))))))
 
 (deftest load-action-test
   (let [serialized (atom nil)
@@ -967,3 +1055,50 @@
             (is (some? action))
             (testing ":type should be a keyword again"
               (is (keyword? (:type action))))))))))
+
+(deftest remove-dashcards-test
+  (let [serialized (atom nil)
+        dash1s     (atom nil)
+        dash1d     (atom nil)
+        dashcard1s (atom nil)
+        dashcard2d (atom nil)
+        tab1s      (atom nil)
+        tab2d      (atom nil)]
+    (ts/with-source-and-dest-dbs
+      (testing "Serializing the original database"
+        (ts/with-source-db
+          (reset! dash1s (ts/create! Dashboard :name "My Dashboard"))
+          (reset! tab1s (ts/create! :model/DashboardTab :name "Tab 1" :dashboard_id (:id @dash1s)))
+          (reset! dashcard1s (ts/create! DashboardCard :dashboard_id (:id @dash1s) :dashboard_tab_id (:id tab1s)))
+
+          (reset! serialized (into [] (serdes.extract/extract {})))))
+
+      (testing "New dashcard will be removed on load"
+        (ts/with-dest-db
+          (reset! dash1d (ts/create! Dashboard :name "Weird Name" :entity_id (:entity_id @dash1s)))
+          ;; A dashcard to be removed since it does not exist in serialized data
+          (reset! dashcard2d (ts/create! DashboardCard :dashboard_id (:id @dash1d)))
+          (reset! tab2d (ts/create! :model/DashboardTab :name "Tab 2" :dashboard_id (:id @dash1d)))
+
+          ;; Load the serialized content.
+          (serdes.load/load-metabase (ingestion-in-memory @serialized))
+
+          (reset! dash1d (-> (t2/select-one Dashboard :name "My Dashboard")
+                             (t2/hydrate :ordered_cards)
+                             (t2/hydrate :ordered_tabs)))
+
+          (testing "Dashboard has correct number of dashcards"
+            (is (= 1
+                   (count (:ordered_cards @dash1d))))
+            (is (= (:entity_id @dashcard1s)
+                   (get-in @dash1d [:ordered_cards 0 :entity_id])))
+            (is (not= (:entity_id @dashcard1s)
+                      (:entity_id @dashcard2d))))
+
+          (testing "Dashboard has correct number of tabs"
+            (is (= 1
+                   (count (:ordered_tabs @dash1d))))
+            (is (= (:entity_id @tab1s)
+                   (get-in @dash1d [:ordered_tabs 0 :entity_id])))
+            (is (not= (:entity_id @tab1s)
+                      (:entity_id @tab2d)))))))))

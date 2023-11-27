@@ -10,6 +10,7 @@
    [metabase.models :refer [Card Collection Dashboard DashboardCard]]
    [metabase.models.collection :as collection]
    [metabase.models.serialization :as serdes]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan2.core :as t2]))
@@ -61,18 +62,6 @@
   (log/tracef "Extracting Metabase with options: %s" (pr-str opts))
   (let [extract-opts (assoc opts :collection-set (collection-set-for-user user-id))]
     (eduction (map #(serdes/extract-all % extract-opts)) cat (model-set opts))))
-
-;; TODO Properly support "continue" - it should be contagious. Eg. a Dashboard with an illegal Card gets excluded too.
-(defn- descendants-closure [targets]
-  (loop [to-chase (set targets)
-         chased   #{}]
-    (let [[m i :as item] (first to-chase)
-          desc           (serdes/descendants m i)
-          chased         (conj chased item)
-          to-chase       (set/union (disj to-chase item) (set/difference desc chased))]
-      (if (empty? to-chase)
-        chased
-        (recur to-chase chased)))))
 
 (defn- escape-analysis
   "Given a target seq, explore the contents of any collections looking for \"leaks\". For example, a
@@ -135,29 +124,23 @@
       (format "%d: %s" coll-id names))
     "[no collection]"))
 
+(defn- card-label [card-id]
+  (let [card (t2/select-one [Card :collection_id :name] :id card-id)]
+    (format "Card %d (%s from collection %s)" card-id (:name card) (collection-label (:collection_id card)))))
+
 (defn- escape-report
   "Given the analysis map from [[escape-analysis]], report the results in a human-readable format with Card titles etc."
   [{:keys [escaped-dashcards escaped-questions]}]
   (when-not (empty? escaped-dashcards)
-    (log/info "Dashboard cards outside the collection")
-    (log/info "======================================")
     (doseq [[dash-id card-ids] escaped-dashcards
             :let [dash-name (t2/select-one-fn :name Dashboard :id dash-id)]]
-      (log/infof "Dashboard %d: %s\n" dash-id dash-name)
-      (doseq [card_id card-ids
-              :let [card (t2/select-one [Card :collection_id :name] :id card_id)]]
-        (log/infof "          \tCard %d: %s\n"    card_id (:name card))
-        (log/infof "        from collection %s\n" (collection-label (:collection_id card))))))
+      (log/warnf "Failed to export Dashboard %d (%s) containing Cards saved outside requested collections: %s"
+                 dash-id dash-name (str/join ", " (map card-label card-ids)))))
 
   (when-not (empty? escaped-questions)
-    (log/info "Questions based on outside questions")
-    (log/info "====================================")
-    (doseq [[curated-id alien-id] escaped-questions
-            :let [curated-card (t2/select-one [Card :collection_id :name] :id curated-id)
-                  alien-card   (t2/select-one [Card :collection_id :name] :id alien-id)]]
-      (log/infof "%-4d      %s    (%s)\n  -> %-4d %s    (%s)\n"
-                 curated-id (:name curated-card) (collection-label (:collection_id curated-card))
-                 alien-id   (:name alien-card)   (collection-label (:collection_id alien-card))))))
+    (log/warnf "Failed to export Cards based on questions outside requested collections: %s"
+               (str/join ", " (for [[curated-id alien-id] escaped-questions]
+                                (str (card-label curated-id) " -> " (card-label alien-id)))))))
 
 (defn- extract-subtrees
   "Extracts the targeted entities and all their descendants into a reducible stream of extracted maps.
@@ -176,10 +159,14 @@ Eg. if Dashboard B includes a Card A that is derived from a
     ;; If that is non-nil, emit the report.
     (escape-report analysis)
     ;; If it's nil, there are no errors, and we can proceed to do the dump.
-    (let [closure     (descendants-closure targets)
+    ;; TODO This is not handled at all, but we should be able to exclude illegal data - and it should be
+    ;; contagious. Eg. a Dashboard with an illegal Card gets excluded too.
+    (let [nodes       (set/union
+                       (u/traverse targets #(serdes/ascendants (first %) (second %)))
+                       (u/traverse targets #(serdes/descendants (first %) (second %))))
           models      (model-set opts)
           ;; filter the selected models based on user options
-          by-model    (-> (group-by first closure)
+          by-model    (-> (group-by first nodes)
                           (select-keys models)
                           (update-vals #(set (map second %))))
           extract-ids (fn [[model ids]]

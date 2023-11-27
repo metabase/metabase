@@ -779,13 +779,14 @@ class Question {
     const tableColumns = this.setting("table.columns");
     if (
       tableColumns &&
-      addedColumnNames.length > 0 &&
-      removedColumnNames.length === 0
+      (addedColumnNames.length > 0 || removedColumnNames.length > 0)
     ) {
       return this.updateSettings({
         "table.columns": [
           ...tableColumns.filter(
-            column => !addedColumnNames.includes(column.name),
+            column =>
+              !removedColumnNames.includes(column.name) &&
+              !addedColumnNames.includes(column.name),
           ),
           ...addedColumnNames.map(name => {
             const dimension = query.columnDimensionWithName(name);
@@ -1235,6 +1236,21 @@ class Question {
 
   getModerationReviews() {
     return getIn(this, ["_card", "moderation_reviews"]) || [];
+  }
+
+  /**
+   * We can only "explore results" (i.e. create new questions based on this one)
+   * when question is a native query, which is saved, has no parameters
+   * and satisfies other conditionals below.
+   */
+  canExploreResults() {
+    return (
+      this.isNative() &&
+      this.isSaved() &&
+      this.parameters().length === 0 &&
+      this.query().canNest() &&
+      !this.query().readOnly() // originally "canRunAdhocQuery"
+    );
   }
 
   /**

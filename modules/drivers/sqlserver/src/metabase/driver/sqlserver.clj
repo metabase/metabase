@@ -44,6 +44,10 @@
   [_]
   :sunday)
 
+(defmethod driver/prettify-native-form :sqlserver
+  [_ native-form]
+  (sql.u/format-sql-and-fix-params :tsql native-form))
+
 ;; See the list here: https://docs.microsoft.com/en-us/sql/connect/jdbc/using-basic-data-types
 (defmethod sql-jdbc.sync/database-type->base-type :sqlserver
   [_ column-type]

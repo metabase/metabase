@@ -42,12 +42,15 @@
 
 (mu/defn breakouts-metadata :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   "Get metadata about the breakouts in a given stage of a `query`."
-  [query        :- ::lib.schema/query
-   stage-number :- :int]
-  (some->> (not-empty (:breakout (lib.util/query-stage query stage-number)))
-           (mapv (fn [field-ref]
-                   (-> (lib.metadata.calculation/metadata query stage-number field-ref)
-                       (assoc :lib/source :source/breakouts))))))
+  ([query]
+   (breakouts-metadata query -1))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
+   (some->> (not-empty (:breakout (lib.util/query-stage query stage-number)))
+            (mapv (fn [field-ref]
+                    (-> (lib.metadata.calculation/metadata query stage-number field-ref)
+                        (assoc :lib/source :source/breakouts)))))))
 
 (mu/defn breakoutable-columns :- [:sequential lib.metadata/ColumnMetadata]
   "Get column metadata for all the columns that can be broken out by in
