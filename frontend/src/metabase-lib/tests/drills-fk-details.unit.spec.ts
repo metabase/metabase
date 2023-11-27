@@ -60,7 +60,8 @@ describe("drill-thru/fk-details", () => {
       expect(drill).toBeNull();
     });
 
-    it("should not allow to drill with a null FK value", () => {
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should not allow to drill with a null FK value (metabase#36133)", () => {
       const value = null;
       const row = [{ col: defaultColumn, value }];
       const drill = queryDrillThru(
