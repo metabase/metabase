@@ -142,17 +142,26 @@
          (#'lib.js/cljs-key->js-key :many-pks?))))
 
 (deftest ^:parallel expression-clause-<->-legacy-expression-test
-  (let [query (-> lib.tu/venues-query
-                  (lib/expression "double-price" (lib/* (meta/field-metadata :venues :price) 2))
-                  (lib/aggregate (lib/sum [:expression {:lib/uuid (str (random-uuid))} "double-price"])))
-        agg-uuid (-> query lib/aggregations first lib.options/uuid)
-        legacy-expr #js [">" #js ["aggregation" 0] 100]
-        pmbql-expr (lib.js/expression-clause-for-legacy-expression query -1 legacy-expr)
-        legacy-expr' (lib.js/legacy-expression-for-expression-clause query -1 pmbql-expr)]
-    (testing "from legacy expression"
-      (is (=? [:> {} [:aggregation {} agg-uuid] 100] pmbql-expr)))
-    (testing "from pMBQL expression"
-      (is (= (js->clj legacy-expr) (js->clj legacy-expr'))))))
+  (testing "conversion works both ways, even with aggregations (#34830, #36087)"
+    (let [query (-> lib.tu/venues-query
+                    (lib/expression "double-price" (lib/* (meta/field-metadata :venues :price) 2))
+                    (lib/aggregate (lib/sum [:expression {:lib/uuid (str (random-uuid))} "double-price"])))
+          agg-uuid (-> query lib/aggregations first lib.options/uuid)
+          legacy-expr #js [">" #js ["aggregation" 0] 100]
+          pmbql-expr (lib.js/expression-clause-for-legacy-expression query -1 legacy-expr)
+          legacy-expr' (lib.js/legacy-expression-for-expression-clause query -1 pmbql-expr)]
+      (testing "from legacy expression"
+        (is (=? [:> {} [:aggregation {} agg-uuid] 100] pmbql-expr)))
+      (testing "from pMBQL expression"
+        (is (= (js->clj legacy-expr) (js->clj legacy-expr'))))))
+  (testing "conversion drops aggregation-options (#36120)"
+    (let [query (-> lib.tu/venues-query
+                    (lib/aggregate (lib.options/update-options (lib/sum (meta/field-metadata :venues :price))
+                                                               assoc :display-name "price sum")))
+          agg-expr (-> query lib/aggregations first)
+          legacy-agg-expr #js ["sum" #js ["field" (meta/id :venues :price) #js {:base-type "Integer"}]]
+          legacy-agg-expr' (lib.js/legacy-expression-for-expression-clause query -1 agg-expr)]
+      (is (= (js->clj legacy-agg-expr) (js->clj legacy-agg-expr'))))))
 
 (deftest ^:parallel filter-drill-details-test
   (testing ":value field on the filter drill"
