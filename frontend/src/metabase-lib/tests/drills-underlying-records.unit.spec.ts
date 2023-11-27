@@ -54,7 +54,7 @@ describe("drill-thru/underlying-records", () => {
     // eslint-disable-next-line jest/no-disabled-tests
     it.skip("should allow to drill via a pivot cell (metabase#35394)", () => {
       const query = createQueryWithMultipleBreakouts();
-      const { value, row, dimensions } = getPivotCellData();
+      const { value, row, dimensions } = getPivotCellData(10);
 
       const { drillInfo } = findDrillThru(
         drillType,
@@ -76,7 +76,7 @@ describe("drill-thru/underlying-records", () => {
     // eslint-disable-next-line jest/no-disabled-tests
     it.skip("should allow to drill via a legend item (metabase#35343)", () => {
       const query = createQueryWithMultipleBreakouts();
-      const { value, dimensions } = getLegendItemData();
+      const { value, dimensions } = getLegendItemData(10);
 
       const { drillInfo } = findDrillThru(
         drillType,
@@ -179,12 +179,13 @@ describe("drill-thru/underlying-records", () => {
   });
 
   describe("drillThru", () => {
-    it("should drill an aggregated query", () => {
+    it("should drill via an aggregated cell", () => {
       const { value, row, dimensions } = getCellData(
         aggregationColumn,
         breakoutColumn,
         10,
       );
+
       const { drill } = findDrillThru(
         drillType,
         defaultQuery,
@@ -194,7 +195,46 @@ describe("drill-thru/underlying-records", () => {
         row,
         dimensions,
       );
+      const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
 
+      expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(0);
+      expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
+    });
+
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should drill via a pivot cell (metabase#35394)", () => {
+      const query = createQueryWithMultipleBreakouts();
+      const { row, dimensions } = getPivotCellData(10);
+
+      const { drill } = findDrillThru(
+        drillType,
+        query,
+        stageIndex,
+        undefined,
+        undefined,
+        row,
+        dimensions,
+      );
+      const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
+
+      expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(0);
+      expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
+    });
+
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should drill via a legend item (metabase#35343)", () => {
+      const query = createQueryWithMultipleBreakouts();
+      const { dimensions } = getLegendItemData(10);
+
+      const { drill } = findDrillThru(
+        drillType,
+        query,
+        stageIndex,
+        undefined,
+        undefined,
+        undefined,
+        dimensions,
+      );
       const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
 
       expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(0);
@@ -262,7 +302,7 @@ function getCellData(
   return { value, row, dimensions };
 }
 
-function getPivotCellData() {
+function getPivotCellData(value: RowValue) {
   const aggregationColumn = createAggregationColumn();
   const breakoutColumn1 = createOrdersCreatedAtDatasetColumn({
     source: "breakout",
@@ -271,7 +311,6 @@ function getPivotCellData() {
     source: "breakout",
   });
 
-  const value = 76;
   const row = [
     { col: breakoutColumn1, value: "2020-01-01" },
     { col: breakoutColumn2, value: 0 },
@@ -285,9 +324,8 @@ function getPivotCellData() {
   return { value, row, dimensions };
 }
 
-function getLegendItemData() {
+function getLegendItemData(value: RowValue) {
   const column = createOrdersQuantityDatasetColumn({ source: "breakout" });
-  const value = 10;
   const dimensions = [{ column, value }];
   return { value, dimensions };
 }
