@@ -162,8 +162,7 @@
                   [:collection :is_personal]
                   [:moderation_reviews :moderator_details])
       (cond-> ; card
-        (:dataset card) (t2/hydrate :persisted))
-      (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
+        (:dataset card) (t2/hydrate :persisted))))
 
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
@@ -176,6 +175,8 @@
                  hydrate-for-frontend
                  ;; Cal 2023-11-27: why is parameter_usage_count not hydrated for other endpoints? Maybe it should be
                  (t2/hydrate :parameter_usage_count)
+                 ;; Cal 2023-11-27: why is last-edit-info hydrated differently for GET vs PUT and POST
+                 (last-edit/with-last-edit-info :card)
                  collection.root/hydrate-root-collection)]
     (u/prog1 card
       (when-not ignore_view
@@ -411,7 +412,9 @@
   (check-data-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (collection/check-write-perms-for-collection collection_id)
-  (hydrate-for-frontend (card/create-card! body @api/*current-user*)))
+  (-> (card/create-card! body @api/*current-user*)
+      hydrate-for-frontend
+      (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
 
 (api/defendpoint POST "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
@@ -420,7 +423,9 @@
   (let [orig-card (api/read-check Card id)
         new-name  (str (trs "Copy of ") (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
-    (hydrate-for-frontend (card/create-card! new-card @api/*current-user*))))
+    (-> (card/create-card! new-card @api/*current-user*)
+        hydrate-for-frontend
+        (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
 
@@ -486,7 +491,9 @@
           card-updates          (cond-> card-updates
                                   (not timed-out?)
                                   (assoc :result_metadata fresh-metadata))]
-      (u/prog1 (hydrate-for-frontend (card/update-card! card-before-update card-updates))
+      (u/prog1 (-> (card/update-card! card-before-update card-updates)
+                   hydrate-for-frontend
+                   (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
         (when timed-out?
           (log/info (trs "Metadata not available soon enough. Saving card {0} and asynchronously updating metadata" id))
           (card/schedule-metadata-saving result-metadata-chan <>))))))
