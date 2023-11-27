@@ -358,7 +358,6 @@
                                         :events/end       (when end (u.date/parse end))})))
 
 
-;; TODO: move everything to card model ns
 ;;; -------------------------------------------------- Saving Cards --------------------------------------------------
 
 (defn check-data-permissions-for-query

@@ -7,7 +7,6 @@
    [medley.core :as m]
    [metabase.actions.execution :as actions.execution]
    [metabase.analytics.snowplow :as snowplow]
-   [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
@@ -16,7 +15,7 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
@@ -251,7 +250,7 @@
                         [:copied id]
                         (if (:dataset card)
                           card
-                          (api.card/create-card!
+                          (card/create-card!
                            (cond-> (assoc card :collection_id dest-coll-id)
                              same-collection?
                              (update :name #(str % " - " (tru "Duplicate"))))
