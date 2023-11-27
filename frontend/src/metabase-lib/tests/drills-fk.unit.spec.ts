@@ -36,6 +36,63 @@ describe("drill-thru/fk-details", () => {
         type: drillType,
       });
     });
+  });
+});
+
+describe("drill-thru/fk-filter", () => {
+  const drillType = "drill-thru/fk-filter";
+  const defaultQuery = createQuery();
+  const stageIndex = 0;
+  const defaultColumn = createOrdersProductIdDatasetColumn();
+
+  describe("availableDrillThrus", () => {
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should allow to drill with a FK column value (metabase#36000)", () => {
+      const value = 10;
+      const row = [{ col: defaultColumn, value }];
+      const { drillInfo } = findDrillThru(
+        drillType,
+        defaultQuery,
+        stageIndex,
+        defaultColumn,
+        value,
+        row,
+      );
+
+      expect(drillInfo).toMatchObject({
+        type: drillType,
+        tableName: "Orders",
+        columnName: "Product ID",
+      });
+    });
+  });
+});
+
+describe.each<Lib.DrillThruType>([
+  "drill-thru/fk-filter",
+  "drill-thru/fk-details",
+])("%s", drillType => {
+  const defaultQuery = createQuery();
+  const stageIndex = 0;
+  const defaultColumn = createOrdersProductIdDatasetColumn();
+
+  describe("availableDrillThrus", () => {
+    it("should allow to drill with a FK column value", () => {
+      const value = 10;
+      const row = [{ col: defaultColumn, value }];
+      const { drillInfo } = findDrillThru(
+        drillType,
+        defaultQuery,
+        stageIndex,
+        defaultColumn,
+        value,
+        row,
+      );
+
+      expect(drillInfo).toMatchObject({
+        type: drillType,
+      });
+    });
 
     it("should not allow to drill with a PK column value", () => {
       const column = createOrdersIdDatasetColumn();
