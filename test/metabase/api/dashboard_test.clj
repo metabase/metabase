@@ -47,6 +47,7 @@
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]
@@ -54,6 +55,10 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures
+  :once
+  (fixtures/initialize :test-users))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Helper Fns & Macros                                               |
@@ -528,7 +533,7 @@
                             [field-id (update m :values (partial take 3))])))))))))
 
 (deftest fetch-a-dashboard-with-param-linked-to-a-field-filter-that-is-not-existed
-  (testing "when fetching a dashboard that has a param linked to a field filter that no longer exist shouldn't throw an error (#15494)"
+  (testing "when fetching a dashboard that has a param linked to a field filter that no longer exists, we shouldn't throw an error (#15494)"
     (mt/with-temp
       [:model/Card          {card-id :id} {:name "Native card"
                                            :database_id   (mt/id)
@@ -1805,7 +1810,7 @@
                                  :dashboard_id dashboard-id)))))))))
 
 (deftest can-update-card-parameter-with-legacy-field-and-expression-test
-  (testing "PUT /api/dashboard/:id/cards should works with legacy field forms"
+  (testing "PUT /api/dashboard/:id/cards accepts legacy field as parameter's target"
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                    :model/Card      {card-id :id}      {}]
       (let [resp (:cards (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
@@ -1820,7 +1825,7 @@
                                                                                           :target [:dimension [:field-id (mt/id :venues :id)]]}]}]}))]
         (is (some? (t2/select-one :model/DashboardCard (:id (first resp))))))))
 
-  (testing "PUT /api/dashboard/:id/cards should works with expression"
+  (testing "PUT /api/dashboard/:id/cards accepts expression as parammeter's target"
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                    :model/Card      {card-id :id}      {:dataset_query (mt/mbql-query venues {:expressions {"A" [:+ (mt/$ids $venues.price) 1]}})}]
       (let [resp (:cards (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)

@@ -113,14 +113,13 @@
   [target card]
   (let [target (mbql.normalize/normalize target)]
     (when (mbql.u/is-clause? :dimension target)
-      (let [[_ dimension] target]
-        (try
-          (unwrap-field-or-expression-clause
-           (if (mbql.u/is-clause? :template-tag dimension)
-             (template-tag->field-form dimension card)
-             dimension))
-          (catch Throwable e
-            (log/error e "Could not find matching Field ID for target:" target)))))))
+      (let [[_ dimension] target
+            field-form    (if (mbql.u/is-clause? :template-tag dimension)
+                            (template-tag->field-form dimension card)
+                            dimension)]
+        (if field-form
+          (unwrap-field-or-expression-clause field-form)
+          (log/warn "Could not find matching Field ID for target:" target))))))
 
 (defn- pk-fields
   "Return the `fields` that are PK Fields."
