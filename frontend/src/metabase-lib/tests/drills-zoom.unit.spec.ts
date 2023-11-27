@@ -174,7 +174,7 @@ describe("drill-thru/zoom", () => {
       const value = 10;
       const row = [{ col: defaultColumn, value }];
 
-      const { drillInfo } = findDrillThru(
+      const drill = queryDrillThru(
         drillType,
         query,
         stageIndex,
@@ -183,9 +183,7 @@ describe("drill-thru/zoom", () => {
         row,
       );
 
-      expect(drillInfo).toMatchObject({
-        type: drillType,
-      });
+      expect(drill).toBeNull();
     });
 
     it("should not allow to drill with a non-editable query", () => {
