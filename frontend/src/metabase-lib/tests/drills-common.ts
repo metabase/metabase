@@ -1,27 +1,10 @@
-import {
-  createMockColumn,
-  createMockDatabase,
-  createMockField,
-  createMockTable,
-} from "metabase-types/api/mocks";
-import { createMockMetadata } from "__support__/metadata";
-
-const DATABASE_ID = 1;
-const TABLE_ID = 1;
+import { createMockColumn, createMockField } from "metabase-types/api/mocks";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 const FIELDS = {
-  id: {
-    id: 100,
-    table_id: TABLE_ID,
-    name: "ID",
-    display_name: "ID",
-    base_type: "type/Integer",
-    semantic_type: "type/PK",
-    effective_type: "type/Integer",
-  },
   description: {
     id: 101,
-    table_id: TABLE_ID,
+    table_id: ORDERS_ID,
     name: "DESCRIPTION",
     display_name: "Description",
     base_type: "type/Text",
@@ -30,7 +13,7 @@ const FIELDS = {
   },
   comment: {
     id: 102,
-    table_id: TABLE_ID,
+    table_id: ORDERS_ID,
     name: "COMMENT",
     display_name: "Comment",
     base_type: "type/Text",
@@ -39,7 +22,7 @@ const FIELDS = {
   },
   structured: {
     id: 103,
-    table_id: TABLE_ID,
+    table_id: ORDERS_ID,
     name: "STRUCTURED",
     display_name: "Structured",
     base_type: "type/Text",
@@ -48,7 +31,7 @@ const FIELDS = {
   },
   serializedJSON: {
     id: 104,
-    table_id: TABLE_ID,
+    table_id: ORDERS_ID,
     name: "SERIALIZED_JSON",
     display_name: "SerializedJSON",
     base_type: "type/Text",
@@ -57,30 +40,34 @@ const FIELDS = {
   },
 };
 
-export const TABLE = createMockTable({
-  id: TABLE_ID,
-  fields: [
-    createMockField(FIELDS.id),
-    createMockField(FIELDS.description),
-    createMockField(FIELDS.comment),
-    createMockField(FIELDS.structured),
-    createMockField(FIELDS.serializedJSON),
-  ],
-});
+export function createOrdersDescriptionField() {
+  return createMockField(FIELDS.description);
+}
 
-export const DATABASE = createMockDatabase({
-  id: DATABASE_ID,
-  tables: [TABLE],
-});
+export function createOrdersDescriptionColumn() {
+  return createMockColumn(FIELDS.description);
+}
 
-export const COLUMNS = {
-  id: createMockColumn(FIELDS.id),
-  description: createMockColumn(FIELDS.description),
-  comment: createMockColumn(FIELDS.comment),
-  structured: createMockColumn(FIELDS.structured),
-  serializedJSON: createMockColumn(FIELDS.serializedJSON),
-};
+export function createOrdersCommentField() {
+  return createMockField(FIELDS.comment);
+}
 
-export const METADATA = createMockMetadata({
-  databases: [DATABASE],
-});
+export function createOrdersCommentColumn() {
+  return createMockColumn(FIELDS.comment);
+}
+
+export function createOrdersStructuredField() {
+  return createMockField(FIELDS.structured);
+}
+
+export function createOrdersStructuredColumn() {
+  return createMockColumn(FIELDS.structured);
+}
+
+export function createOrdersSerializedJSONField() {
+  return createMockField(FIELDS.serializedJSON);
+}
+
+export function createOrdersSerializedJSONColumn() {
+  return createMockColumn(FIELDS.serializedJSON);
+}

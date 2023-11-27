@@ -1,15 +1,22 @@
 import {
   createOrdersCreatedAtDatasetColumn,
+  createOrdersIdField,
+  createOrdersTable,
   createOrdersTotalDatasetColumn,
+  createSampleDatabase,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
+import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import {
   createQuery,
   findDrillThru,
   queryDrillThru,
 } from "metabase-lib/test-helpers";
-import { COLUMNS, METADATA } from "./drills-common";
+import {
+  createOrdersStructuredColumn,
+  createOrdersStructuredField,
+} from "./drills-common";
 
 describe("drill-thru/summarize-column", () => {
   const drillType = "drill-thru/summarize-column";
@@ -76,15 +83,22 @@ describe("drill-thru/summarize-column", () => {
     });
 
     it('should not allow to drill with "type/Structured" type', () => {
-      const query = createQuery({
-        metadata: METADATA,
+      const metadata = createMockMetadata({
+        databases: [
+          createSampleDatabase({
+            tables: [
+              createOrdersTable({
+                fields: [createOrdersIdField(), createOrdersStructuredField()],
+              }),
+            ],
+          }),
+        ],
       });
-      const drill = queryDrillThru(
-        drillType,
-        query,
-        stageIndex,
-        COLUMNS.structured,
-      );
+
+      const query = createQuery({ metadata });
+      const column = createOrdersStructuredColumn();
+      const drill = queryDrillThru(drillType, query, stageIndex, column);
+
       expect(drill).toBeNull();
     });
 
