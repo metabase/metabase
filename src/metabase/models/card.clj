@@ -732,7 +732,7 @@ saved later when it is ready."
         [_ changes-in-after] (data/diff before after)]
     (boolean (seq changes-in-after))))
 
-(def card-compare-keys
+(def ^:private card-compare-keys
   "When comparing a card to possibly unverify, only consider these keys as changing something 'important' about the
   query."
   #{:table_id

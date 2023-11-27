@@ -11,14 +11,13 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
-   [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.root :as collection.root]
@@ -882,7 +881,7 @@
   (when (api/column-will-change? :archived collection-before-update collection-updates)
     (when-let [alerts (seq (pulse/retrieve-alerts-for-cards
                             {:card-ids (t2/select-pks-set Card :collection_id (u/the-id collection-before-update))}))]
-      (api.card/delete-alert-and-notify-archived! alerts))))
+      (card/delete-alert-and-notify-archived! alerts))))
 
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
