@@ -54,6 +54,24 @@ describe("drill-thru/pk", () => {
       });
     });
 
+    it("should allow to drill when the column is not a PK but there are other PK columns", () => {
+      const value = 10;
+      const column = createOrdersTotalDatasetColumn();
+      const row = [{ col: column, value }];
+      const { drillInfo } = findDrillThru(
+        drillType,
+        defaultQuery,
+        stageIndex,
+        column,
+        value,
+        row,
+      );
+
+      expect(drillInfo).toMatchObject({
+        type: drillType,
+      });
+    });
+
     it("should not allow to drill when there is only one PK", () => {
       const query = createQuery();
       const value = 10;
@@ -63,22 +81,6 @@ describe("drill-thru/pk", () => {
         query,
         stageIndex,
         defaultColumn,
-        value,
-        row,
-      );
-
-      expect(drill).toBeNull();
-    });
-
-    it("should not allow to drill when the column is not a PK", () => {
-      const value = 10;
-      const column = createOrdersTotalDatasetColumn();
-      const row = [{ col: column, value }];
-      const drill = queryDrillThru(
-        drillType,
-        defaultQuery,
-        stageIndex,
-        column,
         value,
         row,
       );
