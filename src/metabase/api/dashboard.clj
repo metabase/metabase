@@ -15,6 +15,7 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
+   [metabase.models.action :as action]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
@@ -983,7 +984,7 @@
    parameters   ms/JSONString}
   (api/read-check :model/Dashboard dashboard-id)
   (actions.execution/fetch-values
-   (api/check-404 (dashboard-card/dashcard->action dashcard-id))
+   (api/check-404 (action/dashcard->action dashcard-id))
    (json/parse-string parameters)))
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/execute"
