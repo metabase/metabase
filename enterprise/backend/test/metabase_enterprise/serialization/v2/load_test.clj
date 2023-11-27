@@ -1028,7 +1028,7 @@
           (load! (assoc snippet :content "11 = 11"))
           (is (=? {:name unique-name
                    :content "11 = 11"}
-                 (t2/select-one NativeQuerySnippet :entity_id (:entity_id snippet)))))))))
+                  (t2/select-one NativeQuerySnippet :entity_id (:entity_id snippet)))))))))
 
 (deftest load-action-test
   (let [serialized (atom nil)
