@@ -29,7 +29,7 @@ function renderTemplateForClick(
 ) {
   return template.replace(/{{([^}]+)}}/g, (whole, columnName) => {
     const valueAndColumn = getValueAndColumnForColumnName(data, columnName);
-    if (valueAndColumn && valueAndColumn.value == null) {
+    if (valueAndColumn && valueAndColumn.value != null && valueAndColumn.value != "(empty)") {
       return formatFunction(valueAndColumn);
     }
     console.warn("Missing value for " + name);
