@@ -504,8 +504,16 @@ class ExpressionEditorTextfield extends React.Component<
   ];
 
   render() {
-    const { source, suggestions, errorMessage, hasChanges, isFocused } =
-      this.state;
+    const { helpTextTarget, width } = this.props;
+    const {
+      source,
+      suggestions,
+      errorMessage,
+      hasChanges,
+      isFocused,
+      highlightedSuggestionIndex,
+      helpText,
+    } = this.state;
 
     return (
       <React.Fragment>
@@ -537,16 +545,16 @@ class ExpressionEditorTextfield extends React.Component<
             target={this.suggestionTarget.current}
             suggestions={suggestions}
             onSuggestionMouseDown={this.onSuggestionSelected}
-            highlightedIndex={this.state.highlightedSuggestionIndex}
+            highlightedIndex={highlightedSuggestionIndex}
           />
         </EditorContainer>
         {errorMessage && hasChanges && (
           <ErrorMessageContainer>{errorMessage.message}</ErrorMessageContainer>
         )}
         <ExpressionEditorHelpText
-          target={this.props.helpTextTarget}
-          helpText={this.state.helpText}
-          width={this.props.width}
+          target={helpTextTarget}
+          helpText={helpText}
+          width={width}
         />
       </React.Fragment>
     );
