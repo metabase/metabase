@@ -1,8 +1,10 @@
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 import {
   createOrdersTotalDatasetColumn,
+  createSampleDatabase,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
+import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import {
   columnFinder,
@@ -102,6 +104,27 @@ describe("drill-thru/underlying-records", () => {
 
       expect(drill).toBeNull();
     });
+
+    it("should not allow to drill with a non-editable query", () => {
+      const query = createNotEditableQuery(defaultQuery);
+      const { value, row, dimensions } = getAggregatedColumnData(
+        aggregationColumn,
+        breakoutColumn,
+        -10,
+      );
+
+      const drill = queryDrillThru(
+        drillType,
+        query,
+        stageIndex,
+        aggregationColumn,
+        value,
+        row,
+        dimensions,
+      );
+
+      expect(drill).toBeNull();
+    });
   });
 
   describe("drillThru", () => {
@@ -145,6 +168,21 @@ function createQueryWithAggregation() {
       Lib.breakoutableColumns(queryWithAggregation, stageIndex),
     )("ORDERS", "CREATED_AT"),
   );
+}
+
+function createNotEditableQuery(query: Lib.Query) {
+  const metadata = createMockMetadata({
+    databases: [
+      createSampleDatabase({
+        tables: [],
+      }),
+    ],
+  });
+
+  return createQuery({
+    metadata,
+    query: Lib.toLegacyQuery(query),
+  });
 }
 
 function getRawColumnData(column: DatasetColumn, value: RowValue) {
