@@ -4,11 +4,11 @@ import ViewButton from "metabase/query_builder/components/view/ViewButton";
 import type Question from "metabase-lib/Question";
 import { getUrl as ML_getUrl } from "metabase-lib/urls";
 
-type Props = {
+interface ExploreResultsLinkProps {
   question: Question;
-};
+}
 
-export function ExploreResultsLink({ question }: Props) {
+export function ExploreResultsLink({ question }: ExploreResultsLinkProps) {
   const query = question.composeThisQuery();
   const button = (
     <ViewButton disabled={!query} medium icon="insight" labelBreakpoint="sm">
