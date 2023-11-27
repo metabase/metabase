@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Radio, Stack } from "metabase/ui";
 import type { HelpLinkSetting } from "metabase-types/api";
 import InputBlurChange from "metabase/components/InputBlurChange";
@@ -40,10 +40,34 @@ export const HelpLinkRadio = ({ setting, onChange }: Props) => {
       onChange(value);
     }
   };
+
+  const isClickingOnRadioRef = useRef(false);
+
   const isTextInputVisible = helpLinkType === "custom";
+
+  const onRadioMouseDown = () => {
+    // When the custom destination input is selected, and we click on another radio option,
+    // the onBlurChang of the text input is called before the onChange on the radio, this creates
+    // a race condition between the two PUT requests.
+    // `onMouseDown` is called before onBlur so we can use it
+    // to prevent this handler to call onChange at all
+    isClickingOnRadioRef.current = true;
+    window.addEventListener(
+      "mouseup",
+      () => {
+        isClickingOnRadioRef.current = false;
+      },
+      { once: true },
+    );
+  };
+
   return (
     <Stack>
-      <Radio.Group value={helpLinkType} onChange={handleRadioChange}>
+      <Radio.Group
+        value={helpLinkType}
+        onChange={handleRadioChange}
+        onMouseDown={onRadioMouseDown}
+      >
         <Stack>
           <Radio label={t`Link to Metabase help`} value="metabase_default" />
           <Radio label={t`Hide it`} value="hidden" />
@@ -60,7 +84,9 @@ export const HelpLinkRadio = ({ setting, onChange }: Props) => {
           placeholder={t`Enter a URL`}
           onBlurChange={e => {
             setCustomUrl(e.target.value);
-            onChange(e.target.value);
+            if (!isClickingOnRadioRef.current) {
+              onChange(e.target.value);
+            }
           }}
         />
       )}

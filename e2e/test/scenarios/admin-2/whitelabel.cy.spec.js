@@ -238,6 +238,29 @@ describeEE("formatting > whitelabel", () => {
         .should("have.attr", "href")
         .and("include", "https://www.metabase.com/help?");
     });
+
+    it("should not create a race condition when the custom url input is selected and we click on the radio", () => {
+      cy.signInAsAdmin();
+      cy.visit("/admin/settings/whitelabel");
+
+      cy.findByTestId("help-link-setting")
+        .findByText("Go to a custom destination...")
+        .click();
+
+      cy.findByLabelText("Help link custom destination").type(
+        "https://example.org/custom-destination",
+      );
+
+      cy.findByTestId("help-link-setting")
+        .findByText("Link to Metabase help")
+        .click();
+
+      cy.wait("@putHelpLink").then(({ request }) => {
+        expect(request.body.value).to.equal("metabase_default");
+      });
+
+      cy.get("@putHelpLink.all").should("have.length", 1);
+    });
   });
 });
 
