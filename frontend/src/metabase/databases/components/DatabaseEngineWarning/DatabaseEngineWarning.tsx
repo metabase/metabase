@@ -104,6 +104,7 @@ const OldEngineWarning = ({ engineName, onChange }: OldEngineWarningProps) => (
 
 const CommunityEngineWarning = () => (
   <Warning icon="info">
+    {/* XXX: Don't replace the application name. This is admin settings */}
     {t`This is a community-developed driver and not supported by Metabase. `}
   </Warning>
 );

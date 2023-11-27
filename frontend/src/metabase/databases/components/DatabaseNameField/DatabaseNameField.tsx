@@ -15,6 +15,7 @@ const DatabaseNameField = ({ engine }: DatabaseNameFieldProps): JSX.Element => {
       title={t`Display name`}
       placeholder={t`Our ${name}`}
       rightIcon="info"
+      // XXX: Don't replace the application name. This is admin settings
       rightIconTooltip={t`Choose what this data will be called in Metabase.`}
     />
   );

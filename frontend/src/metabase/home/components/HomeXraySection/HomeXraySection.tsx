@@ -11,6 +11,8 @@ import {
   useDatabaseListQuery,
 } from "metabase/common/hooks";
 import type { DatabaseCandidate } from "metabase-types/api";
+import { useSelector } from "metabase/lib/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import type Database from "metabase-lib/metadata/Database";
 import { HomeCaption } from "../HomeCaption";
 import { HomeHelpCard } from "../HomeHelpCard";
@@ -61,12 +63,14 @@ const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
   const tableCount = candidate ? candidate.tables.length : 0;
   const tableMessages = useMemo(() => getMessages(tableCount), [tableCount]);
   const canSelectSchema = schemas.length > 1;
+  const applicationName = useSelector(getApplicationName);
 
   return (
     <div>
       {isSample ? (
         <HomeCaption primary>
-          {t`Try out these sample x-rays to see what Metabase can do.`}
+          {/* Screenshot 2023-11-27 at 1.58.59PM */}
+          {t`Try out these sample x-rays to see what ${applicationName} can do.`}
         </HomeCaption>
       ) : canSelectSchema ? (
         <HomeCaption primary>
