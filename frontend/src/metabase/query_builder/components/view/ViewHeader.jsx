@@ -502,7 +502,6 @@ function ViewTitleHeaderRightSide(props) {
           />
         </ViewHeaderIconButtonContainer>
       )}
-      {/* TODO(oleggromov) remove divider when nothing else is shown to the left */}
       {isSaved && (
         <QuestionActions
           isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
