@@ -1,5 +1,7 @@
+import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
+import { Button } from "metabase/ui";
 import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -44,15 +46,25 @@ function setup({ query = createQuery({ metadata }) }: SetupOpts = {}) {
     PRODUCT_VENDOR_VALUES,
   ]);
 
-  renderWithProviders(
-    <BulkFilterModal
-      query={query}
-      opened
-      onSubmit={onSubmit}
-      onClose={onClose}
-    />,
-    { storeInitialState },
-  );
+  function BulkFilterModalWithTrigger() {
+    const [opened, setOpened] = useState(true);
+    return (
+      <>
+        <Button onClick={() => setOpened(true)}>Show modal</Button>
+        <BulkFilterModal
+          query={query}
+          opened={opened}
+          onSubmit={onSubmit}
+          onClose={() => {
+            onClose();
+            setOpened(false);
+          }}
+        />
+      </>
+    );
+  }
+
+  renderWithProviders(<BulkFilterModalWithTrigger />, { storeInitialState });
 
   function getNextQuery() {
     const [query] = onSubmit.mock.lastCall;
@@ -166,6 +178,24 @@ describe("BulkFilterModal", () => {
     const nextQuery = getNextQuery();
     expect(Lib.filters(nextQuery, 0)).toHaveLength(0);
     expect(Lib.filters(nextQuery, 1)).toHaveLength(0);
+  });
+
+  it("should reset changes on close", async () => {
+    const { onSubmit } = setup();
+    const applyButton = screen.getByRole("button", { name: "Apply filters" });
+
+    let createdAtShortcut = screen.getByRole("button", { name: "Today" });
+    userEvent.click(createdAtShortcut);
+    expect(createdAtShortcut).toHaveAttribute("aria-selected", "true");
+    expect(applyButton).toBeEnabled();
+
+    userEvent.click(screen.getByLabelText("Close"));
+    userEvent.click(screen.getByRole("button", { name: "Show modal" }));
+    createdAtShortcut = await screen.findByRole("button", { name: "Today" });
+    expect(createdAtShortcut).toHaveAttribute("aria-selected", "false");
+
+    expect(applyButton).toBeDisabled();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   describe("multi-stage query", () => {
