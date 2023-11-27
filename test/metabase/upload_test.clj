@@ -318,7 +318,7 @@
                       table))
               (is (=? {:name          #"(?i)id"
                        :semantic_type :type/PK
-                       :base_type     :type/BigInteger}
+                       :base_type     :type/Integer}
                       (t2/select-one Field :database_position 0 :table_id (:id table))))
               (is (=? {:name      #"(?i)nulls"
                        :base_type :type/Text}
@@ -363,8 +363,7 @@
               (testing "Check the datetime column the correct base_type"
                 (is (=? {:name      #"(?i)datetime"
                          :base_type (if (= driver/*driver* :mysql) :type/DateTimeWithLocalTZ :type/DateTime)}
-                      ;; db position is 1; 0 is for the auto-inserted ID
-                        (t2/select-one Field :database_position 1 :table_id (:id table)))))
+                        (t2/select-one Field :table_id (:id table)))))
               (is (some? table)))))))))
 
 (deftest load-from-csv-boolean-test
@@ -431,9 +430,9 @@
                     table-re (re-pattern (str "(?i)" short-name "_\\d{14}"))]
                 (is (re-matches table-re (:name table)))
                 (testing "Check the data was uploaded into the table correctly"
-                  (is (= [[1 1 true]
-                          [2 2 false]
-                          [3 Long/MAX_VALUE true]]
+                  (is (= [[1 true]
+                          [2 false]
+                          [Long/MAX_VALUE true]]
                          (rows-for-table table))))))))))))
 
 (deftest load-from-csv-empty-header-test
@@ -472,7 +471,7 @@
             (let [table (t2/select-one Table :db_id (mt/id))]
               (is (=? {:name #"(?i)upload_test"} table))
               (testing "Check the data was uploaded into the table correctly"
-                (is (= ["id" "unknown" "unknown_2" "unknown_3" "unknown_2_2"]
+                (is (= ["unknown" "unknown_2" "unknown_3" "unknown_2_2"]
                        (column-names-for-table table)))))))))))
 
 (deftest load-from-csv-reserved-db-words-test
@@ -604,10 +603,10 @@
             (let [table (t2/select-one Table :db_id (mt/id))]
               (is (=? {:name #"(?i)upload_test"} table))
               (testing "Check the data was uploaded into the table correctly"
-                (is (= ["id" "id_integer_____" "ship" "captain"]
+                (is (= ["id_integer_____" "ship" "captain"]
                        (column-names-for-table table)))
-                (is (= [[1 1 "Serenity"           "--Malcolm Reynolds"]
-                        [2 2 ";Millennium Falcon" "Han Solo\""]]
+                (is (= [[1 "Serenity"           "--Malcolm Reynolds"]
+                        [2 ";Millennium Falcon" "Han Solo\""]]
                        (rows-for-table table)))))))))))
 
 (deftest load-from-csv-eof-marker-test
