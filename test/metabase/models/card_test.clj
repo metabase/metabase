@@ -791,7 +791,7 @@
 
 (deftest changed?-test
   (letfn [(changed? [before after]
-            (#'card/changed? #'card/card-compare-keys before after))]
+            (#'card/changed? @#'card/card-compare-keys before after))]
     (testing "Ignores keyword/string"
       (is (false? (changed? {:dataset_query {:type :query}} {:dataset_query {:type "query"}}))))
     (testing "Ignores properties not in `api.card/card-compare-keys"

@@ -321,7 +321,8 @@
            :titleUrl                  (params/dashboard-url dashboard-id (params/parameters pulse dashboard))
            :dashboardDescription      (:description dashboard)
            ;; There are legacy pulses that exist without being tied to a dashboard
-           :dashboardHasTabs          (when dashboard-id (boolean (seq (t2/hydrate dashboard-id :tabs))))
+           :dashboardHasTabs          (when dashboard-id
+                                        (boolean (seq (t2/hydrate dashboard :tabs))))
            :creator                   (-> pulse :creator :common_name)
            :sectionStyle              (style/style (style/section-style))
            :notificationText          (if (nil? non-user-email)
