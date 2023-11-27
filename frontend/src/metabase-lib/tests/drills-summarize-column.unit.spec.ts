@@ -119,17 +119,10 @@ describe("drill-thru/summarize-column", () => {
     });
 
     it("should not allow to drill with a non-editable query", () => {
-      const query = createQuery({
-        query: {
-          type: "query",
-          database: 100,
-          query: { "source-table": 101 },
-        },
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase({ tables: [] })],
       });
-      const column = createOrdersTotalDatasetColumn({
-        id: 102,
-        field_ref: ["field", 102, { "base-type": "type/Float" }],
-      });
+      const query = createQuery({ metadata });
       const drill = queryDrillThru(drillType, query, stageIndex, column);
       expect(drill).toBeNull();
     });
