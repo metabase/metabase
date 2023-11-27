@@ -25,21 +25,11 @@ export function expressionName(clause: ExpressionClause): string {
   return ML.expression_name(clause);
 }
 
-declare function WithExpressionName(
-  clause: AggregationClause,
-  newName: string,
-): AggregationClause;
-declare function WithExpressionName(
-  clause: ExpressionClause,
-  newName: string,
-): ExpressionClause;
-
-export const withExpressionName: typeof WithExpressionName = (
-  clause,
-  newName,
-) => {
+export function withExpressionName<
+  Clause extends AggregationClause | ExpressionClause,
+>(clause: Clause, newName: string): Clause {
   return ML.with_expression_name(clause, newName);
-};
+}
 
 export function expressions(
   query: Query,
