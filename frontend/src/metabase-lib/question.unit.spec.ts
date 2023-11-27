@@ -8,6 +8,8 @@ import { createMockMetadata } from "__support__/metadata";
 import {
   createMockCard,
   createMockNativeDatasetQuery,
+  createMockParameter,
+  createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import Question from "./Question";
 
@@ -33,23 +35,20 @@ describe("Question.canExploreResults", () => {
         native: {
           query: "select * from order where id > {{min_id}}",
           "template-tags": {
-            min_id: {
+            min_id: createMockTemplateTag({
               type: "text",
               name: "min_id",
-              id: "uuid",
               "display-name": "Min ID",
-            },
+            }),
           },
         },
       }),
       parameters: [
-        {
-          id: "uuid",
-          type: "category",
-          // target: ["variable", ["template-tag", "min_id"]],
+        createMockParameter({
           name: "Min ID",
           slug: "min_id",
-        },
+          type: "category",
+        }),
       ],
     });
     const q = new Question(card, metadata);
