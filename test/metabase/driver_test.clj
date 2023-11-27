@@ -79,6 +79,36 @@
                          :field-definitions [{:field-name "foo", :base-type :type/Text}]
                          :rows              [["bar"]]}]}))
 
+(deftest check-can-connect-with-destroy-db-test
+  (testing "Database sync should short-circuit and fail if the database at the connection has been deleted (metabase#7526)"
+    (mt/test-drivers (->> (mt/normal-drivers)
+                          ;; athena is a special case because connections aren't made with a single database,
+                          ;; but to an S3 bucket that may contain many databases
+                          (remove #{:athena #_#_#_:oracle :vertica :presto-jdbc}))
+      (let [database-name (mt/random-name)
+            dbdef         (basic-db-definition database-name)]
+        (mt/dataset dbdef
+          (let [db (mt/db)
+                details (tx/dbdef->connection-details driver/*driver* :db dbdef)]
+            (testing "can-connect? should return true before deleting the database"
+              (true? (driver/can-connect? driver/*driver* details)))
+            ;; release db resources like connection pools so we don't have to wait to finish syncing before destroying the db
+            (driver/notify-database-updated driver/*driver* db)
+            ;; destroy the db
+            (if (contains? #{:redshift :snowflake} driver/*driver*)
+              ;; in the case of some cloud databases, the test database is never created, and shouldn't be destroyed.
+              ;; so fake it by redefining the database name on the dbdef
+              (t2/update! :model/Database (u/the-id db)
+                          {:details (assoc (:details (mt/db)) :db "fake-db-name-that-definitely-wont-be-used")})
+              (tx/destroy-db! driver/*driver* dbdef))
+            (testing "after deleting a database, can-connect? should return false or throw an exception"
+              (false? (try
+                        (driver/can-connect? driver/*driver* details)
+                        (catch Exception _
+                          false))))
+            ;; clean up the database
+            (t2/delete! :model/Database (u/the-id db))))))))
+
 (deftest check-can-connect-before-sync-test
   (testing "Database sync should short-circuit and fail if the database at the connection has been deleted (metabase#7526)"
     (mt/test-drivers (->> (mt/normal-drivers)
