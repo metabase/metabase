@@ -46,7 +46,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-athena-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-tests-bigquery-cloud-sdk-ee:
     needs: files-changed
@@ -68,7 +68,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-bigquery-cloud-sdk-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-tests-druid-ee:
     needs: files-changed
@@ -91,7 +91,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-druid-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-tests-googleanalytics-ee:
     needs: files-changed
@@ -107,7 +107,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-googleanalytics-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-google-related-drivers-classpath-test:
     needs: files-changed
@@ -156,6 +156,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mariadb-10-2-ee'
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-tests-mariadb-latest-ee:
     needs: files-changed
@@ -182,6 +183,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mariadb-latest-ee'
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-tests-mongo-4-4-ee:
     needs: files-changed
@@ -204,7 +206,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-4-4-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-tests-mongo-4-4-ssl-ee:
     needs: files-changed
@@ -239,7 +241,7 @@ jobs:
         uses: ./.github/actions/test-driver
         with:
           junit-name: 'be-tests-mongo-4-4-ee'
-          test-args: ":exclude-tags '[:mb/once]'"
+          test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-tests-mongo-5-0-ee:
     needs: files-changed
@@ -262,7 +264,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-5-0-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-tests-mongo-5-0-ssl-ee:
     needs: files-changed
@@ -297,7 +299,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-5-0-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-tests-mongo-latest-ee:
     needs: files-changed
@@ -323,7 +325,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-latest-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-tests-mysql-8-0-ee:
     needs: files-changed
@@ -350,6 +352,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mysql-8-0-ee'
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-tests-mysql-latest-ee:
     needs: files-changed
@@ -391,6 +394,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mysql-latest-ee'
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-tests-oracle-18-4-ee:
     needs: files-changed
@@ -417,7 +421,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-oracle-18-4-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-tests-oracle-21-3-ee:
     needs: files-changed
@@ -453,7 +457,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-oracle-21-3-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-tests-postgres-ee:
     needs: files-changed
@@ -484,6 +488,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-postgres-ee'
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-tests-postgres-latest-ee:
     needs: files-changed
@@ -517,6 +522,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-postgres-latest-ee'
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-tests-presto-jdbc-ee:
     needs: files-changed
@@ -566,7 +572,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-presto-jdbc-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-tests-redshift-ee:
     needs: files-changed
@@ -586,7 +592,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-redshift-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-tests-snowflake-ee:
     needs: files-changed
@@ -608,7 +614,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-snowflake-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-tests-sparksql-ee:
     needs: files-changed
@@ -629,7 +635,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sparksql-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-tests-sqlite-ee:
     needs: files-changed
@@ -645,7 +651,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sqlite-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-tests-sqlserver-2017-ee:
     needs: files-changed
@@ -673,7 +679,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sqlserver-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-tests-sqlserver-2022-ee:
     needs: files-changed
@@ -701,7 +707,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sqlserver-2022-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
 
   be-tests-vertica-ee:
     needs: files-changed
@@ -724,4 +730,4 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-vertica-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: ":only metabase.driver-test/can-connect-with-destroy-db-test"
