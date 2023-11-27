@@ -148,6 +148,24 @@
                      card)))
             cards))))
 
+(defn hydrate-for-frontend
+  "Adds additional information to a `Card` selected with toucan that is needed by the frontend. This should be the same information
+  returned by all API endpoints where the card entity is cached (i.e. GET, PUT, POST) since the frontend replaces the Card
+  it currently has with returned one -- See #4142."
+  [card]
+  (-> card
+      (t2/hydrate :creator
+                  :dashboard_count
+                  :parameter_usage_count
+                  :can_write
+                  :average_query_time
+                  :last_query_start
+                  [:collection :is_personal]
+                  [:moderation_reviews :moderator_details])
+      (cond-> ; card
+        (:dataset card) (t2/hydrate :persisted))
+      (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
+
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
   [id ignore_view]
@@ -156,18 +174,8 @@
   (let [raw-card (t2/select-one Card :id id)
         card (-> raw-card
                  api/read-check
-                 (t2/hydrate :creator
-                             :dashboard_count
-                             :parameter_usage_count
-                             :can_write
-                             :average_query_time
-                             :last_query_start
-                             [:collection :is_personal]
-                             [:moderation_reviews :moderator_details])
-                 collection.root/hydrate-root-collection
-                 (cond-> ;; card
-                   (:dataset raw-card) (t2/hydrate :persisted))
-                 (last-edit/with-last-edit-info :card))]
+                 hydrate-for-frontend
+                 collection.root/hydrate-root-collection)]
     (u/prog1 card
       (when-not ignore_view
         (events/publish-event! :event/card-read {:object <> :user-id api/*current-user-id*})))))
@@ -402,7 +410,7 @@
   (check-data-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (collection/check-write-perms-for-collection collection_id)
-  (card/create-card! body @api/*current-user*))
+  (hydrate-for-frontend (card/create-card! body @api/*current-user*)))
 
 (api/defendpoint POST "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
@@ -411,7 +419,7 @@
   (let [orig-card (api/read-check Card id)
         new-name  (str (trs "Copy of ") (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
-    (card/create-card! new-card @api/*current-user*)))
+    (hydrate-for-frontend (card/create-card! new-card @api/*current-user*))))
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
 
@@ -477,7 +485,7 @@
           card-updates          (cond-> card-updates
                                   (not timed-out?)
                                   (assoc :result_metadata fresh-metadata))]
-      (u/prog1 (card/update-card! card-before-update card-updates)
+      (u/prog1 (hydrate-for-frontend (card/update-card! card-before-update card-updates))
         (when timed-out?
           (log/info (trs "Metadata not available soon enough. Saving card {0} and asynchronously updating metadata" id))
           (card/schedule-metadata-saving result-metadata-chan <>))))))
@@ -889,7 +897,7 @@
                                :upload-seconds upload-seconds}
                               stats))
       (.delete csv-file)
-      card)
+      (hydrate-for-frontend card))
     (catch Throwable e
       (snowplow/track-event! ::snowplow/csv-upload-failed
                              api/*current-user-id*

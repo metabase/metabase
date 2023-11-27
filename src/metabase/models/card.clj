@@ -28,7 +28,6 @@
    [metabase.models.pulse :as pulse]
    [metabase.models.query :as query]
    [metabase.models.revision :as revision]
-   [metabase.models.revision.last-edit :as last-edit]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
    [metabase.plugins.classloader :as classloader]
@@ -617,15 +616,7 @@ saved later when it is ready."
        (log/info (trs "Metadata not available soon enough. Saving new card and asynchronously updating metadata")))
      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with
      ;; returned one -- See #4283
-     (u/prog1 (-> card
-                  (t2/hydrate :creator
-                              :dashboard_count
-                              :can_write
-                              :average_query_time
-                              :last_query_start
-                              [:collection :is_personal]
-                              [:moderation_reviews :moderator_details])
-                  (assoc :last-edit-info (last-edit/edit-information-for-user creator)))
+     (u/prog1 card
        (when timed-out?
          (schedule-metadata-saving result-metadata-chan <>))))))
 
@@ -781,19 +772,7 @@ saved later when it is ready."
     (when-not (= #{:collection_position}
                  (set (keys card-updates)))
       (events/publish-event! :event/card-update {:object card :user-id api/*current-user-id*}))
-    ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
-    ;; has with returned one -- See #4142
-    (-> card
-        (t2/hydrate :creator
-                    :dashboard_count
-                    :can_write
-                    :average_query_time
-                    :last_query_start
-                    [:collection :is_personal]
-                    [:moderation_reviews :moderator_details])
-        (cond-> ;; card
-          (:dataset card) (t2/hydrate :persisted))
-        (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
+    card))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
