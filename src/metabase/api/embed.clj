@@ -251,18 +251,50 @@
 
 ;;; -------------------------- Dashboard Fns used by both /api/embed and /api/preview_embed --------------------------
 
+(defn- remove-locked-and-disabled-param-values [dashboard embedding-params]
+  (let [params-to-remove (set (concat (for [[param status] embedding-params
+                                            :when          (not= status "enabled")]
+                                        param)
+                                      (for [{slug :slug} (:parameters dashboard)
+                                            :let         [param (keyword slug)]
+                                            :when        (not (contains? embedding-params param))]
+                                        param)))
+        params-ids-to-remove (set (for [parameter (:parameters dashboard)
+                                        :when     (contains? params-to-remove (keyword (:slug parameter)))]
+                                    (:id parameter)))
+        field-ids-to-remove (flatten
+                             (for [card (:dashcards dashboard)]
+                               (for [parameter-mappings (:parameter_mappings card)
+                                     :when              (contains? params-ids-to-remove (:parameter_id parameter-mappings))]
+                                 (-> (:target parameter-mappings)
+                                     (nth 1)
+                                     (nth 1)))))
+        remove-parameters (fn [dashcard]
+                            (update dashcard :parameter_mappings
+                                    (fn [param-mappings]
+                                      (into []
+                                       (filter (fn [{:keys [parameter_id]}]
+                                                 (not (contains? params-ids-to-remove parameter_id)))
+                                               param-mappings)))))]
+    (-> dashboard
+        (assoc :dashcards (map remove-parameters (:dashcards dashboard)))
+        (assoc :param_fields (apply (partial dissoc (:param_fields dashboard)) field-ids-to-remove))
+        (assoc :param_values (apply (partial dissoc (:param_values dashboard)) field-ids-to-remove)))))
+
 (defn dashboard-for-unsigned-token
   "Return the info needed for embedding about Dashboard specified in `token`. Additional `constraints` can be passed to
   the `public-dashboard` function that fetches the Dashboard."
   [unsigned-token & {:keys [embedding-params constraints]}]
   {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
   (let [dashboard-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        embedding-params (or embedding-params
+                             (t2/select-one-fn :embedding_params Dashboard, :id dashboard-id))
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (-> (apply api.public/public-dashboard :id dashboard-id, constraints)
         (substitute-token-parameters-in-text token-params)
+        (remove-locked-and-disabled-param-values embedding-params)
         (remove-token-parameters token-params)
-        (remove-locked-and-disabled-params (or embedding-params
-                                               (t2/select-one-fn :embedding_params Dashboard, :id dashboard-id))))))
+        (remove-locked-and-disabled-params embedding-params))))
 
 (defn dashcard-results-async
   "Return results for running the query belonging to a DashboardCard. Returns a `StreamingResponse`."
