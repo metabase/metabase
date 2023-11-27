@@ -8,9 +8,14 @@ import {
   filter,
   filterField,
   visitCollection,
+  popover,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -390,6 +395,65 @@ describe("scenarios > question > native", () => {
       runQuery();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("18,760");
+    });
+  });
+});
+
+describe("no native access", () => {
+  beforeEach(() => {
+    restore("postgres-12");
+    cy.signInAsAdmin();
+    cy.intercept("/api/database?saved=true").as("database");
+    cy.updatePermissionsGraph({
+      [USER_GROUPS.ALL_USERS_GROUP]: {
+        [WRITABLE_DB_ID]: { data: { schemas: "none", native: "none" } },
+      },
+      [USER_GROUPS.NOSQL_GROUP]: {
+        [SAMPLE_DB_ID]: { data: { schemas: "all", native: "write" } },
+        [WRITABLE_DB_ID]: { data: { schemas: "all", native: "none" } },
+      },
+    });
+
+    cy.updateCollectionGraph({
+      [USER_GROUPS.NOSQL_GROUP]: { root: "write" },
+    });
+
+    cy.createNativeQuestion(
+      {
+        name: "Secret Orders",
+        native: {
+          query: "SELECT * FROM ORDERS",
+        },
+        database: WRITABLE_DB_ID,
+      },
+      {
+        wrapId: true,
+      },
+    );
+
+    cy.signIn("nosql");
+  });
+
+  it("should not display the query when you do not have native access to the data source", () => {
+    cy.get("@questionId").then(questionId =>
+      cy.visit(`/question/${questionId}`),
+    );
+
+    cy.findByTestId("native-query-top-bar").within(() => {
+      cy.findByText("This question is written in SQL.").should("be.visible");
+      cy.findByTestId("visibility-toggler").should("not.exist");
+    });
+
+    cy.log("#32387");
+    cy.findByRole("button", { name: /New/ }).click();
+    popover().findByText("SQL query").click();
+
+    cy.wait("@database");
+    cy.go("back");
+
+    cy.findByTestId("native-query-top-bar").within(() => {
+      cy.findByText("This question is written in SQL.").should("be.visible");
+      cy.findByTestId("visibility-toggler").should("not.exist");
     });
   });
 });

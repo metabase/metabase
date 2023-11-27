@@ -3,9 +3,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.automagic-dashboards :as api.magic]
-   [metabase.automagic-dashboards.core :as magic]
-   [metabase.models :refer [Card Collection Dashboard Metric ModelIndex
-                            ModelIndexValue Segment]]
+   [metabase.automagic-dashboards.util :as magic.util]
+   [metabase.models
+    :refer [Card Collection Dashboard Metric ModelIndex ModelIndexValue Segment]]
    [metabase.models.model-index :as model-index]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -19,25 +19,24 @@
    [metabase.transforms.materialize :as tf.materialize]
    [metabase.transforms.specs :as tf.specs]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users :test-users-personal-collections))
 
-(defn- ordered-cards-schema-check
-  [ordered_cards]
-  (testing "check if all cards in ordered_cards contain the required fields"
-    (doseq [card ordered_cards]
-      (is (schema= {:id                     (s/cond-pre s/Str s/Int)
-                    :dashboard_tab_id       (s/maybe s/Int)
-                    :row                    s/Int
-                    :col                    s/Int
-                    :size_x                 s/Int
-                    :size_y                 s/Int
-                    :visualization_settings (s/maybe (s/named clojure.lang.IPersistentMap "valid map"))
-                    s/Any                   s/Any}
-                   card)))))
+(defn- dashcards-schema-check
+  [dashcards]
+  (testing "check if all cards in dashcards contain the required fields"
+    (doseq [card dashcards]
+      (is (malli= [:map
+                   [:id                     [:or :string :int]]
+                   [:dashboard_tab_id       [:maybe :int]]
+                   [:row                    :int]
+                   [:col                    :int]
+                   [:size_x                 :int]
+                   [:size_y                 :int]
+                   [:visualization_settings [:maybe :map]]]
+                  card)))))
 
 (defn- api-call
   ([template args]
@@ -51,7 +50,7 @@
      (with-dashboard-cleanup
        (let [api-endpoint (apply format (str "automagic-dashboards/" template) args)
              resp         (mt/user-http-request :rasta :get 200 api-endpoint)
-             _            (ordered-cards-schema-check (:ordered_cards resp))
+             _            (dashcards-schema-check (:dashcards resp))
              result       (validation-fn resp)]
          (when (and result
                     (try
@@ -64,7 +63,6 @@
                       (finally
                         (perms/grant-permissions! (perms-group/all-users) (perms/data-perms-path (mt/id))))))
            result))))))
-
 
 ;;; ------------------- X-ray  -------------------
 
@@ -116,7 +114,7 @@
 
 (deftest question-xray-test
   (mt/with-non-admin-groups-no-root-collection-perms
-    (let [cell-query (#'magic/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])]
+    (let [cell-query (magic.util/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])]
       (doseq [test-fn
               [(fn [collection-id card-id]
                  (testing "GET /api/automagic-dashboards/question/:id"
@@ -146,7 +144,7 @@
   (testing "The API surface of a model (dataset = true) is very much like that of a question,
   even though the underlying API will assert that dataset is true and the returned dashboard will be different."
     (mt/with-non-admin-groups-no-root-collection-perms
-      (let [cell-query (#'magic/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])]
+      (let [cell-query (magic.util/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])]
         (doseq [test-fn
                 [(fn [collection-id card-id]
                    (testing "GET /api/automagic-dashboards/model/:id"
@@ -173,10 +171,10 @@
             (test-fn collection-id card-id)))))))
 
 (deftest adhoc-query-xray-test
-  (let [query (#'magic/encode-base64-json
+  (let [query (magic.util/encode-base64-json
                (mt/mbql-query venues
                  {:filter [:> $price 10]}))
-        cell-query (#'magic/encode-base64-json
+        cell-query (magic.util/encode-base64-json
                     [:> [:field (mt/id :venues :price) nil] 5])]
     (testing "GET /api/automagic-dashboards/adhoc/:query"
       (is (some? (api-call "adhoc/%s" [query]))))
@@ -212,9 +210,9 @@
            (api-call "adhoc/%s/cell/%s/compare/segment/%s"
                      [(->> (mt/mbql-query venues
                              {:filter [:> $price 10]})
-                           (#'magic/encode-base64-json))
+                           (magic.util/encode-base64-json))
                       (->> [:= [:field (mt/id :venues :price) nil] 15]
-                           (#'magic/encode-base64-json))
+                           (magic.util/encode-base64-json))
                       segment-id]))))))
 
 (deftest compare-nested-query-test
@@ -235,12 +233,12 @@
                 cell-query [:= [:field "SOURCE" {:base-type :type/Text}] "Affiliate"]]
             (testing "X-Ray"
               (is (some? (api-call "adhoc/%s/cell/%s"
-                                   (map #'magic/encode-base64-json [query cell-query])
+                                   (map magic.util/encode-base64-json [query cell-query])
                                    #(revoke-collection-permissions! collection-id)))))
             (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
             (testing "Compare"
               (is (some? (api-call "adhoc/%s/cell/%s/compare/table/%s"
-                                   (concat (map #'magic/encode-base64-json [query cell-query])
+                                   (concat (map magic.util/encode-base64-json [query cell-query])
                                            [(format "card__%d" card-id)])
                                    #(revoke-collection-permissions! collection-id)))))))))))
 
@@ -263,7 +261,7 @@
                                  (tf.materialize/get-collection "Test transform"))
                                (fn [dashboard]
                                  (->> dashboard
-                                      :ordered_cards
+                                      :dashcards
                                       (sort-by (juxt :row :col))
                                       last
                                       :card
@@ -337,13 +335,13 @@
 
 (deftest create-linked-dashboard-test-no-linked
   (testing "If there are no linked-tables, create a default view explaining the situation."
-    (is (=? {:ordered_cards [{:visualization_settings {:virtual_card {:display "link", :archived false}
-                                                       :link         {:entity {:model   "dataset"
-                                                                               :display "table"}}}}
-                             {:visualization_settings {:text                "# Unfortunately, there's not much else to show right now...",
-                                                       :virtual_card        {:display :text},
-                                                       :dashcard.background false,
-                                                       :text.align_vertical :bottom}}]}
+    (is (=? {:dashcards [{:visualization_settings {:virtual_card {:display "link", :archived false}
+                                                   :link         {:entity {:model   "dataset"
+                                                                           :display "table"}}}}
+                         {:visualization_settings {:text                "# Unfortunately, there's not much else to show right now...",
+                                                   :virtual_card        {:display :text},
+                                                   :dashcard.background false,
+                                                   :text.align_vertical :bottom}}]}
             (#'api.magic/create-linked-dashboard {:model             nil
                                                   :linked-tables     ()
                                                   :model-index       nil
@@ -368,17 +366,17 @@
                     :name "A look at Reviews" :position 0}
                    {:id   #hawk/malli Tab-Id-Schema
                     :name "A look at Orders" :position 1}]
-                  (:ordered_tabs dash)))
+                  (:tabs dash)))
           (testing "The first card for each tab is a linked model card to the source model"
             (is (=? (repeat
-                     (count (:ordered_tabs dash))
+                     (count (:tabs dash))
                      {:visualization_settings
                       {:virtual_card {:display "link", :archived false}
                        :link         {:entity {:id      (:id model)
                                                :name    (:name model)
                                                :model   "dataset"
                                                :display "table"}}}})
-                    (->> (:ordered_cards dash)
+                    (->> (:dashcards dash)
                          (group-by :dashboard_tab_id)
                          vals
                          (map first)))))
@@ -392,7 +390,7 @@
             (let [pk-filters (expected-filters {:model             model
                                                 :model-index       model-index
                                                 :model-index-value model-index-value})]
-              (cards-have-filters? (:ordered_cards dash) pk-filters))))))
+              (cards-have-filters? (:dashcards dash) pk-filters))))))
     (testing "X-ray a native model"
       (letfn [(lower [x] (u/lower-case-en x))
               (by-id [cols col-name] (or (some (fn [col]
@@ -438,12 +436,12 @@
                         :name "A look at Reviews" :position 0}
                        {:id   #hawk/malli Tab-Id-Schema
                         :name "A look at Orders" :position 1}]
-                      (:ordered_tabs dash)))
+                      (:tabs dash)))
               (testing "All query cards have the correct filters"
                 (let [pk-filters (expected-filters {:model             model
                                                     :model-index       model-index
                                                     :model-index-value model-index-value})]
-                  (cards-have-filters? (:ordered_cards dash) pk-filters))))))))))
+                  (cards-have-filters? (:dashcards dash) pk-filters))))))))))
 
 (deftest create-linked-dashboard-test-single-link
   (mt/dataset sample-dataset
@@ -461,7 +459,7 @@
           ;; FE has a bug where it doesn't fire off queries for cards if there's only a single tab. So we hack around
           ;; that by not creating tabs if there would only be one.
           (testing "Has no tabs"
-            (is (empty? (:ordered_tabs dash))))
+            (is (empty? (:tabs dash))))
           (testing "The first card for each tab is a linked model card to the source model"
             (is (=? {:visualization_settings
                      {:virtual_card {:display "link", :archived false}
@@ -469,7 +467,7 @@
                                               :name    (:name model)
                                               :model   "dataset"
                                               :display "table"}}}}
-                    (->> dash :ordered_cards first))))
+                    (->> dash :dashcards first))))
           (testing "The generated dashboard has a meaningful name and description"
             (is (true?
                  (and
@@ -480,4 +478,88 @@
             (let [pk-filters (expected-filters {:model             model
                                                 :model-index       model-index
                                                 :model-index-value model-index-value})]
-              (cards-have-filters? (:ordered_cards dash) pk-filters))))))))
+              (cards-have-filters? (:dashcards dash) pk-filters))))))))
+
+;; ------------------------------------------------ `show` limit test  -------------------------------------------------
+;; Historically, the used params are `nil` and "all", so this tests the integer case.
+
+(defn- card-count-check
+  "Create a dashboard via API twice, once with a limit and once without, and return the results."
+  [limit template args]
+  (mt/with-test-user :rasta
+    (with-dashboard-cleanup
+      (let [api-endpoint  (apply format (str "automagic-dashboards/" template) args)
+            resp          (mt/user-http-request :rasta :get 200 api-endpoint)
+            slimmed       (mt/user-http-request :rasta :get 200 api-endpoint :show limit)
+            card-count-fn (fn [dashboard] (count (keep :card (:dashcards dashboard))))]
+        {:base-count (card-count-fn resp)
+         :show-count (card-count-fn slimmed)}))))
+
+(deftest table-show-param-test
+  (testing "x-ray of a table with show set reduces the number of returned cards"
+    (let [show-limit 1
+          {:keys [base-count show-count]} (card-count-check show-limit "table/%s" [(mt/id :venues)])]
+      (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
+        (is (< show-count base-count)))
+      (testing "Only \"limit\" cards are produced"
+        (is (= show-limit show-count))))))
+
+(deftest metric-xray-show-param-test
+  (testing "x-ray of a metric with show set reduces the number of returned cards"
+    (t2.with-temp/with-temp [Metric {metric-id :id} {:table_id   (mt/id :venues)
+                                                     :definition {:query {:aggregation ["count"]}}}]
+      (let [show-limit 1
+            {:keys [base-count show-count]} (card-count-check show-limit "metric/%s" [metric-id])]
+        (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
+          (is (< show-count base-count)))
+        (testing "Only \"limit\" cards are produced"
+          (is (= show-limit show-count)))))))
+
+(deftest segment-xray-show-param-test
+  (testing "x-ray of a segment with show set reduces the number of returned cards"
+    (t2.with-temp/with-temp [Segment {segment-id :id} {:table_id   (mt/id :venues)
+                                                       :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
+      (let [show-limit 1
+            {:keys [base-count show-count]} (card-count-check show-limit "segment/%s" [segment-id])]
+        (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
+          (is (< show-count base-count)))
+        (testing "Only \"limit\" cards are produced"
+          (is (= show-limit show-count)))))))
+
+(deftest field-xray-show-param-test
+  (testing "x-ray of a field with show set reduces the number of returned cards"
+    (let [show-limit 1
+          {:keys [base-count show-count]} (card-count-check show-limit "field/%s" [(mt/id :venues :price)])]
+      (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
+        (is (< show-count base-count)))
+      (testing "Only \"limit\" cards are produced"
+        (is (= show-limit show-count))))))
+
+(deftest cell-query-xray-show-param-test
+  (testing "x-ray of a cell-query with show set reduces the number of returned cards"
+    (t2.with-temp/with-temp [Card {card-id :id} {:table_id      (mt/id :venues)
+                                                 :dataset_query (mt/mbql-query venues
+                                                                  {:filter [:> $price 10]})}]
+      (let [cell-query (magic.util/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])
+            show-limit 2
+            {:keys [base-count show-count]} (card-count-check show-limit "question/%s/cell/%s" [card-id cell-query])]
+        (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
+          (is (< show-count base-count)))
+        (testing "Only \"limit\" cards are produced"
+          (is (= show-limit show-count)))))))
+
+(deftest comparison-xray-show-param-test
+  (testing "x-ray of a comparison with show set reduces the number of returned cards"
+    (t2.with-temp/with-temp [Segment {segment-id :id} @segment]
+      (let [show-limit 1
+            {:keys [base-count show-count]} (card-count-check show-limit
+                                                              "adhoc/%s/cell/%s/compare/segment/%s"
+                                                              [(->> (mt/mbql-query venues
+                                                                      {:filter [:> $price 10]})
+                                                                    (magic.util/encode-base64-json))
+                                                               (->> [:= [:field (mt/id :venues :price) nil] 15]
+                                                                    (magic.util/encode-base64-json))
+                                                               segment-id])]
+        (testing "The slimmed dashboard produces less than the base dashboard"
+          ;;NOTE - Comparisons produce multiple dashboards and merge the results, so you don't get exactly `show-limit` cards
+          (is (< show-count base-count)))))))

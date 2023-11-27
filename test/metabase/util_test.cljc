@@ -410,7 +410,10 @@
            (u/assoc-default {:x nil} :x 0 :y nil :z 1))))
   (testing "multiple defaults for the same key"
     (is (= {:x nil, :y 1, :z 2}
-           (u/assoc-default {:x nil} :x 0, :y nil, :y 1, :z 2, :x 3, :z 4)))))
+           (u/assoc-default {:x nil} :x 0, :y nil, :y 1, :z 2, :x 3, :z 4))))
+  (testing "preserves metadata"
+    (is (= {:m true}
+           (meta (u/assoc-default ^:m {:x 0} :y 1 :z 2 :a nil))))))
 
 (deftest ^:parallel classify-changes-test
   (testing "classify correctly"
@@ -435,3 +438,13 @@
     #{1}    true
     [1 2]   true
     [1 2 1] false))
+
+(deftest ^:parallel round-to-decimals-test
+  (are [decimal-place expected] (= expected
+                                   (u/round-to-decimals decimal-place 1250.04253))
+    5 1250.04253
+    4 1250.0425
+    3 1250.043
+    2 1250.04
+    1 1250.0
+    0 1250.0))

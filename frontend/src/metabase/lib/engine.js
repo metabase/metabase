@@ -27,12 +27,6 @@ export function getEngineNativeAceMode(engine) {
     case "druid":
     case "googleanalytics":
       return "ace/mode/json";
-    case "mysql":
-      return "ace/mode/mysql";
-    case "postgres":
-      return "ace/mode/pgsql";
-    case "sqlserver":
-      return "ace/mode/sqlserver";
     default:
       return "ace/mode/sql";
   }

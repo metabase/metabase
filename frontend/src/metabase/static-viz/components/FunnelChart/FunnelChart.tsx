@@ -36,7 +36,7 @@ const layout = {
   percentBottomOffset: 24,
 };
 
-type FunnelProps = {
+export type FunnelProps = {
   data: FunnelDatum[];
   settings: FunnelSettings;
 };

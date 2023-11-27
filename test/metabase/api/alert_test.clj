@@ -6,11 +6,13 @@
    [metabase.email-test :as et]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient User]]
+    :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient
+            User]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
    [metabase.models.pulse-test :as pulse-test]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
@@ -492,7 +494,7 @@
 (deftest update-alerts-admin-test
   (testing "Admin users can update any alert"
     (mt/with-temp [Pulse                 alert (basic-alert)
-                   Card                  card {}
+                   Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    PulseChannel          pc    (pulse-channel alert)
                    PulseChannelRecipient _     (recipient pc :rasta)]
@@ -504,7 +506,7 @@
 
   (testing "Admin users can update any alert, changing the related alert attributes"
     (mt/with-temp [Pulse                 alert (basic-alert)
-                   Card                  card {}
+                   Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    PulseChannel          pc    (pulse-channel alert)
                    PulseChannelRecipient _     (recipient pc :rasta)]
@@ -520,7 +522,7 @@
 
   (testing "Admin users can add a recipient, that recipient should be notified"
     (mt/with-temp [Pulse                 alert (basic-alert)
-                   Card                  card {}
+                   Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    PulseChannel          pc    (pulse-channel alert)
                    PulseChannelRecipient _     (recipient pc :crowberto)]
@@ -541,7 +543,7 @@
 (deftest update-alerts-non-admin-test
   (testing "Non-admin users can update alerts they created"
     (mt/with-temp [Pulse                 alert (basic-alert)
-                   Card                  card {}
+                   Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    PulseChannel          pc    (pulse-channel alert)
                    PulseChannelRecipient _     (recipient pc :rasta)]
@@ -555,7 +557,7 @@
 
   (testing "Non-admin users cannot change the recipients of an alert"
     (mt/with-temp [Pulse                 alert (basic-alert)
-                   Card                  card {}
+                   Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    PulseChannel          pc    (pulse-channel alert)
                    PulseChannelRecipient _     (recipient pc :rasta)]
@@ -569,7 +571,7 @@
 (deftest admin-users-remove-recipient-test
   (testing "admin users can remove a recipieint, that recipient should be notified"
     (mt/with-temp [Pulse                 alert (basic-alert)
-                   Card                  card {}
+                   Card                  card  {}
                    PulseCard             _     (pulse-card alert card)
                    PulseChannel          pc    (pulse-channel alert)
                    PulseChannelRecipient _     (recipient pc :crowberto)
@@ -627,6 +629,51 @@
           (testing "but not allowed to edit the card"
             (mt/user-http-request :rasta :put 403 (alert-url alert)
                                   (dissoc (default-alert-req card pc {} []) :channels))))))))
+
+(deftest alert-event-test
+  (premium-features-test/with-premium-features #{:audit-app}
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (t2.with-temp/with-temp [Collection collection {}
+                               Card       card {:name          "My question"
+                                                :display       "bar"
+                                                :collection_id (u/the-id collection)}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+        (with-alert-setup
+          (et/with-expected-messages 1
+            (let [alert-details {:card             {:id (u/the-id card), :include_csv false, :include_xls false, :dashboard_card_id nil}
+                                 :collection_id    (u/the-id collection)
+                                 :alert_condition  "goal"
+                                 :alert_above_goal true
+                                 :alert_first_only false
+                                 :channels         [daily-email-channel]}
+                  alert         (mt/user-http-request :rasta :post 200 "alert" alert-details)]
+              (testing "Creating alert also logs event."
+                (is (= {:topic    :alert-create
+                        :user_id  (mt/user->id :rasta)
+                        :model    "Card"
+                        :model_id (u/the-id alert)
+                        :details  {:archived     false
+                                   :name         "My question"
+                                   :card_id      (u/the-id card)
+                                   :parameters   []
+                                   :channel      ["email"]
+                                   :schedule     ["daily"]
+                                   :recipients   [[]]}}
+                       (mt/latest-audit-log-entry :alert-create (u/the-id alert)))))
+              (testing "Updating alert also logs event."
+                (mt/user-http-request :crowberto :put 200 (alert-url alert) alert-details)
+                (is (= {:topic    :alert-update
+                        :user_id  (mt/user->id :crowberto)
+                        :model    "Card"
+                        :model_id (u/the-id alert)
+                        :details  {:archived   true
+                                   :name       "My question"
+                                   :card_id    (u/the-id card)
+                                   :parameters []
+                                   :channel    ["email"]
+                                   :schedule   ["daily"]
+                                   :recipients [[]]}}
+                       (mt/latest-audit-log-entry :alert-update (u/the-id alert))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            GET /alert/question/:id                                             |
@@ -878,3 +925,19 @@
                                                     #"now getting alerts about .*Foo")
                   :emails  (et/regex-email-bodies #"https://metabase.com/testmb"
                                                   #"now getting alerts about .*Foo")))))))))
+
+(deftest alert-unsubscribe-event-test
+  (testing "Alert has two recipients, and non-admin unsubscribes"
+    (premium-features-test/with-premium-features #{:audit-app}
+      (mt/with-temp [Card                  card  (basic-alert-query)
+                     Pulse                 alert (basic-alert)
+                     PulseCard             _     (pulse-card alert card)
+                     PulseChannel          pc    (pulse-channel alert)
+                     PulseChannelRecipient _     (recipient pc :rasta)]
+        (api:unsubscribe! :rasta 204 alert)
+        (is (= {:topic    :alert-unsubscribe
+                :user_id  (mt/user->id :rasta)
+                :model    "Pulse"
+                :model_id nil
+                :details  {:email "rasta@metabase.com"}}
+               (mt/latest-audit-log-entry :alert-unsubscribe)))))))

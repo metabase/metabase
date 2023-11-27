@@ -6,6 +6,7 @@
    [metabase.config :as config]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
+   [metabase.events :as events]
    [metabase.integrations.slack :as slack]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
@@ -199,8 +200,8 @@
   (let [dashboard-id      (u/the-id dashboard)]
     (mw.session/with-current-user pulse-creator-id
       (if (dashboard/has-tabs? dashboard)
-        (let [ordered-tabs-with-cards (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :ordered-tab-cards)]
-         (doall (flatten (for [{:keys [cards] :as tab} ordered-tabs-with-cards]
+        (let [tabs-with-cards (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)]
+         (doall (flatten (for [{:keys [cards] :as tab} tabs-with-cards]
                            (concat [(tab->part tab)] (dashcards->part cards pulse dashboard))))))
         (dashcards->part (t2/select DashboardCard :dashboard_id dashboard-id) pulse dashboard)))))
 
@@ -486,6 +487,14 @@
 (defn- parts->notifications [{:keys [channels channel-ids], pulse-id :id, :as pulse} parts]
   (let [channel-ids (or channel-ids (mapv :id channels))]
     (when (should-send-notification? pulse parts)
+      (let [event-type (if (= :pulse (alert-or-pulse pulse))
+                         :event/subscription-send
+                         :event/alert-send)]
+        (events/publish-event! event-type {:id      (:id pulse)
+                                           :user-id (:creator_id pulse)
+                                           :object  {:recipients (map :recipients (:channels pulse))
+                                                     :filters    (:parameters pulse)}}))
+
       (when (:alert_first_only pulse)
         (t2/delete! Pulse :id pulse-id))
       ;; `channel-ids` is the set of channels to send to now, so only send to those. Note the whole set of channels
@@ -536,7 +545,7 @@
                                      :recipients   recipients
                                      :message-type message-type
                                      :message      message
-                                     :bcc?         true})
+                                     :bcc?         (email/bcc-enabled?)})
       (catch ExceptionInfo e
         (when (not= :smtp-host-not-set (:cause (ex-data e)))
           (throw e))))))

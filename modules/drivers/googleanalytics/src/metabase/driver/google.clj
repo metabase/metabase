@@ -61,12 +61,11 @@
 
 (defn- create-application-name
   "Creates the application name string, separated out from the `def` below so it's testable with different values"
-  [{:keys [tag ^String hash branch]}]
+  [{:keys [tag ^String hash]}]
   (let [encoded-hash (some-> hash (.getBytes "UTF-8") codec/base64-encode)]
-    (format "Metabase/%s (GPN:Metabase; %s %s)"
+    (format "Metabase/%s (GPN:Metabase; %s)"
             (or tag "?")
-            (or encoded-hash "?")
-            (or branch "?"))))
+            (or encoded-hash "?"))))
 
 (def ^:const ^String application-name
   "The application name we should use for Google drivers. Requested by Google themselves -- see #2627"

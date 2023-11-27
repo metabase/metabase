@@ -2,7 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.ddl :as sql.ddl]

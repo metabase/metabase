@@ -1,5 +1,6 @@
 import type { InputHTMLAttributes, Ref } from "react";
 import { forwardRef, useCallback, useState } from "react";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import type { Moment } from "moment-timezone";
 import DateInput from "metabase/core/components/DateInput";
 import DateSelector from "metabase/core/components/DateSelector";

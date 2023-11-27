@@ -1,6 +1,7 @@
-(ns metabase.lib.fe-util-test(:require
+(ns metabase.lib.fe-util-test
+  (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
@@ -115,3 +116,19 @@
                   1]}
           (lib/expression-parts lib.tu/venues-query -1 (lib/= (lib/ref (meta/field-metadata :products :id))
                                                               1)))))
+
+(deftest ^:parallel date-parts-display-name-test
+  (let [created-at (meta/field-metadata :products :created-at)
+        date-arg-1 "2023-11-02"
+        date-arg-2 "2024-01-03"]
+    (are [expected clause] (=? expected (lib/filter-args-display-name lib.tu/venues-query -1 clause))
+      "Nov 2, 2023" (lib/= created-at date-arg-1)
+      "Nov 2, 2023 – Jan 3, 2024" (lib/between created-at date-arg-1 date-arg-2)
+      "After Nov 2, 2023" (lib/> created-at date-arg-1)
+      "Before Nov 2, 2023" (lib/< created-at date-arg-1)
+      "Yesterday" (lib/time-interval created-at -1 :day)
+      "Tomorrow" (lib/time-interval created-at 1 :day)
+      "Previous 10 Days" (lib/time-interval created-at -10 :day)
+      "Next 10 Days" (lib/time-interval created-at 10 :day)
+      "Today" (lib/time-interval created-at :current :day)
+      "This Month" (lib/time-interval created-at :current :month))))

@@ -6,7 +6,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.config :as config]
    [metabase.public-settings :as public-settings]
    [metabase.task :as task]

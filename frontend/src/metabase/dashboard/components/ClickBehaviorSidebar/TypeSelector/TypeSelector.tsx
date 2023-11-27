@@ -4,7 +4,7 @@ import type { IconName } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 
-import type { DashboardOrderedCard, ClickBehavior } from "metabase-types/api";
+import type { DashboardCard, ClickBehavior } from "metabase-types/api";
 import type { UiParameter } from "metabase-lib/parameters/types";
 
 import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
@@ -51,7 +51,7 @@ export const BehaviorOption = ({
 );
 
 interface TypeSelectorProps {
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   clickBehavior: ClickBehavior;
   parameters: UiParameter[];
   updateSettings: (settings?: ClickBehavior) => void;

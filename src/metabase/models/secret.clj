@@ -3,7 +3,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]

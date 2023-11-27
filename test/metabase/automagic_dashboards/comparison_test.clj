@@ -20,7 +20,7 @@
   (-> left
       (magic/automagic-analysis {})
       (c/comparison-dashboard left right {})
-      :ordered_cards
+      :dashcards
       count
       pos?))
 

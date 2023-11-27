@@ -2,7 +2,7 @@
   (:require
    [clojure.spec.alpha :as s]
    [clojure.test.check.generators :as gen]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Action Activity Card Collection Dashboard
                             DashboardCard DashboardCardSeries Database Dimension Field

@@ -20,6 +20,8 @@ import { isValidCollectionId } from "metabase/collections/utils";
 
 import type { CollectionId } from "metabase-types/api";
 
+import { useSelector } from "metabase/lib/redux";
+import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
 import {
   PopoverItemPicker,
   MIN_POPOVER_WIDTH,
@@ -33,6 +35,7 @@ export interface FormCollectionPickerProps
   type?: "collections" | "snippet-collections";
   initialOpenCollectionId?: CollectionId;
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
+  filterPersonalCollections?: FilterItemsInPersonalCollection;
 }
 
 function ItemName({
@@ -58,6 +61,7 @@ function FormCollectionPicker({
   type = "collections",
   initialOpenCollectionId,
   onOpenCollectionChange,
+  filterPersonalCollections,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
   const [{ value }, { error, touched }, { setValue }] = useField(name);
@@ -96,6 +100,16 @@ function FormCollectionPicker({
 
   const [openCollectionId, setOpenCollectionId] =
     useState<CollectionId>("root");
+  const openCollection = useSelector(state =>
+    Collections.selectors.getObject(state, {
+      entityId: openCollectionId,
+    }),
+  );
+
+  const isOpenCollectionInPersonalCollection = openCollection?.is_personal;
+  const showCreateNewCollectionOption =
+    filterPersonalCollections !== "only" ||
+    isOpenCollectionInPersonalCollection;
 
   const renderContent = useCallback(
     ({ closePopover }) => {
@@ -120,18 +134,26 @@ function FormCollectionPicker({
             onOpenCollectionChange?.(id);
             setOpenCollectionId(id);
           }}
+          filterPersonalCollections={filterPersonalCollections}
         >
-          <CreateCollectionOnTheGoButton openCollectionId={openCollectionId} />
+          {showCreateNewCollectionOption && (
+            <CreateCollectionOnTheGoButton
+              filterPersonalCollections={filterPersonalCollections}
+              openCollectionId={openCollectionId}
+            />
+          )}
         </PopoverItemPicker>
       );
     },
     [
-      value,
       type,
+      value,
       width,
-      setValue,
       initialOpenCollectionId,
+      filterPersonalCollections,
+      showCreateNewCollectionOption,
       openCollectionId,
+      setValue,
       onOpenCollectionChange,
     ],
   );

@@ -3,8 +3,10 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [malli.core :as mc]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
@@ -241,7 +243,12 @@
               :display-name "expr"}]
             (-> lib.tu/venues-query
                 (lib/expression "expr" (lib/absolute-datetime "2020" :month))
-                lib/expressions-metadata))))
+                lib/expressions-metadata)))
+    (is (= ["expr"]
+           (-> lib.tu/venues-query
+               (lib/expression "expr" (lib/absolute-datetime "2020" :month))
+               lib/expressions
+               (->> (map lib/expression-name))))))
   (testing "collisions with other column names are detected and rejected"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :categories))
           ex    (try
@@ -327,3 +334,41 @@
         (is (=? [{:name "description"}]
                 (->> (lib/visible-columns query)
                      (filter (comp #{:source/expressions} :lib/source)))))))))
+
+(deftest ^:parallel removing-join-removes-dependent-custom-columns
+  (testing "#14775 a custom column dependent on a join is dropped when the join is dropped"
+    (let [base  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/join (lib/join-clause (meta/table-metadata :products)
+                                               [(lib/= (meta/field-metadata :products :id)
+                                                       (meta/field-metadata :orders :product-id))])))
+          cols   (lib/returned-columns base)
+          ;; Fetching the rating like this rather than (meta/field-metadata ...) so it has the join alias correctly.
+          rating (m/find-first #(= (:id %) (meta/id :products :rating)) cols)
+          query  (lib/expression base "bad_product" (lib/< rating 3))
+          join   (first (lib/joins query))]
+      ;; TODO: There should probably be a (lib/join-alias join) ;=> "Products" function.
+      (is (=? [[:< {:lib/expression-name "bad_product"}
+                [:field {:join-alias (:alias join)} (meta/id :products :rating)]
+                3]]
+              (lib/expressions query)))
+      (is (= 1 (count (lib/joins query))))
+
+      (let [dropped (lib/remove-join query join)]
+        (is (empty? (lib/joins dropped)))
+        (is (empty? (lib/expressions dropped)))))))
+
+(deftest ^:parallel with-expression-name-test
+  (let [query (-> lib.tu/venues-query
+                  (lib/expression "expr" (lib/absolute-datetime "2020" :month)))
+        [orig-expr :as orig-exprs] (lib/expressions query)
+        expr (lib/with-expression-name orig-expr "newly-named-expression")]
+    (testing "expressions should include the original expression name"
+      (is (=? [{:name         "expr"
+                :display-name "expr"}]
+              (lib/expressions-metadata query)))
+      (is (= ["expr"]
+             (map lib/expression-name orig-exprs)))
+      (is (= "newly-named-expression"
+             (lib/expression-name expr)))
+      (is (not= (lib.options/uuid orig-expr)
+                (lib.options/uuid expr))))))

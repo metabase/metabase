@@ -211,7 +211,10 @@
 
 (defmethod rename-key-fn :field
   [_object-type]
-  {:source :lib/source})
+  {:source          :lib/source
+   :unit            :metabase.lib.field/temporal-unit
+   :expression-name :lib/expression-name
+   :binning-info    :metabase.lib.field/binning})
 
 (defn- parse-field-id
   [id]
@@ -220,23 +223,40 @@
     ;; with the name of the column in the second position
     (vector? id) second))
 
+(defn- parse-binning-info
+  [m]
+  (obj->clj
+   (map (fn [[k v]]
+          (let [k (keyword (u/->kebab-case-en k))
+                k (if (= k :binning-strategy)
+                    :strategy
+                    k)
+                v (if (= k :strategy)
+                    (keyword v)
+                    v)]
+            [k v])))
+   m))
+
 (defmethod parse-field-fn :field
   [_object-type]
   (fn [k v]
     (case k
-      :base-type         (keyword v)
-      :coercion-strategy (keyword v)
-      :effective-type    (keyword v)
-      :fingerprint       (if (map? v)
-                           (walk/keywordize-keys v)
-                           (js->clj v :keywordize-keys true))
-      :has-field-values  (keyword v)
-      :lib/source        (if (= v "aggregation")
-                           :source/aggregations
-                           (keyword "source" v))
-      :semantic-type     (keyword v)
-      :visibility-type   (keyword v)
-      :id                (parse-field-id v)
+      :base-type                        (keyword v)
+      :coercion-strategy                (keyword v)
+      :effective-type                   (keyword v)
+      :fingerprint                      (if (map? v)
+                                          (walk/keywordize-keys v)
+                                          (js->clj v :keywordize-keys true))
+      :has-field-values                 (keyword v)
+      :lib/source                       (case v
+                                          "aggregation" :source/aggregations
+                                          "breakout"    :source/breakouts
+                                          (keyword "source" v))
+      :metabase.lib.field/temporal-unit (keyword v)
+      :semantic-type                    (keyword v)
+      :visibility-type                  (keyword v)
+      :id                               (parse-field-id v)
+      :metabase.lib.field/binning       (parse-binning-info v)
       v)))
 
 (defmethod parse-objects :field

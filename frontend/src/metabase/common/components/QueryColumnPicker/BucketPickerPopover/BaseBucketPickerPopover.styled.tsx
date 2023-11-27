@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import Button from "metabase/core/components/Button";
 import { Icon } from "metabase/core/components/Icon";
 import BaseSelectList from "metabase/components/SelectList";
 import { alpha, color } from "metabase/lib/colors";
@@ -6,11 +7,14 @@ import type { ColorName } from "metabase/lib/colors/types";
 
 export const TriggerIcon = styled(Icon)`
   color: ${color("white")} !important;
+  flex: 0 0 auto;
 `;
 
 export const TriggerButton = styled.button`
   display: flex;
   align-items: center;
+  min-width: 0;
+  max-width: 50%;
   gap: 0.5rem;
 
   color: ${alpha(color("white"), 0.5)};
@@ -39,12 +43,30 @@ export const SelectListItem = styled(BaseSelectList.Item)<{
   }
 `;
 
-export const SelectList = styled(BaseSelectList)`
+export const Content = styled.div`
   overflow-y: auto;
-  max-height: 390px;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem;
+  min-width: 160px;
 
   ${SelectListItem} {
     margin: 2px 0;
   }
 `;
+
+export const MoreButton = styled(Button)`
+  width: 100%;
+  height: 36px;
+  padding: 8px 16px;
+
+  transition: none !important;
+
+  ${Button.Content} {
+    justify-content: flex-start;
+  }
+
+  &:hover {
+    background-color: ${color("brand-lighter")};
+  }
+`;
+
+MoreButton.defaultProps = { onlyText: true };

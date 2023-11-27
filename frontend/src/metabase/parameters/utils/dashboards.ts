@@ -6,7 +6,7 @@ import type {
   Card,
   Dashboard,
   DashboardParameterMapping,
-  DashboardOrderedCard,
+  DashboardCard,
   Parameter,
   ParameterMappingOptions,
 } from "metabase-types/api";
@@ -68,8 +68,8 @@ export function getIsMultiSelect(parameter: Parameter): boolean {
 }
 
 export function hasMapping(parameter: Parameter, dashboard: Dashboard) {
-  return dashboard.ordered_cards.some(ordered_card => {
-    return ordered_card?.parameter_mappings?.some(parameter_mapping => {
+  return dashboard.dashcards.some(dashcard => {
+    return dashcard?.parameter_mappings?.some(parameter_mapping => {
       return parameter_mapping.parameter_id === parameter.id;
     });
   });
@@ -91,8 +91,8 @@ export function isDashboardParameterWithoutMapping(
   return parameterExistsOnDashboard && !parameterHasMapping;
 }
 
-function getMappings(ordered_cards: DashboardOrderedCard[]): ExtendedMapping[] {
-  return ordered_cards.flatMap(dashcard => {
+function getMappings(dashcards: DashboardCard[]): ExtendedMapping[] {
+  return dashcards.flatMap(dashcard => {
     const { parameter_mappings, card, series } = dashcard;
     const cards = [card, ...(series || [])];
     return (parameter_mappings || [])
@@ -114,8 +114,8 @@ export function getDashboardUiParameters(
   dashboard: Dashboard,
   metadata: Metadata,
 ): UiParameter[] {
-  const { parameters, ordered_cards } = dashboard;
-  const mappings = getMappings(ordered_cards as DashboardOrderedCard[]);
+  const { parameters, dashcards } = dashboard;
+  const mappings = getMappings(dashcards as DashboardCard[]);
   const uiParameters: UiParameter[] = (parameters || []).map(parameter => {
     if (isFieldFilterParameter(parameter)) {
       return buildFieldFilterUiParameter(parameter, mappings, metadata);
@@ -173,7 +173,7 @@ function buildFieldFilterUiParameter(
 
 export function getParametersMappedToDashcard(
   dashboard: Dashboard,
-  dashcard: DashboardOrderedCard,
+  dashcard: DashboardCard,
 ): ParameterWithTarget[] {
   const { parameters } = dashboard;
   const { parameter_mappings } = dashcard;
@@ -204,7 +204,7 @@ export function hasMatchingParameters({
   cardId: number;
   parameters: Parameter[];
 }) {
-  const dashcard = _.findWhere(dashboard.ordered_cards, {
+  const dashcard = _.findWhere(dashboard.dashcards, {
     id: dashcardId,
     card_id: cardId,
   });
@@ -212,9 +212,7 @@ export function hasMatchingParameters({
     return false;
   }
 
-  const mappings = getMappings(
-    dashboard.ordered_cards as DashboardOrderedCard[],
-  );
+  const mappings = getMappings(dashboard.dashcards as DashboardCard[]);
   const mappingsForDashcard = mappings.filter(
     mapping => mapping.dashcard_id === dashcardId,
   );

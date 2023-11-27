@@ -7,7 +7,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [honey.sql :as sql]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
@@ -25,6 +25,8 @@
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.temporal-bucketing
+    :as lib.schema.temporal-bucketing]
    [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -266,11 +268,38 @@
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
                                [:convert_from expr (h2x/literal "UTF8")]))
 
-(defn- date-trunc [unit expr]
-  [:date_trunc (h2x/literal unit) (->timestamp expr)])
-
 (defn- extract [unit expr]
   [::h2x/extract unit expr])
+
+(defn- make-time [hour minute second]
+  (h2x/with-database-type-info [:make_time hour minute second] "time"))
+
+(defn- time-trunc [unit expr]
+  (let [hour   [::pg-conversion (extract :hour expr) :integer]
+        minute (if (#{:minute :second} unit)
+                 [::pg-conversion (extract :minute expr) :integer]
+                 [:inline 0])
+        second (if (= unit :second)
+                 [::pg-conversion (extract :second expr) ::double]
+                 [:inline 0.0])]
+    (make-time hour minute second)))
+
+(mu/defn ^:private date-trunc
+  [unit :- ::lib.schema.temporal-bucketing/unit.date-time.truncate
+   expr]
+  (condp = (h2x/database-type expr)
+    ;; apparently there is no convenient way to truncate a TIME column in Postgres, you can try to use `date_trunc`
+    ;; but it returns an interval (??) and other insane things. This seems to be slightly less insane.
+    "time"
+    (time-trunc unit expr)
+
+    "timetz"
+    (h2x/cast "timetz" (time-trunc unit expr))
+
+    #_else
+    (let [expr' (->timestamp expr)]
+      (-> [:date_trunc (h2x/literal unit) expr']
+          (h2x/with-database-type-info (h2x/database-type expr'))))))
 
 (defn- extract-from-timestamp [unit expr]
   (extract unit (->timestamp expr)))
@@ -718,9 +747,9 @@
     (fn []
       (try
         (parent-thunk)
-        (catch Throwable _
+        (catch Throwable e
           (let [s (.getString rs i)]
-            (log/tracef "Error in Postgres JDBC driver reading TIME value, fetching as string '%s'" s)
+            (log/tracef e "Error in Postgres JDBC driver reading TIME value, fetching as string '%s'" s)
             (u.date/parse s)))))))
 
 ;; The postgres JDBC driver cannot properly read MONEY columns — see https://github.com/pgjdbc/pgjdbc/issues/425. Work
@@ -752,13 +781,17 @@
 (defmethod driver/upload-type->database-type :postgres
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar_255 "VARCHAR(255)"
-    ::upload/text        "TEXT"
-    ::upload/int         "BIGINT"
-    ::upload/float       "FLOAT"
-    ::upload/boolean     "BOOLEAN"
-    ::upload/date        "DATE"
-    ::upload/datetime    "TIMESTAMP"))
+    ::upload/varchar-255              [[:varchar 255]]
+    ::upload/text                     [:text]
+    ::upload/int                      [:bigint]
+    ::upload/int-pk                   [:bigint :primary-key]
+    ::upload/auto-incrementing-int-pk [:bigserial]
+    ::upload/string-pk                [[:varchar 255] :primary-key]
+    ::upload/float                    [:float]
+    ::upload/boolean                  [:boolean]
+    ::upload/date                     [:date]
+    ::upload/datetime                 [:timestamp]
+    ::upload/offset-datetime          [:timestamp-with-time-zone]))
 
 (defmethod driver/table-name-length-limit :postgres
   [_driver]
@@ -825,32 +858,34 @@
     (jdbc/query
      conn-spec
      (str/join
-        "\n"
-        ["with table_privileges as ("
-         "select"
-         "  NULL as role,"
-         "  t.schemaname as schema,"
-         "  t.tablename as table,"
-         "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'SELECT') as select,"
-         "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'UPDATE') as update,"
-         "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'INSERT') as insert,"
-         "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'DELETE') as delete"
-         "from pg_catalog.pg_tables t"
-         "where t.schemaname !~ '^pg_'"
-         "  and t.schemaname <> 'information_schema'"
-         "  and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
-         ")"
-         "select t.*"
-         "from table_privileges t"
-         "where t.select or t.update or t.insert or t.delete"]))))
+      "\n"
+      ["with table_privileges as ("
+       "select"
+       "  NULL as role,"
+       "  t.schemaname as schema,"
+       "  t.tablename as table,"
+       "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'SELECT') as select,"
+       "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'UPDATE') as update,"
+       "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'INSERT') as insert,"
+       "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'DELETE') as delete"
+       "from pg_catalog.pg_tables t"
+       "where t.schemaname !~ '^pg_'"
+       "  and t.schemaname <> 'information_schema'"
+       "  and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
+       ")"
+       "select t.*"
+       "from table_privileges t"
+       "where t.select or t.update or t.insert or t.delete"]))))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
 (defmethod driver.sql/set-role-statement :postgres
   [_ role]
-  (if (= (u/upper-case-en role) "NONE")
-   (format "SET ROLE %s;" role)
-   (format "SET ROLE \"%s\";" role)))
+  (let [special-chars-pattern #"[^a-zA-Z0-9_]"
+        needs-quote           (re-find special-chars-pattern role)]
+    (if needs-quote
+      (format "SET ROLE \"%s\";" role)
+      (format "SET ROLE %s;" role))))
 
 (defmethod driver.sql/default-database-role :postgres
   [_ _]

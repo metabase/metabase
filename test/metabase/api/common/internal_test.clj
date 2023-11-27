@@ -140,7 +140,7 @@
                                         :lonlat [0.0 0.0]}}))))
         (is (some (fn [{message :msg, :as entry}]
                     (when (str/includes? (str message)
-                                         (str "Unexpected parameters at [:post \"/post/test-address\"]: [:tags :address :id]\n"
+                                         (str "Unexpected parameters at [:post \"/post/test-address\"]: [:tags :id]\n"
                                               "Please add them to the schema or remove them from the API client"))
                       entry))
                   (mb.logger/messages))))
@@ -257,7 +257,7 @@
   (are [method route expected] (= expected
                                   (internal/route-fn-name method route))
     'GET "/"                    'GET_
-    'GET "/:id/cards"           'GET_:id_cards
+    'GET "/:id/fks"             'GET_:id_fks
     ;; check that internal/route-fn-name can handle routes with regex conditions
     'GET ["/:id" :id #"[0-9]+"] 'GET_:id))
 

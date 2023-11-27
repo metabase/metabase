@@ -4,7 +4,7 @@
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.email.messages :as messages]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -13,7 +13,8 @@
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.string :as u.str]))
 
 (set! *warn-on-reflection* true)
 
@@ -23,12 +24,21 @@
          "Please use a new Slack app integration instead."))
   :deprecated "0.42.0"
   :visibility :settings-manager
-  :doc        false)
+  :doc        false
+  :audit      :never)
 
 (defsetting slack-app-token
   (deferred-tru
-    (str "Bot user OAuth token for connecting the Metabase Slack app. "
-         "This should be used for all new Slack integrations starting in Metabase v0.42.0.")))
+   (str "Bot user OAuth token for connecting the Metabase Slack app. "
+        "This should be used for all new Slack integrations starting in Metabase v0.42.0."))
+  :visibility :settings-manager
+  :getter (fn []
+            (-> (setting/get-value-of-type :string :slack-app-token)
+                (u.str/mask 9))))
+
+(defn- unobfuscated-slack-app-token
+  []
+  (setting/get-value-of-type :string :slack-app-token))
 
 (defsetting slack-token-valid?
   (deferred-tru
@@ -36,7 +46,8 @@
          "Set to 'false' if a Slack API request returns an auth error."))
   :type       :boolean
   :visibility :settings-manager
-  :doc        false)
+  :doc        false
+  :audit      :never)
 
 (defn process-files-channel-name
   "Converts empty strings to `nil`, and removes leading `#` from the channel name if present."
@@ -47,8 +58,9 @@
 (defsetting slack-cached-channels-and-usernames
   "A cache shared between instances for storing an instance's slack channels and users."
   :visibility :internal
-  :type :json
-  :doc  false)
+  :type       :json
+  :doc        false
+  :audit      :never)
 
 (def ^:private zoned-time-epoch (t/zoned-date-time 1970 1 1 0))
 
@@ -58,12 +70,14 @@
   :cache?     false
   :type       :timestamp
   :default    zoned-time-epoch
-  :doc        false)
+  :doc        false
+  :audit      :never)
 
 (defsetting slack-files-channel
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
   :default "metabase_files"
   :visibility :settings-manager
+  :audit      :getter
   :setter (fn [channel-name]
             (setting/set-value-of-type! :string :slack-files-channel (process-files-channel-name channel-name))))
 
@@ -115,7 +129,7 @@
 (defn- do-slack-request [request-fn endpoint request]
   (let [token (or (get-in request [:query-params :token])
                   (get-in request [:form-params :token])
-                  (slack-app-token)
+                  (unobfuscated-slack-app-token)
                   (slack-token))]
     (when token
       (let [url     (str "https://slack.com/api/" (name endpoint))

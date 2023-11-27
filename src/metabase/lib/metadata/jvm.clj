@@ -1,15 +1,15 @@
 (ns metabase.lib.metadata.jvm
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
   (:require
+   [clojure.string :as str]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting]
+   [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.snake-hating-map :as u.snake-hating-map]
    [methodical.core :as methodical]
@@ -17,31 +17,13 @@
    [pretty.core :as pretty]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]
-   [toucan2.model :as t2.model]))
+   [toucan2.model :as t2.model]
+   [toucan2.pipeline :as t2.pipeline]
+   [toucan2.query :as t2.query]))
 
-(def ^:private MetadataType
-  [:enum
-   :metadata/database
-   :metadata/table
-   :metadata/column
-   :metadata/card
-   :metadata/metric
-   :metadata/segment])
-
-(mu/defn ^:private metadata-type->model :- :keyword
-  [metadata-type :- MetadataType]
-  (case metadata-type
-    :metadata/database :model/Database
-    :metadata/table    :model/Table
-    :metadata/column   :model/Field
-    :metadata/card     :model/Card
-    :metadata/metric   :model/Metric
-    :metadata/segment  :model/Segment))
-
-(defmulti ^:private select
-  {:arglists '([metadata-type database-id condition])}
-  (fn [metadata-type _database-id _condition]
-    (keyword metadata-type)))
+(defn- qualified-key? [k]
+  (or (qualified-keyword? k)
+      (str/includes? k ".")))
 
 (defn instance->metadata
   "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a MLv2 style
@@ -52,257 +34,301 @@
       (assoc :lib/type metadata-type)
       u.snake-hating-map/snake-hating-map))
 
-(defmethod select :default
-  [metadata-type _database-id condition]
-  (into []
-        (map #(instance->metadata % metadata-type))
-        (let [model (metadata-type->model metadata-type)]
-          (t2/reducible-select model
-                               {:select [:*]
-                                :from   [[(t2/table-name model) :model]]
-                                :where  condition}))))
+;;;
+;;; Database
+;;;
 
-(defmethod select :metadata/database
-  [_metadata-type _database-id condition]
-  (into []
-        (map (fn [database]
-               (u.snake-hating-map/snake-hating-map
-                (merge
-                 {:lib/type     :metadata/database
-                  :id           (:id database)
-                  :engine       (:engine database)
-                  :name         (:name database)
-                  :dbms-version (:dbms_version database)
-                  :settings     (:settings database)
-                  :is-audit     (:is_audit database)
-                  :features     (:features database)}
-                 (when-let [details (:details database)]
-                   ;; ignore encrypted details that we cannot decrypt, because that breaks schema
-                   ;; validation
-                   (when (map? details)
-                     {:details details}))))))
-        (t2/reducible-select :model/Database
-                             {:select [:id :engine :name :dbms_version :details :settings :is_audit]
-                              :from   [[(t2/table-name :model/Database) :model]]
-                              :where  condition})))
+(derive :metadata/database :model/Database)
 
-(mu/defmethod select :metadata/table
-  [_metadata-type
-   database-id :- ::lib.schema.id/database
-   condition]
-  (into []
-        (map (fn [table]
-               (u.snake-hating-map/snake-hating-map
-                {:lib/type     :metadata/table
-                 :id           (:id table)
-                 :name         (:name table)
-                 :display-name (:display_name table)
-                 :schema       (:schema table)})))
-        (t2/reducible-select :model/Table
-                             {:select [:id :name :display_name :schema]
-                              :from   [[(t2/table-name :model/Table) :model]]
-                              :where  [:and
-                                       [:= :model.db_id database-id]
-                                       condition]})))
+(methodical/defmethod t2.model/resolve-model :metadata/database
+  [model]
+  (classloader/require 'metabase.models.database)
+  model)
 
-(derive ::Field :model/Field)
+(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
+                                         #_model          :metadata/database
+                                         #_resolved-query clojure.lang.IPersistentMap]
+  [query-type model parsed-arg honeysql]
+  (merge (next-method query-type model parsed-arg honeysql)
+         {:select [:id :engine :name :dbms_version :settings :is_audit :details]}))
 
-(methodical/defmethod t2.model/model->namespace ::Field
+(t2/define-after-select :metadata/database
+  [database]
+  ;; ignore encrypted details that we cannot decrypt, because that breaks schema
+  ;; validation
+  (let [database (instance->metadata database :metadata/database)]
+    (cond-> database
+      (not (map? (:details database))) (dissoc :details))))
+
+;;;
+;;; Table
+;;;
+
+(derive :metadata/table :model/Table)
+
+(methodical/defmethod t2.model/resolve-model :metadata/table
+  [model]
+  (classloader/require 'metabase.models.table)
+  model)
+
+(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
+                                         #_model          :metadata/table
+                                         #_resolved-query clojure.lang.IPersistentMap]
+  [query-type model parsed-arg honeysql]
+  (merge (next-method query-type model parsed-arg honeysql)
+         {:select [:id :db_id :name :display_name :schema :active :visibility_type]}))
+
+(t2/define-after-select :metadata/table
+  [table]
+  (instance->metadata table :metadata/table))
+
+;;;
+;;; Field
+;;;
+
+(derive :metadata/column :model/Field)
+
+(methodical/defmethod t2.model/resolve-model :metadata/column
+  [model]
+  (classloader/require 'metabase.models.dimension
+                       'metabase.models.field
+                       'metabase.models.field-values
+                       'metabase.models.table)
+  model)
+
+(methodical/defmethod t2.model/model->namespace :metadata/column
+  ":metadata/column joins Dimension and FieldValues by default; namespace their columns so we can distinguish them from
+  the columns coming back from Field."
   [_model]
   {:model/Dimension   "dimension"
    :model/FieldValues "values"})
 
-(mu/defmethod select :metadata/column
-  [_metadata-type
-   database-id :- ::lib.schema.id/database
-   condition]
-  (into []
-        (map (fn [field]
-               (let [dimension-type (some-> (:dimension/type field) keyword)]
-                 (u.snake-hating-map/snake-hating-map
-                  (merge
-                   {:lib/type           :metadata/column
-                    :base-type          (:base_type field)
-                    :coercion-strategy  (:coercion_strategy field)
-                    :database-type      (:database_type field)
-                    :description        (:description field)
-                    :display-name       (:display_name field)
-                    :effective-type     (:effective_type field)
-                    :fingerprint        (:fingerprint field)
-                    :fk-target-field-id (:fk_target_field_id field)
-                    :id                 (:id field)
-                    :name               (:name field)
-                    :nfc-path           (:nfc_path field)
-                    :parent-id          (:parent_id field)
-                    :position           (:position field)
-                    :semantic-type      (:semantic_type field)
-                    :settings           (:settings field)
-                    :table-id           (:table_id field)
-                    :visibility-type    (:visibility_type field)}
-                   (when (and (= dimension-type :external)
-                              (:dimension/human_readable_field_id field))
-                     {:lib/external-remap {:lib/type :metadata.column.remapping/external
-                                           :id       (:dimension/id field)
-                                           :name     (:dimension/name field)
-                                           :field-id (:dimension/human_readable_field_id field)}})
-                   (when (and (= dimension-type :internal)
-                              (:values/values field)
-                              (:values/human_readable_values field))
-                     {:lib/internal-remap {:lib/type              :metadata.column.remapping/internal
-                                           :id                    (:dimension/id field)
-                                           :name                  (:dimension/name field)
-                                           :values                (mi/json-out-with-keywordization
-                                                                   (:values/values field))
-                                           :human-readable-values (mi/json-out-without-keywordization
-                                                                   (:values/human_readable_values field))}}))))))
-        (t2/reducible-select ::Field
-                             {:select    [:model.base_type
-                                          :model.coercion_strategy
-                                          :model.database_type
-                                          :model.description
-                                          :model.display_name
-                                          :model.effective_type
-                                          :model.fingerprint
-                                          :model.fk_target_field_id
-                                          :model.id
-                                          :model.name
-                                          :model.nfc_path
-                                          :model.parent_id
-                                          :model.position
-                                          :model.semantic_type
-                                          :model.settings
-                                          :model.table_id
-                                          :model.visibility_type
-                                          :dimension.id
-                                          :dimension.name
-                                          :dimension.type
-                                          :dimension.human_readable_field_id
-                                          :values.values
-                                          :values.human_readable_values]
-                              :from      [[(t2/table-name :model/Field) :model]]
-                              :left-join [[(t2/table-name :model/Dimension) :dimension]
-                                          [:and
-                                           [:= :dimension.field_id :model.id]
-                                           [:inline [:in :dimension.type ["external" "internal"]]]]
-                                          [(t2/table-name :model/FieldValues) :values]
-                                          [:and
-                                           [:= :values.field_id :model.id]
-                                           [:= :values.type [:inline "full"]]]
-                                          [(t2/table-name :model/Table) :table]
-                                          [:= :model.table_id :table.id]]
-                              :where     [:and
-                                          [:= :table.db_id database-id]
-                                          condition]})))
+(methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/column
+                                             #_resolved-query clojure.lang.IPersistentMap
+                                             #_k              :default]
+  "Qualify unqualified kv-args when fetching a `:metadata/column`."
+  [model honeysql k v]
+  (let [k (if (not (qualified-key? k))
+            (keyword "field" (name k))
+            k)]
+    (next-method model honeysql k v)))
+
+(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
+                                         #_model          :metadata/column
+                                         #_resolved-query clojure.lang.IPersistentMap]
+  [query-type model parsed-arg honeysql]
+  (merge
+   (next-method query-type model parsed-arg honeysql)
+   {:select    [:field/base_type
+                :field/coercion_strategy
+                :field/database_type
+                :field/description
+                :field/display_name
+                :field/effective_type
+                :field/fingerprint
+                :field/fk_target_field_id
+                :field/id
+                :field/name
+                :field/nfc_path
+                :field/parent_id
+                :field/position
+                :field/semantic_type
+                :field/settings
+                :field/table_id
+                :field/visibility_type
+                :dimension/human_readable_field_id
+                :dimension/id
+                :dimension/name
+                :dimension/type
+                :values/human_readable_values
+                :values/values]
+    :from      [[(t2/table-name :model/Field) :field]]
+    :left-join [[(t2/table-name :model/Table) :table]
+                [:= :field/table_id :table/id]
+                [(t2/table-name :model/Dimension) :dimension]
+                [:and
+                 [:= :dimension/field_id :field/id]
+                 [:inline [:in :dimension/type ["external" "internal"]]]]
+                [(t2/table-name :model/FieldValues) :values]
+                [:and
+                 [:= :values/field_id :field/id]
+                 [:= :values/type [:inline "full"]]]]}))
+
+(t2/define-after-select :metadata/column
+  [field]
+  (let [field          (instance->metadata field :metadata/column)
+        dimension-type (some-> (:dimension/type field) keyword)]
+    (merge
+     (dissoc field
+             :dimension/human-readable-field-id :dimension/id :dimension/name :dimension/type
+             :values/human-readable-values :values/values)
+     (when (and (= dimension-type :external)
+                (:dimension/human-readable-field-id field))
+       {:lib/external-remap {:lib/type :metadata.column.remapping/external
+                             :id       (:dimension/id field)
+                             :name     (:dimension/name field)
+                             :field-id (:dimension/human-readable-field-id field)}})
+     (when (and (= dimension-type :internal)
+                (:values/values field)
+                (:values/human-readable-values field))
+       {:lib/internal-remap {:lib/type              :metadata.column.remapping/internal
+                             :id                    (:dimension/id field)
+                             :name                  (:dimension/name field)
+                             :values                (mi/json-out-with-keywordization
+                                                     (:values/values field))
+                             :human-readable-values (mi/json-out-without-keywordization
+                                                     (:values/human-readable-values field))}}))))
+
+;;;
+;;; Card
+;;;
+
+(derive :metadata/card :model/Card)
+
+(methodical/defmethod t2.model/resolve-model :metadata/card
+  [model]
+  (classloader/require 'metabase.models.card
+                       'metabase.models.persisted-info)
+  model)
+
+(methodical/defmethod t2.model/model->namespace :metadata/card
+  [_model]
+  {:model/PersistedInfo "persisted"})
+
+(methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/card
+                                             #_resolved-query clojure.lang.IPersistentMap
+                                             #_k              :default]
+  [model honeysql k v]
+  ()
+  (let [k (if (not (qualified-key? k))
+            (keyword "card" (name k))
+            k)]
+    (next-method model honeysql k v)))
+
+(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
+                                         #_model          :metadata/card
+                                         #_resolved-query clojure.lang.IPersistentMap]
+  [query-type model parsed-arg honeysql]
+  (merge
+   (next-method query-type model parsed-arg honeysql)
+   {:select    [:card/collection_id
+                :card/database_id
+                :card/dataset
+                :card/dataset_query
+                :card/id
+                :card/name
+                :card/result_metadata
+                :card/table_id
+                :card/visualization_settings
+                :persisted/active
+                :persisted/state
+                :persisted/definition
+                :persisted/query_hash
+                :persisted/table_name]
+    :from      [[(t2/table-name :model/Card) :card]]
+    :left-join [[(t2/table-name :model/PersistedInfo) :persisted]
+                [:= :persisted/card_id :card/id]]}))
 
 (defn- parse-persisted-info-definition [x]
   ((get-in (t2/transforms :model/PersistedInfo) [:definition :out] identity) x))
 
-(derive ::Card :model/Card)
+(t2/define-after-select :metadata/card
+  [card]
+  (let [card (instance->metadata card :metadata/card)]
+    (merge
+     (dissoc card :persisted/active :persisted/state :persisted/definition :persisted/query-hash :persisted/table-name)
+     (when (:persisted/definition card)
+       {:lib/persisted-info {:active     (:persisted/active card)
+                             :state      (:persisted/state card)
+                             :definition (parse-persisted-info-definition (:persisted/definition card))
+                             :query-hash (:persisted/query-hash card)
+                             :table-name (:persisted/table-name card)}}))))
 
-(methodical/defmethod t2.model/model->namespace ::Card
-  [_model]
-  {:model/PersistedInfo "persisted"})
+;;;
+;;; Metric
+;;;
 
-(mu/defmethod select :metadata/card
-  [_metadata-type
-   database-id :- ::lib.schema.id/database
-   condition]
-  (into []
-        (map (fn [card]
-               (u.snake-hating-map/snake-hating-map
-                (merge
-                 {:lib/type               :metadata/card
-                  :collection-id          (:collection_id card)
-                  :database-id            (:database_id card)
-                  :dataset                (:dataset card)
-                  :dataset-query          (:dataset_query card)
-                  :id                     (:id card)
-                  :name                   (:name card)
-                  :result-metadata        (:result_metadata card)
-                  :table-id               (:table_id card)
-                  :visualization-settings (:visualization_settings card)}
-                 (when (:persisted/definition card)
-                   {:lib/persisted-info {:active     (:persisted/active card)
-                                         :state      (:persisted/state card)
-                                         :definition (parse-persisted-info-definition (:persisted/definition card))
-                                         :query-hash (:persisted/query_hash card)
-                                         :table-name (:persisted/table_name card)}})))))
-        (t2/reducible-select ::Card
-                             {:select    [:model.collection_id
-                                          :model.database_id
-                                          :model.dataset
-                                          :model.dataset_query
-                                          :model.id
-                                          :model.name
-                                          :model.result_metadata
-                                          :model.table_id
-                                          :model.visualization_settings
-                                          :persisted_info.active
-                                          :persisted_info.state
-                                          :persisted_info.definition
-                                          :persisted_info.query_hash
-                                          :persisted_info.table_name]
-                              :from      [[(t2/table-name :model/Card) :model]]
-                              :left-join [[(t2/table-name :model/PersistedInfo) :persisted_info]
-                                          [:= :persisted_info.card_id :model.id]]
-                              :where     [:and
-                                          [:= :model.database_id database-id]
-                                          condition]})))
+(derive :metadata/metric :model/Metric)
 
-(defn- bulk-instances
-  "Fetch bulk instances with `metadata-type`. `database-id` is the ID the application database metadata provider was
-  initialized with; it may be `nil` in some situations where it is used outside of the QP (see for
-  example [[metabase.models.segment/warmed-metadata-provider]]). `ids` is a set of IDs to fetch.
+(methodical/defmethod t2.model/resolve-model :metadata/metric
+  [model]
+  (classloader/require 'metabase.models.metric
+                       'metabase.models.table)
+  model)
 
-  The [[lib.metadata.cached-provider/cached-metadata-provider]] layer on top of this should take care of filtering out
-  and returning `ids` that have already been fetched."
-  [metadata-type database-id ids]
-  (when (seq ids)
-    (let [model (metadata-type->model metadata-type)]
-      (log/debugf "Fetching instances of %s with ID in %s" model (pr-str ids))
-      (select metadata-type database-id [:in :model.id ids]))))
+(methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/metric
+                                             #_resolved-query clojure.lang.IPersistentMap
+                                             #_k              :default]
+  [model honeysql k v]
+  (let [k (if (not (qualified-key? k))
+            (keyword "metric" (name k))
+            k)]
+    (next-method model honeysql k v)))
 
-(mu/defn ^:private fetch-instance
-  [metadata-type :- MetadataType
-   database-id   :- ::lib.schema.id/database
-   id            :- ::lib.schema.common/positive-int]
-  (first (bulk-instances metadata-type database-id #{id})))
+(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
+                                         #_model          :metadata/metric
+                                         #_resolved-query clojure.lang.IPersistentMap]
+  [query-type model parsed-arg honeysql]
+  (merge
+   (next-method query-type model parsed-arg honeysql)
+   {:select    [:metric/id
+                :metric/table_id
+                :metric/name
+                :metric/description
+                :metric/archived
+                :metric/definition]
+    :from      [[(t2/table-name :model/Metric) :metric]]
+    :left-join [[(t2/table-name :model/Table) :table]
+                [:= :metric/table_id :table/id]]}))
 
-(mu/defn ^:private tables
-  [database-id :- ::lib.schema.id/database]
-  (when-not database-id
-    (throw (ex-info (format "Cannot use %s with %s with a nil Database ID"
-                            `lib.metadata.protocols/tables
-                            `UncachedApplicationDatabaseMetadataProvider)
-                    {})))
-  (log/debugf "Fetching all Tables for normally-visible Database %d" database-id)
-  (select :metadata/table
-          database-id
-          [:and
-           [:= :model.active true]
-           [:not-in
-            :model.visibility_type
-            [[:inline "hidden"]
-             [:inline "technical"]
-             [:inline "cruft"]]]]))
+(t2/define-after-select :metadata/metric
+  [metric]
+  (instance->metadata metric :metadata/metric))
 
-(mu/defn ^:private fields
-  [database-id :- ::lib.schema.id/database
-   table-id    :- ::lib.schema.id/table]
-  (log/debugf "Fetching all normally-visible Fields for Table %d" table-id)
-  (select :metadata/column
-          database-id
-          [:and
-           [:= :model.table_id table-id]
-           [:= :model.active true]
-           [:not-in :model.visibility_type [[:inline "sensitive"]
-                                            [:inline "retired"]]]]))
+;;;
+;;; Segment
+;;;
 
-(mu/defn ^:private metrics
-  [database-id :- ::lib.schema.id/database
-   table-id    :- ::lib.schema.id/table]
-  (log/debugf "Fetching all Metrics for Table %d" table-id)
-  (select :metadta/metric database-id [:= :model.table_id table-id]))
+(derive :metadata/segment :model/Segment)
+
+(methodical/defmethod t2.model/resolve-model :metadata/segment
+  [model]
+  (classloader/require 'metabase.models.segment
+                       'metabase.models.table)
+  model)
+
+(methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/segment
+                                             #_resolved-query clojure.lang.IPersistentMap
+                                             #_k              :default]
+  [model honeysql k v]
+  (let [k (if (not (qualified-key? k))
+            (keyword "segment" (name k))
+            k)]
+    (next-method model honeysql k v)))
+
+(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
+                                         #_model          :metadata/segment
+                                         #_resolved-query clojure.lang.IPersistentMap]
+  [query-type model parsed-arg honeysql]
+  (merge
+   (next-method query-type model parsed-arg honeysql)
+   {:select    [:segment/id
+                :segment/table_id
+                :segment/name
+                :segment/description
+                :segment/archived
+                :segment/definition]
+    :from      [[(t2/table-name :model/Segment) :segment]]
+    :left-join [[(t2/table-name :model/Table) :table]
+                [:= :segment/table_id :table/id]]}))
+
+(t2/define-after-select :metadata/segment
+  [segment]
+  (instance->metadata segment :metadata/segment))
+
+;;;
+;;; MetadataProvider
+;;;
 
 (p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
   lib.metadata.protocols/MetadataProvider
@@ -312,29 +338,45 @@
                               `lib.metadata.protocols/database
                               `UncachedApplicationDatabaseMetadataProvider)
                       {})))
-    (fetch-instance :metadata/database database-id database-id))
+    (t2/select-one :metadata/database database-id))
 
-  (table   [_this table-id]   (fetch-instance :metadata/table   database-id table-id))
-  (field   [_this field-id]   (fetch-instance :metadata/column  database-id field-id))
-  (card    [_this card-id]    (fetch-instance :metadata/card    database-id card-id))
-  (metric  [_this metric-id]  (fetch-instance :metadata/metric  database-id metric-id))
-  (segment [_this segment-id] (fetch-instance :metadata/segment database-id segment-id))
+  (table   [_this table-id]   (t2/select-one :metadata/table   :id table-id   :db_id       database-id))
+  (field   [_this field-id]   (t2/select-one :metadata/column  :id field-id   :table/db_id database-id))
+  (card    [_this card-id]    (t2/select-one :metadata/card    :id card-id    :database_id database-id))
+  (metric  [_this metric-id]  (t2/select-one :metadata/metric  :id metric-id  :table/db_id database-id))
+  (segment [_this segment-id] (t2/select-one :metadata/segment :id segment-id :table/db_id database-id))
 
   (tables [_this]
-    (tables database-id))
+    (t2/select :metadata/table
+               :db_id           database-id
+               :active          true
+               :visibility_type [:not-in #{"hidden" "technical" "cruft"}]))
 
   (fields [_this table-id]
-    (fields database-id table-id))
+    (t2/select :metadata/column
+               :table_id        table-id
+               :active          true
+               :visibility_type [:not-in #{"sensitive" "retired"}]))
 
   (metrics [_this table-id]
-    (metrics database-id table-id))
+    (t2/select :metadata/metric :table_id table-id, :archived false))
+
+  (segments [_this table-id]
+    (t2/select :metadata/segment :table_id table-id, :archived false))
 
   (setting [_this setting-name]
     (setting/get setting-name))
 
   lib.metadata.protocols/BulkMetadataProvider
   (bulk-metadata [_this metadata-type ids]
-    (bulk-instances metadata-type database-id ids))
+    (let [database-id-key (case metadata-type
+                            :metadata/table :db_id
+                            :metadata/card  :database_id
+                            :table/db_id)]
+      (when (seq ids)
+        (t2/select metadata-type
+                   database-id-key database-id
+                   :id             [:in (set ids)]))))
 
   pretty/PrettyPrintable
   (pretty [_this]

@@ -76,7 +76,7 @@ describe("issue 31769", () => {
 
     cy.get("@card_id_q2").then(cardId => {
       cy.findByTestId("TableInteractive-root")
-        .findByText(`Question ${cardId} → Category`)
+        .findByText(`Q2 - Products → Category → Category`)
         .should("exist");
     });
 

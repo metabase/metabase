@@ -10,7 +10,7 @@ import {
   getMode,
   getQueryMode,
 } from "metabase/visualizations/click-actions/lib/modes";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import type { Filter } from "metabase-types/api";
 import { SegmentMode } from "metabase/visualizations/click-actions/modes/SegmentMode";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";

@@ -915,8 +915,9 @@
               previous        (format-cell timezone-id previous-value metric-col viz-settings)
               adj             (if (pos? last-change) (tru "Up") (tru "Down"))
               delta-statement (if (= last-value previous-value)
-                                "No change."
-                                (str adj " " (percentage last-change) "."))]
+                                "No change"
+                                (str adj " " (percentage last-change)))
+              comparison-statement (str " vs. previous " (format-unit unit) ": " previous)]
           {:attachments nil
            :content     [:div
                          [:div {:style (style/style (style/scalar-style))}
@@ -926,10 +927,10 @@
                                                    :font-weight   700
                                                    :padding-right :16px})}
                           delta-statement
-                          " Was " previous " last " (format-unit unit)]]
+                          comparison-statement]]
            :render/text (str value "\n"
                              delta-statement
-                             " Was " previous " last " (format-unit unit))})
+                             comparison-statement)})
         ;; In other words, defaults to plain scalar if we don't have actual changes
         {:attachments nil
          :content     [:div

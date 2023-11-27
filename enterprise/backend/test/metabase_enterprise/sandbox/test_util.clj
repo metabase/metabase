@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sandbox.test-util
   "Shared test utilities for sandbox tests."
   (:require
+   [mb.hawk.parallel]
    [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
    [metabase.models.card :refer [Card]]
    [metabase.models.permissions :as perms]
@@ -19,6 +20,7 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn do-with-user-attributes [test-user-name-or-user-id attributes-map thunk]
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-user-attributes")
   (let [user-id (test.users/test-user-name-or-user-id->user-id test-user-name-or-user-id)]
     (tu/with-temp-vals-in-db User user-id {:login_attributes attributes-map}
       (thunk))))
@@ -62,6 +64,7 @@
    (s/pred map?)})
 
 (defn do-with-gtaps-for-user [args-fn test-user-name-or-user-id f]
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-gtaps-for-user")
   (letfn [(thunk []
             ;; remove perms for All Users group
             (perms/revoke-data-perms! (perms-group/all-users) (data/db))

@@ -239,7 +239,7 @@
                                                  :fingerprint {:type {:type/Number {:min nil, :max nil}}}}]})
       (is (=? {:status :failed
                :class  (partial = clojure.lang.ExceptionInfo)
-               :error  "Unable to bin Field without a min/max value"}
+               :error  "Unable to bin Field without a min/max value (missing or incomplete fingerprint)"}
               (qp/process-userland-query
                (mt/mbql-query venues
                  {:aggregation [[:count]]

@@ -17,7 +17,11 @@ import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import Question from "metabase-lib/Question";
 
 import { isVirtualDashCard } from "../utils";
-import { getDashboardId } from "./selectors-typed";
+import {
+  getDashboardId,
+  getDashCardById,
+  getDashcards,
+} from "./selectors-typed";
 
 export const getIsEditing = state => !!state.dashboard.isEditing;
 export const getDashboardBeforeEditing = state => state.dashboard.isEditing;
@@ -28,7 +32,6 @@ export const getClickBehaviorSidebarDashcard = state => {
     : null;
 };
 export const getDashboards = state => state.dashboard.dashboards;
-export const getDashcards = state => state.dashboard.dashcards;
 export const getCardData = state => state.dashboard.dashcardData;
 export const getSlowCards = state => state.dashboard.slowCards;
 export const getParameterValues = state => state.dashboard.parameterValues;
@@ -77,6 +80,9 @@ export const getIsShowDashboardInfoSidebar = createSelector(
   sidebar => sidebar.name === SIDEBAR_NAME.info,
 );
 
+/**
+ * @type {(state: import("metabase-types/store").State) => import("metabase-types/api").Dashboard}
+ */
 export const getDashboard = createSelector(
   [getDashboardId, getDashboards],
   (dashboardId, dashboards) => dashboards[dashboardId],
@@ -87,11 +93,6 @@ export const getLoadingDashCards = state => state.dashboard.loadingDashCards;
 export const getDashboardById = (state, dashboardId) => {
   const dashboards = getDashboards(state);
   return dashboards[dashboardId];
-};
-
-export const getDashCardById = (state, dashcardId) => {
-  const dashcards = getDashcards(state);
-  return dashcards[dashcardId];
 };
 
 export const getSingleDashCardData = (state, dashcardId) => {
@@ -120,7 +121,7 @@ export const getDashboardComplete = createSelector(
       return null;
     }
 
-    const ordered_cards = dashboard.ordered_cards
+    const orderedDashcards = dashboard.dashcards
       .map(id => dashcards[id])
       .filter(dc => !dc.isRemoved)
       .sort((a, b) => {
@@ -138,7 +139,7 @@ export const getDashboardComplete = createSelector(
     return (
       dashboard && {
         ...dashboard,
-        ordered_cards,
+        dashcards: orderedDashcards,
       }
     );
   },
@@ -217,7 +218,7 @@ export const getIsDirty = createSelector(
       dashboard &&
       (dashboard.isDirty ||
         _.some(
-          dashboard.ordered_cards,
+          dashboard.dashcards,
           id =>
             !(dashcards[id].isAdded && dashcards[id].isRemoved) &&
             (dashcards[id].isDirty ||

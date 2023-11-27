@@ -522,8 +522,7 @@ class TableInteractive extends Component {
     );
 
     const isLink = cellData && cellData.type === ExternalLink;
-    const isClickable =
-      !isLink && !isScrolling && this.visualizationIsClickable(clicked);
+    const isClickable = !isLink && !isScrolling;
     const backgroundColor = this.getCellBackgroundColor(
       settings,
       value,
@@ -532,6 +531,22 @@ class TableInteractive extends Component {
     );
 
     const isCollapsed = this.isColumnWidthTruncated(columnIndex);
+
+    const handleClick = e => {
+      if (!isClickable || !this.visualizationIsClickable(clicked)) {
+        return;
+      }
+      this.onVisualizationClick(clicked, e.currentTarget);
+    };
+
+    const handleKeyUp = e => {
+      if (!isClickable || !this.visualizationIsClickable(clicked)) {
+        return;
+      }
+      if (e.key === "Enter") {
+        this.onVisualizationClick(clicked, e.currentTarget);
+      }
+    };
 
     return (
       <div
@@ -560,21 +575,8 @@ class TableInteractive extends Component {
             link: isClickable && isID(column),
           },
         )}
-        onClick={
-          isClickable
-            ? e => {
-                this.onVisualizationClick(clicked, e.currentTarget);
-              }
-            : undefined
-        }
-        onKeyUp={
-          isClickable
-            ? e => {
-                e.key === "Enter" &&
-                  this.onVisualizationClick(clicked, e.currentTarget);
-              }
-            : undefined
-        }
+        onClick={handleClick}
+        onKeyUp={handleKeyUp}
         onMouseEnter={
           showDetailShortcut ? e => this.handleHoverRow(e, rowIndex) : undefined
         }

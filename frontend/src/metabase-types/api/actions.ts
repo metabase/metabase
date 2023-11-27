@@ -1,10 +1,7 @@
 import type { Parameter, ParameterId, ParameterTarget } from "./parameters";
 import type { NativeDatasetQuery } from "./query";
 import type { ClickBehavior } from "./click-behavior";
-import type {
-  BaseDashboardOrderedCard,
-  DashboardParameterMapping,
-} from "./dashboard";
+import type { BaseDashboardCard, DashboardParameterMapping } from "./dashboard";
 import type { Card, CardId } from "./card";
 import type { DatabaseId } from "./database";
 import type { UserId, UserInfo } from "./user";
@@ -172,7 +169,7 @@ export type ActionParametersMapping = Pick<
 >;
 
 export interface ActionDashboardCard
-  extends Omit<BaseDashboardOrderedCard, "parameter_mappings"> {
+  extends Omit<BaseDashboardCard, "parameter_mappings"> {
   action?: WritebackAction;
   card_id?: CardId | null; // model card id for the associated action
   card?: Card;

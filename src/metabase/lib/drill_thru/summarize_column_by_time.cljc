@@ -22,7 +22,8 @@
              column
              (nil? value)
              (not (lib.types.isa/structured? column))
-             (lib.types.isa/summable? column))
+             (lib.types.isa/summable? column)
+             (not= (:lib/source column) :source/aggregations))
     ;; There must be a date dimension available.
     (when-let [breakout-column (m/find-first lib.types.isa/temporal?
                                              (lib.breakout/breakoutable-columns query stage-number))]

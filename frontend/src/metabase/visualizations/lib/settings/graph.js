@@ -41,7 +41,7 @@ const HISTOGRAM_DATE_EXTRACTS = new Set([
 ]);
 
 export function getDefaultDimensionLabel(multipleSeries) {
-  return multipleSeries.length > 0
+  return multipleSeries.length > 0 && multipleSeries[0].data.cols[0]
     ? getFriendlyName(multipleSeries[0].data.cols[0])
     : null;
 }

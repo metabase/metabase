@@ -15,7 +15,7 @@ import cx from "classnames";
 
 export default class IconBorder extends Component {
   static propTypes = {
-    borderWidth: PropTypes.string,
+    borderWidth: PropTypes.oneOf([PropTypes.string, PropTypes.number]),
     borderStyle: PropTypes.string,
     borderColor: PropTypes.string,
     borderRadius: PropTypes.string,

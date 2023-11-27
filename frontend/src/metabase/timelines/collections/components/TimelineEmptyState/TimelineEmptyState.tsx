@@ -1,4 +1,5 @@
 import { t } from "ttag";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link";

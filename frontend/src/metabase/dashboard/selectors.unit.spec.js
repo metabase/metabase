@@ -18,7 +18,7 @@ const STATE = {
     dashboardId: 0,
     dashboards: {
       0: {
-        ordered_cards: [0, 1],
+        dashcards: [0, 1],
         parameters: [],
       },
     },
@@ -344,7 +344,7 @@ describe("dashboard/selectors", () => {
 
   describe("getDashboardComplete", () => {
     const multiCardState = chain(STATE)
-      .assocIn(["dashboard", "dashboards", 0, "ordered_cards"], [0, 1, 2])
+      .assocIn(["dashboard", "dashboards", 0, "dashcards"], [0, 1, 2])
       .assocIn(["dashboard", "dashcards", 2], {
         card: { id: 2, dataset_query: { type: "query", query: {} } },
         parameter_mappings: [],
@@ -369,7 +369,7 @@ describe("dashboard/selectors", () => {
         .assocIn(["dashboard", "dashcards", 2, "isRemoved"], true)
         .value();
 
-      expect(getDashboardComplete(state).ordered_cards).toEqual([
+      expect(getDashboardComplete(state).dashcards).toEqual([
         multiCardState.dashboard.dashcards[1],
       ]);
     });
@@ -381,7 +381,7 @@ describe("dashboard/selectors", () => {
         { row: 0, col: 2 },
       ]);
 
-      const cards = getDashboardComplete(state).ordered_cards;
+      const cards = getDashboardComplete(state).dashcards;
 
       expect(cards[2].card.id).toBe(0);
       expect(cards[1].card.id).toBe(1);
@@ -395,7 +395,7 @@ describe("dashboard/selectors", () => {
         { row: 0, col: 0 },
       ]);
 
-      const cards = getDashboardComplete(state).ordered_cards;
+      const cards = getDashboardComplete(state).dashcards;
 
       expect(cards[2].card.id).toBe(0);
       expect(cards[1].card.id).toBe(1);

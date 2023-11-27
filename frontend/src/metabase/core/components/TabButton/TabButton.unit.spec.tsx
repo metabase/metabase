@@ -61,7 +61,7 @@ describe("TabButton", () => {
     const { onRename } = setup();
 
     userEvent.click(getIcon("chevrondown"));
-    (await screen.findByRole("option", { name: "Rename" })).click();
+    (await renameOption()).click();
 
     const newLabel = "A new label";
     const inputEl = screen.getByRole("textbox");
@@ -85,4 +85,23 @@ describe("TabButton", () => {
     expect(onRename).toHaveBeenCalledWith(newLabel);
     expect(await screen.findByDisplayValue(newLabel)).toBeInTheDocument();
   });
+
+  it("should limit the length to 75 chars", async () => {
+    const { onRename } = setup();
+
+    userEvent.click(getIcon("chevrondown"));
+    (await renameOption()).click();
+
+    const newLabel = "a".repeat(100);
+    const expectedLabel = newLabel.slice(0, 75);
+
+    const inputEl = screen.getByRole("textbox");
+    userEvent.type(inputEl, newLabel);
+    userEvent.type(inputEl, "{enter}");
+
+    expect(onRename).toHaveBeenCalledWith(expectedLabel);
+    expect(await screen.findByDisplayValue(expectedLabel)).toBeInTheDocument();
+  });
 });
+
+const renameOption = () => screen.findByRole("option", { name: "Rename" });

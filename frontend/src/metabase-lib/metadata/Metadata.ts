@@ -19,6 +19,7 @@ import type Field from "./Field";
 import type Metric from "./Metric";
 import type Segment from "./Segment";
 import { getUniqueFieldId } from "./utils/fields";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "./utils/saved-questions";
 
 interface MetadataOpts {
   databases?: Record<string, Database>;
@@ -91,6 +92,10 @@ class Metadata {
 
   database(databaseId: DatabaseId | undefined | null): Database | null {
     return (databaseId != null && this.databases[databaseId]) || null;
+  }
+
+  savedQuestionsDatabase() {
+    return this.databases[SAVED_QUESTIONS_VIRTUAL_DB_ID];
   }
 
   schema(schemaId: SchemaId | undefined | null): Schema | null {

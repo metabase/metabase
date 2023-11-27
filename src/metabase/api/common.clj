@@ -1,3 +1,41 @@
+;; # API Endpoints at Metabase
+;;
+;; We use a custom macro called `defendpoint` for defining all endpoints. It's best illustrated with an example:
+;;
+;; <pre><code>
+;; (ns metabase.api.dashboard ...)
+;;
+;; (api/defendpoint GET "/"
+;;  "Get `Dashboards`. With filter option `f`..."
+;;  [f]
+;;  {f [:maybe [:enum "all" "mine" "archived"]]}
+;;  (let ...))
+;;
+;;  ; ...
+;;
+;; (api/define-routes)
+;; </code></pre>
+;;
+;; As you can see, the arguments are:
+;;
+;; * **The HTTP verb.**  (`GET`, `PUT`, `POST`, etc)
+;; * **The route.** This will automatically have `api` and the namespace prefixed to it, so in this case `"/"` is defining
+;;   the route for `/api/dashboard/`.
+;; * **A docstring.** Apart from being helpful to us, this is used for API documentation for third-party devs, so please
+;;   be thorough!
+;; * **A schema.** This uses [Malli's vector syntax](https://github.com/metosin/malli#vector-syntax). This is documented
+;;   on Malli's page, of course, but we also have some of our own schemas defined. Start by looking in
+;;   [`metabase.util.malli.schema`](#metabase.util.malli.schema)
+;; * **The parameters.** This uses Compojure's
+;;   [destructuring syntax](https://github.com/weavejester/compojure/wiki/Destructuring-Syntax) (a superset of Clojure's
+;;   normal destructuring syntax).
+;; * **The actual code for the endpoint.** The returned value could be one of several types. The Right Thing (such as
+;;   converting to JSON or setting an appropriate status code) usually happens by default. Consult
+;;   [Compojure's documentation](https://github.com/weavejester/compojure/blob/master/src/compojure/response.clj),
+;;   but it may be more instructive to look at examples in our codebase.
+;;
+;;  <hr />
+
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require
@@ -14,6 +52,7 @@
             route-fn-name
             wrap-response-if-needed]]
    [metabase.config :as config]
+   [metabase.events :as events]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
@@ -272,7 +311,7 @@
   [{:keys [method route fn-name docstr args body arg->schema]}]
   {:pre [(or (string? route) (vector? route))]}
   (let [method-kw       (method-symbol->keyword method)
-        allowed-params  (keys arg->schema)
+        allowed-params  (mapv keyword (keys arg->schema))
         prep-route      #'compojure/prepare-route
         multipart?      (get (meta method) :multipart false)
         handler-wrapper (if multipart? mp/wrap-multipart-params identity)]
@@ -380,7 +419,6 @@
        (raise e)
        (handler request respond raise)))))
 
-
 ;;; ---------------------------------------- PERMISSIONS CHECKING HELPER FNS -----------------------------------------
 
 (defn read-check
@@ -390,7 +428,13 @@
   {:style/indent 2}
   ([obj]
    (check-404 obj)
-   (check-403 (mi/can-read? obj))
+   (try
+     (check-403 (mi/can-read? obj))
+     (catch clojure.lang.ExceptionInfo e
+       (events/publish-event! :event/read-permission-failure {:user-id    *current-user-id*
+                                                              :object     obj
+                                                              :has-access false})
+       (throw e)))
    obj)
 
   ([entity id]
@@ -406,7 +450,12 @@
   {:style/indent 2}
   ([obj]
    (check-404 obj)
-   (check-403 (mi/can-write? obj))
+   (try
+     (check-403 (mi/can-write? obj))
+     (catch clojure.lang.ExceptionInfo e
+       (events/publish-event! :event/write-permission-failure {:user-id *current-user-id*
+                                                               :object obj})
+       (throw e)))
    obj)
   ([entity id]
    (write-check (t2/select-one entity :id id)))
@@ -421,7 +470,12 @@
   hardcoded into them -- this should be considered an antipattern and be refactored out going forward."
   {:added "0.32.0", :style/indent 2}
   [entity m]
-  (check-403 (mi/can-create? entity m)))
+  (try
+    (check-403 (mi/can-create? entity m))
+    (catch clojure.lang.ExceptionInfo e
+      (events/publish-event! :event/create-permission-failure {:model entity
+                                                               :user-id *current-user-id*})
+      (throw e))))
 
 (defn update-check
   "NEW! Check whether the current user has permissions to UPDATE an object by applying a map of `changes`.
@@ -431,7 +485,12 @@
   into them -- this should be considered an antipattern and be refactored out going forward."
   {:added "0.36.0", :style/indent 2}
   [instance changes]
-  (check-403 (mi/can-update? instance changes)))
+  (try
+    (check-403 (mi/can-update? instance changes))
+    (catch clojure.lang.ExceptionInfo e
+      (events/publish-event! :event/update-permission-failure {:user-id *current-user-id*
+                                                               :object instance})
+      (throw e))))
 
 ;;; ------------------------------------------------ OTHER HELPER FNS ------------------------------------------------
 

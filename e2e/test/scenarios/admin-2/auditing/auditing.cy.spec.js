@@ -45,6 +45,19 @@ function generateDashboards(user) {
   cy.createDashboard({ name: `${user} dashboard` });
 }
 
+describeEE("auditing > Auditv1 deprecation", () => {
+  it("should show an audit deprecation notice", () => {
+    restore();
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
+
+    cy.visit("/admin/audit");
+
+    cy.findByTextEnsureVisible(/metabase analytics collection/i);
+    cy.findByTextEnsureVisible(/will be removed in a future release/i);
+  });
+});
+
 describeEE("audit > auditing", () => {
   const ADMIN_QUESTION = "admin question";
   const ADMIN_DASHBOARD = "admin dashboard";
@@ -169,24 +182,32 @@ describeEE("audit > auditing", () => {
       cy.contains(year);
     });
 
-    // [quarantine] flaky
-    it.skip("should load both tabs in Schemas", () => {
-      // Overview tab
+    it("should load both tabs in Schemas", () => {
+      cy.log("Overview tab");
       cy.visit("/admin/audit/schemas/overview");
-      cy.get("svg").should("have.length", 2);
-      cy.findAllByText("Sample Database PUBLIC");
-      cy.findAllByText("No results!").should("not.exist");
+      cy.findAllByTestId("dashcard")
+        .should("have.length", 2)
+        .and("contain", "Sample Database PUBLIC")
+        .and("not.contain", "No results!");
+      cy.findAllByTestId("legend-caption-title")
+        .first()
+        .should("have.text", "Most-queried schemas");
+      cy.findAllByTestId("legend-caption-title")
+        .last()
+        .should("have.text", "Slowest schemas");
 
-      // All schemas tab
+      cy.log("All schemas tab");
       cy.visit("/admin/audit/schemas/all");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("PUBLIC");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved Queries");
+      cy.findAllByRole("columnheader").eq(1).should("have.text", "Schema");
+      cy.findAllByRole("cell").eq(1).should("have.text", "PUBLIC");
+
+      cy.findAllByRole("columnheader")
+        .last()
+        .should("have.text", "Saved Queries");
+      cy.findAllByRole("cell").last().should("have.text", "4");
     });
 
     it("should load both tabs in Tables", () => {
-      // Overview tab
       cy.visit("/admin/audit/tables/overview");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Most-queried tables");

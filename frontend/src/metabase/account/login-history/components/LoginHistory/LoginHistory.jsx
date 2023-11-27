@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import _ from "underscore";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import { t } from "ttag";
 

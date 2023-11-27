@@ -115,7 +115,7 @@ async function setup({
     dashboardId = openDashboard.id;
     dashboardsForState[openDashboard.id] = {
       ...openDashboard,
-      ordered_cards: openDashboard.ordered_cards.map(c => c.id),
+      dashcards: openDashboard.dashcards.map(c => c.id),
     };
     dashboardsForEntities.push(openDashboard);
   }

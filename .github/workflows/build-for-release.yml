@@ -78,30 +78,61 @@ jobs:
       uses: actions/checkout@v3
       with:
         fetch-depth: 0  # IMPORTANT! to get all the branches
-    - name: Ensure that the specified commit exists in the latest release branch
-      env:
-        COMMIT: ${{ inputs.commit }}
+        sparse-checkout: release
+    - name: Prepare build scripts
+      run: cd ${{ github.workspace }}/release && yarn && yarn build
+    - name: Get Release Branch
+      uses: actions/github-script@v6
+      id: release_branch
+      with:
+        result_encoding: string
+        script: | # js
+          const { getReleaseBranch } = require('${{ github.workspace }}/release/dist/index.cjs');
+          const version = '${{ inputs.version }}';
+          const releaseBranch = getReleaseBranch(version);
+          return releaseBranch;
+    - name: Ensure that the specified commit exists in the ${{ steps.release_branch.outputs.result }} release branch
       run: |
-        echo "Checking if the specified commit is in a release branch..."
+        RELEASE_BRANCH=${{ steps.release_branch.outputs.result }}
+        git checkout $RELEASE_BRANCH
+        git branch --contains ${{ inputs.commit }} | grep -q $RELEASE_BRANCH \
+          && echo "Commit found in correct release branch" \
+          || (echo "Commit not found in correct release branch" && exit 1)
 
-        git branch -a --contains $COMMIT > branches.txt
-        if [[ $(grep -c master branches.txt) =~ 1 ]]; then
-          echo "Found in master branch. ABORT!"
-          exit -1
-        fi
-        if [[ $(grep -c 'release-x' branches.txt) =~ 1 ]]; then
-          echo "Found the commit $COMMIT in:"
-          git branch -a --contains $COMMIT
-          echo "Proceeding to the next step..."
-          exit 0
-        else
-          echo "Commit $COMMIT is not found in a single release branch"
-          echo "ABORT!."
-          exit -1
-        fi
+  get-build-requirements:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
+      node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
+      build_process: ${{ fromJson(steps.dependencies.outputs.result).build_process }}
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        sparse-checkout: release
+    - name: Prepare build scripts
+      run: cd ${{ github.workspace }}/release && yarn && yarn build
+    - name: Get build dependencies
+      uses: actions/github-script@v6
+      id: dependencies
+      with:
+        script: | # js
+          const { getBuildRequirements, getMajorVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+          const version = '${{ inputs.version }}';
+
+          const requirements = getBuildRequirements(version);
+          const build_process = getMajorVersion(version) < 46 ? 'legacy' : 'new';
+          console.log('Build process:', build_process);
+
+          return {
+            java_version: requirements.java,
+            node_version: requirements.node,
+            build_process,
+          };
 
   build-uberjar-for-release:
-    needs: check-version
+    needs: [check-version, check-commit, get-build-requirements]
     runs-on: ubuntu-22.04
     timeout-minutes: 50
     strategy:
@@ -110,6 +141,24 @@ jobs:
     env:
       INTERACTIVE: false
     steps:
+    - name: Get correct version number
+      run: | # bash
+        if [ '${{matrix.edition}}' == 'ee' ]; then
+          version='${{ needs.check-version.outputs.ee }}'
+        else
+          version='${{ needs.check-version.outputs.oss }}'
+        fi
+
+        echo "VERSION=$version" >> $GITHUB_ENV
+    - name: Setup Java ${{ needs.get-build-requirements.outputs.java_version }}
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: ${{ needs.get-build-requirements.outputs.java_version }}
+    - name: Setup Node.js ${{ needs.get-build-requirements.outputs.node_version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ needs.get-build-requirements.outputs.node_version }}.x
     - name: Check out the code
       uses: actions/checkout@v3
       with:
@@ -120,13 +169,13 @@ jobs:
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
 
-    - name: Build Metabase ${{ needs.check-version.outputs.ee }}
-      if: ${{ matrix.edition == 'ee' }}
-      run: ./bin/build.sh :edition :${{ matrix.edition }} :version ${{ needs.check-version.outputs.ee }}
+    - name: Build Metabase
+      if: ${{ needs.get-build-requirements.outputs.build_process != 'legacy' }}
+      run: ./bin/build.sh :edition :${{ matrix.edition }} :version $VERSION
 
-    - name: Build Metabase ${{ needs.check-version.outputs.oss }}
-      if: ${{ matrix.edition == 'oss' }}
-      run: ./bin/build.sh :edition :${{ matrix.edition }} :version ${{ needs.check-version.outputs.oss }}
+    - name: Build Metabase (legacy)
+      if: ${{ needs.get-build-requirements.outputs.build_process == 'legacy' }}
+      run: cd ./bin/build-mb && clojure -X build/build! :edition :${{ matrix.edition }} :version $VERSION
 
     - name: Store commit's SHA-1 hash
       run:  echo ${{ inputs.commit }} > COMMIT-ID
@@ -143,3 +192,25 @@ jobs:
           ./metabase.jar
           ./COMMIT-ID
           ./SHA256.sum
+
+  trigger-tests:
+    needs: [build-uberjar-for-release]
+    permissions:
+      actions: write
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: trigger pre-release testing
+        uses: actions/github-script@v6
+        with:
+          script: | # js
+            github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'pre-release.yml',
+              ref: '${{ github.ref }}',
+              inputs: {
+                commit: '${{ inputs.commit }}',
+                version: '${{ inputs.version }}',
+              }
+            });

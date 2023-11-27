@@ -19,23 +19,94 @@ const setupEmbedding = async (opts?: SetupOpts) => {
 };
 
 describe("SettingsEditor", () => {
-  it("should allow to configure the origin for interactive embedding", async () => {
+  it("should allow to configure the origin and SameSite cookie setting for interactive embedding", async () => {
     await setupEmbedding({
       settings: [
         createMockSettingDefinition({ key: "enable-embedding" }),
         createMockSettingDefinition({ key: "embedding-app-origin" }),
+        createMockSettingDefinition({ key: "session-cookie-samesite" }),
       ],
       settingValues: createMockSettings({
         "enable-embedding": true,
+        "session-cookie-samesite": "lax",
       }),
     });
 
     userEvent.click(screen.getByText("Embedding"));
     userEvent.click(screen.getByText("Interactive embedding"));
     expect(screen.getByText("Interactive embedding")).toBeInTheDocument();
+
     expect(screen.getByText("Authorized origins")).toBeInTheDocument();
+    expect(screen.getByText("SameSite cookie setting")).toBeInTheDocument();
+
     expect(
       screen.queryByText(/some of our paid plans/),
     ).not.toBeInTheDocument();
+  });
+
+  describe("SameSite cookie note check with authorized origins", () => {
+    it("should display a note if any authorized origins do not match the instance domain", async () => {
+      await setupEmbedding({
+        settings: [
+          createMockSettingDefinition({ key: "enable-embedding" }),
+          createMockSettingDefinition({ key: "embedding-app-origin" }),
+          createMockSettingDefinition({ key: "session-cookie-samesite" }),
+        ],
+        settingValues: createMockSettings({
+          "embedding-app-origin": "https://example.com",
+          "enable-embedding": true,
+          "session-cookie-samesite": "lax",
+        }),
+      });
+
+      userEvent.click(screen.getByText("Embedding"));
+      userEvent.click(screen.getByText("Interactive embedding"));
+
+      expect(screen.getByTestId("authorized-origins-note")).toBeInTheDocument();
+    });
+
+    it("should not display a note if all authorized origins match the instance domain", async () => {
+      await setupEmbedding({
+        settings: [
+          createMockSettingDefinition({ key: "enable-embedding" }),
+          createMockSettingDefinition({ key: "embedding-app-origin" }),
+          createMockSettingDefinition({ key: "session-cookie-samesite" }),
+        ],
+        settingValues: createMockSettings({
+          "embedding-app-origin": "",
+          "enable-embedding": true,
+          "session-cookie-samesite": "lax",
+        }),
+      });
+
+      userEvent.click(screen.getByText("Embedding"));
+      userEvent.click(screen.getByText("Interactive embedding"));
+
+      expect(
+        screen.queryByTestId("authorized-origins-note"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not display a note if SameSite cookie is set to 'none'", async () => {
+      await setupEmbedding({
+        settings: [
+          createMockSettingDefinition({ key: "enable-embedding" }),
+          createMockSettingDefinition({ key: "embedding-app-origin" }),
+          createMockSettingDefinition({ key: "session-cookie-samesite" }),
+        ],
+        settingValues: createMockSettings({
+          "embedding-app-origin": "https://example.com",
+          "enable-embedding": true,
+          "session-cookie-samesite": "none",
+        }),
+      });
+
+      userEvent.click(screen.getByText("Embedding"));
+      userEvent.click(screen.getByText("Interactive embedding"));
+
+      expect(
+        screen.queryByTestId("authorized-origins-note"),
+      ).not.toBeInTheDocument();
+    });
   });
 });

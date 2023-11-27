@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [honeysql.format :as hformat]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common :as driver.common]
@@ -74,7 +74,7 @@
 
 (defmulti parse-result-of-type
   "Parse the values that come back in results of a BigQuery query based on their column type."
-  {:arglists '([column-type column-mode timezone-id v])}
+  {:added "0.41.0" :arglists '([column-type column-mode timezone-id v])}
   (fn [column-type _ _ _] column-type))
 
 (defn- parse-value
@@ -829,6 +829,11 @@
   [driver _clause]
   (->> (sql.qp/current-datetime-honeysql-form driver)
        (->temporal-type :timestamp)))
+
+;; In BigQuery, log syntax is `log(x, base)`
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :log]
+  [driver [_ field]]
+  (hx/call :log (sql.qp/->honeysql driver field) 10))
 
 (defmethod sql.qp/quote-style :bigquery-cloud-sdk
   [_]

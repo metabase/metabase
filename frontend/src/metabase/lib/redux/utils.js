@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import _ from "underscore";
 import { getIn } from "icepick";
@@ -17,12 +18,6 @@ import { delay } from "metabase/lib/promise";
 // convenience
 export { combineReducers, compose } from "@reduxjs/toolkit";
 export { handleActions, createAction } from "redux-actions";
-
-// similar to createAction but accepts a (redux-thunk style) thunk and dispatches based on whether
-// the promise returned from the thunk resolves or rejects, similar to redux-promise
-export function createThunkAction(actionType, thunkCreator) {
-  return withAction(actionType)(thunkCreator);
-}
 
 // turns string timestamps into moment objects
 export function momentifyTimestamps(
@@ -283,7 +278,8 @@ function withCachedData(
   // thunk decorator:
   return thunkCreator =>
     // thunk creator:
-    (...args) => {
+    (...args) =>
+      // thunk:
       async function thunk(dispatch, getState) {
         const options = args[args.length - 1] || {};
         const { useCachedForbiddenError, reload, properties } = options;
@@ -327,7 +323,7 @@ function withCachedData(
               await queryPromise;
 
               // need to wait for next tick to allow loaded request data to be processed and avoid loops
-              await delay(10);
+              await delay(0);
 
               // retry this function after waited request gets resolved
               return thunk(dispatch, getState);
@@ -338,10 +334,7 @@ function withCachedData(
         }
 
         return thunkCreator(...args)(dispatch, getState);
-      }
-
-      return thunk;
-    };
+      };
 }
 
 export function withAnalytics(categoryOrFn, actionOrFn, labelOrFn, valueOrFn) {

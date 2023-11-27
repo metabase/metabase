@@ -111,14 +111,14 @@ describe("metabase/parameters/utils/dashboards", () => {
 
     it("should return false when there are no cards on the dashboard", () => {
       const dashboard = {
-        ordered_cards: [],
+        dashcards: [],
       };
       expect(hasMapping(parameter, dashboard)).toBe(false);
     });
 
     it("should return false when there are no cards with parameter mappings", () => {
       const dashboard = {
-        ordered_cards: [
+        dashcards: [
           {
             parameter_mappings: [],
           },
@@ -133,14 +133,14 @@ describe("metabase/parameters/utils/dashboards", () => {
 
     it("should return false when missing parameter mappings", () => {
       const dashboard = {
-        ordered_cards: [{ parameter_mappings: undefined }],
+        dashcards: [{ parameter_mappings: undefined }],
       };
       expect(hasMapping(parameter, dashboard)).toBe(false);
     });
 
     it("should return false when there are no matching parameter mapping parameter_ids", () => {
       const dashboard = {
-        ordered_cards: [
+        dashcards: [
           {
             parameter_mappings: [
               {
@@ -166,7 +166,7 @@ describe("metabase/parameters/utils/dashboards", () => {
 
     it("should return true when the given parameter's id is found in a parameter_mappings object", () => {
       const dashboard = {
-        ordered_cards: [
+        dashcards: [
           {
             parameter_mappings: [
               {
@@ -202,7 +202,7 @@ describe("metabase/parameters/utils/dashboards", () => {
 
     it("should return false when the given parameter is not found in the dashboard's parameters list", () => {
       const brokenDashboard = {
-        ordered_cards: [
+        dashcards: [
           {
             parameter_mappings: [
               {
@@ -230,7 +230,7 @@ describe("metabase/parameters/utils/dashboards", () => {
 
     it("should return false when the given parameter is both found in the dashboard's parameters and also mapped", () => {
       const dashboard = {
-        ordered_cards: [
+        dashcards: [
           {
             parameter_mappings: [
               {
@@ -257,7 +257,7 @@ describe("metabase/parameters/utils/dashboards", () => {
 
     it("should return true when the given parameter is found on the dashboard but is not mapped", () => {
       const dashboard = {
-        ordered_cards: [
+        dashcards: [
           {
             parameter_mappings: [
               {
@@ -342,7 +342,7 @@ describe("metabase/parameters/utils/dashboards", () => {
   describe("hasMatchingParameters", () => {
     it("should return false when the given card is not found on the dashboard", () => {
       const dashboard = {
-        ordered_cards: [
+        dashcards: [
           {
             id: 1,
             card_id: 123,
@@ -380,7 +380,7 @@ describe("metabase/parameters/utils/dashboards", () => {
 
     it("should return false when a given parameter is not found in the dashcard mappings", () => {
       const dashboard = {
-        ordered_cards: [
+        dashcards: [
           {
             id: 1,
             card_id: 123,
@@ -426,7 +426,7 @@ describe("metabase/parameters/utils/dashboards", () => {
 
     it("should return true when all given parameters are found mapped to the dashcard", () => {
       const dashboard = {
-        ordered_cards: [
+        dashcards: [
           {
             id: 1,
             card_id: 123,
@@ -527,7 +527,7 @@ describe("metabase/parameters/utils/dashboards", () => {
   describe("getDashboardUiParameters", () => {
     const dashboard = {
       id: 1,
-      ordered_cards: [
+      dashcards: [
         {
           id: 1,
           card_id: 123,

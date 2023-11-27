@@ -6,7 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojurewerkz.quartzite.conversion :as qc]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.models.database :refer [Database]]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.task.sync-databases :as task.sync-databases]
@@ -131,7 +131,7 @@
              (t2/insert! Database {:engine :postgres, k "0 * ABCD"}))))))
 
   (testing "Check that you can't UPDATE a DB's schedule to something invalid"
-    (t2.with-temp/with-temp [Database database {:engine :postgres}]
+    (mt/with-temp! [Database database {:engine :postgres}]
       (doseq [k [:metadata_sync_schedule :cache_field_values_schedule]]
         (testing (format "Update %s" k)
           (is (thrown?

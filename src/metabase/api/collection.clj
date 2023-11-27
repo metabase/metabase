@@ -77,11 +77,13 @@
   (as-> (t2/select Collection
                    {:where    [:and
                                [:= :archived archived]
-                               [:= :namespace namespace]
+                               (perms/audit-namespace-clause :namespace namespace)
                                (collection/visible-collection-ids->honeysql-filter-clause
                                 :id
                                 (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-                    :order-by [[:%lower.name :asc]]}) collections
+                              ;; Order NULL collection types first so that audit collections are last
+                    :order-by [[[[:case [:= :type nil] 0 :else 1]] :asc]
+                               [:%lower.name :asc]]}) collections
     ;; Remove other users' personal collections
     (if exclude-other-user-collections
       (remove-other-users-personal-collections api/*current-user-id* collections)
@@ -93,7 +95,7 @@
         (cond->> collections
           (mi/can-read? root)
           (cons root))))
-    (t2/hydrate collections :can_write)
+    (t2/hydrate collections :can_write :is_personal)
     ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
     ;; and for personal collections we translate the name to user's locale
     (for [collection collections]
@@ -140,7 +142,7 @@
                   {:where [:and
                            (when exclude-archived?
                              [:= :archived false])
-                           [:= :namespace namespace]
+                           (perms/audit-namespace-clause :namespace namespace)
                            (collection/visible-collection-ids->honeysql-filter-clause
                             :id
                             (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
@@ -330,17 +332,10 @@
                     dataset?
                     (conj :c.database_id))
        :from      [[:report_card :c]]
-       ;; todo: should there be a flag, or a realized view?
-       :left-join [[{:select    [:r1.*]
-                     :from      [[:revision :r1]]
-                     :left-join [[:revision :r2] [:and
-                                                  [:= :r1.model_id :r2.model_id]
-                                                  [:= :r1.model :r2.model]
-                                                  [:< :r1.id :r2.id]]]
-                     :where     [:and
-                                 [:= :r2.id nil]
-                                 [:= :r1.model (h2x/literal "Card")]]} :r]
-                   [:= :r.model_id :c.id]
+       :left-join [[:revision :r] [:and
+                                   [:= :r.model_id :c.id]
+                                   [:= :r.most_recent true]
+                                   [:= :r.model (h2x/literal "Card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    [:= :collection_id (:id collection)]
@@ -419,16 +414,10 @@
                    [:u.last_name :last_edit_last_name]
                    [:r.timestamp :last_edit_timestamp]]
        :from      [[:report_dashboard :d]]
-       :left-join [[{:select    [:r1.*]
-                     :from      [[:revision :r1]]
-                     :left-join [[:revision :r2] [:and
-                                                  [:= :r1.model_id :r2.model_id]
-                                                  [:= :r1.model :r2.model]
-                                                  [:< :r1.id :r2.id]]]
-                     :where     [:and
-                                 [:= :r2.id nil]
-                                 [:= :r1.model (h2x/literal "Dashboard")]]} :r]
-                   [:= :r.model_id :d.id]
+       :left-join [[:revision :r] [:and
+                                   [:= :r.model_id :d.id]
+                                   [:= :r.most_recent true]
+                                   [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    [:= :collection_id (:id collection)]
@@ -460,7 +449,7 @@
   (-> (assoc (collection/effective-children-query
               collection
               [:= :archived archived?]
-              [:= :namespace (u/qualified-name collection-namespace)]
+              (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
               (snippets-collection-filter-clause))
              ;; We get from the effective-children-query a normal set of columns selected:
              ;; want to make it fit the others to make UNION ALL work
@@ -697,7 +686,7 @@
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
       collection/personal-collection-with-ui-details
-      (t2/hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
+      (t2/hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write :is_personal)))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific Collection with standard details added"

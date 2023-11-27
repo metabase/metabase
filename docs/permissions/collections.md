@@ -52,7 +52,13 @@ Note that collections themselves can't be pinned. If you're running on a [paid p
 
 ## Special collections
 
+### Our analytics
+
 The "Our analytics" collection and individual personal collections are invincible; they cannot be archived, injured, or slain. They are eternal.
+
+### Metabase analytics
+
+See [Usage analytics](../usage-and-performance-tools/usage-analytics.md).
 
 ### Personal collections
 

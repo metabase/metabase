@@ -41,7 +41,7 @@
     If non per-column error is available, returns an empty map.
 
   Or return `nil` if the parser doesn't match."
-  {:arglists '([driver error-type database action-type error-message]), :added "0.48.0"}
+  {:changelog-test/ignore true, :arglists '([driver error-type database action-type error-message]), :added "0.48.0"}
   (fn [driver error-type _database _action-type _error-message]
    [(driver/dispatch-on-initialized-driver driver) error-type])
   :hierarchy #'driver/hierarchy)
@@ -99,7 +99,7 @@
   "Return a map of [[metabase.types]] type to SQL string type name. Used for casting. Looks like we're just copypasting
   this from implementations of [[metabase.test.data.sql/field-base-type->sql-type]] so go find that stuff if you need
   to write more implementations for this."
-  {:arglists '([driver]), :added "0.44.0"}
+  {:changelog-test/ignore true, :arglists '([driver]), :added "0.44.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -190,7 +190,7 @@
   "Multimethod for preparing a honeysql query `hsql-query` for a given action type `action`.
   `action` is a keyword like `:row/create` or `:bulk/create`; `hsql-query` is a generic
   query of the type corresponding to `action`."
-  {:arglists '([driver action hsql-query]), :added "0.46.0"}
+  {:changelog-test/ignore true, :arglists '([driver action hsql-query]), :added "0.46.0"}
   (fn [driver action _]
     [(driver/dispatch-on-initialized-driver driver)
      (keyword action)])
@@ -249,7 +249,7 @@
   `create-hsql` is the honeysql query used to insert the new row,
   `conn` is the DB connection used to insert the new row and
   `result` is the value returned by the insert command."
-  {:arglists '([driver create-hsql conn result]), :added "0.46.0"}
+  {:changelog-test/ignore true, :arglists '([driver create-hsql conn result]), :added "0.46.0"}
   (fn [driver _ _ _]
     (driver/dispatch-on-initialized-driver driver))
   :hierarchy #'driver/hierarchy)
@@ -311,7 +311,7 @@
 
   So the point of using nested transactions is that if 2 is done inside a nested transaction we can rollback the
   nested transaction which allows the top-level transaction to proceed even tho part of it errored."
-  {:arglists '([driver ^java.sql.Connection connection thunk]), :added "0.44.0"}
+  {:changelog-test/ignore true :arglists '([driver ^java.sql.Connection connection thunk]), :added "0.44.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 

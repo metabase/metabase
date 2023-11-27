@@ -409,9 +409,6 @@ jobs:
     needs: [verify-s3-download, verify-docker-pull, check-version]
     runs-on: ubuntu-22.04
     timeout-minutes: 10
-    strategy:
-      matrix:
-        edition: [oss, ee]
     steps:
     - uses: actions/checkout@v3
       with:
@@ -422,28 +419,40 @@ jobs:
       uses: actions/github-script@v6
       with:
         result-encoding: string
-        script: |
-          const { tagRelease, getCanonicalVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
+        script: | # js
+          const { tagRelease } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-          const version = '${{ inputs.version }}';
-          const edition = '${{ matrix.edition }}';
+          const OSSversion = '${{ needs.check-version.outputs.oss }}';
+          const EEversion = '${{ needs.check-version.outputs.ee }}';
 
-          const canonical_version = edition === 'ee'
-            ? '${{ needs.check-version.outputs.ee }}'
-            : '${{ needs.check-version.outputs.oss }}';
-
-          console.log("The canonical version of this Metabase", edition, "edition is", canonical_version);
-
+          // push EE tag
           await tagRelease({
             github,
             owner: context.repo.owner,
             repo: context.repo.repo,
-            version: canonical_version,
+            version: EEversion,
             commitHash: '${{ inputs.commit }}',
           }).catch((err) => {
-            console.error('Failed to tag release', canonical_version, err);
+            console.error('Failed to tag release', EEversion, err);
             process.exit(1);
           });
+
+          // push OSS tag
+          await tagRelease({
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            version: OSSversion,
+            commitHash: '${{ inputs.commit }}',
+          }).catch((err) => {
+            console.error('Failed to tag release', OSSversion, err);
+            process.exit(1);
+          });
+    - name: Reorder release tags to put OSS first
+      run: |
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+        $GITHUB_WORKSPACE/release/reorder-tags.sh ${{ needs.check-version.outputs.ee }} ${{ inputs.commit }}
 
   trigger-docs-update:
     needs: push-tags
@@ -571,3 +580,36 @@ jobs:
         aws cloudfront create-invalidation \
         --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
         --paths "/version-info.json" "/version-info-ee.json"
+
+  manage-issues:
+    permissions: write-all
+    runs-on: ubuntu-22.04
+    needs: [publish-version-info, draft-release-notes]
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        sparse-checkout: release
+    - name: Prepare build scripts
+      run: cd ${{ github.workspace }}/release && yarn && yarn build
+    - name: Update milestones
+      uses: actions/github-script@v6
+      with:
+        script: | # js
+          const { closeMilestone, openNextMilestones } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+          const version = '${{ inputs.version }}';
+
+          await closeMilestone({
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            version,
+          });
+
+          await openNextMilestones({
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            version,
+          });

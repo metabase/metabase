@@ -1,15 +1,16 @@
-import type { ReactElement } from "react";
-
 import type { SortableElementProps } from "react-sortable-hoc";
+import type React from "react";
 import {
   SortableContainer,
   SortableElement,
 } from "metabase/components/sortable";
+import type { IconProps } from "metabase/core/components/Icon";
 import { ColumnItem } from "../ColumnItem";
 
 interface SortableItem {
   enabled: boolean;
   color?: string;
+  icon?: IconProps["name"];
 }
 
 interface SortableColumnFunctions<T> {
@@ -59,12 +60,13 @@ const SortableColumn = SortableElement(function SortableColumn<
       }
       color={item.color}
       draggable={!isDragDisabled}
+      icon={item.icon}
       role="listitem"
     />
   );
 }) as unknown as <T extends SortableItem>(
   props: SortableColumnProps<T> & SortableElementProps,
-) => ReactElement;
+) => React.ReactElement;
 
 interface SortableColumnListProps<T extends SortableItem>
   extends SortableColumnFunctions<T> {

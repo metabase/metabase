@@ -104,7 +104,6 @@ const mapStateToProps = (state, props) => {
     user: getUser(state, props),
     canManageSubscriptions: canManageSubscriptions(state, props),
     isAdmin: getUserIsAdmin(state, props),
-    fromUrl: props.location.query?.from,
 
     mode: getMode(state),
 
@@ -199,7 +198,6 @@ function QueryBuilder(props) {
     originalQuestion,
     location,
     params,
-    fromUrl,
     uiControls,
     isNativeEditorOpen,
     isAnySidebarOpen,
@@ -209,7 +207,6 @@ function QueryBuilder(props) {
     apiUpdateQuestion,
     updateUrl,
     locationChanged,
-    onChangeLocation,
     setUIControls,
     cancelQuery,
     isBookmarked,
@@ -280,6 +277,7 @@ function QueryBuilder(props) {
       const createdQuestion = await apiCreateQuestion(
         newQuestion.setPinned(shouldBePinned),
       );
+      await setUIControls({ isModifiedFromNotebook: false });
 
       scheduleCallback(async () => {
         await updateUrl(createdQuestion, { dirty: false });
@@ -287,31 +285,33 @@ function QueryBuilder(props) {
         setRecentlySaved("created");
       });
     },
-    [apiCreateQuestion, setRecentlySaved, updateUrl, scheduleCallback],
+    [
+      apiCreateQuestion,
+      setRecentlySaved,
+      setUIControls,
+      updateUrl,
+      scheduleCallback,
+    ],
   );
 
   const handleSave = useCallback(
     async (updatedQuestion, { rerunQuery } = {}) => {
       await apiUpdateQuestion(updatedQuestion, { rerunQuery });
+      await setUIControls({ isModifiedFromNotebook: false });
 
       scheduleCallback(async () => {
         if (!rerunQuery) {
           await updateUrl(updatedQuestion, { dirty: false });
         }
 
-        if (fromUrl) {
-          onChangeLocation(fromUrl);
-        } else {
-          setRecentlySaved("updated");
-        }
+        setRecentlySaved("updated");
       });
     },
     [
-      fromUrl,
       apiUpdateQuestion,
       updateUrl,
-      onChangeLocation,
       setRecentlySaved,
+      setUIControls,
       scheduleCallback,
     ],
   );

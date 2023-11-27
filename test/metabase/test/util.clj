@@ -10,35 +10,21 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [colorize.core :as colorize]
    [environ.core :as env]
-   [java-time :as t]
+   [java-time.api :as t]
    [mb.hawk.parallel]
    [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]
    [metabase.models
-    :refer [Card
-            Collection
-            Dimension
-            Field
-            FieldValues
-            LoginHistory
-            Permissions
-            PermissionsGroup
-            PermissionsGroupMembership
-            PersistedInfo
-            Revision
-            Setting
-            Table
-            TaskHistory
-            Timeline
-            TimelineEvent
-            User]]
+    :refer [Card Collection Dimension Field FieldValues Permissions
+            PermissionsGroup PermissionsGroupMembership Setting Table User]]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
+   [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache :as setting.cache]
-   [metabase.models.timeline :as timeline]
+   [metabase.models.timeline-event :as timeline-event]
    [metabase.plugins.classloader :as classloader]
    [metabase.task :as task]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
@@ -100,77 +86,100 @@
 
 (defn- rasta-id [] (user-id :rasta))
 
-(def ^:private with-temp-defaults-fns
-  {Card
-   (fn [_] {:creator_id             (rasta-id)
-            :database_id            (data/id)
-            :dataset_query          {}
-            :display                :table
-            :name                   (tu.random/random-name)
-            :visualization_settings {}})
+(defn- default-updated-at-timestamped
+  [x]
+  (assoc x :updated_at (t/zoned-date-time)))
 
-   Collection
-   (fn [_] {:name  (tu.random/random-name)})
+(defn- default-created-at-timestamped
+  [x]
+  (assoc x :created_at (t/zoned-date-time)))
+
+(def ^:private default-timestamped
+  (comp default-updated-at-timestamped default-created-at-timestamped))
+
+(def ^:private with-temp-defaults-fns
+  {:model/Card
+   (fn [_] (default-timestamped
+             {:creator_id             (rasta-id)
+              :database_id            (data/id)
+              :dataset_query          {}
+              :display                :table
+              :name                   (tu.random/random-name)
+              :visualization_settings {}}))
+
+   :model/Collection
+   (fn [_] (default-created-at-timestamped {:name (tu.random/random-name)}))
+
+   :model/Action
+   (fn [_] {:creator_id (rasta-id)})
 
    :model/Dashboard
-   (fn [_] {:creator_id (rasta-id)
-            :name       (tu.random/random-name)})
+   (fn [_] (default-timestamped
+             {:creator_id (rasta-id)
+              :name       (tu.random/random-name)}))
 
    :model/DashboardCard
-   (fn [_] {:row    0
-            :col    0
-            :size_x 4
-            :size_y 4})
+   (fn [_] (default-timestamped
+             {:row    0
+               :col    0
+               :size_x 4
+               :size_y 4}))
 
    :model/DashboardCardSeries
    (constantly {:position 0})
 
    :model/DashboardTab
    (fn [_]
-     {:name     (tu.random/random-name)
-      :position 0})
+     (default-timestamped
+       {:name     (tu.random/random-name)
+        :position 0}))
 
    :model/Database
-   (fn [_] {:details   {}
-            :engine    :h2
-            :is_sample false
-            :name      (tu.random/random-name)})
+   (fn [_] (default-timestamped
+             {:details   {}
+              :engine    :h2
+              :is_sample false
+              :name      (tu.random/random-name)}))
 
    :model/Dimension
-   (fn [_] {:name (tu.random/random-name)
-            :type "internal"})
+   (fn [_] (default-timestamped
+             {:name (tu.random/random-name)
+              :type "internal"}))
 
    :model/Field
-   (fn [_] {:database_type "VARCHAR"
-            :base_type     :type/Text
-            :name          (tu.random/random-name)
-            :position      1
-            :table_id      (data/id :checkins)})
+   (fn [_] (default-timestamped
+             {:database_type "VARCHAR"
+              :base_type     :type/Text
+              :name          (tu.random/random-name)
+              :position      1
+              :table_id      (data/id :checkins)}))
 
-   LoginHistory
+   :model/LoginHistory
    (fn [_] {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
             :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML like Gecko) Chrome/89.0.4389.86 Safari/537.36"
-            :ip_address         "0:0:0:0:0:0:0:1"})
+            :ip_address         "0:0:0:0:0:0:0:1"
+            :timestamp          (t/zoned-date-time)})
 
    :model/Metric
-   (fn [_] {:creator_id  (rasta-id)
-            :definition  {}
-            :description "Lookin' for a blueberry"
-            :name        "Toucans in the rainforest"
-            :table_id    (data/id :checkins)})
+   (fn [_] (default-timestamped
+             {:creator_id  (rasta-id)
+              :definition  {}
+              :description "Lookin' for a blueberry"
+              :name        "Toucans in the rainforest"}))
 
    :model/NativeQuerySnippet
-   (fn [_] {:creator_id (user-id :crowberto)
-            :name       (tu.random/random-name)
-            :content    "1 = 1"})
+   (fn [_] (default-timestamped
+             {:creator_id (user-id :crowberto)
+              :name       (tu.random/random-name)
+              :content    "1 = 1"}))
 
-   PersistedInfo
+   :model/PersistedInfo
    (fn [_] {:question_slug (tu.random/random-name)
             :query_hash    (tu.random/random-hash)
-            :definition    {:table-name (tu.random/random-name)
+            :definition    {:table-name        (tu.random/random-name)
                             :field-definitions (repeatedly
-                                                4
-                                                #(do {:field-name (tu.random/random-name) :base-type "type/Text"}))}
+                                                 4
+                                                 #(do {:field-name (tu.random/random-name) :base-type "type/Text"}))}
             :table_name    (tu.random/random-name)
             :active        true
             :state         "persisted"
@@ -182,8 +191,9 @@
    (fn [_] {:name (tu.random/random-name)})
 
    :model/Pulse
-   (fn [_] {:creator_id (rasta-id)
-            :name       (tu.random/random-name)})
+   (fn [_] (default-timestamped
+             {:creator_id (rasta-id)
+              :name       (tu.random/random-name)}))
 
    :model/PulseCard
    (fn [_] {:position    0
@@ -191,31 +201,35 @@
             :include_xls false})
 
    :model/PulseChannel
-   (constantly {:channel_type  :email
-                :details       {}
-                :schedule_type :daily
-                :schedule_hour 15})
+   (fn [_] (default-timestamped
+             {:channel_type  :email
+              :details       {}
+              :schedule_type :daily
+              :schedule_hour 15}))
 
-   Revision
+   :model/Revision
    (fn [_] {:user_id      (rasta-id)
             :is_creation  false
-            :is_reversion false})
+            :is_reversion false
+            :timestamp    (t/zoned-date-time)})
 
    :model/Segment
-   (fn [_] {:creator_id  (rasta-id)
-            :definition  {}
-            :description "Lookin' for a blueberry"
-            :name        "Toucans in the rainforest"
-            :table_id    (data/id :checkins)})
+   (fn [_] (default-timestamped
+             {:creator_id  (rasta-id)
+              :definition  {}
+              :description "Lookin' for a blueberry"
+              :name        "Toucans in the rainforest"
+              :table_id    (data/id :checkins)}))
 
    ;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
 
    :model/Table
-   (fn [_] {:db_id  (data/id)
-            :active true
-            :name   (tu.random/random-name)})
+   (fn [_] (default-timestamped
+             {:db_id  (data/id)
+              :active true
+              :name   (tu.random/random-name)}))
 
-   TaskHistory
+   :model/TaskHistory
    (fn [_]
      (let [started (t/zoned-date-time)
            ended   (t/plus started (t/millis 10))]
@@ -225,27 +239,31 @@
         :ended_at   ended
         :duration   (.toMillis (t/duration started ended))}))
 
-   Timeline
+   :model/Timeline
    (fn [_]
-     {:name       "Timeline of bird squawks"
-      :default    false
-      :icon       timeline/DefaultIcon
-      :creator_id (rasta-id)})
+     (default-timestamped
+       {:name       "Timeline of bird squawks"
+        :default    false
+        :icon       timeline-event/default-icon
+        :creator_id (rasta-id)}))
 
-   TimelineEvent
+   :model/TimelineEvent
    (fn [_]
-     {:name         "default timeline event"
-      :icon         timeline/DefaultIcon
-      :timestamp    (t/zoned-date-time)
-      :timezone     "US/Pacific"
-      :time_matters true
-      :creator_id   (rasta-id)})
+     (default-timestamped
+       {:name         "default timeline event"
+        :icon         timeline-event/default-icon
+        :timestamp    (t/zoned-date-time)
+        :timezone     "US/Pacific"
+        :time_matters true
+        :creator_id   (rasta-id)}))
 
    :model/User
-   (fn [_] {:first_name (tu.random/random-name)
-            :last_name  (tu.random/random-name)
-            :email      (tu.random/random-email)
-            :password   (tu.random/random-name)})})
+   (fn [_] {:first_name  (tu.random/random-name)
+            :last_name   (tu.random/random-name)
+            :email       (tu.random/random-email)
+            :password    (tu.random/random-name)
+            :date_joined (t/zoned-date-time)
+            :updated_at  (t/zoned-date-time)})})
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
@@ -532,6 +550,8 @@
        ~@body)))
 
 
+
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   SCHEDULER                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -680,6 +700,49 @@
           (testing "Shouldn't delete other Cards"
             (is (pos? (t2/count Card)))))))))
 
+(defn do-with-verified-cards
+  "Impl for [[with-verified-cards]]."
+  [card-or-ids thunk]
+  (with-model-cleanup [:model/ModerationReview]
+    (doseq [card-or-id card-or-ids]
+      (doseq [status ["verified" nil "verified"]]
+        ;; create multiple moderation review for a card, but the end result is it's still verified
+        (moderation-review/create-review!
+         {:moderated_item_id   (u/the-id card-or-id)
+          :moderated_item_type "card"
+          :moderator_id        ((requiring-resolve 'metabase.test.data.users/user->id) :rasta)
+          :status              status})))
+    (thunk)))
+
+(defmacro with-verified-cards
+  "Execute the body with all `card-or-ids` verified."
+  [card-or-ids & body]
+  `(do-with-verified-cards ~card-or-ids (fn [] ~@body)))
+
+(deftest with-verified-cards-test
+  (t2.with-temp/with-temp
+    [:model/Card {card-id :id} {}]
+    (with-verified-cards [card-id]
+      (is (=? #{{:moderated_item_id   card-id
+                 :moderated_item_type :card
+                 :most_recent         true
+                 :status              "verified"}
+                {:moderated_item_id   card-id
+                 :moderated_item_type :card
+                 :most_recent         false
+                 :status              nil}
+                {:moderated_item_id   card-id
+                 :moderated_item_type :card
+                 :most_recent         false
+                 :status              "verified"}}
+              (t2/select-fn-set #(select-keys % [:moderated_item_id :moderated_item_type :most_recent :status])
+                                :model/ModerationReview
+                                :moderated_item_id card-id
+                                :moderated_item_type "card"))))
+    (testing "everything is cleaned up after the macro"
+      (is (= 0 (t2/count :model/ModerationReview
+                         :moderated_item_id card-id
+                         :moderated_item_type "card"))))))
 
 ;; TODO - not 100% sure I understand
 (defn call-with-paused-query
@@ -1241,3 +1304,13 @@
       (if (neg? @a)
         (apply f args)
         (throw (ex-info "Not yet" {:remaining @a}))))))
+
+(defn latest-audit-log-entry
+  "Returns the latest audit log entry, optionally filters on `topic`."
+  ([] (latest-audit-log-entry nil nil))
+  ([topic] (latest-audit-log-entry topic nil))
+  ([topic model-id]
+   (t2/select-one [:model/AuditLog :topic :user_id :model :model_id :details]
+                  {:order-by [[:id :desc]]
+                   :where [:and (when topic [:= :topic (name topic)])
+                                (when model-id [:= :model_id model-id])]})))

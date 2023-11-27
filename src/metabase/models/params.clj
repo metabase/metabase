@@ -22,6 +22,7 @@
    [metabase.models.params.field-values :as params.field-values]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -112,12 +113,14 @@
   [target card]
   (let [target (mbql.normalize/normalize target)]
     (when (mbql.u/is-clause? :dimension target)
-      (let [[_ dimension] target
-            field-form    (if (mbql.u/is-clause? :template-tag dimension)
-                            (template-tag->field-form dimension card)
-                            dimension)]
-        (when (some? field-form)
-          (unwrap-field-or-expression-clause field-form))))))
+      (let [[_ dimension] target]
+        (try
+          (unwrap-field-or-expression-clause
+           (if (mbql.u/is-clause? :template-tag dimension)
+             (template-tag->field-form dimension card)
+             dimension))
+          (catch Throwable e
+            (log/error e "Could not find matching Field ID for target:" target)))))))
 
 (defn- pk-fields
   "Return the `fields` that are PK Fields."
@@ -253,14 +256,14 @@
   "Return a map of Field ID to FieldValues (if any) for any Fields referenced by Cards in `dashboard`,
    or `nil` if none are referenced or none of them have FieldValues."
   [dashboard]
-  (field-ids->param-field-values (dashcards->param-field-ids (:ordered_cards dashboard))))
+  (field-ids->param-field-values (dashcards->param-field-ids (:dashcards dashboard))))
 
 (defmethod param-values :model/Dashboard [dashboard]
   (dashboard->param-field-values dashboard))
 
 (defmethod param-fields :model/Dashboard [dashboard]
-  (-> (t2/hydrate dashboard [:ordered_cards :card])
-      :ordered_cards
+  (-> (t2/hydrate dashboard [:dashcards :card])
+      :dashcards
       dashcards->param-field-ids
       param-field-ids->fields))
 

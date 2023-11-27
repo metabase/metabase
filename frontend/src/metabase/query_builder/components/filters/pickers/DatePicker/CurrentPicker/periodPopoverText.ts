@@ -1,5 +1,7 @@
 import { t } from "ttag";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import type { unitOfTime } from "moment-timezone";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 
 const buildStartAndEndDates = (period: unitOfTime.StartOf, format: string) => {

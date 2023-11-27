@@ -1,4 +1,4 @@
-import { add, update, remove, clear } from "./util";
+import { add, update, remove } from "./util";
 
 // returns canonical list of Joins, with nulls removed
 export function getJoins(joins) {
@@ -23,7 +23,4 @@ export function updateJoin(join, index, updatedJoin) {
 }
 export function removeJoin(join, index) {
   return getJoinClause(remove(getJoins(join), index));
-}
-export function clearJoins(join) {
-  return getJoinClause(clear());
 }

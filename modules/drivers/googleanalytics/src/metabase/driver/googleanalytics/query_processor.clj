@@ -3,7 +3,7 @@
   See https://developers.google.com/analytics/devguides/reporting/core/v3"
   (:require
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.mbql.util :as mbql.u]

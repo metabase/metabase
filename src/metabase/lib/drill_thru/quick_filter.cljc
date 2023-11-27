@@ -1,6 +1,7 @@
 (ns metabase.lib.drill-thru.quick-filter
   (:require
    [medley.core :as m]
+   [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
@@ -49,14 +50,19 @@
    stage-number           :- :int
    {:keys [column value]} :- ::lib.schema.drill-thru/context]
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             ;(editable? query stage-number)
+             ;; (editable? query stage-number)
              column
-             (some? value)
+             (some? value) ; Deliberately allows value :null, only a missing value should fail this test.
              (not (lib.types.isa/primary-key? column))
              (not (lib.types.isa/foreign-key? column)))
-    {:lib/type  :metabase.lib.drill-thru/drill-thru
-     :type      :drill-thru/quick-filter
-     :operators (operators-for column value)}))
+    ;; For aggregate columns, we want to introduce a new stage when applying the drill-thru.
+    ;; [[lib.drill-thru.column-filter/filter-drill-adjusted-query]] handles this. (#34346)
+    (let [adjusted (lib.drill-thru.column-filter/filter-drill-adjusted-query query stage-number column)]
+      (merge {:lib/type   :metabase.lib.drill-thru/drill-thru
+              :type       :drill-thru/quick-filter
+              :operators  (operators-for (:column adjusted) value)
+              :value      value}
+             adjusted))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/quick-filter
   [_query _stage-number drill-thru]
@@ -64,14 +70,15 @@
    :operators (map :name (:operators drill-thru))})
 
 (mu/defmethod lib.drill-thru.common/drill-thru-method :drill-thru/quick-filter :- ::lib.schema/query
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   drill        :- ::lib.schema.drill-thru/drill-thru.quick-filter
-   filter-op    :- ::lib.schema.common/non-blank-string]
-  (if-let [quick-filter (m/find-first #(= (:name %) filter-op) (:operators drill))]
-    (lib.filter/filter query stage-number (:filter quick-filter))
-    (throw (ex-info (str "No matching filter for operator " filter-op)
-                    {:drill-thru   drill
-                     :operator     filter-op
-                     :query        query
-                     :stage-number stage-number}))))
+  [_query                      :- ::lib.schema/query
+   _stage-number               :- :int
+   {:keys [query stage-number]
+    :as drill}                 :- ::lib.schema.drill-thru/drill-thru.quick-filter
+   filter-op                   :- ::lib.schema.common/non-blank-string]
+  (let [quick-filter (or (m/find-first #(= (:name %) filter-op) (:operators drill))
+                         (throw (ex-info (str "No matching filter for operator " filter-op)
+                                         {:drill-thru   drill
+                                          :operator     filter-op
+                                          :query        query
+                                          :stage-number stage-number})))]
+    (lib.filter/filter query stage-number (:filter quick-filter))))
