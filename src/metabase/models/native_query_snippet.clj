@@ -108,7 +108,6 @@
         colls  (->> basis rest (drop-last 2))] ; Drops the "collections" at the start, and the last two.
     (concat ["snippets"] colls [file])))
 
-
 (defmethod serdes/load-one! "NativeQuerySnippet" [ingested maybe-local]
   ;; if we got local snippet in db and it has same name as incoming one, we can be sure
   ;; there will be no conflicts and skip the query to the db
