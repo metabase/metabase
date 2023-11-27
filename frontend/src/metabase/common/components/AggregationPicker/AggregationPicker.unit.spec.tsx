@@ -158,8 +158,8 @@ function setup({
 
   function getRecentClause() {
     expect(onSelect).toHaveBeenCalled();
-    const [operator] = onSelect.mock.calls.at(-1);
-    return operator;
+    const [clause] = onSelect.mock.calls.at(-1);
+    return clause;
   }
 
   function getRecentClauseInfo() {
