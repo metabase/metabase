@@ -1,6 +1,7 @@
 import {
   createOrdersIdDatasetColumn,
   createOrdersIdField,
+  createOrdersProductIdDatasetColumn,
   createOrdersProductIdField,
   createOrdersTable,
   createOrdersTotalDatasetColumn,
@@ -41,7 +42,7 @@ describe("drill-thru/zoom", () => {
       });
     });
 
-    it("should allow to drill when the column is not a PK but there is another PK", () => {
+    it("should allow to drill when the column is not a PK or FK and there is another PK", () => {
       const value = 10;
       const column = createOrdersTotalDatasetColumn();
       const row = [{ col: column, value }];
@@ -98,6 +99,22 @@ describe("drill-thru/zoom", () => {
         defaultQuery,
         stageIndex,
         defaultColumn,
+        value,
+        row,
+      );
+
+      expect(drill).toBeNull();
+    });
+
+    it("should not allow to drill when the column is a FK", () => {
+      const column = createOrdersProductIdDatasetColumn();
+      const value = 10;
+      const row = [{ col: column, value }];
+      const drill = queryDrillThru(
+        drillType,
+        defaultQuery,
+        stageIndex,
+        column,
         value,
         row,
       );

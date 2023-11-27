@@ -1,6 +1,7 @@
 import {
   createOrdersIdDatasetColumn,
   createOrdersIdField,
+  createOrdersProductIdDatasetColumn,
   createOrdersProductIdField,
   createOrdersTable,
   createOrdersTotalDatasetColumn,
@@ -74,6 +75,23 @@ describe("drill-thru/pk", () => {
       });
     });
 
+    it("should not allow to drill when the column is a FK", () => {
+      const query = createQuery();
+      const column = createOrdersProductIdDatasetColumn();
+      const value = 10;
+      const row = [{ col: column, value }];
+      const drill = queryDrillThru(
+        drillType,
+        query,
+        stageIndex,
+        column,
+        value,
+        row,
+      );
+
+      expect(drill).toBeNull();
+    });
+
     it("should not allow to drill when there is only one PK", () => {
       const query = createQuery();
       const value = 10;
@@ -90,6 +108,17 @@ describe("drill-thru/pk", () => {
       expect(drill).toBeNull();
     });
 
+    it("should not allow to drill when clicked on a column", () => {
+      const drill = queryDrillThru(
+        drillType,
+        defaultQuery,
+        stageIndex,
+        defaultColumn,
+      );
+
+      expect(drill).toBeNull();
+    });
+
     // eslint-disable-next-line jest/no-disabled-tests
     it.skip("should not allow to drill when clicked on a null value (metabase#36126)", () => {
       const value = null;
@@ -101,17 +130,6 @@ describe("drill-thru/pk", () => {
         defaultColumn,
         value,
         row,
-      );
-
-      expect(drill).toBeNull();
-    });
-
-    it("should not allow to drill when clicked on a column", () => {
-      const drill = queryDrillThru(
-        drillType,
-        defaultQuery,
-        stageIndex,
-        defaultColumn,
       );
 
       expect(drill).toBeNull();
