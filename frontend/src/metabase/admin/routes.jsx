@@ -20,10 +20,10 @@ import {
 } from "metabase/admin/utils";
 
 import AdminApp from "metabase/admin/app/components/AdminApp";
-import NewUserModal from "metabase/admin/people/containers/NewUserModal";
+import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
 import UserSuccessModal from "metabase/admin/people/containers/UserSuccessModal";
 import UserPasswordResetModal from "metabase/admin/people/containers/UserPasswordResetModal";
-import EditUserModal from "metabase/admin/people/containers/EditUserModal";
+import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
 import UserActivationModal from "metabase/admin/people/containers/UserActivationModal";
 
 // Settings

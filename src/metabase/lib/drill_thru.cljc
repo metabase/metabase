@@ -4,7 +4,7 @@
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.drill-thru.distribution :as lib.drill-thru.distribution]
    [metabase.lib.drill-thru.fk-details :as lib.drill-thru.fk-details]
-   [metabase.lib.drill-thru.foreign-key :as lib.drill-thru.foreign-key]
+   [metabase.lib.drill-thru.fk-filter :as lib.drill-thru.fk-filter]
    [metabase.lib.drill-thru.object-details :as lib.drill-thru.object-details]
    [metabase.lib.drill-thru.pivot :as lib.drill-thru.pivot]
    [metabase.lib.drill-thru.pk :as lib.drill-thru.pk]
@@ -46,7 +46,7 @@
   `:return-drills-for-dimensions?` specifies which type we have."
   [{:f #'lib.drill-thru.distribution/distribution-drill,                         :return-drills-for-dimensions? true}
    {:f #'lib.drill-thru.column-filter/column-filter-drill,                       :return-drills-for-dimensions? true}
-   {:f #'lib.drill-thru.foreign-key/foreign-key-drill,                           :return-drills-for-dimensions? false}
+   {:f #'lib.drill-thru.fk-filter/fk-filter-drill,                               :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.object-details/object-detail-drill,                      :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.pivot/pivot-drill,                                       :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.quick-filter/quick-filter-drill,                         :return-drills-for-dimensions? false}
