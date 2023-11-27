@@ -8,7 +8,7 @@ import * as ace from "ace-builds/src-noconflict/ace";
 import type { Ace } from "ace-builds";
 import type { Expression } from "metabase-types/api";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 import { format } from "metabase-lib/expressions/format";
 import { processSource } from "metabase-lib/expressions/process";
 import { diagnose } from "metabase-lib/expressions/diagnostics";
@@ -45,11 +45,11 @@ const ACE_OPTIONS = {
 };
 
 interface ExpressionEditorTextfieldProps {
-  expression: Expression | undefined;
+  clause: Lib.AggregationClause | Lib.ExpressionClause | undefined;
   name: string;
   legacyQuery: StructuredQuery;
-  query?: Lib.Query;
-  stageIndex?: number;
+  query: Lib.Query;
+  stageIndex: number;
   startRule?: string;
   width?: number;
   reportTimezone?: string;
@@ -70,7 +70,6 @@ interface ExpressionEditorTextfieldProps {
 
 interface ExpressionEditorTextfieldState {
   source: string;
-  expression: Expression;
   suggestions: Suggestion[];
   highlightedSuggestionIndex: number;
   isFocused: boolean;
@@ -83,15 +82,20 @@ function transformPropsToState(
   props: ExpressionEditorTextfieldProps,
 ): ExpressionEditorTextfieldState {
   const {
-    expression = ExpressionEditorTextfield.defaultProps.expression,
     legacyQuery,
     startRule = ExpressionEditorTextfield.defaultProps.startRule,
+    clause,
+    query,
+    stageIndex,
   } = props;
+
+  const expression = clause
+    ? Lib.legacyExpressionForExpressionClause(query, stageIndex, clause)[1] // TODO: remove [1], see https://github.com/metabase/metabase/issues/36120
+    : undefined;
   const source = format(expression, { legacyQuery, startRule });
 
   return {
     source,
-    expression,
     highlightedSuggestionIndex: 0,
     helpText: null,
     suggestions: [],
@@ -129,9 +133,21 @@ class ExpressionEditorTextfield extends React.Component<
     newProps: Readonly<ExpressionEditorTextfieldProps>,
   ) {
     // we only refresh our state if we had no previous state OR if our expression changed
-    const { expression, legacyQuery, startRule } = newProps;
-    if (!this.state || !_.isEqual(this.props.expression, expression)) {
-      const source = format(expression, { legacyQuery, startRule });
+    const { legacyQuery, startRule, query, stageIndex, clause } = newProps;
+    const previousExpression = this.props.clause
+      ? Lib.legacyExpressionForExpressionClause(
+          query,
+          stageIndex,
+          this.props.clause,
+        )[1] // TODO: remove [1], see https://github.com/metabase/metabase/issues/36120
+      : undefined;
+    const newExpression = clause
+      ? Lib.legacyExpressionForExpressionClause(query, stageIndex, clause)[1] // TODO: remove [1], see https://github.com/metabase/metabase/issues/36120
+      : undefined;
+    const hasExpressionChanged = !_.isEqual(previousExpression, newExpression);
+
+    if (!this.state || hasExpressionChanged) {
+      const source = format(newExpression, { legacyQuery, startRule });
       const currentSource = this.state.source;
       this.setState(transformPropsToState(newProps));
 

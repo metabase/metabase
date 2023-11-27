@@ -219,7 +219,7 @@ export function AggregationPicker({
         query={query}
         stageIndex={stageIndex}
         name={clause ? Lib.displayName(query, clause) : clause}
-        expression={AGGREGATION.getContent(legacyClause)}
+        expressionClause={clause}
         withName
         startRule="aggregation"
         header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}

@@ -40,7 +40,7 @@ export interface ExpressionWidgetProps {
    * Presence of this prop is not enforced due to backwards-compatibility
    * with ExpressionWidget usages outside of GUI editor.
    */
-  expressionClause?: Lib.ExpressionClause | undefined;
+  expressionClause?: Lib.AggregationClause | Lib.ExpressionClause | undefined;
   name?: string;
   withName?: boolean;
   startRule?: string;
@@ -50,7 +50,7 @@ export interface ExpressionWidgetProps {
   onChangeExpression?: (name: string, expression: Expression) => void;
   onChangeExpressionClause?: (
     name: string,
-    expressionClause: Lib.ExpressionClause,
+    expressionClause: Lib.AggregationClause | Lib.ExpressionClause,
   ) => void;
   onRemoveExpression?: (name: string) => void;
   onClose?: () => void;
@@ -78,8 +78,9 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
   const [expression, setExpression] = useState<Expression | null>(
     initialExpression ?? null,
   );
-  const [expressionClause, setExpressionClause] =
-    useState<Lib.ExpressionClause | null>(initialExpressionClause ?? null);
+  const [expressionClause, setExpressionClause] = useState<
+    Lib.AggregationClause | Lib.ExpressionClause | null
+  >(initialExpressionClause ?? null);
   const [error, setError] = useState<string | null>(null);
 
   const helpTextTargetRef = useRef(null);
@@ -140,7 +141,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
         <div ref={helpTextTargetRef}>
           <ExpressionEditorTextfield
             helpTextTarget={helpTextTargetRef.current}
-            expression={expression}
+            expressionClause={expressionClause}
             startRule={startRule}
             name={name}
             legacyQuery={legacyQuery}
