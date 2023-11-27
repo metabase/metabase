@@ -1,287 +1,27 @@
+name: People
 description: Everyone who's ever had an account in your Metabase, including both active and deactivated accounts.
+entity_id: 0wVIfjBJWclD0lKeABYYl
+created_at: '2023-06-08T14:18:48.912368Z'
+creator_id: internal@metabase.com
+display: table
 archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
 collection_position: 11
+query_type: query
+dataset: true
+cache_ttl: null
+database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
 - public
 - v_users
-result_metadata:
-- description: null
-  semantic_type: type/PK
-  coercion_strategy: null
-  name: user_id
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - user_id
-  - null
-  effective_type: type/Integer
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - user_id
-  visibility_type: normal
-  display_name: User ID
-  base_type: type/Integer
-- description: null
-  semantic_type: type/Name
-  coercion_strategy: null
-  name: email
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - email
-  - null
-  effective_type: type/Text
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - email
-  visibility_type: normal
-  display_name: Email
-  base_type: type/Text
-- description: null
-  semantic_type: type/Name
-  coercion_strategy: null
-  name: first_name
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - first_name
-  - null
-  effective_type: type/Text
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - first_name
-  visibility_type: normal
-  display_name: First Name
-  base_type: type/Text
-- description: null
-  semantic_type: type/Name
-  coercion_strategy: null
-  name: last_name
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - last_name
-  - null
-  effective_type: type/Text
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - last_name
-  visibility_type: normal
-  display_name: Last Name
-  base_type: type/Text
-- description: null
-  semantic_type: type/Name
-  coercion_strategy: null
-  name: full_name
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - full_name
-  - null
-  effective_type: type/Text
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - full_name
-  visibility_type: normal
-  display_name: Full Name
-  base_type: type/Text
-- description: null
-  semantic_type: type/JoinTimestamp
-  coercion_strategy: null
-  unit: default
-  name: date_joined
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - date_joined
-  - temporal-unit: default
-  effective_type: type/DateTimeWithLocalTZ
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - date_joined
-  visibility_type: normal
-  display_name: Date Joined
-  base_type: type/DateTimeWithLocalTZ
-- description: null
-  semantic_type: null
-  coercion_strategy: null
-  unit: default
-  name: last_login
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - last_login
-  - temporal-unit: default
-  effective_type: type/DateTimeWithLocalTZ
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - last_login
-  visibility_type: normal
-  display_name: Last Login
-  base_type: type/DateTimeWithLocalTZ
-- description: null
-  semantic_type: type/UpdatedTimestamp
-  coercion_strategy: null
-  unit: default
-  name: updated_at
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - updated_at
-  - temporal-unit: default
-  effective_type: type/DateTime
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - updated_at
-  visibility_type: normal
-  display_name: Updated At
-  base_type: type/DateTime
-- description: null
-  semantic_type: type/Category
-  coercion_strategy: null
-  name: is_admin
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - is_admin
-  - null
-  effective_type: type/Boolean
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - is_admin
-  visibility_type: normal
-  display_name: Is Admin
-  base_type: type/Boolean
-- description: null
-  semantic_type: type/Category
-  coercion_strategy: null
-  name: is_active
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - is_active
-  - null
-  effective_type: type/Boolean
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - is_active
-  visibility_type: normal
-  display_name: Is Active
-  base_type: type/Boolean
-- description: null
-  semantic_type: type/Source
-  coercion_strategy: null
-  name: sso_source
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - sso_source
-  - null
-  effective_type: type/Text
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - sso_source
-  visibility_type: normal
-  display_name: Sso Source
-  base_type: type/Text
-- description: null
-  semantic_type: null
-  coercion_strategy: null
-  name: locale
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - locale
-  - null
-  effective_type: type/Text
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - locale
-  visibility_type: normal
-  display_name: Locale
-  base_type: type/Text
-database_id: Internal Metabase Database
 enable_embedding: false
-collection_id: vG58R8k-QddHWA7_47umn
-query_type: query
-name: People
-creator_id: internal@metabase.com
-made_public_by_id: null
 embedding_params: null
-cache_ttl: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
   query:
@@ -290,20 +30,280 @@ dataset_query:
     - public
     - v_users
   type: query
-parameter_mappings: []
-serdes/meta:
-- model: Card
-  id: 0wVIfjBJWclD0lKeABYYl
-  label: people
-display: table
-entity_id: 0wVIfjBJWclD0lKeABYYl
-collection_preview: true
+result_metadata:
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: User ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_users
+    - user_id
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - user_id
+  name: user_id
+  semantic_type: type/PK
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Email
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_users
+    - email
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - email
+  name: email
+  semantic_type: type/Name
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: First Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_users
+    - first_name
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - first_name
+  name: first_name
+  semantic_type: type/Name
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Last Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_users
+    - last_name
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - last_name
+  name: last_name
+  semantic_type: type/Name
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Full Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_users
+    - full_name
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - full_name
+  name: full_name
+  semantic_type: type/Name
+  settings: null
+  visibility_type: normal
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: null
+  display_name: Date Joined
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_users
+    - date_joined
+  - temporal-unit: default
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - date_joined
+  name: date_joined
+  semantic_type: type/JoinTimestamp
+  settings: null
+  unit: default
+  visibility_type: normal
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: null
+  display_name: Last Login
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_users
+    - last_login
+  - temporal-unit: default
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - last_login
+  name: last_login
+  semantic_type: null
+  settings: null
+  unit: default
+  visibility_type: normal
+- base_type: type/DateTime
+  coercion_strategy: null
+  description: null
+  display_name: Updated At
+  effective_type: type/DateTime
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_users
+    - updated_at
+  - temporal-unit: default
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - updated_at
+  name: updated_at
+  semantic_type: type/UpdatedTimestamp
+  settings: null
+  unit: default
+  visibility_type: normal
+- base_type: type/Boolean
+  coercion_strategy: null
+  description: null
+  display_name: Is Admin
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_users
+    - is_admin
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - is_admin
+  name: is_admin
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Boolean
+  coercion_strategy: null
+  description: null
+  display_name: Is Active
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_users
+    - is_active
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - is_active
+  name: is_active
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Sso Source
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_users
+    - sso_source
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - sso_source
+  name: sso_source
+  semantic_type: type/Source
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Locale
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_users
+    - locale
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - locale
+  name: locale
+  semantic_type: null
+  settings: null
+  visibility_type: normal
 visualization_settings:
-  table.pivot_column: sso_source
-  table.cell_column: locale
   column_settings: null
+  table.cell_column: locale
+  table.pivot_column: sso_source
+serdes/meta:
+- id: 0wVIfjBJWclD0lKeABYYl
+  label: people
+  model: Card
 metabase_version: null
-parameters: []
-dataset: true
-created_at: '2023-06-08T14:18:48.912368Z'
-public_uuid: null

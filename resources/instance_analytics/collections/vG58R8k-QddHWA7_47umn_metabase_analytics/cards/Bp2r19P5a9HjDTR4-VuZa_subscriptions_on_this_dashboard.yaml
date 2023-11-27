@@ -1,23 +1,29 @@
+name: Subscriptions on this dashboard
 description: null
+entity_id: Bp2r19P5a9HjDTR4-VuZa
+created_at: '2023-08-18T19:02:09.768319Z'
+creator_id: internal@metabase.com
+display: table
 archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
 collection_position: null
+query_type: query
+dataset: false
+cache_ttl: null
+database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
 - public
 - v_subscriptions
-result_metadata: null
-database_id: Internal Metabase Database
 enable_embedding: false
-collection_id: vG58R8k-QddHWA7_47umn
-query_type: query
-name: Subscriptions on this dashboard
-creator_id: internal@metabase.com
-made_public_by_id: null
 embedding_params: null
-cache_ttl: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
-  type: query
   query:
     fields:
     - - field
@@ -69,9 +75,7 @@ dataset_query:
         - parameters
       - base-type: type/Text
     joins:
-    - fields: none
-      strategy: left-join
-      alias: Content - Dashboard Qualified
+    - alias: Content - Dashboard Qualified
       condition:
       - =
       - - field
@@ -87,10 +91,10 @@ dataset_query:
           - entity_qualified_id
         - base-type: type/Text
           join-alias: Content - Dashboard Qualified
+      fields: none
       source-table: AxSackBiyXVRUzM_TyyQY
-    - fields: none
       strategy: left-join
-      alias: People - Creator
+    - alias: People - Creator
       condition:
       - =
       - - field
@@ -106,20 +110,21 @@ dataset_query:
           - user_id
         - base-type: type/Integer
           join-alias: People - Creator
+      fields: none
       source-table: 0wVIfjBJWclD0lKeABYYl
+      strategy: left-join
     source-table: 5ojUtU9iE-DCggHdFPIll
-parameter_mappings: []
-serdes/meta:
-- model: Card
-  id: Bp2r19P5a9HjDTR4-VuZa
-  label: subscriptions_on_this_dashboard
-display: table
-entity_id: Bp2r19P5a9HjDTR4-VuZa
-collection_preview: true
+  type: query
+result_metadata: null
 visualization_settings:
+  column_settings:
+    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - Creator"}]]'
+    : column_title: User
+    ? '["ref",["field",["Internal Metabase Database","public","v_users","user_id"],{"base-type":"type/Integer","join-alias":"People - Creator"}]]'
+    : column_title: User ID
   table.cell_column: recipient_external
   table.columns:
-  - name: created_at
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -127,8 +132,8 @@ visualization_settings:
       - v_subscriptions
       - created_at
     - base-type: type/DateTimeWithLocalTZ
-    enabled: true
-  - name: schedule_type
+    name: created_at
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -136,8 +141,8 @@ visualization_settings:
       - v_subscriptions
       - schedule_type
     - base-type: type/Text
-    enabled: true
-  - name: schedule_hour
+    name: schedule_type
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -145,8 +150,8 @@ visualization_settings:
       - v_subscriptions
       - schedule_hour
     - base-type: type/Integer
-    enabled: true
-  - name: recipient_type
+    name: schedule_hour
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -154,8 +159,8 @@ visualization_settings:
       - v_subscriptions
       - recipient_type
     - base-type: type/Text
-    enabled: true
-  - name: recipients
+    name: recipient_type
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -163,8 +168,8 @@ visualization_settings:
       - v_subscriptions
       - recipients
     - base-type: type/Text
-    enabled: true
-  - name: recipient_external
+    name: recipients
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -172,8 +177,8 @@ visualization_settings:
       - v_subscriptions
       - recipient_external
     - base-type: type/Text
-    enabled: true
-  - name: parameters
+    name: recipient_external
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -181,15 +186,10 @@ visualization_settings:
       - v_subscriptions
       - parameters
     - base-type: type/Text
-    enabled: true
+    name: parameters
   table.pivot_column: archived
-  column_settings:
-    ? '["ref",["field",["Internal Metabase Database","public","v_users","user_id"],{"base-type":"type/Integer","join-alias":"People - Creator"}]]'
-    : column_title: User ID
-    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - Creator"}]]'
-    : column_title: User
+serdes/meta:
+- id: Bp2r19P5a9HjDTR4-VuZa
+  label: subscriptions_on_this_dashboard
+  model: Card
 metabase_version: null
-parameters: []
-dataset: false
-created_at: '2023-08-18T19:02:09.768319Z'
-public_uuid: null
