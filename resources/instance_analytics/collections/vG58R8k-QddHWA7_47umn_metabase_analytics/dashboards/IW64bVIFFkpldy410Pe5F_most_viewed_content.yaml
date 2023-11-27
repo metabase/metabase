@@ -1,56 +1,63 @@
+name: Most viewed content
 description: Most viewed dashboards, questions, and tables in your Metabase.
+entity_id: IW64bVIFFkpldy410Pe5F
+created_at: '2023-08-18T19:07:51.157584Z'
+creator_id: internal@metabase.com
 archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+auto_apply_filters: true
+cache_ttl: null
 collection_position: 2
+position: null
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+show_in_getting_started: false
+caveats: null
+points_of_interest: null
+parameters:
+- default:
+  - All Users
+  id: 27bf158b
+  isMultiSelect: false
+  name: Group name
+  sectionId: string
+  slug: group_name
+  type: string/=
+- filteringParameters:
+  - '5e162806'
+  id: 124adfb8
+  isMultiSelect: true
+  name: User
+  sectionId: string
+  slug: user
+  type: string/=
+- default:
+  - 'true'
+  id: '5e162806'
+  isMultiSelect: false
+  name: Is user active
+  sectionId: string
+  slug: is_user_active
+  type: string/=
+serdes/meta:
+- id: IW64bVIFFkpldy410Pe5F
+  label: most_viewed_content
+  model: Dashboard
 dashcards:
-- size_x: 12
-  dashboard_tab_id: null
-  action_id: null
-  col: 0
-  parameter_mappings:
-  - parameter_id: 27bf158b
-    card_id: MUXrck2HHcd2TIRuPfK0v
-    target:
-    - dimension
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_group_members
-        - group_name
-      - join-alias: Group Members - User
-  - parameter_id: 124adfb8
-    card_id: MUXrck2HHcd2TIRuPfK0v
-    target:
-    - dimension
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_users
-        - full_name
-      - join-alias: People - Creator
-  - parameter_id: '5e162806'
-    card_id: MUXrck2HHcd2TIRuPfK0v
-    target:
-    - dimension
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_users
-        - is_active
-      - join-alias: People - Creator
+- entity_id: 9Lnv8dgtICiNt2yl2WV0x
   card_id: MUXrck2HHcd2TIRuPfK0v
-  entity_id: 9Lnv8dgtICiNt2yl2WV0x
-  visualization_settings:
-    column_settings: null
-  size_y: 9
   created_at: '2023-08-18T19:09:24.116624Z'
   row: 0
-- size_x: 12
-  dashboard_tab_id: null
+  col: 0
+  size_x: 12
+  size_y: 9
   action_id: null
-  col: 12
+  dashboard_tab_id: null
   parameter_mappings:
-  - parameter_id: 27bf158b
-    card_id: _lfXwss_MckZBidbcJsgk
+  - card_id: MUXrck2HHcd2TIRuPfK0v
+    parameter_id: 27bf158b
     target:
     - dimension
     - - field
@@ -59,8 +66,8 @@ dashcards:
         - v_group_members
         - group_name
       - join-alias: Group Members - User
-  - parameter_id: 124adfb8
-    card_id: _lfXwss_MckZBidbcJsgk
+  - card_id: MUXrck2HHcd2TIRuPfK0v
+    parameter_id: 124adfb8
     target:
     - dimension
     - - field
@@ -69,8 +76,8 @@ dashcards:
         - v_users
         - full_name
       - join-alias: People - Creator
-  - parameter_id: '5e162806'
-    card_id: _lfXwss_MckZBidbcJsgk
+  - card_id: MUXrck2HHcd2TIRuPfK0v
+    parameter_id: '5e162806'
     target:
     - dimension
     - - field
@@ -79,20 +86,62 @@ dashcards:
         - v_users
         - is_active
       - join-alias: People - Creator
-  card_id: _lfXwss_MckZBidbcJsgk
-  entity_id: mtP6yOJW7VaU9DV5lxwAw
   visualization_settings:
-    column_settings: null
-  size_y: 9
+    column_settings:
+      '["name","count"]':
+        show_mini_bar: true
+      ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Entity Qualified"}]]'
+      : column_title: Dashboard ID
+        link_url: dashboard/{{entity_id}}
+        view_as: link
+      ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
+      : column_title: Dashboard name
+        link_url: dashboard/{{entity_id}}
+        view_as: link
+    graph.dimensions:
+    - name
+    graph.metrics:
+    - count
+    graph.show_values: true
+    table.cell_column: count
+    table.columns:
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+        join-alias: Content - Entity Qualified
+      name: name
+    - enabled: false
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_id
+      - base-type: type/Integer
+        join-alias: Content - Entity Qualified
+      name: entity_id
+    - enabled: true
+      fieldRef:
+      - aggregation
+      - 0
+      name: count
+- entity_id: mtP6yOJW7VaU9DV5lxwAw
+  card_id: _lfXwss_MckZBidbcJsgk
   created_at: '2023-08-18T19:13:18.392443Z'
   row: 0
-- size_x: 12
-  dashboard_tab_id: null
+  col: 12
+  size_x: 12
+  size_y: 9
   action_id: null
-  col: 0
+  dashboard_tab_id: null
   parameter_mappings:
-  - parameter_id: 27bf158b
-    card_id: ItdtatOMd0uUEpvx7tDAC
+  - card_id: _lfXwss_MckZBidbcJsgk
+    parameter_id: 27bf158b
     target:
     - dimension
     - - field
@@ -101,8 +150,93 @@ dashcards:
         - v_group_members
         - group_name
       - join-alias: Group Members - User
-  - parameter_id: 124adfb8
-    card_id: ItdtatOMd0uUEpvx7tDAC
+  - card_id: _lfXwss_MckZBidbcJsgk
+    parameter_id: 124adfb8
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - join-alias: People - Creator
+  - card_id: _lfXwss_MckZBidbcJsgk
+    parameter_id: '5e162806'
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - join-alias: People - Creator
+  visualization_settings:
+    column_settings:
+      '["name","count"]':
+        show_mini_bar: true
+      ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Entity Qualified"}]]'
+      : column_title: Question ID
+        link_url: question/{{entity_id}}
+        view_as: link
+      ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
+      : column_title: Question name
+        link_text: ''
+        link_url: question/{{entity_id}}
+        view_as: link
+    graph.dimensions:
+    - name
+    graph.metrics:
+    - count
+    graph.show_values: true
+    table.cell_column: count
+    table.columns:
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+        join-alias: Content - Entity Qualified
+      name: name
+    - enabled: false
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_id
+      - base-type: type/Integer
+        join-alias: Content - Entity Qualified
+      name: entity_id
+    - enabled: true
+      fieldRef:
+      - aggregation
+      - 0
+      name: count
+- entity_id: QkKyZ0hyV3s5T8UERDFOI
+  card_id: ItdtatOMd0uUEpvx7tDAC
+  created_at: '2023-11-01T12:02:06.300855Z'
+  row: 9
+  col: 0
+  size_x: 12
+  size_y: 9
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: ItdtatOMd0uUEpvx7tDAC
+    parameter_id: 27bf158b
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_group_members
+        - group_name
+      - join-alias: Group Members - User
+  - card_id: ItdtatOMd0uUEpvx7tDAC
+    parameter_id: 124adfb8
     target:
     - dimension
     - - field
@@ -111,8 +245,8 @@ dashcards:
         - v_users
         - full_name
       - join-alias: People - User
-  - parameter_id: '5e162806'
-    card_id: ItdtatOMd0uUEpvx7tDAC
+  - card_id: ItdtatOMd0uUEpvx7tDAC
+    parameter_id: '5e162806'
     target:
     - dimension
     - - field
@@ -121,55 +255,104 @@ dashcards:
         - v_users
         - is_active
       - join-alias: People - User
-  card_id: ItdtatOMd0uUEpvx7tDAC
-  entity_id: QkKyZ0hyV3s5T8UERDFOI
   visualization_settings:
     column_settings: null
-  size_y: 9
-  created_at: '2023-11-01T12:02:06.300855Z'
+- entity_id: q2TAw8RtBJbvTfeZYGKyw
+  card_id: 57V11my5MYVnSlaJYM8cX
+  created_at: '2023-11-13T18:53:17.090069Z'
   row: 9
+  col: 12
+  size_x: 12
+  size_y: 9
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: 57V11my5MYVnSlaJYM8cX
+    parameter_id: '5e162806'
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - join-alias: People - Creator
+  - card_id: 57V11my5MYVnSlaJYM8cX
+    parameter_id: 124adfb8
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - join-alias: People - Creator
+  - card_id: 57V11my5MYVnSlaJYM8cX
+    parameter_id: 27bf158b
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_group_members
+        - group_name
+      - join-alias: Group Members - User
+  visualization_settings:
+    column_settings:
+      '["name","count"]':
+        show_mini_bar: true
+      ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Entity Qualified"}]]'
+      : column_title: Question ID
+        link_url: question/{{entity_id}}
+        view_as: link
+      ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
+      : column_title: Question name
+        link_text: ''
+        link_url: question/{{entity_id}}
+        view_as: link
+      ? '["ref",["field",["Internal Metabase Database","public","v_databases","name"],{"base-type":"type/Text","join-alias":"V Databases - Question Database"}]]'
+      : column_title: Database
+    graph.dimensions:
+    - name
+    graph.metrics:
+    - count
+    graph.show_values: true
+    table.cell_column: count
+    table.columns:
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+        join-alias: Content - Entity Qualified
+      name: name
+    - enabled: false
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_id
+      - base-type: type/Integer
+        join-alias: Content - Entity Qualified
+      name: entity_id
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_databases
+        - name
+      - base-type: type/Text
+        join-alias: V Databases - Question Database
+      name: name_2
+    - enabled: true
+      fieldRef:
+      - aggregation
+      - 0
+      name: count
+    table.pivot_column: name_2
 tabs: []
-enable_embedding: false
-collection_id: vG58R8k-QddHWA7_47umn
-show_in_getting_started: false
-name: Most viewed content
-caveats: null
-creator_id: internal@metabase.com
-made_public_by_id: null
-embedding_params: null
-cache_ttl: null
-serdes/meta:
-- model: Dashboard
-  id: IW64bVIFFkpldy410Pe5F
-  label: most_viewed_content
-position: null
-entity_id: IW64bVIFFkpldy410Pe5F
-parameters:
-- name: Group name
-  slug: group_name
-  id: 27bf158b
-  type: string/=
-  sectionId: string
-  isMultiSelect: false
-  default:
-  - All Users
-- name: User
-  slug: user
-  id: 124adfb8
-  type: string/=
-  sectionId: string
-  isMultiSelect: true
-  filteringParameters:
-  - '5e162806'
-- name: Is user active
-  slug: is_user_active
-  id: '5e162806'
-  type: string/=
-  sectionId: string
-  default:
-  - 'true'
-  isMultiSelect: false
-auto_apply_filters: true
-created_at: '2023-08-18T19:07:51.157584Z'
-public_uuid: null
-points_of_interest: null
