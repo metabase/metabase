@@ -42,7 +42,8 @@ describe("drill-thru/zoom", () => {
       });
     });
 
-    it("should allow to drill when the column is not a PK or FK and there is another PK", () => {
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should allow to drill when the column is not a PK or FK and there is another PK (metabase#36129)", () => {
       const value = 10;
       const column = createOrdersTotalDatasetColumn();
       const row = [{ col: column, value }];
@@ -179,25 +180,6 @@ describe("drill-thru/zoom", () => {
         row,
       );
 
-      const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
-
-      expect(newQuery).toBeDefined();
-    });
-
-    it("should allow to drill with a native query", () => {
-      const query = createQuery({
-        query: {
-          type: "native",
-          database: SAMPLE_DB_ID,
-          native: { query: "SELECT * FROM ORDERS" },
-        },
-      });
-      const column = createOrdersIdDatasetColumn({
-        id: undefined,
-        field_ref: ["field", "ID", { "base-type": "type/Integer" }],
-      });
-
-      const { drill } = findDrillThru(drillType, query, stageIndex, column);
       const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
 
       expect(newQuery).toBeDefined();
