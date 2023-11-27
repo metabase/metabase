@@ -1,10 +1,15 @@
 import type { DatasetColumn, RowValue } from "metabase-types/api";
+import {
+  createOrdersTotalDatasetColumn,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
 import {
   columnFinder,
   createQuery,
   findAggregationOperator,
   findDrillThru,
+  queryDrillThru,
 } from "metabase-lib/test-helpers";
 import { createAggregationColumn, createBreakoutColumn } from "./drills-common";
 
@@ -17,7 +22,7 @@ describe("drill-thru/underlying-records", () => {
 
   describe("availableDrillThrus", () => {
     it("should allow to drill an aggregated query", () => {
-      const { value, row, dimensions } = getColumnData(
+      const { value, row, dimensions } = getAggregatedColumnData(
         aggregationColumn,
         breakoutColumn,
         10,
@@ -41,7 +46,7 @@ describe("drill-thru/underlying-records", () => {
     });
 
     it("should use the default row count for aggregations with negative values", () => {
-      const { value, row, dimensions } = getColumnData(
+      const { value, row, dimensions } = getAggregatedColumnData(
         aggregationColumn,
         breakoutColumn,
         -10,
@@ -63,11 +68,45 @@ describe("drill-thru/underlying-records", () => {
         tableName: "Orders",
       });
     });
+
+    it("should not allow to drill when there is no aggregation", () => {
+      const column = createOrdersTotalDatasetColumn();
+      const { value, row } = getRawColumnData(column, 10);
+
+      const drill = queryDrillThru(
+        drillType,
+        defaultQuery,
+        stageIndex,
+        aggregationColumn,
+        value,
+        row,
+      );
+
+      expect(drill).toBeNull();
+    });
+
+    it("should not allow to drill with a native query", () => {
+      const query = createQuery({
+        query: {
+          type: "native",
+          database: SAMPLE_DB_ID,
+          native: { query: "SELECT * FROM ORDERS" },
+        },
+      });
+      const column = createOrdersTotalDatasetColumn({
+        id: undefined,
+        field_ref: ["field", "TOTAL", { "base-type": "type/Float" }],
+      });
+
+      const drill = queryDrillThru(drillType, query, stageIndex, column);
+
+      expect(drill).toBeNull();
+    });
   });
 
   describe("drillThru", () => {
     it("should drill an aggregated query", () => {
-      const { value, row, dimensions } = getColumnData(
+      const { value, row, dimensions } = getAggregatedColumnData(
         aggregationColumn,
         breakoutColumn,
         10,
@@ -108,7 +147,12 @@ function createQueryWithAggregation() {
   );
 }
 
-function getColumnData(
+function getRawColumnData(column: DatasetColumn, value: RowValue) {
+  const row = [{ col: column, value }];
+  return { value, row };
+}
+
+function getAggregatedColumnData(
   aggregationColumn: DatasetColumn,
   breakoutColumn: DatasetColumn,
   value: RowValue,
