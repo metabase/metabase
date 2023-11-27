@@ -178,12 +178,7 @@ export function suggest({
     if (segments) {
       suggestions.push(
         ...segments.map(segment => {
-          // TODO: fix type
-          const displayInfo = Lib.displayInfo(
-            query,
-            stageIndex,
-            segment as any,
-          );
+          const displayInfo = Lib.displayInfo(query, stageIndex, segment);
 
           return {
             type: "segments",

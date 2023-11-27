@@ -128,6 +128,14 @@ export type MetricDisplayInfo = {
   selected?: boolean;
 };
 
+export type SegmentDisplayInfo = {
+  name: string;
+  displayName: string;
+  longDisplayName: string;
+  description: string;
+  effectiveType: string;
+};
+
 export type ClauseDisplayInfo = Pick<
   ColumnDisplayInfo,
   "name" | "displayName" | "longDisplayName" | "table"
