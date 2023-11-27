@@ -8,6 +8,7 @@
    [metabase.api.common :as api]
    [metabase.models.activity :as activity]
    [metabase.models.interface :as mi]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -94,6 +95,12 @@
                                   (prepare-update-event-data object-details previous-details)
                                   object-details))})))
 
+(defn- log-enabled?
+  "Returns true when we should record audit data into the audit log."
+  []
+  (or (premium-features/is-hosted?)
+      (premium-features/has-feature? :audit-app)))
+
 (mu/defn record-event!
   "Records an event in the Audit Log.
 
@@ -110,36 +117,38 @@
 
   `:object` and `:previous-object` both have `model-details` called on them to determine which fields should be audited,
   then they are added to `:details` before the event is recorded. `:previous-object` is only included if any audited fields
-  were updated."
+  were updated.
+
+  Under certain conditions this function does _not_ insert anything into the audit log.
+  - If nothing is logged, returns nil
+  - Otherwise, returns the audit logged row."
   [topic :- :keyword
    params :- ::event-params]
-  (span/with-span!
-    {:name       "record-event!"
-     :attributes (cond-> {}
-                   (:model-id params)
-                   (assoc :model/id (:model-id params))
-                   (:user-id params)
-                   (assoc :user/id (:user-id params))
-                   (:model params)
-                   (assoc :model/name (u/lower-case-en (:model params))))}
-    (let [{:keys [user-id model-name model-id details unqualified-topic object]}
-          (construct-event topic params api/*current-user-id*)]
-      (t2/insert! :model/AuditLog
-                  :topic    unqualified-topic
-                  :details  details
-                  :model    model-name
-                  :model_id model-id
-                  :user_id  user-id)
-      ;; TODO: temporarily double-writing to the `activity` table, delete this in Metabase v48
-      ;; TODO figure out set of events to actually continue recording in activity
-      (when-not (#{:card-read :dashboard-read :table-read :card-query :setting-update} unqualified-topic)
-        (activity/record-activity!
-          {:topic    topic
-           :object   object
-           :details  details
-           :model    model-name
-           :model-id model-id
-           :user-id  user-id})))))
+  (when (log-enabled?)
+    (span/with-span!
+      {:name       "record-event!"
+       :attributes (cond-> {}
+                     (:model-id params) (assoc :model/id (:model-id params))
+                     (:user-id params) (assoc :user/id (:user-id params))
+                     (:model params) (assoc :model/name (u/lower-case-en (:model params))))}
+      (let [{:keys [user-id model-name model-id details unqualified-topic object]}
+            (construct-event topic params api/*current-user-id*)]
+        (t2/insert! :model/AuditLog
+                    :topic    unqualified-topic
+                    :details  details
+                    :model    model-name
+                    :model_id model-id
+                    :user_id  user-id)
+        ;; TODO: temporarily double-writing to the `activity` table, delete this in Metabase v48
+        ;; TODO figure out set of events to actually continue recording in activity
+        (when-not (#{:card-read :dashboard-read :table-read :card-query :setting-update} unqualified-topic)
+          (activity/record-activity!
+            {:topic    topic
+             :object   object
+             :details  details
+             :model    model-name
+             :model-id model-id
+             :user-id  user-id}))))))
 
 (t2/define-before-insert :model/AuditLog
   [activity]

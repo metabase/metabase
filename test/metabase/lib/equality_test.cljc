@@ -545,3 +545,21 @@
       (is (= (map :name returned)
              (for [col returned]
                (:name (lib.equality/find-matching-column query -1 (lib/ref col) returned))))))))
+
+(deftest ^:parallel field-refs-to-custom-expressions-test
+  (testing "custom columns that wrap a Field have `:id` - prefer matching `[:field {} 7]` to the regular field (#35839)"
+    (let [query      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (lib/expression "CA" (meta/field-metadata :orders :created-at)))
+          columns    (lib/visible-columns query)
+          created-at (m/find-first #(= (:name %) "CREATED_AT") columns)
+          ca-expr    (m/find-first #(= (:name %) "CA") columns)]
+      (testing "different columns"
+        (is (not= created-at ca-expr))
+        (testing "but both have the ID"
+          (is (= (:id created-at) (:id ca-expr)))))
+
+      (testing "both refs should match correctly"
+        (is (= created-at
+               (lib.equality/find-matching-column (lib/ref created-at) columns)))
+        (is (= ca-expr
+               (lib.equality/find-matching-column (lib/ref ca-expr)    columns)))))))

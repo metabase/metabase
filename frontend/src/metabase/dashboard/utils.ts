@@ -19,6 +19,7 @@ import type {
   Parameter,
   StructuredDatasetQuery,
   ActionDashboardCard,
+  EmbedDataset,
 } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
 import Question from "metabase-lib/Question";
@@ -225,14 +226,16 @@ const isDashcardDataLoaded = (
   return data != null && Object.values(data).every(result => result != null);
 };
 
-const hasRows = (dashcardData: Record<CardId, Dataset>) => {
+const hasRows = (dashcardData: Record<CardId, Dataset | EmbedDataset>) => {
   const queryResults = dashcardData
     ? Object.values(dashcardData).filter(Boolean)
     : [];
 
   return (
     queryResults.length > 0 &&
-    queryResults.every(queryResult => queryResult.data.rows.length > 0)
+    queryResults.every(
+      queryResult => "data" in queryResult && queryResult.data.rows.length > 0,
+    )
   );
 };
 
@@ -283,3 +286,13 @@ export const getActionIsEnabledInDatabase = (
 ): boolean => {
   return !!card.action?.database_enabled_actions;
 };
+
+/**
+ * When you remove a dashcard from a dashboard (either via removing or via moving it to another tab),
+ * another dashcard can take its place. This small offset ensures that the grid will put this dashcard
+ * in the correct place, pushing back down the other card.
+ * This is a "best effort" solution, it doesn't always work but it's good enough for the most common case
+ * see https://github.com/metabase/metabase/pull/35502
+ */
+export const calculateDashCardRowAfterUndo = (originalRow: number) =>
+  originalRow - 0.1;

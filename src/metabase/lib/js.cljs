@@ -8,6 +8,7 @@
    :exclude
    [filter])
   (:require
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [goog.object :as gobject]
    [medley.core :as m]
@@ -146,9 +147,18 @@
 ;; In contrast, the CLJS -> JS conversion doesn't know about queries, so it can use `=`-based LRU caches.
 (declare ^:private display-info->js)
 
+(defn- cljs-key->js-key [cljs-key]
+  (let [key-str (u/qualified-name cljs-key)
+        ;; if the key is something like `many-pks?` convert it to something that is more JS-friendly (remove the
+        ;; question mark), `:is-many-pks`, which becomes `isManyPks`
+        key-str (if (str/ends-with? key-str "?")
+                  (str "is-" (str/replace key-str #"\?$" ""))
+                  key-str)]
+    (u/->camelCaseEn key-str)))
+
 (defn- display-info-map->js* [x]
   (reduce (fn [obj [cljs-key cljs-val]]
-            (let [js-key (-> cljs-key u/qualified-name u/->camelCaseEn)
+            (let [js-key (cljs-key->js-key cljs-key)
                   js-val (display-info->js cljs-val)] ;; Recursing through the cache
               (gobject/set obj js-key js-val)
               obj))
@@ -685,6 +695,16 @@
   [a-query stage-number expression-name an-expression-clause]
   (lib.core/expression a-query stage-number expression-name an-expression-clause))
 
+(defn ^:export expression-name
+  "Return the name of `an-expression-clause`."
+  [an-expression-clause]
+  (lib.core/expression-name an-expression-clause))
+
+(defn ^:export with-expression-name
+  "Return an new expressions clause like `an-expression-clause` but with name `new-name`."
+  [an-expression-clause new-name]
+  (lib.core/with-expression-name an-expression-clause new-name))
+
 (defn ^:export expressions
   "Get the expressions map from a given stage of a `query`."
   [a-query stage-number]
@@ -969,6 +989,18 @@
   [a-query stage-number a-drill-thru & args]
   (apply lib.core/drill-thru a-query stage-number a-drill-thru args))
 
+(defn ^:export filter-drill-details
+  "Returns a JS object with opaque CLJS things in it, which are needed to render the complex UI for `column-filter`
+  and some `quick-filter` drills. Since the query might need an extra stage appended, this returns a possibly updated
+  `query` and `stageNumber`, as well as a `column` as returned by [[filterable-columns]]."
+  [{a-query :query
+    :keys [column stage-number value]
+    :as _filter-drill}]
+  #js {"column"      column
+       "query"       a-query
+       "stageNumber" stage-number
+       "value"       (if (= value :null) nil value)})
+
 (defn ^:export pivot-types
   "Returns an array of pivot types that are available in this drill-thru, which must be a pivot drill-thru."
   [a-drill-thru]
@@ -1028,3 +1060,23 @@
   "Returns the count of stages in query"
   [a-query]
   (lib.core/stage-count a-query))
+
+(defn ^:export filter-args-display-name
+  "Provides a reasonable display name for the `filter-clause` excluding the column-name.
+   Can be expanded as needed but only currently defined for a narrow set of date filters.
+
+   Falls back to the full filter display-name"
+  [a-query stage-number a-filter-clause]
+  (lib.core/filter-args-display-name a-query stage-number a-filter-clause))
+
+(defn ^:export expression-clause-for-legacy-expression
+  "Create an expression clause from `legacy-expression` at stage `stage-number` of `a-query`."
+  [a-query stage-number legacy-expression]
+  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
+    (lib.convert/->pMBQL (lib.core/normalize (js->clj legacy-expression :keywordize-keys true)))))
+
+(defn ^:export legacy-expression-for-expression-clause
+  "Create a legacy expression from `an-expression-clause` at stage `stage-number` of `a-query`."
+  [a-query stage-number an-expression-clause]
+  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
+    (-> an-expression-clause lib.convert/->legacy-MBQL clj->js)))
