@@ -1250,6 +1250,21 @@ class Question {
   }
 
   /**
+   * We can only "explore results" (i.e. create new questions based on this one)
+   * when question is a native query, which is saved, has no parameters
+   * and satisfies other conditionals below.
+   */
+  canExploreResults() {
+    return (
+      this.isNative() &&
+      this.isSaved() &&
+      this.parameters().length === 0 &&
+      this.query().canNest() &&
+      !this.query().readOnly() // originally "canRunAdhocQuery"
+    );
+  }
+
+  /**
    * TODO Atte Keinänen 6/13/17: Discussed with Tom that we could use the default Question constructor instead,
    * but it would require changing the constructor signature so that `card` is an optional parameter and has a default value
    */
