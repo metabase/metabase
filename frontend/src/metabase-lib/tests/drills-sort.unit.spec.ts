@@ -101,7 +101,7 @@ describe("drill-thru/sort", () => {
       const drill = queryDrillThru(
         drillType,
         defaultQuery,
-        0,
+        stageIndex,
         defaultColumn,
         value,
         row,

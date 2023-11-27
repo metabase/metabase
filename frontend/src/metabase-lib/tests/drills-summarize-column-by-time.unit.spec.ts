@@ -82,7 +82,7 @@ describe("drill-thru/summarize-column-by-time", () => {
       const drill = queryDrillThru(
         drillType,
         defaultQuery,
-        0,
+        stageIndex,
         defaultColumn,
         value,
         row,

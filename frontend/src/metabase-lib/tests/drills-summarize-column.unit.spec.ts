@@ -73,7 +73,7 @@ describe("drill-thru/summarize-column", () => {
       const drill = queryDrillThru(
         drillType,
         defaultQuery,
-        0,
+        stageIndex,
         defaultColumn,
         value,
         row,
