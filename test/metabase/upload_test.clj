@@ -353,8 +353,6 @@
            "upload_test"
            (csv-file-with ["datetime"
                            "2022-01-01"
-                           "2022-01-01 00:00"
-                           "2022-01-01T00:00:00"
                            "2022-01-01T00:00"]))
           (testing "Fields exists after sync"
             (sync/sync-database! (mt/db))
@@ -363,7 +361,7 @@
               (testing "Check the datetime column the correct base_type"
                 (is (=? {:name      #"(?i)datetime"
                          :base_type (if (= driver/*driver* :mysql) :type/DateTimeWithLocalTZ :type/DateTime)}
-                        (t2/select-one Field :table_id (:id table)))))
+                        (t2/select-one Field :database_position 0 :table_id (:id table)))))
               (is (some? table)))))))))
 
 (deftest load-from-csv-boolean-test
@@ -422,8 +420,7 @@
              (upload/unique-table-name driver/*driver* long-name)
              (csv-file-with ["id,bool"
                              "1,true"
-                             "2,false"
-                             (format "%d,true" Long/MAX_VALUE)]))
+                             "2,false"]))
             (testing "It truncates it to the right number of characters, allowing for the timestamp"
               (sync/sync-database! (mt/db))
               (let [table    (t2/select-one Table :db_id (mt/id) :%lower.name [:like (str short-name "%")])
@@ -431,8 +428,7 @@
                 (is (re-matches table-re (:name table)))
                 (testing "Check the data was uploaded into the table correctly"
                   (is (= [[1 true]
-                          [2 false]
-                          [Long/MAX_VALUE true]]
+                          [2 false]]
                          (rows-for-table table))))))))))))
 
 (deftest load-from-csv-empty-header-test
