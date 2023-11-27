@@ -16,12 +16,13 @@ describe("drill-thru/underlying-records", () => {
   const breakoutColumn = createBreakoutColumn();
 
   describe("availableDrillThrus", () => {
-    const { value, row, dimensions } = getColumnData(
-      aggregationColumn,
-      breakoutColumn,
-      10,
-    );
     it("should allow to drill an aggregated query", () => {
+      const { value, row, dimensions } = getColumnData(
+        aggregationColumn,
+        breakoutColumn,
+        10,
+      );
+
       const { drillInfo } = findDrillThru(
         drillType,
         defaultQuery,
