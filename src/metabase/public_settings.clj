@@ -106,12 +106,14 @@
   :type       :boolean
   :audit      :getter
   :visibility :public)
+
 (defsetting help-link
   (deferred-tru "TODO")
   :default    "metabase_default"
   :type       :string
   :audit      :getter
   :visibility :public)
+
 (defsetting custom-homepage-dashboard
   (deferred-tru "ID of dashboard to use as a homepage")
   :type       :integer
