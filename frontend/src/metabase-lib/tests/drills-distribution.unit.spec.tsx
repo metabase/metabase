@@ -1,4 +1,5 @@
 import {
+  createOrdersCreatedAtDatasetColumn,
   createOrdersCreatedAtField,
   createOrdersIdDatasetColumn,
   createOrdersIdField,
@@ -8,6 +9,7 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
 import {
   createQuery,
   findDrillThru,
@@ -142,4 +144,52 @@ describe("drill-thru/distribution", () => {
       expect(drill).toBeNull();
     },
   );
+
+  describe("drillThru", () => {
+    it("should drill with a numeric column", () => {
+      const { drill } = findDrillThru(
+        drillType,
+        defaultQuery,
+        stageIndex,
+        defaultColumn,
+      );
+      const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
+      expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+      expect(Lib.breakouts(newQuery, stageIndex)).toHaveLength(1);
+    });
+
+    it("should drill with a date column", () => {
+      const { drill } = findDrillThru(
+        drillType,
+        defaultQuery,
+        stageIndex,
+        createOrdersCreatedAtDatasetColumn(),
+      );
+      const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
+      expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+      expect(Lib.breakouts(newQuery, stageIndex)).toHaveLength(1);
+    });
+
+    it("should drill with a text column", () => {
+      const metadata = createMockMetadata({
+        databases: [
+          createSampleDatabase({
+            tables: [
+              createOrdersTable({
+                fields: [createOrdersIdField(), createOrdersCommentField()],
+              }),
+            ],
+          }),
+        ],
+      });
+      const query = createQuery({ metadata });
+      const column = createOrdersCommentColumn();
+
+      const { drill } = findDrillThru(drillType, query, stageIndex, column);
+      const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
+
+      expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+      expect(Lib.breakouts(newQuery, stageIndex)).toHaveLength(1);
+    });
+  });
 });
