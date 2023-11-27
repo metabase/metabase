@@ -103,7 +103,10 @@ const defaultConfig = {
     require("@cypress/grep/src/plugin")(config);
 
     if (runWithReplay) {
-      replay.default(on, config);
+      replay.default(on, config, {
+        upload: true,
+        apiKey: process.env.REPLAY_API_KEY,
+      });
     }
 
     return config;

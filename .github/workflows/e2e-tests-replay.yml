@@ -116,12 +116,6 @@ jobs:
         env:
           CYPRESS_QA_DB_MONGO: true
 
-      - name: Upload Replay.io recordings
-        if: github.event_name == 'schedule' && !cancelled()
-        uses: replayio/action-upload@v0.5.1
-        with:
-          public: false
-
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v3
         if: failure()
