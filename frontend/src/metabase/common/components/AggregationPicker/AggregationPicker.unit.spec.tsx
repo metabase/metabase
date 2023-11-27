@@ -1,7 +1,7 @@
 import _ from "underscore";
 import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
-import { render, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 
 import type { Metric, StructuredDatasetQuery } from "metabase-types/api";
@@ -143,7 +143,7 @@ function setup({
 
   const onSelect = jest.fn();
 
-  render(
+  renderWithProviders(
     <AggregationPicker
       query={query}
       clause={clause}
