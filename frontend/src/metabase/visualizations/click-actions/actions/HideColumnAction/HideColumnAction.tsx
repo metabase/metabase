@@ -25,7 +25,7 @@ export const HideColumnAction: LegacyDrill = ({
 
   return [
     {
-      name: "formatting",
+      name: "formatting-hide",
       title: t`Hide column`,
       section: "sort",
       buttonType: "sort",

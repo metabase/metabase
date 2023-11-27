@@ -73,7 +73,9 @@
   info.sunng/ring-jetty9-adapter            {:mvn/version "0.22.3"}             ; Drop-in replacement for official Ring Jetty adapter. Supports Jetty 11 webserver.
   instaparse/instaparse                     {:mvn/version "1.4.12"}             ; Make your own parser
   clj-commons/clj-yaml                      {:mvn/version "1.0.27"}             ; Clojure wrapper for YAML library SnakeYAML
-  io.github.camsaul/toucan2                 {:mvn/version "1.0.524"}
+  io.github.camsaul/toucan2                 {:mvn/version "1.0.535"}
+  io.github.eerohele/pp                     {:git/tag "2023-10-05.5"            ; super fast pretty-printing library
+                                             :git/sha "7059eec"}
   ;; The 2.X line of Resilience4j requires Java 17, so we cannot upgrade this dependency until that is our minimum JVM version
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1"}              ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
@@ -97,8 +99,8 @@
   net.sf.cssbox/cssbox                      {:mvn/version "5.0.1"               ; HTML / CSS rendering
                                              :exclusions  [org.slf4j/slf4j-api]}
   net.thisptr/jackson-jq                    {:mvn/version "1.0.0-preview.20230409"} ; Java implementation of the JQ json query language
-  org.apache.commons/commons-compress       {:mvn/version "1.23.0"}             ; compression utils
-  org.apache.commons/commons-lang3          {:mvn/version "3.13.0"}             ; helper methods for working with java.lang stuff
+  org.apache.commons/commons-compress       {:mvn/version "1.25.0"}             ; compression utils
+  org.apache.commons/commons-lang3          {:mvn/version "3.14.0"}             ; helper methods for working with java.lang stuff
   org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.20.0"}             ; apache logging framework
   org.apache.logging.log4j/log4j-api        {:mvn/version "2.20.0"}             ; add compatibility with log4j 1.2
   org.apache.logging.log4j/log4j-core       {:mvn/version "2.20.0"}             ; apache logging framework
