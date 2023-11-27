@@ -1,41 +1,17 @@
-name: Databases
 description: Information about your connected data sources.
-entity_id: -19557ZnrWiDgG4h4cKxF
-created_at: '2023-10-31T21:40:01.037564Z'
-creator_id: internal@metabase.com
-display: table
 archived: false
-collection_id: vG58R8k-QddHWA7_47umn
-collection_preview: true
 collection_position: 16
-query_type: query
-dataset: true
-cache_ttl: null
-database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
 - public
 - v_databases
-enable_embedding: false
-embedding_params: null
-made_public_by_id: null
-public_uuid: null
-parameters: []
-parameter_mappings: []
-dataset_query:
-  database: Internal Metabase Database
-  query:
-    source-table:
-    - Internal Metabase Database
-    - public
-    - v_databases
-  type: query
 result_metadata:
-- base_type: type/Integer
+- description: null
+  semantic_type: type/PK
   coercion_strategy: null
-  description: null
-  display_name: Entity ID
-  effective_type: type/Integer
+  name: entity_id
+  settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -43,21 +19,21 @@ result_metadata:
     - v_databases
     - entity_id
   - null
-  fk_target_field_id: null
+  effective_type: type/Integer
   id:
   - Internal Metabase Database
   - public
   - v_databases
   - entity_id
-  name: entity_id
-  semantic_type: type/PK
-  settings: null
   visibility_type: normal
-- base_type: type/Text
+  display_name: Entity ID
+  base_type: type/Integer
+- description: null
+  semantic_type: type/PK
   coercion_strategy: null
-  description: null
-  display_name: Entity Qualified ID
-  effective_type: type/Text
+  name: entity_qualified_id
+  settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -65,21 +41,22 @@ result_metadata:
     - v_databases
     - entity_qualified_id
   - null
-  fk_target_field_id: null
+  effective_type: type/Text
   id:
   - Internal Metabase Database
   - public
   - v_databases
   - entity_qualified_id
-  name: entity_qualified_id
-  semantic_type: type/PK
-  settings: null
   visibility_type: normal
-- base_type: type/DateTimeWithLocalTZ
+  display_name: Entity Qualified ID
+  base_type: type/Text
+- description: null
+  semantic_type: type/CreationTimestamp
   coercion_strategy: null
-  description: null
-  display_name: Created At
-  effective_type: type/DateTimeWithLocalTZ
+  unit: default
+  name: created_at
+  settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -87,22 +64,22 @@ result_metadata:
     - v_databases
     - created_at
   - temporal-unit: default
-  fk_target_field_id: null
+  effective_type: type/DateTimeWithLocalTZ
   id:
   - Internal Metabase Database
   - public
   - v_databases
   - created_at
-  name: created_at
-  semantic_type: type/CreationTimestamp
-  settings: null
-  unit: default
   visibility_type: normal
-- base_type: type/DateTimeWithLocalTZ
+  display_name: Created At
+  base_type: type/DateTimeWithLocalTZ
+- description: null
+  semantic_type: type/UpdatedTimestamp
   coercion_strategy: null
-  description: null
-  display_name: Updated At
-  effective_type: type/DateTimeWithLocalTZ
+  unit: default
+  name: updated_at
+  settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -110,22 +87,21 @@ result_metadata:
     - v_databases
     - updated_at
   - temporal-unit: default
-  fk_target_field_id: null
+  effective_type: type/DateTimeWithLocalTZ
   id:
   - Internal Metabase Database
   - public
   - v_databases
   - updated_at
-  name: updated_at
-  semantic_type: type/UpdatedTimestamp
-  settings: null
-  unit: default
   visibility_type: normal
-- base_type: type/Text
+  display_name: Updated At
+  base_type: type/DateTimeWithLocalTZ
+- description: null
+  semantic_type: type/Name
   coercion_strategy: null
-  description: null
-  display_name: Name
-  effective_type: type/Text
+  name: name
+  settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -133,21 +109,21 @@ result_metadata:
     - v_databases
     - name
   - null
-  fk_target_field_id: null
+  effective_type: type/Text
   id:
   - Internal Metabase Database
   - public
   - v_databases
   - name
-  name: name
-  semantic_type: type/Name
-  settings: null
   visibility_type: normal
-- base_type: type/Text
+  display_name: Name
+  base_type: type/Text
+- description: null
+  semantic_type: type/Description
   coercion_strategy: null
-  description: null
-  display_name: Description
-  effective_type: type/Text
+  name: description
+  settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -155,21 +131,21 @@ result_metadata:
     - v_databases
     - description
   - null
-  fk_target_field_id: null
+  effective_type: type/Text
   id:
   - Internal Metabase Database
   - public
   - v_databases
   - description
-  name: description
-  semantic_type: type/Description
-  settings: null
   visibility_type: normal
-- base_type: type/Text
+  display_name: Description
+  base_type: type/Text
+- description: null
+  semantic_type: type/Category
   coercion_strategy: null
-  description: null
-  display_name: Database Type
-  effective_type: type/Text
+  name: database_type
+  settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -177,21 +153,21 @@ result_metadata:
     - v_databases
     - database_type
   - null
-  fk_target_field_id: null
+  effective_type: type/Text
   id:
   - Internal Metabase Database
   - public
   - v_databases
   - database_type
-  name: database_type
-  semantic_type: type/Category
-  settings: null
   visibility_type: normal
-- base_type: type/Text
+  display_name: Database Type
+  base_type: type/Text
+- description: null
+  semantic_type: type/Category
   coercion_strategy: null
-  description: null
-  display_name: Metadata Sync Schedule
-  effective_type: type/Text
+  name: metadata_sync_schedule
+  settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -199,21 +175,21 @@ result_metadata:
     - v_databases
     - metadata_sync_schedule
   - null
-  fk_target_field_id: null
+  effective_type: type/Text
   id:
   - Internal Metabase Database
   - public
   - v_databases
   - metadata_sync_schedule
-  name: metadata_sync_schedule
-  semantic_type: type/Category
-  settings: null
   visibility_type: normal
-- base_type: type/Text
+  display_name: Metadata Sync Schedule
+  base_type: type/Text
+- description: null
+  semantic_type: type/Category
   coercion_strategy: null
-  description: null
-  display_name: Cache Field Values Schedule
-  effective_type: type/Text
+  name: cache_field_values_schedule
+  settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -221,21 +197,21 @@ result_metadata:
     - v_databases
     - cache_field_values_schedule
   - null
-  fk_target_field_id: null
+  effective_type: type/Text
   id:
   - Internal Metabase Database
   - public
   - v_databases
   - cache_field_values_schedule
-  name: cache_field_values_schedule
-  semantic_type: type/Category
-  settings: null
   visibility_type: normal
-- base_type: type/Text
+  display_name: Cache Field Values Schedule
+  base_type: type/Text
+- description: null
+  semantic_type: type/Category
   coercion_strategy: null
-  description: null
-  display_name: Timezone
-  effective_type: type/Text
+  name: timezone
+  settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -243,21 +219,21 @@ result_metadata:
     - v_databases
     - timezone
   - null
-  fk_target_field_id: null
+  effective_type: type/Text
   id:
   - Internal Metabase Database
   - public
   - v_databases
   - timezone
-  name: timezone
-  semantic_type: type/Category
-  settings: null
   visibility_type: normal
-- base_type: type/Boolean
+  display_name: Timezone
+  base_type: type/Text
+- description: null
+  semantic_type: type/Category
   coercion_strategy: null
-  description: null
-  display_name: Is On Demand
-  effective_type: type/Boolean
+  name: is_on_demand
+  settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -265,21 +241,21 @@ result_metadata:
     - v_databases
     - is_on_demand
   - null
-  fk_target_field_id: null
+  effective_type: type/Boolean
   id:
   - Internal Metabase Database
   - public
   - v_databases
   - is_on_demand
-  name: is_on_demand
-  semantic_type: type/Category
-  settings: null
   visibility_type: normal
-- base_type: type/Boolean
+  display_name: Is On Demand
+  base_type: type/Boolean
+- description: null
+  semantic_type: type/Category
   coercion_strategy: null
-  description: null
-  display_name: Auto Run Queries
-  effective_type: type/Boolean
+  name: auto_run_queries
+  settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -287,21 +263,21 @@ result_metadata:
     - v_databases
     - auto_run_queries
   - null
-  fk_target_field_id: null
+  effective_type: type/Boolean
   id:
   - Internal Metabase Database
   - public
   - v_databases
   - auto_run_queries
-  name: auto_run_queries
-  semantic_type: type/Category
-  settings: null
   visibility_type: normal
-- base_type: type/Integer
+  display_name: Auto Run Queries
+  base_type: type/Boolean
+- description: null
+  semantic_type: null
   coercion_strategy: null
-  description: null
-  display_name: Cache Ttl
-  effective_type: type/Integer
+  name: cache_ttl
+  settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -309,21 +285,21 @@ result_metadata:
     - v_databases
     - cache_ttl
   - null
-  fk_target_field_id: null
+  effective_type: type/Integer
   id:
   - Internal Metabase Database
   - public
   - v_databases
   - cache_ttl
-  name: cache_ttl
-  semantic_type: null
-  settings: null
   visibility_type: normal
-- base_type: type/Integer
+  display_name: Cache Ttl
+  base_type: type/Integer
+- description: null
+  semantic_type: type/FK
   coercion_strategy: null
-  description: null
-  display_name: Creator ID
-  effective_type: type/Integer
+  name: creator_id
+  settings: null
+  fk_target_field_id: 739
   field_ref:
   - field
   - - Internal Metabase Database
@@ -331,21 +307,21 @@ result_metadata:
     - v_databases
     - creator_id
   - null
-  fk_target_field_id: 739
+  effective_type: type/Integer
   id:
   - Internal Metabase Database
   - public
   - v_databases
   - creator_id
-  name: creator_id
-  semantic_type: type/FK
-  settings: null
   visibility_type: normal
-- base_type: type/Text
+  display_name: Creator ID
+  base_type: type/Integer
+- description: null
+  semantic_type: type/Category
   coercion_strategy: null
-  description: null
-  display_name: Db Version
-  effective_type: type/Text
+  name: db_version
+  settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -353,21 +329,43 @@ result_metadata:
     - v_databases
     - db_version
   - null
-  fk_target_field_id: null
+  effective_type: type/Text
   id:
   - Internal Metabase Database
   - public
   - v_databases
   - db_version
-  name: db_version
-  semantic_type: type/Category
-  settings: null
   visibility_type: normal
+  display_name: Db Version
+  base_type: type/Text
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Databases
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  database: Internal Metabase Database
+  type: query
+  query:
+    source-table:
+    - Internal Metabase Database
+    - public
+    - v_databases
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: -19557ZnrWiDgG4h4cKxF
+  label: databases
+display: table
+entity_id: -19557ZnrWiDgG4h4cKxF
+collection_preview: true
 visualization_settings:
-  column_settings: null
-  table.cell_column: cache_ttl
   table.columns:
-  - enabled: true
+  - name: entity_id
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -375,8 +373,8 @@ visualization_settings:
       - v_databases
       - entity_id
     - null
-    name: entity_id
-  - enabled: true
+    enabled: true
+  - name: entity_qualified_id
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -384,8 +382,8 @@ visualization_settings:
       - v_databases
       - entity_qualified_id
     - null
-    name: entity_qualified_id
-  - enabled: true
+    enabled: true
+  - name: created_at
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -393,8 +391,8 @@ visualization_settings:
       - v_databases
       - created_at
     - temporal-unit: default
-    name: created_at
-  - enabled: true
+    enabled: true
+  - name: updated_at
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -402,8 +400,8 @@ visualization_settings:
       - v_databases
       - updated_at
     - temporal-unit: default
-    name: updated_at
-  - enabled: true
+    enabled: true
+  - name: name
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -411,8 +409,8 @@ visualization_settings:
       - v_databases
       - name
     - null
-    name: name
-  - enabled: true
+    enabled: true
+  - name: database_type
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -420,8 +418,8 @@ visualization_settings:
       - v_databases
       - database_type
     - null
-    name: database_type
-  - enabled: true
+    enabled: true
+  - name: metadata_sync_schedule
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -429,8 +427,8 @@ visualization_settings:
       - v_databases
       - metadata_sync_schedule
     - null
-    name: metadata_sync_schedule
-  - enabled: true
+    enabled: true
+  - name: description
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -438,8 +436,8 @@ visualization_settings:
       - v_databases
       - description
     - null
-    name: description
-  - enabled: true
+    enabled: true
+  - name: cache_field_values_schedule
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -447,8 +445,8 @@ visualization_settings:
       - v_databases
       - cache_field_values_schedule
     - null
-    name: cache_field_values_schedule
-  - enabled: true
+    enabled: true
+  - name: timezone
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -456,8 +454,8 @@ visualization_settings:
       - v_databases
       - timezone
     - null
-    name: timezone
-  - enabled: true
+    enabled: true
+  - name: is_on_demand
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -465,8 +463,8 @@ visualization_settings:
       - v_databases
       - is_on_demand
     - null
-    name: is_on_demand
-  - enabled: true
+    enabled: true
+  - name: auto_run_queries
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -474,8 +472,8 @@ visualization_settings:
       - v_databases
       - auto_run_queries
     - null
-    name: auto_run_queries
-  - enabled: true
+    enabled: true
+  - name: cache_ttl
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -483,8 +481,8 @@ visualization_settings:
       - v_databases
       - cache_ttl
     - null
-    name: cache_ttl
-  - enabled: true
+    enabled: true
+  - name: creator_id
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -492,8 +490,8 @@ visualization_settings:
       - v_databases
       - creator_id
     - null
-    name: creator_id
-  - enabled: true
+    enabled: true
+  - name: db_version
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -501,10 +499,12 @@ visualization_settings:
       - v_databases
       - db_version
     - null
-    name: db_version
+    enabled: true
   table.pivot_column: timezone
-serdes/meta:
-- id: -19557ZnrWiDgG4h4cKxF
-  label: databases
-  model: Card
+  table.cell_column: cache_ttl
+  column_settings: null
 metabase_version: vUNKNOWN (0e09ac7)
+parameters: []
+dataset: true
+created_at: '2023-10-31T21:40:01.037564Z'
+public_uuid: null

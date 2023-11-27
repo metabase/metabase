@@ -1,29 +1,23 @@
-name: Recent activity
 description: null
-entity_id: WlQ-en2l-iRRCvO2-v5j1
-created_at: '2023-11-01T01:06:15.554648Z'
-creator_id: internal@metabase.com
-display: table
 archived: false
-collection_id: vG58R8k-QddHWA7_47umn
-collection_preview: true
 collection_position: null
-query_type: query
-dataset: false
-cache_ttl: null
-database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
 - public
 - v_audit_log
+result_metadata: null
+database_id: Internal Metabase Database
 enable_embedding: false
-embedding_params: null
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Recent activity
+creator_id: internal@metabase.com
 made_public_by_id: null
-public_uuid: null
-parameters: []
-parameter_mappings: []
+embedding_params: null
+cache_ttl: null
 dataset_query:
   database: Internal Metabase Database
+  type: query
   query:
     fields:
     - - field
@@ -50,8 +44,18 @@ dataset_query:
         - v_audit_log
         - details
       - base-type: type/Text
+    order-by:
+    - - desc
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_audit_log
+          - timestamp
+        - base-type: type/DateTimeWithLocalTZ
     joins:
-    - alias: People - User
+    - fields: none
+      strategy: left-join
+      alias: People - User
       condition:
       - =
       - - field
@@ -67,70 +71,21 @@ dataset_query:
           - user_id
         - base-type: type/Integer
           join-alias: People - User
-      fields: none
       source-table: 0wVIfjBJWclD0lKeABYYl
-      strategy: left-join
-    - alias: Content - Entity Qualified
-      condition:
-      - =
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_audit_log
-          - entity_qualified_id
-        - base-type: type/Text
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - entity_qualified_id
-        - base-type: type/Text
-          join-alias: Content - Entity Qualified
-      fields:
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - entity_id
-        - base-type: type/Integer
-          join-alias: Content - Entity Qualified
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - entity_type
-        - base-type: type/Text
-          join-alias: Content - Entity Qualified
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - name
-        - base-type: type/Text
-          join-alias: Content - Entity Qualified
-      source-table: AxSackBiyXVRUzM_TyyQY
-      strategy: left-join
-    limit: 200
-    order-by:
-    - - desc
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_audit_log
-          - timestamp
-        - base-type: type/DateTimeWithLocalTZ
     source-table: -lNDM3tJmuL5ltGbX0oyT
-  type: query
-result_metadata: null
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: WlQ-en2l-iRRCvO2-v5j1
+  label: recent_activity
+display: table
+entity_id: WlQ-en2l-iRRCvO2-v5j1
+collection_preview: true
 visualization_settings:
-  column_settings:
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
-    : column_title: Content name
-      link_url: /{{entity_type}}/{{entity_id}}
-      view_as: link
+  table.pivot_column: topic
   table.cell_column: details
   table.columns:
-  - enabled: true
+  - name: timestamp
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -139,8 +94,8 @@ visualization_settings:
       - timestamp
     - base-type: type/DateTimeWithLocalTZ
       temporal-unit: default
-    name: timestamp
-  - enabled: true
+    enabled: true
+  - name: topic
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -148,18 +103,8 @@ visualization_settings:
       - v_audit_log
       - topic
     - base-type: type/Text
-    name: topic
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - name
-    - base-type: type/Text
-      join-alias: Content - Entity Qualified
-    name: name
-  - enabled: false
+    enabled: true
+  - name: entity_qualified_id
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -167,8 +112,8 @@ visualization_settings:
       - v_audit_log
       - entity_qualified_id
     - base-type: type/Text
-    name: entity_qualified_id
-  - enabled: true
+    enabled: true
+  - name: details
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -176,30 +121,10 @@ visualization_settings:
       - v_audit_log
       - details
     - base-type: type/Text
-    name: details
-  - enabled: false
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - entity_id
-    - base-type: type/Integer
-      join-alias: Content - Entity Qualified
-    name: entity_id
-  - enabled: false
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - entity_type
-    - base-type: type/Text
-      join-alias: Content - Entity Qualified
-    name: entity_type
-  table.pivot_column: topic
-serdes/meta:
-- id: WlQ-en2l-iRRCvO2-v5j1
-  label: recent_activity
-  model: Card
+    enabled: true
+  column_settings: null
 metabase_version: vUNKNOWN (ad99d37)
+parameters: []
+dataset: false
+created_at: '2023-11-01T01:06:15.554648Z'
+public_uuid: null

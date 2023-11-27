@@ -1,29 +1,23 @@
-name: Person detail
 description: null
-entity_id: uEf4gbDzXkj9q1uvkaTny
-created_at: '2023-11-01T01:27:12.07356Z'
-creator_id: internal@metabase.com
-display: object
 archived: false
-collection_id: vG58R8k-QddHWA7_47umn
-collection_preview: true
 collection_position: null
-query_type: query
-dataset: false
-cache_ttl: null
-database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
 - public
 - v_users
+result_metadata: null
+database_id: Internal Metabase Database
 enable_embedding: false
-embedding_params: null
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Person detail
+creator_id: internal@metabase.com
 made_public_by_id: null
-public_uuid: null
-parameters: []
-parameter_mappings: []
+embedding_params: null
+cache_ttl: null
 dataset_query:
   database: Internal Metabase Database
+  type: query
   query:
     fields:
     - - field
@@ -81,12 +75,18 @@ dataset_query:
         - sso_source
       - base-type: type/Text
     source-table: 0wVIfjBJWclD0lKeABYYl
-  type: query
-result_metadata: null
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: uEf4gbDzXkj9q1uvkaTny
+  label: person_detail
+display: object
+entity_id: uEf4gbDzXkj9q1uvkaTny
+collection_preview: true
 visualization_settings:
   column_settings: null
-serdes/meta:
-- id: uEf4gbDzXkj9q1uvkaTny
-  label: person_detail
-  model: Card
 metabase_version: vUNKNOWN (ad99d37)
+parameters: []
+dataset: false
+created_at: '2023-11-01T01:27:12.07356Z'
+public_uuid: null

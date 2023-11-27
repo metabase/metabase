@@ -1,39 +1,23 @@
-name: New dashboards per month
 description: null
-entity_id: WoQnk12nwOaJ1pcb1wsr4
-created_at: '2023-06-08T14:37:36.024095Z'
-creator_id: internal@metabase.com
-display: line
 archived: false
-collection_id: vG58R8k-QddHWA7_47umn
-collection_preview: true
 collection_position: null
-query_type: query
-dataset: false
-cache_ttl: null
-database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
 - public
 - v_content
+result_metadata: null
+database_id: Internal Metabase Database
 enable_embedding: false
-embedding_params: null
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: New dashboards per month
+creator_id: internal@metabase.com
 made_public_by_id: null
-public_uuid: null
-parameters: []
-parameter_mappings: []
+embedding_params: null
+cache_ttl: null
 dataset_query:
-  database: Internal Metabase Database
   query:
-    aggregation:
-    - - count
-    breakout:
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - created_at
-      - temporal-unit: month
+    source-table: AxSackBiyXVRUzM_TyyQY
     filter:
     - =
     - - field
@@ -43,20 +27,36 @@ dataset_query:
         - entity_type
       - null
     - dashboard
-    source-table: AxSackBiyXVRUzM_TyyQY
+    aggregation:
+    - - count
+    breakout:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - created_at
+      - temporal-unit: month
+  database: Internal Metabase Database
   type: query
-result_metadata: null
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: WoQnk12nwOaJ1pcb1wsr4
+  label: new_dashboards_per_month
+display: line
+entity_id: WoQnk12nwOaJ1pcb1wsr4
+collection_preview: true
 visualization_settings:
-  column_settings: null
+  table.pivot_column: action_type
+  table.cell_column: event_timestamp
+  graph.show_values: true
   graph.dimensions:
   - created_at
   graph.metrics:
   - count
-  graph.show_values: true
-  table.cell_column: event_timestamp
-  table.pivot_column: action_type
-serdes/meta:
-- id: WoQnk12nwOaJ1pcb1wsr4
-  label: new_dashboards_per_month
-  model: Card
+  column_settings: null
 metabase_version: null
+parameters: []
+dataset: false
+created_at: '2023-06-08T14:37:36.024095Z'
+public_uuid: null

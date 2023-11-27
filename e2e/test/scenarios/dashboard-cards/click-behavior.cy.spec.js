@@ -13,7 +13,6 @@ import {
   popover,
   restore,
   saveDashboard,
-  setTokenFeatures,
   updateDashboardCards,
   visitDashboard,
   visitEmbeddedPage,
@@ -47,10 +46,11 @@ const COLUMN_INDEX = {
   COUNT: 1,
 };
 
-// these ids aren't real, but you have to provide unique ids 🙄
-const FIRST_TAB = { id: 900, name: "first" };
-const SECOND_TAB = { id: 901, name: "second" };
-const THIRD_TAB = { id: 902, name: "third" };
+const FIRST_TAB = { id: 1, name: "first" };
+const FIRST_TAB_SLUG = `${FIRST_TAB.id}-${FIRST_TAB.name}`;
+const SECOND_TAB = { id: 2, name: "second" };
+const SECOND_TAB_SLUG = `${SECOND_TAB.id}-${SECOND_TAB.name}`;
+const THIRD_TAB = { id: 3, name: "third" };
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
@@ -129,7 +129,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    setTokenFeatures("all");
   });
 
   describe("dashcards without click behavior", () => {
@@ -299,28 +298,22 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     it("allows setting dashboard tab with parameter as custom destination", () => {
-      const dashboard = {
-        ...TARGET_DASHBOARD,
-        parameters: [DASHBOARD_FILTER_TEXT],
-      };
-
-      const tabs = [FIRST_TAB, SECOND_TAB, THIRD_TAB];
-
-      const options = {
-        wrapId: true,
-        idAlias: "targetDashboardId",
-      };
-
-      createDashboardWithTabs({ dashboard, tabs, options });
-
-      const TAB_SLUG_MAP = {};
-
-      tabs.forEach(tab => {
-        cy.get(`@${tab.name}-id`).then(tabId => {
-          TAB_SLUG_MAP[tab.name] = `${tabId}-${tab.name}`;
+      cy.createDashboard(
+        {
+          ...TARGET_DASHBOARD,
+          parameters: [DASHBOARD_FILTER_TEXT],
+        },
+        {
+          wrapId: true,
+          idAlias: "targetDashboardId",
+        },
+      );
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        cy.request("PUT", `/api/dashboard/${targetDashboardId}/cards`, {
+          cards: [],
+          tabs: [FIRST_TAB, SECOND_TAB, THIRD_TAB],
         });
       });
-
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: card }) => {
           visitDashboard(card.dashboard_id);
@@ -351,31 +344,22 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
           expect(search).to.equal(
-            `?tab=${TAB_SLUG_MAP[SECOND_TAB.name]}&${
-              DASHBOARD_FILTER_TEXT.slug
-            }=${POINT_COUNT}`,
+            `?tab=${SECOND_TAB_SLUG}&${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}`,
           );
         });
       });
     });
 
     it("should show error and disable the form after target dashboard tab has been removed and there is more than 1 tab left", () => {
-      const options = {
+      cy.createDashboard(TARGET_DASHBOARD, {
         wrapId: true,
         idAlias: "targetDashboardId",
-      };
-      const tabs = [FIRST_TAB, SECOND_TAB, THIRD_TAB];
-
-      createDashboardWithTabs({ dashboard: TARGET_DASHBOARD, tabs, options });
-
-      const TAB_SLUG_MAP = {};
-      tabs.forEach(tab => {
-        cy.get(`@${tab.name}-id`).then(tabId => {
-          TAB_SLUG_MAP[tab.name] = `${tabId}-${tab.name}`;
-        });
       });
-
       cy.get("@targetDashboardId").then(targetDashboardId => {
+        cy.request("PUT", `/api/dashboard/${targetDashboardId}/cards`, {
+          cards: [],
+          tabs: [FIRST_TAB, SECOND_TAB, THIRD_TAB],
+        });
         const inexistingTabId = 999;
         const cardDetails = {
           visualization_settings: {
@@ -421,7 +405,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("@targetDashboardId").then(targetDashboardId => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
-          expect(search).to.equal(`?tab=${TAB_SLUG_MAP[SECOND_TAB.name]}`);
+          expect(search).to.equal(`?tab=${SECOND_TAB_SLUG}`);
         });
       });
     });
@@ -470,23 +454,15 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     it("dashboard click behavior works without tabId previously saved", () => {
-      const tabs = [FIRST_TAB, SECOND_TAB, THIRD_TAB];
-
-      const options = {
+      cy.createDashboard(TARGET_DASHBOARD, {
         wrapId: true,
         idAlias: "targetDashboardId",
-      };
-
-      createDashboardWithTabs({ dashboard: TARGET_DASHBOARD, tabs, options });
-
-      const TAB_SLUG_MAP = {};
-      tabs.forEach(tab => {
-        cy.get(`@${tab.name}-id`).then(tabId => {
-          TAB_SLUG_MAP[tab.name] = `${tabId}-${tab.name}`;
-        });
       });
-
       cy.get("@targetDashboardId").then(targetDashboardId => {
+        cy.request("PUT", `/api/dashboard/${targetDashboardId}/cards`, {
+          cards: [],
+          tabs: [FIRST_TAB, SECOND_TAB, THIRD_TAB],
+        });
         const cardDetails = {
           visualization_settings: {
             click_behavior: {
@@ -522,7 +498,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("@targetDashboardId").then(targetDashboardId => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
-          expect(search).to.equal(`?tab=${TAB_SLUG_MAP[FIRST_TAB.name]}`);
+          expect(search).to.equal(`?tab=${FIRST_TAB_SLUG}`);
         });
       });
     });
@@ -1081,28 +1057,22 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     it("should allow setting dashboard tab with parameter for a column", () => {
       cy.createQuestion(TARGET_QUESTION);
-
-      const dashboard = {
-        ...TARGET_DASHBOARD,
-        parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
-      };
-
-      const tabs = [FIRST_TAB, SECOND_TAB, THIRD_TAB];
-
-      const options = {
-        wrapId: true,
-        idAlias: "targetDashboardId",
-      };
-
-      createDashboardWithTabs({ dashboard, tabs, options });
-
-      const TAB_SLUG_MAP = {};
-      tabs.forEach(tab => {
-        cy.get(`@${tab.name}-id`).then(tabId => {
-          TAB_SLUG_MAP[tab.name] = `${tabId}-${tab.name}`;
+      cy.createDashboard(
+        {
+          ...TARGET_DASHBOARD,
+          parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
+        },
+        {
+          wrapId: true,
+          idAlias: "targetDashboardId",
+        },
+      );
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        cy.request("PUT", `/api/dashboard/${targetDashboardId}/cards`, {
+          cards: [],
+          tabs: [FIRST_TAB, SECOND_TAB, THIRD_TAB],
         });
       });
-
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: card }) => {
           visitDashboard(card.dashboard_id);
@@ -1142,9 +1112,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
           expect(search).to.equal(
-            `?tab=${TAB_SLUG_MAP[SECOND_TAB.name]}&${
-              DASHBOARD_FILTER_TEXT.slug
-            }=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.slug}=`,
+            `?tab=${SECOND_TAB_SLUG}&${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.slug}=`,
           );
         });
       });
@@ -1654,23 +1622,4 @@ const getCountToDashboardFilterMapping = () => {
     .findByText(
       getBrokenUpTextMatcher(`${COUNT_COLUMN_NAME} updates 1 filter`),
     );
-};
-
-const createDashboardWithTabs = ({ dashboard, tabs, options }) => {
-  cy.createDashboard(dashboard, options);
-
-  cy.get(`@${options.idAlias}`)
-    .then(dashboardId => {
-      cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-        cards: [],
-        tabs,
-      });
-    })
-    .then(({ body }) => {
-      // wrap tabs
-
-      body.tabs.forEach(tab => {
-        cy.wrap(tab.id).as(`${tab.name}-id`);
-      });
-    });
 };
