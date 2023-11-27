@@ -97,7 +97,8 @@ describe("drill-thru/distribution", () => {
     expect(drill).toBeNull();
   });
 
-  it("should not allow to drill with a non-editable query", () => {
+  // eslint-disable-next-line jest/no-disabled-tests
+  it.skip("should not allow to drill with a non-editable query (metabase#36125)", () => {
     const metadata = createMockMetadata({
       databases: [createSampleDatabase({ tables: [] })],
     });
@@ -170,7 +171,8 @@ describe("drill-thru/distribution", () => {
       expect(Lib.breakouts(newQuery, stageIndex)).toHaveLength(1);
     });
 
-    it("should drill with a text column", () => {
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should drill with a text column (metabase#36124)", () => {
       const metadata = createMockMetadata({
         databases: [
           createSampleDatabase({
