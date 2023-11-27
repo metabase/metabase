@@ -20,21 +20,21 @@ import {
 
 describe("drill-thru/sort", () => {
   const drillType = "drill-thru/sort";
-  const initialQuery = createQuery();
+  const defaultQuery = createQuery();
   const stageIndex = 0;
-  const column = createOrdersTotalDatasetColumn();
+  const defaultColumn = createOrdersTotalDatasetColumn();
   const findColumn = columnFinder(
-    initialQuery,
-    Lib.orderableColumns(initialQuery, stageIndex),
+    defaultQuery,
+    Lib.orderableColumns(defaultQuery, stageIndex),
   );
 
   describe("availableDrillThrus", () => {
     it("should allow to drill when the query is not sorted", () => {
       const { drillInfo } = findDrillThru(
         drillType,
-        initialQuery,
+        defaultQuery,
         stageIndex,
-        column,
+        defaultColumn,
       );
       expect(drillInfo).toMatchObject({
         type: drillType,
@@ -44,12 +44,17 @@ describe("drill-thru/sort", () => {
 
     it("should allow to drill when the query is sorted ascending", () => {
       const query = Lib.orderBy(
-        initialQuery,
+        defaultQuery,
         stageIndex,
         findColumn("ORDERS", "TOTAL"),
         "asc",
       );
-      const { drillInfo } = findDrillThru(drillType, query, stageIndex, column);
+      const { drillInfo } = findDrillThru(
+        drillType,
+        query,
+        stageIndex,
+        defaultColumn,
+      );
       expect(drillInfo).toMatchObject({
         type: drillType,
         directions: ["desc"],
@@ -58,12 +63,17 @@ describe("drill-thru/sort", () => {
 
     it("should allow to drill when the query is sorted descending", () => {
       const query = Lib.orderBy(
-        initialQuery,
+        defaultQuery,
         stageIndex,
         findColumn("ORDERS", "TOTAL"),
         "desc",
       );
-      const { drillInfo } = findDrillThru(drillType, query, stageIndex, column);
+      const { drillInfo } = findDrillThru(
+        drillType,
+        query,
+        stageIndex,
+        defaultColumn,
+      );
       expect(drillInfo).toMatchObject({
         type: drillType,
         directions: ["asc"],
@@ -72,12 +82,12 @@ describe("drill-thru/sort", () => {
 
     it("should not allow to drill when clicked on a value", () => {
       const value = 10;
-      const row = [{ col: column, value }];
+      const row = [{ col: defaultColumn, value }];
       const drill = queryDrillThru(
         drillType,
-        initialQuery,
+        defaultQuery,
         stageIndex,
-        column,
+        defaultColumn,
         value,
         row,
       );
@@ -87,12 +97,12 @@ describe("drill-thru/sort", () => {
 
     it("should not allow to drill when clicked on a null value", () => {
       const value = null;
-      const row = [{ col: column, value }];
+      const row = [{ col: defaultColumn, value }];
       const drill = queryDrillThru(
         drillType,
-        initialQuery,
+        defaultQuery,
         0,
-        column,
+        defaultColumn,
         value,
         row,
       );
@@ -121,7 +131,7 @@ describe("drill-thru/sort", () => {
         databases: [createSampleDatabase({ tables: [] })],
       });
       const query = createQuery({ metadata });
-      const drill = queryDrillThru(drillType, query, stageIndex, column);
+      const drill = queryDrillThru(drillType, query, stageIndex, defaultColumn);
       expect(drill).toBeNull();
     });
 
@@ -152,12 +162,12 @@ describe("drill-thru/sort", () => {
       direction => {
         const { drill } = findDrillThru(
           drillType,
-          initialQuery,
+          defaultQuery,
           stageIndex,
-          column,
+          defaultColumn,
         );
         const newQuery = Lib.drillThru(
-          initialQuery,
+          defaultQuery,
           stageIndex,
           drill,
           direction,
@@ -170,12 +180,17 @@ describe("drill-thru/sort", () => {
       'should drill with an aggregated query and "%s" direction',
       direction => {
         const query = Lib.orderBy(
-          initialQuery,
+          defaultQuery,
           stageIndex,
           findColumn("ORDERS", "TOTAL"),
           direction === "asc" ? "desc" : "asc",
         );
-        const { drill } = findDrillThru(drillType, query, stageIndex, column);
+        const { drill } = findDrillThru(
+          drillType,
+          query,
+          stageIndex,
+          defaultColumn,
+        );
         const newQuery = Lib.drillThru(query, stageIndex, drill, direction);
         expect(Lib.orderBys(newQuery, stageIndex)).toHaveLength(1);
       },

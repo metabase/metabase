@@ -21,17 +21,17 @@ import {
 
 describe("drill-thru/summarize-column-by-time", () => {
   const drillType = "drill-thru/summarize-column-by-time";
-  const initialQuery = createQuery();
+  const defaultQuery = createQuery();
   const stageIndex = 0;
-  const column = createOrdersTotalDatasetColumn();
+  const defaultColumn = createOrdersTotalDatasetColumn();
 
   describe("availableDrillThrus", () => {
     it("should allow to drill with a summable column", () => {
       const { drillInfo } = findDrillThru(
         drillType,
-        initialQuery,
+        defaultQuery,
         stageIndex,
-        column,
+        defaultColumn,
       );
       expect(drillInfo).toMatchObject({
         type: drillType,
@@ -40,7 +40,7 @@ describe("drill-thru/summarize-column-by-time", () => {
 
     it("should not allow to drill with a non-summable column", () => {
       const column = createOrdersCreatedAtDatasetColumn();
-      const drill = queryDrillThru(drillType, initialQuery, stageIndex, column);
+      const drill = queryDrillThru(drillType, defaultQuery, stageIndex, column);
       expect(drill).toBeNull();
     });
 
@@ -57,18 +57,18 @@ describe("drill-thru/summarize-column-by-time", () => {
         ],
       });
       const query = createQuery({ metadata });
-      const drill = queryDrillThru(drillType, query, stageIndex, column);
+      const drill = queryDrillThru(drillType, query, stageIndex, defaultColumn);
       expect(drill).toBeNull();
     });
 
     it("should not allow to drill when clicked on a value", () => {
       const value = 10;
-      const row = [{ col: column, value }];
+      const row = [{ col: defaultColumn, value }];
       const drill = queryDrillThru(
         drillType,
-        initialQuery,
+        defaultQuery,
         stageIndex,
-        column,
+        defaultColumn,
         value,
         row,
       );
@@ -78,12 +78,12 @@ describe("drill-thru/summarize-column-by-time", () => {
 
     it("should not allow to drill when clicked on a null value", () => {
       const value = null;
-      const row = [{ col: column, value }];
+      const row = [{ col: defaultColumn, value }];
       const drill = queryDrillThru(
         drillType,
-        initialQuery,
+        defaultQuery,
         0,
-        column,
+        defaultColumn,
         value,
         row,
       );
@@ -132,7 +132,7 @@ describe("drill-thru/summarize-column-by-time", () => {
         databases: [createSampleDatabase({ tables: [] })],
       });
       const query = createQuery({ metadata });
-      const drill = queryDrillThru(drillType, query, stageIndex, column);
+      const drill = queryDrillThru(drillType, query, stageIndex, defaultColumn);
       expect(drill).toBeNull();
     });
   });
@@ -141,11 +141,11 @@ describe("drill-thru/summarize-column-by-time", () => {
     it("should drill with a summable column", () => {
       const { drill } = findDrillThru(
         drillType,
-        initialQuery,
+        defaultQuery,
         stageIndex,
-        column,
+        defaultColumn,
       );
-      const newQuery = Lib.drillThru(initialQuery, stageIndex, drill);
+      const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
       expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
       expect(Lib.breakouts(newQuery, stageIndex)).toHaveLength(1);
     });

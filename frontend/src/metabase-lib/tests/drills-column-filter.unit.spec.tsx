@@ -18,17 +18,17 @@ import {
 
 describe("drill-thru/column-filter", () => {
   const drillType = "drill-thru/column-filter";
-  const initialQuery = createQuery();
+  const defaultQuery = createQuery();
   const stageIndex = 0;
-  const column = createOrdersTotalDatasetColumn();
+  const defaultColumn = createOrdersTotalDatasetColumn();
 
   describe("availableDrillThrus", () => {
     it("should allow to drill when clicked on a column header", () => {
       const { drillInfo } = findDrillThru(
         drillType,
-        initialQuery,
+        defaultQuery,
         stageIndex,
-        column,
+        defaultColumn,
       );
 
       expect(drillInfo).toMatchObject({
@@ -38,12 +38,12 @@ describe("drill-thru/column-filter", () => {
 
     it("should not allow to drill when clicked on a value", () => {
       const value = 10;
-      const row = [{ col: column, value }];
+      const row = [{ col: defaultColumn, value }];
       const drill = queryDrillThru(
         drillType,
-        initialQuery,
+        defaultQuery,
         stageIndex,
-        column,
+        defaultColumn,
         value,
         row,
       );
@@ -53,12 +53,12 @@ describe("drill-thru/column-filter", () => {
 
     it("should not allow to drill when clicked on a null value", () => {
       const value = null;
-      const row = [{ col: column, value }];
+      const row = [{ col: defaultColumn, value }];
       const drill = queryDrillThru(
         drillType,
-        initialQuery,
+        defaultQuery,
         0,
-        column,
+        defaultColumn,
         value,
         row,
       );
@@ -107,7 +107,7 @@ describe("drill-thru/column-filter", () => {
         databases: [createSampleDatabase({ tables: [] })],
       });
       const query = createQuery({ metadata });
-      const drill = queryDrillThru(drillType, query, stageIndex, column);
+      const drill = queryDrillThru(drillType, query, stageIndex, defaultColumn);
       expect(drill).toBeNull();
     });
   });
