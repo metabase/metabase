@@ -24,7 +24,6 @@
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.server.middleware.session :as mw.session]
-   [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.shared.parameters.parameters :as shared.params]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
@@ -87,12 +86,7 @@
       (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty]) (is-card-empty? result))
         {:card     card
          :dashcard dashcard
-         :result   (update-in result
-                              [:data :viz-settings]
-                              (fn [viz-settings]
-                                (merge viz-settings
-                                       (mb.viz/db->norm
-                                        (:visualization_settings dashcard)))))
+         :result   result
          :type     :card}))
     (catch Throwable e
       (log/warn e (trs "Error running query for Card {0}" card-or-id)))))

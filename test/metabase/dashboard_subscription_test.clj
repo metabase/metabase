@@ -911,10 +911,9 @@
       (mt/with-temp [Card {card-id :id :as c} (pulse.test-util/checkins-query-card {:breakout [!day.date]})
                      Dashboard     {dash-id :id} {:name "just dash"}]
         (let [viz {:table.columns (mapv metadata->field-ref (:result_metadata c) [true false])}]
-          (mt/with-temp [DashboardCard {dash-card-id :id}
-                         {:dashboard_id           dash-id
-                          :card_id                card-id
-                          :visualization_settings viz}
+          (mt/with-temp [DashboardCard {dash-card-id :id} {:dashboard_id           dash-id
+                                                           :card_id                card-id
+                                                           :visualization_settings viz}
                          Pulse         {pulse-id :id, :as pulse}  {:name         "just pulse"
                                                                    :dashboard_id dash-id}
                          PulseCard     _ {:pulse_id          pulse-id
