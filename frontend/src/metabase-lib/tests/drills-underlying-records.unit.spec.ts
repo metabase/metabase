@@ -147,6 +147,30 @@ describe("drill-thru/underlying-records", () => {
       });
     });
 
+    it("should allow to drill when clicked on a null value", () => {
+      const { value, row, dimensions } = getCellData(
+        aggregationColumn,
+        breakoutColumn,
+        null,
+      );
+
+      const { drillInfo } = findDrillThru(
+        drillType,
+        defaultQuery,
+        stageIndex,
+        aggregationColumn,
+        value,
+        row,
+        dimensions,
+      );
+
+      expect(drillInfo).toMatchObject({
+        type: drillType,
+        rowCount: 2,
+        tableName: "Orders",
+      });
+    });
+
     it("should not allow to drill when there is no aggregation", () => {
       const column = createOrdersTotalDatasetColumn();
       const value = 10;
