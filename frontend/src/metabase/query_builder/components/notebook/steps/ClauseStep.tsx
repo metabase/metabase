@@ -32,10 +32,10 @@ const ClauseStep = <T,>({
   initialAddText = null,
   tetherOptions = null,
   readOnly,
-  ...props
+  "data-testid": dataTestId,
 }: ClauseStepProps<T>): JSX.Element => {
   return (
-    <NotebookCell color={color} data-testid={props["data-testid"]}>
+    <NotebookCell color={color} data-testid={dataTestId}>
       {items.map((item, index) => (
         <PopoverWithTrigger
           tetherOptions={tetherOptions}
