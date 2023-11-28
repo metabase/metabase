@@ -23,7 +23,7 @@ const propTypes = {
   onSubmit: PropTypes.func.isRequired,
 };
 
-const SettingsJWTForm = ({
+export const SettingsJWTForm = ({
   elements = [],
   settingValues,
   onSubmit,
