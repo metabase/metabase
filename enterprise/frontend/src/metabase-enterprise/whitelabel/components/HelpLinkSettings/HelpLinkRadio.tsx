@@ -27,6 +27,8 @@ export const HelpLinkRadio = ({
     settingValues["help-link"] || "metabase_default",
   );
 
+  const [error, setError] = useState<string | null>(null);
+
   const handleRadioChange = (value: HelpLinkSetting) => {
     setHelpLinkType(value);
     onChangeSetting("help-link", value);
@@ -45,19 +47,31 @@ export const HelpLinkRadio = ({
         </Stack>
       </Radio.Group>
       {isTextInputVisible && (
-        <InputWithSelectPrefix
-          prefixes={["https://", "http://", "mailto:"]}
-          defaultPrefix="https://"
-          value={customUrl}
-          // this makes it autofocus only when the value wasn't originally a custom destination
-          // this prevents it to be focused on page load
-          autoFocus={setting.originalValue !== "custom"}
-          aria-label={t`Help link custom destination`}
-          placeholder={t`Enter a URL it should go to`}
-          onChange={e => {
-            onChangeSetting("help-link-custom-destination", e.target.value);
-          }}
-        />
+        <>
+          <p style={{ color: "red" }}>{error}</p>
+          <InputWithSelectPrefix
+            prefixes={["https://", "http://", "mailto:"]}
+            defaultPrefix="https://"
+            value={customUrl}
+            // this makes it autofocus only when the value wasn't originally a custom destination
+            // this prevents it to be focused on page load
+            autoFocus={setting.originalValue !== "custom"}
+            aria-label={t`Help link custom destination`}
+            placeholder={t`Enter a URL it should go to`}
+            onChange={async e => {
+              try {
+                // this await here is actually important :upside_down_face:
+                await onChangeSetting(
+                  "help-link-custom-destination",
+                  e.target.value,
+                ),
+                  setError(null);
+              } catch (e) {
+                setError(e.data.message || "Something went wrong");
+              }
+            }}
+          />
+        </>
       )}
     </Stack>
   );
