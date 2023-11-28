@@ -117,9 +117,12 @@
             field-form    (if (mbql.u/is-clause? :template-tag dimension)
                             (template-tag->field-form dimension card)
                             dimension)]
-        (if field-form
-          (unwrap-field-or-expression-clause field-form)
-          (log/warn "Could not find matching Field ID for target:" target))))))
+        ;; Being extra safe here since we've got many reports on this cause loading dashboard to fail
+        ;; for unknown reasons. See #8917
+        (u/prog1 (u/ignore-exceptions
+                  (unwrap-field-or-expression-clause field-form))
+         (when-not <>
+           (log/warn "Could not find matching Field or Expression for target:" target)))))))
 
 (defn- pk-fields
   "Return the `fields` that are PK Fields."
