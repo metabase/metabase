@@ -92,8 +92,8 @@
           (let [db (mt/db)
                 details (tx/dbdef->connection-details driver/*driver* :db dbdef)]
             (testing "can-connect? should return true before deleting the database"
-              (true? (binding [h2/*allow-testing-h2-connections* true]
-                       (driver/can-connect? driver/*driver* details))))
+              (is (true? (binding [h2/*allow-testing-h2-connections* true]
+                           (driver/can-connect? driver/*driver* details)))))
             ;; release db resources like connection pools so we don't have to wait to finish syncing before destroying the db
             (driver/notify-database-updated driver/*driver* db)
             (testing "after deleting a database, can-connect? should return false or throw an exception"
@@ -105,11 +105,11 @@
                               (do
                                 (tx/destroy-db! driver/*driver* dbdef)
                                 details))]
-                (false? (try
-                          (binding [h2/*allow-testing-h2-connections* true]
-                            (driver/can-connect? driver/*driver* details))
-                          (catch Exception _
-                            false)))))
+                (is (false? (try
+                              (binding [h2/*allow-testing-h2-connections* true]
+                                (driver/can-connect? driver/*driver* details))
+                              (catch Exception _
+                                false))))))
             ;; clean up the database
             (t2/delete! :model/Database (u/the-id db))))))))
 
