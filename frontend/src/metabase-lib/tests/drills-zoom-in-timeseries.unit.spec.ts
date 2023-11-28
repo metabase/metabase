@@ -1,5 +1,8 @@
 import type { DatasetColumn, RowValue } from "metabase-types/api";
-import { createOrdersCreatedAtDatasetColumn } from "metabase-types/api/mocks/presets";
+import {
+  createOrdersCreatedAtDatasetColumn,
+  createOrdersQuantityDatasetColumn,
+} from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
 import {
   columnFinder,
@@ -29,7 +32,7 @@ describe("drill-thru/zoom-in.timeseries", () => {
     ])(
       'should allow to drill with "$bucketName" temporal bucket',
       ({ bucketName, displayName }) => {
-        const query = getQueryWithTemporalBucket(bucketName);
+        const query = createQueryWithTemporalBucket(bucketName);
         const { value, row, dimensions } = getCellData(
           aggregationColumn,
           breakoutColumn,
@@ -53,6 +56,70 @@ describe("drill-thru/zoom-in.timeseries", () => {
       },
     );
 
+    it("should allow to drill when clicked on a null value", () => {
+      const query = createQueryWithTemporalBucket("Month");
+      const { value, row, dimensions } = getCellData(
+        aggregationColumn,
+        breakoutColumn,
+        null,
+      );
+
+      const { drillInfo } = findDrillThru(
+        drillType,
+        query,
+        stageIndex,
+        aggregationColumn,
+        value,
+        row,
+        dimensions,
+      );
+
+      expect(drillInfo).toMatchObject({
+        type: drillType,
+        tableName: "See this month by weeks",
+      });
+    });
+
+    it("should allow to drill when clicked on a pivot cell", () => {
+      const query = createQueryWithTemporalBucket("Month");
+      const { row, dimensions } = getPivotCellData(10);
+
+      const { drillInfo } = findDrillThru(
+        drillType,
+        query,
+        stageIndex,
+        undefined,
+        undefined,
+        row,
+        dimensions,
+      );
+
+      expect(drillInfo).toMatchObject({
+        type: drillType,
+        displayName: "See this month by weeks",
+      });
+    });
+
+    it("should allow to drill when clicked on a legend item", () => {
+      const query = createQueryWithTemporalBucket("Month");
+      const { dimensions } = getLegendItemData(10);
+
+      const { drillInfo } = findDrillThru(
+        drillType,
+        query,
+        stageIndex,
+        undefined,
+        undefined,
+        undefined,
+        dimensions,
+      );
+
+      expect(drillInfo).toMatchObject({
+        type: drillType,
+        displayName: "See this month by weeks",
+      });
+    });
+
     it.each([
       "Minute",
       "Minute of hour",
@@ -65,7 +132,7 @@ describe("drill-thru/zoom-in.timeseries", () => {
       "Quarter of year",
       "Don't bin",
     ])('should not allow to drill with "%s" temporal bucket', bucketName => {
-      const query = getQueryWithTemporalBucket(bucketName);
+      const query = createQueryWithTemporalBucket(bucketName);
       const { value, row, dimensions } = getCellData(
         aggregationColumn,
         breakoutColumn,
@@ -87,7 +154,7 @@ describe("drill-thru/zoom-in.timeseries", () => {
   });
 });
 
-function getQueryWithTemporalBucket(bucketName: string) {
+function createQueryWithTemporalBucket(bucketName: string) {
   const query = createQuery();
 
   const queryWithAggregation = Lib.aggregate(
@@ -123,4 +190,32 @@ function getCellData(
   const dimensions = [{ column: breakoutColumn, value }];
 
   return { value, row, dimensions };
+}
+
+function getPivotCellData(value: RowValue) {
+  const aggregationColumn = createCountColumn();
+  const breakoutColumn1 = createOrdersCreatedAtDatasetColumn({
+    source: "breakout",
+  });
+  const breakoutColumn2 = createOrdersQuantityDatasetColumn({
+    source: "breakout",
+  });
+
+  const row = [
+    { col: breakoutColumn1, value: "2020-01-01" },
+    { col: breakoutColumn2, value: 0 },
+    { col: aggregationColumn, value },
+  ];
+  const dimensions = [
+    { column: breakoutColumn1, value: "2020-01-01" },
+    { column: breakoutColumn2, value: 0 },
+  ];
+
+  return { value, row, dimensions };
+}
+
+function getLegendItemData(value: RowValue) {
+  const column = createOrdersQuantityDatasetColumn({ source: "breakout" });
+  const dimensions = [{ column, value }];
+  return { value, dimensions };
 }

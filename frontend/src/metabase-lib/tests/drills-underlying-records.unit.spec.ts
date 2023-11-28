@@ -79,7 +79,7 @@ describe("drill-thru/underlying-records", () => {
     });
 
     // eslint-disable-next-line jest/no-disabled-tests
-    it.skip("should allow to drill via a pivot cell (metabase#35394)", () => {
+    it.skip("should allow to drill when clicked on a pivot cell (metabase#35394)", () => {
       const query = createQueryWithMultipleBreakouts();
       const { value, row, dimensions } = getPivotCellData(10);
 
@@ -101,7 +101,7 @@ describe("drill-thru/underlying-records", () => {
     });
 
     // eslint-disable-next-line jest/no-disabled-tests
-    it.skip("should allow to drill via a legend item (metabase#35343)", () => {
+    it.skip("should allow to drill when clicked on a legend item (metabase#35343)", () => {
       const query = createQueryWithMultipleBreakouts();
       const { value, dimensions } = getLegendItemData(10);
 
@@ -230,7 +230,7 @@ describe("drill-thru/underlying-records", () => {
   });
 
   describe("drillThru", () => {
-    it("should drill via an aggregated cell", () => {
+    it("should drill when clicked on an aggregated cell", () => {
       const { value, row, dimensions } = getCellData(
         aggregationColumn,
         breakoutColumn,
@@ -253,7 +253,7 @@ describe("drill-thru/underlying-records", () => {
     });
 
     // eslint-disable-next-line jest/no-disabled-tests
-    it.skip("should drill via a pivot cell (metabase#35394)", () => {
+    it.skip("should drill when clicked on a pivot cell (metabase#35394)", () => {
       const query = createQueryWithMultipleBreakouts();
       const { row, dimensions } = getPivotCellData(10);
 
@@ -273,7 +273,7 @@ describe("drill-thru/underlying-records", () => {
     });
 
     // eslint-disable-next-line jest/no-disabled-tests
-    it.skip("should drill via a legend item (metabase#35343)", () => {
+    it.skip("should drill when clicked on a legend item (metabase#35343)", () => {
       const query = createQueryWithMultipleBreakouts();
       const { dimensions } = getLegendItemData(10);
 
