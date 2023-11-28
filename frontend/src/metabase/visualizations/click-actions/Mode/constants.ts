@@ -39,4 +39,7 @@ export const DRILL_TYPE_TO_HANDLER_MAP: Record<
   "drill-thru/summarize-column-by-time": SummarizeColumnByTimeDrill,
   "drill-thru/underlying-records": null, // UnderlyingRecordsDrill,
   "drill-thru/zoom-in.timeseries": null,
+  "drill-thru/zoom-in.bins": null,
+  "drill-thru/zoom-in.geo": null,
+  "drill-thru/automatic-insights": null,
 };
