@@ -1560,3 +1560,14 @@ export const createProductsTableDatasetColumns = () => [
   createProductsRatingDatasetColumn(),
   createProductsCreatedAtDatasetColumn(),
 ];
+
+export const createPeopleLatitudeDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createPeopleLatitudeField(),
+    id: PEOPLE.LATITUDE,
+    source: "fields",
+    field_ref: ["field", PEOPLE.LATITUDE, null],
+    ...opts,
+  });

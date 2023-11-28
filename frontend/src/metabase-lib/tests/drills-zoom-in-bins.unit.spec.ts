@@ -1,9 +1,8 @@
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 import {
-  createOrdersCreatedAtDatasetColumn,
-  createOrdersTotalDatasetColumn,
+  createOrdersQuantityDatasetColumn,
+  createPeopleLatitudeDatasetColumn,
   createSampleDatabase,
-  SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
@@ -21,22 +20,71 @@ describe("drill-thru/zoom-in.bins", () => {
   const drillType = "drill-thru/zoom-in.bins";
   const stageIndex = 0;
   const aggregationColumn = createCountColumn();
-  const breakoutColumn = createOrdersCreatedAtDatasetColumn({
-    source: "breakout",
-  });
 
-  describe("availableDrillThrus", () => {
-    it.each(["Auto bin", "10 bins", "50 bins", "100 bins"])(
-      'should allow to drill with "%s" binning strategy',
-      bucketName => {
-        const query = createQueryWithBreakout(bucketName);
+  describe.each([
+    {
+      name: "numeric",
+      tableName: "ORDERS",
+      breakoutColumn: createOrdersQuantityDatasetColumn({ source: "breakout" }),
+      buckets: ["Auto bin", "10 bins", "50 bins", "100 bins"],
+    },
+    {
+      name: "location",
+      tableName: "PEOPLE",
+      breakoutColumn: createPeopleLatitudeDatasetColumn({ source: "breakout" }),
+      buckets: [
+        "Auto bin",
+        "Bin every 0.1 degrees",
+        "Bin every 1 degree",
+        "Bin every 10 degrees",
+        "Bin every 20 degrees",
+      ],
+    },
+  ])("$name", ({ tableName, breakoutColumn, buckets }) => {
+    describe("availableDrillThrus", () => {
+      it.each(buckets)(
+        'should allow to drill with "%s" binning strategy',
+        bucketName => {
+          const query = createQueryWithBreakout(
+            tableName,
+            breakoutColumn.name,
+            bucketName,
+          );
+          const { value, row, dimensions } = getCellData(
+            aggregationColumn,
+            breakoutColumn,
+            10,
+          );
+
+          const { drillInfo } = findDrillThru(
+            drillType,
+            query,
+            stageIndex,
+            aggregationColumn,
+            value,
+            row,
+            dimensions,
+          );
+
+          expect(drillInfo).toMatchObject({
+            type: drillType,
+          });
+        },
+      );
+
+      it("should not allow to drill without binning strategy", () => {
+        const query = createQueryWithBreakout(
+          tableName,
+          breakoutColumn.name,
+          "Don't bin",
+        );
         const { value, row, dimensions } = getCellData(
           aggregationColumn,
           breakoutColumn,
           10,
         );
 
-        const { drillInfo } = findDrillThru(
+        const drill = queryDrillThru(
           drillType,
           query,
           stageIndex,
@@ -46,88 +94,89 @@ describe("drill-thru/zoom-in.bins", () => {
           dimensions,
         );
 
-        expect(drillInfo).toMatchObject({
-          type: drillType,
-        });
-      },
-    );
+        expect(drill).toBeNull();
+      });
 
-    it("should not allow to drill without binning strategy", () => {
-      const query = createQueryWithBreakout("Don't bin");
-      const { value, row, dimensions } = getCellData(
-        aggregationColumn,
-        breakoutColumn,
-        10,
-      );
+      it("should not allow to drill when clicked on a column", () => {
+        const query = createQueryWithBreakout(
+          tableName,
+          breakoutColumn.name,
+          "Auto bin",
+        );
 
-      const drill = queryDrillThru(
-        drillType,
-        query,
-        stageIndex,
-        aggregationColumn,
-        value,
-        row,
-        dimensions,
-      );
+        const drill = queryDrillThru(
+          drillType,
+          query,
+          stageIndex,
+          aggregationColumn,
+        );
 
-      expect(drill).toBeNull();
+        expect(drill).toBeNull();
+      });
+
+      it("should not allow to drill with a non-editable query", () => {
+        const query = createNotEditableQuery(
+          createQueryWithBreakout(tableName, breakoutColumn.name, "Auto bin"),
+        );
+        const { value, row, dimensions } = getCellData(
+          aggregationColumn,
+          breakoutColumn,
+          10,
+        );
+
+        const drill = queryDrillThru(
+          drillType,
+          query,
+          stageIndex,
+          aggregationColumn,
+          value,
+          row,
+          dimensions,
+        );
+
+        expect(drill).toBeNull();
+      });
     });
 
-    it("should not allow to drill when clicked on a column", () => {
-      const query = createQueryWithBreakout("Auto bin");
+    describe("drillThru", () => {
+      it.each(buckets)(
+        'should drill when clicked on an aggregated cell with "%s" binning strategy',
+        bucketName => {
+          const query = createQueryWithBreakout(
+            tableName,
+            breakoutColumn.name,
+            bucketName,
+          );
+          const { value, row, dimensions } = getCellData(
+            aggregationColumn,
+            breakoutColumn,
+            10,
+          );
+          const { drill } = findDrillThru(
+            drillType,
+            query,
+            stageIndex,
+            aggregationColumn,
+            value,
+            row,
+            dimensions,
+          );
 
-      const drill = queryDrillThru(
-        drillType,
-        query,
-        stageIndex,
-        aggregationColumn,
-      );
+          const newQuery = Lib.drillThru(query, stageIndex, drill);
 
-      expect(drill).toBeNull();
-    });
-
-    it("should not allow to drill with a native query", () => {
-      const query = createQuery({
-        query: {
-          type: "native",
-          database: SAMPLE_DB_ID,
-          native: { query: "SELECT * FROM ORDERS" },
+          expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+          expect(Lib.filters(newQuery, stageIndex)).toHaveLength(2);
         },
-      });
-      const column = createOrdersTotalDatasetColumn({
-        id: undefined,
-        field_ref: ["field", "TOTAL", { "base-type": "type/Float" }],
-      });
-
-      const drill = queryDrillThru(drillType, query, stageIndex, column);
-
-      expect(drill).toBeNull();
-    });
-
-    it("should not allow to drill with a non-editable query", () => {
-      const query = createNotEditableQuery(createQueryWithBreakout("Auto bin"));
-      const { value, row, dimensions } = getCellData(
-        aggregationColumn,
-        breakoutColumn,
-        10,
       );
-
-      const drill = queryDrillThru(
-        drillType,
-        query,
-        stageIndex,
-        aggregationColumn,
-        value,
-        row,
-        dimensions,
-      );
-
-      expect(drill).toBeNull();
     });
   });
 });
 
-function createQueryWithBreakout(bucketName: string) {
+function createQueryWithBreakout(
+  tableName: string,
+  columnName: string,
+  bucketName: string,
+) {
   const query = createQuery();
 
   const queryWithAggregation = Lib.aggregate(
@@ -139,7 +188,7 @@ function createQueryWithBreakout(bucketName: string) {
   const breakoutColumn = columnFinder(
     queryWithAggregation,
     Lib.breakoutableColumns(queryWithAggregation, -1),
-  )("ORDERS", "QUANTITY");
+  )(tableName, columnName);
 
   return Lib.breakout(
     queryWithAggregation,
@@ -172,8 +221,8 @@ function getCellData(
   value: RowValue,
 ) {
   const row = [
-    { key: "Quantity", col: breakoutColumn, value: 10 },
-    { key: "Count", col: aggregationColumn, value },
+    { key: breakoutColumn.name, col: breakoutColumn, value: 10 },
+    { key: aggregationColumn.name, col: aggregationColumn, value },
   ];
   const dimensions = [{ column: breakoutColumn, value }];
 
