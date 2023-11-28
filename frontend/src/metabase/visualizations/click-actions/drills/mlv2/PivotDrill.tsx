@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import type { IconName } from "metabase/core/components/Icon";
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
 import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
 import type {
@@ -10,41 +9,30 @@ import type {
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 
-type ClickActionCategory = {
-  name: string;
-  title: string;
-  icon: IconName;
-  match: (column: Lib.ColumnMetadata) => boolean;
-};
-
-const CATEGORIES: ClickActionCategory[] = [
-  {
+const ACTIONS = {
+  category: {
     name: "pivot-by-category",
     title: t`Category`,
     icon: "string",
-    match: Lib.isCategory,
   },
-  {
+  location: {
     name: "pivot-by-location",
     title: t`Location`,
     icon: "location",
-    match: Lib.isLocation,
   },
-  {
+  time: {
     name: "pivot-by-time",
     title: t`Time`,
     icon: "calendar",
-    match: Lib.isTime,
   },
-];
+} as const;
 
-export const PivotDrill: Drill = ({ drill, applyDrill }) => {
-  const drillDetails = Lib.pivotDrillDetails(drill);
+export const PivotDrill: Drill = ({ query, stageIndex, drill, applyDrill }) => {
+  const pivotTypes = Lib.pivotTypes(drill);
 
-  const actions = CATEGORIES.flatMap(category => {
-    const action = getAction(drill, drillDetails, category, applyDrill);
-    return action ? [action] : [];
-  });
+  const actions = pivotTypes.map(pivotType =>
+    getActionForType(query, stageIndex, drill, pivotType, applyDrill),
+  );
 
   const DrillPopover = ({ onClick }: ClickActionPopoverProps) => {
     return <ClickActionsView clickActions={actions} onClick={onClick} />;
@@ -62,28 +50,20 @@ export const PivotDrill: Drill = ({ drill, applyDrill }) => {
   ];
 };
 
-function getAction(
+function getActionForType(
+  query: Lib.Query,
+  stageIndex: number,
   drill: Lib.DrillThru,
-  { query, stageIndex, columns }: Lib.PivotDrillDetails,
-  category: ClickActionCategory,
+  pivotType: Lib.PivotType,
   applyDrill: (drill: Lib.DrillThru, column: Lib.ColumnMetadata) => Question,
-): PopoverClickAction | undefined {
-  const matchingColumns = columns.filter(category.match);
-  if (matchingColumns.length === 0) {
-    return;
-  }
+): PopoverClickAction {
+  const columns = Lib.pivotColumnsForType(drill, pivotType);
 
   return {
-    ...category,
+    ...ACTIONS[pivotType],
     section: "breakout",
     buttonType: "horizontal",
-    popover: getColumnPopover(
-      query,
-      stageIndex,
-      matchingColumns,
-      drill,
-      applyDrill,
-    ),
+    popover: getColumnPopover(query, stageIndex, columns, drill, applyDrill),
   };
 }
 

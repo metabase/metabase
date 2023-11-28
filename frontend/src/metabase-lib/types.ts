@@ -357,11 +357,7 @@ export type FilterDrillDetails = {
   stageIndex: number;
 };
 
-export type PivotDrillDetails = {
-  query: Query;
-  stageIndex: number;
-  columns: ColumnMetadata[];
-};
+export type PivotType = "category" | "location" | "time";
 
 export interface Dimension {
   column: DatasetColumn;

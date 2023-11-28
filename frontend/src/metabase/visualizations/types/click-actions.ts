@@ -149,6 +149,8 @@ export type Drill<
   T extends Lib.DrillThruDisplayInfo = Lib.DrillThruDisplayInfo,
 > = (
   options: ClickActionProps & {
+    query: Lib.Query;
+    stageIndex: number;
     drill: Lib.DrillThru;
     drillDisplayInfo: T;
     applyDrill: (drill: Lib.DrillThru, ...args: any[]) => Question;
