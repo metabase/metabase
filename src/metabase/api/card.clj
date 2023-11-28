@@ -151,7 +151,7 @@
 (defn hydrate-for-frontend
   "Adds additional information to a `Card` selected with toucan that is needed by the frontend. This should be the same information
   returned by all API endpoints where the card entity is cached (i.e. GET, PUT, POST) since the frontend replaces the Card
-  it currently has with returned one -- See #4142."
+  it currently has with returned one -- See #4283"
   [card]
   (-> card
       (t2/hydrate :creator
@@ -491,7 +491,9 @@
           card-updates          (cond-> card-updates
                                   (not timed-out?)
                                   (assoc :result_metadata fresh-metadata))]
-      (u/prog1 (-> (card/update-card! card-before-update card-updates)
+      (u/prog1 (-> (card/update-card! {:card-before-update card-before-update
+                                       :card-updates       card-updates
+                                       :actor-id           @api/*current-user*})
                    hydrate-for-frontend
                    (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
         (when timed-out?

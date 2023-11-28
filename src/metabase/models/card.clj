@@ -671,33 +671,37 @@ saved later when it is ready."
 
 (defn- delete-alert-and-notify!
   "Removes all of the alerts and notifies all of the email recipients of the alerts change via `NOTIFY-FN!`"
-  [notify-fn! alerts]
+  [& {:keys [notify-fn! alerts actor-id]}]
   (t2/delete! :model/Pulse :id [:in (map :id alerts)])
   (doseq [{:keys [channels] :as alert} alerts
           :let [email-channel (m/find-first #(= :email (:channel_type %)) channels)]]
     (doseq [recipient (:recipients email-channel)]
-      (notify-fn! alert recipient @api/*current-user*))))
+      (notify-fn! alert recipient actor-id))))
 
 (defn delete-alert-and-notify-archived!
   "Removes all alerts and will email each recipient letting them know"
-  [alerts]
-  (delete-alert-and-notify! messages/send-alert-stopped-because-archived-email! alerts))
+  [& {:keys [alerts actor-id]}]
+  (delete-alert-and-notify! {:notify-fn! messages/send-alert-stopped-because-archived-email!
+                             :alerts     alerts
+                             :actor-id   actor-id}))
 
-(defn- delete-alert-and-notify-changed! [alerts]
-  (delete-alert-and-notify! messages/send-alert-stopped-because-changed-email! alerts))
+(defn- delete-alert-and-notify-changed! [& {:keys [alerts actor-id]}]
+  (delete-alert-and-notify! {:notify-fn! messages/send-alert-stopped-because-changed-email!
+                             :alerts     alerts
+                             :actor-id   actor-id}))
 
-(defn- delete-alerts-if-needed! [old-card {card-id :id :as new-card}]
+(defn- delete-alerts-if-needed! [& {:keys [old-card new-card actor-id]}]
   ;; If there are alerts, we need to check to ensure the card change doesn't invalidate the alert
-  (when-let [alerts (seq (pulse/retrieve-alerts-for-cards {:card-ids [card-id]}))]
+  (when-let [alerts (seq (pulse/retrieve-alerts-for-cards {:card-ids [(:id new-card)]}))]
     (cond
 
       (card-archived? old-card new-card)
-      (delete-alert-and-notify-archived! alerts)
+      (delete-alert-and-notify-archived! :alerts alerts, :actor-id actor-id)
 
       (or (display-change-broke-alert? old-card new-card)
           (goal-missing? old-card new-card)
           (multiple-breakouts? new-card))
-      (delete-alert-and-notify-changed! alerts)
+      (delete-alert-and-notify-changed! :alerts alerts, :actor-id actor-id)
 
       ;; The change doesn't invalidate the alert, do nothing
       :else
@@ -743,7 +747,7 @@ saved later when it is ready."
 (defn update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
   included, otherwise the metadata will be saved to the database asynchronously."
-  [{:keys [id] :as card-before-update} card-updates]
+  [{:keys [card-before-update card-updates actor-id]}]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
   (t2/with-transaction [_conn]
    (api/maybe-reconcile-collection-position! card-before-update card-updates)
@@ -752,13 +756,13 @@ saved later when it is ready."
               (changed? card-compare-keys card-before-update card-updates))
      ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
      ;; to remove it regardless if enterprise edition is present at the moment.
-     (moderation-review/create-review! {:moderated_item_id   id
+     (moderation-review/create-review! {:moderated_item_id   (:id card-before-update)
                                         :moderated_item_type "card"
-                                        :moderator_id        api/*current-user-id*
+                                        :moderator_id        actor-id
                                         :status              nil
                                         :text                (tru "Unverified due to edit")}))
    ;; ok, now save the Card
-   (t2/update! Card id
+   (t2/update! Card (:id card-before-update)
      ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
      ;; modified if they're passed in as non-nil
      (u/select-keys-when card-updates
@@ -766,8 +770,8 @@ saved later when it is ready."
        :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
                   :parameters :parameter_mappings :embedding_params :result_metadata :collection_preview})))
   ;; Fetch the updated Card from the DB
-  (let [card (t2/select-one Card :id id)]
-    (delete-alerts-if-needed! card-before-update card)
+  (let [card (t2/select-one Card :id (:id card-before-update))]
+    (delete-alerts-if-needed! :old-card card-before-update, :new-card card, :actor-id actor-id)
     ;; skip publishing the event if it's just a change in its collection position
     (when-not (= #{:collection_position}
                  (set (keys card-updates)))
