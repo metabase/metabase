@@ -16,7 +16,7 @@ const GROUPS = [
 
 const elements = [
   {
-    placeholder: false,
+    // placeholder: false,
     key: "jwt-enabled",
     value: null,
     is_env_setting: false,
@@ -42,7 +42,7 @@ const elements = [
     autoFocus: true,
   },
   {
-    placeholder: null,
+    // placeholder: null,
     key: "jwt-shared-secret",
     value: null,
     is_env_setting: false,
@@ -92,18 +92,18 @@ const elements = [
     type: "string",
   },
   {
-    placeholder: false,
+    // placeholder: false,
     key: "jwt-group-sync",
     value: null,
     is_env_setting: false,
     env_name: "MB_JWT_GROUP_SYNC",
-    description: null,
+    // description: null,
     default: false,
     originalValue: null,
     display_name: "Synchronize group memberships",
   },
   {
-    placeholder: {},
+    // placeholder: {},
     key: "jwt-group-mappings",
     value: null,
     is_env_setting: false,

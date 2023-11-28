@@ -15,11 +15,25 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { Flex, Stack } from "metabase/ui";
 import { FormSection } from "metabase/containers/FormikForm";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
+import type { SettingValue } from "metabase-types/api";
 
-type SettingValues = { [key: string]: any };
+type SettingValues = { [key: string]: SettingValue };
+
+type SettingElement = {
+  // Similar to SettingElement from "metabase/admin/settings/types" but with required key
+  key: string;
+  display_name?: string;
+  description?: string;
+  is_env_setting?: boolean;
+  env_name?: string;
+  placeholder?: string;
+  default?: any;
+  required?: boolean;
+  autoFocus?: boolean;
+};
 
 type Props = {
-  elements: any[];
+  elements: SettingElement[];
   settingValues: SettingValues;
   onSubmit: (values: SettingValues) => void;
 };
