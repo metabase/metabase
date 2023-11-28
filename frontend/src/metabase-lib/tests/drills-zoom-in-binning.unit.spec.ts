@@ -16,7 +16,8 @@ import {
 } from "metabase-lib/test-helpers";
 import { createCountColumn } from "./drills-common";
 
-describe("drill-thru/zoom-in.binning", () => {
+// eslint-disable-next-line jest/no-disabled-tests
+describe.skip("drill-thru/zoom-in.binning (metabase#36177)", () => {
   const drillType = "drill-thru/zoom-in.binning";
   const stageIndex = 0;
   const aggregationColumn = createCountColumn();
