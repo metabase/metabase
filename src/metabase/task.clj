@@ -291,8 +291,10 @@
                :triggers (for [trigger (sort-by #(-> ^Trigger % .getKey .getName)
                                                 (qs/get-triggers-of-job scheduler job-key))]
                            (trigger->info trigger)))
+        (catch ClassNotFoundException _
+          (log/warn (trs "Class not found for Quartz Job {0}" (.getName job-key))))
         (catch Throwable e
-          (log/warn e (trs "Error fetching details for Job: {0}" (.getName job-key))))))))
+          (log/warn e (trs "Error fetching details for Quartz Job: {0}" (.getName job-key))))))))
 
 (defn- jobs-info []
   (->> (some-> (scheduler) (.getJobKeys nil))
