@@ -100,7 +100,7 @@
               (let [;; in the case of some cloud databases, the test database is never created, and shouldn't be destroyed.
                     ;; so fake it by changing the database details
                     details (cond
-                              (contains? #{:redshift :snowfake} driver/*driver*)
+                              (contains? #{:redshift :snowfake :vertica} driver/*driver*)
                               (assoc details :db "FAKE_NAME_THAT_DEFINITELY_WONT_BE_USED")
                               (= driver/*driver* :oracle)
                               (assoc details :sid "FAKE_SID_THAT_DEFINITELY_WONT_BE_USED")
@@ -124,7 +124,7 @@
                           ;; but to an S3 bucket that may contain many databases
                           ;; TODO: other drivers are still failing with this test. For these drivers there's a good chance there's a bug in
                           ;; test.data.<driver> code, and not with the driver itself.
-                          (remove #{:athena :vertica :presto-jdbc}))
+                          (remove #{:athena :presto-jdbc}))
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
@@ -147,12 +147,12 @@
             ;; release db resources like connection pools so we don't have to wait to finish syncing before destroying the db
             (driver/notify-database-updated driver/*driver* db)
             ;; destroy the db
-            (if (contains? #{:redshift :snowflake :oracle} driver/*driver*)
+            (if (contains? #{:redshift :snowflake :oracle :vertica} driver/*driver*)
               ;; in the case of some cloud databases, the test database is never created, and shouldn't be destroyed.
               ;; so fake it by changing the database details
               (let [details     (:details (mt/db))
                     new-details (cond
-                                  (contains? #{:redshift :snowflake} driver/*driver*)
+                                  (contains? #{:redshift :snowflake :vertica} driver/*driver*)
                                   (assoc details :db "FAKE_NAME_THAT_DEFINITELY_WONT_BE_USED")
                                   (= driver/*driver* :oracle)
                                   (assoc details :sid "FAKE_SID_THAT_DEFINITELY_WONT_BE_USED"))]
