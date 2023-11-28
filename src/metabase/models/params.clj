@@ -111,16 +111,20 @@
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target card]
-  (let [target (mbql.normalize/normalize-tokens target :ignore-path)]
+  (let [target (mbql.normalize/normalize target)]
     (when (mbql.u/is-clause? :dimension target)
-      (let [[_ dimension] target]
-        (try
-          (unwrap-field-or-expression-clause
-           (if (mbql.u/is-clause? :template-tag dimension)
-             (template-tag->field-form dimension card)
-             dimension))
-          (catch Throwable e
-            (log/error e "Could not find matching Field ID for target:" target)))))))
+      (let [[_ dimension] target
+            field-form    (if (mbql.u/is-clause? :template-tag dimension)
+                            (template-tag->field-form dimension card)
+                            dimension)]
+        ;; Being extra safe here since we've got many reports on this cause loading dashboard to fail
+        ;; for unknown reasons. See #8917
+        (if field-form
+          (try
+           (unwrap-field-or-expression-clause field-form)
+           (catch Exception e
+             (log/error e "Failed unwrap field form" field-form)))
+          (log/error "Could not find matching field clause for target:" target))))))
 
 (defn- pk-fields
   "Return the `fields` that are PK Fields."

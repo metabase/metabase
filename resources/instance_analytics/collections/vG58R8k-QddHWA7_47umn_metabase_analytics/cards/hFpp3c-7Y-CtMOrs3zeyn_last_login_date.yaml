@@ -1,44 +1,44 @@
+name: Last login date
 description: null
+entity_id: hFpp3c-7Y-CtMOrs3zeyn
+created_at: '2023-06-15T01:39:31.195008Z'
+creator_id: internal@metabase.com
+display: scalar
 archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
 collection_position: null
+query_type: query
+dataset: false
+cache_ttl: null
+database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
 - public
 - v_users
-result_metadata: null
-database_id: Internal Metabase Database
 enable_embedding: false
-collection_id: vG58R8k-QddHWA7_47umn
-query_type: query
-name: Last login date
-creator_id: internal@metabase.com
-made_public_by_id: null
 embedding_params: null
-cache_ttl: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
   query:
     source-table: 0wVIfjBJWclD0lKeABYYl
   type: query
-parameter_mappings: []
-serdes/meta:
-- model: Card
-  id: hFpp3c-7Y-CtMOrs3zeyn
-  label: last_login_date
-display: scalar
-entity_id: hFpp3c-7Y-CtMOrs3zeyn
-collection_preview: true
+result_metadata: null
 visualization_settings:
-  scalar.field: last_login
   column_settings:
     '["ref",["field",["Internal Metabase Database","public","v_users","date_joined"],null]]':
-      time_enabled: null
       date_abbreviate: true
+      time_enabled: null
     '["ref",["field",["Internal Metabase Database","public","v_users","last_login"],null]]':
-      time_enabled: null
       date_abbreviate: true
+      time_enabled: null
+  scalar.field: last_login
+serdes/meta:
+- id: hFpp3c-7Y-CtMOrs3zeyn
+  label: last_login_date
+  model: Card
 metabase_version: null
-parameters: []
-dataset: false
-created_at: '2023-06-15T01:39:31.195008Z'
-public_uuid: null
