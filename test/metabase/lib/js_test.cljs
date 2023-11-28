@@ -161,6 +161,13 @@
           agg-expr (-> query lib/aggregations first)
           legacy-agg-expr #js ["sum" #js ["field" (meta/id :venues :price) #js {:base-type "Integer"}]]
           legacy-agg-expr' (lib.js/legacy-expression-for-expression-clause query -1 agg-expr)]
+      (is (= (js->clj legacy-agg-expr) (js->clj legacy-agg-expr')))))
+  (testing "legacy expressions are converted properly (#36120)"
+    (let [query (-> lib.tu/venues-query
+                    (lib/aggregate (lib/count)))
+          agg-expr (-> query lib/aggregations first)
+          legacy-agg-expr #js ["count"]
+          legacy-agg-expr' (lib.js/legacy-expression-for-expression-clause query -1 agg-expr)]
       (is (= (js->clj legacy-agg-expr) (js->clj legacy-agg-expr'))))))
 
 (deftest ^:parallel filter-drill-details-test
