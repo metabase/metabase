@@ -1,10 +1,10 @@
+import { useState } from "react";
+import { useAsync } from "react-use";
+import { t } from "ttag";
 import {
   PublicLinkCopyButton,
   PublicLinkTextContainer,
 } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkPopover.styled";
-import { useState } from "react";
-import { useAsync } from "react-use";
-import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import type { exportFormats } from "metabase/lib/urls";
