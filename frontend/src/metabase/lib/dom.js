@@ -221,11 +221,11 @@ export function constrainToScreen(element, direction, padding) {
 }
 
 function getSitePath() {
-  return new URL(MetabaseSettings.get("site-url")).pathname;
+  return new URL(MetabaseSettings.get("site-url")).pathname.toLowerCase();
 }
 
 function isMetabaseUrl(url) {
-  const urlPath = new URL(url, window.location.origin).pathname;
+  const urlPath = new URL(url, window.location.origin).pathname.toLowerCase();
 
   return isSameOrSiteUrlOrigin(url) && urlPath.startsWith(getSitePath());
 }
@@ -356,15 +356,12 @@ const getOrigin = url => {
 const getLocation = url => {
   try {
     const { pathname, search, hash } = new URL(url, window.location.origin);
-    const sitePath = getSitePath();
-    const pathNameWithoutSubPath =
-      sitePath === "/"
-        ? pathname
-        : pathname.replace(
-            // Only replace the path from the start to avoid matching the string elsewhere
-            new RegExp(`^${ensureNoTrailingSlash(sitePath)}`),
-            "",
-          );
+    const sitePath = ensureNoTrailingSlash(getSitePath());
+    const normalizedPathName = pathname.toLowerCase();
+    const pathNameWithoutSubPath = normalizedPathName.startsWith(sitePath)
+      ? normalizedPathName.replace(sitePath, "")
+      : normalizedPathName;
+
     const query = querystring.parse(search.substring(1));
     return {
       pathname: pathNameWithoutSubPath,
