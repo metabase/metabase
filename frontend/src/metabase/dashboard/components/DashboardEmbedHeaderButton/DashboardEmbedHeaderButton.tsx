@@ -8,18 +8,36 @@ import { Tooltip, Text } from "metabase/ui";
 
 export type DashboardEmbedHeaderButtonProps = {
   onClick?: () => void;
+  disabled?: boolean;
+};
+
+const getTooltipLabel = ({
+  isPublicSharingEnabled,
+  disabled,
+}: {
+  isPublicSharingEnabled: boolean;
+  disabled: boolean;
+}) => {
+  if (disabled) {
+    return t`You must enable Embedding in the settings`;
+  }
+
+  return isPublicSharingEnabled ? t`Sharing` : t`Embedding`;
 };
 
 export const DashboardEmbedHeaderButton = forwardRef(
   function DashboardEmbedHeaderButton(
-    { onClick }: DashboardEmbedHeaderButtonProps,
+    { onClick, disabled = false }: DashboardEmbedHeaderButtonProps,
     ref: Ref<HTMLButtonElement>,
   ) {
     const isPublicSharingEnabled = useSelector(state =>
       getSetting(state, "enable-public-sharing"),
     );
 
-    const tooltipLabel = isPublicSharingEnabled ? t`Sharing` : t`Embedding`;
+    const tooltipLabel = getTooltipLabel({
+      isPublicSharingEnabled,
+      disabled,
+    });
 
     return (
       <Tooltip
@@ -31,8 +49,9 @@ export const DashboardEmbedHeaderButton = forwardRef(
         offset={8}
       >
         <DashboardHeaderButton
-          key="dashboard-embed-button"
+          data-testid="dashboard-embed-button"
           icon="share"
+          disabled={disabled}
           onClick={onClick}
           ref={ref}
         />

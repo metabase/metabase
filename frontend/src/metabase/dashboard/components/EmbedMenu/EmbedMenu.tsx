@@ -4,25 +4,57 @@ import { DashboardEmbedHeaderMenu } from "metabase/dashboard/components/Dashboar
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import type { Dashboard } from "metabase-types/api";
 import { Popover } from "metabase/ui";
+import type Question from "metabase-lib/Question";
 
 export type EmbedMenuModes =
   | "embed-menu"
   | "embed-modal"
   | "public-link-popover"
+  | "embedding-disabled"
   | null;
 
-export const EmbedMenu = ({
-  resource_uuid,
-  onModalOpen,
-  onModalClose,
-}: {
-  resource_uuid?: string | null;
-  onModalOpen?: () => void;
-  onModalClose?: () => void;
-}) => {
-  const hasPublicLink = !!resource_uuid;
+type ResourceType =
+  | {
+      resource: Dashboard;
+      resourceType: "dashboard";
+    }
+  | {
+      resource: Question;
+      resourceType: "question";
+    };
 
+type EmbedMenuProps = ResourceType & {
+  hasPublicLink: boolean;
+  onModalOpen: () => void;
+};
+
+export const EmbedMenu = (props: EmbedMenuProps) => {
+  const isPublicSharingEnabled = useSelector(state =>
+    getSetting(state, "enable-public-sharing"),
+  );
+
+  const isEmbeddingEnabled = useSelector(state =>
+    getSetting(state, "enable-embedding"),
+  );
+
+  const isAdmin = useSelector(getUserIsAdmin);
+
+  const shouldRender = isAdmin || props.hasPublicLink;
+
+  if (
+    isEmbeddingEnabled == null ||
+    isPublicSharingEnabled == null ||
+    !shouldRender
+  ) {
+    return null;
+  }
+
+  return <EmbedMenuInner {...props} />;
+};
+
+const EmbedMenuInner = ({ hasPublicLink, onModalOpen }: EmbedMenuProps) => {
   const initialMenuMode: EmbedMenuModes = useEmbedMenuMode({
     hasPublicLink,
   });
@@ -48,7 +80,7 @@ export const EmbedMenu = ({
   const renderEmbedModalTrigger = () => (
     <DashboardEmbedHeaderButton
       onClick={() => {
-        onModalOpen?.();
+        onModalOpen();
         setIsOpen(false);
       }}
     />
@@ -74,6 +106,10 @@ export const EmbedMenu = ({
     );
   };
 
+  const renderEmbeddingDisabled = () => {
+    return <DashboardEmbedHeaderButton disabled />;
+  };
+
   const getEmbedContent = (menuMode: EmbedMenuModes) => {
     if (menuMode === "embed-menu") {
       return renderEmbedMenu();
@@ -81,6 +117,8 @@ export const EmbedMenu = ({
       return renderEmbedModalTrigger();
     } else if (menuMode === "public-link-popover") {
       return renderPublicLinkPopover();
+    } else if (menuMode === "embedding-disabled") {
+      return renderEmbeddingDisabled();
     }
 
     return null;
@@ -97,8 +135,17 @@ const useEmbedMenuMode = ({
   const isPublicSharingEnabled = useSelector(state =>
     getSetting(state, "enable-public-sharing"),
   );
+
+  const isEmbeddingEnabled = useSelector(state =>
+    getSetting(state, "enable-embedding"),
+  );
+
   const isAdmin = useSelector(getUserIsAdmin);
+
   if (isAdmin) {
+    if (!isEmbeddingEnabled) {
+      return "embedding-disabled";
+    }
     return isPublicSharingEnabled ? "embed-menu" : "embed-modal";
   }
 
