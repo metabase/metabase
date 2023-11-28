@@ -104,6 +104,8 @@
                               (assoc details :db "FAKE_NAME_THAT_DEFINITELY_WONT_BE_USED")
                               (= driver/*driver* :oracle)
                               (assoc details :sid "FAKE_SID_THAT_DEFINITELY_WONT_BE_USED")
+                              (= driver/*driver* :presto-jdbc)
+                              (assoc details :schema "FAKE_SCHEMA_THAT_DEFINITELY_WONT_BE_USED")
                               ;; otherwise destroy the db and use the original details
                               :else
                               (do
