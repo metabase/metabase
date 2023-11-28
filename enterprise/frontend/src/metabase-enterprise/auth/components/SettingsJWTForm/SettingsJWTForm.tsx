@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -17,18 +16,19 @@ import { Flex, Stack } from "metabase/ui";
 import { FormSection } from "metabase/containers/FormikForm";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 
-const propTypes = {
-  elements: PropTypes.array,
-  settingValues: PropTypes.object.isRequired,
-  onSubmit: PropTypes.func.isRequired,
+type SettingValues = { [key: string]: any };
+
+type Props = {
+  elements: any[];
+  settingValues: SettingValues;
+  onSubmit: (values: SettingValues) => void;
 };
 
 export const SettingsJWTForm = ({
   elements = [],
   settingValues,
   onSubmit,
-  ...props
-}) => {
+}: Props) => {
   const isEnabled = settingValues["jwt-enabled"];
 
   const settings = useMemo(() => {
@@ -75,7 +75,7 @@ export const SettingsJWTForm = ({
             ]}
           />
           <FormSection title={"Server Settings"}>
-            <Stack gap="md">
+            <Stack spacing="md">
               <FormTextInput {...fields["jwt-identity-provider-uri"]} />
               <FormSecretKey
                 {...fields["jwt-shared-secret"]}
@@ -90,7 +90,7 @@ export const SettingsJWTForm = ({
             title={"User attribute configuration (optional)"}
             collapsible
           >
-            <Stack gap="md">
+            <Stack spacing="md">
               <FormTextInput {...fields["jwt-attribute-email"]} />
               <FormTextInput {...fields["jwt-attribute-firstname"]} />
               <FormTextInput {...fields["jwt-attribute-lastname"]} />
@@ -131,14 +131,13 @@ const JWT_ATTRS = [
   "jwt-group-sync",
 ];
 
-const getAttributeValues = values => {
+const getAttributeValues = (values: SettingValues) => {
   return Object.fromEntries(JWT_ATTRS.map(key => [key, values[key]]));
 };
-
-SettingsJWTForm.propTypes = propTypes;
 
 const mapDispatchToProps = {
   onSubmit: updateSettings,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(null, mapDispatchToProps)(SettingsJWTForm);
