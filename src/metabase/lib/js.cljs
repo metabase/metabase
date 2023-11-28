@@ -989,16 +989,17 @@
   [a-query stage-number a-drill-thru & args]
   (apply lib.core/drill-thru a-query stage-number a-drill-thru args))
 
-(defn ^:export column-filter-drill-details
+(defn ^:export filter-drill-details
   "Returns a JS object with opaque CLJS things in it, which are needed to render the complex UI for `column-filter`
-  drills. Since the query might need an extra stage appended, this returns a possibly updated `query` and `stageNumber`,
-  as well as a `column` as returned by [[filterable-columns]]."
+  and some `quick-filter` drills. Since the query might need an extra stage appended, this returns a possibly updated
+  `query` and `stageNumber`, as well as a `column` as returned by [[filterable-columns]]."
   [{a-query :query
-    :keys [column stage-number]
-    :as _column-filter-drill}]
+    :keys [column stage-number value]
+    :as _filter-drill}]
   #js {"column"      column
        "query"       a-query
-       "stageNumber" stage-number})
+       "stageNumber" stage-number
+       "value"       (if (= value :null) nil value)})
 
 (defn ^:export pivot-types
   "Returns an array of pivot types that are available in this drill-thru, which must be a pivot drill-thru."
@@ -1075,7 +1076,12 @@
     (lib.convert/->pMBQL (lib.core/normalize (js->clj legacy-expression :keywordize-keys true)))))
 
 (defn ^:export legacy-expression-for-expression-clause
-  "Create a legacy expression from `an-expression-clause` at stage `stage-number` of `a-query`."
+  "Create a legacy expression from `an-expression-clause` at stage `stage-number` of `a-query`.
+  When processing aggregation clauses, the aggregation-options wrapper (e.g., specifying the name
+  of the aggregation expression) (if any) is thrown away."
   [a-query stage-number an-expression-clause]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (-> an-expression-clause lib.convert/->legacy-MBQL clj->js)))
+    (let [legacy-expr (-> an-expression-clause lib.convert/->legacy-MBQL)]
+      (clj->js (cond-> legacy-expr
+                 (= (first legacy-expr) :aggregation-options)
+                 (get 1))))))

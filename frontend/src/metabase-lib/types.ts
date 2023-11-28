@@ -338,6 +338,12 @@ export type DrillThruDisplayInfo =
   | UnderlyingRecordsDrillThruInfo
   | ZoomTimeseriesDrillThruInfo;
 
+export type FilterDrillDetails = {
+  query: Query;
+  stageNumber: number;
+  column: ColumnMetadata;
+};
+
 export interface Dimension {
   column: DatasetColumn;
   value?: RowValue;

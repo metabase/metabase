@@ -99,8 +99,8 @@
   net.sf.cssbox/cssbox                      {:mvn/version "5.0.1"               ; HTML / CSS rendering
                                              :exclusions  [org.slf4j/slf4j-api]}
   net.thisptr/jackson-jq                    {:mvn/version "1.0.0-preview.20230409"} ; Java implementation of the JQ json query language
-  org.apache.commons/commons-compress       {:mvn/version "1.23.0"}             ; compression utils
-  org.apache.commons/commons-lang3          {:mvn/version "3.13.0"}             ; helper methods for working with java.lang stuff
+  org.apache.commons/commons-compress       {:mvn/version "1.25.0"}             ; compression utils
+  org.apache.commons/commons-lang3          {:mvn/version "3.14.0"}             ; helper methods for working with java.lang stuff
   org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.20.0"}             ; apache logging framework
   org.apache.logging.log4j/log4j-api        {:mvn/version "2.20.0"}             ; add compatibility with log4j 1.2
   org.apache.logging.log4j/log4j-core       {:mvn/version "2.20.0"}             ; apache logging framework
