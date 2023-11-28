@@ -98,7 +98,7 @@
 
 (def ^:private truncate-audit-tables-job-key "metabase.task.truncate-audit-tables.job")
 (def ^:private truncate-audit-tables-trigger-key "metabase.task.truncate-audit-tables.trigger")
-(def ^:private truncate-audit-tables-cron "0 0 */12 * * ? *")
+(def ^:private truncate-audit-tables-cron "0 0 */12 * * ? *") ;; Run every 12 hours
 
 (defmethod task/init! ::TruncateAuditTables [_]
   (let [job     (jobs/build
@@ -109,7 +109,6 @@
                  (triggers/start-now)
                  (triggers/with-schedule
                    (cron/schedule
-                    ;; run every 12 hours
                     (cron/cron-schedule truncate-audit-tables-cron)
                     (cron/with-misfire-handling-instruction-do-nothing))))]
     (task/schedule-task! job trigger)))
