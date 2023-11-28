@@ -41,12 +41,12 @@ export const EmbedMenu = (props: EmbedMenuProps) => {
 
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const shouldRender = isAdmin || props.hasPublicLink;
+  const shouldRenderForUser = isAdmin || props.hasPublicLink;
 
   if (
     isEmbeddingEnabled == null ||
     isPublicSharingEnabled == null ||
-    !shouldRender
+    !shouldRenderForUser
   ) {
     return null;
   }
@@ -70,7 +70,6 @@ const EmbedMenuInner = ({ hasPublicLink, onModalOpen }: EmbedMenuProps) => {
   const renderEmbedMenu = () => (
     <DashboardEmbedHeaderMenu
       hasPublicLink={hasPublicLink}
-      /* TODO: Change to `onMenuSelect("public-link-popover")}` when public link popover is implemented */
       openPublicLinkPopover={() => onMenuSelect("public-link-popover")}
       openEmbedModal={onModalOpen}
       target={<DashboardEmbedHeaderButton />}
@@ -78,12 +77,7 @@ const EmbedMenuInner = ({ hasPublicLink, onModalOpen }: EmbedMenuProps) => {
   );
 
   const renderEmbedModalTrigger = () => (
-    <DashboardEmbedHeaderButton
-      onClick={() => {
-        onModalOpen();
-        setIsOpen(false);
-      }}
-    />
+    <DashboardEmbedHeaderButton onClick={onModalOpen} />
   );
 
   const onClosePublicLinkPopover = () => {
