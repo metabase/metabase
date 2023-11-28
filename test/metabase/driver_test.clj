@@ -99,7 +99,7 @@
             (testing "after deleting a database, can-connect? should return false or throw an exception"
               (let [;; in the case of some cloud databases, the test database is never created, and shouldn't be destroyed.
                     ;; so fake it by redefining the database name on the dbdef
-                    details (if (contains? #{:redshift :snowflake} driver/*driver*)
+                    details (if (contains? #{:redshift :snowfake} driver/*driver*)
                               (assoc details :db "fake-db-name-that-definitely-wont-be-used")
                               ;; otherwise destroy the db and use the original details
                               (do
