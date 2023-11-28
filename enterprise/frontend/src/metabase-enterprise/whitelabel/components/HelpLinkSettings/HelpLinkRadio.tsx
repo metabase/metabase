@@ -2,7 +2,7 @@ import { t } from "ttag";
 import { useState } from "react";
 import { Radio, Stack } from "metabase/ui";
 import type { HelpLinkSetting, SettingKey, Settings } from "metabase-types/api";
-import InputBlurChange from "metabase/components/InputBlurChange";
+import InputWithSelectPrefix from "metabase/components/InputWithSelectPrefix";
 
 interface Props {
   setting: {
@@ -45,14 +45,16 @@ export const HelpLinkRadio = ({
         </Stack>
       </Radio.Group>
       {isTextInputVisible && (
-        <InputBlurChange
+        <InputWithSelectPrefix
+          prefixes={["https://", "http://", "mailto:"]}
+          defaultPrefix="https://"
           value={customUrl}
           // this makes it autofocus only when the value wasn't originally a custom destination
           // this prevents it to be focused on page load
           autoFocus={setting.originalValue !== "custom"}
           aria-label={t`Help link custom destination`}
-          placeholder={t`Enter a URL`}
-          onBlurChange={e => {
+          placeholder={t`Enter a URL it should go to`}
+          onChange={e => {
             onChangeSetting("help-link-custom-destination", e.target.value);
           }}
         />

@@ -192,7 +192,7 @@ describeEE("formatting > whitelabel", () => {
         .findByText("Go to a custom destination...")
         .click();
 
-      cy.findByLabelText("Help link custom destination")
+      cy.findByPlaceholderText("Enter a URL it should go to")
         .should("have.focus")
         .type("https://example.org/custom-destination")
         .blur();
@@ -204,7 +204,7 @@ describeEE("formatting > whitelabel", () => {
       cy.log("Check that on page load the text field is not focused");
       cy.reload();
 
-      cy.findByLabelText("Help link custom destination").should(
+      cy.findByPlaceholderText("Enter a URL it should go to").should(
         "not.have.focus",
       );
 
@@ -252,7 +252,7 @@ describeEE("formatting > whitelabel", () => {
         .findByText("Go to a custom destination...")
         .click();
 
-      cy.findByLabelText("Help link custom destination").type(
+      cy.findByPlaceholderText("Enter a URL it should go to").type(
         "https://example.org/custom-destination",
       );
 
@@ -274,7 +274,7 @@ describeEE("formatting > whitelabel", () => {
         .findByText("Go to a custom destination...")
         .click();
 
-      cy.findByLabelText("Help link custom destination").type(
+      cy.findByPlaceholderText("Enter a URL it should go to").type(
         "https://example.org/custom-destination",
       );
 
