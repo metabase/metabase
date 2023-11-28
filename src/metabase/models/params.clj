@@ -119,10 +119,11 @@
                             dimension)]
         ;; Being extra safe here since we've got many reports on this cause loading dashboard to fail
         ;; for unknown reasons. See #8917
-        (u/prog1 (u/ignore-exceptions
-                  (unwrap-field-or-expression-clause field-form))
-         (when-not <>
-           (log/warn "Could not find matching Field or Expression for target:" target)))))))
+        (when field-form
+          (try
+           (unwrap-field-or-expression-clause field-form)
+           (catch Exception e
+             (log/error e "Failed unwrap field form" field-form))))))))
 
 (defn- pk-fields
   "Return the `fields` that are PK Fields."
