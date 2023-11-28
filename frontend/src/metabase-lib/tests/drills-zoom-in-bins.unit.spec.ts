@@ -1,5 +1,11 @@
 import type { DatasetColumn, RowValue } from "metabase-types/api";
-import { createOrdersCreatedAtDatasetColumn } from "metabase-types/api/mocks/presets";
+import {
+  createOrdersCreatedAtDatasetColumn,
+  createOrdersTotalDatasetColumn,
+  createSampleDatabase,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
+import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import {
   columnFinder,
@@ -66,6 +72,58 @@ describe("drill-thru/zoom-in.bins", () => {
 
       expect(drill).toBeNull();
     });
+
+    it("should not allow to drill when clicked on a column", () => {
+      const query = createQueryWithBreakout("Auto bin");
+
+      const drill = queryDrillThru(
+        drillType,
+        query,
+        stageIndex,
+        aggregationColumn,
+      );
+
+      expect(drill).toBeNull();
+    });
+
+    it("should not allow to drill with a native query", () => {
+      const query = createQuery({
+        query: {
+          type: "native",
+          database: SAMPLE_DB_ID,
+          native: { query: "SELECT * FROM ORDERS" },
+        },
+      });
+      const column = createOrdersTotalDatasetColumn({
+        id: undefined,
+        field_ref: ["field", "TOTAL", { "base-type": "type/Float" }],
+      });
+
+      const drill = queryDrillThru(drillType, query, stageIndex, column);
+
+      expect(drill).toBeNull();
+    });
+
+    it("should not allow to drill with a non-editable query", () => {
+      const query = createNotEditableQuery(createQueryWithBreakout("Auto bin"));
+      const { value, row, dimensions } = getCellData(
+        aggregationColumn,
+        breakoutColumn,
+        10,
+      );
+
+      const drill = queryDrillThru(
+        drillType,
+        query,
+        stageIndex,
+        aggregationColumn,
+        value,
+        row,
+        dimensions,
+      );
+
+      expect(drill).toBeNull();
+    });
   });
 });
 
@@ -91,6 +149,21 @@ function createQueryWithBreakout(bucketName: string) {
       findBinningStrategy(query, breakoutColumn, bucketName),
     ),
   );
+}
+
+function createNotEditableQuery(query: Lib.Query) {
+  const metadata = createMockMetadata({
+    databases: [
+      createSampleDatabase({
+        tables: [],
+      }),
+    ],
+  });
+
+  return createQuery({
+    metadata,
+    query: Lib.toLegacyQuery(query),
+  });
 }
 
 function getCellData(
