@@ -98,10 +98,14 @@
             (driver/notify-database-updated driver/*driver* db)
             (testing "after deleting a database, can-connect? should return false or throw an exception"
               (let [;; in the case of some cloud databases, the test database is never created, and shouldn't be destroyed.
-                    ;; so fake it by redefining the database name on the dbdef
-                    details (if (contains? #{:redshift :snowfake} driver/*driver*)
-                              (assoc details :db "fake-db-name-that-definitely-wont-be-used")
+                    ;; so fake it by changing the database details
+                    details (cond
+                              (contains? #{:redshift :snowfake} driver/*driver*)
+                              (assoc details :db "FAKE_NAME_THAT_DEFINITELY_WONT_BE_USED")
+                              (= driver/*driver* :oracle)
+                              (assoc details :sid "FAKE_SID_THAT_DEFINITELY_WONT_BE_USED")
                               ;; otherwise destroy the db and use the original details
+                              :else
                               (do
                                 (tx/destroy-db! driver/*driver* dbdef)
                                 details))]
@@ -120,7 +124,7 @@
                           ;; but to an S3 bucket that may contain many databases
                           ;; TODO: other drivers are still failing with this test. For these drivers there's a good chance there's a bug in
                           ;; test.data.<driver> code, and not with the driver itself.
-                          (remove #{:athena :oracle :vertica :presto-jdbc}))
+                          (remove #{:athena :vertica :presto-jdbc}))
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
@@ -143,11 +147,16 @@
             ;; release db resources like connection pools so we don't have to wait to finish syncing before destroying the db
             (driver/notify-database-updated driver/*driver* db)
             ;; destroy the db
-            (if (contains? #{:redshift :snowflake} driver/*driver*)
+            (if (contains? #{:redshift :snowflake :oracle} driver/*driver*)
               ;; in the case of some cloud databases, the test database is never created, and shouldn't be destroyed.
-              ;; so fake it by redefining the database name on the dbdef
-              (t2/update! :model/Database (u/the-id db)
-                          {:details (assoc (:details (mt/db)) :db "fake-db-name-that-definitely-wont-be-used")})
+              ;; so fake it by changing the database details
+              (let [details     (:details (mt/db))
+                    new-details (cond
+                                  (contains? #{:redshift :snowflake} driver/*driver*)
+                                  (assoc details :db "FAKE_NAME_THAT_DEFINITELY_WONT_BE_USED")
+                                  (= driver/*driver* :oracle)
+                                  (assoc details :sid "FAKE_SID_THAT_DEFINITELY_WONT_BE_USED"))]
+                (t2/update! :model/Database (u/the-id db) {:details new-details}))
               (tx/destroy-db! driver/*driver* dbdef))
             (testing "after deleting a database, sync should fail"
               (testing "1: sync-and-analyze-database! should log a warning and fail early"
