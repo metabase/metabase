@@ -90,7 +90,7 @@ function transformPropsToState(
   } = props;
 
   const expression = clause
-    ? Lib.legacyExpressionForExpressionClause(query, stageIndex, clause)[1] // TODO: remove [1], see https://github.com/metabase/metabase/issues/36120
+    ? Lib.legacyExpressionForExpressionClause(query, stageIndex, clause)
     : undefined;
   const source = format(expression, { legacyQuery, startRule });
 
@@ -139,10 +139,10 @@ class ExpressionEditorTextfield extends React.Component<
           query,
           stageIndex,
           this.props.clause,
-        )[1] // TODO: remove [1], see https://github.com/metabase/metabase/issues/36120
+        )
       : undefined;
     const newExpression = clause
-      ? Lib.legacyExpressionForExpressionClause(query, stageIndex, clause)[1] // TODO: remove [1], see https://github.com/metabase/metabase/issues/36120
+      ? Lib.legacyExpressionForExpressionClause(query, stageIndex, clause)
       : undefined;
     const hasExpressionChanged = !_.isEqual(previousExpression, newExpression);
 
