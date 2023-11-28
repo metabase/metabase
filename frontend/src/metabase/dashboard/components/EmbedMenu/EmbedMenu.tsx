@@ -15,6 +15,7 @@ export type EmbedMenuModes =
   | "embed-menu"
   | "embed-modal"
   | "public-link-popover"
+  | "embedding-disabled"
   | null;
 
 type ResourceType =
@@ -27,123 +28,100 @@ type ResourceType =
       resourceType: "question";
     };
 
-const getEmbedMenuMode = ({
-  isAdmin,
-  isPublicSharingEnabled,
-  hasPublicLink,
-}: {
-  isAdmin: boolean;
-  isPublicSharingEnabled: boolean;
+type EmbedMenuProps = ResourceType & {
   hasPublicLink: boolean;
-}): EmbedMenuModes => {
-  if (isAdmin) {
-    return isPublicSharingEnabled ? "embed-menu" : "embed-modal";
-  }
-
-  if (isPublicSharingEnabled && hasPublicLink) {
-    return "public-link-popover";
-  }
-
-  return null;
+  onModalOpen: () => void;
 };
 
-export const EmbedMenu = ({
+export const EmbedMenu = (props: EmbedMenuProps) => {
+  const isPublicSharingEnabled = useSelector(state =>
+    getSetting(state, "enable-public-sharing"),
+  );
+
+  const isEmbeddingEnabled = useSelector(state =>
+    getSetting(state, "enable-embedding"),
+  );
+
+  const isAdmin = useSelector(getUserIsAdmin);
+
+  const shouldRenderForUser = isAdmin || props.hasPublicLink;
+
+  if (
+    isEmbeddingEnabled == null ||
+    isPublicSharingEnabled == null ||
+    !shouldRenderForUser
+  ) {
+    return null;
+  }
+
+  return <EmbedMenuInner {...props} />;
+};
+
+const EmbedMenuInner = ({
   resource,
   resourceType,
   hasPublicLink,
   onModalOpen,
-}: ResourceType & {
-  hasPublicLink: boolean;
-  onModalOpen?: () => void;
-  onModalClose?: () => void;
-}) => {
-  const isPublicSharingEnabled = useSelector(state =>
-    getSetting(state, "enable-public-sharing"),
-  );
-  const isAdmin = useSelector(getUserIsAdmin);
-
-  const initialMenuMode: EmbedMenuModes = getEmbedMenuMode({
-    isAdmin,
-    isPublicSharingEnabled,
+}: EmbedMenuProps) => {
+  const initialMenuMode: EmbedMenuModes = useEmbedMenuMode({
     hasPublicLink,
   });
+
   const [isOpen, setIsOpen] = useState(false);
   const [menuMode, setMenuMode] = useState(initialMenuMode);
 
-  const onMenuSelect = (menuMode?: EmbedMenuModes) => {
+  const onMenuSelect = (menuMode: EmbedMenuModes) => {
     setIsOpen(true);
-    if (menuMode) {
-      setMenuMode(menuMode);
-    }
-  };
-
-  const onClose = () => {
-    setIsOpen(false);
-    setMenuMode(initialMenuMode);
-  };
-
-  const targetButton = ({
-    onClick = undefined,
-  }: { onClick?: () => void } = {}) => {
-    return (
-      <DashboardEmbedHeaderButton
-        onClick={() => {
-          onClick?.();
-        }}
-      />
-    );
+    setMenuMode(menuMode);
   };
 
   const renderEmbedMenu = () => (
     <DashboardEmbedHeaderMenu
       hasPublicLink={hasPublicLink}
       openPublicLinkPopover={() => onMenuSelect("public-link-popover")}
-      openEmbedModal={() => {
-        onModalOpen && onModalOpen();
-        setIsOpen(false);
-        setMenuMode(initialMenuMode);
-      }}
-      target={<div>{targetButton()}</div>}
+      openEmbedModal={onModalOpen}
+      target={<DashboardEmbedHeaderButton />}
     />
   );
+
+  const renderEmbedModalTrigger = () => (
+    <DashboardEmbedHeaderButton onClick={onModalOpen} />
+  );
+
+  const onClosePublicLinkPopover = () => {
+    setIsOpen(false);
+    setMenuMode(initialMenuMode);
+  };
 
   const renderPublicLinkPopover = () => {
     return resourceType === "dashboard" ? (
       <DashboardPublicLinkPopover
         dashboard={resource}
         target={
-          <div>
-            {targetButton({
-              onClick: () => setIsOpen(!isOpen),
-            })}
-          </div>
+          <DashboardEmbedHeaderButton
+            onClick={isOpen ? onClosePublicLinkPopover : () => setIsOpen(true)}
+          />
         }
         isOpen={isOpen}
-        onClose={onClose}
+        onClose={onClosePublicLinkPopover}
       />
     ) : (
       <QuestionPublicLinkPopover
         question={resource}
         target={
-          <div>
-            {targetButton({
-              onClick: () => setIsOpen(!isOpen),
-            })}
-          </div>
+          <DashboardEmbedHeaderButton
+            onClick={isOpen ? onClosePublicLinkPopover : () => setIsOpen(true)}
+          />
         }
         isOpen={isOpen}
-        onClose={onClose}
+        onClose={onClosePublicLinkPopover}
       />
     );
   };
 
-  const renderEmbedModalTrigger = () =>
-    targetButton({
-      onClick: () => {
-        onModalOpen?.();
-        setIsOpen(false);
-      },
-    });
+  const renderEmbeddingDisabled = () => {
+    return <DashboardEmbedHeaderButton disabled />;
+  };
 
   const getEmbedContent = (menuMode: EmbedMenuModes) => {
     if (menuMode === "embed-menu") {
@@ -152,10 +130,41 @@ export const EmbedMenu = ({
       return renderEmbedModalTrigger();
     } else if (menuMode === "public-link-popover") {
       return renderPublicLinkPopover();
+    } else if (menuMode === "embedding-disabled") {
+      return renderEmbeddingDisabled();
     }
 
     return null;
   };
 
   return getEmbedContent(menuMode);
+};
+
+const useEmbedMenuMode = ({
+  hasPublicLink,
+}: {
+  hasPublicLink: boolean;
+}): EmbedMenuModes => {
+  const isPublicSharingEnabled = useSelector(state =>
+    getSetting(state, "enable-public-sharing"),
+  );
+
+  const isEmbeddingEnabled = useSelector(state =>
+    getSetting(state, "enable-embedding"),
+  );
+
+  const isAdmin = useSelector(getUserIsAdmin);
+
+  if (isAdmin) {
+    if (!isEmbeddingEnabled) {
+      return "embedding-disabled";
+    }
+    return isPublicSharingEnabled ? "embed-menu" : "embed-modal";
+  }
+
+  if (isPublicSharingEnabled && hasPublicLink) {
+    return "public-link-popover";
+  }
+
+  return null;
 };

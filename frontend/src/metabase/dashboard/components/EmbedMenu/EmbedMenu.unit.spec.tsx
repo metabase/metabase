@@ -1,11 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { EmbedMenu } from "metabase/dashboard/components/EmbedMenu/EmbedMenu";
 import { renderWithProviders, screen } from "__support__/ui";
-import {
-  createMockCard,
-  createMockDashboard,
-  createMockUser,
-} from "metabase-types/api/mocks";
+import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
@@ -21,33 +17,18 @@ interface SetupProps {
   publicLinksEnabled?: boolean;
 }
 
-// Mock embedding modal as we don't need its content for the tests and causes
-// some issues with routing for one or two tests.
-const TestEmbeddingModalComponent = () => {
-  return <div data-testid="dashboard-sharing-embedding-modal" />;
-};
-
-jest.mock(
-  "metabase/dashboard/containers/DashboardSharingEmbeddingModal",
-  () => {
-    return {
-      __esModule: true,
-      default: TestEmbeddingModalComponent,
-    };
-  },
-);
-
-const TEST_DASHBOARD = createMockDashboard();
-
 const setup = ({
   isAdmin,
   hasPublicLink = false,
   publicLinksEnabled = false,
+  embeddingEnabled = true,
 }: SetupProps) => {
   const onModalOpen = jest.fn();
   renderWithProviders(
     <EmbedMenu
-      resource={TEST_DASHBOARD}
+      resource={createMockDashboard({
+        public_uuid: hasPublicLink ? "mock-uuid" : null,
+      })}
       resourceType="dashboard"
       hasPublicLink={hasPublicLink}
       onModalOpen={onModalOpen}
@@ -57,6 +38,7 @@ const setup = ({
         currentUser: createMockUser({ is_superuser: isAdmin }),
         settings: createMockSettingsState({
           "enable-public-sharing": publicLinksEnabled,
+          "enable-embedding": embeddingEnabled,
         }),
       }),
     },
@@ -80,13 +62,31 @@ describe("EmbedMenu", () => {
       userEvent.hover(screen.getByLabelText("share icon"));
       expect(screen.getByText("Embedding")).toBeInTheDocument();
     });
+
+    it("should have a `enable embedding in settings` message if embedding is disabled", async () => {
+      setup({ isAdmin: true, embeddingEnabled: false });
+      userEvent.hover(screen.getByLabelText("share icon"));
+      expect(
+        await screen.findByText("You must enable Embedding in the settings"),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("whether the button should be rendered", () => {
     describe("when the user is admin", () => {
       it("should render the button even if there is no public link", () => {
         setup({ isAdmin: true, hasPublicLink: false });
-        expect(screen.getByLabelText("share icon")).toBeInTheDocument();
+        expect(
+          screen.getByTestId("dashboard-embed-button"),
+        ).toBeInTheDocument();
+      });
+
+      it("should render a disabled button if embedding is disabled", () => {
+        setup({
+          isAdmin: true,
+          embeddingEnabled: false,
+        });
+        expect(screen.getByTestId("dashboard-embed-button")).toBeDisabled();
       });
     });
 
@@ -116,26 +116,27 @@ describe("EmbedMenu", () => {
           publicLinksEnabled: true,
         });
         expect(screen.getByLabelText("share icon")).toBeInTheDocument();
-      })
+      });
     });
   });
 
   describe("when the popover or modal should be rendered", () => {
     it("should render the popover when public sharing is true", async () => {
       setup({ publicLinksEnabled: true, isAdmin: true });
-      userEvent.click(screen.getByLabelText("share icon"));
+      userEvent.click(screen.getByTestId("dashboard-embed-button"));
       expect(
         await screen.findByTestId("embed-header-menu"),
       ).toBeInTheDocument();
     });
 
-    it("should render the embedding modal when public sharing is false", async () => {
-      setup({ publicLinksEnabled: false, isAdmin: true });
-      userEvent.click(await screen.findByLabelText("share icon"));
+    it("should call `onModalOpen` immediately when public sharing is false", async () => {
+      const { onModalOpen } = setup({
+        publicLinksEnabled: false,
+        isAdmin: true,
+      });
+      userEvent.click(screen.getByLabelText("share icon"));
 
-      expect(
-        await screen.findByTestId("dashboard-sharing-embedding-modal"),
-      ).toBeInTheDocument();
+      expect(onModalOpen).toHaveBeenCalled();
     });
   });
 
@@ -147,7 +148,7 @@ describe("EmbedMenu", () => {
           publicLinksEnabled: true,
           isAdmin: true,
         });
-        userEvent.click(screen.getByLabelText("share icon"));
+        userEvent.click(screen.getByTestId("dashboard-embed-button"));
         expect(
           await screen.findByText("Create a public link"),
         ).toBeInTheDocument();
@@ -161,7 +162,7 @@ describe("EmbedMenu", () => {
           isAdmin: true,
         });
 
-        userEvent.click(screen.getByLabelText("share icon"));
+        userEvent.click(screen.getByTestId("dashboard-embed-button"));
 
         expect(await screen.findByText("Public link")).toBeInTheDocument();
         expect(await screen.findByText("Embed")).toBeInTheDocument();
@@ -189,8 +190,6 @@ describe("EmbedMenu", () => {
 
         expect(await screen.findByText("Public link")).toBeInTheDocument();
       });
-    })
-
-    // TODO: Write tests for showing the popover when the user is non-admin and a public link has/hasn't been created
+    });
   });
 });
