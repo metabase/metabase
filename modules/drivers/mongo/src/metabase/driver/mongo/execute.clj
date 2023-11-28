@@ -139,7 +139,8 @@
   [^MongoDatabase db
    ^String coll
    ^ClientSession session
-   stages timeout-ms]
+   stages
+   timeout-ms]
   (let [coll      (.getCollection db coll)
         pipe      (m.util/into-array-list (m.conversion/to-db-object stages))
         aggregate (.aggregate coll session pipe BasicDBObject)]
