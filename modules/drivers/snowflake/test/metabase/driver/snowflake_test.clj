@@ -1,5 +1,6 @@
 (ns metabase.driver.snowflake-test
   (:require
+   [clojure.data.json :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -27,9 +28,6 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
-
-(defn- sql->lines [sql]
-  (str/split-lines (driver/prettify-native-form :snowflake sql)))
 
 (defn- query->native [query]
   (let [check-sql-fn (fn [_ _ sql & _]
@@ -316,34 +314,33 @@
     (is (= "USE ROLE \"$role\";"      (driver.sql/set-role-statement :snowflake "$role")))))
 
 (deftest remark-test
-  (testing "Queries should have a remark appended to them with additional metadata"
+  (testing "Queries should have a remark formatted as JSON appended to them with additional metadata"
     (mt/test-driver :snowflake
-      (let [expected (for [line ["SELECT"
-                                 "  \"PUBLIC\".\"users\".\"id\" AS \"id\","
-                                 "  \"PUBLIC\".\"users\".\"name\" AS \"name\","
-                                 "  \"PUBLIC\".\"users\".\"last_login\" AS \"last_login\""
-                                 "FROM"
-                                 "  \"{{database_prefix}}test-data\".\"PUBLIC\".\"users\""
-                                 "WHERE"
-                                 "  (\"PUBLIC\".\"users\".\"id\" = 1)"
-                                 "  OR (\"PUBLIC\".\"users\".\"id\" = 2)"
-                                 "  OR (\"PUBLIC\".\"users\".\"id\" = 3)"
-                                 "LIMIT"
-                                 "  2000 -- {\"pulseId\":null,\"serverId\":\"{{site-uuid}}\",\"client\":\"Metabase\",\"queryHash\":\"cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2\",\"queryType\":\"query\",\"cardId\":1234,\"dashboardId\":5678,\"context\":\"ad-hoc\",\"userId\":1000,\"databaseId\":1}"]]
-                       (-> line
-                           (str/replace #"\Q{{site-uuid}}\E" (public-settings/site-uuid))
-                           (str/replace #"\Q{{database_prefix}}\E" (test.data.snowflake/*database-prefix-fn*))))]
-        (is (= expected
-               (sql->lines
-                (query->native
-                 (assoc
-                  (mt/mbql-query users {:limit 2000})
-                  :parameters [{:type   "id"
-                                :target [:dimension [:field (mt/id :users :id) nil]]
-                                :value  ["1" "2" "3"]}]
-                  :info {:executed-by  1000
-                         :card-id      1234
-                         :dashboard-id 5678
-                         :context      :ad-hoc
-                         :query-hash   (byte-array [-53 -125 -44 -10 -18 -36 37 14 -37 15 44 22 -8 -39 -94 30
-                                                    93 66 -13 34 -52 -20 -31 73 76 -114 -13 -42 52 88 31 -30])})))))))))
+      (let [expected-map {"pulseId" nil
+                          "serverId" (public-settings/site-uuid)
+                          "client" "Metabase"
+                          "queryHash" "cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2"
+                          "queryType" "query"
+                          "cardId" 1234
+                          "dashboardId" 5678
+                          "context" "ad-hoc"
+                          "userId" 1000
+                          "databaseId" (mt/id)}
+            result-query (driver/prettify-native-form :snowflake
+                           (query->native
+                             (assoc
+                               (mt/mbql-query users {:limit 2000})
+                               :parameters [{:type   "id"
+                                             :target [:dimension [:field (mt/id :users :id) nil]]
+                                             :value  ["1" "2" "3"]}]
+                               :info {:executed-by  1000
+                                      :card-id      1234
+                                      :dashboard-id 5678
+                                      :context      :ad-hoc
+                                      :query-hash   (byte-array [-53 -125 -44 -10 -18 -36 37 14 -37 15 44 22 -8 -39 -94 30
+                                                                 93 66 -13 34 -52 -20 -31 73 76 -114 -13 -42 52 88 31 -30])})))
+            ; re-find function returns a vector where the first element is the entire match and the subsequent elements
+            ; are the captured groups. So, (second ...) gives us the first captured group.
+            result-comment (second (re-find #"-- (\{.*\})" result-query))
+            result-map (json/read-str result-comment)]
+        (is (= expected-map result-map))))))
