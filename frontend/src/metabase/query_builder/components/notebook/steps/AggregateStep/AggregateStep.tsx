@@ -121,16 +121,11 @@ function AggregationPopover({
       : baseOperators;
   }, [query, clause, stageIndex, isUpdate]);
 
-  const legacyClause = isUpdate
-    ? legacyQuery.aggregations()[clauseIndex]
-    : undefined;
-
   return (
     <AggregationPicker
       query={query}
       clause={clause}
       legacyQuery={legacyQuery}
-      legacyClause={legacyClause}
       stageIndex={stageIndex}
       operators={operators}
       onSelect={aggregation => {

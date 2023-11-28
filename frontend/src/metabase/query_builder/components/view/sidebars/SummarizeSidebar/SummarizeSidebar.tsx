@@ -134,14 +134,13 @@ export function SummarizeSidebar({
       onDone={handleDoneClick}
     >
       <AggregationsContainer>
-        {aggregations.map((aggregation, index) => (
+        {aggregations.map(aggregation => (
           <AggregationItem
             key={
               Lib.displayInfo(query, STAGE_INDEX, aggregation).longDisplayName
             }
             query={query}
             aggregation={aggregation}
-            aggregationIndex={index}
             legacyQuery={legacyQuery}
             onUpdate={nextAggregation =>
               handleUpdateAggregation(aggregation, nextAggregation)

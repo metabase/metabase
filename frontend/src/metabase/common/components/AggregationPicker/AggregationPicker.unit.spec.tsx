@@ -148,7 +148,6 @@ function setup({
       query={query}
       clause={clause}
       legacyQuery={legacyQuery}
-      legacyClause={legacyQuery.aggregations()[0]}
       stageIndex={stageIndex}
       operators={operators}
       hasExpressionInput={hasExpressionInput}

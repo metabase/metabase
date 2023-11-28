@@ -6,14 +6,13 @@ import { Icon } from "metabase/core/components/Icon";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
+import { isNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 
 import * as Lib from "metabase-lib";
-import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
-import type LegacyAggregation from "metabase-lib/queries/structured/Aggregation";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { QueryColumnPicker } from "../QueryColumnPicker";
@@ -36,7 +35,6 @@ interface AggregationPickerProps {
   operators: Lib.AggregationOperator[];
   hasExpressionInput?: boolean;
   legacyQuery: StructuredQuery;
-  legacyClause?: LegacyAggregation;
   maxHeight?: number;
   onSelect: (operator: Lib.Aggregatable) => void;
   onClose?: () => void;
@@ -71,24 +69,24 @@ export function AggregationPicker({
   operators,
   hasExpressionInput = true,
   legacyQuery,
-  legacyClause,
   maxHeight = DEFAULT_MAX_HEIGHT,
   onSelect,
   onClose,
 }: AggregationPickerProps) {
   const metadata = useSelector(getMetadata);
+  const initialOperator = getInitialOperator(query, stageIndex, operators);
   const [
     isEditingExpression,
     { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
-  ] = useToggle(isExpressionEditorInitiallyOpen(legacyClause));
+  ] = useToggle(
+    isExpressionEditorInitiallyOpen(query, clause, initialOperator),
+  );
 
   // For really simple inline expressions like Average([Price]),
   // MLv2 can figure out that "Average" operator is used.
   // We don't want that though, so we don't break navigation inside the picker
   const [operator, setOperator] = useState<Lib.AggregationOperator | null>(
-    isEditingExpression
-      ? null
-      : getInitialOperator(query, stageIndex, operators),
+    isEditingExpression ? null : initialOperator,
   );
 
   const operatorInfo = useMemo(
@@ -316,13 +314,14 @@ function getInitialOperator(
   return operator ?? null;
 }
 
-function isExpressionEditorInitiallyOpen(legacyClause?: LegacyAggregation) {
-  // TODO: we need to add more information to AggregationOperatorDisplayInfo
-  // to be able to migrate legacyClause to MLv2 Lib.Aggregatable.
-  // This requires changes in Clojure code.
+function isExpressionEditorInitiallyOpen(
+  query: Lib.Query,
+  clause: Lib.AggregationClause | Lib.ExpressionClause | undefined,
+  initialOperator: Lib.AggregationOperator | null,
+) {
   return (
-    legacyClause &&
-    (AGGREGATION.isCustom(legacyClause) || AGGREGATION.isNamed(legacyClause))
+    isNotNull(clause) &&
+    (initialOperator === null || Lib.displayName(query, clause).length > 0)
   );
 }
 
