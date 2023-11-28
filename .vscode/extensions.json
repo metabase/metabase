@@ -8,6 +8,7 @@
     "firsttris.vscode-jest-runner",
     "github.vscode-pull-request-github",
     "limejuly.vscode-yaml-block-highlight",
-    "streetsidesoftware.code-spell-checker"
+    "streetsidesoftware.code-spell-checker",
+    "styled-components.vscode-styled-components"
   ]
 }
