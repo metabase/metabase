@@ -47,6 +47,7 @@
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]
@@ -54,6 +55,10 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures
+  :once
+  (fixtures/initialize :test-users))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Helper Fns & Macros                                               |
@@ -526,6 +531,29 @@
                (let [response (:param_values (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id)))]
                  (into {} (for [[field-id m] response]
                             [field-id (update m :values (partial take 3))])))))))))
+
+(deftest fetch-a-dashboard-with-param-linked-to-a-field-filter-that-is-not-existed
+  (testing "when fetching a dashboard that has a param linked to a field filter that no longer exists, we shouldn't throw an error (#15494)"
+    (mt/with-temp
+      [:model/Card          {card-id :id} {:name "Native card"
+                                           :database_id   (mt/id)
+                                           :dataset_query (mt/native-query
+                                                           {:query "SELECT category FROM products LIMIT 10;"})
+                                           :dataset       true}
+       :model/Dashboard     {dash-id :id} {:parameters [{:name      "Text"
+                                                         :slug      "text"
+                                                         :id        "_TEXT_"
+                                                         :type      :string/=
+                                                         :sectionId "string"}]}
+       :model/DashboardCard {}            {:dashboard_id       dash-id
+                                           :card_id            card-id
+                                           :parameter_mappings [{:parameter_id "_TEXT_"
+                                                                 :card_id      card-id
+                                                                 :target       [:dimension [:template-tag "not-existed-filter"]]}]}]
+      (is (= (repeat 2 [:error nil
+                        "Could not find matching field clause for target: [:dimension [:template-tag not-existed-filter]]"])
+             (mt/with-log-messages-for-level ['metabase.models.params :error]
+               (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id))))))))))
 
 (deftest dashboard-param-link-to-a-field-without-full-field-values-test
   (testing "GET /api/dashboard/:id"
@@ -1781,6 +1809,37 @@
                  (map (partial into {})
                       (t2/select [DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
                                  :dashboard_id dashboard-id)))))))))
+
+(deftest can-update-card-parameter-with-legacy-field-and-expression-test
+  (testing "PUT /api/dashboard/:id/cards accepts legacy field as parameter's target"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                   :model/Card      {card-id :id}      {}]
+      (let [resp (:cards (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                               {:cards        [{:id                     -1
+                                                                :card_id                card-id
+                                                                :row                    0
+                                                                :col                    0
+                                                                :size_x                 4
+                                                                :size_y                 4
+                                                                :parameter_mappings     [{:parameter_id "abc"
+                                                                                          :card_id card-id
+                                                                                          :target [:dimension [:field-id (mt/id :venues :id)]]}]}]}))]
+        (is (some? (t2/select-one :model/DashboardCard (:id (first resp))))))))
+
+  (testing "PUT /api/dashboard/:id/cards accepts expression as parammeter's target"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                   :model/Card      {card-id :id}      {:dataset_query (mt/mbql-query venues {:expressions {"A" [:+ (mt/$ids $venues.price) 1]}})}]
+      (let [resp (:cards (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                               {:cards        [{:id                     -1
+                                                                :card_id                card-id
+                                                                :row                    0
+                                                                :col                    0
+                                                                :size_x                 4
+                                                                :size_y                 4
+                                                                :parameter_mappings     [{:parameter_id "abc"
+                                                                                          :card_id card-id
+                                                                                          :target [:dimension [:expression "A"]]}]}]}))]
+        (is (some? (t2/select-one :model/DashboardCard (:id (first resp)))))))))
 
 (deftest new-dashboard-card-with-additional-series-test
   (mt/with-temp [Dashboard {dashboard-id :id} {}
