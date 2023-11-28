@@ -2,6 +2,7 @@ import type { DatasetColumn, RowValue } from "metabase-types/api";
 import {
   createOrdersCreatedAtDatasetColumn,
   createOrdersQuantityDatasetColumn,
+  createOrdersTable,
   createOrdersTotalDatasetColumn,
   createSampleDatabase,
   SAMPLE_DB_ID,
@@ -48,6 +49,32 @@ describe("drill-thru/underlying-records", () => {
         type: drillType,
         rowCount: value,
         tableName: "Orders",
+      });
+    });
+
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should allow drill an aggregated query based on a card (metabase#35340)", () => {
+      const { query, cardName } = createQueryBasedOnCard();
+      const { value, row, dimensions } = getCellData(
+        aggregationColumn,
+        breakoutColumn,
+        10,
+      );
+
+      const { drillInfo } = findDrillThru(
+        drillType,
+        query,
+        stageIndex,
+        aggregationColumn,
+        value,
+        row,
+        dimensions,
+      );
+
+      expect(drillInfo).toMatchObject({
+        type: drillType,
+        rowCount: value,
+        tableName: cardName,
       });
     });
 
@@ -244,33 +271,65 @@ describe("drill-thru/underlying-records", () => {
 });
 
 function createQueryWithBreakout() {
-  const stageIndex = 0;
-  const defaultQuery = createQuery();
+  const query = createQuery();
   const queryWithAggregation = Lib.aggregate(
-    defaultQuery,
-    stageIndex,
-    Lib.aggregationClause(findAggregationOperator(defaultQuery, "count")),
+    query,
+    -1,
+    Lib.aggregationClause(findAggregationOperator(query, "count")),
   );
   return Lib.breakout(
     queryWithAggregation,
-    stageIndex,
+    -1,
     columnFinder(
       queryWithAggregation,
-      Lib.breakoutableColumns(queryWithAggregation, stageIndex),
+      Lib.breakoutableColumns(queryWithAggregation, -1),
     )("ORDERS", "CREATED_AT"),
   );
 }
 
 function createQueryWithMultipleBreakouts() {
-  const query = createQueryWithBreakout();
+  const queryWithBreakout = createQueryWithBreakout();
   return Lib.breakout(
-    query,
+    queryWithBreakout,
     -1,
-    columnFinder(query, Lib.breakoutableColumns(query, -1))(
-      "ORDERS",
-      "QUANTITY",
-    ),
+    columnFinder(
+      queryWithBreakout,
+      Lib.breakoutableColumns(queryWithBreakout, -1),
+    )("ORDERS", "QUANTITY"),
   );
+}
+
+function createQueryBasedOnCard() {
+  const card = createOrdersTable({
+    id: "card__1",
+    name: "Question",
+  });
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+    tables: [card],
+  });
+  const queryWithCard = Lib.withDifferentTable(
+    createQuery({ metadata }),
+    card.id,
+  );
+  const queryWithAggregation = Lib.aggregate(
+    queryWithCard,
+    -1,
+    Lib.aggregationClause(findAggregationOperator(queryWithCard, "count")),
+  );
+  const queryWithBreakout = Lib.breakout(
+    queryWithAggregation,
+    -1,
+    columnFinder(
+      queryWithAggregation,
+      Lib.breakoutableColumns(queryWithAggregation, -1),
+    )(card.name, "CREATED_AT"),
+  );
+
+  return {
+    query: queryWithBreakout,
+    cardName: card.name,
+  };
 }
 
 function createNotEditableQuery(query: Lib.Query) {
