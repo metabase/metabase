@@ -105,7 +105,7 @@
                               (= driver/*driver* :oracle)
                               (assoc details :sid "FAKE_SID_THAT_DEFINITELY_WONT_BE_USED")
                               (= driver/*driver* :presto-jdbc)
-                              (assoc details :schema "FAKE_SCHEMA_THAT_DEFINITELY_WONT_BE_USED")
+                              (assoc details :catalog "FAKE_CATALOG_THAT_DEFINITELY_WONT_BE_USED")
                               ;; otherwise destroy the db and use the original details
                               :else
                               (do
@@ -157,7 +157,9 @@
                                   (contains? #{:redshift :snowflake :vertica} driver/*driver*)
                                   (assoc details :db "FAKE_NAME_THAT_DEFINITELY_WONT_BE_USED")
                                   (= driver/*driver* :oracle)
-                                  (assoc details :sid "FAKE_SID_THAT_DEFINITELY_WONT_BE_USED"))]
+                                  (assoc details :sid "FAKE_SID_THAT_DEFINITELY_WONT_BE_USED")
+                                  (= driver/*driver* :presto-jdbc)
+                                  (assoc details :catalog "FAKE_CATALOG_THAT_DEFINITELY_WONT_BE_USED"))]
                 (t2/update! :model/Database (u/the-id db) {:details new-details}))
               (tx/destroy-db! driver/*driver* dbdef))
             (testing "after deleting a database, sync should fail"
