@@ -152,6 +152,69 @@ describe("drill-thru/zoom-in.timeseries", () => {
       expect(drill).toBeNull();
     });
   });
+
+  describe("drillThru", () => {
+    it("should drill when clicked on an aggregated cell", () => {
+      const query = createQueryWithTemporalBucket("Month");
+      const { value, row, dimensions } = getCellData(
+        aggregationColumn,
+        breakoutColumn,
+        10,
+      );
+
+      const { drill } = findDrillThru(
+        drillType,
+        query,
+        stageIndex,
+        aggregationColumn,
+        value,
+        row,
+        dimensions,
+      );
+      const newQuery = Lib.drillThru(query, stageIndex, drill);
+
+      expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+      expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
+    });
+
+    it("should drill when clicked on a pivot cell", () => {
+      const query = createQueryWithTemporalBucket("Month");
+      const { row, dimensions } = getPivotCellData(10);
+
+      const { drill } = findDrillThru(
+        drillType,
+        query,
+        stageIndex,
+        undefined,
+        undefined,
+        row,
+        dimensions,
+      );
+      const newQuery = Lib.drillThru(query, stageIndex, drill);
+
+      expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+      expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
+    });
+
+    it("should drill when clicked on a legend item", () => {
+      const query = createQueryWithTemporalBucket("Month");
+      const { dimensions } = getLegendItemData(10);
+
+      const { drill } = findDrillThru(
+        drillType,
+        query,
+        stageIndex,
+        undefined,
+        undefined,
+        undefined,
+        dimensions,
+      );
+      const newQuery = Lib.drillThru(query, stageIndex, drill);
+
+      expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+      expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
+    });
+  });
 });
 
 function createQueryWithTemporalBucket(bucketName: string) {
