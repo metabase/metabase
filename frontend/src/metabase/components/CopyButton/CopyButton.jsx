@@ -13,19 +13,21 @@ export default class CopyWidget extends Component {
       copied: false,
     };
   }
+
   onCopy = () => {
     this.setState({ copied: true });
     setTimeout(() => this.setState({ copied: false }), 2000);
   };
+
   render() {
     const { value, className, style, ...props } = this.props;
     return (
       <CopyToClipboard text={value} onCopy={this.onCopy}>
         <div className={className} style={style} data-testid="copy-button">
-          {/*<Tooltip tooltip={t`Copied!`} isOpen={true}>*/}
-          {/*  <Icon name="copy" {...props} />*/}
-          {/*</Tooltip>*/}
-          <Tooltip label={<Text fw={700} c="white">{t`Copied!`}</Text>} opened={this.state.copied}>
+          <Tooltip
+            label={<Text fw={700} c="white">{t`Copied!`}</Text>}
+            opened={this.state.copied}
+          >
             <Icon name="copy" {...props} />
           </Tooltip>
         </div>
