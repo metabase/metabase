@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 
 import { t } from "ttag";
 
-import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
+import { EmbedModalContent } from "metabase/public/components/widgets/EmbedModalContent";
 
 import * as Urls from "metabase/lib/urls";
 import MetabaseSettings from "metabase/lib/settings";

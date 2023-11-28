@@ -1,18 +1,18 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 import cx from "classnames";
 import Button from "metabase/core/components/Button";
 import { Icon } from "metabase/core/components/Icon";
 import Toggle from "metabase/core/components/Toggle";
 import CopyWidget from "metabase/components/CopyWidget";
 import Confirm from "metabase/components/Confirm";
-
 import { getPublicEmbedHTML } from "metabase/public/lib/code";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+
+import type { EmbedResource, EmbedResourceType, EmbedType } from "./types";
 import {
   Description,
   EmbedWidgetHeader,
@@ -23,22 +23,16 @@ import {
   PublicLinkHeader,
 } from "./SharingPane.styled";
 
-type Resource = {
-  dashboard?: number;
-  question?: number;
-  public_uuid?: string;
-};
-
 type Extension = string | null;
 
 interface SharingPaneProps {
-  resource: Resource;
-  resourceType: string;
+  resource: EmbedResource;
+  resourceType: EmbedResourceType;
   onCreatePublicLink: () => void;
   onDisablePublicLink: () => void;
-  extensions: string[];
-  getPublicUrl: (resource: Resource, extension?: Extension) => void;
-  onChangeEmbedType: (embedType: string) => void;
+  extensions?: string[];
+  getPublicUrl: (resource: EmbedResource, extension?: Extension) => string;
+  onChangeEmbedType: (embedType: EmbedType) => void;
   isAdmin: boolean;
   isPublicSharingEnabled: boolean;
   isApplicationEmbeddingEnabled: boolean;
