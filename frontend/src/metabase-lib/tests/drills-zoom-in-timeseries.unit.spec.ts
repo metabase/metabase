@@ -2,7 +2,11 @@ import type { DatasetColumn, RowValue } from "metabase-types/api";
 import {
   createOrdersCreatedAtDatasetColumn,
   createOrdersQuantityDatasetColumn,
+  createOrdersTotalDatasetColumn,
+  createSampleDatabase,
+  SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
+import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import {
   columnFinder,
@@ -151,18 +155,49 @@ describe("drill-thru/zoom-in.timeseries", () => {
 
       expect(drill).toBeNull();
     });
-  });
 
-  describe("drillThru", () => {
-    it("should drill when clicked on an aggregated cell", () => {
+    it("should not allow to drill when clicked on a column", () => {
       const query = createQueryWithTemporalBucket("Month");
+
+      const drill = queryDrillThru(
+        drillType,
+        query,
+        stageIndex,
+        aggregationColumn,
+      );
+
+      expect(drill).toBeNull();
+    });
+
+    it("should not allow to drill with a native query", () => {
+      const query = createQuery({
+        query: {
+          type: "native",
+          database: SAMPLE_DB_ID,
+          native: { query: "SELECT * FROM ORDERS" },
+        },
+      });
+      const column = createOrdersTotalDatasetColumn({
+        id: undefined,
+        field_ref: ["field", "TOTAL", { "base-type": "type/Float" }],
+      });
+
+      const drill = queryDrillThru(drillType, query, stageIndex, column);
+
+      expect(drill).toBeNull();
+    });
+
+    it("should not allow to drill with a non-editable query", () => {
+      const query = createNotEditableQuery(
+        createQueryWithTemporalBucket("Month"),
+      );
       const { value, row, dimensions } = getCellData(
         aggregationColumn,
         breakoutColumn,
-        10,
+        -10,
       );
 
-      const { drill } = findDrillThru(
+      const drill = queryDrillThru(
         drillType,
         query,
         stageIndex,
@@ -171,49 +206,81 @@ describe("drill-thru/zoom-in.timeseries", () => {
         row,
         dimensions,
       );
-      const newQuery = Lib.drillThru(query, stageIndex, drill);
 
-      expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
-      expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
+      expect(drill).toBeNull();
     });
+  });
 
-    it("should drill when clicked on a pivot cell", () => {
-      const query = createQueryWithTemporalBucket("Month");
-      const { row, dimensions } = getPivotCellData(10);
+  describe("drillThru", () => {
+    it.each<RowValue>([10, null])(
+      'should drill when clicked on an aggregated cell with "%s" value',
+      value => {
+        const query = createQueryWithTemporalBucket("Month");
+        const { row, dimensions } = getCellData(
+          aggregationColumn,
+          breakoutColumn,
+          value,
+        );
 
-      const { drill } = findDrillThru(
-        drillType,
-        query,
-        stageIndex,
-        undefined,
-        undefined,
-        row,
-        dimensions,
-      );
-      const newQuery = Lib.drillThru(query, stageIndex, drill);
+        const { drill } = findDrillThru(
+          drillType,
+          query,
+          stageIndex,
+          aggregationColumn,
+          value,
+          row,
+          dimensions,
+        );
+        const newQuery = Lib.drillThru(query, stageIndex, drill);
 
-      expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
-      expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
-    });
+        expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+        expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
+      },
+    );
 
-    it("should drill when clicked on a legend item", () => {
-      const query = createQueryWithTemporalBucket("Month");
-      const { dimensions } = getLegendItemData(10);
+    it.each<RowValue>([10, null])(
+      'should drill when clicked on a pivot cell with "%s" value',
+      value => {
+        const query = createQueryWithTemporalBucket("Month");
+        const { row, dimensions } = getPivotCellData(value);
 
-      const { drill } = findDrillThru(
-        drillType,
-        query,
-        stageIndex,
-        undefined,
-        undefined,
-        undefined,
-        dimensions,
-      );
-      const newQuery = Lib.drillThru(query, stageIndex, drill);
+        const { drill } = findDrillThru(
+          drillType,
+          query,
+          stageIndex,
+          undefined,
+          undefined,
+          row,
+          dimensions,
+        );
+        const newQuery = Lib.drillThru(query, stageIndex, drill);
 
-      expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
-      expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
-    });
+        expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+        expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
+      },
+    );
+
+    it.each<RowValue>([10, null])(
+      'should drill when clicked on a legend item with "%s" value',
+      value => {
+        const query = createQueryWithTemporalBucket("Month");
+        const { dimensions } = getLegendItemData(value);
+
+        const { drill } = findDrillThru(
+          drillType,
+          query,
+          stageIndex,
+          undefined,
+          undefined,
+          undefined,
+          dimensions,
+        );
+        const newQuery = Lib.drillThru(query, stageIndex, drill);
+
+        expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+        expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
+      },
+    );
   });
 });
 
@@ -239,6 +306,21 @@ function createQueryWithTemporalBucket(bucketName: string) {
       findTemporalBucket(query, breakoutColumn, bucketName),
     ),
   );
+}
+
+function createNotEditableQuery(query: Lib.Query) {
+  const metadata = createMockMetadata({
+    databases: [
+      createSampleDatabase({
+        tables: [],
+      }),
+    ],
+  });
+
+  return createQuery({
+    metadata,
+    query: Lib.toLegacyQuery(query),
+  });
 }
 
 function getCellData(
