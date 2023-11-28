@@ -17,15 +17,15 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
    (com.amazon.redshift.util RedshiftInterval)
    (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Types)
-   (java.time OffsetTime ZonedDateTime)))
+   (java.time OffsetTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -209,45 +209,30 @@
         y (h2x/->timestamp y)]
     (sql.qp/datetime-diff driver unit x y)))
 
-;; WIP
+(defn- server-side-relative-ts
+  "Return timestamp that would match db side getdate() with truncation and addition."
+  [amount unit]
+  ;; Zoned date-time with TODO write this down!!!
+  ;; (t/offset-date-time (t/zoned-date-time) (qp.timezone/system-timezone-id))
+  (-> (t/local-date-time)
+      (u.date/truncate unit)
+      (u.date/add unit amount)))
+
 (defn- use-server-side-timestamp? [unit]
   (contains? #{:day :week :month :year} unit))
 
-;; TODO: truncate not just to "today" but also week / month.. maybe more
-(defn- now-truncated [_unit]
-  #_(case unit
-    :day (let [^ZonedDateTime zdt (t/truncate-to (qp.timezone/now) :days)]
-           (.format zdt java.time.format.DateTimeFormatter/ISO_LOCAL_DATE_TIME))
-    ;; TODO: get which day of the week is first (driver/db-start-of-the-week ???)
-    :week 1
-    :month 1
-    :year 1
-    (let [^ZonedDateTime zdt (t/truncate-to (qp.timezone/now) :days)]
-      (.format zdt java.time.format.DateTimeFormatter/ISO_LOCAL_DATE_TIME)))
-  (let [^ZonedDateTime zdt (t/truncate-to (qp.timezone/now) :days)]
-    (.format zdt java.time.format.DateTimeFormatter/ISO_LOCAL_DATE_TIME)))
-
-(comment
-  #_
-  (metabase.test/with-driver :redshift
-    (metabase.test/with-db (toucan2.core/select-one :model/Database :id 2)
-      (metabase.test/with-metadata-provider 2
-        (type (qp.timezone/now)))))
-  ;; finding the first day of the week
-  )
-
 (defmethod sql.qp/->honeysql [:redshift :relative-datetime]
   [driver [_ amount unit]]
-  #_(tap> ["->honeysql relative-datetime" amount unit])
-  (let [now-value (if (use-server-side-timestamp? unit)
-                    (now-truncated unit)
-                    (sql.qp/current-datetime-honeysql-form driver))
-        with-added-interval (if (zero? amount)
-                               now-value
-                               (sql.qp/add-interval-honeysql-form driver now-value amount unit))]
-    (if (use-server-side-timestamp? unit)
-      with-added-interval
-      (sql.qp/date driver unit with-added-interval))))
+  (if (use-server-side-timestamp? unit)
+    [:cast (server-side-relative-ts amount unit) :timestamp]
+    (sql.qp/date driver
+                 unit
+                 (if (zero? amount)
+                   (sql.qp/current-datetime-honeysql-form driver)
+                   (sql.qp/add-interval-honeysql-form driver
+                                                      (sql.qp/current-datetime-honeysql-form driver)
+                                                      amount
+                                                      unit)))))
 
 (defmethod sql.qp/datetime-diff [:redshift :year]
   [driver _unit x y]

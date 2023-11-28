@@ -3,7 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   #_[java-time.api :as t]
+   [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.redshift :as redshift]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -18,12 +18,14 @@
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.redshift :as redshift.test]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util.random :as tu.random]
+   [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
@@ -416,7 +418,7 @@
                  :result-cache-hit result-cache-hit
                  :query-text query-text})))))
 
-(deftest timestamps-caching-test
+(deftest server-side-timestamp-caching-test
   (mt/test-driver :redshift
    (testing "Relative date time queries should be cached"
      (sql-jdbc.execute/do-with-connection-with-options
@@ -425,6 +427,8 @@
       nil
       (fn [^java.sql.Connection _connection]
         (let [sid (session-id)
+              ;; :time-interval translates to :relative-datetime, which is now using server side generated timestamps
+              ;; for units day and greater.
               query-to-cache (mt/mbql-query
                               test_data_users
                               {:fields [$id $last_login]
@@ -440,18 +444,61 @@
             (testing "Cache value is correct"
               (is (true? (:result-cache-hit cached-row)))))))))))
 
-(comment
-  mt/with-system-timezone-id
-  mt/with-results-timezone-id
-  mt/with-database-timezone-id
+;; TODO: time for the test? How much is too much?
+;; TODO: macro solution vs functional one?
+(deftest server-side-timestamp-test
+  (mt/test-driver
+   :redshift
+   (mt/with-metadata-provider (mt/id)
+     (testing "Value of getdate() and server side generated timestamp is equal"
+       (let [test-thunk
+             ;;
+             (fn []
+               (let [honey {:select [[(with-redefs-fn {#'redshift/use-server-side-timestamp? (constantly false)}
+                                        #(sql.qp/->honeysql :redshift [:relative-datetime -1 :week]))]
+                                     [(sql.qp/->honeysql :redshift [:relative-datetime -1 :week])]]}
+                     sql (sql/format honey)
+                     result (apply run-native-query sql)
+                     [db-generated ss-generated] (-> result mt/rows first)]
+                 (is (= db-generated ss-generated))))]
+         (doseq [tz-setter [qp.test-util/do-with-report-timezone-id
+                            test.tz/do-with-system-timezone-id
+                            qp.test-util/do-with-database-timezone-id
+                            qp.test-util/do-with-results-timezone-id]
+                 timezone ["America/Los_Angeles"
+                           "Europe/Prague"
+                           "UTC"]]
+           (testing (str tz-setter " " timezone)
+             (tz-setter timezone test-thunk))))))))
 
-  ;; test yesterday
-  )
+;; TODO: Extend for more combinations of nested timezone settings.
+(deftest server-side-timestamp-multiple-tz-settings-test
+  (mt/test-driver
+   :redshift
+   (mt/with-metadata-provider (mt/id)
+     (testing "Value of server side generated timestamp matches the one from getdate() with multiple timezone settings"
+       (mt/with-report-timezone-id "America/Los_Angeles"
+         (mt/with-system-timezone-id "Europe/Prague"
+           (let [honey {:select [[(with-redefs-fn {#'redshift/use-server-side-timestamp? (constantly false)}
+                                    #(sql.qp/->honeysql :redshift [:relative-datetime -1 :year]))]
+                                 [(sql.qp/->honeysql :redshift [:relative-datetime -1 :year])]]}
+                 sql (sql/format honey)
+                 result (apply run-native-query sql)
+                 [db-generated ss-generated] (-> result mt/rows first)]
+             (is (= db-generated ss-generated)))))))))
 
-;; this is probably tested somewhere
-#_(deftest timestamps-correctness-test
-  ;; some kind of with timezone bla bla
-  (mt/with-clock (t/zoned-date-time 2014 8 2 10 30 21 0 "UTC")
-    (mt/with-report-timezone-id "US/Pacific"
-      ))
-  )
+;; TODO: check if tested elsewhere!
+(deftest server-side-timestamp-various-units-test
+  (mt/test-driver
+   :redshift
+   (mt/with-metadata-provider (mt/id)
+     (testing "Value of server side generated timestamp matches the one from getdate() with multiple timezone settings"
+       (doseq [unit [:day :week :month :year]
+               value [-30 0 7]]
+         (let [honey {:select [[(with-redefs-fn {#'redshift/use-server-side-timestamp? (constantly false)}
+                                  #(sql.qp/->honeysql :redshift [:relative-datetime value unit]))]
+                               [(sql.qp/->honeysql :redshift [:relative-datetime value unit])]]}
+               sql (sql/format honey)
+               result (apply run-native-query sql)
+               [db-generated ss-generated] (-> result mt/rows first)]
+           (is (= db-generated ss-generated))))))))
