@@ -37,7 +37,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     ])(
       'should allow to drill with "$bucketName" temporal bucket',
       ({ bucketName, displayName }) => {
-        const query = createQueryWithTemporalBucket(bucketName);
+        const query = createQueryWithBreakout(bucketName);
         const { value, row, dimensions } = getCellData(
           aggregationColumn,
           breakoutColumn,
@@ -62,7 +62,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     );
 
     it("should allow to drill when clicked on a null value", () => {
-      const query = createQueryWithTemporalBucket("Month");
+      const query = createQueryWithBreakout("Month");
       const { value, row, dimensions } = getCellData(
         aggregationColumn,
         breakoutColumn,
@@ -86,7 +86,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     });
 
     it("should allow to drill when clicked on a pivot cell", () => {
-      const query = createQueryWithTemporalBucket("Month");
+      const query = createQueryWithMultipleBreakouts("Month");
       const { row, dimensions } = getPivotCellData(10);
 
       const { drillInfo } = findDrillThru(
@@ -106,7 +106,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     });
 
     it("should allow to drill when clicked on a legend item", () => {
-      const query = createQueryWithTemporalBucket("Month");
+      const query = createQueryWithBreakout("Month");
       const { dimensions } = getLegendItemData(10);
 
       const { drillInfo } = findDrillThru(
@@ -137,7 +137,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
       "Quarter of year",
       "Don't bin",
     ])('should not allow to drill with "%s" temporal bucket', bucketName => {
-      const query = createQueryWithTemporalBucket(bucketName);
+      const query = createQueryWithBreakout(bucketName);
       const { value, row, dimensions } = getCellData(
         aggregationColumn,
         breakoutColumn,
@@ -158,7 +158,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     });
 
     it("should not allow to drill when clicked on a column", () => {
-      const query = createQueryWithTemporalBucket("Month");
+      const query = createQueryWithBreakout("Month");
 
       const drill = queryDrillThru(
         drillType,
@@ -189,9 +189,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     });
 
     it("should not allow to drill with a non-editable query", () => {
-      const query = createNotEditableQuery(
-        createQueryWithTemporalBucket("Month"),
-      );
+      const query = createNotEditableQuery(createQueryWithBreakout("Month"));
       const { value, row, dimensions } = getCellData(
         aggregationColumn,
         breakoutColumn,
@@ -216,7 +214,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     it.each<RowValue>([10, null])(
       'should drill when clicked on an aggregated cell with "%s" value',
       value => {
-        const query = createQueryWithTemporalBucket("Month");
+        const query = createQueryWithBreakout("Month");
         const { row, dimensions } = getCellData(
           aggregationColumn,
           breakoutColumn,
@@ -242,7 +240,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     it.each<RowValue>([10, null])(
       'should drill when clicked on a pivot cell with "%s" value',
       value => {
-        const query = createQueryWithTemporalBucket("Month");
+        const query = createQueryWithMultipleBreakouts("Month");
         const { row, dimensions } = getPivotCellData(value);
 
         const { drill } = findDrillThru(
@@ -264,7 +262,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     it.each<RowValue>([10, null])(
       'should drill when clicked on a legend item with "%s" value',
       value => {
-        const query = createQueryWithTemporalBucket("Month");
+        const query = createQueryWithBreakout("Month");
         const { dimensions } = getLegendItemData(value);
 
         const { drill } = findDrillThru(
@@ -285,7 +283,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
   });
 });
 
-function createQueryWithTemporalBucket(bucketName: string) {
+function createQueryWithBreakout(bucketName: string) {
   const query = createQuery();
 
   const queryWithAggregation = Lib.aggregate(
@@ -307,6 +305,16 @@ function createQueryWithTemporalBucket(bucketName: string) {
       findTemporalBucket(query, breakoutColumn, bucketName),
     ),
   );
+}
+
+function createQueryWithMultipleBreakouts(bucketName: string) {
+  const queryWithBreakout = createQueryWithBreakout(bucketName);
+  const bucketColumn = columnFinder(
+    queryWithBreakout,
+    Lib.breakoutableColumns(queryWithBreakout, -1),
+  )("ORDERS", "QUANTITY");
+
+  return Lib.breakout(queryWithBreakout, -1, bucketColumn);
 }
 
 function createNotEditableQuery(query: Lib.Query) {
