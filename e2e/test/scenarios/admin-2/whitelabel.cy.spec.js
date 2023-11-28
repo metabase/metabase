@@ -161,6 +161,9 @@ describeEE("formatting > whitelabel", () => {
   describe("Help link", () => {
     beforeEach(() => {
       cy.intercept("PUT", "/api/setting/help-link").as("putHelpLink");
+      cy.intercept("PUT", "/api/setting/help-link-custom-destination").as(
+        "putHelpLinkUrl",
+      );
     });
 
     it("should allow customising the help link", () => {
@@ -193,6 +196,8 @@ describeEE("formatting > whitelabel", () => {
         .should("have.focus")
         .type("https://example.org/custom-destination")
         .blur();
+
+      cy.wait("@putHelpLinkUrl");
 
       cy.wait("@putHelpLink");
 
@@ -251,15 +256,12 @@ describeEE("formatting > whitelabel", () => {
         "https://example.org/custom-destination",
       );
 
-      cy.findByTestId("help-link-setting")
-        .findByText("Link to Metabase help")
-        .click();
+      cy.findByTestId("help-link-setting").findByText("Hide it").click();
+      cy.wait("@putHelpLink");
 
-      cy.wait("@putHelpLink").then(({ request }) => {
-        expect(request.body.value).to.equal("metabase_default");
-      });
-
-      cy.get("@putHelpLink.all").should("have.length", 1);
+      cy.visit("/");
+      openSettingsMenu();
+      helpLink().should("not.exist");
     });
   });
 });

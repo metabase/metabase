@@ -107,16 +107,23 @@
   :audit      :getter
   :visibility :public)
 
-(defsetting help-link
-  (deferred-tru "TODO")
-  :default    "metabase_default"
-  :type       :string
-  :audit      :getter
-  :visibility :public)
-
 (defsetting custom-homepage-dashboard
   (deferred-tru "ID of dashboard to use as a homepage")
   :type       :integer
+  :visibility :public
+  :audit      :getter)
+
+  ;; TODO: the settings on the BE will be done at the end, with help from the backend team
+  (defsetting help-link
+  (deferred-tru "TODO")
+  :default    :metabase_default
+  :type       :keyword
+  :audit      :getter
+  :visibility :public)
+
+(defsetting help-link-custom-destination
+  (deferred-tru "TODO")
+  :type       :string
   :visibility :public
   :audit      :getter)
 
