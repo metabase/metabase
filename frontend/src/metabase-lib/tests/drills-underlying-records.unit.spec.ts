@@ -16,13 +16,13 @@ import {
   findDrillThru,
   queryDrillThru,
 } from "metabase-lib/test-helpers";
-import { createAggregationColumn } from "./drills-common";
+import { createCountColumn } from "./drills-common";
 
 describe("drill-thru/underlying-records", () => {
   const drillType = "drill-thru/underlying-records";
   const defaultQuery = createQueryWithBreakout();
   const stageIndex = 0;
-  const aggregationColumn = createAggregationColumn();
+  const aggregationColumn = createCountColumn();
   const breakoutColumn = createOrdersCreatedAtDatasetColumn({
     source: "breakout",
   });
@@ -386,7 +386,7 @@ function getCellData(
 }
 
 function getPivotCellData(value: RowValue) {
-  const aggregationColumn = createAggregationColumn();
+  const aggregationColumn = createCountColumn();
   const breakoutColumn1 = createOrdersCreatedAtDatasetColumn({
     source: "breakout",
   });

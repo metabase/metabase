@@ -72,7 +72,7 @@ export function createOrdersSerializedJSONColumn() {
   return createMockColumn(FIELDS.serializedJSON);
 }
 
-export function createAggregationColumn() {
+export function createCountColumn() {
   return createMockColumn({
     id: undefined,
     table_id: undefined,

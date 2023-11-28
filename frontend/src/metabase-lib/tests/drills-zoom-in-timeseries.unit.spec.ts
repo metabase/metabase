@@ -9,12 +9,12 @@ import {
   findTemporalBucket,
   queryDrillThru,
 } from "metabase-lib/test-helpers";
-import { createAggregationColumn } from "./drills-common";
+import { createCountColumn } from "./drills-common";
 
 describe("drill-thru/zoom-in.timeseries", () => {
   const drillType = "drill-thru/zoom-in.timeseries";
   const stageIndex = 0;
-  const aggregationColumn = createAggregationColumn();
+  const aggregationColumn = createCountColumn();
   const breakoutColumn = createOrdersCreatedAtDatasetColumn({
     source: "breakout",
   });
@@ -29,7 +29,7 @@ describe("drill-thru/zoom-in.timeseries", () => {
     ])(
       'should allow to drill with "$bucketName" temporal bucket',
       ({ bucketName, displayName }) => {
-        const query = getQueryWithBucket(bucketName);
+        const query = getQueryWithTemporalBucket(bucketName);
         const { value, row, dimensions } = getCellData(
           aggregationColumn,
           breakoutColumn,
@@ -65,7 +65,7 @@ describe("drill-thru/zoom-in.timeseries", () => {
       "Quarter of year",
       "Don't bin",
     ])('should not allow to drill with "%s" temporal bucket', bucketName => {
-      const query = getQueryWithBucket(bucketName);
+      const query = getQueryWithTemporalBucket(bucketName);
       const { value, row, dimensions } = getCellData(
         aggregationColumn,
         breakoutColumn,
@@ -87,7 +87,7 @@ describe("drill-thru/zoom-in.timeseries", () => {
   });
 });
 
-function getQueryWithBucket(bucketName: string) {
+function getQueryWithTemporalBucket(bucketName: string) {
   const query = createQuery();
 
   const queryWithAggregation = Lib.aggregate(
