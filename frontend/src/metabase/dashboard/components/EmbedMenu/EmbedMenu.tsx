@@ -12,26 +12,6 @@ export type EmbedMenuModes =
   | "public-link-popover"
   | null;
 
-const getEmbedMenuMode = ({
-  isAdmin,
-  isPublicSharingEnabled,
-  hasPublicLink,
-}: {
-  isAdmin: boolean;
-  isPublicSharingEnabled: boolean;
-  hasPublicLink: boolean;
-}): EmbedMenuModes => {
-  if (isAdmin) {
-    return isPublicSharingEnabled ? "embed-menu" : "embed-modal";
-  }
-
-  if (isPublicSharingEnabled && hasPublicLink) {
-    return "public-link-popover";
-  }
-
-  return null;
-};
-
 export const EmbedMenu = ({
   resource_uuid,
   onModalOpen,
@@ -41,45 +21,18 @@ export const EmbedMenu = ({
   onModalOpen?: () => void;
   onModalClose?: () => void;
 }) => {
-  const isPublicSharingEnabled = useSelector(state =>
-    getSetting(state, "enable-public-sharing"),
-  );
-  const isAdmin = useSelector(getUserIsAdmin);
-
   const hasPublicLink = !!resource_uuid;
 
-  const initialMenuMode: EmbedMenuModes = getEmbedMenuMode({
-    isAdmin,
-    isPublicSharingEnabled,
+  const initialMenuMode: EmbedMenuModes = useEmbedMenuMode({
     hasPublicLink,
   });
+
   const [isOpen, setIsOpen] = useState(false);
   const [menuMode, setMenuMode] = useState(initialMenuMode);
 
-  // console.log(menuMode)
-
-  const onMenuSelect = (menuMode?: EmbedMenuModes) => {
+  const onMenuSelect = (menuMode: EmbedMenuModes) => {
     setIsOpen(true);
-    if (menuMode) {
-      setMenuMode(menuMode);
-    }
-  };
-
-  const onClose = () => {
-    setIsOpen(false);
-    setMenuMode(initialMenuMode);
-  };
-
-  const targetButton = ({
-    onClick = undefined,
-  }: { onClick?: () => void } = {}) => {
-    return (
-      <DashboardEmbedHeaderButton
-        onClick={() => {
-          onClick?.();
-        }}
-      />
-    );
+    setMenuMode(menuMode);
   };
 
   const renderEmbedMenu = () => (
@@ -87,24 +40,32 @@ export const EmbedMenu = ({
       hasPublicLink={hasPublicLink}
       /* TODO: Change to `onMenuSelect("public-link-popover")}` when public link popover is implemented */
       openPublicLinkPopover={() => onMenuSelect("public-link-popover")}
-      openEmbedModal={() => {
-        onModalOpen && onModalOpen();
-        setIsOpen(false);
-        setMenuMode(initialMenuMode);
-      }}
-      target={<div>{targetButton()}</div>}
+      openEmbedModal={onModalOpen}
+      target={<DashboardEmbedHeaderButton />}
     />
   );
 
+  const renderEmbedModalTrigger = () => (
+    <DashboardEmbedHeaderButton
+      onClick={() => {
+        onModalOpen?.();
+        setIsOpen(false);
+      }}
+    />
+  );
+
+  const onClosePublicLinkPopover = () => {
+    setIsOpen(false);
+    setMenuMode(initialMenuMode);
+  };
+
   const renderPublicLinkPopover = () => {
     return (
-      <Popover opened={isOpen} onClose={onClose}>
+      <Popover opened={isOpen} onClose={onClosePublicLinkPopover}>
         <Popover.Target>
-          <div>
-            {targetButton({
-              onClick: isOpen ? onClose : () => setIsOpen(true),
-            })}
-          </div>
+          <DashboardEmbedHeaderButton
+            onClick={isOpen ? onClosePublicLinkPopover : () => setIsOpen(true)}
+          />
         </Popover.Target>
         <Popover.Dropdown>
           <div>Public Link Popover</div>
@@ -112,14 +73,6 @@ export const EmbedMenu = ({
       </Popover>
     );
   };
-
-  const renderEmbedModalTrigger = () =>
-    targetButton({
-      onClick: () => {
-        onModalOpen?.();
-        setIsOpen(false);
-      },
-    });
 
   const getEmbedContent = (menuMode: EmbedMenuModes) => {
     if (menuMode === "embed-menu") {
@@ -134,4 +87,24 @@ export const EmbedMenu = ({
   };
 
   return getEmbedContent(menuMode);
+};
+
+const useEmbedMenuMode = ({
+  hasPublicLink,
+}: {
+  hasPublicLink: boolean;
+}): EmbedMenuModes => {
+  const isPublicSharingEnabled = useSelector(state =>
+    getSetting(state, "enable-public-sharing"),
+  );
+  const isAdmin = useSelector(getUserIsAdmin);
+  if (isAdmin) {
+    return isPublicSharingEnabled ? "embed-menu" : "embed-modal";
+  }
+
+  if (isPublicSharingEnabled && hasPublicLink) {
+    return "public-link-popover";
+  }
+
+  return null;
 };
