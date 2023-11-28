@@ -9,6 +9,7 @@ import { updateLdapSettings } from "metabase/admin/settings/settings";
 
 import { Stack, Group, Radio } from "metabase/ui";
 import {
+  Form,
   FormErrorMessage,
   FormProvider,
   FormRadioGroup,
@@ -18,8 +19,6 @@ import {
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { FormSection } from "metabase/containers/FormikForm";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
-
-import { LdapForm, LdapFormFooter } from "./SettingsLdapForm.styled";
 
 const propTypes = {
   elements: PropTypes.array,
@@ -94,7 +93,7 @@ const SettingsLdapForm = ({
       enableReinitialize
     >
       {({ dirty }) => (
-        <LdapForm>
+        <Form m="0 1rem" maw="32.5rem">
           <Breadcrumbs
             className="mb3"
             crumbs={[
@@ -103,7 +102,7 @@ const SettingsLdapForm = ({
             ]}
           />
           <FormSection title={"Server Settings"}>
-            <Stack gap="md">
+            <Stack spacing="md">
               <FormTextInput {...fields["ldap-host"]} />
               <FormTextInput {...fields["ldap-port"]} />
               <FormRadioGroup {...fields["ldap-security"]}>
@@ -118,20 +117,20 @@ const SettingsLdapForm = ({
             </Stack>
           </FormSection>
           <FormSection title={"User Schema"}>
-            <Stack gap="md">
+            <Stack spacing="md">
               <FormTextInput {...fields["ldap-user-base"]} />
               <FormTextInput {...fields["ldap-user-filter"]} />
             </Stack>
           </FormSection>
           <FormSection title={"Attributes"} collapsible>
-            <Stack gap="md">
+            <Stack spacing="md">
               <FormTextInput {...fields["ldap-attribute-email"]} />
               <FormTextInput {...fields["ldap-attribute-firstname"]} />
               <FormTextInput {...fields["ldap-attribute-lastname"]} />
             </Stack>
           </FormSection>
           <FormSection title={"Group Schema"}>
-            <Stack gap={"md"}>
+            <Stack spacing={"md"}>
               <GroupMappingsWidget
                 isFormik
                 setting={{ key: "ldap-group-sync" }}
@@ -147,15 +146,15 @@ const SettingsLdapForm = ({
               )}
             </Stack>
           </FormSection>
-          <LdapFormFooter>
+          <Stack align="start" spacing="1rem" mb="1rem">
             <FormErrorMessage />
             <FormSubmitButton
               disabled={!dirty}
               label={isEnabled ? t`Save changes` : t`Save and enable`}
               variant="filled"
             />
-          </LdapFormFooter>
-        </LdapForm>
+          </Stack>
+        </Form>
       )}
     </FormProvider>
   );
