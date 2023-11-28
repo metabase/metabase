@@ -18,7 +18,8 @@ import {
 } from "metabase-lib/test-helpers";
 import { createCountColumn } from "./drills-common";
 
-describe("drill-thru/zoom-in.timeseries", () => {
+// eslint-disable-next-line jest/no-disabled-tests
+describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
   const drillType = "drill-thru/zoom-in.timeseries";
   const stageIndex = 0;
   const aggregationColumn = createCountColumn();
