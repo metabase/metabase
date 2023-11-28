@@ -16,8 +16,8 @@ import {
 } from "metabase-lib/test-helpers";
 import { createCountColumn } from "./drills-common";
 
-describe("drill-thru/zoom-in.bins", () => {
-  const drillType = "drill-thru/zoom-in.bins";
+describe("drill-thru/zoom-in.binning", () => {
+  const drillType = "drill-thru/zoom-in.binning";
   const stageIndex = 0;
   const aggregationColumn = createCountColumn();
 
