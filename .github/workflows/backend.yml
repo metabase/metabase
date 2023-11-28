@@ -202,16 +202,18 @@ jobs:
           path: resources/frontend_client/app/dist
 
       - name: Run tests
+        id: run-java-tests
         if: matrix.java-version != 21
         run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
 
       - name: Run tests using Java 21 on `master` only
+        id: run-java-tests-21
         if: matrix.java-version == 21 && github.ref_name == 'master'
         run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
-        if: always()
+        if: always() && (steps.run-java-tests.conclusion != 'skipped' || steps.run-java-tests-21.conclusion != 'skipped')
         with:
           input-path: ./target/junit/
           output-dir: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
