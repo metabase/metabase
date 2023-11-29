@@ -633,7 +633,7 @@ const TITLE_LOCALES_BN = {
     'bn' : 'এই সেশনে জেলা ভিত্তিক মোট আবেদন'
   },
   'tms.session.different.steps.applications' : {
-    'en' : 'Applications in different stages',
+    'en' : 'Applications waiting in different stages',
     'bn' : 'বিভিন্ন ধাপে অপেক্ষমাণ আবেদন সমুহ'
   },
   'tms.session.applicant.gender' : {
@@ -655,6 +655,18 @@ const TITLE_LOCALES_BN = {
   'tms.session.criteria.wise.application' : {
     'en' : 'Criteria Wise Application Statistics',
     'bn' : 'ক্রাইটেরিয়া ভিত্তিক আবেদনের পরিসংখ্যান'
+  },
+  'tms.session.eligible.for.nomination.application' : {
+    'en' : 'Eligible for Nomination',
+    'bn' : 'মনোনয়নযোগ্য'
+  },
+  'tms.session.forward.autoforward.application' : {
+    'en' : 'Statistics on Forward vs. Auto-Forward Applications of Auto-Forwarders',
+    'bn' : 'প্রাথমিক পর্যালোকদের ফরোয়ার্ড বনাম অটো-ফরোয়ার্ড আবেদনের পরিসংখ্যান'
+  },
+  'tms.session.unselected.application' : {
+    'en' : 'Unselected',
+    'bn' : 'অনির্বাচিত'
   },
 }
 
