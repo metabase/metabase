@@ -14,6 +14,7 @@ import {
   FormProvider,
   FormRadioGroup,
   FormSubmitButton,
+  FormSwitch,
   FormTextInput,
 } from "metabase/forms";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
@@ -151,9 +152,14 @@ export const SettingsLdapForm = ({
                 groupPlaceholder={t`Group Name`}
               />
               <FormTextInput {...fields["ldap-group-base"]} />
-              {"ldap-group-membership-filter" in fields && (
-                <FormTextInput {...fields["ldap-group-membership-filter"]} />
-              )}
+              {"ldap-group-membership-filter" in fields &&
+                "ldap-group-membership-filter" in settingValues && (
+                  <FormTextInput {...fields["ldap-group-membership-filter"]} />
+                )}
+              {"ldap-sync-admin-group" in fields &&
+                "ldap-sync-admin-group" in settingValues && (
+                  <FormSwitch {...fields["ldap-sync-admin-group"]} />
+                )}
             </Stack>
           </FormSection>
           <Stack align="start" spacing="1rem" mb="1rem">
@@ -191,6 +197,7 @@ const LDAP_ATTRS = [
   "ldap-group-sync",
   "ldap-group-base",
   "ldap-group-membership-filter",
+  "ldap-sync-admin-group",
 ];
 
 const getAttributeValues = (values: SettingValues) => {
