@@ -45,7 +45,7 @@ const LDAP_SCHEMA = Yup.object({
   "ldap-group-membership-filter": Yup.string().nullable().test(testParentheses),
 });
 
-const SettingsLdapForm = ({
+export const SettingsLdapForm = ({
   elements = [],
   settingValues,
   onSubmit,
