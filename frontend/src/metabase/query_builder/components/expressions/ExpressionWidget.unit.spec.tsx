@@ -141,8 +141,10 @@ describe("ExpressionWidget", () => {
 
       userEvent.type(screen.getByDisplayValue("1 + 1"), "{enter}");
 
-      // enter in expression editor should not trigger "onChangeClause" as popover is not valid with empty "name"
+      // enter in expression editor should not trigger "onChangeClause" or "onChangeExpression"
+      // as popover is not valid with empty "name"
       expect(onChangeClause).toHaveBeenCalledTimes(0);
+      expect(onChangeExpression).toHaveBeenCalledTimes(0);
 
       // The name must not be empty
       userEvent.type(expressionNameInput, "");
