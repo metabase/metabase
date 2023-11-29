@@ -67,12 +67,12 @@
     semantic-type))
 
 (defmethod sql-jdbc.sync.interface/fallback-metadata-query :sql-jdbc
-  [driver schema table]
+  [driver db schema table]
   {:pre [(string? table)]}
   ;; Using our SQL compiler here to get portable LIMIT (e.g. `SELECT TOP n ...` for SQL Server/Oracle)
   (sql.qp/with-driver-honey-sql-version driver
     (let [honeysql {:select [:*]
-                    :from   [(sql.qp/maybe-wrap-unaliased-expr (sql.qp/->honeysql driver (hx/identifier :table schema table)))]
+                    :from   [(sql.qp/maybe-wrap-unaliased-expr (sql.qp/->honeysql driver (hx/identifier :table db schema table)))]
                     :where  [:not= (sql.qp/inline-num 1) (sql.qp/inline-num 1)]}
           honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
       (sql.qp/format-honeysql driver honeysql))))
@@ -80,9 +80,9 @@
 (defn fallback-fields-metadata-from-select-query
   "In some rare cases `:column_name` is blank (eg. SQLite's views with group by) fallback to sniffing the type from a
   SELECT * query."
-  [driver ^Connection conn table-schema table-name]
+  [driver ^Connection conn table-db table-schema table-name]
   ;; some DBs (:sqlite) don't actually return the correct metadata for LIMIT 0 queries
-  (let [[sql & params] (sql-jdbc.sync.interface/fallback-metadata-query driver table-schema table-name)]
+  (let [[sql & params] (sql-jdbc.sync.interface/fallback-metadata-query driver table-db table-schema table-name)]
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
         (with-open [stmt (sql-jdbc.sync.common/prepare-statement driver conn sql params)
@@ -137,8 +137,11 @@
       ;;
       ;; 3. Filter out any duplicates between the two methods using `m/distinct-by`.
       (let [has-fields-without-type-info? (volatile! false)
+            jdbc-returns-no-field?        (volatile! true)
             jdbc-metadata                 (eduction
                                            (remove (fn [{:keys [database-type]}]
+                                                     (when @jdbc-returns-no-field?
+                                                       (vreset! jdbc-returns-no-field? false))
                                                      (when (str/blank? database-type)
                                                        (vreset! has-fields-without-type-info? true)
                                                        true)))
@@ -148,8 +151,8 @@
                                               (reduce
                                                rf
                                                init
-                                               (when @has-fields-without-type-info?
-                                                 (fallback-fields-metadata-from-select-query driver conn schema table-name)))))]
+                                               (when (or @jdbc-returns-no-field? @has-fields-without-type-info?)
+                                                 (fallback-fields-metadata-from-select-query driver conn db-name-or-nil schema table-name)))))]
         ;; VERY IMPORTANT! DO NOT REWRITE THIS TO BE LAZY! IT ONLY WORKS BECAUSE AS NORMAL-FIELDS GETS REDUCED,
         ;; HAS-FIELDS-WITHOUT-TYPE-INFO? WILL GET SET TO TRUE IF APPLICABLE AND THEN FALLBACK-FIELDS WILL RUN WHEN
         ;; IT'S TIME TO START EVALUATING THAT.

@@ -37,7 +37,8 @@
   (:import
    (java.io File)
    (java.sql Connection DatabaseMetaData ResultSet Types)
-   (java.time OffsetDateTime OffsetTime ZonedDateTime)))
+   (java.time OffsetDateTime OffsetTime ZonedDateTime)
+   (net.snowflake.client.jdbc SnowflakeSQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -451,11 +452,18 @@
 (defmethod sql-jdbc.describe-table/get-table-pks :snowflake
   [_driver ^Connection conn db-name-or-nil table]
   (let [^DatabaseMetaData metadata (.getMetaData conn)]
-    (into [] (sql-jdbc.sync.common/reducible-results
-              #(.getPrimaryKeys metadata db-name-or-nil
-                                (-> table :schema escape-name-for-metadata)
-                                (-> table :name escape-name-for-metadata))
-              (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))))
+    (try
+     (into [] (sql-jdbc.sync.common/reducible-results
+               #(.getPrimaryKeys metadata db-name-or-nil
+                                 (-> table :schema escape-name-for-metadata)
+                                 (-> table :name escape-name-for-metadata))
+               (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))
+     (catch SnowflakeSQLException e
+       ;; dynamic tables doesn't support pks and it'll throw an error if you try to get one
+       (if (= "SQL compilation error: show [constraint] command doesnt support this domain."
+              (ex-message e))
+         []
+         (throw e))))))
 
 (defn- describe-table-fks*
   "Stolen from [[sql-jdbc.describe-table]].
@@ -464,15 +472,22 @@
   ;; Snowflake bug: schema and table name are interpreted as patterns
   (let [schema (escape-name-for-metadata schema)
         table-name (escape-name-for-metadata table-name)]
-    (into
-     #{}
-     (sql-jdbc.sync.common/reducible-results #(.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)
-                                             (fn [^ResultSet rs]
-                                               (fn []
-                                                 {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
-                                                  :dest-table       {:name   (.getString rs "PKTABLE_NAME")
-                                                                     :schema (.getString rs "PKTABLE_SCHEM")}
-                                                  :dest-column-name (.getString rs "PKCOLUMN_NAME")}))))))
+    (try
+     (into
+      #{}
+      (sql-jdbc.sync.common/reducible-results #(.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)
+                                              (fn [^ResultSet rs]
+                                                (fn []
+                                                  {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
+                                                   :dest-table       {:name   (.getString rs "PKTABLE_NAME")
+                                                                      :schema (.getString rs "PKTABLE_SCHEM")}
+                                                   :dest-column-name (.getString rs "PKCOLUMN_NAME")}))))
+     (catch SnowflakeSQLException e
+       ;; dynamic tables doesn't support fks and it'll throw an error if you try to get one
+       (if (= "SQL compilation error: show [constraint] command doesnt support this domain."
+              (ex-message e))
+         #{}
+         (throw e))))))
 
 (defn- describe-table-fks
   "Stolen from [[sql-jdbc.describe-table]].
