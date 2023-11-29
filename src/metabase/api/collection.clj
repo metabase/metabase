@@ -873,15 +873,15 @@
      (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
        (collection/perms-for-archiving collection-before-update)))))
 
-(defn- maybe-send-archived-notificaitons!
+(defn- maybe-send-archived-notifications!
   "When a collection is archived, all of it's cards are also marked as archived, but this is down in the model layer
   which will not cause the archive notification code to fire. This will delete the relevant alerts and notify the
   users just as if they had be archived individually via the card API."
-  [collection-before-update collection-updates]
+  [& {:keys [collection-before-update collection-updates actor]}]
   (when (api/column-will-change? :archived collection-before-update collection-updates)
     (when-let [alerts (seq (pulse/retrieve-alerts-for-cards
                             {:card-ids (t2/select-pks-set Card :collection_id (u/the-id collection-before-update))}))]
-      (card/delete-alert-and-notify-archived! alerts))))
+      (card/delete-alert-and-notify-archived! {:alerts alerts :actor actor}))))
 
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
@@ -913,7 +913,9 @@
     ;; if we're trying to *move* the Collection (instead or as well) go ahead and do that
     (move-collection-if-needed! collection-before-update collection-updates)
     ;; if we *did* end up archiving this Collection, we most post a few notifications
-    (maybe-send-archived-notificaitons! collection-before-update collection-updates))
+    (maybe-send-archived-notifications! {:collection-before-update collection-before-update
+                                         :collection-updates       collection-updates
+                                         :actor                    @api/*current-user*}))
   ;; finally, return the updated object
   (collection-detail (t2/select-one Collection :id id)))
 
