@@ -81,14 +81,12 @@ describe("drill-thru/sort", () => {
       column: defaultColumn,
       value: 10,
     });
-
     const drill = queryDrillThru(
       defaultQuery,
       stageIndex,
       clickObject,
       drillType,
     );
-
     expect(drill).toBeNull();
   });
 
@@ -97,14 +95,12 @@ describe("drill-thru/sort", () => {
       column: defaultColumn,
       value: null,
     });
-
     const drill = queryDrillThru(
       defaultQuery,
       stageIndex,
       clickObject,
       drillType,
     );
-
     expect(drill).toBeNull();
   });
 
@@ -129,12 +125,10 @@ describe("drill-thru/sort", () => {
         }),
       ],
     });
-
     const query = createQuery({ metadata });
     const column = createOrdersStructuredDatasetColumn();
     const clickObject = createColumnClickObject({ column });
     const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
-
     expect(drill).toBeNull();
   });
 });

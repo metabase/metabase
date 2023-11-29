@@ -72,7 +72,6 @@ describe("drill-thru/pk", () => {
       clickObject,
       drillType,
     );
-
     const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
     expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
   });
@@ -89,9 +88,7 @@ describe("drill-thru/pk", () => {
       breakoutColumn: createOrdersTotalDatasetColumn({ source: "breakout" }),
       breakoutColumnValue: 10,
     });
-
     const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
-
     expect(drill).toBeNull();
   });
 
@@ -101,9 +98,7 @@ describe("drill-thru/pk", () => {
       column: createOrdersProductIdDatasetColumn(),
       value: 10,
     });
-
     const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
-
     expect(drill).toBeNull();
   });
 
@@ -113,9 +108,7 @@ describe("drill-thru/pk", () => {
       column: defaultColumn,
       value: 10,
     });
-
     const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
-
     expect(drill).toBeNull();
   });
 
@@ -123,14 +116,12 @@ describe("drill-thru/pk", () => {
     const clickObject = createColumnClickObject({
       column: defaultColumn,
     });
-
     const drill = queryDrillThru(
       defaultQuery,
       stageIndex,
       clickObject,
       drillType,
     );
-
     expect(drill).toBeNull();
   });
 
@@ -140,14 +131,12 @@ describe("drill-thru/pk", () => {
       column: defaultColumn,
       value: null,
     });
-
     const drill = queryDrillThru(
       defaultQuery,
       stageIndex,
       clickObject,
       drillType,
     );
-
     expect(drill).toBeNull();
   });
 
@@ -157,9 +146,7 @@ describe("drill-thru/pk", () => {
       column: defaultColumn,
       value: 10,
     });
-
     const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
-
     expect(drill).toBeNull();
   });
 });
