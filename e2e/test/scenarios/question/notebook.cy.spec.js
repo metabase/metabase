@@ -361,6 +361,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
         cy.button("Done").should("not.be.disabled").click();
 
+        cy.findByTestId("aggregate-step").should("contain.text", filter);
+
         visualize();
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
