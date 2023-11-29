@@ -6,6 +6,8 @@ import type {
   ClickObjectDimension,
   DrillThru,
   Query,
+  PivotType,
+  FilterDrillDetails,
 } from "./types";
 
 // NOTE: value might be null or undefined, and they mean different things!
@@ -36,4 +38,19 @@ export function drillThru(
   ...args: any[]
 ): Query {
   return ML.drill_thru(query, stageIndex, drillThru, ...args);
+}
+
+export function filterDrillDetails(drillThru: DrillThru): FilterDrillDetails {
+  return ML.filter_drill_details(drillThru);
+}
+
+export function pivotTypes(drillThru: DrillThru): PivotType[] {
+  return ML.pivot_types(drillThru);
+}
+
+export function pivotColumnsForType(
+  drillThru: DrillThru,
+  pivotType: PivotType,
+): ColumnMetadata[] {
+  return ML.pivot_columns_for_type(drillThru, pivotType);
 }

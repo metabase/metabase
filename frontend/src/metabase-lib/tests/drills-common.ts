@@ -114,6 +114,23 @@ function withTemporalBucketAndBinningStrategy(
   );
 }
 
+interface AggregatedQueryOpts {
+  aggregationOperatorName: string;
+}
+
+export function createAggregatedQuery({
+  aggregationOperatorName,
+}: AggregatedQueryOpts) {
+  const query = createQuery();
+  return Lib.aggregate(
+    query,
+    -1,
+    Lib.aggregationClause(
+      findAggregationOperator(query, aggregationOperatorName),
+    ),
+  );
+}
+
 interface AggregatedQueryWithBreakoutOpts {
   aggregationOperatorName: string;
   breakoutColumnName: string;
@@ -129,25 +146,17 @@ export function createAggregatedQueryWithBreakout({
   breakoutColumnTemporalBucketName,
   breakoutColumnBinningStrategyName,
 }: AggregatedQueryWithBreakoutOpts) {
-  const query = createQuery();
-  const queryWithAggregation = Lib.aggregate(
-    query,
-    -1,
-    Lib.aggregationClause(
-      findAggregationOperator(query, aggregationOperatorName),
-    ),
-  );
-
+  const query = createAggregatedQuery({ aggregationOperatorName });
   const breakoutColumn = columnFinder(
-    queryWithAggregation,
-    Lib.breakoutableColumns(queryWithAggregation, -1),
+    query,
+    Lib.breakoutableColumns(query, -1),
   )(breakoutColumnTableName, breakoutColumnName);
 
   return Lib.breakout(
-    queryWithAggregation,
+    query,
     -1,
     withTemporalBucketAndBinningStrategy(
-      queryWithAggregation,
+      query,
       breakoutColumn,
       breakoutColumnTemporalBucketName,
       breakoutColumnBinningStrategyName,

@@ -337,6 +337,14 @@ export type DrillThruDisplayInfo =
   | UnderlyingRecordsDrillThruInfo
   | ZoomTimeseriesDrillThruInfo;
 
+export type FilterDrillDetails = {
+  query: Query;
+  column: ColumnMetadata;
+  stageIndex: number;
+};
+
+export type PivotType = "category" | "location" | "time";
+
 export interface ClickObjectDimension {
   value: RowValue;
   column: DatasetColumn;
