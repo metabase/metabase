@@ -113,7 +113,7 @@ describe("drill-thru/sort", () => {
     expect(drill).toBeNull();
   });
 
-  it("should not drill a JSON column", () => {
+  it("should not drill thru a JSON column", () => {
     const metadata = createMockMetadata({
       databases: [
         createSampleDatabase({

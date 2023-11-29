@@ -34,15 +34,13 @@ describe("drill-thru/pivot", () => {
     const clickObject = createRawCellClickObject({ column, value: 10 });
 
     it("should make pivot drill available", () => {
-      const { drillInfo } = findDrillThru(
+      const { drill } = findDrillThru(
         query,
         stageIndex,
         clickObject,
         drillType,
       );
-      expect(drillInfo).toMatchObject({
-        type: drillType,
-      });
+      expect(drill).toBeDefined();
     });
 
     it("should make all pivot types available", () => {

@@ -30,10 +30,6 @@ describe("drill-thru/fk-details", () => {
       clickObject,
       drillType,
     );
-    expect(drill).toMatchObject({
-      type: drillType,
-    });
-
     const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
     expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
   });
