@@ -125,7 +125,7 @@
                           ;; but to an S3 bucket that may contain many databases
                           ;; TODO: other drivers are still failing with this test. For these drivers there's a good chance there's a bug in
                           ;; test.data.<driver> code, and not with the driver itself.
-                          (remove #{:athena :oracle}))
+                          (remove #{:athena}))
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
@@ -133,10 +133,10 @@
                 cant-sync-logged? (fn []
                                     (some?
                                      (some
-                                      (fn [[log-level throwable message]]
+                                        (fn [[log-level throwable message]]
                                         (and (= log-level :warn)
                                              (instance? clojure.lang.ExceptionInfo throwable)
-                                             (re-matches #"^Cannot sync Database (.+): (.+)" message)))
+                                             (re-matches #"^Cannot sync Database ([\s\S]+): ([\s\S]+)" message)))
                                       (mt/with-log-messages-for-level :warn
                                         (#'task.sync-databases/sync-and-analyze-database*! (u/the-id db))))))]
             (testing "sense checks before deleting the database"
@@ -148,13 +148,15 @@
             ;; release db resources like connection pools so we don't have to wait to finish syncing before destroying the db
             (driver/notify-database-updated driver/*driver* db)
             ;; destroy the db
-            (if (contains? #{:redshift :snowflake :vertica :presto-jdbc} driver/*driver*)
+            (if (contains? #{:redshift :snowflake :vertica :presto-jdbc :oracle} driver/*driver*)
               ;; in the case of some cloud databases, the test database is never created, and can't or shouldn't be destroyed.
               ;; so fake it by changing the database details
               (let [details     (:details (mt/db))
                     new-details (case driver/*driver*
                                   (:redshift :snowflake :vertica)
                                   (assoc details :db (mt/random-name))
+                                  :oracle
+                                  (assoc details :service-name "not_so_random_service_name")
                                   :presto-jdbc
                                   (assoc details :catalog (mt/random-name)))]
                 (t2/update! :model/Database (u/the-id db) {:details new-details}))
