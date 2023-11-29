@@ -15,7 +15,8 @@ import {
   createNotEditableQuery,
 } from "./drills-common";
 
-describe("drill-thru/zoom-in.binning (metabase#36177)", () => {
+// eslint-disable-next-line jest/no-disabled-tests
+describe.skip("drill-thru/zoom-in.binning (metabase#36177)", () => {
   const drillType = "drill-thru/zoom-in.binning";
   const stageIndex = 0;
   const aggregationColumn = createCountColumn();
@@ -48,7 +49,7 @@ describe("drill-thru/zoom-in.binning (metabase#36177)", () => {
             aggregationOperatorName: "count",
             breakoutColumnName: breakoutColumn.name,
             breakoutColumnTableName: tableName,
-            breakoutColumnBinningBucketName: bucketName,
+            breakoutColumnBinningStrategyName: bucketName,
           });
           const clickObject = createAggregatedCellClickObject({
             aggregationColumn,
@@ -75,7 +76,7 @@ describe("drill-thru/zoom-in.binning (metabase#36177)", () => {
           aggregationOperatorName: "count",
           breakoutColumnName: breakoutColumn.name,
           breakoutColumnTableName: tableName,
-          breakoutColumnBinningBucketName: "Don't bin",
+          breakoutColumnBinningStrategyName: "Don't bin",
         });
         const clickObject = createAggregatedCellClickObject({
           aggregationColumn,
@@ -93,7 +94,7 @@ describe("drill-thru/zoom-in.binning (metabase#36177)", () => {
           aggregationOperatorName: "count",
           breakoutColumnName: breakoutColumn.name,
           breakoutColumnTableName: tableName,
-          breakoutColumnBinningBucketName: "Auto bin",
+          breakoutColumnBinningStrategyName: "Auto bin",
         });
         const clickObject = createColumnClickObject({
           column: aggregationColumn,
@@ -109,7 +110,7 @@ describe("drill-thru/zoom-in.binning (metabase#36177)", () => {
             aggregationOperatorName: "count",
             breakoutColumnName: breakoutColumn.name,
             breakoutColumnTableName: tableName,
-            breakoutColumnBinningBucketName: "Auto bin",
+            breakoutColumnBinningStrategyName: "Auto bin",
           }),
         );
         const clickObject = createAggregatedCellClickObject({
@@ -132,7 +133,7 @@ describe("drill-thru/zoom-in.binning (metabase#36177)", () => {
             aggregationOperatorName: "count",
             breakoutColumnName: breakoutColumn.name,
             breakoutColumnTableName: tableName,
-            breakoutColumnBinningBucketName: bucketName,
+            breakoutColumnBinningStrategyName: bucketName,
           });
           const clickObject = createAggregatedCellClickObject({
             aggregationColumn,

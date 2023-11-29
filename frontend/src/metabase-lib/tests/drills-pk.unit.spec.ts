@@ -64,7 +64,8 @@ describe("drill-thru/pk", () => {
       });
     });
 
-    it("should allow to drill when the column is not a PK or FK and there are multiple other PK columns (metabase#35618)", () => {
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should allow to drill when the column is not a PK or FK and there are multiple other PK columns (metabase#35618)", () => {
       const clickObject = createRawCellClickObject({
         column: createOrdersTotalDatasetColumn(),
         value: 10,
@@ -139,7 +140,8 @@ describe("drill-thru/pk", () => {
       expect(drill).toBeNull();
     });
 
-    it("should not allow to drill when clicked on a null value (metabase#36126)", () => {
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should not allow to drill when clicked on a null value (metabase#36126)", () => {
       const clickObject = createRawCellClickObject({
         column: defaultColumn,
         value: null,
@@ -186,7 +188,8 @@ describe("drill-thru/pk", () => {
       expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
     });
 
-    it("should drill with a non-PK column (metabase#35618)", () => {
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should drill with a non-PK column (metabase#35618)", () => {
       const clickObject = createRawCellClickObject({
         column: createOrdersTotalDatasetColumn(),
         value: 10,

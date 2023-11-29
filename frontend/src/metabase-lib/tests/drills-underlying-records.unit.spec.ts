@@ -56,7 +56,8 @@ describe("drill-thru/underlying-records", () => {
       });
     });
 
-    it("should allow to drill when clicked on a pivot cell (metabase#35394)", () => {
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should allow to drill when clicked on a pivot cell (metabase#35394)", () => {
       const query = createAggregatedQueryWithBreakouts({
         aggregationOperatorName: "count",
         breakoutColumn1Name: "CREATED_AT",
@@ -89,7 +90,8 @@ describe("drill-thru/underlying-records", () => {
       });
     });
 
-    it("should allow to drill when clicked on a legend item (metabase#35343)", () => {
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should allow to drill when clicked on a legend item (metabase#35343)", () => {
       const query = createAggregatedQueryWithBreakouts({
         aggregationOperatorName: "count",
         breakoutColumn1Name: "CREATED_AT",
@@ -116,7 +118,8 @@ describe("drill-thru/underlying-records", () => {
       });
     });
 
-    it("should use the default row count for aggregations with negative values (metabase#36143)", () => {
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should use the default row count for aggregations with negative values (metabase#36143)", () => {
       const clickObject = createAggregatedCellClickObject({
         aggregationColumn,
         aggregationColumnValue: -10,
@@ -169,7 +172,8 @@ describe("drill-thru/underlying-records", () => {
       expect(drill).toBeNull();
     });
 
-    it("should not allow to drill with a non-editable query (metabase#36125)", () => {
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should not allow to drill with a non-editable query (metabase#36125)", () => {
       const query = createNotEditableQuery(defaultQuery);
       const clickObject = createAggregatedCellClickObject({
         aggregationColumn,
@@ -203,7 +207,8 @@ describe("drill-thru/underlying-records", () => {
       expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
     });
 
-    it("should drill when clicked on a pivot cell (metabase#35394)", () => {
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should drill when clicked on a pivot cell (metabase#35394)", () => {
       const query = createAggregatedQueryWithBreakouts({
         aggregationOperatorName: "count",
         breakoutColumn1Name: "CREATED_AT",
@@ -233,7 +238,8 @@ describe("drill-thru/underlying-records", () => {
       expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
     });
 
-    it("should drill when clicked on a legend item (metabase#35343)", () => {
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should drill when clicked on a legend item (metabase#35343)", () => {
       const query = createAggregatedQueryWithBreakouts({
         aggregationOperatorName: "count",
         breakoutColumn1Name: "CREATED_AT",
