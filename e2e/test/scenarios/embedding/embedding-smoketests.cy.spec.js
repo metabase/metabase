@@ -204,7 +204,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       visitDashboard(ORDERS_DASHBOARD_ID);
       cy.icon("share").click();
 
-      ensureEmbeddingIsDisabled();
+      ensureDashboardEmbeddingIsDisabled();
     });
   });
 
@@ -387,6 +387,18 @@ function assertLinkMatchesUrl(text, url) {
     .and("contain", url);
 }
 
+// TODO: Remove this temporary function once the question embed popover is implemented
+function ensureDashboardEmbeddingIsDisabled() {
+  // This is implicit assertion - it would've failed if embedding was enabled
+  cy.findByTestId("embed-header-menu").findByText("Embed").click();
+  cy.findByText("Embed in your application").closest(".disabled");
+
+  // Let's make sure embedding stays disabled after we enable public sharing
+  enableSharing();
+
+  cy.findByText("Embed in your application").closest(".disabled");
+}
+
 function ensureEmbeddingIsDisabled() {
   // This is implicit assertion - it would've failed if embedding was enabled
   cy.findByText(/Embed in your application/).closest(".disabled");
@@ -408,6 +420,7 @@ function visitAndEnableSharing(object) {
     visitDashboard(ORDERS_DASHBOARD_ID);
 
     cy.icon("share").click();
+    cy.findByTestId("embed-header-menu").findByText("Embed").click();
     cy.findByText(/Embed in your application/).click();
   }
 }

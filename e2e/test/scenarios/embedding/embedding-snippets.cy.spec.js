@@ -25,6 +25,7 @@ features.forEach(feature => {
     it("dashboard should have the correct embed snippet", () => {
       visitDashboard(ORDERS_DASHBOARD_ID);
       cy.icon("share").click();
+      cy.findByTestId("embed-header-menu").findByText("Embed").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Embed in your application").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

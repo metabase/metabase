@@ -24,6 +24,7 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   },
   auto_apply_filters: true,
   archived: false,
+  public_uuid: null,
   ...opts,
 });
 

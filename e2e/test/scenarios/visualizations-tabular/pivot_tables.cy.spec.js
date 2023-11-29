@@ -675,6 +675,10 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText(test.subject).click();
           cy.icon("share").click();
+
+          if (test.case === "dashboard") {
+            cy.findByTestId("embed-header-menu").findByText(/Embed/).click();
+          }
         });
 
         it("should display pivot table in a public link", () => {
