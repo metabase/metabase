@@ -56,7 +56,6 @@ class DashboardSharingEmbeddingModal extends Component {
         disabled={!isLinkEnabled}
         triggerClasses={className}
         className="scroll-y"
-        as={ModalTrigger}
         onClose={onClose}
       >
         <EmbedModalContent
