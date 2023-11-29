@@ -72,6 +72,24 @@ function createQueryWithInlineExpression() {
   });
 }
 
+function createQueryWithInlineExpressionWithOperator() {
+  return createQuery({
+    query: {
+      database: SAMPLE_DB_ID,
+      type: "query",
+      query: {
+        aggregation: [
+          [
+            "aggregation-options",
+            ["count"],
+            { name: "My count", "display-name": "My count" },
+          ],
+        ],
+      },
+    },
+  });
+}
+
 const TEST_METRIC = createMockMetric({
   id: 1,
   table_id: ORDERS_ID,
@@ -381,11 +399,18 @@ describe("AggregationPicker", () => {
       expect(Lib.expressionName(getRecentClause())).toBe(expressionName);
     });
 
-    it("should open the editor when an expression is used", async () => {
+    it("should open the editor when a named expression without operator is used", async () => {
       setup({ query: createQueryWithInlineExpression() });
 
       expect(screen.getByText("Custom Expression")).toBeInTheDocument();
       expect(screen.getByDisplayValue("Avg Q")).toBeInTheDocument();
+    });
+
+    it("should open the editor when a named expression with operator is used", async () => {
+      setup({ query: createQueryWithInlineExpressionWithOperator() });
+
+      expect(screen.getByText("Custom Expression")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("My count")).toBeInTheDocument();
     });
 
     it("shouldn't be available if database doesn't support custom expressions", () => {
