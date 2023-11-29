@@ -9,6 +9,7 @@ import {
   columnFinder,
   createQuery,
   findAggregationOperator,
+  findBinningStrategy,
 } from "metabase-lib/test-helpers";
 
 const FIELDS = {
@@ -123,6 +124,47 @@ export function createAggregatedQuery({
       queryWithAggregation,
       Lib.breakoutableColumns(queryWithAggregation, -1),
     )(breakoutColumnTableName, breakoutColumnName),
+  );
+}
+
+interface AggregatedQueryWithBinningOpts {
+  aggregationOperatorName: string;
+  breakoutColumnName: string;
+  breakoutColumnTableName: string;
+  breakoutColumnBucketName: string;
+}
+
+export function createAggregatedQueryWithBinning({
+  aggregationOperatorName,
+  breakoutColumnName,
+  breakoutColumnTableName,
+  breakoutColumnBucketName,
+}: AggregatedQueryWithBinningOpts) {
+  const query = createQuery();
+  const queryWithAggregation = Lib.aggregate(
+    query,
+    -1,
+    Lib.aggregationClause(
+      findAggregationOperator(query, aggregationOperatorName),
+    ),
+  );
+
+  const breakoutColumn = columnFinder(
+    queryWithAggregation,
+    Lib.breakoutableColumns(queryWithAggregation, -1),
+  )(breakoutColumnTableName, breakoutColumnName);
+
+  return Lib.breakout(
+    queryWithAggregation,
+    -1,
+    Lib.withBinning(
+      breakoutColumn,
+      findBinningStrategy(
+        queryWithAggregation,
+        breakoutColumn,
+        breakoutColumnBucketName,
+      ),
+    ),
   );
 }
 
