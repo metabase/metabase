@@ -121,7 +121,7 @@
 
 (deftest sync-dynamic-tables-test
   (mt/test-driver :snowflake
-    (let [details #p (mt/dbdef->connection-details driver/*driver* :db {:database-name "dynamic_table_test"})
+    (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "dynamic_table_test"})
           spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
       (doseq [stmt ["DROP DATABASE IF EXISTS \"dynamic_table_test\";"
                     "CREATE DATABASE \"dynamic_table_test\";"
