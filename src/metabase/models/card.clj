@@ -67,8 +67,8 @@
 
 (defmethod mi/can-write? Card
   ([instance]
-   ;; Cards in audit collection should be read only
-   (if (perms/is-parent-collection-audit? instance)
+   ;; Cards in audit collection should not be writable.
+   (if (= (:collection_id instance) perms/audit-db-id)
      false
      (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :write))))
   ([_ pk]
