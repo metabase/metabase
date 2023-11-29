@@ -303,7 +303,7 @@ export function DashCardCardParameterMapper({
   );
 }
 
-export default connect(
+export const DashCardCardParameterMapperConnected = connect(
   mapStateToProps,
   mapDispatchToProps,
 )(DashCardCardParameterMapper);
