@@ -13,7 +13,6 @@ import {
   updateEnableEmbedding,
   updateEmbeddingParams,
 } from "../actions";
-import { ModalTrigger } from "./DashboardSharingEmbeddingModal.styled";
 
 const defaultProps = {
   isLinkEnabled: true,
@@ -56,7 +55,6 @@ class DashboardSharingEmbeddingModal extends Component {
         disabled={!isLinkEnabled}
         triggerClasses={className}
         className="scroll-y"
-        as={ModalTrigger}
         onClose={onClose}
       >
         <EmbedModalContent

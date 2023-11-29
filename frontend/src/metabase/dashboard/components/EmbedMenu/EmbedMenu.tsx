@@ -159,7 +159,12 @@ const useEmbedMenuMode = ({
     if (!isEmbeddingEnabled) {
       return "embedding-disabled";
     }
-    return isPublicSharingEnabled ? "embed-menu" : "embed-modal";
+
+    if (isPublicSharingEnabled) {
+      return "embed-menu";
+    }
+
+    return "embed-modal";
   }
 
   if (isPublicSharingEnabled && hasPublicLink) {
