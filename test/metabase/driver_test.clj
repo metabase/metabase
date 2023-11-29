@@ -85,7 +85,7 @@
     (mt/test-drivers (->> (mt/normal-drivers)
                           ;; athena is a special case because connections aren't made with a single database,
                           ;; but to an S3 bucket that may contain many databases
-                          (remove #{:athena :presto-jdbc}))
+                          (remove #{:athena}))
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
@@ -101,11 +101,11 @@
                     ;; so fake it by changing the database details
                     details (cond
                               (contains? #{:redshift :snowfake :vertica} driver/*driver*)
-                              (assoc details :db "FAKE_NAME_THAT_DEFINITELY_WONT_BE_USED")
+                              (assoc details :db (mt/random-name))
                               (= driver/*driver* :oracle)
-                              (assoc details :service-name "FAKE_SID_THAT_DEFINITELY_WONT_BE_USED")
+                              (assoc details :service-name (mt/random-name))
                               (= driver/*driver* :presto-jdbc)
-                              (assoc details :catalog "FAKE_CATALOG_THAT_DEFINITELY_WONT_BE_USED")
+                              (assoc details :catalog (mt/random-name))
                               ;; otherwise destroy the db and use the original details
                               :else
                               (do
@@ -126,7 +126,7 @@
                           ;; but to an S3 bucket that may contain many databases
                           ;; TODO: other drivers are still failing with this test. For these drivers there's a good chance there's a bug in
                           ;; test.data.<driver> code, and not with the driver itself.
-                          (remove #{:athena :presto-jdbc}))
+                          (remove #{:athena :presto-jdbc :oracle}))
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
@@ -149,15 +149,13 @@
             ;; release db resources like connection pools so we don't have to wait to finish syncing before destroying the db
             (driver/notify-database-updated driver/*driver* db)
             ;; destroy the db
-            (if (contains? #{:redshift :snowflake :oracle :vertica} driver/*driver*)
+            (if (contains? #{:redshift :snowflake :vertica} driver/*driver*)
               ;; in the case of some cloud databases, the test database is never created, and shouldn't be destroyed.
               ;; so fake it by changing the database details
               (let [details     (:details (mt/db))
                     new-details (cond
                                   (contains? #{:redshift :snowflake :vertica} driver/*driver*)
                                   (assoc details :db "FAKE_NAME_THAT_DEFINITELY_WONT_BE_USED")
-                                  (= driver/*driver* :oracle)
-                                  (assoc details :service-name "FAKE_SID_THAT_DEFINITELY_WONT_BE_USED")
                                   (= driver/*driver* :presto-jdbc)
                                   (assoc details :catalog "FAKE_CATALOG_THAT_DEFINITELY_WONT_BE_USED"))]
                 (t2/update! :model/Database (u/the-id db) {:details new-details}))
