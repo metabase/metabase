@@ -156,6 +156,25 @@ export function createAggregatedQueryWithBreakouts({
   );
 }
 
+interface OrderedQueryOpts {
+  columnName: string;
+  columnTableName: string;
+  direction: Lib.OrderByDirection;
+}
+
+export function createOrderedQuery({
+  columnName,
+  columnTableName,
+  direction,
+}: OrderedQueryOpts) {
+  const query = createQuery();
+  const column = columnFinder(query, Lib.orderableColumns(query, -1))(
+    columnTableName,
+    columnName,
+  );
+  return Lib.orderBy(query, -1, column, direction);
+}
+
 export function createNotEditableQuery(query: Lib.Query) {
   const metadata = createMockMetadata({
     databases: [
