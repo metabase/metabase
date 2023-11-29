@@ -157,10 +157,11 @@ export function suggest({
       ...Lib.expressionableColumns(query, stageIndex, targetOffset).map(
         column => {
           const displayInfo = Lib.displayInfo(query, stageIndex, column);
+
           return {
             type: "fields",
             name: displayInfo.longDisplayName,
-            text: formatIdentifier(displayInfo.displayName) + " ",
+            text: formatIdentifier(displayInfo.longDisplayName) + " ",
             alternates: EDITOR_FK_SYMBOLS.symbols.map(symbol =>
               getDisplayNameWithSeparator(displayInfo.longDisplayName, symbol),
             ),
@@ -202,8 +203,8 @@ export function suggest({
 
             return {
               type: "metrics",
-              name: displayInfo.displayName,
-              text: formatIdentifier(displayInfo.displayName),
+              name: displayInfo.longDisplayName,
+              text: formatIdentifier(displayInfo.longDisplayName),
               index: targetOffset,
               icon: "insight",
               order: 4,

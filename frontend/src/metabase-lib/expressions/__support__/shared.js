@@ -27,6 +27,7 @@ const metadata = createMockMetadata({
             createMockSegment({
               id: SEGMENT_ID,
               name: "Expensive Things",
+              table_id: ORDERS_ID,
               definition: {
                 filter: [">", ["field", ORDERS.TOTAL, null], 30],
                 "source-table": ORDERS_ID,
@@ -37,6 +38,7 @@ const metadata = createMockMetadata({
             createMockMetric({
               id: METRIC_ID,
               name: "Total Order Value",
+              table_id: ORDERS_ID,
               definition: {
                 aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
                 "source-table": ORDERS_ID,
@@ -301,3 +303,5 @@ export const ordersTable = metadata.table(ORDERS_ID);
  * @type {import("metabase-lib/metadata/Field").default}
  */
 export const ordersTotalField = metadata.field(ORDERS.TOTAL);
+
+export const sharedMetadata = metadata;
