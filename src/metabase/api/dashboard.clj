@@ -98,9 +98,9 @@
     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
     (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dash)})
     (-> dash
-        (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))
         hydrate-dashboard-details
-        collection.root/hydrate-root-collection)))
+        collection.root/hydrate-root-collection
+        (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
 ;;; -------------------------------------------- Hiding Unreadable Cards ---------------------------------------------
 
@@ -134,7 +134,7 @@
 ;; 2. The structure of DashCards themselves is complicated. It has a top-level `:card` property and (optionally) a
 ;;    sequence of additional Cards under `:series`
 ;;
-;; 3. Query hashes are byte arrays, and two idential byte arrays aren't equal to each other in Java; thus they don't
+;; 3. Query hashes are byte arrays, and two identical byte arrays aren't equal to each other in Java; thus they don't
 ;;    work as one would expect when being used as map keys
 ;;
 ;; Here's an overview of the approach used to efficiently add the info:
@@ -570,65 +570,69 @@
 (defn- update-dashboard
   "Updates a Dashboard. Designed to be reused by PUT /api/dashboard/:id and PUT /api/dashboard/:id/cards"
   [id {:keys [dashcards tabs] :as dash-updates}]
-  (let [current-dash               (api/write-check Dashboard id)
-        changes-stats              (atom nil)
-        ;; tabs are always sent in production as well when dashcards are updated, but there are lots of
-        ;; tests that exclude it. so this only checks for dashcards
-        update-dashcards-and-tabs? (contains? dash-updates :dashcards)]
-    (collection/check-allowed-to-change-collection current-dash dash-updates)
-    (check-allowed-to-change-embedding current-dash dash-updates)
-    (api/check-500
-     (do
-       (t2/with-transaction [_conn]
-         ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
-         ;; adjust the collection position of other dashboards in the collection
-         (api/maybe-reconcile-collection-position! current-dash dash-updates)
-         (when-let [updates (not-empty
-                             (u/select-keys-when
-                              dash-updates
-                              :present #{:description :position :collection_id :collection_position :cache_ttl}
-                              :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
-                                         :embedding_params :archived :auto_apply_filters}))]
-           (t2/update! Dashboard id updates))
-         (when update-dashcards-and-tabs?
-           (when (not (false? (:archived false)))
-             (api/check-not-archived current-dash))
-           (let [{current-dashcards :dashcards
-                  current-tabs      :tabs
-                  :as hydrated-current-dash} (t2/hydrate current-dash [:dashcards :series :card] :tabs)
-                 _                           (when (and (seq current-tabs)
-                                                        (not (every? #(some? (:dashboard_tab_id %)) dashcards)))
-                                               (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
-                                                               {:status-code 400})))
-                 new-tabs                    (map-indexed (fn [idx tab] (assoc tab :position idx)) tabs)
-                 {:keys [old->new-tab-id
-                         deleted-tab-ids]
-                  :as   tabs-changes-stats} (dashboard-tab/do-update-tabs! (:id current-dash) current-tabs new-tabs)
-                 deleted-tab-ids            (set deleted-tab-ids)
-                 current-dashcards          (remove (fn [dashcard]
+  (span/with-span!
+    {:name       "get-update-dashboard"
+     :attributes {:dashboard/id id}}
+    (let [current-dash               (api/write-check Dashboard id)
+          changes-stats              (atom nil)
+          ;; tabs are always sent in production as well when dashcards are updated, but there are lots of
+          ;; tests that exclude it. so this only checks for dashcards
+          update-dashcards-and-tabs? (contains? dash-updates :dashcards)]
+      (collection/check-allowed-to-change-collection current-dash dash-updates)
+      (check-allowed-to-change-embedding current-dash dash-updates)
+      (api/check-500
+        (do
+          (t2/with-transaction [_conn]
+            ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
+            ;; adjust the collection position of other dashboards in the collection
+            (api/maybe-reconcile-collection-position! current-dash dash-updates)
+            (when-let [updates (not-empty
+                                 (u/select-keys-when
+                                   dash-updates
+                                   :present #{:description :position :collection_id :collection_position :cache_ttl}
+                                   :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
+                                              :embedding_params :archived :auto_apply_filters}))]
+              (t2/update! Dashboard id updates))
+            (when update-dashcards-and-tabs?
+              (when (not (false? (:archived false)))
+                (api/check-not-archived current-dash))
+              (let [{current-dashcards :dashcards
+                     current-tabs      :tabs
+                     :as               hydrated-current-dash} (t2/hydrate current-dash [:dashcards :series :card] :tabs)
+                    _                       (when (and (seq current-tabs)
+                                                       (not (every? #(some? (:dashboard_tab_id %)) dashcards)))
+                                              (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
+                                                              {:status-code 400})))
+                    new-tabs                (map-indexed (fn [idx tab] (assoc tab :position idx)) tabs)
+                    {:keys [old->new-tab-id
+                            deleted-tab-ids]
+                     :as   tabs-changes-stats} (dashboard-tab/do-update-tabs! (:id current-dash) current-tabs new-tabs)
+                    deleted-tab-ids         (set deleted-tab-ids)
+                    current-dashcards       (remove (fn [dashcard]
                                                       (contains? deleted-tab-ids (:dashboard_tab_id dashcard)))
                                                     current-dashcards)
-                 new-dashcards              (cond->> dashcards
-                                              ;; fixup the temporary tab ids with the real ones
-                                              (seq old->new-tab-id)
-                                              (map (fn [card]
-                                                     (if-let [real-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
-                                                       (assoc card :dashboard_tab_id real-tab-id)
-                                                       card))))
-                 dashcards-changes-stats    (do-update-dashcards! hydrated-current-dash current-dashcards new-dashcards)]
-             (reset! changes-stats
-                     (merge
-                      (select-keys tabs-changes-stats [:created-tab-ids :deleted-tab-ids :total-num-tabs])
-                      (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards]))))))
-       true))
-    (let [dashboard (t2/select-one :model/Dashboard id)]
-      ;; skip publishing the event if it's just a change in its collection position
-      (when-not (= #{:collection_position}
-                   (set (keys dash-updates)))
-        (events/publish-event! :event/dashboard-update {:object dashboard :user-id api/*current-user-id*}))
-      (track-dashcard-and-tab-events! dashboard @changes-stats)
-      (-> (t2/hydrate dashboard [:collection :is_personal] [:dashcards :series] :tabs)
-          (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))))
+                    new-dashcards           (cond->> dashcards
+                                                     ;; fixup the temporary tab ids with the real ones
+                                                     (seq old->new-tab-id)
+                                                     (map (fn [card]
+                                                            (if-let [real-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
+                                                              (assoc card :dashboard_tab_id real-tab-id)
+                                                              card))))
+                    dashcards-changes-stats (do-update-dashcards! hydrated-current-dash current-dashcards new-dashcards)]
+                (reset! changes-stats
+                        (merge
+                          (select-keys tabs-changes-stats [:created-tab-ids :deleted-tab-ids :total-num-tabs])
+                          (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards]))))))
+          true))
+      (let [dashboard (t2/select-one :model/Dashboard id)]
+        ;; skip publishing the event if it's just a change in its collection position
+        (when-not (= #{:collection_position}
+                     (set (keys dash-updates)))
+          (events/publish-event! :event/dashboard-update {:object dashboard :user-id api/*current-user-id*}))
+        (track-dashcard-and-tab-events! dashboard @changes-stats)
+        (-> dashboard
+            hydrate-dashboard-details
+            (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))))
 
 (api/defendpoint PUT "/:id"
   "Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. The request body should be a JSON object with the same
