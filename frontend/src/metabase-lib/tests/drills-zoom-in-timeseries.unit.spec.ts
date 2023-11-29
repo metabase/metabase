@@ -1,25 +1,24 @@
-import type { DatasetColumn, RowValue } from "metabase-types/api";
 import {
   createOrdersCreatedAtDatasetColumn,
   createOrdersQuantityDatasetColumn,
-  createOrdersTotalDatasetColumn,
-  createSampleDatabase,
-  SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import {
-  columnFinder,
-  createQuery,
-  findAggregationOperator,
+  createAggregatedCellClickObject,
+  createColumnClickObject,
+  createLegendItemClickObject,
+  createPivotCellClickObject,
   findDrillThru,
-  findTemporalBucket,
   queryDrillThru,
 } from "metabase-lib/test-helpers";
-import { createCountColumn } from "./drills-common";
+import {
+  createAggregatedQuery,
+  createAggregatedQueryWithBreakouts,
+  createCountColumn,
+  createNotEditableQuery,
+} from "./drills-common";
 
-// eslint-disable-next-line jest/no-disabled-tests
-describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
+describe("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
   const drillType = "drill-thru/zoom-in.timeseries";
   const stageIndex = 0;
   const aggregationColumn = createCountColumn();
@@ -37,21 +36,24 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     ])(
       'should allow to drill with "$bucketName" temporal bucket',
       ({ bucketName, displayName }) => {
-        const query = createQueryWithBreakout(bucketName);
-        const { value, row, dimensions } = getCellData(
+        const query = createAggregatedQuery({
+          aggregationOperatorName: "count",
+          breakoutColumnName: breakoutColumn.name,
+          breakoutColumnTableName: "ORDERS",
+          breakoutColumnTemporalBucketName: bucketName,
+        });
+        const clickObject = createAggregatedCellClickObject({
           aggregationColumn,
+          aggregationColumnValue: 10,
           breakoutColumn,
-          10,
-        );
+          breakoutColumnValue: "2020-01-01",
+        });
 
         const { drillInfo } = findDrillThru(
-          drillType,
           query,
           stageIndex,
-          aggregationColumn,
-          value,
-          row,
-          dimensions,
+          clickObject,
+          drillType,
         );
 
         expect(drillInfo).toMatchObject({
@@ -62,21 +64,24 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     );
 
     it("should allow to drill when clicked on a null value", () => {
-      const query = createQueryWithBreakout("Month");
-      const { value, row, dimensions } = getCellData(
+      const query = createAggregatedQuery({
+        aggregationOperatorName: "count",
+        breakoutColumnName: breakoutColumn.name,
+        breakoutColumnTableName: "ORDERS",
+        breakoutColumnTemporalBucketName: "Month",
+      });
+      const clickObject = createAggregatedCellClickObject({
         aggregationColumn,
+        aggregationColumnValue: null,
         breakoutColumn,
-        null,
-      );
+        breakoutColumnValue: "2020-01-01",
+      });
 
       const { drillInfo } = findDrillThru(
-        drillType,
         query,
         stageIndex,
-        aggregationColumn,
-        value,
-        row,
-        dimensions,
+        clickObject,
+        drillType,
       );
 
       expect(drillInfo).toMatchObject({
@@ -86,17 +91,30 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     });
 
     it("should allow to drill when clicked on a pivot cell", () => {
-      const query = createQueryWithMultipleBreakouts("Month");
-      const { row, dimensions } = getPivotCellData(10);
+      const query = createAggregatedQueryWithBreakouts({
+        aggregationOperatorName: "count",
+        breakoutColumn1Name: "CREATED_AT",
+        breakoutColumn1TableName: "ORDERS",
+        breakoutColumn1TemporalBucketName: "Month",
+        breakoutColumn2Name: "QUANTITY",
+        breakoutColumn2TableName: "ORDERS",
+      });
+      const clickObject = createPivotCellClickObject({
+        aggregationColumn,
+        aggregationColumnValue: 10,
+        breakoutColumn1: breakoutColumn,
+        breakoutColumn1Value: "2020-01-01",
+        breakoutColumn2: createOrdersQuantityDatasetColumn({
+          source: "breakout",
+        }),
+        breakoutColumn2Value: 0,
+      });
 
       const { drillInfo } = findDrillThru(
-        drillType,
         query,
         stageIndex,
-        undefined,
-        undefined,
-        row,
-        dimensions,
+        clickObject,
+        drillType,
       );
 
       expect(drillInfo).toMatchObject({
@@ -106,17 +124,23 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     });
 
     it("should allow to drill when clicked on a legend item", () => {
-      const query = createQueryWithBreakout("Month");
-      const { dimensions } = getLegendItemData(10);
+      const query = createAggregatedQueryWithBreakouts({
+        aggregationOperatorName: "count",
+        breakoutColumn1Name: "CREATED_AT",
+        breakoutColumn1TableName: "ORDERS",
+        breakoutColumn2Name: "QUANTITY",
+        breakoutColumn2TableName: "ORDERS",
+      });
+      const clickObject = createLegendItemClickObject({
+        breakoutColumn,
+        breakoutColumnValue: "2020-01-01",
+      });
 
       const { drillInfo } = findDrillThru(
-        drillType,
         query,
         stageIndex,
-        undefined,
-        undefined,
-        undefined,
-        dimensions,
+        clickObject,
+        drillType,
       );
 
       expect(drillInfo).toMatchObject({
@@ -137,197 +161,138 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
       "Quarter of year",
       "Don't bin",
     ])('should not allow to drill with "%s" temporal bucket', bucketName => {
-      const query = createQueryWithBreakout(bucketName);
-      const { value, row, dimensions } = getCellData(
+      const query = createAggregatedQuery({
+        aggregationOperatorName: "count",
+        breakoutColumnName: breakoutColumn.name,
+        breakoutColumnTableName: "ORDERS",
+        breakoutColumnTemporalBucketName: bucketName,
+      });
+      const clickObject = createAggregatedCellClickObject({
         aggregationColumn,
+        aggregationColumnValue: null,
         breakoutColumn,
-        10,
-      );
+        breakoutColumnValue: "2020-01-01",
+      });
 
-      const drill = queryDrillThru(
-        drillType,
-        query,
-        stageIndex,
-        aggregationColumn,
-        value,
-        row,
-        dimensions,
-      );
-
+      const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
       expect(drill).toBeNull();
     });
 
     it("should not allow to drill when clicked on a column", () => {
-      const query = createQueryWithBreakout("Month");
-
-      const drill = queryDrillThru(
-        drillType,
-        query,
-        stageIndex,
-        aggregationColumn,
-      );
-
-      expect(drill).toBeNull();
-    });
-
-    it("should not allow to drill with a native query", () => {
-      const query = createQuery({
-        query: {
-          type: "native",
-          database: SAMPLE_DB_ID,
-          native: { query: "SELECT * FROM ORDERS" },
-        },
+      const query = createAggregatedQuery({
+        aggregationOperatorName: "count",
+        breakoutColumnName: breakoutColumn.name,
+        breakoutColumnTableName: "ORDERS",
+        breakoutColumnTemporalBucketName: "Month",
       });
-      const column = createOrdersTotalDatasetColumn({
-        id: undefined,
-        field_ref: ["field", "TOTAL", { "base-type": "type/Float" }],
+      const clickObject = createColumnClickObject({
+        column: aggregationColumn,
       });
 
-      const drill = queryDrillThru(drillType, query, stageIndex, column);
-
+      const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
       expect(drill).toBeNull();
     });
 
     it("should not allow to drill with a non-editable query", () => {
-      const query = createNotEditableQuery(createQueryWithBreakout("Month"));
-      const { value, row, dimensions } = getCellData(
+      const query = createNotEditableQuery(
+        createAggregatedQuery({
+          aggregationOperatorName: "count",
+          breakoutColumnName: breakoutColumn.name,
+          breakoutColumnTableName: "ORDERS",
+          breakoutColumnTemporalBucketName: "Month",
+        }),
+      );
+      const clickObject = createAggregatedCellClickObject({
         aggregationColumn,
+        aggregationColumnValue: 10,
         breakoutColumn,
-        -10,
-      );
+        breakoutColumnValue: "2020-01-01",
+      });
 
-      const drill = queryDrillThru(
-        drillType,
-        query,
-        stageIndex,
-        aggregationColumn,
-        value,
-        row,
-        dimensions,
-      );
-
+      const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
       expect(drill).toBeNull();
     });
   });
 
   describe("drillThru", () => {
-    it.each<RowValue>([10, null])(
-      'should drill when clicked on an aggregated cell with "%s" value',
-      value => {
-        const query = createQueryWithBreakout("Month");
-        const { row, dimensions } = getCellData(
-          aggregationColumn,
-          breakoutColumn,
-          value,
-        );
+    it("should drill when clicked on an aggregated cell", () => {
+      const query = createAggregatedQuery({
+        aggregationOperatorName: "count",
+        breakoutColumnName: breakoutColumn.name,
+        breakoutColumnTableName: "ORDERS",
+        breakoutColumnTemporalBucketName: "Month",
+      });
+      const clickObject = createAggregatedCellClickObject({
+        aggregationColumn,
+        aggregationColumnValue: 10,
+        breakoutColumn,
+        breakoutColumnValue: "2020-01-01",
+      });
+      const { drill } = findDrillThru(
+        query,
+        stageIndex,
+        clickObject,
+        drillType,
+      );
 
-        const { drill } = findDrillThru(
-          drillType,
-          query,
-          stageIndex,
-          aggregationColumn,
-          value,
-          row,
-          dimensions,
-        );
-        const newQuery = Lib.drillThru(query, stageIndex, drill);
+      const newQuery = Lib.drillThru(query, stageIndex, drill);
+      expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+      expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
+    });
 
-        expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
-        expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
-      },
-    );
+    it('should drill when clicked on a pivot cell with "%s" value', () => {
+      const query = createAggregatedQueryWithBreakouts({
+        aggregationOperatorName: "count",
+        breakoutColumn1Name: "CREATED_AT",
+        breakoutColumn1TableName: "ORDERS",
+        breakoutColumn1TemporalBucketName: "Month",
+        breakoutColumn2Name: "QUANTITY",
+        breakoutColumn2TableName: "ORDERS",
+      });
+      const clickObject = createPivotCellClickObject({
+        aggregationColumn,
+        aggregationColumnValue: 10,
+        breakoutColumn1: breakoutColumn,
+        breakoutColumn1Value: "2020-01-01",
+        breakoutColumn2: createOrdersQuantityDatasetColumn({
+          source: "breakout",
+        }),
+        breakoutColumn2Value: 0,
+      });
+      const { drill } = findDrillThru(
+        query,
+        stageIndex,
+        clickObject,
+        drillType,
+      );
 
-    it.each<RowValue>([10, null])(
-      'should drill when clicked on a pivot cell with "%s" value',
-      value => {
-        const query = createQueryWithMultipleBreakouts("Month");
-        const { row, dimensions } = getPivotCellData(value);
+      const newQuery = Lib.drillThru(query, stageIndex, drill);
+      expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+      expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
+    });
 
-        const { drill } = findDrillThru(
-          drillType,
-          query,
-          stageIndex,
-          undefined,
-          undefined,
-          row,
-          dimensions,
-        );
-        const newQuery = Lib.drillThru(query, stageIndex, drill);
+    it('should drill when clicked on a legend item with "%s" value', () => {
+      const query = createAggregatedQueryWithBreakouts({
+        aggregationOperatorName: "count",
+        breakoutColumn1Name: "CREATED_AT",
+        breakoutColumn1TableName: "ORDERS",
+        breakoutColumn2Name: "QUANTITY",
+        breakoutColumn2TableName: "ORDERS",
+      });
+      const clickObject = createLegendItemClickObject({
+        breakoutColumn,
+        breakoutColumnValue: "2020-01-01",
+      });
+      const { drill } = findDrillThru(
+        query,
+        stageIndex,
+        clickObject,
+        drillType,
+      );
 
-        expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
-        expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
-      },
-    );
-
-    it.each<RowValue>([10, null])(
-      'should drill when clicked on a legend item with "%s" value',
-      value => {
-        const query = createQueryWithBreakout("Month");
-        const { dimensions } = getLegendItemData(value);
-
-        const { drill } = findDrillThru(
-          drillType,
-          query,
-          stageIndex,
-          undefined,
-          undefined,
-          undefined,
-          dimensions,
-        );
-        const newQuery = Lib.drillThru(query, stageIndex, drill);
-
-        expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
-        expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
-      },
-    );
+      const newQuery = Lib.drillThru(query, stageIndex, drill);
+      expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+      expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
+    });
   });
 });
-
-function createQueryWithBreakout(bucketName: string) {
-  const query = createQuery();
-
-  const queryWithAggregation = Lib.aggregate(
-    query,
-    -1,
-    Lib.aggregationClause(findAggregationOperator(query, "count")),
-  );
-
-  const breakoutColumn = columnFinder(
-    queryWithAggregation,
-    Lib.breakoutableColumns(queryWithAggregation, -1),
-  )("ORDERS", "CREATED_AT");
-
-  return Lib.breakout(
-    queryWithAggregation,
-    -1,
-    Lib.withTemporalBucket(
-      breakoutColumn,
-      findTemporalBucket(query, breakoutColumn, bucketName),
-    ),
-  );
-}
-
-function createQueryWithMultipleBreakouts(bucketName: string) {
-  const queryWithBreakout = createQueryWithBreakout(bucketName);
-  const bucketColumn = columnFinder(
-    queryWithBreakout,
-    Lib.breakoutableColumns(queryWithBreakout, -1),
-  )("ORDERS", "QUANTITY");
-
-  return Lib.breakout(queryWithBreakout, -1, bucketColumn);
-}
-
-function createNotEditableQuery(query: Lib.Query) {
-  const metadata = createMockMetadata({
-    databases: [
-      createSampleDatabase({
-        tables: [],
-      }),
-    ],
-  });
-
-  return createQuery({
-    metadata,
-    query: Lib.toLegacyQuery(query),
-  });
-}
