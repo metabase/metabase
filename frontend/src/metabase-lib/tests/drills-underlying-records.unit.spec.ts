@@ -14,7 +14,7 @@ import {
   queryDrillThru,
 } from "metabase-lib/test-helpers";
 import {
-  createAggregatedQuery,
+  createAggregatedQueryWithBreakout,
   createAggregatedQueryWithBreakouts,
   createCountColumn,
   createNotEditableQuery,
@@ -22,7 +22,7 @@ import {
 
 describe("drill-thru/underlying-records", () => {
   const drillType = "drill-thru/underlying-records";
-  const defaultQuery = createAggregatedQuery({
+  const defaultQuery = createAggregatedQueryWithBreakout({
     aggregationOperatorName: "count",
     breakoutColumnName: "CREATED_AT",
     breakoutColumnTableName: "ORDERS",

@@ -12,7 +12,7 @@ import {
   queryDrillThru,
 } from "metabase-lib/test-helpers";
 import {
-  createAggregatedQuery,
+  createAggregatedQueryWithBreakout,
   createAggregatedQueryWithBreakouts,
   createCountColumn,
   createNotEditableQuery,
@@ -37,7 +37,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     ])(
       'should allow to drill with "$bucketName" temporal bucket',
       ({ bucketName, displayName }) => {
-        const query = createAggregatedQuery({
+        const query = createAggregatedQueryWithBreakout({
           aggregationOperatorName: "count",
           breakoutColumnName: breakoutColumn.name,
           breakoutColumnTableName: "ORDERS",
@@ -65,7 +65,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     );
 
     it("should allow to drill when clicked on a null value", () => {
-      const query = createAggregatedQuery({
+      const query = createAggregatedQueryWithBreakout({
         aggregationOperatorName: "count",
         breakoutColumnName: breakoutColumn.name,
         breakoutColumnTableName: "ORDERS",
@@ -162,7 +162,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
       "Quarter of year",
       "Don't bin",
     ])('should not allow to drill with "%s" temporal bucket', bucketName => {
-      const query = createAggregatedQuery({
+      const query = createAggregatedQueryWithBreakout({
         aggregationOperatorName: "count",
         breakoutColumnName: breakoutColumn.name,
         breakoutColumnTableName: "ORDERS",
@@ -180,7 +180,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     });
 
     it("should not allow to drill when clicked on a column", () => {
-      const query = createAggregatedQuery({
+      const query = createAggregatedQueryWithBreakout({
         aggregationOperatorName: "count",
         breakoutColumnName: breakoutColumn.name,
         breakoutColumnTableName: "ORDERS",
@@ -196,7 +196,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
 
     it("should not allow to drill with a non-editable query", () => {
       const query = createNotEditableQuery(
-        createAggregatedQuery({
+        createAggregatedQueryWithBreakout({
           aggregationOperatorName: "count",
           breakoutColumnName: breakoutColumn.name,
           breakoutColumnTableName: "ORDERS",
@@ -217,7 +217,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
 
   describe("drillThru", () => {
     it("should drill when clicked on an aggregated cell", () => {
-      const query = createAggregatedQuery({
+      const query = createAggregatedQueryWithBreakout({
         aggregationOperatorName: "count",
         breakoutColumnName: breakoutColumn.name,
         breakoutColumnTableName: "ORDERS",

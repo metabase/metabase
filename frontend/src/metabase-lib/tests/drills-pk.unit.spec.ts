@@ -19,7 +19,7 @@ import {
   queryDrillThru,
 } from "metabase-lib/test-helpers";
 import {
-  createAggregatedQuery,
+  createAggregatedQueryWithBreakout,
   createCountColumn,
   createNotEditableQuery,
 } from "./drills-common";
@@ -84,7 +84,7 @@ describe("drill-thru/pk", () => {
     });
 
     it("should not allow to drill when the column is not a PK or FK and the query is aggregated", () => {
-      const query = createAggregatedQuery({
+      const query = createAggregatedQueryWithBreakout({
         aggregationOperatorName: "count",
         breakoutColumnName: "TOTAL",
         breakoutColumnTableName: "ORDERS",

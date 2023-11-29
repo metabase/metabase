@@ -10,7 +10,7 @@ import {
   queryDrillThru,
 } from "metabase-lib/test-helpers";
 import {
-  createAggregatedQuery,
+  createAggregatedQueryWithBreakout,
   createCountColumn,
   createNotEditableQuery,
 } from "./drills-common";
@@ -45,7 +45,7 @@ describe.skip("drill-thru/zoom-in.binning (metabase#36177)", () => {
       it.each(buckets)(
         'should allow to drill with "%s" binning strategy',
         bucketName => {
-          const query = createAggregatedQuery({
+          const query = createAggregatedQueryWithBreakout({
             aggregationOperatorName: "count",
             breakoutColumnName: breakoutColumn.name,
             breakoutColumnTableName: tableName,
@@ -72,7 +72,7 @@ describe.skip("drill-thru/zoom-in.binning (metabase#36177)", () => {
       );
 
       it("should not allow to drill without binning strategy", () => {
-        const query = createAggregatedQuery({
+        const query = createAggregatedQueryWithBreakout({
           aggregationOperatorName: "count",
           breakoutColumnName: breakoutColumn.name,
           breakoutColumnTableName: tableName,
@@ -90,7 +90,7 @@ describe.skip("drill-thru/zoom-in.binning (metabase#36177)", () => {
       });
 
       it("should not allow to drill when clicked on a column", () => {
-        const query = createAggregatedQuery({
+        const query = createAggregatedQueryWithBreakout({
           aggregationOperatorName: "count",
           breakoutColumnName: breakoutColumn.name,
           breakoutColumnTableName: tableName,
@@ -106,7 +106,7 @@ describe.skip("drill-thru/zoom-in.binning (metabase#36177)", () => {
 
       it("should not allow to drill with a non-editable query", () => {
         const query = createNotEditableQuery(
-          createAggregatedQuery({
+          createAggregatedQueryWithBreakout({
             aggregationOperatorName: "count",
             breakoutColumnName: breakoutColumn.name,
             breakoutColumnTableName: tableName,
@@ -129,7 +129,7 @@ describe.skip("drill-thru/zoom-in.binning (metabase#36177)", () => {
       it.each(buckets)(
         'should drill when clicked on an aggregated cell with "%s" binning strategy',
         bucketName => {
-          const query = createAggregatedQuery({
+          const query = createAggregatedQueryWithBreakout({
             aggregationOperatorName: "count",
             breakoutColumnName: breakoutColumn.name,
             breakoutColumnTableName: tableName,
