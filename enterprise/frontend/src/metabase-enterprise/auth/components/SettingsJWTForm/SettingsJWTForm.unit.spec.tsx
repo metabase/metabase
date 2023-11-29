@@ -174,9 +174,9 @@ describe("SettingsJWTForm", () => {
       await screen.findByRole("textbox", { name: /Last name attribute/ }),
       ATTRS["jwt-attribute-lastname"],
     );
-    userEvent.click(await screen.findByRole("button", { name: /Save/ }));
+    userEvent.click(screen.getByRole("checkbox")); // checkbox for "jwt-group-sync"
 
-    userEvent.click(screen.getByRole("checkbox")); // checkbox for "jwt-enabled"
+    userEvent.click(await screen.findByRole("button", { name: /Save/ }));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(ATTRS);
