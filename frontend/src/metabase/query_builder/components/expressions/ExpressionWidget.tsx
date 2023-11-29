@@ -98,13 +98,11 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
 
     if (isValidExpression) {
       onChangeExpression?.(name, expression);
+      onClose?.();
     }
 
     if (isValidExpressionClause) {
       onChangeClause?.(name, clause);
-    }
-
-    if (isValidExpression || isValidExpressionClause) {
       onClose?.();
     }
   };
