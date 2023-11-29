@@ -690,7 +690,7 @@
                                                 dataset-query))
                 retrieved     (mt/user-http-request :rasta :get 200 (str "card/" card-id))]
             (is (pos-int? card-id))
-            (testing "A POST returns the newly created object, so no follow-on GET is required"
+            (testing "A POST returns the newly created object, so no follow-on GET is required (#34828)"
               (is (=
                     (update created :last-edit-info dissoc :timestamp)
                     (update retrieved :last-edit-info dissoc :timestamp))))))))))
@@ -828,7 +828,7 @@
               (is (= ["ID" "NAME"] (map norm metadata)))
               (is (= ["ID" "NAME" "PRICE"]
                      (map norm (t2/select-one-fn :result_metadata :model/Card :id card-id))))
-              (testing "A PUT returns the updated object, so no follow-on GET is required"
+              (testing "A PUT returns the updated object, so no follow-on GET is required (#34828)"
                 (is (=
                       (update updated :last-edit-info dissoc :timestamp)
                       (update retrieved :last-edit-info dissoc :timestamp)))))))))))

@@ -239,7 +239,7 @@
                          :last-edit-info {:timestamp true :id true :first_name "Rasta"
                                           :last_name "Toucan" :email "rasta@metabase.com"}})
                       (dashboard-response created)))
-              (testing "A POST /api/dashboard should return the same essential data as a GET of that same dashboard after creation"
+              (testing "A POST /api/dashboard should return the same essential data as a GET of that same dashboard after creation (#34828)"
                 (let [retrieved (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id))]
                   (is (= (update created :last-edit-info dissoc :timestamp)
                          (update retrieved :last-edit-info dissoc :timestamp))))))))))))
@@ -617,7 +617,7 @@
                                                :collection     true
                                                :collection_id  true})
                     (dashboard-response put-response)))
-            (testing "A PUT should return the updated value so a follow-on GET is not needed"
+            (testing "A PUT should return the updated value so a follow-on GET is not needed (#34828)"
               (is (= (update put-response :last-edit-info dissoc :timestamp)
                      (update get-response :last-edit-info dissoc :timestamp))))))
 
