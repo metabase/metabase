@@ -208,8 +208,7 @@
                                                   :dataset :result_metadata :visualization_settings]
                                                  :id card-id))
         query     (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
-                      (update :viz-settings (fn [viz] (when (or (seq viz) (seq dash-viz))
-                                                        (merge viz dash-viz))))
+                      (update :viz-settings (fn [viz] (merge viz dash-viz)))
                       (assoc :async? true)
                       (update :middleware (fn [middleware]
                                             (merge

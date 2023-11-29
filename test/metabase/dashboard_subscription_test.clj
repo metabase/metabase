@@ -910,7 +910,9 @@
     (mt/with-fake-inbox
       (mt/with-temp [Card {card-id :id :as c} (pulse.test-util/checkins-query-card {:breakout [!day.date]})
                      Dashboard     {dash-id :id} {:name "just dash"}]
-        (let [viz {:table.columns (mapv metadata->field-ref (:result_metadata c) [true false])}]
+        (let [;; with the helper `metadata->field-ref` we turn column metadata into column field refs
+              ;; with an additional key `:enabled`. Here the 1st col is enabled, and the 2nd is disabled
+              viz {:table.columns (mapv metadata->field-ref (:result_metadata c) [true false])}]
           (mt/with-temp [DashboardCard {dash-card-id :id} {:dashboard_id           dash-id
                                                            :card_id                card-id
                                                            :visualization_settings viz}
