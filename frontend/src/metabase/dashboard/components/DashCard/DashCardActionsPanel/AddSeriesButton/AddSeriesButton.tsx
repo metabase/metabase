@@ -5,14 +5,14 @@ import { Icon } from "metabase/core/components/Icon";
 import visualizations from "metabase/visualizations";
 import type { Series } from "metabase-types/api";
 
-import { DashCardActionButton } from "../DashCardActionButton";
+import { DashActionButton } from "../DashCardActionButton/DashCardActionButton";
 import {
   ActionButton,
   IconContainer,
   PlusIcon,
 } from "./AddSeriesButton.styled";
 
-const { ICON_SIZE } = DashCardActionButton;
+const { ICON_SIZE } = DashActionButton;
 
 function getSeriesIconName(series: Series) {
   const display = series[0]?.card.display;

@@ -8,7 +8,7 @@ import type { UiParameter } from "metabase-lib/parameters/types";
 
 import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
 import { CrossfilterOptions } from "../CrossfilterOptions";
-import { LinkOptions } from "../LinkOptions";
+import { LinkOptions } from "../LinkOptions/LinkOptions";
 import { SidebarItem } from "../SidebarItem";
 import {
   SidebarContentBordered,

@@ -130,7 +130,7 @@ function TargetClickMappings({
   );
 }
 
-function LinkedEntityPicker({
+export function LinkedEntityPicker({
   dashcard,
   clickBehavior,
   updateSettings,
@@ -313,5 +313,3 @@ function LinkedEntityPicker({
     </div>
   );
 }
-
-export { LinkedEntityPicker };

@@ -1,1 +1,0 @@
-export { ClickBehaviorSidebar } from "./ClickBehaviorSidebar";

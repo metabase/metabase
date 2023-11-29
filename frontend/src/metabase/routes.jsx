@@ -19,7 +19,7 @@ import { Logout } from "metabase/auth/components/Logout";
 import { ResetPassword } from "metabase/auth/components/ResetPassword";
 
 /* Dashboards */
-import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardApp";
+import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { AutomaticDashboardAppConnected } from "metabase/dashboard/containers/AutomaticDashboardApp";
 
 /* Browse data */

@@ -1,11 +1,11 @@
 import styled from "@emotion/styled";
-import { DashCardActionButton } from "../DashCardActionButton";
+import { DashActionButton } from "../DashCardActionButton/DashCardActionButton";
 
 /**
  * This is a button with a bigger "hover area" to make it easier
  * for the user to go to the menu without the menu closing.
  */
-export const MoveDashCardActionStyled = styled(DashCardActionButton)`
+export const MoveDashCardActionStyled = styled(DashActionButton)`
   position: relative;
   &:hover::before {
     content: "";

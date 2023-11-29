@@ -36,9 +36,9 @@ import type {
   CardSlownessStatus,
   DashCardOnChangeCardAndRunHandler,
 } from "./types";
-import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay";
-import { DashCardMenuConnected } from "./DashCardMenu";
-import { DashCardParameterMapper } from "./DashCardParameterMapper";
+import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
+import { DashCardMenuConnected } from "./DashCardMenu/DashCardMenu";
+import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
 import {
   VirtualDashCardOverlayRoot,
   VirtualDashCardOverlayText,

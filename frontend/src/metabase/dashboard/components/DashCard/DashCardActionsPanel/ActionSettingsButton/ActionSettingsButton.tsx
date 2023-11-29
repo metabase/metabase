@@ -6,7 +6,7 @@ import type { ActionDashboardCard, Dashboard } from "metabase-types/api";
 
 import { setEditingDashcardId } from "metabase/dashboard/actions";
 
-import { DashCardActionButton } from "../DashCardActionButton";
+import { DashActionButton } from "../DashCardActionButton/DashCardActionButton";
 
 const mapDispatchToProps = {
   setEditingDashcardId,
@@ -26,12 +26,12 @@ function ActionSettingsButton({ dashcard, setEditingDashcardId }: Props) {
   }, [dashcard.id, dashcard.justAdded, setEditingDashcardId]);
 
   return (
-    <DashCardActionButton
+    <DashActionButton
       tooltip={t`Action Settings`}
       onClick={() => setEditingDashcardId(dashcard.id)}
     >
-      <DashCardActionButton.Icon name="gear" />
-    </DashCardActionButton>
+      <DashActionButton.Icon name="gear" />
+    </DashActionButton>
   );
 }
 

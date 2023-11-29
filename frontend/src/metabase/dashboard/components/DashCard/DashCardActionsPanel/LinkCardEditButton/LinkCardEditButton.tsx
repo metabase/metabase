@@ -3,7 +3,7 @@ import { t } from "ttag";
 import type { DashboardCard, VisualizationSettings } from "metabase-types/api";
 import { isRestrictedLinkEntity } from "metabase-types/guards/dashboard";
 
-import { DashCardActionButton } from "../DashCardActionButton";
+import { DashActionButton } from "../DashCardActionButton/DashCardActionButton";
 
 interface Props {
   dashcard: DashboardCard;
@@ -31,8 +31,8 @@ export function LinkCardEditButton({
   };
 
   return (
-    <DashCardActionButton tooltip={t`Edit Link`} onClick={handleClick}>
-      <DashCardActionButton.Icon name="pencil" />
-    </DashCardActionButton>
+    <DashActionButton tooltip={t`Edit Link`} onClick={handleClick}>
+      <DashActionButton.Icon name="pencil" />
+    </DashActionButton>
   );
 }

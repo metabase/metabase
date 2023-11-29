@@ -1,1 +1,0 @@
-export { TableClickBehaviorView } from "./TableClickBehaviorView";

@@ -25,7 +25,7 @@ import {
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { getClickBehaviorForColumn } from "./utils";
 import { ClickBehaviorSidebarContent } from "./ClickBehaviorSidebarContent";
-import { ClickBehaviorSidebarHeader } from "./ClickBehaviorSidebarHeader";
+import { ClickBehaviorSidebarHeader } from "./ClickBehaviorSidebarHeader/ClickBehaviorSidebarHeader";
 
 function shouldShowTypeSelector(clickBehavior?: ClickBehavior) {
   return !clickBehavior || clickBehavior.type == null;

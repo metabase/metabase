@@ -10,7 +10,7 @@ import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthC
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import { SAVING_DOM_IMAGE_CLASS } from "metabase/visualizations/lib/save-chart-image";
-import { DashCard } from "../DashCard";
+import { DashCard } from "../DashCard/DashCard";
 
 // Class names are added here because we still use traditional css,
 // see dashboard.css
