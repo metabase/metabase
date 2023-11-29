@@ -29,11 +29,7 @@ import { ContentViewportContext } from "metabase/core/context/ContentViewportCon
 
 import type { AppErrorDescriptor, State } from "metabase-types/store";
 
-import {
-  AppStyled,
-  AppContentStyled,
-  AppContentWrapStyled,
-} from "./App.styled";
+import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import ErrorBoundary from "./ErrorBoundary";
 
 const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
@@ -103,20 +99,20 @@ function App({
   return (
     <ErrorBoundary onError={onError}>
       <ScrollToTop>
-        <AppStyled className="spread">
+        <AppContainer className="spread">
           <AppBanner location={location} />
           {isAppBarVisible && <AppBar />}
-          <AppContentWrapStyled isAdminApp={isAdminApp}>
+          <AppContentContainer isAdminApp={isAdminApp}>
             {isNavBarEnabled && <Navbar />}
-            <AppContentStyled ref={setViewportElement}>
+            <AppContent ref={setViewportElement}>
               <ContentViewportContext.Provider value={viewportElement ?? null}>
                 {errorPage ? getErrorComponent(errorPage) : children}
               </ContentViewportContext.Provider>
-            </AppContentStyled>
+            </AppContent>
             <UndoListing />
             <StatusListing />
-          </AppContentWrapStyled>
-        </AppStyled>
+          </AppContentContainer>
+        </AppContainer>
       </ScrollToTop>
     </ErrorBoundary>
   );
