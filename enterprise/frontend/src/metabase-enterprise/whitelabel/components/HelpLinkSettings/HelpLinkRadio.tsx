@@ -23,12 +23,12 @@ export const HelpLinkRadio = ({
   onChangeSetting,
   settingValues,
 }: Props) => {
-  const [helpLinkSetting, setHelpLinkType] = useState(
+  const [helpLinkSetting, setHelpLinkSetting] = useState(
     settingValues["help-link"] || "metabase_default",
   );
 
   const handleRadioChange = (value: HelpLinkSetting) => {
-    setHelpLinkType(value);
+    setHelpLinkSetting(value);
     onChangeSetting("help-link", value);
   };
   const customUrl = settingValues["help-link-custom-destination"];
