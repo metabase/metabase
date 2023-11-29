@@ -2,6 +2,7 @@
 import { Component } from "react";
 import { connect } from "react-redux";
 
+import { t } from "ttag";
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
 import { getParameters } from "metabase/dashboard/selectors";
 import * as Urls from "metabase/lib/urls";
@@ -51,11 +52,11 @@ class DashboardSharingEmbeddingModal extends Component {
     }
     return (
       <Modal
-        full
-        disabled={!isLinkEnabled}
-        triggerClasses={className}
-        className="scroll-y"
+        isOpen={enabled}
         onClose={onClose}
+        title={t`Embed Metabase`}
+        fit
+        formModal={false}
       >
         <EmbedModalContent
           {...props}
