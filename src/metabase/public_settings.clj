@@ -130,7 +130,7 @@
             (str "http://" s))]
     ;; check that the URL is valid
     (when-not (u/url? s)
-      (throw (ex-info (tru "Invalid site URL: {0}" (pr-str s)) {:url (pr-str s)})))
+      (throw (ex-info (tru "Invalid URL: {0}" (pr-str s)) {:url (pr-str s)})))
     s))
 
 (defsetting help-link-custom-destination

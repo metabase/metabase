@@ -1,6 +1,7 @@
 import {
   appBar,
   describeEE,
+  main,
   popover,
   restore,
   setTokenFeatures,
@@ -240,6 +241,25 @@ describeEE("formatting > whitelabel", () => {
       helpLink()
         .should("have.attr", "href")
         .and("include", "https://www.metabase.com/help?");
+    });
+
+    it("it should validate the url", () => {
+      cy.signInAsAdmin();
+      cy.visit("/admin/settings/whitelabel");
+
+      cy.findByTestId("help-link-setting")
+        .findByText("Go to a custom destination...")
+        .click();
+
+      helpLinkCustomDestinationInput().clear().type("ftp://something").blur();
+      main()
+        .findByText("This needs to be an http, https or mailto URL.")
+        .should("exist");
+
+      helpLinkCustomDestinationInput().clear().type("https://").blur();
+      main()
+        .findByText(/Invalid URL/i)
+        .should("exist");
     });
 
     it("should not create a race condition - scenario 1: default ->  custom  -> non custom", () => {
