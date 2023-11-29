@@ -493,7 +493,7 @@
                                   (assoc :result_metadata fresh-metadata))]
       (u/prog1 (-> (card/update-card! {:card-before-update card-before-update
                                        :card-updates       card-updates
-                                       :actor-id           @api/*current-user*})
+                                       :actor-id           @api/*current-user-id*})
                    hydrate-for-frontend
                    (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
         (when timed-out?
