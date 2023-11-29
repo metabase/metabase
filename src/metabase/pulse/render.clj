@@ -119,7 +119,7 @@
   ((some-fn :include_csv :include_xls) card))
 
 (s/defn ^:private render-pulse-card-body :- common/RenderedPulseCard
-  [render-type timezone-id :- (s/maybe s/Str) card dashcard {:keys [data error], :as results}]
+  [render-type timezone-id :- (s/maybe s/Str) card dashcard {:keys [data error] :as results}]
   (try
     (when error
       (throw (ex-info (tru "Card has errors: {0}" error) (assoc results :card-error true))))
