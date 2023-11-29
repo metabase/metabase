@@ -400,9 +400,8 @@
                         :params params})
       qp/process-query))
 
-(defn- session-id []
+(defn- session-id! []
   (-> (run-native-query "select pg_backend_pid()") mt/rows ffirst))
-
 
 (defn- last-queries-of-a-session [session-id]
   (let [query-str (str "select session_id, start_time, result_cache_hit, query_text\n"
@@ -418,6 +417,8 @@
                  :result-cache-hit result-cache-hit
                  :query-text query-text})))))
 
+;; According to https://docs.aws.amazon.com/redshift/latest/dg/c_challenges_achieving_high_performance_queries.html#result-caching
+;; caching is on by default. Hence check for that is skipped.
 (deftest server-side-timestamp-caching-test
   (mt/test-driver :redshift
    (testing "Relative date time queries should be cached"
@@ -426,7 +427,7 @@
       (mt/id)
       nil
       (fn [^java.sql.Connection _connection]
-        (let [sid (session-id)
+        (let [sid (session-id!)
               ;; :time-interval translates to :relative-datetime, which is now using server side generated timestamps
               ;; for units day and greater.
               query-to-cache (mt/mbql-query
@@ -437,30 +438,40 @@
           (dotimes [_ 2]
             (qp/process-query query-to-cache))
           (let [last-queries (last-queries-of-a-session sid)
+                ;; First row of last queries should contains "last-queries query" info.
+                ;; Second should contain info about query that should be returned from cache.
                 cached-row (second last-queries)
-                adjusted-redshift-sql (str/replace (:query-text cached-row) #"\$\d+" "?")]
-            (testing "Row to check cache in contains correct sql"
-              (is (.contains adjusted-redshift-sql compiled-sql)))
-            (testing "Cache value is correct"
+                cached-row-adjusted-redshift-sql (str/replace (:query-text cached-row) #"\$\d+" "?")
+                ;; Third row contains the same query. At the point of its execution, it may have been cached, but
+                ;; afterwards it should.
+                pre-cached-row (nth last-queries 2)
+                pre-cached-row-adjusted-redshift-sql (str/replace (:query-text pre-cached-row) #"\$\d+" "?")]
+            (testing "Last queries results contain query before caching on expected postion"
+              (is (.contains pre-cached-row-adjusted-redshift-sql compiled-sql)))
+            (testing "Last queries results contain cached query on expected position"
+              (is (.contains cached-row-adjusted-redshift-sql compiled-sql)))
+            (testing "Query was returned from cache"
               (is (true? (:result-cache-hit cached-row)))))))))))
 
-;; TODO: time for the test? How much is too much?
-;; TODO: macro solution vs functional one?
-(deftest server-side-timestamp-test
+(defn getdate-vs-ss-ts-test-thunk-generator
+  ([]
+   (getdate-vs-ss-ts-test-thunk-generator :week -1))
+  ([unit value]
+   (fn []
+     (let [honey {:select [[(with-redefs-fn {#'redshift/use-server-side-timestamp? (constantly false)}
+                              #(sql.qp/->honeysql :redshift [:relative-datetime value unit]))]
+                           [(sql.qp/->honeysql :redshift [:relative-datetime value unit])]]}
+           [sql params] (sql/format honey)
+           result (run-native-query sql params)
+           [db-generated ss-generated] (-> result mt/rows first)]
+       (is (= db-generated ss-generated))))))
+
+(deftest ss-timestamp-test
   (mt/test-driver
    :redshift
-   (mt/with-metadata-provider (mt/id)
-     (testing "Value of getdate() and server side generated timestamp is equal"
-       (let [test-thunk
-             ;;
-             (fn []
-               (let [honey {:select [[(with-redefs-fn {#'redshift/use-server-side-timestamp? (constantly false)}
-                                        #(sql.qp/->honeysql :redshift [:relative-datetime -1 :week]))]
-                                     [(sql.qp/->honeysql :redshift [:relative-datetime -1 :week])]]}
-                     sql (sql/format honey)
-                     result (apply run-native-query sql)
-                     [db-generated ss-generated] (-> result mt/rows first)]
-                 (is (= db-generated ss-generated))))]
+   (testing "Value of getdate() and server side generated timestamp is equal"
+     (mt/with-metadata-provider (mt/id)
+       (let [test-thunk (getdate-vs-ss-ts-test-thunk-generator)]
          (doseq [tz-setter [qp.test-util/do-with-report-timezone-id
                             test.tz/do-with-system-timezone-id
                             qp.test-util/do-with-database-timezone-id
@@ -471,34 +482,57 @@
            (testing (str tz-setter " " timezone)
              (tz-setter timezone test-thunk))))))))
 
-;; TODO: Extend for more combinations of nested timezone settings.
-(deftest server-side-timestamp-multiple-tz-settings-test
+(deftest ss-timestamp-multiple-tz-settings-test
   (mt/test-driver
    :redshift
    (mt/with-metadata-provider (mt/id)
      (testing "Value of server side generated timestamp matches the one from getdate() with multiple timezone settings"
-       (mt/with-report-timezone-id "America/Los_Angeles"
-         (mt/with-system-timezone-id "Europe/Prague"
-           (let [honey {:select [[(with-redefs-fn {#'redshift/use-server-side-timestamp? (constantly false)}
-                                    #(sql.qp/->honeysql :redshift [:relative-datetime -1 :year]))]
-                                 [(sql.qp/->honeysql :redshift [:relative-datetime -1 :year])]]}
-                 sql (sql/format honey)
-                 result (apply run-native-query sql)
-                 [db-generated ss-generated] (-> result mt/rows first)]
-             (is (= db-generated ss-generated)))))))))
+       (mt/with-results-timezone-id "UTC"
+         (mt/with-database-timezone-id "America/New_York"
+           (mt/with-report-timezone-id "America/Los_Angeles"
+             (mt/with-system-timezone-id "Europe/Prague"
+               (let [test-thunk (getdate-vs-ss-ts-test-thunk-generator)]
+                 (test-thunk))))))))))
 
-;; TODO: check if tested elsewhere!
-(deftest server-side-timestamp-various-units-test
+(deftest ss-timestamp-various-units-test
   (mt/test-driver
    :redshift
    (mt/with-metadata-provider (mt/id)
      (testing "Value of server side generated timestamp matches the one from getdate() with multiple timezone settings"
        (doseq [unit [:day :week :month :year]
-               value [-30 0 7]]
-         (let [honey {:select [[(with-redefs-fn {#'redshift/use-server-side-timestamp? (constantly false)}
-                                  #(sql.qp/->honeysql :redshift [:relative-datetime value unit]))]
-                               [(sql.qp/->honeysql :redshift [:relative-datetime value unit])]]}
-               sql (sql/format honey)
-               result (apply run-native-query sql)
-               [db-generated ss-generated] (-> result mt/rows first)]
-           (is (= db-generated ss-generated))))))))
+               value [-30 0 7]
+               :let [test-thunk (getdate-vs-ss-ts-test-thunk-generator unit value)]]
+         (test-thunk))))))
+
+
+(defn- generate-tz-tests [fs tzs thunk]
+  (letfn [(combine-acc [acc [f & fs*] tzs]
+                       (if (nil? f)
+                         acc
+                         (recur (into acc (mapcat (fn [thunk*] (for [tz tzs] #(f tz thunk*)))) acc)
+                                fs*
+                                tzs)))]
+    (combine-acc [thunk] fs tzs)))
+
+(deftest tz-settings-combinations-test
+  (mt/test-driver
+   :redshift
+   (let [test-thunk (fn []
+                      (let [honey {:select [[(with-redefs-fn {#'redshift/use-server-side-timestamp? (constantly false)}
+                                               #(sql.qp/->honeysql :redshift [:relative-datetime -1 :week]))]
+                                            [(sql.qp/->honeysql :redshift [:relative-datetime -1 :week])]]}
+                            sql (sql/format honey)
+                            result (apply run-native-query sql)
+                            [db-generated ss-generated] (-> result mt/rows first)]
+                        (is (= db-generated ss-generated))))
+         tz-setters [qp.test-util/do-with-report-timezone-id
+                     test.tz/do-with-system-timezone-id
+                     qp.test-util/do-with-database-timezone-id
+                     qp.test-util/do-with-results-timezone-id]
+         tzs ["America/Los_Angeles"
+              "Europe/Prague"
+              "UTC"]
+         testcases (generate-tz-tests tz-setters tzs test-thunk)]
+     #_{:clj-kondo/ignore [:discouraged-var]}
+     (time (doseq [testcase testcases]
+             (time (testcase)))))))
