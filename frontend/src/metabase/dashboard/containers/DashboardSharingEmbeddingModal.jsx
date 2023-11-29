@@ -107,7 +107,7 @@ class DashboardSharingEmbeddingModal extends Component {
 
 DashboardSharingEmbeddingModal.defaultProps = defaultProps;
 
-export default connect(
+export const DashboardSharingEmbeddingModalConnected = connect(
   mapStateToProps,
   mapDispatchToProps,
 )(DashboardSharingEmbeddingModal);
