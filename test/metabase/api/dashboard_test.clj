@@ -245,24 +245,15 @@
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (let [test-dashboard-name "Test Create Dashboard"]
           (mt/with-model-cleanup [:model/Dashboard]
-            (is (= (merge
-                     dashboard-defaults
-                     {:name           test-dashboard-name
-                      :creator_id     (mt/user->id :rasta)
-                      :parameters     [{:id "abc123", :name "test", :type "date"}]
-                      :updated_at     true
-                      :created_at     true
-                      :collection_id  true
-                      :collection     false
-                      :cache_ttl      1234
-                      :last-edit-info {:timestamp true :id true :first_name "Rasta"
-                                       :last_name "Toucan" :email "rasta@metabase.com"}})
-                   ;(mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id))
-                   (-> (mt/user-http-request :rasta :post 200 "dashboard" {:name          test-dashboard-name
-                                                                           :parameters    [{:id "abc123", :name "test", :type "date"}]
-                                                                           :cache_ttl     1234
-                                                                           :collection_id (u/the-id collection)})
-                       dashboard-response)))))))))
+            (let [{dashboard-id :id
+                   :as          created} (mt/user-http-request :rasta :post 200 "dashboard"
+                                                               {:name          test-dashboard-name
+                                                                :parameters    [{:id "abc123", :name "test", :type "date"}]
+                                                                :cache_ttl     1234
+                                                                :collection_id (u/the-id collection)})
+                  retrieved (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id))]
+              (is (= (update created :last-edit-info dissoc :timestamp)
+                     (update retrieved :last-edit-info dissoc :timestamp))))))))))
 
 (deftest create-dashboard-with-collection-position-test
   (testing "POST /api/dashboard"

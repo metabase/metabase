@@ -49,6 +49,28 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- hydrate-dashboard-details
+  "Get dashboard details for the complete dashboard, including tabs, dashcards, params, etc."
+  [{dashboard-id :id :as dashboard}]
+  ;; I'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
+  ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
+  ;; cannot be in this situation
+  (span/with-span!
+    {:name       "hydrate-dashboard-details"
+     :attributes {:dashboard/id dashboard-id}}
+    (t2/hydrate dashboard [:dashcards
+                           [:card [:moderation_reviews :moderator_details]]
+                           [:card :can_write]
+                           :series
+                           :dashcard/action
+                           :dashcard/linkcard-info]
+                :tabs
+                :collection_authority_level
+                :can_write
+                :param_fields
+                :param_values
+                [:collection :is_personal])))
+
 (api/defendpoint POST "/"
   "Create a new Dashboard."
   [:as {{:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard} :body}]
@@ -75,7 +97,10 @@
                         (first (t2/insert-returning-instances! :model/Dashboard dashboard-data)))]
     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
     (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dash)})
-    (assoc dash :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
+    (-> dash
+        (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))
+        hydrate-dashboard-details
+        collection.root/hydrate-root-collection)))
 
 ;;; -------------------------------------------- Hiding Unreadable Cards ---------------------------------------------
 
@@ -186,30 +211,13 @@
   (span/with-span!
     {:name       "get-dashboard"
      :attributes {:dashboard/id id}}
-    (let [dashboard (api/read-check (t2/select-one :model/Dashboard :id id))
-          ;; i'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
-          ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
-          ;; cannot be in this situation
-          hydrated  (span/with-span!
-                      {:name       "hydrate"
-                       :attributes {:dashboard/id id}}
-                      (t2/hydrate dashboard [:dashcards
-                                             [:card [:moderation_reviews :moderator_details]]
-                                             [:card :can_write]
-                                             :series
-                                             :dashcard/action
-                                             :dashcard/linkcard-info]
-                                  :tabs
-                                  :collection_authority_level
-                                  :can_write
-                                  :param_fields
-                                  :param_values
-                                  [:collection :is_personal]))]
-      (-> hydrated
-          collection.root/hydrate-root-collection
-          api/check-not-archived
-          hide-unreadable-cards
-          add-query-average-durations))))
+    (-> (t2/select-one :model/Dashboard :id id)
+        api/read-check
+        hydrate-dashboard-details
+        collection.root/hydrate-root-collection
+        api/check-not-archived
+        hide-unreadable-cards
+        add-query-average-durations)))
 
 (defn- cards-to-copy
   "Returns a map of which cards we need to copy and which are not to be copied. The `:copy` key is a map from id to
