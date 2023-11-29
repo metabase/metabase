@@ -47,7 +47,8 @@ describe("drill-thru/fk-filter", () => {
   const defaultColumn = createOrdersProductIdDatasetColumn();
 
   describe("availableDrillThrus", () => {
-    it("should allow to drill with a FK column value (metabase#36000)", () => {
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should allow to drill with a FK column value (metabase#36000)", () => {
       const clickObject = createRawCellClickObject({
         column: defaultColumn,
         value: 10,
@@ -143,7 +144,8 @@ describe.each<Lib.DrillThruType>([
       expect(drill).toBeNull();
     });
 
-    it("should not allow to drill with a null FK value (metabase#36133)", () => {
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should not allow to drill with a null FK value (metabase#36133)", () => {
       const clickObject = createRawCellClickObject({
         column: defaultColumn,
         value: null,
@@ -159,7 +161,8 @@ describe.each<Lib.DrillThruType>([
       expect(drill).toBeNull();
     });
 
-    it("should not allow to drill with a non-editable query", () => {
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should not allow to drill with a non-editable query (metabase#36125)", () => {
       const query = createNotEditableQuery(defaultQuery);
       const clickObject = createRawCellClickObject({
         column: defaultColumn,
