@@ -24,7 +24,6 @@ describe("drill-thru/fk-details", () => {
       column: defaultColumn,
       value: 10,
     });
-
     const { drill } = findDrillThru(
       defaultQuery,
       stageIndex,
@@ -52,7 +51,6 @@ describe("drill-thru/fk-filter", () => {
       column: defaultColumn,
       value: 10,
     });
-
     const { drill, drillInfo } = findDrillThru(
       defaultQuery,
       stageIndex,
@@ -83,14 +81,12 @@ describe.each<Lib.DrillThruType>([
       column: createOrdersIdDatasetColumn(),
       value: 10,
     });
-
     const drill = queryDrillThru(
       defaultQuery,
       stageIndex,
       clickObject,
       drillType,
     );
-
     expect(drill).toBeNull();
   });
 
@@ -99,14 +95,12 @@ describe.each<Lib.DrillThruType>([
       column: createOrdersTotalDatasetColumn(),
       value: 10,
     });
-
     const drill = queryDrillThru(
       defaultQuery,
       stageIndex,
       clickObject,
       drillType,
     );
-
     expect(drill).toBeNull();
   });
 
@@ -114,14 +108,12 @@ describe.each<Lib.DrillThruType>([
     const clickObject = createColumnClickObject({
       column: defaultColumn,
     });
-
     const drill = queryDrillThru(
       defaultQuery,
       stageIndex,
       clickObject,
       drillType,
     );
-
     expect(drill).toBeNull();
   });
 
@@ -131,14 +123,12 @@ describe.each<Lib.DrillThruType>([
       column: defaultColumn,
       value: null,
     });
-
     const drill = queryDrillThru(
       defaultQuery,
       stageIndex,
       clickObject,
       drillType,
     );
-
     expect(drill).toBeNull();
   });
 
@@ -149,9 +139,7 @@ describe.each<Lib.DrillThruType>([
       column: defaultColumn,
       value: 10,
     });
-
     const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
-
     expect(drill).toBeNull();
   });
 });

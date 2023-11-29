@@ -38,7 +38,6 @@ describe("drill-thru/distribution", () => {
     const clickObject = createColumnClickObject({
       column: createOrdersTotalDatasetColumn(),
     });
-
     const { drill } = findDrillThru(
       defaultQuery,
       stageIndex,
@@ -46,7 +45,6 @@ describe("drill-thru/distribution", () => {
       drillType,
     );
     const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
-
     expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
     expect(Lib.breakouts(newQuery, stageIndex)).toHaveLength(1);
   });
@@ -55,7 +53,6 @@ describe("drill-thru/distribution", () => {
     const clickObject = createColumnClickObject({
       column: createOrdersCreatedAtDatasetColumn(),
     });
-
     const { drill } = findDrillThru(
       defaultQuery,
       stageIndex,
@@ -63,7 +60,6 @@ describe("drill-thru/distribution", () => {
       drillType,
     );
     const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
-
     expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
     expect(Lib.breakouts(newQuery, stageIndex)).toHaveLength(1);
   });
@@ -74,10 +70,8 @@ describe("drill-thru/distribution", () => {
     const clickObject = createColumnClickObject({
       column: createProductsCategoryDatasetColumn(),
     });
-
     const { drill } = findDrillThru(query, stageIndex, clickObject, drillType);
     const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
-
     expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
     expect(Lib.breakouts(newQuery, stageIndex)).toHaveLength(1);
   });
@@ -87,14 +81,12 @@ describe("drill-thru/distribution", () => {
       column: defaultColumn,
       value: 10,
     });
-
     const drill = queryDrillThru(
       defaultQuery,
       stageIndex,
       clickObject,
       drillType,
     );
-
     expect(drill).toBeNull();
   });
 
@@ -103,14 +95,12 @@ describe("drill-thru/distribution", () => {
       column: defaultColumn,
       value: null,
     });
-
     const drill = queryDrillThru(
       defaultQuery,
       stageIndex,
       clickObject,
       drillType,
     );
-
     expect(drill).toBeNull();
   });
 
@@ -118,14 +108,12 @@ describe("drill-thru/distribution", () => {
     const clickObject = createColumnClickObject({
       column: createOrdersIdDatasetColumn(),
     });
-
     const drill = queryDrillThru(
       defaultQuery,
       stageIndex,
       clickObject,
       drillType,
     );
-
     expect(drill).toBeNull();
   });
 
@@ -135,7 +123,6 @@ describe("drill-thru/distribution", () => {
     const clickObject = createColumnClickObject({
       column: defaultColumn,
     });
-
     const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
     expect(drill).toBeNull();
   });
@@ -171,7 +158,6 @@ describe("drill-thru/distribution", () => {
     });
     const query = createQuery({ metadata });
     const clickObject = createColumnClickObject({ column });
-
     const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
     expect(drill).toBeNull();
   });

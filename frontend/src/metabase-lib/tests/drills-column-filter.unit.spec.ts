@@ -28,17 +28,13 @@ describe("drill-thru/column-filter", () => {
 
     it("should drill thru a column", () => {
       const clickObject = createColumnClickObject({ column: defaultColumn });
-
-      const { drillInfo } = findDrillThru(
+      const { drill } = findDrillThru(
         defaultQuery,
         stageIndex,
         clickObject,
         drillType,
       );
-
-      expect(drillInfo).toMatchObject({
-        type: drillType,
-      });
+      expect(drill).toBeDefined();
     });
 
     it("should not drill thru a cell", () => {
@@ -46,14 +42,12 @@ describe("drill-thru/column-filter", () => {
         column: defaultColumn,
         value: 10,
       });
-
       const drill = queryDrillThru(
         defaultQuery,
         stageIndex,
         clickObject,
         drillType,
       );
-
       expect(drill).toBeNull();
     });
 
@@ -62,14 +56,12 @@ describe("drill-thru/column-filter", () => {
         column: defaultColumn,
         value: null,
       });
-
       const drill = queryDrillThru(
         defaultQuery,
         stageIndex,
         clickObject,
         drillType,
       );
-
       expect(drill).toBeNull();
     });
 
@@ -88,9 +80,7 @@ describe("drill-thru/column-filter", () => {
       const query = createQuery({ metadata });
       const column = createOrdersStructuredDatasetColumn();
       const clickObject = createColumnClickObject({ column });
-
       const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
-
       expect(drill).toBeNull();
     });
 
