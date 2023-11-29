@@ -22,7 +22,7 @@ function getSeriesIconName(series: Series) {
   );
 }
 
-function AddSeriesButton({
+export function AddSeriesButton({
   series,
   onClick,
 }: {
@@ -43,5 +43,3 @@ function AddSeriesButton({
     </ActionButton>
   );
 }
-
-export { AddSeriesButton };

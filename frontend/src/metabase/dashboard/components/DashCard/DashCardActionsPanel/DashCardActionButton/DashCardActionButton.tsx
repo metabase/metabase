@@ -13,7 +13,7 @@ interface Props extends React.HTMLAttributes<HTMLAnchorElement> {
   analyticsEvent?: string;
 }
 
-const DashActionButton = React.forwardRef<HTMLAnchorElement, Props>(
+const DashActionButtonWrap = React.forwardRef<HTMLAnchorElement, Props>(
   function DashActionButton(
     { tooltip, analyticsEvent, children, ...props },
     ref,
@@ -26,8 +26,7 @@ const DashActionButton = React.forwardRef<HTMLAnchorElement, Props>(
   },
 );
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(DashActionButton, {
+export const DashActionButton = Object.assign(DashActionButtonWrap, {
   Icon: ActionIcon,
   ICON_SIZE: HEADER_ICON_SIZE,
 });

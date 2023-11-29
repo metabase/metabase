@@ -1,1 +1,1 @@
-export { default as ChartSettingsButton } from "./ChartSettingsButton";
+export { ChartSettingsButton } from "./ChartSettingsButton";

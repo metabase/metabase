@@ -1,1 +1,1 @@
-export { default as ActionSettingsButton } from "./ActionSettingsButton";
+export { ActionSettingsButtonConnected } from "./ActionSettingsButton";

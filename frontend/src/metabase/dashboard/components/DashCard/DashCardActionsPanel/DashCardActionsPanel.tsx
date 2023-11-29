@@ -20,7 +20,7 @@ import { ChartSettingsButton } from "./ChartSettingsButton";
 import { DashCardTabMenu } from "./DashCardTabMenu";
 import { DashCardActionButton } from "./DashCardActionButton";
 import { AddSeriesButton } from "./AddSeriesButton";
-import { ActionSettingsButton } from "./ActionSettingsButton";
+import { ActionSettingsButtonConnected } from "./ActionSettingsButton";
 import { LinkCardEditButton } from "./LinkCardEditButton";
 import {
   DashCardActionButtonsContainer,
@@ -142,7 +142,7 @@ export function DashCardActionsPanel({
 
     if (dashcard && isActionDashCard(dashcard)) {
       buttons.push(
-        <ActionSettingsButton
+        <ActionSettingsButtonConnected
           key="action-settings-button"
           dashboard={dashboard}
           dashcard={dashcard}

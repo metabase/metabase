@@ -1,1 +1,1 @@
-export { default as DashCardActionButton } from "./DashCardActionButton";
+export { DashActionButton as DashCardActionButton } from "./DashCardActionButton";

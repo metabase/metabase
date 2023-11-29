@@ -13,7 +13,8 @@ import Questions from "metabase/entities/questions";
 import DashboardPicker from "metabase/containers/DashboardPicker";
 import QuestionPicker from "metabase/containers/QuestionPicker";
 
-import ClickMappings, {
+import {
+  ClickMappingsConnected,
   clickTargetObjectType,
 } from "metabase/dashboard/components/ClickMappings";
 
@@ -116,7 +117,7 @@ function TargetClickMappings({
       {({ object }: { object: Question | Dashboard }) => (
         <div className="pt1">
           <Heading>{getTargetClickMappingsHeading(object)}</Heading>
-          <ClickMappings
+          <ClickMappingsConnected
             object={object}
             dashcard={dashcard}
             isDashboard={isDashboard}

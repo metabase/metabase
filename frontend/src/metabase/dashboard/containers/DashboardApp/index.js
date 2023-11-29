@@ -1,1 +1,1 @@
-export { default } from "./DashboardApp";
+export { DashboardAppConnected } from "./DashboardApp";

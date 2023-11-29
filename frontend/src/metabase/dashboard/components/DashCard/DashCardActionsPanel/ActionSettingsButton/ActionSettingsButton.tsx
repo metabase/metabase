@@ -35,5 +35,7 @@ function ActionSettingsButton({ dashcard, setEditingDashcardId }: Props) {
   );
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(null, mapDispatchToProps)(ActionSettingsButton);
+export const ActionSettingsButtonConnected = connect(
+  null,
+  mapDispatchToProps,
+)(ActionSettingsButton);
