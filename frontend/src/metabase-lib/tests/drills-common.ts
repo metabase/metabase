@@ -151,7 +151,6 @@ export function createAggregatedQueryWithBreakout({
     query,
     Lib.breakoutableColumns(query, -1),
   )(breakoutColumnTableName, breakoutColumnName);
-
   return Lib.breakout(
     query,
     -1,
@@ -227,7 +226,6 @@ export function createNotEditableQuery(query: Lib.Query) {
       }),
     ],
   });
-
   return createQuery({
     metadata,
     query: Lib.toLegacyQuery(query),

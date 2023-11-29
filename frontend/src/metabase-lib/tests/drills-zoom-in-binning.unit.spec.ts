@@ -41,42 +41,14 @@ describe.skip("drill-thru/zoom-in.binning (metabase#36177)", () => {
       ],
     },
   ])("$name", ({ tableName, breakoutColumn, buckets }) => {
-    describe("availableDrillThrus", () => {
-      it.each(buckets)(
-        'should allow to drill with "%s" binning strategy',
-        bucketName => {
-          const query = createAggregatedQueryWithBreakout({
-            aggregationOperatorName: "count",
-            breakoutColumnName: breakoutColumn.name,
-            breakoutColumnTableName: tableName,
-            breakoutColumnBinningStrategyName: bucketName,
-          });
-          const clickObject = createAggregatedCellClickObject({
-            aggregationColumn,
-            aggregationColumnValue: 10,
-            breakoutColumn,
-            breakoutColumnValue: 20,
-          });
-
-          const { drillInfo } = findDrillThru(
-            query,
-            stageIndex,
-            clickObject,
-            drillType,
-          );
-
-          expect(drillInfo).toMatchObject({
-            type: drillType,
-          });
-        },
-      );
-
-      it("should not allow to drill without binning strategy", () => {
+    it.each(buckets)(
+      'should drill thru an aggregated cell with "%s" binning strategy',
+      bucketName => {
         const query = createAggregatedQueryWithBreakout({
           aggregationOperatorName: "count",
           breakoutColumnName: breakoutColumn.name,
           breakoutColumnTableName: tableName,
-          breakoutColumnBinningStrategyName: "Don't bin",
+          breakoutColumnBinningStrategyName: bucketName,
         });
         const clickObject = createAggregatedCellClickObject({
           aggregationColumn,
@@ -84,76 +56,68 @@ describe.skip("drill-thru/zoom-in.binning (metabase#36177)", () => {
           breakoutColumn,
           breakoutColumnValue: 20,
         });
+        const { drill } = findDrillThru(
+          query,
+          stageIndex,
+          clickObject,
+          drillType,
+        );
+        const newQuery = Lib.drillThru(query, stageIndex, drill);
+        expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+        expect(Lib.filters(newQuery, stageIndex)).toHaveLength(2);
+      },
+    );
 
-        const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
-        expect(drill).toBeNull();
+    it("should not drill thru an aggregated cell when the column has no binning strategy", () => {
+      const query = createAggregatedQueryWithBreakout({
+        aggregationOperatorName: "count",
+        breakoutColumnName: breakoutColumn.name,
+        breakoutColumnTableName: tableName,
+        breakoutColumnBinningStrategyName: "Don't bin",
+      });
+      const clickObject = createAggregatedCellClickObject({
+        aggregationColumn,
+        aggregationColumnValue: 10,
+        breakoutColumn,
+        breakoutColumnValue: 20,
+      });
+      const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
+      expect(drill).toBeNull();
+    });
+
+    it("should not drill thru an aggregated column", () => {
+      const query = createAggregatedQueryWithBreakout({
+        aggregationOperatorName: "count",
+        breakoutColumnName: breakoutColumn.name,
+        breakoutColumnTableName: tableName,
+        breakoutColumnBinningStrategyName: "Auto bin",
+      });
+      const clickObject = createColumnClickObject({
+        column: aggregationColumn,
       });
 
-      it("should not allow to drill when clicked on a column", () => {
-        const query = createAggregatedQueryWithBreakout({
+      const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
+      expect(drill).toBeNull();
+    });
+
+    it("should not drill thru a non-editable query", () => {
+      const query = createNotEditableQuery(
+        createAggregatedQueryWithBreakout({
           aggregationOperatorName: "count",
           breakoutColumnName: breakoutColumn.name,
           breakoutColumnTableName: tableName,
           breakoutColumnBinningStrategyName: "Auto bin",
-        });
-        const clickObject = createColumnClickObject({
-          column: aggregationColumn,
-        });
-
-        const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
-        expect(drill).toBeNull();
-      });
-
-      it("should not allow to drill with a non-editable query", () => {
-        const query = createNotEditableQuery(
-          createAggregatedQueryWithBreakout({
-            aggregationOperatorName: "count",
-            breakoutColumnName: breakoutColumn.name,
-            breakoutColumnTableName: tableName,
-            breakoutColumnBinningStrategyName: "Auto bin",
-          }),
-        );
-        const clickObject = createAggregatedCellClickObject({
-          aggregationColumn,
-          aggregationColumnValue: 10,
-          breakoutColumn,
-          breakoutColumnValue: 20,
-        });
-
-        const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
-        expect(drill).toBeNull();
-      });
-    });
-
-    describe("drillThru", () => {
-      it.each(buckets)(
-        'should drill when clicked on an aggregated cell with "%s" binning strategy',
-        bucketName => {
-          const query = createAggregatedQueryWithBreakout({
-            aggregationOperatorName: "count",
-            breakoutColumnName: breakoutColumn.name,
-            breakoutColumnTableName: tableName,
-            breakoutColumnBinningStrategyName: bucketName,
-          });
-          const clickObject = createAggregatedCellClickObject({
-            aggregationColumn,
-            aggregationColumnValue: 10,
-            breakoutColumn,
-            breakoutColumnValue: 20,
-          });
-          const { drill } = findDrillThru(
-            query,
-            stageIndex,
-            clickObject,
-            drillType,
-          );
-
-          const newQuery = Lib.drillThru(query, stageIndex, drill);
-
-          expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
-          expect(Lib.filters(newQuery, stageIndex)).toHaveLength(2);
-        },
+        }),
       );
+      const clickObject = createAggregatedCellClickObject({
+        aggregationColumn,
+        aggregationColumnValue: 10,
+        breakoutColumn,
+        breakoutColumnValue: 20,
+      });
+
+      const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
+      expect(drill).toBeNull();
     });
   });
 });
