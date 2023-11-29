@@ -39,12 +39,12 @@ const mapDispatchToProps = {
 /**
  * @deprecated HOCs are deprecated
  */
-export default ComposedComponent =>
+export const DashboardData = ComposedComponent =>
   connect(
     mapStateToProps,
     mapDispatchToProps,
   )(
-    class DashboardContainer extends Component {
+    class DashboardDataInner extends Component {
       async load(props) {
         const {
           initialize,

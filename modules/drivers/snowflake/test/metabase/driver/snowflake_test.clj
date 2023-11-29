@@ -339,8 +339,6 @@
                                       :context      :ad-hoc
                                       :query-hash   (byte-array [-53 -125 -44 -10 -18 -36 37 14 -37 15 44 22 -8 -39 -94 30
                                                                  93 66 -13 34 -52 -20 -31 73 76 -114 -13 -42 52 88 31 -30])})))
-            ; re-find function returns a vector where the first element is the entire match and the subsequent elements
-            ; are the captured groups. So, (second ...) gives us the first captured group.
             result-comment (second (re-find #"-- (\{.*\})" result-query))
             result-map (json/read-str result-comment)]
         (is (= expected-map result-map))))))

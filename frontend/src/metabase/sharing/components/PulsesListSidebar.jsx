@@ -9,7 +9,7 @@ import { t, ngettext, msgid } from "ttag";
 import { Icon } from "metabase/core/components/Icon";
 import Label from "metabase/components/type/Label";
 import Subhead from "metabase/components/type/Subhead";
-import Sidebar from "metabase/dashboard/components/Sidebar";
+import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import Tooltip from "metabase/core/components/Tooltip";
 
 import {

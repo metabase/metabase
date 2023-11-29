@@ -4,7 +4,7 @@ import { getIn } from "icepick";
 import { useMount, usePrevious } from "react-use";
 
 import { useDashboardQuery } from "metabase/common/hooks";
-import Sidebar from "metabase/dashboard/components/Sidebar";
+import { Sidebar } from "metabase/dashboard/components/Sidebar";
 
 import type {
   Dashboard,
@@ -24,8 +24,8 @@ import {
 
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { getClickBehaviorForColumn } from "./utils";
-import ClickBehaviorSidebarContent from "./ClickBehaviorSidebarContent";
-import { ClickBehaviorSidebarHeader } from "./ClickBehaviorSidebarHeader";
+import { ClickBehaviorSidebarContent } from "./ClickBehaviorSidebarContent";
+import { ClickBehaviorSidebarHeader } from "./ClickBehaviorSidebarHeader/ClickBehaviorSidebarHeader";
 
 function shouldShowTypeSelector(clickBehavior?: ClickBehavior) {
   return !clickBehavior || clickBehavior.type == null;
@@ -54,7 +54,7 @@ interface Props {
   ) => void;
 }
 
-function ClickBehaviorSidebar({
+export function ClickBehaviorSidebar({
   dashboard,
   dashcard,
   dashcardData,
@@ -225,6 +225,3 @@ function ClickBehaviorSidebar({
     </Sidebar>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ClickBehaviorSidebar;

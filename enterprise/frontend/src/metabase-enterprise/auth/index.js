@@ -14,7 +14,6 @@ import {
 } from "metabase/plugins";
 
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
-import SecretKeyWidget from "metabase/admin/settings/components/widgets/SecretKeyWidget";
 import SessionTimeoutSetting from "metabase-enterprise/auth/components/SessionTimeoutSetting";
 
 import { createSessionMiddleware } from "../auth/middleware/session-middleware";
@@ -187,14 +186,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
         display_name: t`String used by the JWT signing key`,
         type: "text",
         required: true,
-        widget: SecretKeyWidget,
         getHidden: (_, derivedSettings) => !derivedSettings["jwt-enabled"],
-        props: {
-          confirmation: {
-            header: t`Regenerate JWT signing key?`,
-            dialog: t`This will cause existing tokens to stop working until the identity provider is updated with the new key.`,
-          },
-        },
       },
       {
         key: "jwt-attribute-email",
@@ -215,12 +207,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
         key: "jwt-group-sync",
         display_name: t`Synchronize group memberships`,
         description: null,
-        widget: GroupMappingsWidget,
-        props: {
-          mappingSetting: "jwt-group-mappings",
-          groupHeading: t`Group Name`,
-          groupPlaceholder: "Group Name",
-        },
       },
       {
         key: "jwt-group-mappings",
