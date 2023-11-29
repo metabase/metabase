@@ -5,6 +5,7 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockGroup } from "metabase-types/api/mocks";
 
 import { SettingsLdapForm } from "./SettingsLdapForm";
+import type { SettingValues } from "./SettingsLdapForm";
 
 const GROUPS = [
   createMockGroup(),
@@ -208,11 +209,7 @@ const elements = [
   },
 ];
 
-const settingValues = {
-  "ldap-enabled": true,
-};
-
-const setup = () => {
+const setup = (settingValues: SettingValues) => {
   const onSubmit = jest.fn();
 
   fetchMock.get("path:/api/permissions/group", GROUPS);
@@ -233,7 +230,11 @@ const setup = () => {
 
 describe("SettingsLdapForm", () => {
   it("should submit the correct payload", async () => {
-    const { onSubmit } = setup();
+    const { onSubmit } = setup({
+      "ldap-enabled": true,
+      "ldap-group-membership-filter": null,
+      "ldap-sync-admin-group": null,
+    });
 
     const ATTRS = {
       "ldap-host": "example.com",
@@ -250,6 +251,7 @@ describe("SettingsLdapForm", () => {
       "ldap-group-sync": true,
       "ldap-group-base": "group-base",
       "ldap-group-membership-filter": "(filter2)",
+      "ldap-sync-admin-group": true,
     };
 
     userEvent.type(
@@ -286,7 +288,7 @@ describe("SettingsLdapForm", () => {
       await screen.findByRole("textbox", { name: /Last name attribute/ }),
       ATTRS["ldap-attribute-lastname"],
     );
-    userEvent.click(screen.getByRole("checkbox")); // checkbox for "ldap-group-sync"
+    userEvent.click(screen.getByTestId("group-sync-switch")); // checkbox for "ldap-group-sync"
     userEvent.type(
       await screen.findByRole("textbox", { name: /Group search base/ }),
       ATTRS["ldap-group-base"],
@@ -295,11 +297,24 @@ describe("SettingsLdapForm", () => {
       await screen.findByRole("textbox", { name: /Group membership filter/ }),
       ATTRS["ldap-group-membership-filter"],
     );
+    userEvent.click(
+      screen.getByRole("checkbox", { name: /Sync Administrator group/ }),
+    );
 
     userEvent.click(await screen.findByRole("button", { name: /Save/ }));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(ATTRS);
     });
+  });
+
+  it("should hide group membership and sync admin group fields when appropriate", async () => {
+    setup({ "ldap-enabled": true });
+    expect(
+      screen.queryByRole("textbox", { name: /Group membership filter/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("checkbox", { name: /Sync Administrator group/ }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -42,7 +42,7 @@ const LDAP_SCHEMA = Yup.object({
   "ldap-group-membership-filter": Yup.string().nullable().test(testParentheses),
 });
 
-type SettingValues = { [key: string]: SettingValue };
+export type SettingValues = { [key: string]: SettingValue };
 
 type LdapFormSettingElement = Omit<SettingElement, "key"> & {
   key: string; // ensuring key is required
