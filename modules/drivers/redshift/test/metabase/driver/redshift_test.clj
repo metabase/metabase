@@ -395,6 +395,8 @@
                (qp/process-query
                  (mt/native-query {:query "select interval '5 days'"}))))))))
 
+;;;; Server side generated timestamps for :relative-datetime tests follow.
+
 (defn- run-native-query [sql & params]
   (-> (mt/native-query {:query sql
                         :params params})
@@ -482,13 +484,16 @@
            (testing (str tz-setter " " timezone)
              (tz-setter timezone test-thunk))))))))
 
+;; Other configurations of timezone settings were also tested with values UTC America/Los_Angeles Europe/Prague.
+;; Test containing all configurations took ~500 seconds. Leaving here only one random configuration to be
+;; included in CI tests.
 (deftest ss-timestamp-multiple-tz-settings-test
   (mt/test-driver
    :redshift
    (mt/with-metadata-provider (mt/id)
      (testing "Value of server side generated timestamp matches the one from getdate() with multiple timezone settings"
        (mt/with-results-timezone-id "UTC"
-         (mt/with-database-timezone-id "America/New_York"
+         (mt/with-database-timezone-id "America/Los_Angeles"
            (mt/with-report-timezone-id "America/Los_Angeles"
              (mt/with-system-timezone-id "Europe/Prague"
                (let [test-thunk (getdate-vs-ss-ts-test-thunk-generator)]
@@ -503,36 +508,3 @@
                value [-30 0 7]
                :let [test-thunk (getdate-vs-ss-ts-test-thunk-generator unit value)]]
          (test-thunk))))))
-
-
-(defn- generate-tz-tests [fs tzs thunk]
-  (letfn [(combine-acc [acc [f & fs*] tzs]
-                       (if (nil? f)
-                         acc
-                         (recur (into acc (mapcat (fn [thunk*] (for [tz tzs] #(f tz thunk*)))) acc)
-                                fs*
-                                tzs)))]
-    (combine-acc [thunk] fs tzs)))
-
-(deftest tz-settings-combinations-test
-  (mt/test-driver
-   :redshift
-   (let [test-thunk (fn []
-                      (let [honey {:select [[(with-redefs-fn {#'redshift/use-server-side-timestamp? (constantly false)}
-                                               #(sql.qp/->honeysql :redshift [:relative-datetime -1 :week]))]
-                                            [(sql.qp/->honeysql :redshift [:relative-datetime -1 :week])]]}
-                            sql (sql/format honey)
-                            result (apply run-native-query sql)
-                            [db-generated ss-generated] (-> result mt/rows first)]
-                        (is (= db-generated ss-generated))))
-         tz-setters [qp.test-util/do-with-report-timezone-id
-                     test.tz/do-with-system-timezone-id
-                     qp.test-util/do-with-database-timezone-id
-                     qp.test-util/do-with-results-timezone-id]
-         tzs ["America/Los_Angeles"
-              "Europe/Prague"
-              "UTC"]
-         testcases (generate-tz-tests tz-setters tzs test-thunk)]
-     #_{:clj-kondo/ignore [:discouraged-var]}
-     (time (doseq [testcase testcases]
-             (time (testcase)))))))
