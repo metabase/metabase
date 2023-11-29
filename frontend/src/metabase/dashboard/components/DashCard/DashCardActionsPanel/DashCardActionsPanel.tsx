@@ -18,7 +18,7 @@ import { isLinkDashCard } from "metabase/dashboard/utils";
 
 import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
 import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
-import { DashActionButton } from "./DashCardActionButton/DashCardActionButton";
+import { DashCardActionButton } from "./DashCardActionButton/DashCardActionButton";
 import { AddSeriesButton } from "./AddSeriesButton/AddSeriesButton";
 import { ActionSettingsButtonConnected } from "./ActionSettingsButton/ActionSettingsButton";
 import { LinkCardEditButton } from "./LinkCardEditButton/LinkCardEditButton";
@@ -88,7 +88,7 @@ export function DashCardActionsPanel({
 
   if (supportPreviewing) {
     buttons.push(
-      <DashActionButton
+      <DashCardActionButton
         key="preview"
         onClick={onPreviewToggle}
         tooltip={isPreviewing ? t`Edit` : t`Preview`}
@@ -96,11 +96,11 @@ export function DashCardActionsPanel({
         analyticsEvent="Dashboard;Text;edit"
       >
         {isPreviewing ? (
-          <DashActionButton.Icon name="edit_document" />
+          <DashCardActionButton.Icon name="edit_document" />
         ) : (
-          <DashActionButton.Icon name="eye" size={18} />
+          <DashCardActionButton.Icon name="eye" size={18} />
         )}
-      </DashActionButton>,
+      </DashCardActionButton>,
     );
   }
 
@@ -119,14 +119,14 @@ export function DashCardActionsPanel({
 
     if (!isVirtualDashCard && !disableClickBehavior) {
       buttons.push(
-        <DashActionButton
+        <DashCardActionButton
           key="click-behavior-tooltip"
           tooltip={t`Click behavior`}
           analyticsEvent="Dashboard;Open Click Behavior Sidebar"
           onClick={showClickBehaviorSidebar}
         >
           <Icon name="click" />
-        </DashActionButton>,
+        </DashCardActionButton>,
       );
     }
 
@@ -170,13 +170,13 @@ export function DashCardActionsPanel({
     >
       <DashCardActionButtonsContainer>
         {buttons}
-        <DashActionButton
+        <DashCardActionButton
           onClick={onRemove}
           tooltip={t`Remove`}
           analyticsEvent="Dashboard;Remove Card Modal"
         >
-          <DashActionButton.Icon name="close" />
-        </DashActionButton>
+          <DashCardActionButton.Icon name="close" />
+        </DashCardActionButton>
       </DashCardActionButtonsContainer>
     </DashCardActionsPanelContainer>
   );

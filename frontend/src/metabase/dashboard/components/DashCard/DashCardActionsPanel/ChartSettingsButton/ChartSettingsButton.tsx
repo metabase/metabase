@@ -11,7 +11,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { DashActionButton } from "../DashCardActionButton/DashCardActionButton";
+import { DashCardActionButton } from "../DashCardActionButton/DashCardActionButton";
 
 interface Props {
   series: Series;
@@ -31,12 +31,12 @@ export function ChartSettingsButton({
       wide
       tall
       triggerElement={
-        <DashActionButton
+        <DashCardActionButton
           tooltip={t`Visualization options`}
           aria-label={t`Show visualization options`}
         >
-          <DashActionButton.Icon name="palette" />
-        </DashActionButton>
+          <DashCardActionButton.Icon name="palette" />
+        </DashCardActionButton>
       }
       enableMouseEvents
     >
