@@ -221,5 +221,53 @@ export function createAggregatedCellClickObject({
     },
   ];
 
+  return {
+    column: aggregationColumn,
+    value: aggregationColumnValue,
+    data,
+    dimensions,
+  };
+}
+
+interface PivotCellClickObjectOpts {
+  aggregationColumn: DatasetColumn;
+  aggregationColumnValue: RowValue;
+  breakoutColumn1: DatasetColumn;
+  breakoutColumn1Value: RowValue;
+  breakoutColumn2: DatasetColumn;
+  breakoutColumn2Value: RowValue;
+}
+
+export function createPivotCellClickObject({
+  aggregationColumn,
+  aggregationColumnValue,
+  breakoutColumn1,
+  breakoutColumn1Value,
+  breakoutColumn2,
+  breakoutColumn2Value,
+}: PivotCellClickObjectOpts): Lib.ClickObject {
+  const data = [
+    { col: breakoutColumn1, value: breakoutColumn1Value },
+    { col: breakoutColumn2, value: breakoutColumn2Value },
+    { col: aggregationColumn, value: aggregationColumnValue },
+  ];
+  const dimensions = [
+    { column: breakoutColumn1, value: breakoutColumn1Value },
+    { column: breakoutColumn2, value: breakoutColumn2Value },
+  ];
+
   return { value: aggregationColumnValue, data, dimensions };
+}
+
+interface LegendItemClickObjectOpts {
+  breakoutColumn: DatasetColumn;
+  breakoutColumnValue: RowValue;
+}
+
+export function createLegendItemClickObject({
+  breakoutColumn,
+  breakoutColumnValue,
+}: LegendItemClickObjectOpts) {
+  const dimensions = [{ column: breakoutColumn, value: breakoutColumnValue }];
+  return { value: breakoutColumnValue, dimensions };
 }
