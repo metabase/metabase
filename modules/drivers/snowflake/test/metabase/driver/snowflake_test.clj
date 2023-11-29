@@ -74,8 +74,6 @@
                (ddl/create-db-tables-ddl-statements :snowflake (-> (mt/get-dataset-definition defs/test-data)
                                                                    (update :database-name #(str "v3_" %))))))))))
 
-;; TODO -- disabled because these are randomly failing, will figure out when I'm back from vacation. I think it's a
-;; bug in the JDBC driver -- Cam
 (deftest describe-database-test
   (mt/test-driver :snowflake
     (testing "describe-database"
@@ -120,6 +118,23 @@
             (is (= [{:name "example_view"}]
                    (map (partial into {})
                         (t2/select [Table :name] :db_id (u/the-id database)))))))))))
+
+(deftest sync-dynamic-tables-test
+  (mt/test-driver :snowflake
+    (let [details #p (mt/dbdef->connection-details driver/*driver* :db {:database-name "dynamic_table_test"})
+          spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
+      (doseq [stmt ["DROP DATABASE IF EXISTS \"dynamic_table_test\";"
+                    "CREATE DATABASE \"dynamic_table_test\";"
+                    "CREATE TABLE \"dynamic_table_test\".\"PUBLIC\".\"metabase_users\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT);"
+                    "CREATE DYNAMIC TABLE \"dynamic_table_test\".\"PUBLIC\".\"metabase_fan\" target_lag = '1 minute' warehouse = 'COMPUTE_WH' AS
+                    SELECT * FROM \"dynamic_table_test\".\"PUBLIC\".\"metabase_users\" WHERE \"dynamic_table_test\".\"PUBLIC\".\"metabase_users\".\"name\" LIKE 'MB_%';"]]
+        (jdbc/execute! spec [stmt] {:transaction? false}))
+      (t2.with-temp/with-temp [Database database {:engine driver/*driver* :details (assoc details :db "dynamic_table_test")}]
+       (sync/sync-database! database)
+       (is (= #{"metabase_fan" "metabase_users"}
+              (t2/select-fn-set :name :model/Table :db_id (:id database))))
+       (is (= #{"id" "name"}
+              (t2/select-fn-set :name :model/Field :table_id (t2/select-one-pk :model/Table :name "metabase_fan" :db_id (:id database)))))))))
 
 (deftest describe-table-test
   (mt/test-driver :snowflake
