@@ -139,6 +139,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
         <div ref={helpTextTargetRef}>
           <ExpressionEditorTextfield
             helpTextTarget={helpTextTargetRef.current}
+            expression={expression}
             clause={clause}
             startRule={startRule}
             name={name}

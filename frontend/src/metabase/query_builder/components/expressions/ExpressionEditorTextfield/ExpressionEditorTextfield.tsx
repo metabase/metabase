@@ -45,6 +45,7 @@ const ACE_OPTIONS = {
 };
 
 interface ExpressionEditorTextfieldProps {
+  expression: Expression | undefined;
   clause: Lib.AggregationClause | Lib.ExpressionClause | undefined;
   name: string;
   legacyQuery: StructuredQuery;
@@ -83,15 +84,17 @@ function transformPropsToState(
 ): ExpressionEditorTextfieldState {
   const {
     legacyQuery,
+    expression: legacyExpression = ExpressionEditorTextfield.defaultProps
+      .expression,
     startRule = ExpressionEditorTextfield.defaultProps.startRule,
     clause,
     query,
     stageIndex,
   } = props;
-
-  const expression = clause
+  const expressionFromClause = clause
     ? Lib.legacyExpressionForExpressionClause(query, stageIndex, clause)
     : undefined;
+  const expression = expressionFromClause ?? legacyExpression;
   const source = format(expression, { legacyQuery, startRule });
 
   return {
