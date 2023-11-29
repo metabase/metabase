@@ -13,7 +13,8 @@ import { ExpressionWidget } from "metabase/query_builder/components/expressions/
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 
 import * as Lib from "metabase-lib";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Question from "metabase-lib/Question";
 
 import { QueryColumnPicker } from "../QueryColumnPicker";
 import {
@@ -34,7 +35,6 @@ interface AggregationPickerProps {
   stageIndex: number;
   operators: Lib.AggregationOperator[];
   hasExpressionInput?: boolean;
-  legacyQuery: StructuredQuery;
   maxHeight?: number;
   onSelect: (operator: Lib.Aggregatable) => void;
   onClose?: () => void;
@@ -68,7 +68,6 @@ export function AggregationPicker({
   stageIndex,
   operators,
   hasExpressionInput = true,
-  legacyQuery,
   maxHeight = DEFAULT_MAX_HEIGHT,
   onSelect,
   onClose,
@@ -203,6 +202,12 @@ export function AggregationPicker({
       onClose?.();
     },
     [onSelect, onClose],
+  );
+
+  const datasetQuery = Lib.toLegacyQuery(query);
+  const legacyQuery = new StructuredQuery(
+    new Question({ dataset_query: datasetQuery }),
+    datasetQuery,
   );
 
   if (isEditingExpression) {
