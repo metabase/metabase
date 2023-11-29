@@ -220,41 +220,29 @@
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (let [test-dashboard-name "Test Create Dashboard"]
           (mt/with-model-cleanup [:model/Dashboard]
-            (is (=? (merge
-                      dashboard-defaults
-                      {:name           test-dashboard-name
-                       :creator_id     (mt/user->id :rasta)
-                       :parameters     [{:id "abc123", :name "test", :type "date"}]
-                       :updated_at     true
-                       :created_at     true
-                       :collection_id  true
-                       :collection     true
-                       :cache_ttl      1234
-                       :last-edit-info {:timestamp true :id true :first_name "Rasta"
-                                        :last_name "Toucan" :email "rasta@metabase.com"}})
-                    (-> (mt/user-http-request :rasta :post 200 "dashboard"
-                                              {:name          test-dashboard-name
-                                               :parameters    [{:id "abc123", :name "test", :type "date"}]
-                                               :cache_ttl     1234
-                                               :collection_id (u/the-id collection)})
-                        dashboard-response)))))))))
-
-(deftest post-same-as-get-test
-  (testing "A POST /api/dashboard should return the same essential data as a GET of that same dashboard after creation"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (t2.with-temp/with-temp [Collection collection]
-        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        (let [test-dashboard-name "Test Create Dashboard"]
-          (mt/with-model-cleanup [:model/Dashboard]
             (let [{dashboard-id :id
                    :as          created} (mt/user-http-request :rasta :post 200 "dashboard"
                                                                {:name          test-dashboard-name
                                                                 :parameters    [{:id "abc123", :name "test", :type "date"}]
                                                                 :cache_ttl     1234
-                                                                :collection_id (u/the-id collection)})
-                  retrieved (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id))]
-              (is (= (update created :last-edit-info dissoc :timestamp)
-                     (update retrieved :last-edit-info dissoc :timestamp))))))))))
+                                                                :collection_id (u/the-id collection)})]
+              (is (=? (merge
+                        dashboard-defaults
+                        {:name           test-dashboard-name
+                         :creator_id     (mt/user->id :rasta)
+                         :parameters     [{:id "abc123", :name "test", :type "date"}]
+                         :updated_at     true
+                         :created_at     true
+                         :collection_id  true
+                         :collection     true
+                         :cache_ttl      1234
+                         :last-edit-info {:timestamp true :id true :first_name "Rasta"
+                                          :last_name "Toucan" :email "rasta@metabase.com"}})
+                      (dashboard-response created)))
+              (testing "A POST /api/dashboard should return the same essential data as a GET of that same dashboard after creation"
+                (let [retrieved (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id))]
+                  (is (= (update created :last-edit-info dissoc :timestamp)
+                         (update retrieved :last-edit-info dissoc :timestamp))))))))))))
 
 (deftest create-dashboard-with-collection-position-test
   (testing "POST /api/dashboard"
