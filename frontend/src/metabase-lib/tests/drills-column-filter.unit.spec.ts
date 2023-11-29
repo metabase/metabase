@@ -14,18 +14,19 @@ import {
 } from "metabase-lib/test-helpers";
 import {
   createNotEditableQuery,
-  createOrdersStructuredColumn,
+  createOrdersStructuredDatasetColumn,
   createOrdersStructuredField,
 } from "./drills-common";
 
 describe("drill-thru/column-filter", () => {
   const drillType = "drill-thru/column-filter";
-  const defaultQuery = createQuery();
   const stageIndex = 0;
-  const defaultColumn = createOrdersTotalDatasetColumn();
 
-  describe("availableDrillThrus", () => {
-    it("should allow to drill when clicked on a column header", () => {
+  describe("raw query", () => {
+    const defaultQuery = createQuery();
+    const defaultColumn = createOrdersTotalDatasetColumn();
+
+    it("should drill thru a column", () => {
       const clickObject = createColumnClickObject({ column: defaultColumn });
 
       const { drillInfo } = findDrillThru(
@@ -40,7 +41,7 @@ describe("drill-thru/column-filter", () => {
       });
     });
 
-    it("should not allow to drill when clicked on a value", () => {
+    it("should not drill thru a cell", () => {
       const clickObject = createRawCellClickObject({
         column: defaultColumn,
         value: 10,
@@ -56,7 +57,7 @@ describe("drill-thru/column-filter", () => {
       expect(drill).toBeNull();
     });
 
-    it("should not allow to drill when clicked on a null value", () => {
+    it("should not drill thru a cell with null", () => {
       const clickObject = createRawCellClickObject({
         column: defaultColumn,
         value: null,
@@ -72,7 +73,7 @@ describe("drill-thru/column-filter", () => {
       expect(drill).toBeNull();
     });
 
-    it('should not allow to drill with "type/Structured" type', () => {
+    it("should not drill thru a JSON column", () => {
       const metadata = createMockMetadata({
         databases: [
           createSampleDatabase({
@@ -85,7 +86,7 @@ describe("drill-thru/column-filter", () => {
         ],
       });
       const query = createQuery({ metadata });
-      const column = createOrdersStructuredColumn();
+      const column = createOrdersStructuredDatasetColumn();
       const clickObject = createColumnClickObject({ column });
 
       const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
@@ -94,7 +95,7 @@ describe("drill-thru/column-filter", () => {
     });
 
     // eslint-disable-next-line jest/no-disabled-tests
-    it.skip("should not allow to drill with a non-editable query (metabase#36125)", () => {
+    it.skip("should not drill thru a non-editable query (metabase#36125)", () => {
       const query = createNotEditableQuery(defaultQuery);
       const clickObject = createColumnClickObject({ column: defaultColumn });
       const drill = queryDrillThru(query, stageIndex, clickObject, drillType);

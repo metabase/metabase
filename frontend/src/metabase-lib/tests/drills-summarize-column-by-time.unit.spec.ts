@@ -17,7 +17,7 @@ import {
 } from "metabase-lib/test-helpers";
 import {
   createNotEditableQuery,
-  createOrdersStructuredColumn,
+  createOrdersStructuredDatasetColumn,
   createOrdersStructuredField,
 } from "./drills-common";
 
@@ -126,7 +126,7 @@ describe("drill-thru/summarize-column-by-time", () => {
       });
 
       const query = createQuery({ metadata });
-      const column = createOrdersStructuredColumn();
+      const column = createOrdersStructuredDatasetColumn();
       const clickObject = createColumnClickObject({ column });
 
       const drill = queryDrillThru(query, stageIndex, clickObject, drillType);

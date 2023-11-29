@@ -56,7 +56,7 @@ export function createOrdersDescriptionField() {
   return createMockField(FIELDS.description);
 }
 
-export function createOrdersDescriptionColumn() {
+export function createOrdersDescriptionDatasetColumn() {
   return createMockColumn(FIELDS.description);
 }
 
@@ -64,7 +64,7 @@ export function createOrdersCommentField() {
   return createMockField(FIELDS.comment);
 }
 
-export function createOrdersCommentColumn() {
+export function createOrdersCommentDatasetColumn() {
   return createMockColumn(FIELDS.comment);
 }
 
@@ -72,7 +72,7 @@ export function createOrdersStructuredField() {
   return createMockField(FIELDS.structured);
 }
 
-export function createOrdersStructuredColumn() {
+export function createOrdersStructuredDatasetColumn() {
   return createMockColumn(FIELDS.structured);
 }
 
@@ -80,11 +80,11 @@ export function createOrdersSerializedJSONField() {
   return createMockField(FIELDS.serializedJSON);
 }
 
-export function createOrdersSerializedJSONColumn() {
+export function createOrdersSerializedJSONDatasetColumn() {
   return createMockColumn(FIELDS.serializedJSON);
 }
 
-export function createCountColumn() {
+export function createCountDatasetColumn() {
   return createMockColumn({
     id: undefined,
     table_id: undefined,

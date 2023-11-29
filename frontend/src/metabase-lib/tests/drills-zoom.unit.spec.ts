@@ -20,7 +20,7 @@ import {
 } from "metabase-lib/test-helpers";
 import {
   createAggregatedQueryWithBreakout,
-  createCountColumn,
+  createCountDatasetColumn,
   createNotEditableQuery,
 } from "metabase-lib/tests/drills-common";
 
@@ -75,7 +75,7 @@ describe("drill-thru/zoom", () => {
         breakoutColumnTableName: "ORDERS",
       });
       const clickObject = createAggregatedCellClickObject({
-        aggregationColumn: createCountColumn(),
+        aggregationColumn: createCountDatasetColumn(),
         aggregationColumnValue: 10,
         breakoutColumn: createOrdersTotalDatasetColumn({ source: "breakout" }),
         breakoutColumnValue: 20,

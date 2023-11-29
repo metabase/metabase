@@ -6,7 +6,10 @@ import {
   findDrillThru,
   queryDrillThru,
 } from "metabase-lib/test-helpers";
-import { createAggregatedQuery, createCountColumn } from "./drills-common";
+import {
+  createAggregatedQuery,
+  createCountDatasetColumn,
+} from "./drills-common";
 
 describe("drill-thru/pivot", () => {
   const drillType = "drill-thru/pivot";
@@ -19,7 +22,7 @@ describe("drill-thru/pivot", () => {
       value: 10,
     });
 
-    it("should not allow to drill a raw query", () => {
+    it("should not drill thru a raw query", () => {
       const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
       expect(drill).toBeNull();
     });
@@ -27,7 +30,7 @@ describe("drill-thru/pivot", () => {
 
   describe("1 aggregation", () => {
     const query = createAggregatedQuery({ aggregationOperatorName: "count" });
-    const column = createCountColumn();
+    const column = createCountDatasetColumn();
     const clickObject = createRawCellClickObject({ column, value: 10 });
 
     it("should make pivot drill available", () => {
@@ -54,7 +57,7 @@ describe("drill-thru/pivot", () => {
     });
 
     it.each<[Lib.PivotType, number]>([["category", 5]])(
-      'should drill with a "%s" column',
+      'should drill thru a "%s" column',
       (pivotType, columnCount) => {
         const { drill } = findDrillThru(
           query,

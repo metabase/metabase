@@ -11,7 +11,7 @@ import {
 } from "metabase-lib/test-helpers";
 import {
   createAggregatedQueryWithBreakout,
-  createCountColumn,
+  createCountDatasetColumn,
   createNotEditableQuery,
 } from "./drills-common";
 
@@ -19,7 +19,7 @@ import {
 describe.skip("drill-thru/zoom-in.binning (metabase#36177)", () => {
   const drillType = "drill-thru/zoom-in.binning";
   const stageIndex = 0;
-  const aggregationColumn = createCountColumn();
+  const aggregationColumn = createCountDatasetColumn();
 
   describe.each([
     {

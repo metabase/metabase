@@ -14,7 +14,7 @@ import {
 import {
   createAggregatedQueryWithBreakout,
   createAggregatedQueryWithBreakouts,
-  createCountColumn,
+  createCountDatasetColumn,
   createNotEditableQuery,
 } from "./drills-common";
 
@@ -22,7 +22,7 @@ import {
 describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
   const drillType = "drill-thru/zoom-in.timeseries";
   const stageIndex = 0;
-  const aggregationColumn = createCountColumn();
+  const aggregationColumn = createCountDatasetColumn();
   const breakoutColumn = createOrdersCreatedAtDatasetColumn({
     source: "breakout",
   });

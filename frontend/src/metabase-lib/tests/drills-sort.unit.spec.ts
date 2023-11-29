@@ -16,7 +16,7 @@ import {
 import {
   createNotEditableQuery,
   createSortedQuery,
-  createOrdersStructuredColumn,
+  createOrdersStructuredDatasetColumn,
   createOrdersStructuredField,
 } from "./drills-common";
 
@@ -26,181 +26,115 @@ describe("drill-thru/sort", () => {
   const stageIndex = 0;
   const defaultColumn = createOrdersTotalDatasetColumn();
 
-  describe("availableDrillThrus", () => {
-    it("should allow to drill when the query is not sorted", () => {
-      const clickObject = createColumnClickObject({
-        column: defaultColumn,
-      });
-
-      const { drillInfo } = findDrillThru(
+  it.each<Lib.OrderByDirection>(["asc", "desc"])(
+    'should drill thru a column from a non-sorted query with "%s" direction',
+    direction => {
+      const clickObject = createColumnClickObject({ column: defaultColumn });
+      const { drill, drillInfo } = findDrillThru(
         defaultQuery,
         stageIndex,
         clickObject,
         drillType,
       );
-
       expect(drillInfo).toMatchObject({
-        type: drillType,
         directions: ["asc", "desc"],
       });
-    });
 
-    it("should allow to drill when the query is sorted ascending", () => {
+      const newQuery = Lib.drillThru(
+        defaultQuery,
+        stageIndex,
+        drill,
+        direction,
+      );
+      expect(Lib.orderBys(newQuery, stageIndex)).toHaveLength(1);
+    },
+  );
+
+  it.each<Lib.OrderByDirection>(["asc", "desc"])(
+    'should thru a column from a sorted query with "%s" direction',
+    direction => {
       const query = createSortedQuery({
         columnName: "TOTAL",
         columnTableName: "ORDERS",
-        direction: "asc",
+        direction: direction === "asc" ? "desc" : "asc",
       });
       const clickObject = createColumnClickObject({
         column: defaultColumn,
       });
-
-      const { drillInfo } = findDrillThru(
+      const { drill, drillInfo } = findDrillThru(
         query,
         stageIndex,
         clickObject,
         drillType,
       );
-
       expect(drillInfo).toMatchObject({
-        type: drillType,
-        directions: ["desc"],
+        directions: [direction],
       });
+
+      const newQuery = Lib.drillThru(query, stageIndex, drill, direction);
+      expect(Lib.orderBys(newQuery, stageIndex)).toHaveLength(1);
+    },
+  );
+
+  it("should not drill thru a cell", () => {
+    const clickObject = createRawCellClickObject({
+      column: defaultColumn,
+      value: 10,
     });
 
-    it("should allow to drill when the query is sorted descending", () => {
-      const query = createSortedQuery({
-        columnName: "TOTAL",
-        columnTableName: "ORDERS",
-        direction: "desc",
-      });
-      const clickObject = createColumnClickObject({
-        column: defaultColumn,
-      });
+    const drill = queryDrillThru(
+      defaultQuery,
+      stageIndex,
+      clickObject,
+      drillType,
+    );
 
-      const { drillInfo } = findDrillThru(
-        query,
-        stageIndex,
-        clickObject,
-        drillType,
-      );
-
-      expect(drillInfo).toMatchObject({
-        type: drillType,
-        directions: ["asc"],
-      });
-    });
-
-    it("should not allow to drill when clicked on a value", () => {
-      const clickObject = createRawCellClickObject({
-        column: defaultColumn,
-        value: 10,
-      });
-
-      const drill = queryDrillThru(
-        defaultQuery,
-        stageIndex,
-        clickObject,
-        drillType,
-      );
-
-      expect(drill).toBeNull();
-    });
-
-    it("should not allow to drill when clicked on a null value", () => {
-      const clickObject = createRawCellClickObject({
-        column: defaultColumn,
-        value: null,
-      });
-
-      const drill = queryDrillThru(
-        defaultQuery,
-        stageIndex,
-        clickObject,
-        drillType,
-      );
-
-      expect(drill).toBeNull();
-    });
-
-    it("should not allow to drill with a non-editable query", () => {
-      const query = createNotEditableQuery(defaultQuery);
-      const clickObject = createColumnClickObject({
-        column: defaultColumn,
-      });
-
-      const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
-
-      expect(drill).toBeNull();
-    });
-
-    it('should not allow to drill with "type/Structured" type', () => {
-      const metadata = createMockMetadata({
-        databases: [
-          createSampleDatabase({
-            tables: [
-              createOrdersTable({
-                fields: [createOrdersIdField(), createOrdersStructuredField()],
-              }),
-            ],
-          }),
-        ],
-      });
-
-      const query = createQuery({ metadata });
-      const column = createOrdersStructuredColumn();
-      const clickObject = createColumnClickObject({ column });
-      const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
-
-      expect(drill).toBeNull();
-    });
+    expect(drill).toBeNull();
   });
 
-  describe("drillThru", () => {
-    it.each<Lib.OrderByDirection>(["asc", "desc"])(
-      'should drill with a non-sorted query and "%s" direction',
-      direction => {
-        const clickObject = createColumnClickObject({ column: defaultColumn });
-        const { drill } = findDrillThru(
-          defaultQuery,
-          stageIndex,
-          clickObject,
-          drillType,
-        );
+  it("should not drill thru a cell with null value", () => {
+    const clickObject = createRawCellClickObject({
+      column: defaultColumn,
+      value: null,
+    });
 
-        const newQuery = Lib.drillThru(
-          defaultQuery,
-          stageIndex,
-          drill,
-          direction,
-        );
-
-        expect(Lib.orderBys(newQuery, stageIndex)).toHaveLength(1);
-      },
+    const drill = queryDrillThru(
+      defaultQuery,
+      stageIndex,
+      clickObject,
+      drillType,
     );
 
-    it.each<Lib.OrderByDirection>(["asc", "desc"])(
-      'should drill with an sorted query and "%s" direction',
-      direction => {
-        const query = createSortedQuery({
-          columnName: "TOTAL",
-          columnTableName: "ORDERS",
-          direction: direction === "asc" ? "desc" : "asc",
-        });
-        const clickObject = createColumnClickObject({
-          column: defaultColumn,
-        });
-        const { drill } = findDrillThru(
-          query,
-          stageIndex,
-          clickObject,
-          drillType,
-        );
+    expect(drill).toBeNull();
+  });
 
-        const newQuery = Lib.drillThru(query, stageIndex, drill, direction);
+  it("should not drill thru a non-editable query", () => {
+    const query = createNotEditableQuery(defaultQuery);
+    const clickObject = createColumnClickObject({
+      column: defaultColumn,
+    });
+    const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
+    expect(drill).toBeNull();
+  });
 
-        expect(Lib.orderBys(newQuery, stageIndex)).toHaveLength(1);
-      },
-    );
+  it("should not drill a JSON column", () => {
+    const metadata = createMockMetadata({
+      databases: [
+        createSampleDatabase({
+          tables: [
+            createOrdersTable({
+              fields: [createOrdersIdField(), createOrdersStructuredField()],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const query = createQuery({ metadata });
+    const column = createOrdersStructuredDatasetColumn();
+    const clickObject = createColumnClickObject({ column });
+    const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
+
+    expect(drill).toBeNull();
   });
 });

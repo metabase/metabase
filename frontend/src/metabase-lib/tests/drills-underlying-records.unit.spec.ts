@@ -16,7 +16,7 @@ import {
 import {
   createAggregatedQueryWithBreakout,
   createAggregatedQueryWithBreakouts,
-  createCountColumn,
+  createCountDatasetColumn,
   createNotEditableQuery,
 } from "./drills-common";
 
@@ -28,7 +28,7 @@ describe("drill-thru/underlying-records", () => {
     breakoutColumnTableName: "ORDERS",
   });
   const stageIndex = 0;
-  const aggregationColumn = createCountColumn();
+  const aggregationColumn = createCountDatasetColumn();
   const breakoutColumn = createOrdersCreatedAtDatasetColumn({
     source: "breakout",
   });
