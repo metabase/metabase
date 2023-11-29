@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, type ChangeEvent } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -21,7 +21,7 @@ import FormCollectionPicker from "metabase/collections/containers/FormCollection
 
 import { Button, Flex, Text, Tooltip } from "metabase/ui";
 
-import type { CollectionId, Dashboard } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
 import { Icon } from "metabase/core/components/Icon";
 import { useSelector } from "metabase/lib/redux";
@@ -43,28 +43,23 @@ export interface CopyDashboardProperties {
   is_shallow_copy: boolean;
 }
 
-export interface CopyDashboardFormOwnProps {
+export interface CopyDashboardFormProps {
   collectionId?: CollectionId | null; // can be used by `getInitialCollectionId`
   onCopy: (dashboard: CopyDashboardProperties) => void;
+  onIsShallowCopyChange: (val: boolean) => void;
   onCancel?: () => void;
-  initialValues?: CopyDashboardProperties | null;
+  initialValues?: Partial<CopyDashboardProperties> | null;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
 }
-interface CreateDashboardFormDispatchProps {
-  handleCreateDashboard: (
-    dashboard: CopyDashboardProperties,
-  ) => Promise<Dashboard>;
-}
-
-type Props = CopyDashboardFormOwnProps & CreateDashboardFormDispatchProps;
 
 export const CopyDashboardForm = ({
   onCancel,
   onCopy,
+  onIsShallowCopyChange,
   initialValues,
   filterPersonalCollections,
   ...rest
-}: Props) => {
+}: CopyDashboardFormProps) => {
   const initialCollectionId = useSelector<CollectionId>(state =>
     Collections.selectors.getInitialCollectionId(state, rest),
   );
@@ -92,49 +87,54 @@ export const CopyDashboardForm = ({
       enableReinitialize
       onSubmit={handleCopy}
     >
-      {() => (
-        <Form>
-          <FormTextInput
-            name="name"
-            label={t`Name`}
-            placeholder={t`What is the name of your dashboard?`}
-            autoFocus
-            mb="1rem"
-          />
-          <FormTextArea
-            name="description"
-            label={t`Description`}
-            placeholder={t`It's optional but oh, so helpful`}
-            nullable
-            mb="1rem"
-          />
-          <FormCollectionPicker
-            name="collection_id"
-            title={t`Which collection should this go in?`}
-            filterPersonalCollections={filterPersonalCollections}
-          />
-          <FormCheckbox
-            name="is_shallow_copy"
-            label={
-              <Flex align="center">
-                <Text mr="0.25rem">{t`Only duplicate the dashboard`}</Text>
-                <Tooltip
-                  label={t`If you check this, the cards in the duplicated dashboard will reference the original questions.`}
-                  width={375}
-                  multiline
-                >
-                  <Icon name="info" size={18} />
-                </Tooltip>
-              </Flex>
-            }
-          />
-          <FormFooter>
-            <FormErrorMessage inline />
-            {!!onCancel && <Button onClick={onCancel}>{t`Cancel`}</Button>}
-            <FormSubmitButton title={t`Create`} primary />
-          </FormFooter>
-        </Form>
-      )}
+      {() => {
+        return (
+          <Form>
+            <FormTextInput
+              name="name"
+              label={t`Name`}
+              placeholder={t`What is the name of your dashboard?`}
+              autoFocus
+              mb="1rem"
+            />
+            <FormTextArea
+              name="description"
+              label={t`Description`}
+              placeholder={t`It's optional but oh, so helpful`}
+              nullable
+              mb="1rem"
+            />
+            <FormCollectionPicker
+              name="collection_id"
+              title={t`Which collection should this go in?`}
+              filterPersonalCollections={filterPersonalCollections}
+            />
+            <FormCheckbox
+              name="is_shallow_copy"
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                onIsShallowCopyChange(e.target.checked);
+              }}
+              label={
+                <Flex align="center">
+                  <Text mr="0.25rem">{t`Only duplicate the dashboard`}</Text>
+                  <Tooltip
+                    label={t`If you check this, the cards in the duplicated dashboard will reference the original questions.`}
+                    width={375}
+                    multiline
+                  >
+                    <Icon name="info" size={18} />
+                  </Tooltip>
+                </Flex>
+              }
+            />
+            <FormFooter>
+              <FormErrorMessage inline />
+              {!!onCancel && <Button onClick={onCancel}>{t`Cancel`}</Button>}
+              <FormSubmitButton title={t`Create`} primary />
+            </FormFooter>
+          </Form>
+        );
+      }}
     </FormProvider>
   );
 };

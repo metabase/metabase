@@ -76,7 +76,7 @@ import { PublicQuestion } from "metabase/public/containers/PublicQuestion";
 import PublicDashboard from "metabase/public/containers/PublicDashboard";
 import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
 import { DashboardMoveModalConnected } from "metabase/dashboard/components/DashboardMoveModal";
-import { DashboardCopyModalConnected } from "metabase/dashboard/components/DashboardCopyModal";
+import { CopyDashboardModal } from "metabase/dashboard/containers/CopyDashboardModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 import { HomePage } from "metabase/home/components/HomePage";
@@ -175,7 +175,7 @@ export const getRoutes = store => (
           component={DashboardAppConnected}
         >
           <ModalRoute path="move" modal={DashboardMoveModalConnected} />
-          <ModalRoute path="copy" modal={DashboardCopyModalConnected} />
+          <ModalRoute path="copy" modal={CopyDashboardModal} />
           <ModalRoute path="archive" modal={ArchiveDashboardModalConnected} />
         </Route>
 

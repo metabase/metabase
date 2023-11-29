@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { t } from "ttag";
 import { dissoc } from "icepick";
 import { push } from "react-router-redux";
@@ -10,22 +11,35 @@ import ModalContent from "metabase/components/ModalContent";
 import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";
+import type { Dashboard } from "metabase-types/api";
 import {
-  type CopyDashboardFormOwnProps,
+  type CopyDashboardFormProps,
   type CopyDashboardProperties,
   CopyDashboardForm,
 } from "../forms/CopyDashboardForm";
 import { getDashboardComplete } from "../selectors";
 
 interface CreateDashboardModalOwnProps
-  extends Omit<CopyDashboardFormOwnProps, "onCancel"> {
+  extends Omit<CopyDashboardFormProps, "onCancel"> {
   onClose?: () => void;
   params: Params;
 }
 
-type Props = CreateDashboardModalOwnProps & CopyDashboardFormOwnProps;
+type Props = CreateDashboardModalOwnProps & CopyDashboardFormProps;
+
+const getTitle = (dashboard: Dashboard | null, isShallowCopy: boolean) => {
+  if (!dashboard?.name) {
+    return "";
+  } else if (isShallowCopy) {
+    return t`Duplicate "${dashboard.name}"`;
+  } else {
+    return t`Duplicate "${dashboard.name}" and its questions`;
+  }
+};
 
 export function CopyDashboardModal({ onClose, params, ...props }: Props) {
+  const [isShallowCopy, setIsShallowCopy] = useState(false);
+
   const originalDashboard = useSelector(getDashboardComplete);
   const dispatch = useDispatch();
 
@@ -44,11 +58,19 @@ export function CopyDashboardModal({ onClose, params, ...props }: Props) {
   return (
     <CreateCollectionOnTheGo>
       {({ resumedValues }) => (
-        <ModalContent title={t`Copy dashboard`} onClose={onClose}>
+        <ModalContent
+          title={getTitle(originalDashboard, isShallowCopy)}
+          onClose={onClose}
+        >
           <CopyDashboardForm
             {...props}
             onCancel={onClose}
-            initialValues={{ ...originalDashboard, ...resumedValues }}
+            initialValues={{
+              ...originalDashboard,
+              ...resumedValues,
+              is_shallow_copy: false,
+            }}
+            onIsShallowCopyChange={setIsShallowCopy}
             onCopy={(dashboard: CopyDashboardProperties) =>
               handleCopy(dashboard)
             }
