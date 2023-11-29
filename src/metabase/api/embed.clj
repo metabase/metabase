@@ -28,6 +28,7 @@
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.params :refer [fields-backing-params]]
    [metabase.pulse.parameters :as params]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -113,18 +114,23 @@
         :when (not (contains? params-to-remove (keyword (:slug param))))]
     param))
 
+(defn- fetch-params
+  "Fetches params in both embedding-params and the provided dashboard-or-card object."
+  [dashboard-or-card embedding-params]
+  (set (concat (for [[param status] embedding-params
+                     :when          (not= status "enabled")]
+                 param)
+               (for [{slug :slug} (:parameters dashboard-or-card)
+                     :let         [param (keyword slug)]
+                     :when        (not (contains? embedding-params param))]
+                 param))))
+
 (mu/defn ^:private remove-locked-and-disabled-params
   "Remove the `:parameters` for `dashboard-or-card` that listed as `disabled` or `locked` in the `embedding-params`
   whitelist, or not present in the whitelist. This is done so the frontend doesn't display widgets for params the user
   can't set."
   [dashboard-or-card embedding-params :- ms/EmbeddingParams]
-  (let [params-to-remove (set (concat (for [[param status] embedding-params
-                                            :when          (not= status "enabled")]
-                                        param)
-                                      (for [{slug :slug} (:parameters dashboard-or-card)
-                                            :let         [param (keyword slug)]
-                                            :when        (not (contains? embedding-params param))]
-                                        param)))]
+  (let [params-to-remove (fetch-params dashboard-or-card embedding-params)]
     (update dashboard-or-card :parameters remove-params-in-set params-to-remove)))
 
 (defn- remove-token-parameters
@@ -251,35 +257,34 @@
 
 ;;; -------------------------- Dashboard Fns used by both /api/embed and /api/preview_embed --------------------------
 
-(defn- remove-locked-and-disabled-param-values [dashboard embedding-params]
-  (let [params-to-remove (set (concat (for [[param status] embedding-params
-                                            :when          (not= status "enabled")]
-                                        param)
-                                      (for [{slug :slug} (:parameters dashboard)
-                                            :let         [param (keyword slug)]
-                                            :when        (not (contains? embedding-params param))]
-                                        param)))
-        params-ids-to-remove (set (for [parameter (:parameters dashboard)
-                                        :when     (contains? params-to-remove (keyword (:slug parameter)))]
-                                    (:id parameter)))
-        field-ids-to-remove (flatten
-                             (for [card (:dashcards dashboard)]
-                               (for [parameter-mappings (:parameter_mappings card)
-                                     :when              (contains? params-ids-to-remove (:parameter_id parameter-mappings))]
-                                 (-> (:target parameter-mappings)
-                                     (nth 1)
-                                     (nth 1)))))
+(defn- remove-linked-filters-param-values [dashboard]
+  (let [params (into #{} (map :id (:parameters dashboard)))
+        param-ids-to-remove (into #{}
+                                  (flatten
+                                   (for [{param-id :id
+                                          filtering-parameters :filteringParameters} (:parameters dashboard)]
+                                     (for [param filtering-parameters
+                                           :when (not (contains? params param))]
+                                       param-id))))
+        field-ids-to-remove (apply concat (map (fields-backing-params (:dashcards dashboard)) param-ids-to-remove))
+        remove-linked-param-values (fn [param-values parameter] (assoc-in param-values [parameter :values] []))]
+    (update dashboard :param_values #(reduce remove-linked-param-values % field-ids-to-remove))))
+
+(defn- remove-locked-parameters [dashboard embedding-params]
+  (let [params-to-remove (fetch-params dashboard embedding-params)
+        param-ids-to-remove (set (for [parameter (:parameters dashboard)
+                                       :when     (contains? params-to-remove (keyword (:slug parameter)))]
+                                   (:id parameter)))
+        field-ids-to-remove (apply concat (map (fields-backing-params (:dashcards dashboard)) param-ids-to-remove))
         remove-parameters (fn [dashcard]
                             (update dashcard :parameter_mappings
                                     (fn [param-mappings]
-                                      (into []
-                                       (filter (fn [{:keys [parameter_id]}]
-                                                 (not (contains? params-ids-to-remove parameter_id)))
-                                               param-mappings)))))]
+                                      (remove (fn [{:keys [parameter_id]}]
+                                                (contains? param-ids-to-remove parameter_id)) param-mappings))))]
     (-> dashboard
-        (assoc :dashcards (map remove-parameters (:dashcards dashboard)))
-        (assoc :param_fields (apply (partial dissoc (:param_fields dashboard)) field-ids-to-remove))
-        (assoc :param_values (apply (partial dissoc (:param_values dashboard)) field-ids-to-remove)))))
+        (update :dashcards #(map remove-parameters %))
+        (update :param_fields #(apply dissoc % field-ids-to-remove))
+        (update :param_values #(apply dissoc % field-ids-to-remove)))))
 
 (defn dashboard-for-unsigned-token
   "Return the info needed for embedding about Dashboard specified in `token`. Additional `constraints` can be passed to
@@ -292,9 +297,10 @@
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (-> (apply api.public/public-dashboard :id dashboard-id, constraints)
         (substitute-token-parameters-in-text token-params)
-        (remove-locked-and-disabled-param-values embedding-params)
+        (remove-locked-parameters embedding-params)
         (remove-token-parameters token-params)
-        (remove-locked-and-disabled-params embedding-params))))
+        (remove-locked-and-disabled-params embedding-params)
+        (remove-linked-filters-param-values))))
 
 (defn dashcard-results-async
   "Return results for running the query belonging to a DashboardCard. Returns a `StreamingResponse`."
