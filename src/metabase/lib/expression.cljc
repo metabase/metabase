@@ -353,10 +353,12 @@
   (-> an-expression-clause lib.options/options :lib/expression-name))
 
 (mu/defn with-expression-name :- ::lib.schema.expression/expression
-  "Return a new expression clause like `an-expression-clause` but with name `new-name`."
+  "Return a new expression clause like `an-expression-clause` but with name `new-name`.
+  This also sets the :display-name property to support named aggregation expressions (custom aggregation columns)."
   [an-expression-clause :- ::lib.schema.expression/expression
    new-name :- :string]
   (lib.options/update-options
    an-expression-clause assoc
    :lib/expression-name new-name
+   :display-name new-name
    :lib/uuid (str (random-uuid))))

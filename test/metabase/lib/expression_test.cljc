@@ -369,6 +369,8 @@
       (is (= ["expr"]
              (map lib/expression-name orig-exprs)))
       (is (= "newly-named-expression"
-             (lib/expression-name expr)))
+             (lib/expression-name expr)
+             (lib/display-name query expr)
+             (:display-name (lib/display-info query expr))))
       (is (not= (lib.options/uuid orig-expr)
                 (lib.options/uuid expr))))))

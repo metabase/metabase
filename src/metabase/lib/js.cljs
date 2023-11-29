@@ -701,7 +701,8 @@
   (lib.core/expression-name an-expression-clause))
 
 (defn ^:export with-expression-name
-  "Return an new expressions clause like `an-expression-clause` but with name `new-name`."
+  "Return an new expressions clause like `an-expression-clause` but with name `new-name`.
+  This also sets the :display-name property to support named aggregation expressions (custom aggregation columns)."
   [an-expression-clause new-name]
   (lib.core/with-expression-name an-expression-clause new-name))
 
