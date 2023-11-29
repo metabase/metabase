@@ -1,0 +1,24 @@
+name: Upload junitxml test results
+description: Uploads all junitxml files for a particular path
+
+inputs:
+  filepaths:
+    description: glob pattern for uploads
+  trunk_token:
+    description: trunk token used for uploading
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        lfs: true
+
+    - name: Upload results (metrics service)
+      shell: bash
+      run: |
+        ./.trunk-ci-analytics/metrics-uploader-linux-x64 metrics upload-tests --token=${{ inputs.trunk_token }} ${{ inputs.filepaths }}
+      env:
+        REPO_URL: ${{ github.repositoryUrl }}
+      continue-on-error: true
