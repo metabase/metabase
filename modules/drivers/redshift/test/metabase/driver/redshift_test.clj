@@ -463,8 +463,8 @@
      (let [honey {:select [[(with-redefs-fn {#'redshift/use-server-side-timestamp? (constantly false)}
                               #(sql.qp/->honeysql :redshift [:relative-datetime value unit]))]
                            [(sql.qp/->honeysql :redshift [:relative-datetime value unit])]]}
-           [sql params] (sql/format honey)
-           result (run-native-query sql params)
+           sql (sql/format honey)
+           result (apply run-native-query sql)
            [db-generated ss-generated] (-> result mt/rows first)]
        (is (= db-generated ss-generated))))))
 

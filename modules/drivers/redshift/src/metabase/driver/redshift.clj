@@ -210,15 +210,19 @@
     (sql.qp/datetime-diff driver unit x y)))
 
 (defn- server-side-relative-ts
-  "Return timestamp that would match db side getdate() with truncation and addition."
+  "Return timestamp that would match db side getdate() with truncation and addition, when used as an arg in query."
   [amount unit]
-  ;; Zoned date-time with TODO write this down!!!
-  ;; (t/offset-date-time (t/zoned-date-time) (qp.timezone/system-timezone-id))
+  ;; `(t/local-date-time)` is fine as a starting point because getdate() docs state it: "returns the current
+  ;; date and time in the current session time zone".
+  ;; Ref: https://docs.aws.amazon.com/redshift/latest/dg/r_GETDATE.html
+  ;; When session timezone is set, date time values are adjusted by the java driver.
   (-> (t/local-date-time)
       (u.date/truncate unit)
       (u.date/add unit amount)))
 
-(defn- use-server-side-timestamp? [unit]
+(defn- use-server-side-timestamp?
+  "Server side generated timestamp in :relative-datetime should be used with following units. Units gt or eq to :day."
+  [unit]
   (contains? #{:day :week :month :year} unit))
 
 (defmethod sql.qp/->honeysql [:redshift :relative-datetime]
