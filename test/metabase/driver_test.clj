@@ -103,7 +103,7 @@
                               (contains? #{:redshift :snowfake :vertica} driver/*driver*)
                               (assoc details :db "FAKE_NAME_THAT_DEFINITELY_WONT_BE_USED")
                               (= driver/*driver* :oracle)
-                              (assoc details :sid "FAKE_SID_THAT_DEFINITELY_WONT_BE_USED")
+                              (assoc details :service-name "FAKE_SID_THAT_DEFINITELY_WONT_BE_USED")
                               (= driver/*driver* :presto-jdbc)
                               (assoc details :catalog "FAKE_CATALOG_THAT_DEFINITELY_WONT_BE_USED")
                               ;; otherwise destroy the db and use the original details
@@ -157,7 +157,7 @@
                                   (contains? #{:redshift :snowflake :vertica} driver/*driver*)
                                   (assoc details :db "FAKE_NAME_THAT_DEFINITELY_WONT_BE_USED")
                                   (= driver/*driver* :oracle)
-                                  (assoc details :sid "FAKE_SID_THAT_DEFINITELY_WONT_BE_USED")
+                                  (assoc details :service-name "FAKE_SID_THAT_DEFINITELY_WONT_BE_USED")
                                   (= driver/*driver* :presto-jdbc)
                                   (assoc details :catalog "FAKE_CATALOG_THAT_DEFINITELY_WONT_BE_USED"))]
                 (t2/update! :model/Database (u/the-id db) {:details new-details}))
