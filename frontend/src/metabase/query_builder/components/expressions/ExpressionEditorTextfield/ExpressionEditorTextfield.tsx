@@ -420,6 +420,8 @@ class ExpressionEditorTextfield extends React.Component<
         if (isExpression(expression)) {
           onCommit(expression, expressionClause);
         }
+      } else {
+        onError({ message: t`Invalid expression` });
       }
     }
   }

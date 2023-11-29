@@ -91,7 +91,15 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
   const isValid =
     !error && isValidName && (isValidExpression || isValidExpressionClause);
 
-  const handleCommit = () => {
+  const handleCommit = (
+    expression: Expression | null,
+    clause: Lib.AggregationClause | Lib.ExpressionClause | null,
+  ) => {
+    const isValidExpression = isNotNull(expression) && isExpression(expression);
+    const isValidExpressionClause = isNotNull(clause);
+    const isValid =
+      !error && isValidName && (isValidExpression || isValidExpressionClause);
+
     if (!isValid) {
       return;
     }
@@ -166,7 +174,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
             onChange={event => setName(event.target.value)}
             onKeyPress={e => {
               if (e.key === "Enter") {
-                handleCommit();
+                handleCommit(expression, clause);
               }
             }}
           />
@@ -179,7 +187,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
           <Button
             primary={isValid}
             disabled={!isValid}
-            onClick={() => handleCommit()}
+            onClick={() => handleCommit(expression, clause)}
           >
             {initialName ? t`Update` : t`Done`}
           </Button>
