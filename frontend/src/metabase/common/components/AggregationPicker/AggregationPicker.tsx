@@ -206,7 +206,7 @@ export function AggregationPicker({
 
   const datasetQuery = Lib.toLegacyQuery(query);
   const legacyQuery = new StructuredQuery(
-    new Question({ dataset_query: datasetQuery }),
+    new Question({ dataset_query: datasetQuery }, metadata),
     datasetQuery,
   );
 
