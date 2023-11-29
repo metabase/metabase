@@ -86,15 +86,15 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
   const helpTextTargetRef = useRef(null);
 
   const isValidName = withName ? name.trim().length > 0 : true;
-  const isValid = !error && isValidName;
+  const isValidExpression = isNotNull(expression) && isExpression(expression);
+  const isValidExpressionClause = isNotNull(clause);
+  const isValid =
+    !error && isValidName && (isValidExpression || isValidExpressionClause);
 
   const handleCommit = () => {
     if (!isValid) {
       return;
     }
-
-    const isValidExpression = isNotNull(expression) && isExpression(expression);
-    const isValidExpressionClause = isNotNull(clause);
 
     if (isValidExpression) {
       onChangeExpression?.(name, expression);

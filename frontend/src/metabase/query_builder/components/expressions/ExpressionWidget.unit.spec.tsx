@@ -55,6 +55,26 @@ describe("ExpressionWidget", () => {
     ).toBeInTheDocument();
   });
 
+  it("should trigger onChangeExpression if expression is valid", () => {
+    const { onChangeExpression } = setup();
+
+    const doneButton = screen.getByRole("button", { name: "Done" });
+    expect(doneButton).toBeDisabled();
+
+    const expressionInput = screen.getByRole("textbox");
+    expect(expressionInput).toHaveClass("ace_text-input");
+
+    userEvent.type(expressionInput, "1 + 1");
+    userEvent.tab();
+
+    expect(doneButton).toBeEnabled();
+
+    userEvent.click(doneButton);
+
+    expect(onChangeExpression).toHaveBeenCalledTimes(1);
+    expect(onChangeExpression).toHaveBeenCalledWith("", ["+", 1, 1]);
+  });
+
   it("should trigger onChangeClause if expression is valid", () => {
     const { getRecentExpressionClauseInfo, onChangeClause } = setup();
 
@@ -72,11 +92,7 @@ describe("ExpressionWidget", () => {
     userEvent.click(doneButton);
 
     expect(onChangeClause).toHaveBeenCalledTimes(1);
-    expect(onChangeClause).toHaveBeenCalledWith(
-      "",
-      ["+", 1, 1],
-      expect.anything(),
-    );
+    expect(onChangeClause).toHaveBeenCalledWith("", expect.anything());
     expect(getRecentExpressionClauseInfo()).toMatchObject({
       displayName: "1 + 1",
     });
