@@ -284,12 +284,15 @@ describe("scenarios > models", () => {
 
     it("allows to create a question based on a model", () => {
       cy.intercept(`/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as("schema");
+      cy.intercept("/api/table/*/query_metadata").as("metadata");
       startNewQuestion();
 
       popover().within(() => {
         cy.findByText("Models").click();
         cy.findByText("Orders").click();
       });
+
+      cy.wait(["@metadata", "@metadata", "@metadata"]);
 
       cy.icon("join_left_outer").click();
       selectFromDropdown("Models");
