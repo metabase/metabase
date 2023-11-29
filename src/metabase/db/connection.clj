@@ -13,8 +13,6 @@
 
 (set! *warn-on-reflection* true)
 
-
-
 (defonce ^{:doc "Counter for [[unique-identifier]] -- this is a simple counter rather that [[java.util.UUID/randomUUID]]
   so we don't waste precious entropy on launch generating something that doesn't need to be random (it just needs to be
   unique)"}
