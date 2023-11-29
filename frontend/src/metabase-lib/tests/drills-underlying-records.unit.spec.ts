@@ -1,26 +1,30 @@
-import type { DatasetColumn, RowValue } from "metabase-types/api";
 import {
   createOrdersCreatedAtDatasetColumn,
   createOrdersQuantityDatasetColumn,
-  createOrdersTable,
   createOrdersTotalDatasetColumn,
-  createSampleDatabase,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import {
-  columnFinder,
   createQuery,
-  findAggregationOperator,
   findDrillThru,
   queryDrillThru,
 } from "metabase-lib/test-helpers";
-import { createCountColumn } from "./drills-common";
+import {
+  createAggregatedQuery,
+  createAggregatedQueryWithBreakouts,
+  createCountColumn,
+  getAggregatedCellClickData,
+  getPivotCellClickData,
+} from "./drills-common";
 
 describe("drill-thru/underlying-records", () => {
   const drillType = "drill-thru/underlying-records";
-  const defaultQuery = createQueryWithBreakout();
+  const defaultQuery = createAggregatedQuery({
+    aggregationOperatorName: "count",
+    breakoutColumnName: "CREATED_AT",
+    breakoutColumnTableName: "ORDERS",
+  });
   const stageIndex = 0;
   const aggregationColumn = createCountColumn();
   const breakoutColumn = createOrdersCreatedAtDatasetColumn({
@@ -29,11 +33,12 @@ describe("drill-thru/underlying-records", () => {
 
   describe("availableDrillThrus", () => {
     it("should allow to drill an aggregated query", () => {
-      const { value, row, dimensions } = getCellData(
+      const { value, row, dimensions } = getAggregatedCellClickData({
         aggregationColumn,
+        aggregationColumnValue: 10,
         breakoutColumn,
-        10,
-      );
+        breakoutColumnValue: "2020-01-01",
+      });
 
       const { drillInfo } = findDrillThru(
         drillType,
@@ -52,36 +57,24 @@ describe("drill-thru/underlying-records", () => {
       });
     });
 
-    // eslint-disable-next-line jest/no-disabled-tests
-    it.skip("should allow drill an aggregated query based on a card (metabase#35340)", () => {
-      const { query, cardName } = createQueryBasedOnCard();
-      const { value, row, dimensions } = getCellData(
-        aggregationColumn,
-        breakoutColumn,
-        10,
-      );
-
-      const { drillInfo } = findDrillThru(
-        drillType,
-        query,
-        stageIndex,
-        aggregationColumn,
-        value,
-        row,
-        dimensions,
-      );
-
-      expect(drillInfo).toMatchObject({
-        type: drillType,
-        rowCount: value,
-        tableName: cardName,
+    it("should allow to drill when clicked on a pivot cell (metabase#35394)", () => {
+      const query = createAggregatedQueryWithBreakouts({
+        aggregationOperatorName: "count",
+        breakoutColumn1Name: "CREATED_AT",
+        breakoutColumn1TableName: "ORDERS",
+        breakoutColumn2Name: "QUANTITY",
+        breakoutColumn2TableName: "ORDERS",
       });
-    });
-
-    // eslint-disable-next-line jest/no-disabled-tests
-    it.skip("should allow to drill when clicked on a pivot cell (metabase#35394)", () => {
-      const query = createQueryWithMultipleBreakouts();
-      const { value, row, dimensions } = getPivotCellData(10);
+      const { value, row, dimensions } = getPivotCellClickData({
+        aggregationColumn,
+        aggregationColumnValue: 10,
+        breakoutColumn1: breakoutColumn,
+        breakoutColumn1Value: "2020-01-01",
+        breakoutColumn2: createOrdersQuantityDatasetColumn({
+          source: "breakout",
+        }),
+        breakoutColumn2Value: 0,
+      });
 
       const { drillInfo } = findDrillThru(
         drillType,
@@ -293,122 +286,3 @@ describe("drill-thru/underlying-records", () => {
     });
   });
 });
-
-function createQueryWithBreakout() {
-  const query = createQuery();
-  const queryWithAggregation = Lib.aggregate(
-    query,
-    -1,
-    Lib.aggregationClause(findAggregationOperator(query, "count")),
-  );
-  return Lib.breakout(
-    queryWithAggregation,
-    -1,
-    columnFinder(
-      queryWithAggregation,
-      Lib.breakoutableColumns(queryWithAggregation, -1),
-    )("ORDERS", "CREATED_AT"),
-  );
-}
-
-function createQueryWithMultipleBreakouts() {
-  const queryWithBreakout = createQueryWithBreakout();
-  return Lib.breakout(
-    queryWithBreakout,
-    -1,
-    columnFinder(
-      queryWithBreakout,
-      Lib.breakoutableColumns(queryWithBreakout, -1),
-    )("ORDERS", "QUANTITY"),
-  );
-}
-
-function createQueryBasedOnCard() {
-  const card = createOrdersTable({
-    id: "card__1",
-    name: "Question",
-  });
-  const metadata = createMockMetadata({
-    databases: [createSampleDatabase()],
-    tables: [card],
-  });
-  const queryWithCard = Lib.withDifferentTable(
-    createQuery({ metadata }),
-    card.id,
-  );
-  const queryWithAggregation = Lib.aggregate(
-    queryWithCard,
-    -1,
-    Lib.aggregationClause(findAggregationOperator(queryWithCard, "count")),
-  );
-  const queryWithBreakout = Lib.breakout(
-    queryWithAggregation,
-    -1,
-    columnFinder(
-      queryWithAggregation,
-      Lib.breakoutableColumns(queryWithAggregation, -1),
-    )(card.name, "CREATED_AT"),
-  );
-
-  return {
-    query: queryWithBreakout,
-    cardName: card.name,
-  };
-}
-
-function createNotEditableQuery(query: Lib.Query) {
-  const metadata = createMockMetadata({
-    databases: [
-      createSampleDatabase({
-        tables: [],
-      }),
-    ],
-  });
-
-  return createQuery({
-    metadata,
-    query: Lib.toLegacyQuery(query),
-  });
-}
-
-function getCellData(
-  aggregationColumn: DatasetColumn,
-  breakoutColumn: DatasetColumn,
-  value: RowValue,
-) {
-  const row = [
-    { key: "Created At", col: breakoutColumn, value: "2020-01-01" },
-    { key: "Count", col: aggregationColumn, value },
-  ];
-  const dimensions = [{ column: breakoutColumn, value }];
-
-  return { value, row, dimensions };
-}
-
-function getPivotCellData(value: RowValue) {
-  const aggregationColumn = createCountColumn();
-  const breakoutColumn1 = createOrdersCreatedAtDatasetColumn({
-    source: "breakout",
-  });
-  const breakoutColumn2 = createOrdersQuantityDatasetColumn({
-    source: "breakout",
-  });
-
-  const row = [
-    { col: breakoutColumn1, value: "2020-01-01" },
-    { col: breakoutColumn2, value: 0 },
-    { col: aggregationColumn, value },
-  ];
-  const dimensions = [
-    { column: breakoutColumn1, value: "2020-01-01" },
-    { column: breakoutColumn2, value: 0 },
-  ];
-
-  return { value, row, dimensions };
-}
-
-function getLegendItemData(value: RowValue) {
-  const column = createOrdersQuantityDatasetColumn({ source: "breakout" });
-  const dimensions = [{ column, value }];
-  return { value, dimensions };
-}

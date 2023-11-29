@@ -2,16 +2,16 @@ import {
   createOrdersIdDatasetColumn,
   createOrdersProductIdDatasetColumn,
   createOrdersTotalDatasetColumn,
-  createSampleDatabase,
-  SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
-import { createMockMetadata } from "__support__/metadata";
 import {
+  createColumnClickObject,
   createQuery,
+  createRawCellClickObject,
   findDrillThru,
   queryDrillThru,
 } from "metabase-lib/test-helpers";
+import { createNotEditableQuery } from "./drills-common";
 
 describe("drill-thru/fk-details", () => {
   const drillType = "drill-thru/fk-details";
@@ -21,15 +21,16 @@ describe("drill-thru/fk-details", () => {
 
   describe("availableDrillThrus", () => {
     it("should allow to drill with a FK column value", () => {
-      const value = 10;
-      const row = [{ col: defaultColumn, value }];
+      const clickObject = createRawCellClickObject({
+        column: defaultColumn,
+        value: 10,
+      });
+
       const { drillInfo } = findDrillThru(
-        drillType,
         defaultQuery,
         stageIndex,
-        defaultColumn,
-        value,
-        row,
+        clickObject,
+        drillType,
       );
 
       expect(drillInfo).toMatchObject({
@@ -46,17 +47,17 @@ describe("drill-thru/fk-filter", () => {
   const defaultColumn = createOrdersProductIdDatasetColumn();
 
   describe("availableDrillThrus", () => {
-    // eslint-disable-next-line jest/no-disabled-tests
-    it.skip("should allow to drill with a FK column value (metabase#36000)", () => {
-      const value = 10;
-      const row = [{ col: defaultColumn, value }];
+    it("should allow to drill with a FK column value (metabase#36000)", () => {
+      const clickObject = createRawCellClickObject({
+        column: defaultColumn,
+        value: 10,
+      });
+
       const { drillInfo } = findDrillThru(
-        drillType,
         defaultQuery,
         stageIndex,
-        defaultColumn,
-        value,
-        row,
+        clickObject,
+        drillType,
       );
 
       expect(drillInfo).toMatchObject({
@@ -78,15 +79,16 @@ describe.each<Lib.DrillThruType>([
 
   describe("availableDrillThrus", () => {
     it("should allow to drill with a FK column value", () => {
-      const value = 10;
-      const row = [{ col: defaultColumn, value }];
+      const clickObject = createRawCellClickObject({
+        column: defaultColumn,
+        value: 10,
+      });
+
       const { drillInfo } = findDrillThru(
-        drillType,
         defaultQuery,
         stageIndex,
-        defaultColumn,
-        value,
-        row,
+        clickObject,
+        drillType,
       );
 
       expect(drillInfo).toMatchObject({
@@ -95,103 +97,92 @@ describe.each<Lib.DrillThruType>([
     });
 
     it("should not allow to drill with a PK column value", () => {
-      const column = createOrdersIdDatasetColumn();
-      const value = 10;
-      const row = [{ col: column, value }];
+      const clickObject = createRawCellClickObject({
+        column: createOrdersIdDatasetColumn(),
+        value: 10,
+      });
+
       const drill = queryDrillThru(
-        drillType,
         defaultQuery,
         stageIndex,
-        column,
-        value,
-        row,
+        clickObject,
+        drillType,
       );
 
       expect(drill).toBeNull();
     });
 
     it("should not allow to drill with a non-key column value", () => {
-      const column = createOrdersTotalDatasetColumn();
-      const value = 10;
-      const row = [{ col: column, value }];
+      const clickObject = createRawCellClickObject({
+        column: createOrdersTotalDatasetColumn(),
+        value: 10,
+      });
+
       const drill = queryDrillThru(
-        drillType,
         defaultQuery,
         stageIndex,
-        column,
-        value,
-        row,
+        clickObject,
+        drillType,
       );
 
       expect(drill).toBeNull();
     });
 
     it("should not allow to drill with a FK column itself", () => {
+      const clickObject = createColumnClickObject({
+        column: defaultColumn,
+      });
+
       const drill = queryDrillThru(
-        drillType,
         defaultQuery,
         stageIndex,
-        defaultColumn,
+        clickObject,
+        drillType,
       );
 
       expect(drill).toBeNull();
     });
 
-    // eslint-disable-next-line jest/no-disabled-tests
-    it.skip("should not allow to drill with a null FK value (metabase#36133)", () => {
-      const value = null;
-      const row = [{ col: defaultColumn, value }];
+    it("should not allow to drill with a null FK value (metabase#36133)", () => {
+      const clickObject = createRawCellClickObject({
+        column: defaultColumn,
+        value: null,
+      });
+
       const drill = queryDrillThru(
-        drillType,
         defaultQuery,
         stageIndex,
-        defaultColumn,
-        value,
-        row,
+        clickObject,
+        drillType,
       );
-
-      expect(drill).toBeNull();
-    });
-
-    it("should not allow to drill with a native query", () => {
-      const query = createQuery({
-        query: {
-          type: "native",
-          database: SAMPLE_DB_ID,
-          native: { query: "SELECT * FROM ORDERS" },
-        },
-      });
-      const column = createOrdersProductIdDatasetColumn({
-        id: undefined,
-        field_ref: ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
-      });
-
-      const drill = queryDrillThru(drillType, query, stageIndex, column);
 
       expect(drill).toBeNull();
     });
 
     it("should not allow to drill with a non-editable query", () => {
-      const metadata = createMockMetadata({
-        databases: [createSampleDatabase({ tables: [] })],
+      const query = createNotEditableQuery(defaultQuery);
+      const clickObject = createRawCellClickObject({
+        column: defaultColumn,
+        value: 10,
       });
-      const query = createQuery({ metadata });
-      const drill = queryDrillThru(drillType, query, stageIndex, defaultColumn);
+
+      const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
+
       expect(drill).toBeNull();
     });
   });
 
   describe("drillThru", () => {
     it("should drill with a FK column", () => {
-      const value = 10;
-      const row = [{ col: defaultColumn, value }];
+      const clickObject = createRawCellClickObject({
+        column: defaultColumn,
+        value: 10,
+      });
       const { drill } = findDrillThru(
-        drillType,
         defaultQuery,
         stageIndex,
-        defaultColumn,
-        value,
-        row,
+        clickObject,
+        drillType,
       );
 
       const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);

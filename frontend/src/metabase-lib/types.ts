@@ -337,12 +337,28 @@ export type DrillThruDisplayInfo =
   | UnderlyingRecordsDrillThruInfo
   | ZoomTimeseriesDrillThruInfo;
 
-export type DataRow = Array<{
-  col: DatasetColumn | ColumnMetadata | null;
+export interface ClickObjectDimension {
   value: RowValue;
-}>;
-
-export interface DataDimension {
   column: DatasetColumn;
+}
+
+export interface ClickObjectDataRow {
+  col: DatasetColumn | null; // can be null for custom columns
+  value: RowValue;
+}
+
+export interface ClickObject {
   value?: RowValue;
+  column?: DatasetColumn;
+  dimensions?: ClickObjectDimension[];
+  event?: MouseEvent;
+  element?: Element;
+  seriesIndex?: number;
+  settings?: Record<string, unknown>;
+  origin?: {
+    row: RowValue;
+    cols: DatasetColumn[];
+  };
+  extraData?: Record<string, unknown>;
+  data?: ClickObjectDataRow[];
 }

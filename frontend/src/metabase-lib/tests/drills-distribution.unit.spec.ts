@@ -6,23 +6,25 @@ import {
   createOrdersTable,
   createOrdersTotalDatasetColumn,
   createSampleDatabase,
-  SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import {
   createQuery,
   findDrillThru,
+  createColumnClickObject,
+  createRawCellClickObject,
   queryDrillThru,
 } from "metabase-lib/test-helpers";
 import {
+  createNotEditableQuery,
   createOrdersCommentColumn,
   createOrdersCommentField,
   createOrdersDescriptionColumn,
   createOrdersDescriptionField,
   createOrdersSerializedJSONColumn,
   createOrdersSerializedJSONField,
-} from "metabase-lib/tests/drills-common";
+} from "./drills-common";
 
 describe("drill-thru/distribution", () => {
   const drillType = "drill-thru/distribution";
@@ -32,11 +34,15 @@ describe("drill-thru/distribution", () => {
 
   describe("availableDrillThrus", () => {
     it("should allow to drill when clicked on a column header", () => {
+      const clickObject = createColumnClickObject({
+        column: defaultColumn,
+      });
+
       const { drillInfo } = findDrillThru(
-        drillType,
         defaultQuery,
         stageIndex,
-        defaultColumn,
+        clickObject,
+        drillType,
       );
 
       expect(drillInfo).toMatchObject({
@@ -46,64 +52,62 @@ describe("drill-thru/distribution", () => {
   });
 
   it("should not allow to drill when clicked on a value", () => {
-    const value = 10;
-    const row = [{ col: defaultColumn, value }];
+    const clickObject = createRawCellClickObject({
+      column: defaultColumn,
+      value: 10,
+    });
+
     const drill = queryDrillThru(
-      drillType,
       defaultQuery,
       stageIndex,
-      defaultColumn,
-      value,
-      row,
+      clickObject,
+      drillType,
     );
 
     expect(drill).toBeNull();
   });
 
   it("should not allow to drill when clicked on a null value", () => {
-    const value = null;
-    const row = [{ col: defaultColumn, value }];
+    const clickObject = createRawCellClickObject({
+      column: defaultColumn,
+      value: null,
+    });
+
     const drill = queryDrillThru(
-      drillType,
       defaultQuery,
       stageIndex,
-      defaultColumn,
-      value,
-      row,
+      clickObject,
+      drillType,
     );
 
     expect(drill).toBeNull();
   });
 
   it('should not allow to drill with "type/PK" type', () => {
-    const column = createOrdersIdDatasetColumn();
-    const drill = queryDrillThru(drillType, defaultQuery, stageIndex, column);
-    expect(drill).toBeNull();
+    const clickObject = createColumnClickObject({
+      column: createOrdersIdDatasetColumn(),
+    });
+
+    const { drillInfo } = findDrillThru(
+      defaultQuery,
+      stageIndex,
+      clickObject,
+      drillType,
+    );
+
+    expect(drillInfo).toMatchObject({
+      type: drillType,
+    });
   });
 
-  it("should not allow to drill with a native query", () => {
-    const query = createQuery({
-      query: {
-        type: "native",
-        database: SAMPLE_DB_ID,
-        native: { query: "SELECT * FROM ORDERS" },
-      },
+  it("should not allow to drill with a non-editable query (metabase#36125)", () => {
+    const query = createNotEditableQuery(defaultQuery);
+    const clickObject = createColumnClickObject({
+      column: defaultColumn,
     });
-    const column = createOrdersTotalDatasetColumn({
-      id: undefined,
-      field_ref: ["field", "TOTAL", { "base-type": "type/Float" }],
-    });
-    const drill = queryDrillThru(drillType, query, stageIndex, column);
-    expect(drill).toBeNull();
-  });
 
-  // eslint-disable-next-line jest/no-disabled-tests
-  it.skip("should not allow to drill with a non-editable query (metabase#36125)", () => {
-    const metadata = createMockMetadata({
-      databases: [createSampleDatabase({ tables: [] })],
-    });
-    const query = createQuery({ metadata });
-    const drill = queryDrillThru(drillType, query, stageIndex, defaultColumn);
+    const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
+
     expect(drill).toBeNull();
   });
 
@@ -138,9 +142,10 @@ describe("drill-thru/distribution", () => {
           }),
         ],
       });
-
       const query = createQuery({ metadata });
-      const drill = queryDrillThru(drillType, query, stageIndex, column);
+      const clickObject = createColumnClickObject({ column });
+
+      const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
 
       expect(drill).toBeNull();
     },
@@ -148,31 +153,40 @@ describe("drill-thru/distribution", () => {
 
   describe("drillThru", () => {
     it("should drill with a numeric column", () => {
+      const clickObject = createColumnClickObject({
+        column: createOrdersTotalDatasetColumn(),
+      });
       const { drill } = findDrillThru(
-        drillType,
         defaultQuery,
         stageIndex,
-        defaultColumn,
+        clickObject,
+        drillType,
       );
+
       const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
+
       expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
       expect(Lib.breakouts(newQuery, stageIndex)).toHaveLength(1);
     });
 
     it("should drill with a date column", () => {
+      const clickObject = createColumnClickObject({
+        column: createOrdersCreatedAtDatasetColumn(),
+      });
       const { drill } = findDrillThru(
-        drillType,
         defaultQuery,
         stageIndex,
-        createOrdersCreatedAtDatasetColumn(),
+        clickObject,
+        drillType,
       );
+
       const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
+
       expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
       expect(Lib.breakouts(newQuery, stageIndex)).toHaveLength(1);
     });
 
-    // eslint-disable-next-line jest/no-disabled-tests
-    it.skip("should drill with a text column (metabase#36124)", () => {
+    it("should drill with a text column (metabase#36124)", () => {
       const metadata = createMockMetadata({
         databases: [
           createSampleDatabase({
@@ -185,9 +199,16 @@ describe("drill-thru/distribution", () => {
         ],
       });
       const query = createQuery({ metadata });
-      const column = createOrdersCommentColumn();
+      const clickObject = createColumnClickObject({
+        column: createOrdersCommentColumn(),
+      });
+      const { drill } = findDrillThru(
+        query,
+        stageIndex,
+        clickObject,
+        drillType,
+      );
 
-      const { drill } = findDrillThru(drillType, query, stageIndex, column);
       const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
 
       expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);

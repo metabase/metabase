@@ -2,8 +2,8 @@ import * as ML from "cljs/metabase.lib.js";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 import type {
   ColumnMetadata,
-  DataRow,
-  DataDimension,
+  ClickObjectDataRow,
+  ClickObjectDimension,
   DrillThru,
   Query,
 } from "./types";
@@ -15,8 +15,8 @@ export function availableDrillThrus(
   stageIndex: number,
   column: ColumnMetadata | DatasetColumn | undefined,
   value?: RowValue,
-  row?: DataRow,
-  dimensions?: DataDimension[],
+  row?: ClickObjectDataRow[],
+  dimensions?: ClickObjectDimension[],
 ): DrillThru[] {
   return ML.available_drill_thrus(
     query,

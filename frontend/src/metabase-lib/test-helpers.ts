@@ -11,8 +11,8 @@ import {
   createSampleDatabase,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
-import type Metadata from "./metadata/Metadata";
-import * as ML from "./v2";
+import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/metadata/Metadata";
 
 const SAMPLE_DATABASE = createSampleDatabase();
 
@@ -29,7 +29,7 @@ function createMetadataProvider({
   databaseId = SAMPLE_DATABASE.id,
   metadata = SAMPLE_METADATA,
 }: MetadataProviderOpts = {}) {
-  return ML.metadataProvider(databaseId, metadata);
+  return Lib.metadataProvider(databaseId, metadata);
 }
 
 export const DEFAULT_QUERY: DatasetQuery = {
@@ -50,14 +50,14 @@ export function createQuery({
   query = DEFAULT_QUERY,
 }: QueryOpts = {}) {
   const metadataProvider = createMetadataProvider({ databaseId, metadata });
-  return ML.fromLegacyQuery(databaseId, metadataProvider, query);
+  return Lib.fromLegacyQuery(databaseId, metadataProvider, query);
 }
 
 export const columnFinder =
-  (query: ML.Query, columns: ML.ColumnMetadata[]) =>
-  (tableName: string, columnName: string): ML.ColumnMetadata => {
+  (query: Lib.Query, columns: Lib.ColumnMetadata[]) =>
+  (tableName: string, columnName: string): Lib.ColumnMetadata => {
     const column = columns.find(column => {
-      const displayInfo = ML.displayInfo(query, 0, column);
+      const displayInfo = Lib.displayInfo(query, 0, column);
 
       // for non-table columns - aggregations, custom columns
       if (!displayInfo.table) {
@@ -78,16 +78,16 @@ export const columnFinder =
   };
 
 export const findBinningStrategy = (
-  query: ML.Query,
-  column: ML.ColumnMetadata,
+  query: Lib.Query,
+  column: Lib.ColumnMetadata,
   bucketName: string,
 ) => {
   if (bucketName === "Don't bin") {
     return null;
   }
-  const buckets = ML.availableBinningStrategies(query, 0, column);
+  const buckets = Lib.availableBinningStrategies(query, 0, column);
   const bucket = buckets.find(
-    bucket => ML.displayInfo(query, 0, bucket).displayName === bucketName,
+    bucket => Lib.displayInfo(query, 0, bucket).displayName === bucketName,
   );
   if (!bucket) {
     throw new Error(`Could not find binning strategy ${bucketName}`);
@@ -96,17 +96,17 @@ export const findBinningStrategy = (
 };
 
 export const findTemporalBucket = (
-  query: ML.Query,
-  column: ML.ColumnMetadata,
+  query: Lib.Query,
+  column: Lib.ColumnMetadata,
   bucketName: string,
 ) => {
   if (bucketName === "Don't bin") {
     return null;
   }
 
-  const buckets = ML.availableTemporalBuckets(query, 0, column);
+  const buckets = Lib.availableTemporalBuckets(query, 0, column);
   const bucket = buckets.find(
-    bucket => ML.displayInfo(query, 0, bucket).displayName === bucketName,
+    bucket => Lib.displayInfo(query, 0, bucket).displayName === bucketName,
   );
   if (!bucket) {
     throw new Error(`Could not find temporal bucket ${bucketName}`);
@@ -115,13 +115,13 @@ export const findTemporalBucket = (
 };
 
 export const findAggregationOperator = (
-  query: ML.Query,
+  query: Lib.Query,
   operatorShortName: string,
 ) => {
-  const operators = ML.availableAggregationOperators(query, 0);
+  const operators = Lib.availableAggregationOperators(query, 0);
   const operator = operators.find(
     operator =>
-      ML.displayInfo(query, 0, operator).shortName === operatorShortName,
+      Lib.displayInfo(query, 0, operator).shortName === operatorShortName,
   );
   if (!operator) {
     throw new Error(`Could not find aggregation operator ${operatorShortName}`);
@@ -130,24 +130,21 @@ export const findAggregationOperator = (
 };
 
 export const queryDrillThru = (
-  drillType: ML.DrillThruType,
-  query: ML.Query,
+  query: Lib.Query,
   stageIndex: number,
-  column?: DatasetColumn,
-  value?: RowValue,
-  row?: ML.DataRow,
-  dimensions?: ML.DataDimension[],
-): ML.DrillThru | null => {
-  const drills = ML.availableDrillThrus(
+  clickObject: Lib.ClickObject,
+  drillType: Lib.DrillThruType,
+): Lib.DrillThru | null => {
+  const drills = Lib.availableDrillThrus(
     query,
     stageIndex,
-    column,
-    value,
-    row,
-    dimensions,
+    clickObject.column,
+    clickObject.value,
+    clickObject.data,
+    clickObject.dimensions,
   );
   const drill = drills.find(drill => {
-    const drillInfo = ML.displayInfo(query, stageIndex, drill);
+    const drillInfo = Lib.displayInfo(query, stageIndex, drill);
     return drillInfo.type === drillType;
   });
 
@@ -155,27 +152,74 @@ export const queryDrillThru = (
 };
 
 export const findDrillThru = (
-  drillType: ML.DrillThruType,
-  query: ML.Query,
+  query: Lib.Query,
   stageIndex: number,
-  column?: DatasetColumn,
-  value?: RowValue,
-  row?: ML.DataRow,
-  dimensions?: ML.DataDimension[],
+  clickObject: Lib.ClickObject,
+  drillType: Lib.DrillThruType,
 ) => {
-  const drill = queryDrillThru(
-    drillType,
-    query,
-    stageIndex,
-    column,
-    value,
-    row,
-    dimensions,
-  );
+  const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
   if (!drill) {
     throw new Error(`Could not find drill ${drillType}`);
   }
 
-  const drillInfo = ML.displayInfo(query, stageIndex, drill);
+  const drillInfo = Lib.displayInfo(query, stageIndex, drill);
   return { drill, drillInfo };
 };
+
+interface ColumnClickObjectOpts {
+  column: DatasetColumn;
+}
+
+export function createColumnClickObject({
+  column,
+}: ColumnClickObjectOpts): Lib.ClickObject {
+  return { column };
+}
+
+interface RawCellClickObjectOpts {
+  column: DatasetColumn;
+  value: RowValue;
+}
+
+export function createRawCellClickObject({
+  column,
+  value,
+}: RawCellClickObjectOpts): Lib.ClickObject {
+  const data = [{ col: column, value }];
+  return { column, value, data };
+}
+
+interface AggregatedCellClickObjectOpts {
+  aggregationColumn: DatasetColumn;
+  aggregationColumnValue: RowValue;
+  breakoutColumn: DatasetColumn;
+  breakoutColumnValue: RowValue;
+}
+
+export function createAggregatedCellClickObject({
+  aggregationColumn,
+  aggregationColumnValue,
+  breakoutColumn,
+  breakoutColumnValue,
+}: AggregatedCellClickObjectOpts): Lib.ClickObject {
+  const data = [
+    {
+      key: breakoutColumn.name,
+      col: breakoutColumn,
+      value: breakoutColumnValue,
+    },
+    {
+      key: aggregationColumn.name,
+      col: aggregationColumn,
+      value: aggregationColumnValue,
+    },
+  ];
+  const dimensions = [
+    {
+      column: breakoutColumn,
+      value: breakoutColumnValue,
+    },
+  ];
+
+  return { value: aggregationColumnValue, data, dimensions };
+}
