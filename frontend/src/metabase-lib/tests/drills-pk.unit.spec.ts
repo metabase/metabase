@@ -11,13 +11,18 @@ import {
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import {
+  createAggregatedCellClickObject,
   createColumnClickObject,
   createQuery,
   createRawCellClickObject,
   findDrillThru,
   queryDrillThru,
 } from "metabase-lib/test-helpers";
-import { createAggregatedQuery, createNotEditableQuery } from "./drills-common";
+import {
+  createAggregatedQuery,
+  createCountColumn,
+  createNotEditableQuery,
+} from "./drills-common";
 
 describe("drill-thru/pk", () => {
   const drillType = "drill-thru/pk";
@@ -83,9 +88,11 @@ describe("drill-thru/pk", () => {
         breakoutColumnName: "TOTAL",
         breakoutColumnTableName: "ORDERS",
       });
-      const clickObject = createRawCellClickObject({
-        column: createOrdersTotalDatasetColumn({ source: "breakout" }),
-        value: 10,
+      const clickObject = createAggregatedCellClickObject({
+        aggregationColumn: createCountColumn(),
+        aggregationColumnValue: 20,
+        breakoutColumn: createOrdersTotalDatasetColumn({ source: "breakout" }),
+        breakoutColumnValue: 10,
       });
 
       const drill = queryDrillThru(query, stageIndex, clickObject, drillType);

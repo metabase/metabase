@@ -15,7 +15,7 @@ import {
 } from "metabase-lib/test-helpers";
 import {
   createNotEditableQuery,
-  createOrderedQuery,
+  createSortedQuery,
   createOrdersStructuredColumn,
   createOrdersStructuredField,
 } from "./drills-common";
@@ -46,7 +46,7 @@ describe("drill-thru/sort", () => {
     });
 
     it("should allow to drill when the query is sorted ascending", () => {
-      const query = createOrderedQuery({
+      const query = createSortedQuery({
         columnName: "TOTAL",
         columnTableName: "ORDERS",
         direction: "asc",
@@ -69,7 +69,7 @@ describe("drill-thru/sort", () => {
     });
 
     it("should allow to drill when the query is sorted descending", () => {
-      const query = createOrderedQuery({
+      const query = createSortedQuery({
         columnName: "TOTAL",
         columnTableName: "ORDERS",
         direction: "desc",
@@ -158,7 +158,7 @@ describe("drill-thru/sort", () => {
 
   describe("drillThru", () => {
     it.each<Lib.OrderByDirection>(["asc", "desc"])(
-      'should drill with a non-aggregated query and "%s" direction',
+      'should drill with a non-sorted query and "%s" direction',
       direction => {
         const clickObject = createColumnClickObject({ column: defaultColumn });
         const { drill } = findDrillThru(
@@ -180,9 +180,9 @@ describe("drill-thru/sort", () => {
     );
 
     it.each<Lib.OrderByDirection>(["asc", "desc"])(
-      'should drill with an aggregated query and "%s" direction',
+      'should drill with an sorted query and "%s" direction',
       direction => {
-        const query = createOrderedQuery({
+        const query = createSortedQuery({
           columnName: "TOTAL",
           columnTableName: "ORDERS",
           direction: direction === "asc" ? "desc" : "asc",

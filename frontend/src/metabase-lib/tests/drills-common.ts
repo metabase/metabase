@@ -162,7 +162,7 @@ interface OrderedQueryOpts {
   direction: Lib.OrderByDirection;
 }
 
-export function createOrderedQuery({
+export function createSortedQuery({
   columnName,
   columnTableName,
   direction,
