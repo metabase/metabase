@@ -571,7 +571,7 @@
   "Updates a Dashboard. Designed to be reused by PUT /api/dashboard/:id and PUT /api/dashboard/:id/cards"
   [id {:keys [dashcards tabs] :as dash-updates}]
   (span/with-span!
-    {:name       "get-update-dashboard"
+    {:name       "update-dashboard"
      :attributes {:dashboard/id id}}
     (let [current-dash               (api/write-check Dashboard id)
           changes-stats              (atom nil)
