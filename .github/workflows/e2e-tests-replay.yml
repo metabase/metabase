@@ -3,17 +3,9 @@ name: E2E Tests using Replay.io browser
 on:
   # We'll record runs using Replay.io and their browser on a schedule as an experiment
   schedule:
-    - cron: '0 22 * * *'
+    - cron: '0 */3 * * *'
 
 jobs:
-  test-run-id:
-    runs-on: ubuntu-22.04
-    outputs:
-      testRunId: ${{ steps.testRunId.outputs.testRunId }}
-    steps:
-      - id: testRunId
-        run: echo testRunId=$(npx uuid) >> "$GITHUB_OUTPUT"
-
   e2e-matrix-builder:
     runs-on: ubuntu-22.04
     timeout-minutes: 5
@@ -45,7 +37,8 @@ jobs:
       TERM: xterm
       CYPRESS_REPLAYIO_ENABLED: 1
       RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
-      RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
+      RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ github.run_id }}
+      REPLAY_API_KEY: ${{ secrets.REPLAY_IO_TOKEN }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.e2e-matrix-builder.outputs.matrix) }}
@@ -90,7 +83,7 @@ jobs:
         uses: ./.github/actions/run-snowplow-micro
 
       - name: Run OSS-specific Cypress tests
-        if: matrix.edition == 'oss' && github.event_name != 'schedule'
+        if: matrix.edition == 'oss'
         run: |
           yarn run test-cypress-run \
           --env grepTags=@OSS,grepOmitFiltered=true \
@@ -98,7 +91,7 @@ jobs:
           --browser "replay-chromium"
 
       - name: Run slow and resource-intensive Cypress tests
-        if: matrix.name == 'slow' && github.event_name != 'schedule'
+        if: matrix.name == 'slow'
         run: |
           yarn run test-cypress-run \
           --env grepTags="@slow",grepOmitFiltered=true \
@@ -106,7 +99,7 @@ jobs:
           --browser "replay-chromium"
 
       - name: Run EE Cypress tests on ${{ matrix.name }}
-        if: matrix.context == 'folder' && github.event_name != 'schedule'
+        if: matrix.context == 'folder'
         run: |
           yarn run test-cypress-run \
           --env grepTags="-@slow+-@mongo --@quarantine",grepOmitFiltered=true \
@@ -122,13 +115,6 @@ jobs:
           --browser "replay-chromium"
         env:
           CYPRESS_QA_DB_MONGO: true
-
-      - name: Upload Replay.io recordings
-        if: github.event_name == 'schedule' && !cancelled()
-        uses: replayio/action-upload@v0.5.1
-        with:
-          api-key: ${{ secrets.REPLAY_IO_TOKEN }}
-          public: false
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v3
