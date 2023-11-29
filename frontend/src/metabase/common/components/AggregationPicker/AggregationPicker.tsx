@@ -78,9 +78,7 @@ export function AggregationPicker({
   const [
     isEditingExpression,
     { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
-  ] = useToggle(
-    isExpressionEditorInitiallyOpen(query, clause, initialOperator),
-  );
+  ] = useToggle(isExpressionEditorInitiallyOpen(clause, initialOperator));
 
   // For really simple inline expressions like Average([Price]),
   // MLv2 can figure out that "Average" operator is used.
@@ -315,13 +313,12 @@ function getInitialOperator(
 }
 
 function isExpressionEditorInitiallyOpen(
-  query: Lib.Query,
   clause: Lib.AggregationClause | Lib.ExpressionClause | undefined,
   initialOperator: Lib.AggregationOperator | null,
 ) {
   return (
     isNotNull(clause) &&
-    (initialOperator === null || Lib.displayName(query, clause).length > 0)
+    (initialOperator === null || Boolean(Lib.expressionName(clause)))
   );
 }
 
