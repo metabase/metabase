@@ -658,7 +658,7 @@ const TITLE_LOCALES_BN = {
   },
   'tms.session.eligible.for.nomination.application' : {
     'en' : 'Eligible for Nomination',
-    'bn' : 'মনোনয়ন যোগ্য'
+    'bn' : 'মনোনয়নযোগ্য'
   },
   'tms.session.forward.autoforward.application' : {
     'en' : 'Statistics on Forward vs. Auto-Forward Applications of Auto-Forwarders',
