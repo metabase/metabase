@@ -21,7 +21,8 @@
    [metabase.events.view-log-test :as view-log-test]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [CardBookmark
+    :refer [Card
+            CardBookmark
             Collection
             Dashboard
             Database
@@ -3067,3 +3068,26 @@
               :model    "card"
               :model_id (u/id card)}
              (view-log-test/latest-view (mt/user->id :crowberto) (u/id card))))))))
+
+(deftest pivot-from-model-test
+  (testing "Pivot options should match fields through models (#35319)"
+    (mt/dataset
+      sample-dataset
+      (t2.with-temp/with-temp [:model/Card model {:dataset_query (mt/mbql-query orders)
+                                                  :dataset true}
+                               :model/Card card {:dataset_query
+                                                 {:database (mt/id)
+                                                  :type :query
+                                                  :query {:source-table (str "card__" (u/the-id model))
+                                                          :breakout [[:field "USER_ID" {:base-type :type/Integer}]]
+                                                          :aggregation [[:sum [:field "TOTAL" {:base-type :type/Float}]]]}}
+                                                 ;; The FE sometimes used a field id instead of field by name - we need
+                                                 ;; to handle this
+                                                 :visualization_settings {:pivot_table.column_split {:rows [[:field (mt/id :orders :user_id) nil]],
+                                                                                                     :columns [],
+                                                                                                     :values [[:aggregation 0]]},
+                                                                          :table.cell_column "sum"}}]
+        (with-cards-in-readable-collection [model card]
+          (is (=?
+                {:data {:cols [{:name "USER_ID"} {:name "pivot-grouping"} {:name "sum"}]}}
+                (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card))))))))))
