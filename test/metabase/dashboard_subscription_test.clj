@@ -901,24 +901,24 @@
 (deftest dashboard-subscription-attachments-test
   (testing "Dashboard subscription attachments respect dashcard viz settings."
     (mt/with-fake-inbox
-      (mt/with-temp [Card {card-id :id :as c} (pulse.test-util/checkins-query-card {:breakout [!day.date]})
-                     Dashboard     {dash-id :id} {:name "just dash"}]
+      (t2.with-temp/with-temp [Card {card-id :id :as c} (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+                               Dashboard     {dash-id :id} {:name "just dash"}]
         (let [;; with the helper `metadata->field-ref` we turn column metadata into column field refs
               ;; with an additional key `:enabled`. Here the 1st col is enabled, and the 2nd is disabled
               viz {:table.columns (mapv metadata->field-ref (:result_metadata c) [true false])}]
-          (mt/with-temp [DashboardCard {dash-card-id :id} {:dashboard_id           dash-id
-                                                           :card_id                card-id
-                                                           :visualization_settings viz}
-                         Pulse         {pulse-id :id, :as pulse}  {:name         "just pulse"
-                                                                   :dashboard_id dash-id}
-                         PulseCard     _ {:pulse_id          pulse-id
-                                          :card_id           card-id
-                                          :position          0
-                                          :dashboard_card_id dash-card-id
-                                          :include_csv       true}
-                         PulseChannel  {pc-id :id} {:pulse_id pulse-id}
-                         PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
-                                                  :pulse_channel_id pc-id}]
+          (t2.with-temp/with-temp [DashboardCard {dash-card-id :id} {:dashboard_id           dash-id
+                                                                     :card_id                card-id
+                                                                     :visualization_settings viz}
+                                   Pulse         {pulse-id :id, :as pulse}  {:name         "just pulse"
+                                                                             :dashboard_id dash-id}
+                                   PulseCard     _ {:pulse_id          pulse-id
+                                                    :card_id           card-id
+                                                    :position          0
+                                                    :dashboard_card_id dash-card-id
+                                                    :include_csv       true}
+                                   PulseChannel  {pc-id :id} {:pulse_id pulse-id}
+                                   PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                            :pulse_channel_id pc-id}]
             (with-redefs [messages/result-attachment result-attachment]
               (metabase.pulse/send-pulse! pulse)
               (is (= 1
