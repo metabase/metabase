@@ -99,15 +99,14 @@
             (testing "after deleting a database, can-connect? should return false or throw an exception"
               (let [;; in the case of some cloud databases, the test database is never created, and can't or shouldn't be destroyed.
                     ;; so fake it by changing the database details
-                    details (cond
-                              (contains? #{:redshift :snowfake :vertica} driver/*driver*)
+                    details (case driver/*driver*
+                              (:redshift :snowfake :vertica)
                               (assoc details :db (mt/random-name))
-                              (= driver/*driver* :oracle)
+                              :oracle
                               (assoc details :service-name (mt/random-name))
-                              (= driver/*driver* :presto-jdbc)
+                              :presto-jdbc
                               (assoc details :catalog (mt/random-name))
                               ;; otherwise destroy the db and use the original details
-                              :else
                               (do
                                 (tx/destroy-db! driver/*driver* dbdef)
                                 details))]
@@ -153,10 +152,12 @@
               ;; in the case of some cloud databases, the test database is never created, and can't or shouldn't be destroyed.
               ;; so fake it by changing the database details
               (let [details     (:details (mt/db))
-                    new-details (cond
-                                  (contains? #{:redshift :snowflake :vertica} driver/*driver*)
+                    new-details (case driver/*driver*
+                                  (:redshift :snowflake :vertica)
                                   (assoc details :db (mt/random-name))
-                                  (= driver/*driver* :presto-jdbc)
+                                  :oracle
+                                  (assoc details :service-name (mt/random-name))
+                                  :presto-jdbc
                                   (assoc details :catalog (mt/random-name)))]
                 (t2/update! :model/Database (u/the-id db) {:details new-details}))
               ;; otherwise destroy the db and use the original details
