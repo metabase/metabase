@@ -136,18 +136,18 @@ class ExpressionEditorTextfield extends React.Component<
     newProps: Readonly<ExpressionEditorTextfieldProps>,
   ) {
     // we only refresh our state if we had no previous state OR if our expression changed
-    const { legacyQuery, startRule, query, stageIndex, clause } = newProps;
-    const previousExpression = this.props.clause
-      ? Lib.legacyExpressionForExpressionClause(
-          query,
-          stageIndex,
-          this.props.clause,
-        )
-      : undefined;
-    const newExpression = clause
+    const { expression, clause, legacyQuery, startRule, query, stageIndex } =
+      newProps;
+    const hasLegacyExpressionChanged = !_.isEqual(
+      this.props.expression,
+      expression,
+    );
+    const hasClauseChanged = !_.isEqual(this.props.clause, clause);
+    const hasExpressionChanged = hasLegacyExpressionChanged || hasClauseChanged;
+    const expressionFromClause = clause
       ? Lib.legacyExpressionForExpressionClause(query, stageIndex, clause)
       : undefined;
-    const hasExpressionChanged = !_.isEqual(previousExpression, newExpression);
+    const newExpression = expressionFromClause ?? expression;
 
     if (!this.state || hasExpressionChanged) {
       const source = format(newExpression, { legacyQuery, startRule });
