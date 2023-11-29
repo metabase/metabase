@@ -6,11 +6,14 @@
    [metabase.db.env :as mdb.env]
    [methodical.core :as methodical]
    [potemkin :as p]
-   [toucan2.connection :as t2.conn])
+   [toucan2.connection :as t2.conn]
+   [toucan2.jdbc.connection :as t2.jdbc.conn])
   (:import
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
 (set! *warn-on-reflection* true)
+
+
 
 (defonce ^{:doc "Counter for [[unique-identifier]] -- this is a simple counter rather that [[java.util.UUID/randomUUID]]
   so we don't waste precious entropy on launch generating something that doesn't need to be random (it just needs to be
@@ -160,6 +163,11 @@
         (finally
           (.setAutoCommit connection true)))
       (thunk))))
+
+(comment
+ ;; in toucan2.jdbc.connection, there is a 'defmethod' for t2.conn/do-with-transaction java.sql.Connection
+ ;; since we don't want our implementation to be overwritten, we need to require it here first before defininng ours
+ t2.jdbc.conn/keepme)
 
 (methodical/defmethod t2.conn/do-with-transaction java.sql.Connection
   "Support nested transactions without introducing a lock like `next.jdbc` does, as that can cause deadlocks -- see
