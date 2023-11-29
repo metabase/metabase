@@ -91,7 +91,7 @@ if (hasPremiumFeature("whitelabel")) {
           ),
 
           widget: HelpLinkRadio,
-          defaultValue: "metabase_default",
+          defaultValue: "default",
         },
         {
           key: "show-metabot",
