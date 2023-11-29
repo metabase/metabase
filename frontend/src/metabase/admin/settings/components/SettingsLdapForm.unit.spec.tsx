@@ -16,12 +16,12 @@ const GROUPS = [
 
 const elements = [
   {
-    placeholder: false,
+    // placeholder: false,
     key: "ldap-enabled",
     value: null,
     is_env_setting: false,
     env_name: "MB_LDAP_ENABLED",
-    description: null,
+    // description: null,
     default: false,
     originalValue: null,
     display_name: "LDAP Authentication",
@@ -52,7 +52,6 @@ const elements = [
     originalValue: null,
     display_name: "LDAP Port",
     type: "string",
-    validations: [["integer", "That's not a valid port number"]],
   },
   {
     placeholder: "none",
@@ -60,20 +59,15 @@ const elements = [
     value: null,
     is_env_setting: false,
     env_name: "MB_LDAP_SECURITY",
-    description: null,
+    // description: null,
     default: "none",
     originalValue: null,
     display_name: "LDAP Security",
     type: "radio",
-    options: {
-      none: "None",
-      ssl: "SSL",
-      starttls: "StartTLS",
-    },
     defaultValue: "none",
   },
   {
-    placeholder: null,
+    // placeholder: null,
     key: "ldap-bind-dn",
     value: null,
     is_env_setting: false,
@@ -86,7 +80,7 @@ const elements = [
     type: "string",
   },
   {
-    placeholder: null,
+    // placeholder: null,
     key: "ldap-password",
     value: null,
     is_env_setting: false,
@@ -98,7 +92,7 @@ const elements = [
     type: "password",
   },
   {
-    placeholder: null,
+    // placeholder: null,
     key: "ldap-user-base",
     value: null,
     is_env_setting: false,
@@ -122,7 +116,6 @@ const elements = [
     originalValue: null,
     display_name: "User filter",
     type: "string",
-    validations: [null],
   },
   {
     placeholder: "mail",
@@ -163,26 +156,17 @@ const elements = [
     type: "string",
   },
   {
-    placeholder: false,
+    // placeholder: false,
     key: "ldap-group-sync",
     value: null,
     is_env_setting: false,
     env_name: "MB_LDAP_GROUP_SYNC",
-    description: null,
+    // description: null,
     default: false,
     originalValue: null,
-    widget: {
-      compare: null,
-      displayName: "Connect(WrappedComponent)",
-    },
-    props: {
-      mappingSetting: "ldap-group-mappings",
-      groupHeading: "Distinguished Name",
-      groupPlaceholder: "cn=People,ou=Groups,dc=metabase,dc=com",
-    },
   },
   {
-    placeholder: null,
+    // placeholder: null,
     key: "ldap-group-base",
     value: null,
     is_env_setting: false,
@@ -195,7 +179,7 @@ const elements = [
     type: "string",
   },
   {
-    placeholder: {},
+    // placeholder: {},
     key: "ldap-group-mappings",
     value: null,
     is_env_setting: false,
@@ -216,7 +200,6 @@ const elements = [
     originalValue: null,
     display_name: "Group membership filter",
     type: "string",
-    validations: [null],
   },
   {
     key: "ldap-sync-admin-group",

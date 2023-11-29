@@ -1,9 +1,9 @@
 import { useCallback, useMemo } from "react";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
 import * as Yup from "yup";
+import type { TestConfig } from "yup";
 
 import { updateLdapSettings } from "metabase/admin/settings/settings";
 
@@ -19,24 +19,20 @@ import {
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { FormSection } from "metabase/containers/FormikForm";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
+import type { SettingValue } from "metabase-types/api";
+import type { SettingElement } from "metabase/admin/settings/types";
 
-const propTypes = {
-  elements: PropTypes.array,
-  settingValues: PropTypes.object.isRequired,
-  onSubmit: PropTypes.func.isRequired,
-};
-
-const testParentheses = {
+const testParentheses: TestConfig<string | null | undefined> = {
   name: "test-parentheses",
   message: "Check your parentheses",
   test: value =>
     (value?.match(/\(/g) || []).length === (value?.match(/\)/g) || []).length,
 };
 
-const testPort = {
+const testPort: TestConfig<string | null | undefined> = {
   name: "test-port",
   message: "That's not a valid port number",
-  test: value => (value || "").trim().match(/^\d*$/),
+  test: value => Boolean((value || "").trim().match(/^\d*$/)),
 };
 
 const LDAP_SCHEMA = Yup.object({
@@ -45,12 +41,26 @@ const LDAP_SCHEMA = Yup.object({
   "ldap-group-membership-filter": Yup.string().nullable().test(testParentheses),
 });
 
+type SettingValues = { [key: string]: SettingValue };
+
+type LdapFormSettingElement = Omit<SettingElement, "key"> & {
+  key: string; // ensuring key is required
+  is_env_setting?: boolean;
+  env_name?: string;
+  default?: any;
+};
+
+type Props = {
+  elements: LdapFormSettingElement[];
+  settingValues: SettingValues;
+  onSubmit: (values: SettingValues) => void;
+};
+
 export const SettingsLdapForm = ({
   elements = [],
   settingValues,
   onSubmit,
-  ...props
-}) => {
+}: Props) => {
   const isEnabled = settingValues["ldap-enabled"];
 
   const settings = useMemo(() => {
@@ -183,14 +193,13 @@ const LDAP_ATTRS = [
   "ldap-group-membership-filter",
 ];
 
-const getAttributeValues = values => {
+const getAttributeValues = (values: SettingValues) => {
   return Object.fromEntries(LDAP_ATTRS.map(key => [key, values[key]]));
 };
-
-SettingsLdapForm.propTypes = propTypes;
 
 const mapDispatchToProps = {
   onSubmit: updateLdapSettings,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(null, mapDispatchToProps)(SettingsLdapForm);
