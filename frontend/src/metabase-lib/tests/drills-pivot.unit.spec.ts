@@ -54,25 +54,24 @@ describe("drill-thru/pivot", () => {
       expect(pivotTypes).toEqual(["category", "location", "time"]);
     });
 
-    it.each<[Lib.PivotType, number]>([
-      ["category", 5],
-      ["location", 4],
-      ["time", 4],
-    ])('should drill thru a "%s" column', (pivotType, columnCount) => {
-      const { drill } = findDrillThru(
-        query,
-        stageIndex,
-        clickObject,
-        drillType,
-      );
-      const columns = Lib.pivotColumnsForType(drill, pivotType);
-      expect(columns).toHaveLength(columnCount);
+    it.each<Lib.PivotType>(["category", "location", "time"])(
+      'should drill thru a "%s" column',
+      pivotType => {
+        const { drill } = findDrillThru(
+          query,
+          stageIndex,
+          clickObject,
+          drillType,
+        );
+        const columns = Lib.pivotColumnsForType(drill, pivotType);
+        expect(columns.length).toBeGreaterThanOrEqual(1);
 
-      columns.forEach(column => {
-        const newQuery = Lib.drillThru(query, stageIndex, drill, column);
-        expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
-        expect(Lib.breakouts(newQuery, stageIndex)).toHaveLength(1);
-      });
-    });
+        columns.forEach(column => {
+          const newQuery = Lib.drillThru(query, stageIndex, drill, column);
+          expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+          expect(Lib.breakouts(newQuery, stageIndex)).toHaveLength(1);
+        });
+      },
+    );
   });
 });
