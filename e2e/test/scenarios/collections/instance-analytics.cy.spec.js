@@ -9,6 +9,7 @@ import {
 
 const ANALYTICS_COLLECTION_NAME = "Metabase analytics";
 const PEOPLE_MODEL_NAME = "People";
+const METRICS_DASHBOARD_NAME = "Metabase metrics";
 
 describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
   describe("admin", () => {
@@ -194,6 +195,87 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
         cy.findByText("Bookmark").should("be.visible");
         cy.findByText("Archive").should("not.exist");
         cy.findByText("Move").should("not.exist");
+      });
+    });
+
+    it.skip("should not allow editing analytics content (#36228)", () => {
+      // dashboard
+      navigationSidebar().findByText(ANALYTICS_COLLECTION_NAME).click();
+      cy.findByTestId("pinned-items")
+        .findByText(METRICS_DASHBOARD_NAME)
+        .scrollIntoView()
+        .click();
+
+      cy.wait("@getDashboard");
+
+      cy.findByTestId("dashboard-header").within(() => {
+        cy.icon("pencil").should("not.exist");
+      });
+
+      // model
+      navigationSidebar().findByText(ANALYTICS_COLLECTION_NAME).click();
+      cy.findByTestId("pinned-items")
+        .findByText(PEOPLE_MODEL_NAME)
+        .scrollIntoView()
+        .click();
+
+      cy.wait("@getCard");
+
+      cy.findByTestId("qb-header").within(() => {
+        cy.icon("ellipsis").click();
+      });
+
+      popover().findByText("Edit query definition").should("not.exist");
+    });
+  });
+
+  describe("API tests", () => {
+    beforeEach(() => {
+      cy.intercept("GET", "/api/field/*/values").as("fieldValues");
+      cy.intercept("POST", "/api/dataset").as("datasetQuery");
+      cy.intercept("POST", "api/card").as("saveCard");
+      cy.intercept("POST", "api/dashboard/*/copy").as("copyDashboard");
+
+      restore();
+      cy.signInAsAdmin();
+      setTokenFeatures("all");
+    });
+
+    it.skip("should not allow editing analytics content (#36228)", () => {
+      // get the analytics collection
+      cy.request("GET", "/api/collection/root/items").then(({ body }) => {
+        const analyticsCollection = body.data.find(
+          ({ name }) => name === ANALYTICS_COLLECTION_NAME,
+        );
+        expect(analyticsCollection.can_write).to.be.false;
+
+        // get the items in the collection
+        cy.request(
+          "GET",
+          `/api/collection/${analyticsCollection.id}/items`,
+        ).then(({ body }) => {
+          const analyticsItems = body.data;
+
+          // check each collection item
+          const cards = analyticsItems.filter(
+            ({ model }) => model === "card" || model === "dataset",
+          );
+          const dashboards = analyticsItems.filter(
+            ({ model }) => model === "dashboard",
+          );
+
+          cards.forEach(({ id }) => {
+            cy.request("GET", `/api/card/${id}`).then(({ body }) => {
+              expect(body.can_write).to.be.false;
+            });
+          });
+
+          dashboards.forEach(({ id }) => {
+            cy.request("GET", `/api/dashboard/${id}`).then(({ body }) => {
+              expect(body.can_write).to.be.false;
+            });
+          });
+        });
       });
     });
   });
