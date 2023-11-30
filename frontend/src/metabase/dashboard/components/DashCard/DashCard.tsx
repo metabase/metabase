@@ -281,8 +281,12 @@ function DashCardInner({
             onPreviewToggle={handlePreviewToggle}
           />
         )}
-        <AddNewDashcardButton dashcard={dashcard} position="top" />
-        <AddNewDashcardButton dashcard={dashcard} position="bottom" />
+        {isEditingDashboardLayout && (
+          <AddNewDashcardButton dashcard={dashcard} position="top" />
+        )}
+        {isEditingDashboardLayout && (
+          <AddNewDashcardButton dashcard={dashcard} position="bottom" />
+        )}
         <DashCardVisualization
           dashboard={dashboard}
           dashcard={dashcard}

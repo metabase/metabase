@@ -144,7 +144,11 @@ export const addDashCardToDashboard = function ({
   };
 };
 
-export const addMarkdownDashCardToDashboard = function ({ dashId, tabId }) {
+export const addMarkdownDashCardToDashboard = function ({
+  dashId,
+  tabId,
+  position = {},
+}) {
   trackCardCreated("text", dashId);
 
   const virtualTextCard = {
@@ -154,6 +158,7 @@ export const addMarkdownDashCardToDashboard = function ({ dashId, tabId }) {
   };
 
   const dashcardOverrides = {
+    ...position,
     card: virtualTextCard,
     visualization_settings: {
       virtual_card: virtualTextCard,
@@ -166,7 +171,11 @@ export const addMarkdownDashCardToDashboard = function ({ dashId, tabId }) {
   });
 };
 
-export const addHeadingDashCardToDashboard = function ({ dashId, tabId }) {
+export const addHeadingDashCardToDashboard = function ({
+  dashId,
+  tabId,
+  position = {},
+}) {
   trackCardCreated("heading", dashId);
 
   const virtualTextCard = {
@@ -176,6 +185,7 @@ export const addHeadingDashCardToDashboard = function ({ dashId, tabId }) {
   };
 
   const dashcardOverrides = {
+    ...position,
     card: virtualTextCard,
     visualization_settings: {
       virtual_card: virtualTextCard,
@@ -189,7 +199,11 @@ export const addHeadingDashCardToDashboard = function ({ dashId, tabId }) {
   });
 };
 
-export const addLinkDashCardToDashboard = function ({ dashId, tabId }) {
+export const addLinkDashCardToDashboard = function ({
+  dashId,
+  tabId,
+  position = {},
+}) {
   trackCardCreated("link", dashId);
 
   const virtualLinkCard = {
@@ -199,6 +213,7 @@ export const addLinkDashCardToDashboard = function ({ dashId, tabId }) {
   };
 
   const dashcardOverrides = {
+    ...position,
     card: virtualLinkCard,
     visualization_settings: {
       virtual_card: virtualLinkCard,
