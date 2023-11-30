@@ -118,6 +118,116 @@ describe("drill-thru/pivot", () => {
       verifyDrillThru(query, stageIndex, drill, pivotTypes);
     });
   });
+
+  describe("1 aggregation and 1 numeric breakout", () => {
+    const query = createSingleStageQuery({
+      aggregations: [{ operatorName: "count" }],
+      breakouts: [{ columnName: "TOTAL", tableName: "ORDERS" }],
+    });
+    const clickObject = createAggregatedCellClickObject({
+      aggregation: {
+        column: createCountDatasetColumn(),
+        value: 10,
+      },
+      breakouts: [
+        {
+          column: createOrdersTotalDatasetColumn({
+            source: "breakout",
+          }),
+          value: 10,
+        },
+      ],
+    });
+
+    it("should not drill thru an aggregated cell", () => {
+      const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
+      expect(drill).toBeNull();
+    });
+  });
+
+  describe("1 aggregation, 1 date and 1 category breakout", () => {
+    const query = createSingleStageQuery({
+      aggregations: [{ operatorName: "count" }],
+      breakouts: [
+        { columnName: "CREATED_AT", tableName: "ORDERS" },
+        { columnName: "CATEGORY", tableName: "PEOPLE" },
+      ],
+    });
+    const clickObject = createAggregatedCellClickObject({
+      aggregation: {
+        column: createCountDatasetColumn(),
+        value: 10,
+      },
+      breakouts: [
+        {
+          column: createOrdersTotalDatasetColumn({
+            source: "breakout",
+          }),
+          value: "2020-01-01",
+        },
+        {
+          column: createProductsCategoryDatasetColumn({
+            source: "breakout",
+          }),
+          value: "Widget",
+        },
+      ],
+    });
+
+    it("should drill thru an aggregated cell without time columns", () => {
+      const { drill } = findDrillThru(
+        query,
+        stageIndex,
+        clickObject,
+        drillType,
+      );
+      const pivotTypes = Lib.pivotTypes(drill);
+      expect(pivotTypes).toEqual(["category", "location"]);
+      verifyDrillThru(query, stageIndex, drill, pivotTypes);
+    });
+  });
+
+  describe("1 aggregation, 1 date and 1 numeric breakout", () => {
+    const query = createSingleStageQuery({
+      aggregations: [{ operatorName: "count" }],
+      breakouts: [
+        { columnName: "CREATED_AT", tableName: "ORDERS" },
+        { columnName: "CATEGORY", tableName: "PEOPLE" },
+      ],
+    });
+    const clickObject = createAggregatedCellClickObject({
+      aggregation: {
+        column: createCountDatasetColumn(),
+        value: 10,
+      },
+      breakouts: [
+        {
+          column: createOrdersTotalDatasetColumn({
+            source: "breakout",
+          }),
+          value: "2020-01-01",
+        },
+        {
+          column: createProductsCategoryDatasetColumn({
+            source: "breakout",
+          }),
+          value: "Widget",
+        },
+      ],
+    });
+
+    it("should drill thru an aggregated cell without time columns", () => {
+      const { drill } = findDrillThru(
+        query,
+        stageIndex,
+        clickObject,
+        drillType,
+      );
+      const pivotTypes = Lib.pivotTypes(drill);
+      expect(pivotTypes).toEqual(["category", "location"]);
+      verifyDrillThru(query, stageIndex, drill, pivotTypes);
+    });
+  });
 });
 
 function verifyDrillThru(
