@@ -66,6 +66,19 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.findByText(/Share this dashboard with people *./i);
   });
 
+  describe("sidebar toggling behavior", () => {
+    it("should allow toggling the sidebar", () => {
+      openDashboardSubscriptions();
+      cy.findByLabelText("subscriptions").click();
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Email it");
+      cy.findByLabelText("subscriptions").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Email it").should("not.exist");
+    });
+  });
+
   describe("with no channels set up", () => {
     it("should instruct user to connect email or slack", () => {
       openDashboardSubscriptions();
