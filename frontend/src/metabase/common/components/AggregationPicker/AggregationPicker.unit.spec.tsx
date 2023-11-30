@@ -1,7 +1,7 @@
 import _ from "underscore";
 import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
-import { render, screen, waitFor, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 
 import type { Metric, StructuredDatasetQuery } from "metabase-types/api";
@@ -150,7 +150,7 @@ function setup({
     onSelect(Lib.displayInfo(nextQuery, 0, recentAggregation));
   }
 
-  render(
+  renderWithProviders(
     <AggregationPicker
       query={query}
       legacyQuery={legacyQuery}
