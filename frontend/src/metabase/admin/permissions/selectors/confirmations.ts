@@ -104,7 +104,7 @@ export function getControlledDatabaseWarningModal(
     "controlled"
   ) {
     return {
-      title: t`Change access to this database to limited?`,
+      title: t`Change access to this table to limited?`,
       confirmButtonText: t`Change`,
       cancelButtonText: t`Cancel`,
     };
