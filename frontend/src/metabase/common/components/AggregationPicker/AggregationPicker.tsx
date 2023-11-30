@@ -85,7 +85,7 @@ export function AggregationPicker({
   );
   const displayInfo = clause
     ? Lib.displayInfo(query, stageIndex, clause)
-    : clause;
+    : undefined;
 
   // For really simple inline expressions like Average([Price]),
   // MLv2 can figure out that "Average" operator is used.
