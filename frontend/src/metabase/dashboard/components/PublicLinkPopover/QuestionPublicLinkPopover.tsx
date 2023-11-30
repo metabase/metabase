@@ -36,10 +36,12 @@ export const QuestionPublicLinkPopover = ({
     });
   };
 
-  const createPublicQuestionLink = async () =>
+  const createPublicQuestionLink = async () => {
     await dispatch(createPublicLink(question.card()));
-  const deletePublicQuestionLink = async () =>
+  };
+  const deletePublicQuestionLink = async () => {
     await dispatch(deletePublicLink(question.card()));
+  };
 
   return (
     <PublicLinkPopover

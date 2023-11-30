@@ -38,7 +38,6 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
 
     cy.findByLabelText("subscriptions").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
 
     openPublicLinkDropdown();
     cy.findByTestId("public-link-popover-content").should("be.visible");
@@ -67,7 +66,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     // Dashboard subscriptions are not shown because
     // getting notifications with static text-only cards doesn't make a lot of sense
     cy.findByLabelText("subscriptions").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+
     cy.get(".Modal--full").within(() => {
       cy.findByText(/Public embed/).should("be.visible");
       cy.findByText(/Embed in your application/).should("be.visible");

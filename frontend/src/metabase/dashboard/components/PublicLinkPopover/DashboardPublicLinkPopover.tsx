@@ -25,10 +25,12 @@ export const DashboardPublicLinkPopover = ({
     return getPublicDashboardUrl(uuid);
   };
 
-  const createPublicDashboardLink = async () =>
+  const createPublicDashboardLink = async () => {
     await dispatch(createPublicLink(dashboard));
-  const deletePublicDashboardLink = async () =>
+  };
+  const deletePublicDashboardLink = async () => {
     await dispatch(deletePublicLink(dashboard));
+  };
 
   return (
     <PublicLinkPopover
