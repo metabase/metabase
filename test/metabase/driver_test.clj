@@ -156,7 +156,7 @@
                                   (:redshift :snowflake :vertica)
                                   (assoc details :db (mt/random-name))
                                   :oracle
-                                  (assoc details :service-name "not_so_random_service_name")
+                                  (assoc details :service-name (mt/random-name))
                                   :presto-jdbc
                                   (assoc details :catalog (mt/random-name)))]
                 (t2/update! :model/Database (u/the-id db) {:details new-details}))
