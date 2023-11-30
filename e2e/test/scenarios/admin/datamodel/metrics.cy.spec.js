@@ -107,8 +107,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       // `data`, `filtered by` and `view`
       cy.wait(["@dataset", "@dataset", "@dataset"]);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Count").click();
+      cy.get(".GuiBuilder").findByText("Count").click();
       popover().contains("Custom Expression").click();
 
       cy.get(".ace_text-input")
@@ -123,15 +122,12 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.wait("@dataset");
 
       // verify popover is closed, otherwise its state will reset
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Custom Expression").should("not.exist");
+      cy.findByRole("grid").findByText("Custom Expression").should("not.exist");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Result: 93.8");
+      cy.get(".GuiBuilder").findByText("Result: 93.8");
 
       // Let's make sure the custom expression is still preserved
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Foo").click();
+      cy.get(".GuiBuilder").findByText("Foo").click();
       cy.get(".ace_content").should("contain", customExpression);
     });
   });
