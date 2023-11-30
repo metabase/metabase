@@ -53,7 +53,7 @@ describe("drill-thru/pivot", () => {
     });
   });
 
-  describe("1 aggregation and 1 date breakout", () => {
+  describe("1 aggregation, 1 date breakout", () => {
     const query = createSingleStageQuery({
       aggregations: [{ operatorName: "count" }],
       breakouts: [{ columnName: "CREATED_AT", tableName: "ORDERS" }],
@@ -86,10 +86,10 @@ describe("drill-thru/pivot", () => {
     });
   });
 
-  describe("1 aggregation and 1 category breakout", () => {
+  describe("1 aggregation, 1 category breakout", () => {
     const query = createSingleStageQuery({
       aggregations: [{ operatorName: "count" }],
-      breakouts: [{ columnName: "CATEGORY", tableName: "PEOPLE" }],
+      breakouts: [{ columnName: "CATEGORY", tableName: "PRODUCTS" }],
     });
     const clickObject = createAggregatedCellClickObject({
       aggregation: {
@@ -119,7 +119,7 @@ describe("drill-thru/pivot", () => {
     });
   });
 
-  describe("1 aggregation and 1 numeric breakout", () => {
+  describe("1 aggregation, 1 numeric breakout", () => {
     const query = createSingleStageQuery({
       aggregations: [{ operatorName: "count" }],
       breakouts: [{ columnName: "TOTAL", tableName: "ORDERS" }],
@@ -150,7 +150,7 @@ describe("drill-thru/pivot", () => {
       aggregations: [{ operatorName: "count" }],
       breakouts: [
         { columnName: "CREATED_AT", tableName: "ORDERS" },
-        { columnName: "CATEGORY", tableName: "PEOPLE" },
+        { columnName: "CATEGORY", tableName: "PRODUCTS" },
       ],
     });
     const clickObject = createAggregatedCellClickObject({
@@ -192,7 +192,7 @@ describe("drill-thru/pivot", () => {
       aggregations: [{ operatorName: "count" }],
       breakouts: [
         { columnName: "CREATED_AT", tableName: "ORDERS" },
-        { columnName: "CATEGORY", tableName: "PEOPLE" },
+        { columnName: "TOTAL", tableName: "ORDERS" },
       ],
     });
     const clickObject = createAggregatedCellClickObject({
@@ -208,6 +208,41 @@ describe("drill-thru/pivot", () => {
           value: "2020-01-01",
         },
         {
+          column: createOrdersTotalDatasetColumn({
+            source: "breakout",
+          }),
+          value: 20,
+        },
+      ],
+    });
+
+    it("should drill not thru an aggregated cell", () => {
+      const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
+      expect(drill).toBeNull();
+    });
+  });
+
+  describe("1 aggregation, 2 category breakouts", () => {
+    const query = createSingleStageQuery({
+      aggregations: [{ operatorName: "count" }],
+      breakouts: [
+        { columnName: "CATEGORY", tableName: "PRODUCTS" },
+        { columnName: "CATEGORY", tableName: "PRODUCTS" },
+      ],
+    });
+    const clickObject = createAggregatedCellClickObject({
+      aggregation: {
+        column: createCountDatasetColumn(),
+        value: 10,
+      },
+      breakouts: [
+        {
+          column: createProductsCategoryDatasetColumn({
+            source: "breakout",
+          }),
+          value: "Widget",
+        },
+        {
           column: createProductsCategoryDatasetColumn({
             source: "breakout",
           }),
@@ -216,7 +251,7 @@ describe("drill-thru/pivot", () => {
       ],
     });
 
-    it("should drill thru an aggregated cell without time columns", () => {
+    it("should drill thru an aggregated cell without location columns", () => {
       const { drill } = findDrillThru(
         query,
         stageIndex,
@@ -224,7 +259,7 @@ describe("drill-thru/pivot", () => {
         drillType,
       );
       const pivotTypes = Lib.pivotTypes(drill);
-      expect(pivotTypes).toEqual(["category", "location"]);
+      expect(pivotTypes).toEqual(["category", "time"]);
       verifyDrillThru(query, stageIndex, drill, pivotTypes);
     });
   });
