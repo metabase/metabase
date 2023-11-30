@@ -46,6 +46,9 @@ export type OrderByDirection = "asc" | "desc";
 declare const FilterClause: unique symbol;
 export type FilterClause = unknown & { _opaque: typeof FilterClause };
 
+declare const FilterOperator: unique symbol;
+export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
+
 declare const Join: unique symbol;
 export type Join = unknown & { _opaque: typeof Join };
 

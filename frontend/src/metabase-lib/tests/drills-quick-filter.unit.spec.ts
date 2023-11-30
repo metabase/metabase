@@ -95,7 +95,7 @@ describe("drill-thru/quick-filter", () => {
         column,
         value: "text",
       });
-      const { drillInfo } = findDrillThru(
+      const { drill, drillInfo } = findDrillThru(
         query,
         stageIndex,
         clickObject,
@@ -104,6 +104,7 @@ describe("drill-thru/quick-filter", () => {
       expect(drillInfo).toMatchObject({
         operators: ["contains", "does-not-contain"],
       });
+      verifyDrillThruDetails(drill, expectedStageCount);
     });
 
     it("should not drill thru a non-editable query", () => {
@@ -157,6 +158,8 @@ function verifyDrillThru(
   drillInfo: Lib.DrillThruDisplayInfo,
   expectedStageCount: number,
 ) {
+  verifyDrillThruDetails(drill, expectedStageCount);
+
   if (drillInfo.type === "drill-thru/quick-filter") {
     drillInfo.operators.forEach(operator => {
       const newQuery = Lib.drillThru(query, -1, drill, operator);
@@ -164,4 +167,15 @@ function verifyDrillThru(
       expect(Lib.stageCount(newQuery)).toBe(expectedStageCount);
     });
   }
+}
+
+function verifyDrillThruDetails(
+  drill: Lib.DrillThru,
+  expectedStageCount: number,
+) {
+  const drillDetails = Lib.filterDrillDetails(drill);
+  const stageCount = Lib.stageCount(drillDetails.query);
+  const operators = Lib.filterableColumnOperators(drillDetails.column);
+  expect(stageCount).toBe(expectedStageCount);
+  expect(operators.length).toBeGreaterThanOrEqual(1);
 }

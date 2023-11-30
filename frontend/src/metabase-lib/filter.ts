@@ -6,6 +6,7 @@ import type {
   ColumnMetadata,
   ExpressionClause,
   FilterClause,
+  FilterOperator,
   NumberFilterParts,
   Query,
   RelativeDateFilterParts,
@@ -17,6 +18,12 @@ export function filterableColumns(
   stageIndex: number,
 ): ColumnMetadata[] {
   return ML.filterable_columns(query, stageIndex);
+}
+
+export function filterableColumnOperators(
+  column: ColumnMetadata,
+): FilterOperator[] {
+  return ML.filterable_column_operators(column);
 }
 
 export function filter(

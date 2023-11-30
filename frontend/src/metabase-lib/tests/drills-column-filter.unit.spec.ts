@@ -1,18 +1,23 @@
 import {
+  createOrdersCreatedAtDatasetColumn,
   createOrdersIdField,
   createOrdersTable,
   createOrdersTotalDatasetColumn,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
 import {
   createQuery,
   findDrillThru,
   createColumnClickObject,
   createRawCellClickObject,
   queryDrillThru,
+  createSingleStageQuery,
+  createAggregatedCellClickObject,
 } from "metabase-lib/test-helpers";
 import {
+  createCountDatasetColumn,
   createNotEditableQuery,
   createOrdersStructuredDatasetColumn,
   createOrdersStructuredField,
@@ -25,6 +30,7 @@ describe("drill-thru/column-filter", () => {
   describe("raw query", () => {
     const defaultQuery = createQuery();
     const defaultColumn = createOrdersTotalDatasetColumn();
+    const expectedStageCount = 1;
 
     it("should drill thru a column", () => {
       const clickObject = createColumnClickObject({ column: defaultColumn });
@@ -35,6 +41,7 @@ describe("drill-thru/column-filter", () => {
         drillType,
       );
       expect(drill).toBeDefined();
+      verifyDrillThruDetails(drill, expectedStageCount);
     });
 
     it("should not drill thru a cell", () => {
@@ -92,4 +99,48 @@ describe("drill-thru/column-filter", () => {
       expect(drill).toBeNull();
     });
   });
+
+  describe("aggregated query", () => {
+    const defaultQuery = createSingleStageQuery({
+      aggregations: [{ operatorName: "count" }],
+      breakouts: [{ columnName: "CREATED_AT", tableName: "ORDERS" }],
+    });
+    const expectedStageCount = 2;
+
+    it("should drill thru an aggregated cell", () => {
+      const clickObject = createAggregatedCellClickObject({
+        aggregation: {
+          column: createCountDatasetColumn(),
+          value: 10,
+        },
+        breakouts: [
+          {
+            column: createOrdersCreatedAtDatasetColumn({
+              source: "breakout",
+            }),
+            value: "2020-01-01",
+          },
+        ],
+      });
+      const { drill } = findDrillThru(
+        defaultQuery,
+        stageIndex,
+        clickObject,
+        drillType,
+      );
+      expect(drill).toBeDefined();
+      verifyDrillThruDetails(drill, expectedStageCount);
+    });
+  });
 });
+
+function verifyDrillThruDetails(
+  drill: Lib.DrillThru,
+  expectedStageCount: number,
+) {
+  const drillDetails = Lib.filterDrillDetails(drill);
+  const stageCount = Lib.stageCount(drillDetails.query);
+  const operators = Lib.filterableColumnOperators(drillDetails.column);
+  expect(stageCount).toBe(expectedStageCount);
+  expect(operators.length).toBeGreaterThanOrEqual(1);
+}
