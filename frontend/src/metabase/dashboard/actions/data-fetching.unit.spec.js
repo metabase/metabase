@@ -7,7 +7,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 import { createMockEntitiesState } from "__support__/store";
-import dashboardReducer from "../reducers";
+import { dashboardReducers } from "../reducers";
 import { fetchDashboard } from "./data-fetching";
 
 describe("fetchDashboard", () => {
@@ -24,7 +24,7 @@ describe("fetchDashboard", () => {
 
     store = configureStore({
       reducer: {
-        dashboard: dashboardReducer,
+        dashboard: dashboardReducers,
         entities: (state = {}) => state,
         settings: (state = {}) => state,
       },
