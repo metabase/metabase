@@ -7,10 +7,13 @@ import {
 } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
 import {
+  createAggregatedCellClickObject,
   createQuery,
   createRawCellClickObject,
+  createSingleStageQuery,
   findDrillThru,
 } from "metabase-lib/test-helpers";
+import { createCountDatasetColumn } from "metabase-lib/tests/drills-common";
 
 describe("drill-thru/quick-filter", () => {
   const drillType = "drill-thru/quick-filter";
@@ -97,6 +100,41 @@ describe("drill-thru/quick-filter", () => {
       expect(drillInfo).toMatchObject({
         operators: ["contains", "does-not-contain"],
       });
+    });
+  });
+
+  describe("aggregated query", () => {
+    const query = createSingleStageQuery({
+      aggregations: [{ operatorName: "count" }],
+      breakouts: [{ columnName: "CREATED_AT", tableName: "ORDERS" }],
+    });
+    const expectedStageCount = 2;
+
+    it("should drill thru an aggregated cell", () => {
+      const clickObject = createAggregatedCellClickObject({
+        aggregation: {
+          column: createCountDatasetColumn(),
+          value: 10,
+        },
+        breakouts: [
+          {
+            column: createOrdersCreatedAtDatasetColumn({
+              source: "breakout",
+            }),
+            value: "2020-01-01",
+          },
+        ],
+      });
+      const { drill, drillInfo } = findDrillThru(
+        query,
+        stageIndex,
+        clickObject,
+        drillType,
+      );
+      expect(drillInfo).toMatchObject({
+        operators: ["<", ">", "=", "≠"],
+      });
+      verifyDrillThru(query, drill, drillInfo, expectedStageCount);
     });
   });
 });
