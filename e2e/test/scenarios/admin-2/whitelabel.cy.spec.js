@@ -193,7 +193,7 @@ describeEE("formatting > whitelabel", () => {
         .findByText("Go to a custom destination...")
         .click();
 
-      helpLinkCustomDestinationInput()
+      getHelpLinkCustomDestinationInput()
         .should("have.focus")
         .type("https://example.org/custom-destination")
         .blur();
@@ -205,7 +205,7 @@ describeEE("formatting > whitelabel", () => {
       cy.log("Check that on page load the text field is not focused");
       cy.reload();
 
-      helpLinkCustomDestinationInput().should("not.have.focus");
+      getHelpLinkCustomDestinationInput().should("not.have.focus");
 
       cy.signInAsNormalUser();
       cy.visit("/");
@@ -251,12 +251,15 @@ describeEE("formatting > whitelabel", () => {
         .findByText("Go to a custom destination...")
         .click();
 
-      helpLinkCustomDestinationInput().clear().type("ftp://something").blur();
+      getHelpLinkCustomDestinationInput()
+        .clear()
+        .type("ftp://something")
+        .blur();
       main()
         .findByText("This needs to be an http, https or mailto URL.")
         .should("exist");
 
-      helpLinkCustomDestinationInput().clear().type("https://").blur();
+      getHelpLinkCustomDestinationInput().clear().type("https://").blur();
       main()
         .findByText(/Invalid URL/i)
         .should("exist");
@@ -270,7 +273,7 @@ describeEE("formatting > whitelabel", () => {
         .findByText("Go to a custom destination...")
         .click();
 
-      helpLinkCustomDestinationInput().type(
+      getHelpLinkCustomDestinationInput().type(
         "https://example.org/custom-destination",
       );
 
@@ -292,7 +295,7 @@ describeEE("formatting > whitelabel", () => {
         .findByText("Go to a custom destination...")
         .click();
 
-      helpLinkCustomDestinationInput().type(
+      getHelpLinkCustomDestinationInput().type(
         "https://example.org/custom-destination",
       );
 
@@ -326,5 +329,5 @@ const openSettingsMenu = () => appBar().icon("gear").click();
 
 const helpLink = () => popover().findByRole("link", { name: "Help" });
 
-const helpLinkCustomDestinationInput = () =>
+const getHelpLinkCustomDestinationInput = () =>
   cy.findByPlaceholderText("Enter a URL it should go to");
