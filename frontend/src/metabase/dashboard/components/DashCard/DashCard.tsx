@@ -282,10 +282,12 @@ function DashCardInner({
           />
         )}
         {isEditingDashboardLayout && (
-          <AddNewDashcardButton dashcard={dashcard} position="top" />
-        )}
-        {isEditingDashboardLayout && (
-          <AddNewDashcardButton dashcard={dashcard} position="bottom" />
+          <>
+            <AddNewDashcardButton dashcard={dashcard} position="top" />
+            <AddNewDashcardButton dashcard={dashcard} position="right" />
+            <AddNewDashcardButton dashcard={dashcard} position="bottom" />
+            <AddNewDashcardButton dashcard={dashcard} position="left" />
+          </>
         )}
         <DashCardVisualization
           dashboard={dashboard}
