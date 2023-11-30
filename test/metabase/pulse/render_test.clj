@@ -151,9 +151,19 @@
       (binding [render/*include-description* true]
         (is (= "<p>Card description</p>\n" (last (:content (#'render/make-description-if-needed dc1 card))))))))
 
-    (testing "Test markdown converts to html"
-      (mt/with-temp* [Card          [card {:description "# Card description"}]
-                      Dashboard     [dashboard]
-                      DashboardCard [dc1 {:dashboard_id (:id dashboard) :card_id (:id card)}]]
-        (binding [render/*include-description* true]
-          (is (= "<h1>Card description</h1>\n" (last (:content (#'render/make-description-if-needed dc1 card)))))))))
+  (testing "Test markdown converts to html"
+    (mt/with-temp* [Card          [card {:description "# Card description"}]
+                    Dashboard     [dashboard]
+                    DashboardCard [dc1 {:dashboard_id (:id dashboard) :card_id (:id card)}]]
+      (binding [render/*include-description* true]
+        (is (= "<h1>Card description</h1>\n" (last (:content (#'render/make-description-if-needed dc1 card)))))))))
+
+(deftest title-should-be-an-a-tag-test
+  (testing "the title of the card should be an <a> tag so you can click on title using old outlook clients (#12901)"
+    (mt/with-temp* [Card [card {:name          "A Card"
+                                :dataset_query (mt/mbql-query venues {:limit 1})}]]
+      (mt/with-temp-env-var-value [mb-site-url "https://mb.com"]
+        (let [rendered-card-content (:content (binding [render/*include-title* true]
+                                                (render/render-pulse-card :inline (pulse/defaulted-timezone card) card nil (qp/process-query (:dataset_query card)))))]
+          (is (some? (mbql.u/match-one rendered-card-content
+                                       [:a (_ :guard #(= (format "https://mb.com/question/%d" (:id card)) (:href %))) "A Card"]))))))))
