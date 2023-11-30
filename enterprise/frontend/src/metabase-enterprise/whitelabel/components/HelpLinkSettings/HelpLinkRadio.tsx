@@ -1,8 +1,8 @@
 import { t } from "ttag";
 import { useState } from "react";
-import { Radio, Stack } from "metabase/ui";
+import { Radio, Stack, Text } from "metabase/ui";
 import type { HelpLinkSetting, SettingKey, Settings } from "metabase-types/api";
-import InputBlurChange from "metabase/components/InputBlurChange";
+import { SettingInputBlurChange } from "metabase/admin/settings/components/widgets/SettingInput.styled";
 
 interface Props {
   setting: {
@@ -14,26 +14,45 @@ interface Props {
   onChangeSetting: <TKey extends SettingKey>(
     key: TKey,
     value: Settings[TKey],
-  ) => void;
+  ) => Promise<void>;
   settingValues: Settings;
 }
+
+const supportedPrefixes = ["http://", "https://", "mailto:"];
 
 export const HelpLinkRadio = ({
   setting,
   onChangeSetting,
   settingValues,
 }: Props) => {
-  const [helpLinkSetting, setHelpLinkType] = useState(
+  const [helpLinkSetting, setHelpLinkSetting] = useState(
     settingValues["help-link"] || "default",
   );
 
+  const [error, setError] = useState<string | null>(null);
+
   const handleRadioChange = (value: HelpLinkSetting) => {
-    setHelpLinkType(value);
+    setHelpLinkSetting(value);
     onChangeSetting("help-link", value);
   };
   const customUrl = settingValues["help-link-custom-destination"];
 
   const isTextInputVisible = helpLinkSetting === "custom";
+
+  const handleChange = async (value: string) => {
+    if (value === "") {
+      setError(t`This field can't be left empty.`);
+    } else if (!supportedPrefixes.some(prefix => value.startsWith(prefix))) {
+      setError(t`This needs to be an http, https or mailto URL.`);
+    } else {
+      setError("");
+      try {
+        await onChangeSetting("help-link-custom-destination", value);
+      } catch (e: any) {
+        setError(e?.data?.message || t`Something went wrong`);
+      }
+    }
+  };
 
   return (
     <Stack>
@@ -45,17 +64,25 @@ export const HelpLinkRadio = ({
         </Stack>
       </Radio.Group>
       {isTextInputVisible && (
-        <InputBlurChange
-          value={customUrl}
-          // this makes it autofocus only when the value wasn't originally a custom destination
-          // this prevents it to be focused on page load
-          autoFocus={setting.originalValue !== "custom"}
-          aria-label={t`Help link custom destination`}
-          placeholder={t`Enter a URL`}
-          onBlurChange={e => {
-            onChangeSetting("help-link-custom-destination", e.target.value);
-          }}
-        />
+        <Stack ml={28} spacing={0}>
+          {error && (
+            <Text size="md" color="error.0">
+              {error}
+            </Text>
+          )}
+          <SettingInputBlurChange
+            size="large"
+            error={Boolean(error)}
+            style={{ marginTop: 4 }}
+            value={customUrl}
+            // this makes it autofocus only when the value wasn't originally a custom destination
+            // this prevents it to be focused on page load
+            autoFocus={setting.originalValue !== "custom"}
+            aria-label={t`Help link custom destination`}
+            placeholder={t`Enter a URL it should go to`}
+            onBlurChange={e => handleChange(e.target.value)}
+          />
+        </Stack>
       )}
     </Stack>
   );

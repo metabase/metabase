@@ -192,7 +192,7 @@ describeEE("formatting > whitelabel", () => {
         .findByText("Go to a custom destination...")
         .click();
 
-      cy.findByLabelText("Help link custom destination")
+      helpLinkCustomDestinationInput()
         .should("have.focus")
         .type("https://example.org/custom-destination")
         .blur();
@@ -204,9 +204,7 @@ describeEE("formatting > whitelabel", () => {
       cy.log("Check that on page load the text field is not focused");
       cy.reload();
 
-      cy.findByLabelText("Help link custom destination").should(
-        "not.have.focus",
-      );
+      helpLinkCustomDestinationInput().should("not.have.focus");
 
       cy.signInAsNormalUser();
       cy.visit("/");
@@ -252,7 +250,7 @@ describeEE("formatting > whitelabel", () => {
         .findByText("Go to a custom destination...")
         .click();
 
-      cy.findByLabelText("Help link custom destination").type(
+      helpLinkCustomDestinationInput().type(
         "https://example.org/custom-destination",
       );
 
@@ -274,7 +272,7 @@ describeEE("formatting > whitelabel", () => {
         .findByText("Go to a custom destination...")
         .click();
 
-      cy.findByLabelText("Help link custom destination").type(
+      helpLinkCustomDestinationInput().type(
         "https://example.org/custom-destination",
       );
 
@@ -307,3 +305,6 @@ function setApplicationFontTo(font) {
 const openSettingsMenu = () => appBar().icon("gear").click();
 
 const helpLink = () => popover().findByRole("link", { name: "Help" });
+
+const helpLinkCustomDestinationInput = () =>
+  cy.findByPlaceholderText("Enter a URL it should go to");
