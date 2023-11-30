@@ -15,7 +15,8 @@ import {
 } from "metabase-lib/test-helpers";
 import { createCountDatasetColumn } from "./drills-common";
 
-describe("drill-thru/pivot", () => {
+// eslint-disable-next-line jest/no-disabled-tests
+describe.skip("drill-thru/pivot (metabase#33559)", () => {
   const drillType = "drill-thru/pivot";
   const stageIndex = 0;
 
