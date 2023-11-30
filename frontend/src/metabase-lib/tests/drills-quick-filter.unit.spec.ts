@@ -12,8 +12,12 @@ import {
   createRawCellClickObject,
   createSingleStageQuery,
   findDrillThru,
+  queryDrillThru,
 } from "metabase-lib/test-helpers";
-import { createCountDatasetColumn } from "metabase-lib/tests/drills-common";
+import {
+  createCountDatasetColumn,
+  createNotEditableQuery,
+} from "./drills-common";
 
 describe("drill-thru/quick-filter", () => {
   const drillType = "drill-thru/quick-filter";
@@ -101,10 +105,18 @@ describe("drill-thru/quick-filter", () => {
         operators: ["contains", "does-not-contain"],
       });
     });
+
+    it("should not drill thru a non-editable query", () => {
+      const query = createNotEditableQuery(defaultQuery);
+      const column = createOrdersTotalDatasetColumn();
+      const clickObject = createRawCellClickObject({ column, value: 10 });
+      const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
+      expect(drill).toBeNull();
+    });
   });
 
   describe("aggregated query", () => {
-    const query = createSingleStageQuery({
+    const defaultQuery = createSingleStageQuery({
       aggregations: [{ operatorName: "count" }],
       breakouts: [{ columnName: "CREATED_AT", tableName: "ORDERS" }],
     });
@@ -126,7 +138,7 @@ describe("drill-thru/quick-filter", () => {
         ],
       });
       const { drill, drillInfo } = findDrillThru(
-        query,
+        defaultQuery,
         stageIndex,
         clickObject,
         drillType,
@@ -134,7 +146,7 @@ describe("drill-thru/quick-filter", () => {
       expect(drillInfo).toMatchObject({
         operators: ["<", ">", "=", "≠"],
       });
-      verifyDrillThru(query, drill, drillInfo, expectedStageCount);
+      verifyDrillThru(defaultQuery, drill, drillInfo, expectedStageCount);
     });
   });
 });
