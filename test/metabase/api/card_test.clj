@@ -604,51 +604,51 @@
           (mt/with-model-cleanup [:model/Card]
             (let [card (assoc (card-with-name-and-query (mt/random-name)
                                                         (mbql-count-query (mt/id) (mt/id :venues)))
-                              :collection_id      (u/the-id collection)
-                              :parameters         [{:id "abc123", :name "test", :type "date"}]
-                              :parameter_mappings [{:parameter_id "abc123", :card_id 10,
-                                                    :target [:dimension [:template-tags "category"]]}])]
-              (is (= (merge
-                      card-defaults
-                      {:name                   (:name card)
-                       :collection_id          true
-                       :collection             (assoc collection :is_personal false)
-                       :creator_id             (mt/user->id :rasta)
-                       :parameters             [{:id "abc123", :name "test", :type "date"}]
-                       :parameter_mappings     [{:parameter_id "abc123", :card_id 10,
-                                                 :target ["dimension" ["template-tags" "category"]]}]
-                       :dataset_query          true
-                       :query_type             "query"
-                       :visualization_settings {:global {:title nil}}
-                       :database_id            true
-                       :table_id               true
-                       :entity_id              true
-                       :can_write              true
-                       :dashboard_count        0
-                       :result_metadata        true
-                       :last-edit-info         {:timestamp true :id true :first_name "Rasta"
-                                                :last_name "Toucan" :email "rasta@metabase.com"}
-                       :creator                (merge
-                                                (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login :locale])
-                                                {:common_name  "Rasta Toucan"
-                                                 :is_superuser false
-                                                 :last_name    "Toucan"
-                                                 :first_name   "Rasta"
-                                                 :email        "rasta@metabase.com"})
-                       :metabase_version       config/mb-version-string})
-                     (-> (mt/user-http-request :rasta :post 200 "card" card)
-                         (dissoc :created_at :updated_at :id)
-                         (update :table_id integer?)
-                         (update :database_id integer?)
-                         (update :collection_id integer?)
-                         (update :dataset_query map?)
-                         (update :entity_id string?)
-                         (update :result_metadata (partial every? map?))
-                         (update :creator dissoc :is_qbnewb)
-                         (update :last-edit-info (fn [edit-info]
-                                                   (-> edit-info
-                                                       (update :id boolean)
-                                                       (update :timestamp boolean))))))))))))))
+                         :collection_id (u/the-id collection)
+                         :parameters [{:id "abc123", :name "test", :type "date"}]
+                         :parameter_mappings [{:parameter_id "abc123", :card_id 10,
+                                               :target       [:dimension [:template-tags "category"]]}])]
+              (is (=? (merge
+                        card-defaults
+                        {:name                   (:name card)
+                         :collection_id          true
+                         :collection             (assoc collection :is_personal false)
+                         :creator_id             (mt/user->id :rasta)
+                         :parameters             [{:id "abc123", :name "test", :type "date"}]
+                         :parameter_mappings     [{:parameter_id "abc123", :card_id 10,
+                                                   :target       ["dimension" ["template-tags" "category"]]}]
+                         :dataset_query          true
+                         :query_type             "query"
+                         :visualization_settings {:global {:title nil}}
+                         :database_id            true
+                         :table_id               true
+                         :entity_id              true
+                         :can_write              true
+                         :dashboard_count        0
+                         :result_metadata        true
+                         :last-edit-info         {:timestamp true :id true :first_name "Rasta"
+                                                  :last_name "Toucan" :email "rasta@metabase.com"}
+                         :creator                (merge
+                                                   (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login :locale])
+                                                   {:common_name  "Rasta Toucan"
+                                                    :is_superuser false
+                                                    :last_name    "Toucan"
+                                                    :first_name   "Rasta"
+                                                    :email        "rasta@metabase.com"})
+                         :metabase_version       config/mb-version-string})
+                      (-> (mt/user-http-request :rasta :post 200 "card" card)
+                          (dissoc :created_at :updated_at :id)
+                          (update :table_id integer?)
+                          (update :database_id integer?)
+                          (update :collection_id integer?)
+                          (update :dataset_query map?)
+                          (update :entity_id string?)
+                          (update :result_metadata (partial every? map?))
+                          (update :creator dissoc :is_qbnewb)
+                          (update :last-edit-info (fn [edit-info]
+                                                    (-> edit-info
+                                                        (update :id boolean)
+                                                        (update :timestamp boolean))))))))))))))
 
 (deftest ^:parallel create-card-validation-test
   (testing "POST /api/card"
@@ -674,19 +674,30 @@
                                        :dataset_query (:dataset_query card)})))))
       (testing "You can create a card with a saved question CTE as a model"
         (mt/with-model-cleanup [:model/Card]
-          (let [card-tag-name (str "#" (u/the-id card))]
-            (is (=? {:id pos-int?}
-                    (mt/user-http-request :rasta :post 200 "card"
-                                          (merge
-                                           (mt/with-temp-defaults :model/Card)
-                                           {:dataset_query {:database (u/the-id db)
-                                                            :type     :native
-                                                            :native   {:query         (format "SELECT * FROM {{%s}};" card-tag-name)
-                                                                       :template-tags {card-tag-name {:card-id      (u/the-id card),
-                                                                                                      :display-name card-tag-name,
-                                                                                                      :id           (str (random-uuid))
-                                                                                                      :name         card-tag-name,
-                                                                                                      :type         :card}}}}}))))))))))
+          (let [card-tag-name (str "#" (u/the-id card))
+                dataset-query {:dataset_query {:database (u/the-id db)
+                                               :type     :native
+                                               :native   {:query         (format "SELECT * FROM {{%s}};" card-tag-name)
+                                                          :template-tags {card-tag-name {:card-id      (u/the-id card),
+                                                                                         :display-name card-tag-name,
+                                                                                         :id           (str (random-uuid))
+                                                                                         :name         card-tag-name,
+                                                                                         :type         :card}}}}}
+                {card-id :id
+                 :as     created} (mt/user-http-request :rasta :post 200 "card"
+                                              (merge
+                                                (mt/with-temp-defaults :model/Card)
+                                                dataset-query))
+                retrieved     (mt/user-http-request :rasta :get 200 (str "card/" card-id))]
+            (is (pos-int? card-id))
+            (testing "A POST returns the newly created object, so no follow-on GET is required (#34828)"
+              (is (=
+                    (-> created
+                        (update :last-edit-info dissoc :timestamp)
+                        (dissoc :collection))
+                    (-> retrieved
+                        (update :last-edit-info dissoc :timestamp)
+                        (dissoc :collection)))))))))))
 
 (deftest create-card-disallow-setting-enable-embedding-test
   (testing "POST /api/card"
@@ -809,17 +820,26 @@
           (mt/with-model-cleanup [:model/Card]
             (let [{metadata :result_metadata
                    card-id  :id :as card} (mt/user-http-request
-                                           :rasta :post 200
-                                           "card"
-                                           (card-with-name-and-query "card-name"
-                                                                     query))]
+                                            :rasta :post 200
+                                            "card"
+                                            (card-with-name-and-query "card-name"
+                                                                      query))
+                  ;; simulate a user changing the query without rerunning the query
+                  updated   (mt/user-http-request
+                              :rasta :put 200 (str "card/" card-id)
+                              (assoc card :dataset_query modified-query))
+                  retrieved (mt/user-http-request :rasta :get 200 (str "card/" card-id))]
               (is (= ["ID" "NAME"] (map norm metadata)))
-              ;; simulate a user changing the query without rerunning the query
-              (mt/user-http-request
-               :rasta :put 200 (str "card/" card-id)
-               (assoc card :dataset_query modified-query))
               (is (= ["ID" "NAME" "PRICE"]
-                     (map norm (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))))))
+                     (map norm (t2/select-one-fn :result_metadata :model/Card :id card-id))))
+              (testing "A PUT returns the updated object, so no follow-on GET is required (#34828)"
+                (is (=
+                      (-> updated
+                          (update :last-edit-info dissoc :timestamp)
+                          (dissoc :collection))
+                      (-> retrieved
+                          (update :last-edit-info dissoc :timestamp)
+                          (dissoc :collection))))))))))))
 
 (deftest updating-card-updates-metadata-2
   (let [query (updating-card-updates-metadata-query)]
