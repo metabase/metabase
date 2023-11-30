@@ -5,6 +5,7 @@ import {
   saveDashboard,
   editDashboard,
   setFilter,
+  createPublicLinkDropdown,
 } from "e2e/support/helpers";
 
 const questionDetails = {
@@ -48,8 +49,7 @@ describe("issue 22524", () => {
     saveDashboard();
 
     // Share dashboard
-    cy.icon("share").click();
-    cy.findByRole("switch").click();
+    createPublicLinkDropdown();
 
     cy.wait("@publicLink").then(({ response: { body } }) => {
       const { uuid } = body;

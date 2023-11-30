@@ -4,6 +4,7 @@ import {
   visitPublicDashboard,
   filterWidget,
   popover,
+  createPublicLinkDropdown,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -95,12 +96,7 @@ describe("scenarios > public > dashboard", () => {
       visitDashboard(id);
     });
 
-    cy.icon("share").click();
-
-    cy.findByRole("heading", { name: "Enable sharing" })
-      .parent()
-      .findByRole("switch")
-      .check();
+    createPublicLinkDropdown();
 
     cy.wait("@publicLink").then(({ response }) => {
       expect(response.body.uuid).not.to.be.null;
@@ -114,9 +110,9 @@ describe("scenarios > public > dashboard", () => {
         // expect this input field to be populated with the actual value.
         .click()
         .parent()
-        .findByDisplayValue(/^http/)
+        .findByText(/^http/)
         .then($input => {
-          expect($input.val()).to.match(PUBLIC_DASHBOARD_REGEX);
+          expect($input.text()).to.match(PUBLIC_DASHBOARD_REGEX);
         });
     });
   });

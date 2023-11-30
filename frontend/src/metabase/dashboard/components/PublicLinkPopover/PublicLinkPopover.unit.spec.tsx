@@ -134,19 +134,19 @@ describe("PublicLinkPopover", () => {
   });
 
   describe("when creating public links", () => {
-    it("should call createPublicLink when uuid is null and isOpen is true", () => {
+    it("should call createPublicLinkDropdown when uuid is null and isOpen is true", () => {
       const { createPublicLink } = setup({ hasUUID: false });
 
       expect(createPublicLink).toHaveBeenCalledTimes(1);
     });
 
-    it("should not call createPublicLink when isOpen is false", () => {
+    it("should not call createPublicLinkDropdown when isOpen is false", () => {
       const { createPublicLink } = setup({ isOpen: false, hasUUID: false });
 
       expect(createPublicLink).not.toHaveBeenCalled();
     });
 
-    it("should call createPublicLink when uuid is null and the popover is opened", async () => {
+    it("should call createPublicLinkDropdown when uuid is null and the popover is opened", async () => {
       const { createPublicLink } = setup({ hasUUID: false, isOpen: false });
 
       userEvent.click(screen.getByTestId("target"));
@@ -155,7 +155,7 @@ describe("PublicLinkPopover", () => {
       expect(createPublicLink).toHaveBeenCalledTimes(1);
     });
 
-    it("should not call createPublicLink when uuid is not null and the popover is opened", async () => {
+    it("should not call createPublicLinkDropdown when uuid is not null and the popover is opened", async () => {
       const { createPublicLink } = setup({ hasUUID: true, isOpen: false });
 
       userEvent.click(screen.getByTestId("target"));
@@ -188,7 +188,7 @@ describe("PublicLinkPopover", () => {
 
       userEvent.click(screen.getByLabelText("copy icon"));
 
-      expect(screen.getByText("Copied!")).toBeInTheDocument();
+      expect(await screen.findByText("Copied!")).toBeInTheDocument();
     });
 
     it("should allow non-admins to copy the link to the clipboard", async () => {
@@ -198,7 +198,7 @@ describe("PublicLinkPopover", () => {
 
       userEvent.click(screen.getByLabelText("copy icon"));
 
-      expect(screen.getByText("Copied!")).toBeInTheDocument();
+      expect(await screen.findByText("Copied!")).toBeInTheDocument();
     });
   });
 

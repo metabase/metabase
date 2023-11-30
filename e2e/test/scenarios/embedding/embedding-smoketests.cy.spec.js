@@ -4,6 +4,7 @@ import {
   visitDashboard,
   modal,
   visitIframe,
+  openEmbeddingSettingsPage,
 } from "e2e/support/helpers";
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
 import {
@@ -195,16 +196,13 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
     it("should not let you embed the question", () => {
       visitQuestion(ORDERS_QUESTION_ID);
-      cy.icon("share").click();
-
       ensureEmbeddingIsDisabled();
     });
 
     it("should not let you embed the dashboard", () => {
       visitDashboard(ORDERS_DASHBOARD_ID);
       cy.icon("share").click();
-
-      ensureDashboardEmbeddingIsDisabled();
+      ensureEmbeddingIsDisabled();
     });
   });
 
@@ -377,52 +375,29 @@ function getTokenValue() {
   return cy.get("#setting-embedding-secret-key").invoke("val");
 }
 
-function enableSharing() {
-  cy.contains("Enable sharing").siblings().click();
-}
-
 function assertLinkMatchesUrl(text, url) {
   cy.findByRole("link", { name: text })
     .should("have.attr", "href")
     .and("contain", url);
 }
 
-// TODO: Remove this temporary function once the question embed popover is implemented
-function ensureDashboardEmbeddingIsDisabled() {
-  // This is implicit assertion - it would've failed if embedding was enabled
-  cy.findByTestId("embed-header-menu").findByText("Embed").click();
-  cy.findByText("Embed in your application").closest(".disabled");
-
-  // Let's make sure embedding stays disabled after we enable public sharing
-  enableSharing();
-
-  cy.findByText("Embed in your application").closest(".disabled");
-}
-
 function ensureEmbeddingIsDisabled() {
-  // This is implicit assertion - it would've failed if embedding was enabled
-  cy.findByText(/Embed in your application/).closest(".disabled");
-
-  // Let's make sure embedding stays disabled after we enable public sharing
-  enableSharing();
-
-  cy.findByText(/Embed in your application/).closest(".disabled");
+  cy.icon("share").realHover();
+  cy.findByRole("tooltip", {
+    name: "You must enable Embedding in the settings",
+  }).should("be.visible");
 }
 
 function visitAndEnableSharing(object) {
   if (object === "question") {
     visitQuestion(ORDERS_QUESTION_ID);
-    cy.icon("share").click();
-    cy.findByText(/Embed in your application/).click();
   }
 
   if (object === "dashboard") {
     visitDashboard(ORDERS_DASHBOARD_ID);
-
-    cy.icon("share").click();
-    cy.findByTestId("embed-header-menu").findByText("Embed").click();
-    cy.findByText(/Embed in your application/).click();
   }
+
+  openEmbeddingSettingsPage();
 }
 
 function sidebar() {

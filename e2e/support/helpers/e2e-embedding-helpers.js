@@ -114,3 +114,46 @@ export function visitIframe() {
     cy.visit(iframe.src);
   });
 }
+
+export function goToEmbedModal({ isAdmin = true } = {}) {
+  cy.icon("share").click();
+  if (isAdmin) {
+    cy.findByTestId("embed-header-menu").findByText("Embed").click();
+  }
+}
+
+export function createPublicLinkDropdown() {
+  cy.intercept("POST", "/api/card/*/public_link").as("sharingEnabled");
+
+  cy.icon("share").click();
+  cy.findByTestId("embed-header-menu")
+    .findByTestId("embed-menu-link-item")
+    .click();
+
+  cy.wait("@sharingEnabled").then(
+    ({
+      response: {
+        body: { uuid },
+      },
+    }) => {
+      cy.wrap(uuid).as("uuid");
+    },
+  );
+}
+
+export function openPublicLinkDropdown({ isAdmin = true } = {}) {
+  cy.icon("share").click();
+  if (isAdmin) {
+    cy.findByTestId("embed-header-menu")
+      .findByTestId("embed-menu-link-item")
+      .click();
+  }
+}
+
+export function openEmbeddingSettingsPage() {
+  cy.intercept("GET", "/api/session/properties").as("sessionProperties");
+
+  goToEmbedModal();
+  cy.get(".Modal--full").findByText("Embed in your application").click();
+  cy.wait("@sessionProperties");
+}

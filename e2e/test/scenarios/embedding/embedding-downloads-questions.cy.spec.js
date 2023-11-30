@@ -1,12 +1,13 @@
 import {
-  restore,
   describeEE,
-  visitQuestion,
-  visitEmbeddedPage,
-  popover,
-  setTokenFeatures,
-  visitIframe,
   filterWidget,
+  openEmbeddingSettingsPage,
+  popover,
+  restore,
+  setTokenFeatures,
+  visitEmbeddedPage,
+  visitIframe,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const questionDetails = {
@@ -132,11 +133,3 @@ describeEE("scenarios > embedding > questions > downloads", () => {
     });
   });
 });
-
-function openEmbeddingSettingsPage() {
-  cy.intercept("GET", "/api/session/properties").as("sessionProperties");
-
-  cy.icon("share").click();
-  cy.findByText("Embed in your application").click();
-  cy.wait("@sessionProperties");
-}

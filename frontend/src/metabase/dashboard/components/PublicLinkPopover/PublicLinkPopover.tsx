@@ -65,7 +65,7 @@ export const PublicLinkPopover = ({
         <div>{target}</div>
       </Popover.Target>
       <Popover.Dropdown>
-        <Box p="lg">
+        <Box p="lg" data-testid="public-link-popover-content">
           <Title order={4}>{t`Public link`}</Title>
           <Text>{t`Anyone can view this if you give them the link.`}</Text>
           <Group

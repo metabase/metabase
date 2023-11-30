@@ -1,4 +1,8 @@
-import { restore, visitQuestion } from "e2e/support/helpers";
+import {
+  createPublicLinkDropdown,
+  restore,
+  visitQuestion,
+} from "e2e/support/helpers";
 
 const question = {
   name: "17019",
@@ -30,10 +34,11 @@ describe("issue 17019", () => {
   });
 
   it("question filters should work for embedding/public sharing scenario (metabase#17019)", () => {
-    cy.icon("share").click();
+    createPublicLinkDropdown();
 
-    cy.findByDisplayValue(/^http/)
-      .invoke("val")
+    cy.findByTestId("public-link-popover-content")
+      .findByText(/^http/)
+      .invoke("text")
       .then(publicURL => {
         cy.visit(publicURL);
       });

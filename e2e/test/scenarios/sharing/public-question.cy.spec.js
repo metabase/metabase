@@ -4,6 +4,7 @@ import {
   visitQuestion,
   downloadAndAssert,
   assertSheetRowsCount,
+  createPublicLinkDropdown,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -67,9 +68,8 @@ describe("scenarios > public > question", () => {
       // Make sure metadata fully loaded before we continue
       cy.get(".cellData").contains("Winner");
 
-      cy.icon("share").click();
+      createPublicLinkDropdown();
 
-      enableSharing();
       // Although we already have API helper `visitPublicQuestion`,
       // it makes sense to use the UI here in order to check that the
       // generated url originally doesn't include query params
@@ -125,8 +125,8 @@ const visitPublicURL = () => {
   // Cypress finds an input before the copyable inputs are rendered
   cy.findByRole("heading", { name: "Public link" })
     .parent()
-    .findByDisplayValue(/^http/)
-    .invoke("val")
+    .findByText(/^http/)
+    .invoke("text")
     .then(publicURL => {
       // Copied URL has no get params
       expect(publicURL).to.match(PUBLIC_QUESTION_REGEX);
@@ -134,23 +134,4 @@ const visitPublicURL = () => {
       cy.signOut();
       cy.visit(publicURL);
     });
-};
-
-const enableSharing = () => {
-  cy.intercept("POST", "/api/card/*/public_link").as("sharingEnabled");
-
-  cy.findByRole("heading", { name: "Enable sharing" })
-    .parent()
-    .findByRole("switch")
-    .check();
-
-  cy.wait("@sharingEnabled").then(
-    ({
-      response: {
-        body: { uuid },
-      },
-    }) => {
-      cy.wrap(uuid).as("uuid");
-    },
-  );
 };
