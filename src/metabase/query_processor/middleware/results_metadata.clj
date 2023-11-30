@@ -3,15 +3,16 @@
    and returns that metadata (which can be passed *back* to the backend when saving a Card) as well
    as a checksum in the API response."
   (:require
-   [metabase.driver :as driver]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor.reducible :as qp.reducible]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.sync.analyze.query-results :as qr]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]))
+    [metabase.driver :as driver]
+    [metabase.lib.metadata :as lib.metadata]
+    [metabase.query-processor.reducible :as qp.reducible]
+    [metabase.query-processor.store :as qp.store]
+    [metabase.query-processor.util :as qp.util]
+    [metabase.sync.analyze.query-results :as qr]
+    [metabase.util.i18n :refer [tru]]
+    [metabase.util.log :as log]
+    #_{:clj-kondo/ignore [:discouraged-namespace]}
+    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |
@@ -90,20 +91,12 @@
   [{:keys [result_metadata]} rff]
   (if result_metadata
     (fn merge-existing-metadata-rff* [metadata]
-      (let [field-ref->meta (zipmap (map :field_ref result_metadata) result_metadata)
-            xform           (partial map
-                                     (fn [{:keys [field_ref] :as col}]
-                                       (if-some [existing-meta (field-ref->meta field_ref)]
-                                         (merge col existing-meta)
-                                         col)))]
-        (rff (update metadata :cols xform))))
+      (rff (update metadata :cols qp.util/combine-metadata result_metadata)))
     rff))
 
 (defn inject-result-metadata
   "Inject existing result metadata from the context into to the query so it can be used in post-processing-middleware.
-
   A prime case for this is if a user has curated metadata as in a model and wants that preserved."
   [qp]
-  ;; TODO - Can we normalize the result_metadata field refs here?
   (fn inject-existing-metadata-rff* [query rff {:keys [result_metadata] :as context}]
     (qp (cond-> query result_metadata (assoc :result_metadata result_metadata)) rff context)))
