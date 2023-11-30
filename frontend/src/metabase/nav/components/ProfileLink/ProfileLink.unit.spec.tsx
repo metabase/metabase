@@ -36,7 +36,7 @@ function setup({
   isAdmin = false,
   isHosted = false,
   isPaidPlan = true,
-  helpLinkSetting = "metabase_default",
+  helpLinkSetting = "default",
   helpLinkCustomDestinationSetting = "https://custom-destination.com/help",
 }: {
   isAdmin?: boolean;
@@ -150,13 +150,13 @@ describe("ProfileLink", () => {
       });
     });
 
-    describe("when the setting is `metabase_default`", () => {
+    describe("when the setting is `default`", () => {
       describe("when admin on paid plan", () => {
         it("should return the default /help-premium link", async () => {
           setup({
             isAdmin: true,
             isPaidPlan: true,
-            helpLinkSetting: "metabase_default",
+            helpLinkSetting: "default",
           });
           openMenu();
           const link = screen.getByRole("link", { name: /help/i });
@@ -177,7 +177,7 @@ describe("ProfileLink", () => {
           setup({
             isAdmin: false,
             isPaidPlan: true,
-            helpLinkSetting: "metabase_default",
+            helpLinkSetting: "default",
           });
           openMenu();
           const link = screen.getByRole("link", { name: /help/i });
