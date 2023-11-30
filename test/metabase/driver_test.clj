@@ -5,8 +5,12 @@
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
    [metabase.plugins.classloader :as classloader]
+   [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
-   [metabase.test.data.env :as tx.env]))
+   [metabase.test.data.env :as tx.env]
+   [metabase.test.data.interface :as tx]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -20,9 +24,9 @@
   (is (not (driver/database-supports? ::test-driver :foreign-keys "not-dummy")))
   (is (not (driver/database-supports? ::test-driver :expressions "dummy")))
   (is (thrown-with-msg?
-       java.lang.Exception
-       #"Invalid driver feature: .*"
-       (driver/database-supports? ::test-driver :some-made-up-thing "dummy"))))
+        java.lang.Exception
+        #"Invalid driver feature: .*"
+        (driver/database-supports? ::test-driver :some-made-up-thing "dummy"))))
 
 (deftest the-driver-test
   (testing (str "calling `the-driver` should set the context classloader, important because driver plugin code exists "
@@ -68,6 +72,55 @@
                        :tables
                        (some :schema))))))))
 
+(defn- basic-db-definition [database-name]
+  (tx/map->DatabaseDefinition
+   {:database-name     database-name
+    :table-definitions [{:table-name        "baz"
+                         :field-definitions [{:field-name "foo", :base-type :type/Text}]
+                         :rows              [["bar"]]}]}))
+
+(deftest check-can-connect-before-sync-test
+  (testing "Database sync should short-circuit and fail if the database at the connection has been deleted (metabase#7526)"
+    (mt/test-drivers (->> (mt/normal-drivers)
+                          ;; athena is a special case because connections aren't made with a single database,
+                          ;; but to an S3 bucket that may contain many databases
+                          (remove #{:athena :oracle :vertica :presto-jdbc}))
+      (let [database-name (mt/random-name)
+            dbdef         (basic-db-definition database-name)]
+        (mt/dataset dbdef
+          (let [db (mt/db)
+                cant-sync-logged? (fn []
+                                    (some?
+                                     (some
+                                      (fn [[log-level throwable message]]
+                                        (and (= log-level :warn)
+                                             (instance? clojure.lang.ExceptionInfo throwable)
+                                             (re-matches #"^Cannot sync Database (.+): (.+)" message)))
+                                      (mt/with-log-messages-for-level :warn
+                                        (#'task.sync-databases/sync-and-analyze-database*! (u/the-id db))))))]
+            (testing "sense checks before deleting the database"
+              (testing "sense check 1: sync-and-analyze-database! should not log a warning"
+                (is (false? (cant-sync-logged?))))
+              (testing "sense check 2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should succeed"
+                (is (= {:status "ok"}
+                       (mt/user-http-request :crowberto :post 200 (str "/database/" (u/the-id db) "/sync_schema"))))))
+            ;; release db resources like connection pools so we don't have to wait to finish syncing before destroying the db
+            (driver/notify-database-updated driver/*driver* db)
+            ;; destroy the db
+            (if (contains? #{:redshift :snowflake} driver/*driver*)
+              ;; in the case of some cloud databases, the test database is never created, and shouldn't be destroyed.
+              ;; so fake it by redefining the database name on the dbdef
+              (t2/update! :model/Database (u/the-id db)
+                          {:details (assoc (:details (mt/db)) :db "fake-db-name-that-definitely-wont-be-used")})
+              (tx/destroy-db! driver/*driver* dbdef))
+            (testing "after deleting a database, sync should fail"
+              (testing "1: sync-and-analyze-database! should log a warning and fail early"
+                (is (true? (cant-sync-logged?))))
+              (testing "2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should fail"
+                (mt/user-http-request :crowberto :post 422 (str "/database/" (u/the-id db) "/sync_schema"))))
+            ;; clean up the database
+            (t2/delete! :model/Database (u/the-id db))))))))
+
 (deftest supports-table-privileges-matches-implementations-test
   (mt/test-drivers (mt/normal-drivers-with-feature :table-privileges)
     (is (some? (driver/current-user-table-privileges driver/*driver* (mt/db))))))
@@ -75,17 +128,17 @@
 (deftest nonsql-dialects-return-original-query-test
   (mt/test-driver :mongo
     (testing "Passing a mongodb query through [[driver/prettify-native-form]] returns the original query (#31122)"
-      (let [query [{"$group"  {"_id" {"created_at" {"$let" {"vars" {"parts" {"$dateToParts" {"timezone" "UTC"
-                                                                                             "date"     "$created_at"}}}
-                                                            "in"   {"$dateFromParts" {"timezone" "UTC"
-                                                                                      "year"     "$$parts.year"
-                                                                                      "month"    "$$parts.month"
-                                                                                      "day"      "$$parts.day"}}}}}
-                               "sum" {"$sum" "$tax"}}}
+      (let [query [{"$group"   {"_id" {"created_at" {"$let" {"vars" {"parts" {"$dateToParts" {"timezone" "UTC"
+                                                                                              "date"     "$created_at"}}}
+                                                             "in"   {"$dateFromParts" {"timezone" "UTC"
+                                                                                       "year"     "$$parts.year"
+                                                                                       "month"    "$$parts.month"
+                                                                                       "day"      "$$parts.day"}}}}}
+                                "sum" {"$sum" "$tax"}}}
                    {"$sort"    {"_id" 1}}
-                   {"$project" {"_id" false
+                   {"$project" {"_id"        false
                                 "created_at" "$_id.created_at"
-                                "sum" true}}]
+                                "sum"        true}}]
             formatted-query (driver/prettify-native-form :mongo query)]
 
         (testing "Formatting a non-sql query returns the same query"

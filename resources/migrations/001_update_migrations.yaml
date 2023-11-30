@@ -4085,6 +4085,28 @@ databaseChangeLog:
         - sql: DELETE FROM core_user WHERE id = 13371338;
 
   - changeSet:
+
+      id: v48.00-055
+      author: noahmoss
+      comment: Added 0.48.0 - new view v_tasks
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/tasks/v1/postgres-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/tasks/v1/mysql-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/tasks/v1/h2-tasks.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: drop view if exists v_tasks;
+
+  - changeSet:
       id: v48.00-056
       author: noahmoss
       comment: 'Adjust view_log schema for Audit Log v2'
@@ -4122,6 +4144,18 @@ databaseChangeLog:
         - sql:
             sql: UPDATE collection SET namespace = 'analytics' WHERE entity_id = 'okNLSZKdSxaoG58JSQY54' OR entity_id = 'vG58R8k-QddHWA7_47umn'
       rollback: # not necessary
+
+  - changeSet:
+      id: v48.00-060
+      author: noahmoss
+      comment: Added 0.48.0 - task_history.started_at
+      changes:
+        - createIndex:
+            indexName: idx_task_history_started_at
+            tableName: task_history
+            columns:
+              - column:
+                  name: started_at
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

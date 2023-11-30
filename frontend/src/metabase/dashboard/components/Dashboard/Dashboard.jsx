@@ -7,11 +7,11 @@ import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
-import DashboardControls from "metabase/dashboard/hoc/DashboardControls";
+import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 import { DashboardSidebars } from "../DashboardSidebars";
-import DashboardGrid from "../DashboardGrid";
+import { DashboardGridConnected } from "../DashboardGrid";
 import { SIDEBAR_NAME } from "../../constants";
 
 import {
@@ -19,7 +19,7 @@ import {
   DashboardStyled,
   DashboardLoadingAndErrorWrapper,
   DashboardBody,
-  HeaderContainer,
+  DashboardHeaderContainer,
   ParametersAndCardsContainer,
   ParametersWidgetContainer,
 } from "./Dashboard.styled";
@@ -31,7 +31,7 @@ import { updateParametersWidgetStickiness } from "./stickyParameters";
 
 // NOTE: move DashboardControls HoC to container
 
-class Dashboard extends Component {
+class DashboardInner extends Component {
   state = {
     error: null,
     isParametersWidgetSticky: false,
@@ -191,7 +191,7 @@ class Dashboard extends Component {
       );
     }
     return (
-      <DashboardGrid
+      <DashboardGridConnected
         {...this.props}
         dashboard={this.props.dashboard}
         isNightMode={shouldRenderAsNightMode}
@@ -264,7 +264,7 @@ class Dashboard extends Component {
         {() => (
           <DashboardStyled>
             {isHeaderVisible && (
-              <HeaderContainer
+              <DashboardHeaderContainer
                 isFullscreen={isFullscreen}
                 isNightMode={shouldRenderAsNightMode}
               >
@@ -285,7 +285,7 @@ class Dashboard extends Component {
                     {parametersWidget}
                   </ParametersWidgetContainer>
                 )}
-              </HeaderContainer>
+              </DashboardHeaderContainer>
             )}
 
             <DashboardBody isEditingOrSharing={isEditing || isSharing}>
@@ -326,7 +326,7 @@ class Dashboard extends Component {
   }
 }
 
-Dashboard.propTypes = {
+DashboardInner.propTypes = {
   loadDashboardParams: PropTypes.func,
   location: PropTypes.object,
 
@@ -387,4 +387,4 @@ Dashboard.propTypes = {
   isAutoApplyFilters: PropTypes.bool,
 };
 
-export default DashboardControls(Dashboard);
+export const Dashboard = DashboardControls(DashboardInner);
