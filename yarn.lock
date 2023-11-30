@@ -2765,25 +2765,27 @@
     redux-thunk "^2.4.2"
     reselect "^4.1.7"
 
-"@replayio/cypress@^1.0.5":
-  version "1.0.5"
-  resolved "https://registry.yarnpkg.com/@replayio/cypress/-/cypress-1.0.5.tgz#062c06e00eda31fafeb6a07d48d69f02ae443214"
-  integrity sha512-vjmIdIVVbju9IBLE8BFbFM8WF1C/+tmcsMi/vQ3oZRz7ADtaCaSt67lKACsY9lenRipnwGJAg0WFA5f3Mgtgew==
+"@replayio/cypress@^1.7.5":
+  version "1.7.5"
+  resolved "https://registry.yarnpkg.com/@replayio/cypress/-/cypress-1.7.5.tgz#996b83b2ace5e681483a32bcc447355b8f04cd00"
+  integrity sha512-V3il+1cCTEUekkZS0R2HT8DrDg8HbwigfLrELEAsDLrg6am8rOovZe3Lo6ANAELTSJEnFv07Aw5uM5B2zd1COg==
   dependencies:
-    "@replayio/replay" "^0.12.13"
-    "@replayio/test-utils" "^1.0.3"
+    "@replayio/replay" "^0.19.4"
+    "@replayio/test-utils" "^1.3.5"
     chalk "^4.1.2"
     debug "^4.3.4"
     semver "^7.5.2"
     terminate "^2.6.1"
+    txml "^3.2.5"
     uuid "^8.3.2"
+    ws "^8.14.2"
 
-"@replayio/replay@^0.12.13":
-  version "0.12.13"
-  resolved "https://registry.yarnpkg.com/@replayio/replay/-/replay-0.12.13.tgz#1aa8e8e34c0a1eb294f6a5959de0088a8843e7ff"
-  integrity sha512-2Y9HwZgqEmb7i1yLyy7hzs3pRJ+jxCV68+IbrGBksxflLu+MtRG4IdsGPX1NpjwbB+cpDDFuIUiUak6U4R6qhg==
+"@replayio/replay@^0.19.4":
+  version "0.19.4"
+  resolved "https://registry.yarnpkg.com/@replayio/replay/-/replay-0.19.4.tgz#df52d24aa6672b445ea9fdd42dbe55fa7e10d864"
+  integrity sha512-T8XlT4jKVoQgPGNieYz3C++IowUVXWjqTMWNMcPrv0368h7MTTKrvnKCTTNmeDFXW819AeCRcCi+Xvgra2OzmQ==
   dependencies:
-    "@replayio/sourcemap-upload" "^1.0.7"
+    "@replayio/sourcemap-upload" "^1.1.1"
     commander "^7.2.0"
     debug "^4.3.4"
     is-uuid "^1.0.2"
@@ -2794,10 +2796,10 @@
     text-table "^0.2.0"
     ws "^7.5.0"
 
-"@replayio/sourcemap-upload@^1.0.7":
-  version "1.0.7"
-  resolved "https://registry.yarnpkg.com/@replayio/sourcemap-upload/-/sourcemap-upload-1.0.7.tgz#e1aa0e910d7b8bfe8828ea4f27495e3ed9ab2476"
-  integrity sha512-osmLqhOnaqAihY+xD56zu9LECXK1iw3d4oViIGJuZbtVkB8X5EoDTJEBPmj4xL6SG6XxeuKpaqmK2OKFi9YiuQ==
+"@replayio/sourcemap-upload@^1.1.1":
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/@replayio/sourcemap-upload/-/sourcemap-upload-1.1.1.tgz#2e6e5c9a5b5037bb2e2d21b2751411e5188eb486"
+  integrity sha512-XcJmyi2lxVUv/OuCC4GS7SFDrwViObw5czLy2pz7i2AAHFdFQJxTSqnNnw00m7ocUBdgcn/P0DzKHeRvTgPx4w==
   dependencies:
     commander "^7.2.0"
     debug "^4.3.1"
@@ -2805,13 +2807,12 @@
     node-fetch "^2.6.1"
     string.prototype.matchall "^4.0.5"
 
-"@replayio/test-utils@^1.0.3":
-  version "1.0.3"
-  resolved "https://registry.yarnpkg.com/@replayio/test-utils/-/test-utils-1.0.3.tgz#258a9caab77cba5000eebe1830a616b95bd0c38a"
-  integrity sha512-9Dy7MFttDV4tJag0WXjidUH9m418KX1CKHmIKVfFUFay1lTl4a/eBlPAHqk8EnZTyqwVyRh1219v9xRcUtTk3w==
+"@replayio/test-utils@^1.3.5":
+  version "1.3.5"
+  resolved "https://registry.yarnpkg.com/@replayio/test-utils/-/test-utils-1.3.5.tgz#8f01c92a1a6cddfd0d863015cff63cff4e94cd69"
+  integrity sha512-mK5MU+MupffP0s1VpAJ3Rd0Gx7IJwN47I0NHMAKphT12Ch3euS72LL5OeifgUvV9IFbDGbaTJEUCBnnx9sHWhQ==
   dependencies:
-    "@replayio/replay" "^0.12.13"
-    "@types/node-fetch" "^2.6.2"
+    "@replayio/replay" "^0.19.4"
     debug "^4.3.4"
     node-fetch "^2.6.7"
     uuid "^8.3.2"
@@ -5027,14 +5028,6 @@
   version "2.5.12"
   resolved "https://registry.yarnpkg.com/@types/node-fetch/-/node-fetch-2.5.12.tgz#8a6f779b1d4e60b7a57fb6fd48d84fb545b9cc66"
   integrity sha512-MKgC4dlq4kKNa/mYrwpKfzQMB5X3ee5U6fSprkKpToBqBmX4nFZL9cW5jl6sWn+xpRJ7ypWh2yyqqr8UUCstSw==
-  dependencies:
-    "@types/node" "*"
-    form-data "^3.0.0"
-
-"@types/node-fetch@^2.6.2":
-  version "2.6.3"
-  resolved "https://registry.yarnpkg.com/@types/node-fetch/-/node-fetch-2.6.3.tgz#175d977f5e24d93ad0f57602693c435c57ad7e80"
-  integrity sha512-ETTL1mOEdq/sxUtgtOhKjyB2Irra4cjxksvcMUR5Zr4n+PxVhsCD9WS46oPbHL3et9Zde7CNRr+WUNlcHvsX+w==
   dependencies:
     "@types/node" "*"
     form-data "^3.0.0"
@@ -18918,7 +18911,7 @@ read-pkg@^5.2.0:
     string_decoder "~1.1.1"
     util-deprecate "~1.0.1"
 
-readable-stream@^3.0.6, readable-stream@^3.1.1, readable-stream@^3.5.0, readable-stream@^3.6.0, readable-stream@^3.6.2:
+"readable-stream@2 || 3", readable-stream@^3.0.6, readable-stream@^3.1.1, readable-stream@^3.5.0, readable-stream@^3.6.0, readable-stream@^3.6.2:
   version "3.6.2"
   resolved "https://registry.yarnpkg.com/readable-stream/-/readable-stream-3.6.2.tgz#56a9b36ea965c00c5a93ef31eb111a0f11056967"
   integrity sha512-9u/sniCrY3D5WdsERHzHE4G2YCXqoG5FTHUiCC4SIbr6XcLZBY05ya9EKjYek9O5xOAwjGq+1JdGBAS7Q9ScoA==
@@ -21246,6 +21239,14 @@ through2@^2.0.0:
     readable-stream "~2.3.6"
     xtend "~4.0.1"
 
+through2@^3.0.1:
+  version "3.0.2"
+  resolved "https://registry.yarnpkg.com/through2/-/through2-3.0.2.tgz#99f88931cfc761ec7678b41d5d7336b5b6a07bf4"
+  integrity sha512-enaDQ4MUyP2W6ZyT6EsMzqBPZaM/avg8iuo+l2d3QCs0J+6RaqkHV/2/lOwDTueBHeJ/2LG9lrLW3d5rWPucuQ==
+  dependencies:
+    inherits "^2.0.4"
+    readable-stream "2 || 3"
+
 through@2, through@^2.3.8, through@~2.3, through@~2.3.1:
   version "2.3.8"
   resolved "https://registry.yarnpkg.com/through/-/through-2.3.8.tgz#0dd4c9ffaabc357960b1b724115d7e0e86a2e1f5"
@@ -21553,6 +21554,13 @@ tweetnacl@^0.14.3, tweetnacl@~0.14.0:
   version "0.14.5"
   resolved "https://registry.yarnpkg.com/tweetnacl/-/tweetnacl-0.14.5.tgz#5ae68177f192d4456269d108afa93ff8743f4f64"
   integrity sha1-WuaBd/GS1EViadEIr6k/+HQ/T2Q=
+
+txml@^3.2.5:
+  version "3.2.5"
+  resolved "https://registry.yarnpkg.com/txml/-/txml-3.2.5.tgz#607eeef7e021dba8c6dd173b3971b12443deb9ec"
+  integrity sha512-AtN8AgJLiDanttIXJaQlxH8/R0NOCNwto8kcO7BaxdLgsN9b7itM9lnTD7c2O3TadP+hHB9j7ra5XGFRPNnk/g==
+  dependencies:
+    through2 "^3.0.1"
 
 type-check@^0.4.0, type-check@~0.4.0:
   version "0.4.0"
@@ -22855,6 +22863,11 @@ ws@^8.13.0:
   version "8.13.0"
   resolved "https://registry.yarnpkg.com/ws/-/ws-8.13.0.tgz#9a9fb92f93cf41512a0735c8f4dd09b8a1211cd0"
   integrity sha512-x9vcZYTrFPC7aSIbj7sRCYo7L/Xb8Iy+pW0ng0wt2vCJv7M9HOMy0UoN3rr+IFC7hb7vXoqS+P9ktyLLLhO+LA==
+
+ws@^8.14.2:
+  version "8.14.2"
+  resolved "https://registry.yarnpkg.com/ws/-/ws-8.14.2.tgz#6c249a806eb2db7a20d26d51e7709eab7b2e6c7f"
+  integrity sha512-wEBG1ftX4jcglPxgFCMJmZ2PLtSbJ2Peg6TmpJFTbe9GZYOQCDPdMYu/Tm0/bGZkw8paZnJY45J4K2PZrLYq8g==
 
 ws@^8.2.3:
   version "8.6.0"

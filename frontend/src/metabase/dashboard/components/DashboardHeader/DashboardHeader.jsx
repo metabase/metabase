@@ -22,8 +22,8 @@ import Bookmark from "metabase/entities/bookmarks";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 
 import { TextOptionsButton } from "metabase/dashboard/components/TextOptions/TextOptionsButton";
-import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
-import DashboardBookmark from "metabase/dashboard/components/DashboardBookmark";
+import { ParametersPopover } from "metabase/dashboard/components/ParametersPopover";
+import { DashboardBookmark } from "metabase/dashboard/components/DashboardBookmark";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import { getPulseFormInput } from "metabase/pulse/selectors";

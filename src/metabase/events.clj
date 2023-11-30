@@ -123,7 +123,7 @@
           {:name       "publish-event!.logging"
            :attributes {}}
           (let [{:keys [object]} event]
-            (log/infof "Publishing %s event (name and id):\n\n%s"
+            (log/debugf "Publishing %s event (name and id):\n\n%s"
                        (u/colorize :yellow (pr-str topic))
                        (u/pprint-to-str (let [model (mi/model object)]
                                           (cond-> (select-keys object [:name :id])

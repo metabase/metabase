@@ -10,7 +10,7 @@ import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthC
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import { SAVING_DOM_IMAGE_CLASS } from "metabase/visualizations/lib/save-chart-image";
-import Dashcard from "../DashCard";
+import { DashCard } from "../DashCard/DashCard";
 
 // Class names are added here because we still use traditional css,
 // see dashboard.css
@@ -63,7 +63,7 @@ export const DashboardBody = styled.div<{ isEditingOrSharing: boolean }>`
     `}
 `;
 
-export const HeaderContainer = styled.header<{
+export const DashboardHeaderContainer = styled.header<{
   isFullscreen: boolean;
   isNightMode: boolean;
 }>`
@@ -148,7 +148,7 @@ export const CardsContainer = styled(FullWidthContainer)<{
   &.${SAVING_DOM_IMAGE_CLASS} {
     padding-bottom: 20px;
 
-    ${Dashcard.root} {
+    ${DashCard.root} {
       box-shadow: none;
       border: 1px solid ${color("border")};
     }
