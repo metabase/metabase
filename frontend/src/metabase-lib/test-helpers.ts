@@ -162,16 +162,20 @@ interface OrderByClauseOpts {
 }
 
 interface AggregatedQueryOpts {
+  metadata?: Metadata;
   aggregations?: AggregationClauseOpts[];
   breakouts?: BreakoutClauseOpts[];
   orderBys?: OrderByClauseOpts[];
 }
 
 export function createSingleStageQuery({
+  metadata,
   aggregations = [],
   breakouts = [],
   orderBys = [],
 }: AggregatedQueryOpts) {
+  const initialQuery = createQuery({ metadata });
+
   const queryWithAggregations = aggregations.reduce((query, aggregation) => {
     return Lib.aggregate(
       query,
@@ -180,7 +184,7 @@ export function createSingleStageQuery({
         findAggregationOperator(query, aggregation.operatorName),
       ),
     );
-  }, createQuery());
+  }, initialQuery);
 
   const queryWithBreakouts = breakouts.reduce((query, breakout) => {
     const breakoutColumn = columnFinder(
