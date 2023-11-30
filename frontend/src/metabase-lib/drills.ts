@@ -5,9 +5,9 @@ import type {
   ClickObjectDataRow,
   ClickObjectDimension,
   DrillThru,
+  FilterDrillDetails,
   Query,
   PivotType,
-  FilterDrillDetails,
 } from "./types";
 
 // NOTE: value might be null or undefined, and they mean different things!

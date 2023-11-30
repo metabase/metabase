@@ -11,7 +11,7 @@ interface AggregationItemProps {
   aggregation: Lib.AggregationClause;
   aggregationIndex: number;
   legacyQuery: StructuredQuery;
-  onUpdate: (nextAggregation: Lib.Aggregatable) => void;
+  onUpdate: (nextAggregation: Lib.Aggregable) => void;
   onRemove: () => void;
   onLegacyQueryChange: (nextLegacyQuery: StructuredQuery) => void;
 }

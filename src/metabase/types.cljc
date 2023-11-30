@@ -88,6 +88,11 @@
 (derive :type/Share :Semantic/*)
 (derive :type/Share :type/Float)
 
+;; A percent value (generally 0-100)
+
+(derive :type/Percentage :Semantic/*)
+(derive :type/Percentage :type/Decimal)
+
 ;; `:type/Currency` -- an actual currency data type, for example Postgres `money`.
 ;; `:type/Currency` -- a column that should be interpreted as money.
 ;;
