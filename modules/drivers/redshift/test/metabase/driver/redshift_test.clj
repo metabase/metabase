@@ -403,22 +403,18 @@
                         :params params})
       qp/process-query))
 
-(defn- session-id! []
-  (-> (run-native-query "select pg_backend_pid()") mt/rows ffirst))
+(defn- session-id []
+  (-> "select pg_backend_pid()" run-native-query mt/rows ffirst))
 
 (defn- last-queries-of-a-session [session-id]
   (let [query-str (str "select session_id, start_time, result_cache_hit, query_text\n"
                        "from sys_query_history\n"
-                       "where session_id = " session-id "\n"
+                       "where session_id = ? \n"
                        "order by start_time desc\n"
                        "limit 5\n")]
-    (->> (run-native-query query-str)
+    (->> (run-native-query query-str session-id)
          mt/rows
-         (map (fn [[session-id start-time result-cache-hit query-text]]
-                {:session-id session-id
-                 :start-time start-time
-                 :result-cache-hit result-cache-hit
-                 :query-text query-text})))))
+         (map (partial zipmap [:session-id :start-time :result-cache-hit :query-text])))))
 
 ;; According to https://docs.aws.amazon.com/redshift/latest/dg/c_challenges_achieving_high_performance_queries.html#result-caching
 ;; caching is on by default. Hence check for that is skipped.
@@ -430,7 +426,7 @@
       (mt/id)
       nil
       (fn [_]
-        (let [sid (session-id!)
+        (let [sid (session-id)
               ;; :time-interval translates to :relative-datetime, which is now using server side generated timestamps
               ;; for units day and greater.
               query-to-cache (mt/mbql-query
@@ -441,7 +437,7 @@
           (dotimes [_ 2]
             (qp/process-query query-to-cache))
           (let [last-queries (last-queries-of-a-session sid)
-                ;; First row of last queries should contains "last-queries query" info.
+                ;; First row of last queries should contain "last-queries query" info.
                 ;; Second should contain info about query that should be returned from cache.
                 cached-row (second last-queries)
                 cached-row-adjusted-redshift-sql (str/replace (:query-text cached-row) #"\$\d+" "?")
@@ -450,19 +446,26 @@
                 pre-cached-row (nth last-queries 2)
                 pre-cached-row-adjusted-redshift-sql (str/replace (:query-text pre-cached-row) #"\$\d+" "?")]
             (testing "Last queries results contain query before caching on expected postion"
-              (is (.contains pre-cached-row-adjusted-redshift-sql compiled-sql)))
+              (is (str/includes? pre-cached-row-adjusted-redshift-sql compiled-sql)))
             (testing "Last queries results contain cached query on expected position"
-              (is (.contains cached-row-adjusted-redshift-sql compiled-sql)))
+              (is (str/includes? cached-row-adjusted-redshift-sql compiled-sql)))
+            ;; BEWARE: There is a potential that following expr could make the test flaky -- hard to guarantee that db
+            ;;         will actually cache the result. If that happens, we should reconsider testing strategy
+            ;;         or remove this test completely.
             (testing "Query was returned from cache"
               (is (true? (:result-cache-hit cached-row)))))))))))
 
-(defn getdate-vs-ss-ts-test-thunk-generator
+(defn- getdate-vs-ss-ts-test-thunk-generator
   ([]
    (getdate-vs-ss-ts-test-thunk-generator :week -1))
   ([unit value]
    (fn []
-     (let [honey {:select [[(with-redefs-fn {#'redshift/use-server-side-relative-datetime? (constantly false)}
-                              #(sql.qp/->honeysql :redshift [:relative-datetime value unit]))]
+     ;; `with-redefs` forces use of `gettime()` in :relative-datetime transformation even for units gte or eq to :day.
+     ;; This was standard before PR #35995, now server side timestamps are used for that. This test confirms that
+     ;; server side generated timestamp (ie. new code path) results are equal to old code path results, that were not
+     ;; cacheable.
+     (let [honey {:select [[(with-redefs [redshift/use-server-side-relative-datetime? (constantly false)]
+                              (sql.qp/->honeysql :redshift [:relative-datetime value unit]))]
                            [(sql.qp/->honeysql :redshift [:relative-datetime value unit])]]}
            sql (sql/format honey)
            result (apply run-native-query sql)
@@ -472,7 +475,7 @@
 (deftest server-side-relative-datetime-test
   (mt/test-driver
    :redshift
-   (testing "Value of getdate() and server side generated timestamp is equal"
+   (testing "Values of getdate() and server side generated timestamp are equal"
      (mt/with-metadata-provider (mt/id)
        (let [test-thunk (getdate-vs-ss-ts-test-thunk-generator)]
          (doseq [tz-setter [qp.test-util/do-with-report-timezone-id
