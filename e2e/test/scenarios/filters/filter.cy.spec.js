@@ -1086,6 +1086,9 @@ describe("scenarios > question > filter", () => {
         );
         cy.findByText("Done").click();
       });
+      cy.findByTestId("aggregate-step")
+        .contains("count if boolean is true")
+        .should("exist");
       visualize(() => {
         cy.contains("2").should("exist");
       });
