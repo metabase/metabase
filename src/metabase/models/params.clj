@@ -254,21 +254,22 @@
 (defn fields-backing-params
   "Retrieve a map relating paramater ids to field ids."
   [dashcards]
-  (let [params-to-field-ids (fn [param-to-field-id param-to-field-clause]
-                              (let [param-id  (first param-to-field-clause)
-                                    field-ids (set (mbql.u/match (rest param-to-field-clause)
-                                                     [:field (id :guard integer?) _]
-                                                     id))]
-                                (if (contains? param-to-field-id param-id)
-                                  (update param-to-field-id conj field-ids)
-                                  (into param-to-field-id {param-id field-ids}))))
-        params-to-field-clauses (into []
-                                      (for [dashcard dashcards
-                                            param    (:parameter_mappings dashcard)
-                                            :let     [field-clause (param-target->field-clause (:target param) (:card dashcard))]
-                                            :when    field-clause]
-                                        [(:parameter_id param) field-clause]))]
-    (reduce params-to-field-ids {} params-to-field-clauses)))
+  (letfn [(targets [params card]
+            (into {}
+                  (for [param params
+                        :let  [clause (param-target->field-clause (:target param)
+                                                                  card)
+                               ids (mbql.u/match clause
+                                     [:field (id :guard integer?) _]
+                                     id)]
+                        :when (seq ids)]
+                    [(:parameter_id param) (set ids)])))]
+    (reduce (fn [acc {params :parameter_mappings card :card}]
+              (merge-with (fnil set/union #{})
+                acc
+                (targets params card)))
+            {}
+            dashcards)))
 
 (defn- dashboard->param-field-values
   "Return a map of Field ID to FieldValues (if any) for any Fields referenced by Cards in `dashboard`,

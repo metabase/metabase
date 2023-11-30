@@ -115,7 +115,7 @@
     param))
 
 (defn- fetch-params
-  "Fetches params in both embedding-params and the provided dashboard-or-card object."
+  "Fetches params in both the provided embedding-params and dashboard-or-card object."
   [dashboard-or-card embedding-params]
   (set (concat (for [[param status] embedding-params
                      :when          (not= status "enabled")]
