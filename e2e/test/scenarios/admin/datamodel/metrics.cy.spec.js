@@ -122,7 +122,10 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.button("Done").click();
       cy.wait("@dataset");
 
-      // The test should fail on this step first
+      // verify popover is closed, otherwise its state will reset
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Custom Expression").should("not.exist");
+
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Result: 93.8");
 

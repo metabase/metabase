@@ -415,6 +415,7 @@ class ExpressionEditorTextfield extends React.Component<
 
     const {
       query,
+      legacyQuery,
       reportTimezone,
       stageIndex,
       metadata,
@@ -426,8 +427,8 @@ class ExpressionEditorTextfield extends React.Component<
       startRule,
       source,
       targetOffset: cursor.column,
-      query,
-      stageIndex,
+      query: query ?? legacyQuery.question()._getMLv2Query(),
+      stageIndex: stageIndex ?? -1,
       metadata,
       getColumnIcon,
     });
