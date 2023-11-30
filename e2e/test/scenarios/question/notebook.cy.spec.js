@@ -172,10 +172,11 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     cy.button("Done").click();
 
-    // change the corresponding custom expression
     cy.findByTestId("step-filter-0-0")
       .contains("Price is greater than 1")
       .click();
+
+    // change the corresponding custom expression
     cy.get(".Icon-chevronleft").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
@@ -311,6 +312,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       cy.button("Done").should("not.be.disabled").click();
 
+      cy.findByTestId("step-filter-0-0").contains("Example");
+
       visualize();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -366,7 +369,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
         cy.button("Done").should("not.be.disabled").click();
 
-        cy.findByTestId("aggregate-step").should("contain.text", filter);
+        cy.findByTestId("aggregate-step").contains(filter).should("exist");
 
         visualize();
 
