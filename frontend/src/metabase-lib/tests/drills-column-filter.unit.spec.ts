@@ -1,5 +1,4 @@
 import {
-  createOrdersCreatedAtDatasetColumn,
   createOrdersIdField,
   createOrdersTable,
   createOrdersTotalDatasetColumn,
@@ -14,7 +13,6 @@ import {
   createRawCellClickObject,
   queryDrillThru,
   createSingleStageQuery,
-  createAggregatedCellClickObject,
 } from "metabase-lib/test-helpers";
 import {
   createCountDatasetColumn,
@@ -105,23 +103,11 @@ describe("drill-thru/column-filter", () => {
       aggregations: [{ operatorName: "count" }],
       breakouts: [{ columnName: "CREATED_AT", tableName: "ORDERS" }],
     });
+    const defaultColumn = createCountDatasetColumn();
     const expectedStageCount = 2;
 
     it("should drill thru an aggregated cell", () => {
-      const clickObject = createAggregatedCellClickObject({
-        aggregation: {
-          column: createCountDatasetColumn(),
-          value: 10,
-        },
-        breakouts: [
-          {
-            column: createOrdersCreatedAtDatasetColumn({
-              source: "breakout",
-            }),
-            value: "2020-01-01",
-          },
-        ],
-      });
+      const clickObject = createColumnClickObject({ column: defaultColumn });
       const { drill } = findDrillThru(
         defaultQuery,
         stageIndex,
