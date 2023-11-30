@@ -5,7 +5,7 @@ import {
   describeEE,
   modal,
   visitDashboard,
-  visitQuestion,
+  visitModel,
 } from "e2e/support/helpers";
 
 const ANALYTICS_COLLECTION_NAME = "Metabase analytics";
@@ -47,13 +47,9 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
       { tags: "@flaky" },
       () => {
         cy.log("saving edited question");
-        visitCollection(ANALYTICS_COLLECTION_NAME);
-        cy.findByTestId("pinned-items")
-          .findByText(PEOPLE_MODEL_NAME)
-          .scrollIntoView()
-          .click();
-
-        cy.wait("@datasetQuery");
+        getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then(id => {
+          visitModel(id);
+        });
 
         cy.findByTestId("TableInteractive-root").within(() => {
           cy.findByText("Last Name").click();
@@ -83,14 +79,9 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
         cy.log("saving copied question");
 
-        visitCollection(ANALYTICS_COLLECTION_NAME);
-
-        cy.findByTestId("pinned-items")
-          .findByText(PEOPLE_MODEL_NAME)
-          .scrollIntoView()
-          .click();
-
-        cy.wait("@datasetQuery");
+        getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then(id => {
+          visitModel(id);
+        });
 
         cy.findByTestId("qb-header").icon("ellipsis").click();
 
@@ -112,9 +103,9 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
         cy.log("saving copied dashboard");
 
-        visitCollection(ANALYTICS_COLLECTION_NAME);
-
-        cy.findByTestId("pinned-items").findByText("Person overview").click();
+        getItemId(ANALYTICS_COLLECTION_NAME, "Person overview").then(id => {
+          visitModel(id);
+        });
 
         cy.findByTestId("dashboard-header").findByText("Make a copy").click();
 
@@ -198,7 +189,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
       // model
       getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then(id => {
-        visitQuestion(id);
+        visitModel(id);
       });
 
       cy.findByTestId("qb-header").within(() => {
