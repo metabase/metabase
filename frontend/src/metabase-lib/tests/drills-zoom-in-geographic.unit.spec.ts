@@ -1,10 +1,18 @@
 import {
+  createOrdersTable,
   createPeopleCityDatasetColumn,
+  createPeopleIdField,
   createPeopleLatitudeDatasetColumn,
+  createPeopleLatitudeField,
   createPeopleLongitudeDatasetColumn,
+  createPeopleLongitudeField,
   createPeopleStateDatasetColumn,
+  createPeopleStateField,
+  createPeopleTable,
+  createSampleDatabase,
   PEOPLE_ID,
 } from "metabase-types/api/mocks/presets";
+import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import {
   createAggregatedCellClickObject,
@@ -12,7 +20,11 @@ import {
   createQueryWithClauses,
   findDrillThru,
 } from "metabase-lib/test-helpers";
-import { createCountDatasetColumn } from "./drills-common";
+import {
+  createCountDatasetColumn,
+  createPeopleCountryDatasetColumn,
+  createPeopleCountryField,
+} from "./drills-common";
 
 describe("drill-thru/zoom-in.geographic", () => {
   const drillType = "drill-thru/zoom-in.geographic";
@@ -93,5 +105,96 @@ describe("drill-thru/zoom-in.geographic", () => {
         expect(Lib.breakouts(newQuery, stageIndex)).toHaveLength(2);
       },
     );
+  });
+
+  describe("Country -> State", () => {
+    const metadata = createMockMetadata({
+      databases: [
+        createSampleDatabase({
+          tables: [
+            createOrdersTable(),
+            createPeopleTable({
+              fields: [
+                createPeopleIdField(),
+                createPeopleCountryField(),
+                createPeopleStateField(),
+                createPeopleLatitudeField(),
+                createPeopleLongitudeField(),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    it("should drill thru an aggregated cell and prefer State over LatLon columns", () => {
+      const query = Lib.withDifferentTable(
+        createQuery({ metadata }),
+        PEOPLE_ID,
+      );
+      const clickObject = createAggregatedCellClickObject({
+        aggregation: { column: createCountDatasetColumn(), value: 5 },
+        breakouts: [
+          {
+            column: createPeopleCountryDatasetColumn({ source: "breakout" }),
+            value: "A",
+          },
+        ],
+      });
+      const { drill } = findDrillThru(
+        query,
+        stageIndex,
+        clickObject,
+        drillType,
+      );
+      const newQuery = Lib.drillThru(query, stageIndex, drill);
+      expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+      expect(Lib.breakouts(newQuery, stageIndex)).toHaveLength(1);
+    });
+  });
+
+  describe("Country -> LatLon", () => {
+    const metadata = createMockMetadata({
+      databases: [
+        createSampleDatabase({
+          tables: [
+            createOrdersTable(),
+            createPeopleTable({
+              fields: [
+                createPeopleIdField(),
+                createPeopleCountryField(),
+                createPeopleLatitudeField(),
+                createPeopleLongitudeField(),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    it("should drill thru an aggregated cell and use LatLon columns if State isn't available", () => {
+      const query = Lib.withDifferentTable(
+        createQuery({ metadata }),
+        PEOPLE_ID,
+      );
+      const clickObject = createAggregatedCellClickObject({
+        aggregation: { column: createCountDatasetColumn(), value: 5 },
+        breakouts: [
+          {
+            column: createPeopleCountryDatasetColumn({ source: "breakout" }),
+            value: "A",
+          },
+        ],
+      });
+      const { drill } = findDrillThru(
+        query,
+        stageIndex,
+        clickObject,
+        drillType,
+      );
+      const newQuery = Lib.drillThru(query, stageIndex, drill);
+      expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+      expect(Lib.breakouts(newQuery, stageIndex)).toHaveLength(2);
+    });
   });
 });

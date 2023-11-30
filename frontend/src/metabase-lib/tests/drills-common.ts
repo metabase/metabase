@@ -2,9 +2,11 @@ import { createMockColumn, createMockField } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   ORDERS_ID,
+  PEOPLE_ID,
 } from "metabase-types/api/mocks/presets";
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
+import type { DatasetColumn } from "metabase-types/api";
 import { createQuery } from "metabase-lib/test-helpers";
 
 const FIELDS = {
@@ -44,6 +46,15 @@ const FIELDS = {
     semantic_type: "type/SerializedJSON",
     effective_type: "type/Text",
   },
+  country: {
+    id: 105,
+    table_id: PEOPLE_ID,
+    name: "COUNTRY",
+    display_name: "Country",
+    base_type: "type/Text",
+    semantic_type: "type/Country",
+    effective_type: "type/Text",
+  },
 };
 
 export function createOrdersDescriptionField() {
@@ -76,6 +87,16 @@ export function createOrdersSerializedJSONField() {
 
 export function createOrdersSerializedJSONDatasetColumn() {
   return createMockColumn(FIELDS.serializedJSON);
+}
+
+export function createPeopleCountryField() {
+  return createMockField(FIELDS.country);
+}
+
+export function createPeopleCountryDatasetColumn(
+  opts?: Partial<DatasetColumn>,
+) {
+  return createMockColumn({ ...FIELDS.country, ...opts });
 }
 
 export function createCountDatasetColumn() {
