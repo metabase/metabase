@@ -92,7 +92,9 @@
    ::drill-thru.common
    [:map
     [:type   [:= :drill-thru/fk-filter]]
-    [:filter ::lib.schema.expression/boolean]]])
+    [:filter ::lib.schema.expression/boolean]
+    [:table-name :string]
+    [:column-name :string]]])
 
 (mr/def ::drill-thru.distribution
   [:merge
