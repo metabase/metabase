@@ -8,6 +8,7 @@ import {
 import * as Lib from "metabase-lib";
 import {
   createAggregatedCellClickObject,
+  createColumnClickObject,
   createQuery,
   createRawCellClickObject,
   createSingleStageQuery,
@@ -105,6 +106,18 @@ describe("drill-thru/quick-filter", () => {
         operators: ["contains", "does-not-contain"],
       });
       verifyDrillThruDetails(drill, expectedStageCount);
+    });
+
+    it("should not drill thru a column", () => {
+      const column = createOrdersTotalDatasetColumn();
+      const clickObject = createColumnClickObject({ column });
+      const drill = queryDrillThru(
+        defaultQuery,
+        stageIndex,
+        clickObject,
+        drillType,
+      );
+      expect(drill).toBeNull();
     });
 
     it("should not drill thru a non-editable query", () => {
