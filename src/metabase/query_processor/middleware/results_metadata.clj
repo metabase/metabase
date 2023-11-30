@@ -3,16 +3,16 @@
    and returns that metadata (which can be passed *back* to the backend when saving a Card) as well
    as a checksum in the API response."
   (:require
-    [metabase.driver :as driver]
-    [metabase.lib.metadata :as lib.metadata]
-    [metabase.query-processor.reducible :as qp.reducible]
-    [metabase.query-processor.store :as qp.store]
-    [metabase.query-processor.util :as qp.util]
-    [metabase.sync.analyze.query-results :as qr]
-    [metabase.util.i18n :refer [tru]]
-    [metabase.util.log :as log]
-    #_{:clj-kondo/ignore [:discouraged-namespace]}
-    [toucan2.core :as t2]))
+   [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.sync.analyze.query-results :as qr]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |
