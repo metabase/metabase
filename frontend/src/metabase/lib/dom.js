@@ -234,7 +234,11 @@ function isMetabaseUrl(url) {
   return isSameOrSiteUrlOrigin(url) && urlPath.startsWith(getSitePath());
 }
 
-const isAbsoluteUrl = url => url.startsWith("/");
+function isAbsoluteUrl(url) {
+  return ["/", "http:", "https:", "mailto:"].some(prefix =>
+    url.startsWith(prefix),
+  );
+}
 
 function getWithSiteUrl(url) {
   const siteUrl = MetabaseSettings.get("site-url");
