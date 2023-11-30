@@ -227,8 +227,14 @@ function getSitePath() {
 function isMetabaseUrl(url) {
   const urlPath = new URL(url, window.location.origin).pathname.toLowerCase();
 
+  if (!isAbsoluteUrl(url)) {
+    return true;
+  }
+
   return isSameOrSiteUrlOrigin(url) && urlPath.startsWith(getSitePath());
 }
+
+const isAbsoluteUrl = url => url.startsWith("/");
 
 function getWithSiteUrl(url) {
   const siteUrl = MetabaseSettings.get("site-url");
@@ -356,11 +362,13 @@ const getOrigin = url => {
 const getLocation = url => {
   try {
     const { pathname, search, hash } = new URL(url, window.location.origin);
-    const sitePath = ensureNoTrailingSlash(getSitePath());
-    const normalizedPathName = pathname.toLowerCase();
-    const pathNameWithoutSubPath = normalizedPathName.startsWith(sitePath)
-      ? normalizedPathName.replace(sitePath, "")
-      : normalizedPathName;
+    const sitePath = getSitePath().split("/")[1];
+    const [_empty, subPathOrPath, ...paths] = pathname.split("/");
+    const normalizedSubPathOrPath = subPathOrPath.toLowerCase();
+    const pathNameWithoutSubPath =
+      normalizedSubPathOrPath === sitePath
+        ? [_empty, ...paths].join("/")
+        : pathname;
 
     const query = querystring.parse(search.substring(1));
     return {
@@ -373,14 +381,6 @@ const getLocation = url => {
     return {};
   }
 };
-
-function ensureNoTrailingSlash(url) {
-  if (url.at(-1) === "/") {
-    return url.slice(0, -1);
-  }
-
-  return url;
-}
 
 export function isSameOrigin(url) {
   const origin = getOrigin(url);
