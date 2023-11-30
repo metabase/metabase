@@ -1561,6 +1561,17 @@ export const createProductsTableDatasetColumns = () => [
   createProductsCreatedAtDatasetColumn(),
 ];
 
+export const createPeopleStateDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createPeopleStateField(),
+    id: PEOPLE.STATE,
+    source: "fields",
+    field_ref: ["field", PEOPLE.STATE, null],
+    ...opts,
+  });
+
 export const createPeopleLatitudeDatasetColumn = (
   opts?: Partial<DatasetColumn>,
 ): DatasetColumn =>

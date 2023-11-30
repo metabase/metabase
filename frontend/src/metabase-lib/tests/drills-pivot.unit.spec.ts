@@ -1,6 +1,7 @@
 import {
   createOrdersCreatedAtDatasetColumn,
   createOrdersTotalDatasetColumn,
+  createPeopleStateDatasetColumn,
   createProductsCategoryDatasetColumn,
 } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
@@ -142,6 +143,39 @@ describe("drill-thru/pivot", () => {
     it("should not drill thru an aggregated cell", () => {
       const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
       expect(drill).toBeNull();
+    });
+  });
+
+  describe("1 aggregation, 1 address breakout", () => {
+    const query = createSingleStageQuery({
+      aggregations: [{ operatorName: "count" }],
+      breakouts: [{ columnName: "STATE", tableName: "PEOPLE" }],
+    });
+    const clickObject = createAggregatedCellClickObject({
+      aggregation: {
+        column: createCountDatasetColumn(),
+        value: 10,
+      },
+      breakouts: [
+        {
+          column: createPeopleStateDatasetColumn({
+            source: "breakout",
+          }),
+          value: "2020-01-01",
+        },
+      ],
+    });
+
+    it("should drill thru an aggregated cell without location columns", () => {
+      const { drill } = findDrillThru(
+        query,
+        stageIndex,
+        clickObject,
+        drillType,
+      );
+      const pivotTypes = Lib.pivotTypes(drill);
+      expect(pivotTypes).toEqual(["category", "time"]);
+      verifyDrillThru(query, stageIndex, drill, pivotTypes);
     });
   });
 
