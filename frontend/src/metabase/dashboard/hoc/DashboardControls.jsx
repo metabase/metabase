@@ -15,7 +15,7 @@ const TICK_PERIOD = 1; // seconds
  *
  * @deprecated HOCs are deprecated
  */
-export default ComposedComponent =>
+export const DashboardControls = ComposedComponent =>
   connect(null, { replace })(
     class extends Component {
       static displayName =

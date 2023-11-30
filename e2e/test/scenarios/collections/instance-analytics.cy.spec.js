@@ -41,90 +41,94 @@ describeEE("scenarios > Instance Analytics Collection", () => {
       });
     });
 
-    it("should default to saving saving audit content in custom reports collection", () => {
-      cy.log("saving edited question");
+    it(
+      "should default to saving saving audit content in custom reports collection",
+      { tags: "@flaky" },
+      () => {
+        cy.log("saving edited question");
 
-      navigationSidebar().findByText(ANALYTICS_COLLECTION_NAME).click();
+        navigationSidebar().findByText(ANALYTICS_COLLECTION_NAME).click();
 
-      cy.findByTestId("pinned-items")
-        .findByText(PEOPLE_MODEL_NAME)
-        .scrollIntoView()
-        .click();
+        cy.findByTestId("pinned-items")
+          .findByText(PEOPLE_MODEL_NAME)
+          .scrollIntoView()
+          .click();
 
-      cy.wait("@datasetQuery");
+        cy.wait("@datasetQuery");
 
-      cy.findByTestId("TableInteractive-root").within(() => {
-        cy.findByText("Last Name").click();
-      });
+        cy.findByTestId("TableInteractive-root").within(() => {
+          cy.findByText("Last Name").click();
+        });
 
-      popover().findByText("Filter by this column").click();
-      cy.wait("@fieldValues");
-      popover().findByText("Tableton").click();
-      popover().button("Add filter").click();
+        popover().findByText("Filter by this column").click();
+        cy.wait("@fieldValues");
+        popover().findByText("Tableton").click();
+        popover().button("Add filter").click();
 
-      cy.wait("@datasetQuery");
+        cy.wait("@datasetQuery");
 
-      cy.findByTestId("question-row-count").findByText("Showing 6 rows");
+        cy.findByTestId("question-row-count").findByText("Showing 6 rows");
 
-      cy.findByTestId("qb-header").findByText("Save").click();
+        cy.findByTestId("qb-header").findByText("Save").click();
 
-      modal().within(() => {
-        cy.findByTextEnsureVisible("Custom reports");
-        cy.button("Save").click();
-      });
+        modal().within(() => {
+          cy.findByTextEnsureVisible("Custom reports");
+          cy.button("Save").click();
+        });
 
-      cy.wait("@saveCard").then(({ response }) => {
-        expect(response.statusCode).to.eq(200);
-      });
+        cy.wait("@saveCard").then(({ response }) => {
+          expect(response.statusCode).to.eq(200);
+        });
 
-      modal().button("Not now").click();
+        modal().button("Not now").click();
 
-      cy.log("saving copied question");
+        cy.log("saving copied question");
 
-      navigationSidebar().findByText(ANALYTICS_COLLECTION_NAME).click();
+        navigationSidebar().findByText(ANALYTICS_COLLECTION_NAME).click();
 
-      cy.findByTestId("pinned-items")
-        .findByText(PEOPLE_MODEL_NAME)
-        .scrollIntoView()
-        .click();
+        cy.findByTestId("pinned-items")
+          .findByText(PEOPLE_MODEL_NAME)
+          .scrollIntoView()
+          .click();
 
-      cy.wait("@datasetQuery");
+        cy.wait("@datasetQuery");
 
-      cy.findByTestId("qb-header").icon("ellipsis").click();
+        cy.findByTestId("qb-header").icon("ellipsis").click();
 
-      popover().findByText("Duplicate").click();
+        popover().findByText("Duplicate").click();
 
-      modal().within(() => {
-        cy.findByTextEnsureVisible("Custom reports");
-        cy.button("Duplicate").click();
-      });
+        modal().within(() => {
+          cy.findByTextEnsureVisible("Custom reports");
+          cy.button("Duplicate").click();
+        });
 
-      cy.wait("@saveCard").then(({ response }) => {
-        expect(response.statusCode).to.eq(200);
-      });
+        cy.wait("@saveCard").then(({ response }) => {
+          expect(response.statusCode).to.eq(200);
+        });
 
-      modal()
-        .button(/Duplicate/i)
-        .should("not.exist");
-      modal().button("Not now").click();
+        modal()
+          .button(/Duplicate/i)
+          .should("not.exist");
+        modal().button("Not now").click();
 
-      cy.log("saving copied dashboard");
+        cy.log("saving copied dashboard");
 
-      navigationSidebar().findByText(ANALYTICS_COLLECTION_NAME).click();
+        navigationSidebar().findByText(ANALYTICS_COLLECTION_NAME).click();
 
-      cy.findByTestId("pinned-items").findByText("Person overview").click();
+        cy.findByTestId("pinned-items").findByText("Person overview").click();
 
-      cy.findByTestId("dashboard-header").findByText("Make a copy").click();
+        cy.findByTestId("dashboard-header").findByText("Make a copy").click();
 
-      modal().within(() => {
-        cy.findByTextEnsureVisible("Custom reports");
-        cy.button("Duplicate").click();
-      });
+        modal().within(() => {
+          cy.findByTextEnsureVisible("Custom reports");
+          cy.button("Duplicate").click();
+        });
 
-      cy.wait("@copyDashboard").then(({ response }) => {
-        expect(response.statusCode).to.eq(200);
-      });
-    });
+        cy.wait("@copyDashboard").then(({ response }) => {
+          expect(response.statusCode).to.eq(200);
+        });
+      },
+    );
 
     it("should not allow moving or archiving custom reports collection", () => {
       navigationSidebar().within(() => {

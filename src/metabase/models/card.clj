@@ -2,21 +2,30 @@
   "Underlying DB model for what is now most commonly referred to as a 'Question' in most user-facing situations. Card
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
   (:require
+   [clojure.core.async :as a]
+   [clojure.data :as data]
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojure.walk :as walk]
+   [malli.core :as mc]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
+   [metabase.email.messages :as messages]
+   [metabase.events :as events]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.collection :as collection]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
+   [metabase.models.moderation-review :as moderation-review]
    [metabase.models.parameter-card
     :as parameter-card
     :refer [ParameterCard]]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
+   [metabase.models.pulse :as pulse]
    [metabase.models.query :as query]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
@@ -26,14 +35,20 @@
    [metabase.public-settings.premium-features
     :as premium-features
     :refer [defenterprise]]
+   [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.util :as qp.util]
    [metabase.server.middleware.session :as mw.session]
+   [metabase.shared.util.i18n :refer [trs]]
+   [metabase.sync.analyze.query-results :as qr]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
+   [schema.core :as s]
    [toucan2.core :as t2]
-   [toucan2.tools.hydrate :as t2.hydrate]))
+   [toucan2.tools.hydrate :as t2.hydrate])
+  (:import
+   (clojure.core.async.impl.channels ManyToManyChannel)))
 
 (set! *warn-on-reflection* true)
 
@@ -472,6 +487,296 @@
 (defmethod serdes/hash-fields :model/Card
   [_card]
   [:name (serdes/hydrated-hash :collection) :created_at])
+
+;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
+
+(s/defn result-metadata-async :- ManyToManyChannel
+  "Return a channel of metadata for the passed in `query`. Takes the `original-query` so it can determine if existing
+  `metadata` might still be valid. Takes `dataset?` since existing metadata might need to be \"blended\" into the
+  fresh metadata to preserve metadata edits from the dataset.
+
+  Note this condition is possible for new cards and edits to cards. New cards can be created from existing cards by
+  copying, and they could be datasets, have edited metadata that needs to be blended into a fresh run.
+
+  This is also complicated because everything is optional, so we cannot assume the client will provide metadata and
+  might need to save a metadata edit, or might need to use db-saved metadata on a modified dataset."
+  [{:keys [original-query query metadata original-metadata dataset?]}]
+  (let [valid-metadata? (and metadata (mc/validate qr/ResultsMetadata metadata))]
+    (cond
+      (or
+       ;; query didn't change, preserve existing metadata
+       (and (= (mbql.normalize/normalize original-query)
+               (mbql.normalize/normalize query))
+            valid-metadata?)
+       ;; only sent valid metadata in the edit. Metadata might be the same, might be different. We save in either case
+       (and (nil? query)
+            valid-metadata?)
+
+       ;; copying card and reusing existing metadata
+       (and (nil? original-query)
+            query
+            valid-metadata?))
+      (do
+        (log/debug (trs "Reusing provided metadata"))
+        (a/to-chan! [metadata]))
+
+      ;; frontend always sends query. But sometimes programatic don't (cypress, API usage). Returning an empty channel
+      ;; means the metadata won't be updated at all.
+      (nil? query)
+      (do
+        (log/debug (trs "No query provided so not querying for metadata"))
+        (doto (a/chan) a/close!))
+
+      ;; datasets need to incorporate the metadata either passed in or already in the db. Query has changed so we
+      ;; re-run and blend the saved into the new metadata
+      (and dataset? (or valid-metadata? (seq original-metadata)))
+      (do
+        (log/debug (trs "Querying for metadata and blending model metadata"))
+        (a/go (let [metadata' (if valid-metadata?
+                                (map mbql.normalize/normalize-source-metadata metadata)
+                                original-metadata)
+                    fresh     (a/<! (qp.async/result-metadata-for-query-async query))]
+                (qp.util/combine-metadata fresh metadata'))))
+      :else
+      ;; compute fresh
+      (do
+        (log/debug (trs "Querying for metadata"))
+        (qp.async/result-metadata-for-query-async query)))))
+
+(def metadata-sync-wait-ms
+  "Duration in milliseconds to wait for the metadata before saving the card without the metadata. That metadata will be
+saved later when it is ready."
+  1500)
+
+(def metadata-async-timeout-ms
+  "Duration in milliseconds to wait for the metadata before abandoning the asynchronous metadata saving. Default is 15
+  minutes."
+  (u/minutes->ms 15))
+
+(defn schedule-metadata-saving
+  "Save metadata when (and if) it is ready. Takes a chan that will eventually return metadata. Waits up
+  to [[metadata-async-timeout-ms]] for the metadata, and then saves it if the query of the card has not changed."
+  [result-metadata-chan card]
+  (a/go
+    (let [timeoutc        (a/timeout metadata-async-timeout-ms)
+          [metadata port] (a/alts! [result-metadata-chan timeoutc])
+          id              (:id card)]
+      (cond (= port timeoutc)
+            (do (a/close! result-metadata-chan)
+                (log/info (trs "Metadata not ready in {0} minutes, abandoning"
+                               (long (/ metadata-async-timeout-ms 1000 60)))))
+
+            (not (seq metadata))
+            (log/info (trs "Not updating metadata asynchronously for card {0} because no metadata"
+                           id))
+            :else
+            (future
+              (let [current-query (t2/select-one-fn :dataset_query Card :id id)]
+                (if (= (:dataset_query card) current-query)
+                  (do (t2/update! Card id {:result_metadata metadata})
+                      (log/info (trs "Metadata updated asynchronously for card {0}" id)))
+                  (log/info (trs "Not updating metadata asynchronously for card {0} because query has changed"
+                                 id)))))))))
+
+(defn create-card!
+  "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
+  the card will be saved without metadata and it will be saved to the card in the future when it is ready.
+
+  Dispatches the `:card-create` event unless `delay-event?` is true. Useful for when many cards are created in a
+  transaction and work in the `:card-create` event cannot proceed because the cards would not be visible outside of
+  the transaction yet. If you pass true here it is important to call the event after the cards are successfully
+  created."
+  ([card creator] (create-card! card creator false))
+  ([{:keys [dataset_query result_metadata dataset parameters parameter_mappings], :as card-data} creator delay-event?]
+   ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
+   ;; `api/maybe-reconcile-collection-position!`
+   (let [data-keys            [:dataset_query :description :display :name :visualization_settings
+                               :parameters :parameter_mappings :collection_id :collection_position :cache_ttl]
+         card-data            (assoc (zipmap data-keys (map card-data data-keys))
+                                     :creator_id (:id creator)
+                                     :dataset (boolean (:dataset card-data))
+                                     :parameters (or parameters [])
+                                     :parameter_mappings (or parameter_mappings []))
+         result-metadata-chan (result-metadata-async {:query    dataset_query
+                                                      :metadata result_metadata
+                                                      :dataset? dataset})
+         metadata-timeout     (a/timeout metadata-sync-wait-ms)
+         [metadata port]      (a/alts!! [result-metadata-chan metadata-timeout])
+         timed-out?           (= port metadata-timeout)
+         card                 (t2/with-transaction [_conn]
+                                ;; Adding a new card at `collection_position` could cause other cards in this
+                                ;; collection to change position, check that and fix it if needed
+                                (api/maybe-reconcile-collection-position! card-data)
+                                (first (t2/insert-returning-instances! Card (cond-> card-data
+                                                                              (and metadata (not timed-out?))
+                                                                              (assoc :result_metadata metadata)))))]
+     (when-not delay-event?
+       (events/publish-event! :event/card-create {:object card :user-id (:id creator)}))
+     (when timed-out?
+       (log/info (trs "Metadata not available soon enough. Saving new card and asynchronously updating metadata")))
+     ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with
+     ;; returned one -- See #4283
+     (u/prog1 card
+       (when timed-out?
+         (schedule-metadata-saving result-metadata-chan <>))))))
+
+;;; ------------------------------------------------- Updating Cards -------------------------------------------------
+
+(defn- card-archived? [old-card new-card]
+  (and (not (:archived old-card))
+       (:archived new-card)))
+
+(defn- line-area-bar? [display]
+  (contains? #{:line :area :bar} display))
+
+(defn- progress? [display]
+  (= :progress display))
+
+(defn- allows-rows-alert? [display]
+  (not (contains? #{:line :bar :area :progress} display)))
+
+(defn- display-change-broke-alert?
+  "Alerts no longer make sense when the kind of question being alerted on significantly changes. Setting up an alert
+  when a time series query reaches 10 is no longer valid if the question switches from a line graph to a table. This
+  function goes through various scenarios that render an alert no longer valid"
+  [{old-display :display} {new-display :display}]
+  (when-not (= old-display new-display)
+    (or
+     ;; Did the alert switch from a table type to a line/bar/area/progress graph type?
+     (and (allows-rows-alert? old-display)
+          (or (line-area-bar? new-display)
+              (progress? new-display)))
+     ;; Switching from a line/bar/area to another type that is not those three invalidates the alert
+     (and (line-area-bar? old-display)
+          (not (line-area-bar? new-display)))
+     ;; Switching from a progress graph to anything else invalidates the alert
+     (and (progress? old-display)
+          (not (progress? new-display))))))
+
+(defn- goal-missing?
+  "If we had a goal before, and now it's gone, the alert is no longer valid"
+  [old-card new-card]
+  (and
+   (get-in old-card [:visualization_settings :graph.goal_value])
+   (not (get-in new-card [:visualization_settings :graph.goal_value]))))
+
+(defn- multiple-breakouts?
+  "If there are multiple breakouts and a goal, we don't know which breakout to compare to the goal, so it invalidates
+  the alert"
+  [{:keys [display] :as new-card}]
+  (and (get-in new-card [:visualization_settings :graph.goal_value])
+       (or (line-area-bar? display)
+           (progress? display))
+       (< 1 (count (get-in new-card [:dataset_query :query :breakout])))))
+
+(defn- delete-alert-and-notify!
+  "Removes all of the alerts and notifies all of the email recipients of the alerts change via `NOTIFY-FN!`"
+  [& {:keys [notify-fn! alerts actor]}]
+  (t2/delete! :model/Pulse :id [:in (map :id alerts)])
+  (doseq [{:keys [channels] :as alert} alerts
+          :let [email-channel (m/find-first #(= :email (:channel_type %)) channels)]]
+    (doseq [recipient (:recipients email-channel)]
+      (notify-fn! alert recipient actor))))
+
+(defn delete-alert-and-notify-archived!
+  "Removes all alerts and will email each recipient letting them know"
+  [& {:keys [alerts actor]}]
+  (delete-alert-and-notify! {:notify-fn! messages/send-alert-stopped-because-archived-email!
+                             :alerts     alerts
+                             :actor      actor}))
+
+(defn- delete-alert-and-notify-changed! [& {:keys [alerts actor]}]
+  (delete-alert-and-notify! {:notify-fn! messages/send-alert-stopped-because-changed-email!
+                             :alerts     alerts
+                             :actor      actor}))
+
+(defn- delete-alerts-if-needed! [& {:keys [old-card new-card actor]}]
+  ;; If there are alerts, we need to check to ensure the card change doesn't invalidate the alert
+  (when-let [alerts (seq (pulse/retrieve-alerts-for-cards {:card-ids [(:id new-card)]}))]
+    (cond
+
+      (card-archived? old-card new-card)
+      (delete-alert-and-notify-archived! :alerts alerts, :actor actor)
+
+      (or (display-change-broke-alert? old-card new-card)
+          (goal-missing? old-card new-card)
+          (multiple-breakouts? new-card))
+      (delete-alert-and-notify-changed! :alerts alerts, :actor actor)
+
+      ;; The change doesn't invalidate the alert, do nothing
+      :else
+      nil)))
+
+(defn- card-is-verified?
+  "Return true if card is verified, false otherwise. Assumes that moderation reviews are ordered so that the most recent
+  is the first. This is the case from the hydration function for moderation_reviews."
+  [card]
+  (-> card :moderation_reviews first :status #{"verified"} boolean))
+
+(defn- changed?
+  "Return whether there were any changes in the objects at the keys for `consider`.
+
+  returns false because changes to collection_id are ignored:
+  (changed? #{:description}
+            {:collection_id 1 :description \"foo\"}
+            {:collection_id 2 :description \"foo\"})
+
+  returns true:
+  (changed? #{:description}
+            {:collection_id 1 :description \"foo\"}
+            {:collection_id 2 :description \"diff\"})"
+  [consider card-before updates]
+  ;; have to ignore keyword vs strings over api. `{:type :query}` vs `{:type "query"}`
+  (let [prepare              (fn prepare [card] (walk/prewalk (fn [x] (if (keyword? x)
+                                                                        (name x)
+                                                                        x))
+                                                              card))
+        before               (prepare (select-keys card-before consider))
+        after                (prepare (select-keys updates consider))
+        [_ changes-in-after] (data/diff before after)]
+    (boolean (seq changes-in-after))))
+
+(def ^:private card-compare-keys
+  "When comparing a card to possibly unverify, only consider these keys as changing something 'important' about the
+  query."
+  #{:table_id
+    :database_id
+    :query_type ;; these first three may not even be changeable
+    :dataset_query})
+
+(defn update-card!
+  "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
+  included, otherwise the metadata will be saved to the database asynchronously."
+  [{:keys [card-before-update card-updates actor]}]
+  ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
+  (t2/with-transaction [_conn]
+   (api/maybe-reconcile-collection-position! card-before-update card-updates)
+
+   (when (and (card-is-verified? card-before-update)
+              (changed? card-compare-keys card-before-update card-updates))
+     ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
+     ;; to remove it regardless if enterprise edition is present at the moment.
+     (moderation-review/create-review! {:moderated_item_id   (:id card-before-update)
+                                        :moderated_item_type "card"
+                                        :moderator_id        (:id actor)
+                                        :status              nil
+                                        :text                (tru "Unverified due to edit")}))
+   ;; ok, now save the Card
+   (t2/update! Card (:id card-before-update)
+     ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
+     ;; modified if they're passed in as non-nil
+     (u/select-keys-when card-updates
+       :present #{:collection_id :collection_position :description :cache_ttl :dataset}
+       :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
+                  :parameters :parameter_mappings :embedding_params :result_metadata :collection_preview})))
+  ;; Fetch the updated Card from the DB
+  (let [card (t2/select-one Card :id (:id card-before-update))]
+    (delete-alerts-if-needed! :old-card card-before-update, :new-card card, :actor actor)
+    ;; skip publishing the event if it's just a change in its collection position
+    (when-not (= #{:collection_position}
+                 (set (keys card-updates)))
+      (events/publish-event! :event/card-update {:object card :user-id api/*current-user-id*}))
+    card))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

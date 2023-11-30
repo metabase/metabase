@@ -131,7 +131,7 @@
                 cant-sync-logged? (fn []
                                     (some?
                                      (some
-                                        (fn [[log-level throwable message]]
+                                      (fn [[log-level throwable message]]
                                         (and (= log-level :warn)
                                              (instance? clojure.lang.ExceptionInfo throwable)
                                              (re-matches #"^Cannot sync Database ([\s\S]+): ([\s\S]+)" message)))

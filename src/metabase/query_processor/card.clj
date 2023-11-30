@@ -191,33 +191,37 @@
   Question) or `:dashboard` (from a Saved Question in a Dashboard). See [[metabase.mbql.schema/Context]] for all valid
   options."
   [card-id export-format
-   & {:keys [parameters constraints context dashboard-id middleware qp-runner run ignore_cache]
+   & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp-runner run ignore_cache]
       :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
              qp-runner   qp/process-query-and-save-execution!}}]
   {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
-  (let [run   (or run
-                  ;; param `run` can be used to control how the query is ran, e.g. if you need to
-                  ;; customize the `context` passed to the QP
-                  (^:once fn* [query info]
-                   (qp.streaming/streaming-response [{:keys [rff context]} export-format (u/slugify (:card-name info))]
-                     (qp-runner query info rff context))))
-        card  (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :cache_ttl :collection_id
-                                              :dataset :result_metadata :visualization_settings]
-                                             :id card-id))
-        query (-> (assoc (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id}) :async? true)
-                  (update :middleware (fn [middleware]
-                                        (merge
-                                         {:js-int-to-string? true :ignore-cached-results? ignore_cache}
-                                         middleware))))
-        info  (cond-> {:executed-by            api/*current-user-id*
-                       :context                context
-                       :card-id                card-id
-                       :card-name              (:name card)
-                       :dashboard-id           dashboard-id
-                       :visualization-settings (:visualization_settings card)}
-                (and (:dataset card) (seq (:result_metadata card)))
-                (assoc :metadata/dataset-metadata (:result_metadata card)))]
+  (let [run       (or run
+                      ;; param `run` can be used to control how the query is ran, e.g. if you need to
+                      ;; customize the `context` passed to the QP
+                      (^:once fn* [query info]
+                       (qp.streaming/streaming-response [{:keys [rff context]} export-format (u/slugify (:card-name info))]
+                         (qp-runner query info rff context))))
+        dash-viz  (when (not= context :question)
+                    (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id))
+        card      (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :cache_ttl :collection_id
+                                                  :dataset :result_metadata :visualization_settings]
+                                                 :id card-id))
+        query     (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
+                      (update :viz-settings (fn [viz] (merge viz dash-viz)))
+                      (assoc :async? true)
+                      (update :middleware (fn [middleware]
+                                            (merge
+                                             {:js-int-to-string? true :ignore-cached-results? ignore_cache}
+                                             middleware))))
+        info      (cond-> {:executed-by            api/*current-user-id*
+                           :context                context
+                           :card-id                card-id
+                           :card-name              (:name card)
+                           :dashboard-id           dashboard-id
+                           :visualization-settings (:visualization_settings card)}
+                    (and (:dataset card) (seq (:result_metadata card)))
+                    (assoc :metadata/dataset-metadata (:result_metadata card)))]
     (api/check-not-archived card)
     (when (seq parameters)
       (validate-card-parameters card-id (mbql.normalize/normalize-fragment [:parameters] parameters)))
