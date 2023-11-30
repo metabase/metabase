@@ -5,10 +5,12 @@
    [metabase-enterprise.audit-app.permissions :as audit-app.permissions]
    [metabase-enterprise.audit-db :as audit-db]
    [metabase-enterprise.audit-db-test :as audit-db-test]
+   [metabase.api.common :as api]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.collection.graph :refer [update-graph!]]
    [metabase.models.collection.graph-test :refer [graph]]
    [metabase.models.database :refer [Database]]
+   [metabase.models.interface :as mi]
    [metabase.models.permissions
     :as perms
     :refer [Permissions table-query-path]]
@@ -99,3 +101,53 @@
                Exception
                #"Unable to make audit collections writable."
                (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :write)))))))))
+
+(deftest can-write-false-for-audit-card-content-test
+  (t2.with-temp/with-temp [:model/Card audit-child-card {:collection_id (:id (perms/default-audit-collection))}
+                           :model/Card root-child-card {:collection_id nil}]
+    (is (false? (mi/can-write? audit-child-card)))
+    (binding [api/*current-user-permissions-set* (delay #{"/collection/root/"})]
+      (is (true? (mi/can-write? root-child-card))))
+    (binding [api/*current-user-permissions-set* (delay #{"/"})]
+      (is (true? (mi/can-write? root-child-card))))))
+
+(deftest can-write-is-false-for-audit-content-cards-test
+  (let [audit-cards (t2/select :model/Card :collection_id (:id (perms/default-audit-collection)))]
+    (is (= #{false} (set (map mi/can-write? audit-cards))))))
+
+(deftest cannot-edit-audit-content-cards-over-api
+  (let [card (t2/select-one :model/Card :collection_id (:id (perms/default-audit-collection)))]
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card)) {:name "My new title"})))))
+
+(deftest can-write-false-for-audit-dashboard-content-test
+  (t2.with-temp/with-temp [:model/Dashboard audit-child-dashboard {:collection_id (:id (perms/default-audit-collection))}
+                           :model/Dashboard root-child-dashboard {:collection_id nil}]
+    (is (false? (mi/can-write? audit-child-dashboard)))
+    (binding [api/*current-user-permissions-set* (delay #{"/collection/root/"})]
+      (is (true? (mi/can-write? root-child-dashboard))))
+    (binding [api/*current-user-permissions-set* (delay #{"/"})]
+      (is (true? (mi/can-write? root-child-dashboard))))))
+
+;; for all cards + dashboards:
+;; instead of temp card, lookup the real audit cards, and call can-write? on them
+
+(deftest can-write-is-false-for-audit-content-dashboards-test
+  (let [audit-dashboards (t2/select :model/Dashboard :collection_id (:id (perms/default-audit-collection)))]
+    (is (= #{false} (set (map mi/can-write? audit-dashboards))))))
+
+;; for a random one:
+;; API tests -- try to edit the card and/or the dashboard
+
+(deftest cannot-edit-audit-content-dashboards-over-api
+  (let [dashboard (t2/select-one :model/Dashboard :collection_id (:id (perms/default-audit-collection)))]
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dashboard)) {:name "My new title"})))))
+
+
+
+
+(comment
+
+  (can-write-false-for-audit-card-content-test)
+  )
