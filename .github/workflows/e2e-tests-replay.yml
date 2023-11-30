@@ -19,7 +19,7 @@ jobs:
 
 
   e2e-tests:
-    needs: [test-run-id, e2e-matrix-builder]
+    needs: e2e-matrix-builder
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     name: e2e-tests-${{ matrix.name }}-${{ matrix.edition }}
