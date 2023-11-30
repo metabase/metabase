@@ -405,10 +405,8 @@
   (let [db-name          (db-name database)
         excluded-schemas (set (sql-jdbc.sync/excluded-schemas driver))]
     (qp.store/with-metadata-provider (u/the-id database)
-      (let [sql             (format "SHOW OBJECTS IN DATABASE \"%s\"" db-name)
-            schema-patterns (driver.s/db-details->schema-filter-patterns "schema-filters" database)
+      (let [schema-patterns (driver.s/db-details->schema-filter-patterns "schema-filters" database)
             [inclusion-patterns exclusion-patterns] schema-patterns]
-        (log/tracef "[Snowflake] %s" sql)
         (sql-jdbc.execute/do-with-connection-with-options
          driver
          database
