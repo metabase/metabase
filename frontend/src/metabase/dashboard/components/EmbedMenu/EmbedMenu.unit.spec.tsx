@@ -170,7 +170,7 @@ describe("EmbedMenu", () => {
     });
 
     describe("when user is non-admin", () => {
-      it("should render not render the button if a link hasn't been created", async () => {
+      it("should not render the button if a link hasn't been created", async () => {
         setup({
           hasPublicLink: false,
           publicLinksEnabled: true,

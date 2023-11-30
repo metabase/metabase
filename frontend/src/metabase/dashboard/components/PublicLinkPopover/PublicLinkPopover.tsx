@@ -18,8 +18,8 @@ export type PublicLinkPopoverProps = {
   target: JSX.Element;
   isOpen: boolean;
   onClose: () => void;
-  createPublicLink: () => void;
-  deletePublicLink: () => void;
+  createPublicLink: () => Promise<void>;
+  deletePublicLink: () => Promise<void>;
   uuid: string | null;
   getPublicLink: ({
     exportFormat,

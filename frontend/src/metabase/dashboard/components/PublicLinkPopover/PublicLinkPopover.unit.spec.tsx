@@ -10,9 +10,7 @@ import type {
 import { PublicLinkPopover } from "./PublicLinkPopover";
 
 // https://github.com/nkbt/react-copy-to-clipboard/issues/106#issuecomment-605227151
-jest.mock("copy-to-clipboard", () => {
-  return jest.fn();
-});
+jest.mock("copy-to-clipboard", () => jest.fn());
 
 const TestComponent = ({
   createPublicLink,
