@@ -415,7 +415,6 @@ class ExpressionEditorTextfield extends React.Component<
 
     const {
       query,
-      legacyQuery,
       reportTimezone,
       stageIndex,
       metadata,
@@ -427,8 +426,13 @@ class ExpressionEditorTextfield extends React.Component<
       startRule,
       source,
       targetOffset: cursor.column,
-      query: query ?? legacyQuery.question()._getMLv2Query(),
-      stageIndex: stageIndex ?? -1,
+      // TODO: uladzimir
+      // using stage index apart from -1 is possible only in the notebook editor, filter pills, and the filter modal
+      // first 2 are migrated in the filters integration branch. The latter is in progress
+      // query: query ?? legacyQuery.question()._getMLv2Query(),
+      // stageIndex: stageIndex ?? -1,
+      query,
+      stageIndex,
       metadata,
       getColumnIcon,
     });
