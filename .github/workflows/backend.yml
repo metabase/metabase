@@ -95,6 +95,11 @@ jobs:
       DOWNLOAD_URL: https://github.com/clj-kondo/clj-kondo/releases/download
     steps:
       - uses: actions/checkout@v3
+      - name: Install Clojure CLI
+        shell: bash
+        run: |
+          curl -O https://download.clojure.org/install/linux-install-1.11.1.1262.sh &&
+          sudo bash ./linux-install-1.11.1.1262.sh
       - name: Install clj-kondo
         run: |
           curl -OL ${DOWNLOAD_URL}/v${CLJ_KONDO_VERSION}/clj-kondo-${CLJ_KONDO_VERSION}-linux-static-amd64.zip
