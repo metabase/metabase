@@ -129,25 +129,11 @@
     (binding [api/*current-user-permissions-set* (delay #{"/"})]
       (is (true? (mi/can-write? root-child-dashboard))))))
 
-;; for all cards + dashboards:
-;; instead of temp card, lookup the real audit cards, and call can-write? on them
-
 (deftest can-write-is-false-for-audit-content-dashboards-test
   (let [audit-dashboards (t2/select :model/Dashboard :collection_id (:id (perms/default-audit-collection)))]
     (is (= #{false} (set (map mi/can-write? audit-dashboards))))))
-
-;; for a random one:
-;; API tests -- try to edit the card and/or the dashboard
 
 (deftest cannot-edit-audit-content-dashboards-over-api
   (let [dashboard (t2/select-one :model/Dashboard :collection_id (:id (perms/default-audit-collection)))]
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dashboard)) {:name "My new title"})))))
-
-
-
-
-(comment
-
-  (can-write-false-for-audit-card-content-test)
-  )
