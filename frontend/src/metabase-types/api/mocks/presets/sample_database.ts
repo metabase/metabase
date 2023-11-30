@@ -1582,3 +1582,25 @@ export const createPeopleLatitudeDatasetColumn = (
     field_ref: ["field", PEOPLE.LATITUDE, null],
     ...opts,
   });
+
+export const createReviewsReviewerDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createReviewsReviewerField(),
+    id: REVIEWS.REVIEWER,
+    source: "fields",
+    field_ref: ["field", REVIEWS.REVIEWER, null],
+    ...opts,
+  });
+
+export const createReviewsBodyDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createReviewsBodyField(),
+    id: REVIEWS.BODY,
+    source: "fields",
+    field_ref: ["field", REVIEWS.BODY, null],
+    ...opts,
+  });
