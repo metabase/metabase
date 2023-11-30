@@ -64,7 +64,7 @@ describe("issue 21665", () => {
       visitDashboard(id);
     });
 
-    cy.get("@dashboardLoaded").should("have.been.calledTwice");
+    cy.get("@dashboardLoaded").should("have.been.calledThrice");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("There was a problem displaying this chart.").should(
       "be.visible",

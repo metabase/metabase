@@ -129,6 +129,11 @@ export const updateDashboardAndCards = createThunkAction(
         dashboard_id: dashboard.id,
         duration_milliseconds,
       });
+
+      // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
+      dispatch(
+        fetchDashboard(dashboard.id, null, { preserveParameters: false }),
+      ); // disable using query parameters when saving
     };
   },
 );
