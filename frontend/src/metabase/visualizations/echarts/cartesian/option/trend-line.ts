@@ -15,6 +15,7 @@ import type { Insight } from "metabase-types/api/insight";
 
 import { applySquareRootScaling, replaceValues } from "../model/dataset";
 import type { CartesianChartModel, DataKey } from "../model/types";
+import { getSeriesYAxisIndex } from "./utils";
 
 const TREND_LINE_DATA_KEY = "trend-line";
 
@@ -159,6 +160,7 @@ export function getTrendLineOptionsAndDatasets(
     (seriesModel, index) => ({
       type: "line",
       datasetIndex: index + 1, // offset to account for the chart's dataset (e.g. question results)
+      yAxisIndex: getSeriesYAxisIndex(seriesModel, chartModel),
       encode: {
         x: chartModel.dimensionModel.dataKey,
         y: TREND_LINE_DATA_KEY,
