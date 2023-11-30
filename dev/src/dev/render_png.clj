@@ -2,24 +2,26 @@
   "Improve feedback loop for dealing with png rendering code. Will create images using the rendering that underpins
   pulses and subscriptions and open those images without needing to send them to slack or email."
   (:require
-   [clojure.java.io :as io]
-   [clojure.java.shell :as sh]
-   [hiccup.core :as hiccup]
-   [metabase.models.card :as card]
-   [metabase.models.user :as user]
-   [metabase.pulse :as pulse]
-   [metabase.pulse.render :as render]
-   [metabase.pulse.render.test-util :as render.tu]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.permissions :as qp.perms]))
+    [clojure.java.io :as io]
+    [clojure.java.shell :as sh]
+    [hiccup.core :as hiccup]
+    [metabase.models.card :as card]
+    [metabase.pulse :as pulse]
+    [metabase.pulse.render :as render]
+    [metabase.pulse.render.test-util :as render.tu]
+    [metabase.query-processor :as qp]
+    [toucan2.core :as t2])
+  (:import (java.io File)))
+
+(set! *warn-on-reflection* true)
 
 ;; taken from https://github.com/aysylu/loom/blob/master/src/loom/io.clj
 (defn- os
   "Returns :win, :mac, :unix, or nil"
   []
   (condp
-      #(<= 0 (.indexOf ^String %2 ^String %1))
-      (.toLowerCase (System/getProperty "os.name"))
+   #(<= 0 (.indexOf ^String %2 ^String %1))
+   (.toLowerCase (System/getProperty "os.name"))
     "win" :win
     "mac" :mac
     "nix" :unix
@@ -46,35 +48,44 @@
   match what's rendered on another system, like a docker container."
   [card-id]
   (let [{:keys [dataset_query] :as card} (t2/select-one card/Card :id card-id)
-        user                             (t2/select-one user/User)
-        query-results                    (binding [qp.perms/*card-id* nil]
-                                           (qp/process-query-and-save-execution!
-                                            (-> dataset_query
-                                                (assoc :async? false)
-                                                (assoc-in [:middleware :process-viz-settings?] true))
-                                            {:executed-by (:id user)
-                                             :context     :pulse
-                                             :card-id     card-id}))
+        query-results                    (qp/process-query dataset_query)
         png-bytes                        (render/render-pulse-card-to-png (pulse/defaulted-timezone card)
                                                                           card
                                                                           query-results
                                                                           1000)
-        tmp-file                         (java.io.File/createTempFile "card-png" ".png")]
+        tmp-file                         (File/createTempFile "card-png" ".png")]
     (with-open [w (java.io.FileOutputStream. tmp-file)]
       (.write w ^bytes png-bytes))
     (.deleteOnExit tmp-file)
     (open tmp-file)))
 
-(defn open-hiccup-as-html [hiccup]
+(defn render-pulse-card
+  "Render a pulse card as a data structure"
+  [card-id]
+  (let [{:keys [dataset_query] :as card} (t2/select-one card/Card :id card-id)
+        query-results (qp/process-query dataset_query)]
+    (render/render-pulse-card
+     :inline (pulse/defaulted-timezone card)
+     card
+     nil
+     query-results)))
+
+(defn open-hiccup-as-html
+  "Take a hiccup data structure, render it as html, then open it in the browser."
+  [hiccup]
   (let [html-str (hiccup/html hiccup)
-        tmp-file (java.io.File/createTempFile "card-html" ".html")]
-    (with-open [w (clojure.java.io/writer tmp-file)]
-      (.write w html-str))
+        tmp-file (File/createTempFile "card-html" ".html")]
+    (with-open [w (io/writer tmp-file)]
+      (.write w ^String html-str))
     (.deleteOnExit tmp-file)
     (open tmp-file)))
 
 (comment
   (render-card-to-png 1)
+
+  (let [{:keys [content]} (render-pulse-card 1)]
+    (open-hiccup-as-html content))
+
   ;; open viz in your browser
   (-> [["A" "B"]
        [1 2]
@@ -92,4 +103,3 @@
                                        :hidden-columns      {:hide [0 2]}})
       :viz-tree
       open-hiccup-as-html))
-

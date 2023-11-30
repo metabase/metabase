@@ -788,3 +788,23 @@
       ;; we store version of metabase which created the card
       (is (= config/mb-version-string
              (t2/select-one-fn :metabase_version :model/Card :id (:id card)))))))
+
+(deftest changed?-test
+  (letfn [(changed? [before after]
+            (#'card/changed? @#'card/card-compare-keys before after))]
+    (testing "Ignores keyword/string"
+      (is (false? (changed? {:dataset_query {:type :query}} {:dataset_query {:type "query"}}))))
+    (testing "Ignores properties not in `api.card/card-compare-keys"
+      (is (false? (changed? {:collection_id 1
+                             :collection_position 0}
+                            {:collection_id 2
+                             :collection_position 1}))))
+    (testing "Sees changes"
+      (is (true? (changed? {:dataset_query {:type :query}}
+                           {:dataset_query {:type :query
+                                            :query {}}})))
+      (testing "But only when they are different in the after, not just omitted"
+        (is (false? (changed? {:dataset_query {} :collection_id 1}
+                              {:collection_id 1})))
+        (is (true? (changed? {:dataset_query {} :collection_id 1}
+                             {:dataset_query nil :collection_id 1})))))))

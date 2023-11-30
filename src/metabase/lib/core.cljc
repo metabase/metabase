@@ -163,7 +163,8 @@
   lower]
  [lib.fe-util
   expression-clause
-  expression-parts]
+  expression-parts
+  filter-args-display-name]
  [lib.field
   add-field
   field-id

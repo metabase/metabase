@@ -46,7 +46,7 @@ const ACE_OPTIONS = {
 interface ExpressionEditorTextfieldProps {
   expression: Expression | undefined;
   name: string;
-  query: StructuredQuery;
+  legacyQuery: StructuredQuery;
   startRule?: string;
   width?: number;
   reportTimezone?: string;
@@ -75,10 +75,10 @@ function transformPropsToState(
 ): ExpressionEditorTextfieldState {
   const {
     expression = ExpressionEditorTextfield.defaultProps.expression,
-    query,
+    legacyQuery,
     startRule = ExpressionEditorTextfield.defaultProps.startRule,
   } = props;
-  const source = format(expression, { query, startRule });
+  const source = format(expression, { legacyQuery, startRule });
 
   return {
     source,
@@ -120,9 +120,9 @@ class ExpressionEditorTextfield extends React.Component<
     newProps: Readonly<ExpressionEditorTextfieldProps>,
   ) {
     // we only refresh our state if we had no previous state OR if our expression changed
-    const { expression, query, startRule } = newProps;
+    const { expression, legacyQuery, startRule } = newProps;
     if (!this.state || !_.isEqual(this.props.expression, expression)) {
-      const source = format(expression, { query, startRule });
+      const source = format(expression, { legacyQuery, startRule });
       const currentSource = this.state.source;
       this.setState(transformPropsToState(newProps));
 
@@ -331,11 +331,16 @@ class ExpressionEditorTextfield extends React.Component<
 
   compileExpression() {
     const { source } = this.state;
-    const { query, startRule, name } = this.props;
+    const { legacyQuery, startRule, name } = this.props;
     if (!source || source.length === 0) {
       return null;
     }
-    const { expression } = processSource({ name, source, query, startRule });
+    const { expression } = processSource({
+      name,
+      source,
+      legacyQuery,
+      startRule,
+    });
 
     return expression;
   }
@@ -343,26 +348,26 @@ class ExpressionEditorTextfield extends React.Component<
   diagnoseExpression(): ErrorWithMessage | null {
     const { source } = this.state;
     const {
-      query,
+      legacyQuery,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
       name,
     } = this.props;
     if (!source || source.length === 0) {
       return { message: t`Empty expression` };
     }
-    return diagnose(source, startRule, query, name);
+    return diagnose(source, startRule, legacyQuery, name);
   }
 
   commitExpression() {
     const {
-      query,
+      legacyQuery,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
     } = this.props;
     const { source } = this.state;
     const errorMessage = diagnose(
       source,
       startRule,
-      query,
+      legacyQuery,
     ) as ErrorWithMessage | null;
     this.setState({ errorMessage });
 
@@ -396,13 +401,13 @@ class ExpressionEditorTextfield extends React.Component<
     const cursor = selection.getCursor();
 
     const {
-      query,
+      legacyQuery,
       reportTimezone,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
     } = this.props;
     const { source } = this.state;
     const { suggestions, helpText } = suggest({
-      query,
+      legacyQuery,
       reportTimezone,
       startRule,
       source,

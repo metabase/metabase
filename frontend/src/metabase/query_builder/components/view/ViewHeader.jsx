@@ -11,14 +11,13 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
 
-import ViewButton from "metabase/query_builder/components/view/ViewButton";
 import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
 
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getDashboard } from "metabase/query_builder/selectors";
-import * as ML_Urls from "metabase-lib/urls";
 import QuestionActions from "../QuestionActions";
+import { ExploreResultsLink } from "./ExploreResultsLink";
 import { FilterHeaderButton } from "./FilterHeaderButton";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import QuestionDataSource from "./QuestionDataSource";
@@ -390,7 +389,6 @@ function ViewTitleHeaderRightSide(props) {
     toggleBookmark,
     isSaved,
     isDataset,
-    isNative,
     isRunnable,
     isRunning,
     isNativeEditorOpen,
@@ -414,19 +412,12 @@ function ViewTitleHeaderRightSide(props) {
     onModelPersistenceChange,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
-  const query = question.query();
-  const isReadOnlyQuery = query.readOnly();
-  const canEditQuery = !isReadOnlyQuery;
-  const canRunAdhocQueries = !isReadOnlyQuery;
-  const canNest = query.canNest();
+  const canEditQuery = !question.query().readOnly();
   const hasExploreResultsLink =
-    isNative &&
-    canNest &&
-    isSaved &&
-    canRunAdhocQueries &&
+    question.canExploreResults() &&
     MetabaseSettings.get("enable-nested-queries");
 
-  const isNewQuery = !query.hasData();
+  const isNewQuery = !question.query().hasData();
   const hasSaveButton =
     !isDataset &&
     !!isDirty &&
@@ -544,24 +535,6 @@ function ViewTitleHeaderRightSide(props) {
         </SaveButton>
       )}
     </ViewHeaderActionPanel>
-  );
-}
-
-ExploreResultsLink.propTypes = {
-  question: PropTypes.object.isRequired,
-};
-
-function ExploreResultsLink({ question }) {
-  const url = ML_Urls.getUrl(
-    question.composeThisQuery().setDisplay("table").setSettings({}),
-  );
-
-  return (
-    <Link to={url}>
-      <ViewButton medium p={[2, 1]} icon="insight" labelBreakpoint="sm">
-        {t`Explore results`}
-      </ViewButton>
-    </Link>
   );
 }
 

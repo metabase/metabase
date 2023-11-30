@@ -3,10 +3,10 @@ import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
 
-import DashCardCardParameterMapper from "./DashCardCardParameterMapper";
+import { DashCardCardParameterMapperConnected } from "./DashCardCardParameterMapper";
 import { MapperSettingsContainer } from "./DashCardParameterMapper.styled";
 
-const DashCardParameterMapper = ({ dashcard, isMobile }) => (
+export const DashCardParameterMapper = ({ dashcard, isMobile }) => (
   <div className="relative flex-full flex flex-column layout-centered">
     {dashcard.series && dashcard.series.length > 0 && (
       <div
@@ -22,7 +22,7 @@ const DashCardParameterMapper = ({ dashcard, isMobile }) => (
     )}
     <MapperSettingsContainer>
       {[dashcard.card].concat(dashcard.series || []).map(card => (
-        <DashCardCardParameterMapper
+        <DashCardCardParameterMapperConnected
           key={`${dashcard.id},${card.id}`}
           dashcard={dashcard}
           card={card}
@@ -32,5 +32,3 @@ const DashCardParameterMapper = ({ dashcard, isMobile }) => (
     </MapperSettingsContainer>
   </div>
 );
-
-export default DashCardParameterMapper;

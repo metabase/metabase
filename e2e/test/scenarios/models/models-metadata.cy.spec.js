@@ -220,58 +220,62 @@ describe("scenarios > models metadata", () => {
     cy.findByLabelText("Display name").should("have.value", "TOTAL");
   });
 
-  it("should allow reverting to a specific metadata revision", () => {
-    cy.intercept("POST", "/api/revision/revert").as("revert");
+  it(
+    "should allow reverting to a specific metadata revision",
+    { tags: "@flaky" },
+    () => {
+      cy.intercept("POST", "/api/revision/revert").as("revert");
 
-    cy.createNativeQuestion({
-      name: "Native Model",
-      dataset: true,
-      native: {
-        query: "SELECT * FROM ORDERS LIMIT 5",
-      },
-    }).then(({ body: { id: nativeModelId } }) => {
-      cy.visit(`/model/${nativeModelId}/metadata`);
-      cy.wait("@cardQuery");
-    });
+      cy.createNativeQuestion({
+        name: "Native Model",
+        dataset: true,
+        native: {
+          query: "SELECT * FROM ORDERS LIMIT 5",
+        },
+      }).then(({ body: { id: nativeModelId } }) => {
+        cy.visit(`/model/${nativeModelId}/metadata`);
+        cy.wait("@cardQuery");
+      });
 
-    openColumnOptions("SUBTOTAL");
-    mapColumnTo({ table: "Orders", column: "Subtotal" });
-    setColumnType("No special type", "Cost");
-    saveMetadataChanges();
+      openColumnOptions("SUBTOTAL");
+      mapColumnTo({ table: "Orders", column: "Subtotal" });
+      setColumnType("No special type", "Cost");
+      saveMetadataChanges();
 
-    cy.log("Revision 1");
-    cy.findAllByTestId("header-cell")
-      .should("contain", "Subtotal ($)")
-      .and("not.contain", "SUBTOTAL");
+      cy.log("Revision 1");
+      cy.findAllByTestId("header-cell")
+        .should("contain", "Subtotal ($)")
+        .and("not.contain", "SUBTOTAL");
 
-    openQuestionActions();
-    popover().findByTextEnsureVisible("Edit metadata").click();
+      openQuestionActions();
+      popover().findByTextEnsureVisible("Edit metadata").click();
 
-    cy.log("Revision 2");
-    openColumnOptions("TAX");
-    mapColumnTo({ table: "Orders", column: "Tax" });
-    setColumnType("No special type", "Cost");
-    saveMetadataChanges();
+      cy.log("Revision 2");
+      openColumnOptions("TAX");
+      mapColumnTo({ table: "Orders", column: "Tax" });
+      setColumnType("No special type", "Cost");
+      saveMetadataChanges();
 
-    cy.findAllByTestId("header-cell")
-      .should("contain", "Subtotal ($)")
-      .and("contain", "Tax ($)")
-      .and("not.contain", "TAX");
+      cy.findAllByTestId("header-cell")
+        .should("contain", "Subtotal ($)")
+        .and("contain", "Tax ($)")
+        .and("not.contain", "TAX");
 
-    cy.reload();
-    questionInfoButton().click();
+      cy.reload();
+      questionInfoButton().click();
 
-    rightSidebar().within(() => {
-      cy.findByText("History");
-      cy.findAllByTestId("question-revert-button").first().click();
-    });
+      rightSidebar().within(() => {
+        cy.findByText("History");
+        cy.findAllByTestId("question-revert-button").first().click();
+      });
 
-    cy.wait("@revert");
-    cy.findAllByTestId("header-cell")
-      .should("contain", "Subtotal ($)")
-      .and("not.contain", "Tax ($)")
-      .and("contain", "TAX");
-  });
+      cy.wait("@revert");
+      cy.findAllByTestId("header-cell")
+        .should("contain", "Subtotal ($)")
+        .and("not.contain", "Tax ($)")
+        .and("contain", "TAX");
+    },
+  );
 
   describe("native models metadata overwrites", { viewportWidth: 1400 }, () => {
     beforeEach(() => {

@@ -729,7 +729,7 @@ class StructuredQuery extends AtomicQuery {
     return formatExpression(expression, {
       quotes,
       ...options,
-      query: this,
+      legacyQuery: this,
     });
   }
 

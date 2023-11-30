@@ -167,5 +167,7 @@ DashCardMenu.shouldRender = ({
   );
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(null, mapDispatchToProps)(DashCardMenu);
+export const DashCardMenuConnected = connect(
+  null,
+  mapDispatchToProps,
+)(DashCardMenu);

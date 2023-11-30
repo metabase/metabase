@@ -92,7 +92,7 @@ export function FilterPicker({
 
   const renderExpressionEditor = () => (
     <ExpressionWidget
-      query={legacyQuery}
+      legacyQuery={legacyQuery}
       expression={legacyFilter?.raw() as LegacyExpressionClause}
       startRule="boolean"
       header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
