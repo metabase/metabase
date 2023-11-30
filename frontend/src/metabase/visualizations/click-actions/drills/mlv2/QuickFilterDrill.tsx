@@ -9,7 +9,7 @@ import type * as Lib from "metabase-lib";
 import { isBoolean, isDate, isNumeric } from "metabase-lib/types/utils/isa";
 import { TextIcon } from "../QuickFilterDrill/QuickFilterDrill.styled";
 
-type FilterOperator = "=" | "≠" | "<" | ">";
+type FilterOperator = "=" | "≠" | "<" | ">" | "contains" | "does-not-contain";
 type DateQuickFilterOperatorType = "<" | ">" | "=" | "≠";
 type FilterValueType = "null" | "numeric" | "date" | "boolean" | "text";
 

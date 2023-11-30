@@ -33,7 +33,7 @@ export function columnFilterDrill({
     return null;
   }
 
-  const { dimension } = clicked;
+  const { dimension } = clicked as any;
   const initialFilter = dimension?.defaultFilterForDimension();
 
   return { query: query as StructuredQuery, initialFilter };
