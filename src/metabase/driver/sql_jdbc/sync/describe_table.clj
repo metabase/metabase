@@ -139,6 +139,8 @@
       ;;
       ;; 3. Filter out any duplicates between the two methods using `m/distinct-by`.
       (let [has-fields-without-type-info? (volatile! false)
+            ;; intented to fix syncing dynamic tables for snowflake.
+            ;; currently there is a bug in snowflake jdbc (snowflake#1574) in which it doesn't return columns for dynamic tables
             jdbc-returns-no-field?        (volatile! true)
             jdbc-metadata                 (eduction
                                            (remove (fn [{:keys [database-type]}]
