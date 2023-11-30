@@ -55,6 +55,8 @@ describe("issue 20519", () => {
 
     cy.button("Done").click();
 
+    cy.findByTestId("aggregate-step").contains("Two").should("exist");
+
     visualize(response => {
       expect(response.body.error).not.to.exist;
     });
