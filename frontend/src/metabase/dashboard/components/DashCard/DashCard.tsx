@@ -42,6 +42,7 @@ import type {
   NavigateToNewCardFromDashboardOpts,
   DashCardOnChangeCardAndRunHandler,
 } from "./types";
+import { AddNewDashcardButton } from "./AddNewDashcardButtons";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
 import { DashCardVisualization } from "./DashCardVisualization";
 import { DashCardRoot } from "./DashCard.styled";
@@ -280,6 +281,8 @@ function DashCardInner({
             onPreviewToggle={handlePreviewToggle}
           />
         )}
+        <AddNewDashcardButton dashcard={dashcard} position="top" />
+        <AddNewDashcardButton dashcard={dashcard} position="bottom" />
         <DashCardVisualization
           dashboard={dashboard}
           dashcard={dashcard}
