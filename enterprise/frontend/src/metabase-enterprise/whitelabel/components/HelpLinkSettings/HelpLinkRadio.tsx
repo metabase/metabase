@@ -43,7 +43,7 @@ export const HelpLinkRadio = ({
     if (value === "") {
       setError(t`This field can't be left empty.`);
     } else if (!supportedPrefixes.some(prefix => value.startsWith(prefix))) {
-      setError(t`This needs to be an http, https or mailto URL.`);
+      setError(t`This needs to be an "http://", "https://" or "mailto:" URL.`);
     } else {
       setError("");
       try {

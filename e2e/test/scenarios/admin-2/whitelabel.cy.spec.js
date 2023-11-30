@@ -256,7 +256,7 @@ describeEE("formatting > whitelabel", () => {
         .type("ftp://something")
         .blur();
       main()
-        .findByText("This needs to be an http, https or mailto URL.")
+        .findByText(/This needs to be/i)
         .should("exist");
 
       getHelpLinkCustomDestinationInput().clear().type("https://").blur();
