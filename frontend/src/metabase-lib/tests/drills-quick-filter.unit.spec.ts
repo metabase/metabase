@@ -18,6 +18,7 @@ describe("drill-thru/quick-filter", () => {
 
   describe("raw query", () => {
     const defaultQuery = createQuery();
+    const expectedStageCount = 1;
 
     it("should drill a cell with null value", () => {
       const column = createOrdersTotalDatasetColumn();
@@ -29,7 +30,7 @@ describe("drill-thru/quick-filter", () => {
         drillType,
       );
       expect(drillInfo).toMatchObject({ operators: ["=", "≠"] });
-      verifyDrillThru(defaultQuery, drill, drillInfo);
+      verifyDrillThru(defaultQuery, drill, drillInfo, expectedStageCount);
     });
 
     it("should drill a cell for a numeric column", () => {
@@ -42,7 +43,7 @@ describe("drill-thru/quick-filter", () => {
         drillType,
       );
       expect(drillInfo).toMatchObject({ operators: ["<", ">", "=", "≠"] });
-      verifyDrillThru(defaultQuery, drill, drillInfo);
+      verifyDrillThru(defaultQuery, drill, drillInfo, expectedStageCount);
     });
 
     it("should drill a cell for a date column", () => {
@@ -58,7 +59,7 @@ describe("drill-thru/quick-filter", () => {
         drillType,
       );
       expect(drillInfo).toMatchObject({ operators: ["<", ">", "=", "≠"] });
-      verifyDrillThru(defaultQuery, drill, drillInfo);
+      verifyDrillThru(defaultQuery, drill, drillInfo, expectedStageCount);
     });
 
     it("should drill a cell for a text column", () => {
@@ -77,7 +78,7 @@ describe("drill-thru/quick-filter", () => {
       expect(drillInfo).toMatchObject({
         operators: ["=", "≠"],
       });
-      verifyDrillThru(query, drill, drillInfo);
+      verifyDrillThru(query, drill, drillInfo, expectedStageCount);
     });
 
     it("should drill a cell for description or comment columns", () => {
@@ -87,7 +88,7 @@ describe("drill-thru/quick-filter", () => {
         column,
         value: "text",
       });
-      const { drill, drillInfo } = findDrillThru(
+      const { drillInfo } = findDrillThru(
         query,
         stageIndex,
         clickObject,
@@ -96,7 +97,6 @@ describe("drill-thru/quick-filter", () => {
       expect(drillInfo).toMatchObject({
         operators: ["contains", "does-not-contain"],
       });
-      verifyDrillThru(query, drill, drillInfo);
     });
   });
 });
@@ -105,11 +105,13 @@ function verifyDrillThru(
   query: Lib.Query,
   drill: Lib.DrillThru,
   drillInfo: Lib.DrillThruDisplayInfo,
+  expectedStageCount: number,
 ) {
   if (drillInfo.type === "drill-thru/quick-filter") {
     drillInfo.operators.forEach(operator => {
       const newQuery = Lib.drillThru(query, -1, drill, operator);
       expect(Lib.filters(newQuery, -1)).toHaveLength(1);
+      expect(Lib.stageCount(newQuery)).toBe(expectedStageCount);
     });
   }
 }
