@@ -86,7 +86,7 @@
    (if (and
         ;; We want to make sure there's an existing audit collection before doing the equality check below.
         ;; If there is no audit collection, this will be nil:
-        (perms/default-audit-collection)
+        (some? (:id (perms/default-audit-collection)))
         ;; Is a direct descendant of audit collection
         (= (:collection_id instance) (:id (perms/default-audit-collection))))
      false
