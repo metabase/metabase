@@ -24,7 +24,7 @@ type JWTFormSettingElement = Omit<SettingElement, "key"> & {
   key: string; // ensuring key is required
   is_env_setting?: boolean;
   env_name?: string;
-  default?: string | null | boolean | Record<string, unknown>;
+  default?: string;
 };
 
 type Props = {
