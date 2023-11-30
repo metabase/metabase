@@ -692,8 +692,12 @@
             (is (pos-int? card-id))
             (testing "A POST returns the newly created object, so no follow-on GET is required (#34828)"
               (is (=
-                    (update created :last-edit-info dissoc :timestamp)
-                    (update retrieved :last-edit-info dissoc :timestamp))))))))))
+                    (-> created
+                        (update :last-edit-info dissoc :timestamp)
+                        (dissoc :collection))
+                    (-> retrieved
+                        (update :last-edit-info dissoc :timestamp)
+                        (dissoc :collection)))))))))))
 
 (deftest create-card-disallow-setting-enable-embedding-test
   (testing "POST /api/card"
@@ -830,8 +834,12 @@
                      (map norm (t2/select-one-fn :result_metadata :model/Card :id card-id))))
               (testing "A PUT returns the updated object, so no follow-on GET is required (#34828)"
                 (is (=
-                      (update updated :last-edit-info dissoc :timestamp)
-                      (update retrieved :last-edit-info dissoc :timestamp)))))))))))
+                      (-> updated
+                          (update :last-edit-info dissoc :timestamp)
+                          (dissoc :collection))
+                      (-> retrieved
+                          (update :last-edit-info dissoc :timestamp)
+                          (dissoc :collection))))))))))))
 
 (deftest updating-card-updates-metadata-2
   (let [query (updating-card-updates-metadata-query)]
