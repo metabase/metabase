@@ -69,10 +69,11 @@ const aggregateMetricsForDatum = (
   columns: DatasetColumn[],
   row: RowValue[],
   cardId: number,
+  dimensionIndex: number,
   breakoutIndex?: number,
 ): void => {
   columns.forEach((column, columnIndex) => {
-    if (!isMetric(column)) {
+    if (columnIndex === dimensionIndex || !isMetric(column)) {
       return;
     }
 
@@ -139,7 +140,14 @@ export const getJoinedCardsDataset = (
         groupedData.set(dimensionValue, datum);
       }
 
-      aggregateMetricsForDatum(datum, cols, row, cardId, breakoutIndex);
+      aggregateMetricsForDatum(
+        datum,
+        cols,
+        row,
+        cardId,
+        dimensionIndex,
+        breakoutIndex,
+      );
     }
   });
 

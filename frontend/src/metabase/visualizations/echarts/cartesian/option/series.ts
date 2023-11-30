@@ -123,11 +123,39 @@ const buildEChartsLineAreaSeries = (
   };
 };
 
+function buildEChartsScatterSeries(
+  seriesModel: SeriesModel,
+  seriesSettings: SeriesSettings,
+  settings: ComputedVisualizationSettings,
+  dimensionDataKey: string,
+  yAxisIndex: number,
+  renderingContext: RenderingContext,
+): RegisteredSeriesOption["scatter"] {
+  return {
+    type: "scatter",
+    yAxisIndex,
+    symbolSize: 8, // TODO change this
+    encode: {
+      y: seriesModel.dataKey,
+      x: dimensionDataKey,
+    },
+    // TODO remove this?
+    label: buildEChartsLabelOptions(seriesModel, settings, renderingContext),
+    itemStyle: {
+      color: seriesModel.color,
+    },
+  };
+}
+
 export const buildEChartsSeries = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
-): (RegisteredSeriesOption["line"] | RegisteredSeriesOption["bar"])[] => {
+): (
+  | RegisteredSeriesOption["line"]
+  | RegisteredSeriesOption["bar"]
+  | RegisteredSeriesOption["scatter"]
+)[] => {
   const seriesSettingsByDataKey = chartModel.seriesModels.reduce(
     (acc, seriesModel) => {
       acc[seriesModel.dataKey] = settings.series(
@@ -166,6 +194,17 @@ export const buildEChartsSeries = (
             chartModel.dimensionModel.dataKey,
             yAxisIndex,
             barSeriesCount,
+            renderingContext,
+          );
+        // TODO: remove scatter2 case
+        case "scatter2":
+        case "scatter":
+          return buildEChartsScatterSeries(
+            seriesModel,
+            seriesSettings,
+            settings,
+            chartModel.dimensionModel.dataKey,
+            yAxisIndex,
             renderingContext,
           );
       }

@@ -217,7 +217,21 @@ const getTicksDefaultOption = ({ getColor, fontFamily }: RenderingContext) => {
   };
 };
 
-const getXAxisType = (settings: ComputedVisualizationSettings) => {
+const getXAxisType = (
+  chartModel: CartesianChartModel,
+  settings: ComputedVisualizationSettings,
+) => {
+  // TODO this is hacky, do a proper default computation for this setting instead
+  const display = settings.series(
+    chartModel.seriesModels[0].legacySeriesSettingsObjectKey,
+  ).display;
+  if (
+    settings["graph.x_axis.scale"] === undefined &&
+    (display === "scatter" || display === "scatter2")
+  ) {
+    return "value";
+  }
+
   switch (settings["graph.x_axis.scale"]) {
     case "timeseries":
       return "time";
@@ -246,7 +260,7 @@ export const buildDimensionAxis = (
   renderingContext: RenderingContext,
 ): CartesianAxisOption => {
   const { getColor } = renderingContext;
-  const axisType = getXAxisType(settings);
+  const axisType = getXAxisType(chartModel, settings);
 
   const boundaryGap =
     axisType === "value" ? undefined : ([0.02, 0.02] as [number, number]);
