@@ -407,14 +407,14 @@
   (-> "select pg_backend_pid()" run-native-query mt/rows ffirst))
 
 (defn- last-queries-of-a-session [session-id]
-  (let [query-str (str "select session_id, start_time, result_cache_hit, query_text\n"
+  (let [query-str (str "select result_cache_hit, query_text\n"
                        "from sys_query_history\n"
                        "where session_id = ? \n"
                        "order by start_time desc\n"
-                       "limit 5\n")]
+                       "limit 3\n")]
     (->> (run-native-query query-str session-id)
          mt/rows
-         (map (partial zipmap [:session-id :start-time :result-cache-hit :query-text])))))
+         (map (partial zipmap [:result-cache-hit :query-text])))))
 
 ;; According to https://docs.aws.amazon.com/redshift/latest/dg/c_challenges_achieving_high_performance_queries.html#result-caching
 ;; caching is on by default. Hence check for that is skipped.
