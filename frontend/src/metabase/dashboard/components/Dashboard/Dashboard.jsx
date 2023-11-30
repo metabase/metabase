@@ -100,11 +100,21 @@ class DashboardInner extends Component {
 
     loadDashboardParams();
 
-    try {
-      await fetchDashboard(dashboardId, location.query, {
+    const result = await fetchDashboard({
+      dashId: dashboardId,
+      queryParams: location.query,
+      options: {
         clearCache: !isNavigatingBackToDashboard,
         preserveParameters: isNavigatingBackToDashboard,
-      });
+      },
+    });
+
+    if (result.error) {
+      setErrorPage(result.payload);
+      return;
+    }
+
+    try {
       if (editingOnLoad) {
         this.setEditing(this.props.dashboard);
       }
