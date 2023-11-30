@@ -78,6 +78,14 @@ export function AggregationPicker({
     isEditingExpression,
     { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
   ] = useToggle(isExpressionEditorInitiallyOpen(clause, initialOperator));
+  const datasetQuery = Lib.toLegacyQuery(query);
+  const legacyQuery = new StructuredQuery(
+    new Question({ dataset_query: datasetQuery }, metadata),
+    datasetQuery,
+  );
+  const displayInfo = clause
+    ? Lib.displayInfo(query, stageIndex, clause)
+    : clause;
 
   // For really simple inline expressions like Average([Price]),
   // MLv2 can figure out that "Average" operator is used.
@@ -204,19 +212,13 @@ export function AggregationPicker({
     [onSelect, onClose],
   );
 
-  const datasetQuery = Lib.toLegacyQuery(query);
-  const legacyQuery = new StructuredQuery(
-    new Question({ dataset_query: datasetQuery }, metadata),
-    datasetQuery,
-  );
-
   if (isEditingExpression) {
     return (
       <ExpressionWidget
         legacyQuery={legacyQuery}
         query={query}
         stageIndex={stageIndex}
-        name={clause ? Lib.displayName(query, clause) : clause}
+        name={displayInfo?.displayName}
         clause={clause}
         withName
         startRule="aggregation"
