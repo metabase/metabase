@@ -13,7 +13,10 @@ import {
   findDrillThru,
   queryDrillThru,
 } from "metabase-lib/test-helpers";
-import { createCountDatasetColumn } from "./drills-common";
+import {
+  createCountDatasetColumn,
+  createNotEditableQuery,
+} from "./drills-common";
 
 // eslint-disable-next-line jest/no-disabled-tests
 describe.skip("drill-thru/pivot (metabase#33559)", () => {
@@ -296,6 +299,23 @@ describe.skip("drill-thru/pivot (metabase#33559)", () => {
       const pivotTypes = Lib.pivotTypes(drill);
       expect(pivotTypes).toEqual(["category", "time"]);
       verifyDrillThru(query, stageIndex, drill, pivotTypes);
+    });
+  });
+
+  describe("non-editable query", () => {
+    const query = createNotEditableQuery(
+      createSingleStageQuery({
+        aggregations: [{ operatorName: "count" }],
+      }),
+    );
+    const clickObject = createRawCellClickObject({
+      column: createCountDatasetColumn(),
+      value: 10,
+    });
+
+    it("should not drill thru a non-editable query", () => {
+      const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
+      expect(drill).toBeNull();
     });
   });
 });
