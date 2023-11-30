@@ -31,20 +31,15 @@
 ;;               |
 ;;          varchar-255┐
 ;;              / \    │
-;;             /   \   └──────────┬─────────────┐
-;;            /     \             │             │
-;;         float   datetime  offset-datetime  string-pk
+;;             /   \   └──────────┬
+;;            /     \             │
+;;         float   datetime  offset-datetime
 ;;           │       │
 ;;           │       │
 ;;          int     date
 ;;         /   \
 ;;        /     \
-;;  int-pk     boolean
-;;     │
-;;     │
-;;   auto-
-;; incrementing-
-;;  int-pk
+;;    boolean auto-incrementing-int-pk
 ;;
 ;; </code></pre>
 
@@ -54,23 +49,14 @@
    ::varchar-255              ::text
    ::float                    ::varchar-255
    ::int                      ::float
-   ::int-pk                   ::int
-   ::auto-incrementing-int-pk ::int-pk
+   ::auto-incrementing-int-pk ::int
    ::boolean                  ::int
    ::datetime                 ::varchar-255
    ::date                     ::datetime
-   ::offset-datetime          ::varchar-255
-   ::string-pk                ::varchar-255})
-
-(def ^:private base-type->pk-type
-  {::varchar-255 ::string-pk
-   ::int         ::int-pk})
+   ::offset-datetime          ::varchar-255})
 
 (def ^:private types
   (keys type->parent))
-
-(def ^:private pk-base-types
-  (set (keys base-type->pk-type)))
 
 (def ^:private type->ancestors
   (into {} (for [type types]
@@ -209,21 +195,17 @@
     "unnamed_column"
     (u/slugify (str/trim raw-name))))
 
-(defn- is-pk?
-  [[col-name type]]
-  (and (#{"id" "pk" "uuid" "guid"} (u/lower-case-en (name col-name)))
-       (pk-base-types type)))
+(def auto-pk-column-name
+  "The name of the auto-incrementing PK column."
+  :_mb_row_id)
 
 (defn- ->ordered-maps-with-pk-column
   "Sets appropriate type information on the first PK column it finds, otherwise adds a new one.
 
   Returns a *map* with two keys: `:extant-columns` and `:generated-columns`."
   [name-type-pairs]
-  (if-let [[pk-name pk-base-type] (first (filter is-pk? name-type-pairs))]
-    {:extant-columns    (assoc (ordered-map/ordered-map name-type-pairs) pk-name (base-type->pk-type pk-base-type))
-     :generated-columns (ordered-map/ordered-map)}
-    {:extant-columns    (ordered-map/ordered-map name-type-pairs)
-     :generated-columns (ordered-map/ordered-map :id ::auto-incrementing-int-pk)}))
+  {:extant-columns    (ordered-map/ordered-map name-type-pairs)
+   :generated-columns (ordered-map/ordered-map auto-pk-column-name ::auto-incrementing-int-pk)})
 
 (defn- rows->schema
   "rows should be a lazy-seq"
@@ -302,21 +284,35 @@
   []
   (t2/select-one Database :id (public-settings/uploads-database-id)))
 
+(defn- drop-nth [coll n]
+  (concat (take n coll) (drop (inc n) coll)))
+
 (defn load-from-csv!
   "Loads a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
   [driver db-id table-name ^File csv-file]
   (let [{col-to-insert->upload-type :extant-columns
          gen-col->upload-type       :generated-columns} (detect-schema csv-file)
-        cols->upload-type       (merge gen-col->upload-type col-to-insert->upload-type)
+        cols->upload-type       (merge col-to-insert->upload-type gen-col->upload-type)
         col-to-create->col-spec (upload-type->col-specs driver cols->upload-type)
-        csv-col-names           (keys col-to-insert->upload-type)]
+        csv-col-names           (keys col-to-insert->upload-type)
+        [auto-pk-match-index _]
+        (first (keep-indexed (fn [idx col-name]
+                               (when (= (normalize-column-name (name col-name)) (name auto-pk-column-name))
+                                 [idx col-name]))
+                             csv-col-names))]
     (driver/create-table! driver db-id table-name col-to-create->col-spec)
     (try
       (with-open [reader (io/reader csv-file)]
         (let [rows (->> (csv/read-csv reader)
                         (drop 1) ; drop header
-                        (parse-rows col-to-insert->upload-type))]
+                        (parse-rows col-to-insert->upload-type))
+              rows (cond->> rows
+                     auto-pk-match-index
+                     (map #(drop-nth % auto-pk-match-index)))
+              csv-col-names (cond-> csv-col-names
+                              auto-pk-match-index
+                              (drop-nth auto-pk-match-index))]
           (driver/insert-into! driver db-id table-name csv-col-names rows)
           {:num-rows          (count rows)
            :num-columns       (count csv-col-names)
