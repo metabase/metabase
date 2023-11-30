@@ -12,7 +12,7 @@ import {
   createColumnClickObject,
   createRawCellClickObject,
   queryDrillThru,
-  createSingleStageQuery,
+  createQueryWithClauses,
 } from "metabase-lib/test-helpers";
 import {
   createCountDatasetColumn,
@@ -99,7 +99,7 @@ describe("drill-thru/column-filter", () => {
   });
 
   describe("aggregated query", () => {
-    const defaultQuery = createSingleStageQuery({
+    const defaultQuery = createQueryWithClauses({
       aggregations: [{ operatorName: "count" }],
       breakouts: [{ columnName: "CREATED_AT", tableName: "ORDERS" }],
     });

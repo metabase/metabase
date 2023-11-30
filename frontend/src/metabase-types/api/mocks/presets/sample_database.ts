@@ -1572,6 +1572,17 @@ export const createPeopleStateDatasetColumn = (
     ...opts,
   });
 
+export const createPeopleCityDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createPeopleCityField(),
+    id: PEOPLE.CITY,
+    source: "fields",
+    field_ref: ["field", PEOPLE.CITY, null],
+    ...opts,
+  });
+
 export const createPeopleLatitudeDatasetColumn = (
   opts?: Partial<DatasetColumn>,
 ): DatasetColumn =>
@@ -1580,6 +1591,17 @@ export const createPeopleLatitudeDatasetColumn = (
     id: PEOPLE.LATITUDE,
     source: "fields",
     field_ref: ["field", PEOPLE.LATITUDE, null],
+    ...opts,
+  });
+
+export const createPeopleLongitudeDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createPeopleLongitudeField(),
+    id: PEOPLE.LONGITUDE,
+    source: "fields",
+    field_ref: ["field", PEOPLE.LONGITUDE, null],
     ...opts,
   });
 

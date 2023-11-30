@@ -8,7 +8,7 @@ import * as Lib from "metabase-lib";
 import {
   createAggregatedCellClickObject,
   createQuery,
-  createSingleStageQuery,
+  createQueryWithClauses,
   createRawCellClickObject,
   findDrillThru,
   queryDrillThru,
@@ -37,7 +37,7 @@ describe.skip("drill-thru/pivot (metabase#33559)", () => {
   });
 
   describe("1 aggregation", () => {
-    const query = createSingleStageQuery({
+    const query = createQueryWithClauses({
       aggregations: [{ operatorName: "count" }],
     });
     const clickObject = createRawCellClickObject({
@@ -59,7 +59,7 @@ describe.skip("drill-thru/pivot (metabase#33559)", () => {
   });
 
   describe("1 aggregation, 1 date breakout", () => {
-    const query = createSingleStageQuery({
+    const query = createQueryWithClauses({
       aggregations: [{ operatorName: "count" }],
       breakouts: [{ columnName: "CREATED_AT", tableName: "ORDERS" }],
     });
@@ -92,7 +92,7 @@ describe.skip("drill-thru/pivot (metabase#33559)", () => {
   });
 
   describe("1 aggregation, 1 category breakout", () => {
-    const query = createSingleStageQuery({
+    const query = createQueryWithClauses({
       aggregations: [{ operatorName: "count" }],
       breakouts: [{ columnName: "CATEGORY", tableName: "PRODUCTS" }],
     });
@@ -125,7 +125,7 @@ describe.skip("drill-thru/pivot (metabase#33559)", () => {
   });
 
   describe("1 aggregation, 1 numeric breakout", () => {
-    const query = createSingleStageQuery({
+    const query = createQueryWithClauses({
       aggregations: [{ operatorName: "count" }],
       breakouts: [{ columnName: "TOTAL", tableName: "ORDERS" }],
     });
@@ -151,7 +151,7 @@ describe.skip("drill-thru/pivot (metabase#33559)", () => {
   });
 
   describe("1 aggregation, 1 address breakout", () => {
-    const query = createSingleStageQuery({
+    const query = createQueryWithClauses({
       aggregations: [{ operatorName: "count" }],
       breakouts: [{ columnName: "STATE", tableName: "PEOPLE" }],
     });
@@ -184,7 +184,7 @@ describe.skip("drill-thru/pivot (metabase#33559)", () => {
   });
 
   describe("1 aggregation, 1 date and 1 category breakout", () => {
-    const query = createSingleStageQuery({
+    const query = createQueryWithClauses({
       aggregations: [{ operatorName: "count" }],
       breakouts: [
         { columnName: "CREATED_AT", tableName: "ORDERS" },
@@ -226,7 +226,7 @@ describe.skip("drill-thru/pivot (metabase#33559)", () => {
   });
 
   describe("1 aggregation, 1 date and 1 numeric breakout", () => {
-    const query = createSingleStageQuery({
+    const query = createQueryWithClauses({
       aggregations: [{ operatorName: "count" }],
       breakouts: [
         { columnName: "CREATED_AT", tableName: "ORDERS" },
@@ -261,7 +261,7 @@ describe.skip("drill-thru/pivot (metabase#33559)", () => {
   });
 
   describe("1 aggregation, 2 category breakouts", () => {
-    const query = createSingleStageQuery({
+    const query = createQueryWithClauses({
       aggregations: [{ operatorName: "count" }],
       breakouts: [
         { columnName: "CATEGORY", tableName: "PRODUCTS" },
@@ -304,7 +304,7 @@ describe.skip("drill-thru/pivot (metabase#33559)", () => {
 
   describe("non-editable query", () => {
     const query = createNotEditableQuery(
-      createSingleStageQuery({
+      createQueryWithClauses({
         aggregations: [{ operatorName: "count" }],
       }),
     );

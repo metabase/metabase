@@ -10,7 +10,7 @@ import {
   createPivotCellClickObject,
   createQuery,
   createRawCellClickObject,
-  createSingleStageQuery,
+  createQueryWithClauses,
   findDrillThru,
   queryDrillThru,
 } from "metabase-lib/test-helpers";
@@ -21,7 +21,7 @@ import {
 
 describe("drill-thru/underlying-records", () => {
   const drillType = "drill-thru/underlying-records";
-  const defaultQuery = createSingleStageQuery({
+  const defaultQuery = createQueryWithClauses({
     aggregations: [{ operatorName: "count" }],
     breakouts: [{ columnName: "CREATED_AT", tableName: "ORDERS" }],
   });
@@ -57,7 +57,7 @@ describe("drill-thru/underlying-records", () => {
 
   // eslint-disable-next-line jest/no-disabled-tests
   it.skip("should drill thru a pivot cell (metabase#35394)", () => {
-    const query = createSingleStageQuery({
+    const query = createQueryWithClauses({
       aggregations: [{ operatorName: "count" }],
       breakouts: [
         {
@@ -96,7 +96,7 @@ describe("drill-thru/underlying-records", () => {
 
   // eslint-disable-next-line jest/no-disabled-tests
   it.skip("should drill thru a legend item (metabase#35343)", () => {
-    const query = createSingleStageQuery({
+    const query = createQueryWithClauses({
       aggregations: [{ operatorName: "count" }],
       breakouts: [
         { columnName: "CREATED_AT", tableName: "ORDERS" },

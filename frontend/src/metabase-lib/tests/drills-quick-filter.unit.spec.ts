@@ -11,7 +11,7 @@ import {
   createColumnClickObject,
   createQuery,
   createRawCellClickObject,
-  createSingleStageQuery,
+  createQueryWithClauses,
   findDrillThru,
   queryDrillThru,
 } from "metabase-lib/test-helpers";
@@ -132,7 +132,7 @@ describe("drill-thru/quick-filter", () => {
   });
 
   describe("aggregated query", () => {
-    const defaultQuery = createSingleStageQuery({
+    const defaultQuery = createQueryWithClauses({
       aggregations: [{ operatorName: "count" }],
       breakouts: [{ columnName: "CREATED_AT", tableName: "ORDERS" }],
     });

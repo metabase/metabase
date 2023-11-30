@@ -10,7 +10,7 @@ import {
   createColumnClickObject,
   createQuery,
   createRawCellClickObject,
-  createSingleStageQuery,
+  createQueryWithClauses,
   findDrillThru,
   queryDrillThru,
 } from "metabase-lib/test-helpers";
@@ -53,7 +53,7 @@ describe("drill-thru/sort", () => {
   it.each<Lib.OrderByDirection>(["asc", "desc"])(
     'should thru a column from a sorted query with "%s" direction',
     direction => {
-      const query = createSingleStageQuery({
+      const query = createQueryWithClauses({
         orderBys: [
           {
             columnName: "TOTAL",

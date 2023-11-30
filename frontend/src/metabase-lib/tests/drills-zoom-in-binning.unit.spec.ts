@@ -8,7 +8,7 @@ import {
   createColumnClickObject,
   findDrillThru,
   queryDrillThru,
-  createSingleStageQuery,
+  createQueryWithClauses,
 } from "metabase-lib/test-helpers";
 import {
   createCountDatasetColumn,
@@ -44,7 +44,7 @@ describe.skip("drill-thru/zoom-in.binning (metabase#36177)", () => {
     it.each(binningStrategies)(
       'should drill thru an aggregated cell with "%s" binning strategy',
       binningStrategy => {
-        const query = createSingleStageQuery({
+        const query = createQueryWithClauses({
           aggregations: [{ operatorName: "count" }],
           breakouts: [
             {
@@ -79,7 +79,7 @@ describe.skip("drill-thru/zoom-in.binning (metabase#36177)", () => {
     );
 
     it("should not drill thru an aggregated cell when the column has no binning strategy", () => {
-      const query = createSingleStageQuery({
+      const query = createQueryWithClauses({
         aggregations: [{ operatorName: "count" }],
         breakouts: [{ columnName: breakoutColumn.name, tableName }],
       });
@@ -100,7 +100,7 @@ describe.skip("drill-thru/zoom-in.binning (metabase#36177)", () => {
     });
 
     it("should not drill thru an aggregated column", () => {
-      const query = createSingleStageQuery({
+      const query = createQueryWithClauses({
         aggregations: [{ operatorName: "count" }],
         breakouts: [
           {
@@ -120,7 +120,7 @@ describe.skip("drill-thru/zoom-in.binning (metabase#36177)", () => {
 
     it("should not drill thru a non-editable query", () => {
       const query = createNotEditableQuery(
-        createSingleStageQuery({
+        createQueryWithClauses({
           aggregations: [{ operatorName: "count" }],
           breakouts: [
             {

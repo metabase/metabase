@@ -15,7 +15,7 @@ import {
   createColumnClickObject,
   createQuery,
   createRawCellClickObject,
-  createSingleStageQuery,
+  createQueryWithClauses,
   findDrillThru,
   queryDrillThru,
 } from "metabase-lib/test-helpers";
@@ -63,7 +63,7 @@ describe("drill-thru/zoom", () => {
   });
 
   it("should not drill thru a non-PK or non-FK cell when the query is aggregated", () => {
-    const query = createSingleStageQuery({
+    const query = createQueryWithClauses({
       aggregations: [{ operatorName: "count" }],
       breakouts: [{ columnName: "TOTAL", tableName: "ORDERS" }],
     });

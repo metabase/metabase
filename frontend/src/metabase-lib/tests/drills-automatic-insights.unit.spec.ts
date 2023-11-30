@@ -13,7 +13,7 @@ import {
   createPivotCellClickObject,
   createQuery,
   createRawCellClickObject,
-  createSingleStageQuery,
+  createQueryWithClauses,
   findDrillThru,
   queryDrillThru,
 } from "metabase-lib/test-helpers";
@@ -34,23 +34,28 @@ describe.skip("drill-thru/automatic-insights (metabase#33558)", () => {
       "enable-xrays": true,
     }),
   );
+  const defaultQuery = createQuery({ metadata: metadataWithXraysEnabled });
 
   describe("raw query", () => {
-    const query = createQuery({ metadata: metadataWithXraysEnabled });
     const clickObject = createRawCellClickObject({
       column: createOrdersTotalDatasetColumn(),
       value: 10,
     });
 
     it("should not drill thru a raw query", () => {
-      const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
+      const drill = queryDrillThru(
+        defaultQuery,
+        stageIndex,
+        clickObject,
+        drillType,
+      );
       expect(drill).toBeNull();
     });
   });
 
   describe("1 aggregation", () => {
-    const query = createSingleStageQuery({
-      metadata: metadataWithXraysEnabled,
+    const query = createQueryWithClauses({
+      query: defaultQuery,
       aggregations: [{ operatorName: "count" }],
     });
     const clickObject = createRawCellClickObject({
@@ -65,8 +70,8 @@ describe.skip("drill-thru/automatic-insights (metabase#33558)", () => {
   });
 
   describe("1 aggregation, 1 breakout", () => {
-    const query = createSingleStageQuery({
-      metadata: metadataWithXraysEnabled,
+    const query = createQueryWithClauses({
+      query: defaultQuery,
       aggregations: [{ operatorName: "count" }],
       breakouts: [{ columnName: "CREATED_AT", tableName: "ORDERS" }],
     });
@@ -105,7 +110,7 @@ describe.skip("drill-thru/automatic-insights (metabase#33558)", () => {
     });
 
     it("should drill a query with x-rays disabled", () => {
-      const query = createSingleStageQuery({
+      const query = createQueryWithClauses({
         aggregations: [{ operatorName: "count" }],
         breakouts: [{ columnName: "CREATED_AT", tableName: "ORDERS" }],
       });
@@ -115,8 +120,8 @@ describe.skip("drill-thru/automatic-insights (metabase#33558)", () => {
   });
 
   describe("1 aggregation, 2 breakouts", () => {
-    const query = createSingleStageQuery({
-      metadata: metadataWithXraysEnabled,
+    const query = createQueryWithClauses({
+      query: defaultQuery,
       aggregations: [{ operatorName: "count" }],
       breakouts: [
         { columnName: "CREATED_AT", tableName: "ORDERS" },

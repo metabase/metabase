@@ -10,7 +10,7 @@ import {
   createPivotCellClickObject,
   findDrillThru,
   queryDrillThru,
-  createSingleStageQuery,
+  createQueryWithClauses,
 } from "metabase-lib/test-helpers";
 import {
   createCountDatasetColumn,
@@ -34,7 +34,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     { bucketName: "Hour", displayName: "See this hour by minute" },
   ])("$bucketName", ({ bucketName, displayName }) => {
     it("should drill thru an aggregated cell", () => {
-      const query = createSingleStageQuery({
+      const query = createQueryWithClauses({
         aggregations: [{ operatorName: "count" }],
         breakouts: [
           {
@@ -72,7 +72,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     });
 
     it("should drill thru a pivot cell", () => {
-      const query = createSingleStageQuery({
+      const query = createQueryWithClauses({
         aggregations: [{ operatorName: "count" }],
         breakouts: [
           {
@@ -120,7 +120,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     });
 
     it("should drill thru a legend item", () => {
-      const query = createSingleStageQuery({
+      const query = createQueryWithClauses({
         aggregations: [{ operatorName: "count" }],
         breakouts: [
           {
@@ -154,7 +154,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     });
 
     it("should not drill thru a column", () => {
-      const query = createSingleStageQuery({
+      const query = createQueryWithClauses({
         aggregations: [{ operatorName: "count" }],
         breakouts: [
           {
@@ -173,7 +173,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
 
     it("should not drill thru a non-editable query", () => {
       const query = createNotEditableQuery(
-        createSingleStageQuery({
+        createQueryWithClauses({
           aggregations: [{ operatorName: "count" }],
           breakouts: [
             {
@@ -213,7 +213,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     "Quarter of year",
     "Don't bin",
   ])('should not drill thru with "%s" temporal bucket', bucketName => {
-    const query = createSingleStageQuery({
+    const query = createQueryWithClauses({
       aggregations: [{ operatorName: "count" }],
       breakouts: [
         {

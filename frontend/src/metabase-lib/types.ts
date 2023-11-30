@@ -267,7 +267,7 @@ export type DrillThruType =
   | "drill-thru/column-filter"
   | "drill-thru/underlying-records"
   | "drill-thru/zoom-in.binning"
-  | "drill-thru/zoom-in.geo"
+  | "drill-thru/zoom-in.geographic"
   | "drill-thru/zoom-in.timeseries"
   | "drill-thru/automatic-insights";
 
