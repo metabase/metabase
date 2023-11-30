@@ -194,6 +194,7 @@
 
     (f metadata) -> rf"
   [#'results-metadata/record-and-return-metadata!
+   #'results-metadata/merge-existing-metadata
    (resolve 'metabase.query-processor-test.test-mlv2/post-processing-middleware)
    #'limit/limit-result-rows
    #'qp.middleware.enterprise/limit-download-result-rows
@@ -241,6 +242,7 @@
    ;; `normalize` has to be done at the very beginning or `resolve-card-id-source-tables` and the like might not work.
    ;; It doesn't really need to be 'around' middleware tho.
    (resolve 'metabase.query-processor-test.test-mlv2/around-middleware)
+   #'results-metadata/inject-result-metadata
    #'normalize/normalize
    #'qp.middleware.enterprise/handle-audit-app-internal-queries-middleware])
 ;; ↑↑↑ PRE-PROCESSING ↑↑↑ happens from BOTTOM TO TOP

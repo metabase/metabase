@@ -24,7 +24,7 @@
 ;;
 ;; 2. Consider whether the actual save operation should be async as with
 ;;    [[metabase.query-processor.middleware.process-userland-query]]
-(defn- record-metadata! [{{:keys [card-id]} :info, {:keys [source-card-id]} :query} metadata]
+(defn- record-metadata! [{{:keys [card-id]} :info {:keys [source-card-id]} :query} metadata]
   (try
     ;; At the very least we can skip the Extra DB call to update this Card's metadata results
     ;; if its DB doesn't support nested queries in the first place
@@ -76,9 +76,34 @@
 
 (defn record-and-return-metadata!
   "Post-processing middleware that records metadata about the columns returned when running the query."
-  [{{:keys [skip-results-metadata?]} :middleware, :as query} rff]
+  [{{:keys [skip-results-metadata?]} :middleware :as query} rff]
   (if skip-results-metadata?
     rff
     (let [record! (partial record-metadata! query)]
       (fn record-and-return-metadata!-rff* [metadata]
         (insights-xform metadata record! (rff metadata))))))
+
+(defn merge-existing-metadata
+  "Merge existing metadata into the computed metadata columns.
+  This is not performed in record-and-return-metadata! as we want to preserve result_metadata even if
+  skip-results-metadata? is false."
+  [{:keys [result_metadata]} rff]
+  (if result_metadata
+    (fn merge-existing-metadata-rff* [metadata]
+      (let [field-ref->meta (zipmap (map :field_ref result_metadata) result_metadata)
+            xform           (partial map
+                                     (fn [{:keys [field_ref] :as col}]
+                                       (if-some [existing-meta (field-ref->meta field_ref)]
+                                         (merge col existing-meta)
+                                         col)))]
+        (rff (update metadata :cols xform))))
+    rff))
+
+(defn inject-result-metadata
+  "Inject existing result metadata from the context into to the query so it can be used in post-processing-middleware.
+
+  A prime case for this is if a user has curated metadata as in a model and wants that preserved."
+  [qp]
+  ;; TODO - Can we normalize the result_metadata field refs here?
+  (fn inject-existing-metadata-rff* [query rff {:keys [result_metadata] :as context}]
+    (qp (cond-> query result_metadata (assoc :result_metadata result_metadata)) rff context)))
