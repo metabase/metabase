@@ -195,7 +195,10 @@
      site-name
      source-address-header
      start-of-week
-     subscription-allowed-domains})
+     subscription-allowed-domains
+     uploads-enabled
+     uploads-database-id
+     uploads-schema-name})
 
 (defmethod serdes/extract-all "Setting" [_model _opts]
   (for [{:keys [key value]} (admin-writable-site-wide-settings
