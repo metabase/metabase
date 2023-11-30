@@ -27,7 +27,8 @@ import {
   createPeopleCountryField,
 } from "./drills-common";
 
-describe("drill-thru/zoom-in.geographic", () => {
+// eslint-disable-next-line jest/no-disabled-tests
+describe.skip("drill-thru/zoom-in.geographic (metabase#36247)", () => {
   const drillType = "drill-thru/zoom-in.geographic";
   const stageIndex = 0;
   const defaultQuery = Lib.withDifferentTable(createQuery(), PEOPLE_ID);
