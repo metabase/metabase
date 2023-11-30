@@ -125,7 +125,7 @@ function computeChangeTypeWithOptions({
 
   return {
     comparisonType: PREVIOUS_VALUE_OPTIONS.CHANGED,
-    changeArrow: percentChange < 0 ? "↓" : "↑",
+    changeArrowIconName: percentChange < 0 ? "arrow_down" : "arrow_up",
     percentChangeStr: formatChange(percentChange),
     prevValueStr: formatValue(prevValue, formatOptions),
   };
@@ -164,17 +164,21 @@ function computePreviousPeriodComparison({
       ? t`previous ${dateUnitDisplay}`
       : computeComparisonPeriodStr({ dateUnit, nextDate, prevDate });
 
-  const { comparisonType, changeArrow, percentChangeStr, prevValueStr } =
-    computeChangeTypeWithOptions({
-      formatOptions,
-      percentChange,
-      prevValue,
-    });
+  const {
+    comparisonType,
+    changeArrowIconName,
+    percentChangeStr,
+    prevValueStr,
+  } = computeChangeTypeWithOptions({
+    formatOptions,
+    percentChange,
+    prevValue,
+  });
 
   const arrowColorName = settings["scalar.switch_positive_negative"]
-    ? { "↓": "success", "↑": "error" }
-    : { "↓": "error", "↑": "success" };
-  const changeColor = color(arrowColorName[changeArrow]);
+    ? { arrow_down: "success", arrow_up: "error" }
+    : { arrow_down: "error", arrow_up: "success" };
+  const changeColor = color(arrowColorName[changeArrowIconName]);
 
   return {
     comparisonType,
@@ -182,7 +186,7 @@ function computePreviousPeriodComparison({
     prevValue,
     comparisonPeriodStr,
     changeColor,
-    changeArrow,
+    changeArrowIconName,
     display: {
       percentChange: percentChangeStr,
       prevValue: prevValueStr,

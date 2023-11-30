@@ -79,12 +79,10 @@ function PreviousValueComparison({
     percentChange,
     comparisonPeriodStr,
     prevValue,
-    changeArrow,
+    changeArrowIconName,
     changeColor,
     display,
   } = comparison;
-
-  const arrowIconName = { "↓": "arrow_down", "↑": "arrow_up" }[changeArrow];
 
   const fittedChangeDisplay =
     comparisonType === PREVIOUS_VALUE_OPTIONS.CHANGED
@@ -137,7 +135,9 @@ function PreviousValueComparison({
 
   const VariationPercent = ({ iconSize, children }) => (
     <Variation color={changeColor}>
-      {arrowIconName && <VariationIcon name={arrowIconName} size={iconSize} />}
+      {changeArrowIconName && (
+        <VariationIcon name={changeArrowIconName} size={iconSize} />
+      )}
       <VariationValue showTooltip={false}>{children}</VariationValue>
     </Variation>
   );
