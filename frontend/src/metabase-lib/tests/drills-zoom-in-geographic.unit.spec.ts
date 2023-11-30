@@ -1,10 +1,12 @@
 import {
   createPeopleLatitudeDatasetColumn,
   createPeopleLongitudeDatasetColumn,
+  PEOPLE_ID,
 } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
 import {
   createAggregatedCellClickObject,
+  createQuery,
   createQueryWithClauses,
   findDrillThru,
 } from "metabase-lib/test-helpers";
@@ -13,6 +15,7 @@ import { createCountDatasetColumn } from "./drills-common";
 describe("drill-thru/zoom-in.geographic", () => {
   const drillType = "drill-thru/zoom-in.geographic";
   const stageIndex = 0;
+  const defaultQuery = Lib.withDifferentTable(createQuery(), PEOPLE_ID);
 
   describe("latitude & longitude columns", () => {
     const clickObject = createAggregatedCellClickObject({
@@ -27,6 +30,7 @@ describe("drill-thru/zoom-in.geographic", () => {
       'should drill thru an aggregated cell with "%s" binning strategy',
       binningStrategyName => {
         const query = createQueryWithClauses({
+          query: defaultQuery,
           aggregations: [{ operatorName: "count" }],
           breakouts: [
             {
