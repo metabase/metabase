@@ -100,7 +100,7 @@ jobs:
         if: always()
         with:
           input-path: ./target/junit
-          output-dir: frontend-unit
+          output-name: frontend-unit
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
           aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
