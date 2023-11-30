@@ -26,6 +26,10 @@
   "Should the rendered pulse include a card description? (default: `false`)"
   false)
 
+(defn- card-href
+  [card]
+  (h (urls/card-url (:id card))))
+
 (s/defn ^:private make-title-if-needed :- (s/maybe common/RenderedPulseCard)
   [render-type card dashcard]
   (when *include-title*
@@ -42,7 +46,10 @@
                       [:tr
                        [:td {:style (style/style {:padding :0
                                                   :margin  :0})}
-                        [:span {:style (style/style (style/header-style))}
+                        [:a {:style  (style/style (style/header-style))
+                             :href   (card-href card)
+                             :target "_blank"
+                             :rel    "noopener noreferrer"}
                          (h card-name)]]
                        [:td {:style (style/style {:text-align :right})}
                         (when *include-buttons*
@@ -138,9 +145,6 @@
           (log/error e (trs "Pulse card render error"))
           (body/render :render-error nil nil nil nil nil))))))
 
-(defn- card-href
-  [card]
-  (h (urls/card-url (:id card))))
 
 (s/defn render-pulse-card :- common/RenderedPulseCard
   "Render a single `card` for a `Pulse` to Hiccup HTML. `result` is the QP results. Returns a map with keys
