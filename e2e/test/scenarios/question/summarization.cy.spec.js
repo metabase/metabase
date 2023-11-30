@@ -164,6 +164,9 @@ describe("scenarios > question > summarize sidebar", () => {
       );
       cy.findByText("Done").click();
     });
+    cy.findByTestId("aggregate-step")
+      .contains("twice max total")
+      .should("exist");
 
     visualize();
 
