@@ -1,6 +1,7 @@
 import {
   appBar,
   describeEE,
+  main,
   popover,
   restore,
   setTokenFeatures,
@@ -192,7 +193,7 @@ describeEE("formatting > whitelabel", () => {
         .findByText("Go to a custom destination...")
         .click();
 
-      cy.findByLabelText("Help link custom destination")
+      getHelpLinkCustomDestinationInput()
         .should("have.focus")
         .type("https://example.org/custom-destination")
         .blur();
@@ -204,9 +205,7 @@ describeEE("formatting > whitelabel", () => {
       cy.log("Check that on page load the text field is not focused");
       cy.reload();
 
-      cy.findByLabelText("Help link custom destination").should(
-        "not.have.focus",
-      );
+      getHelpLinkCustomDestinationInput().should("not.have.focus");
 
       cy.signInAsNormalUser();
       cy.visit("/");
@@ -244,6 +243,28 @@ describeEE("formatting > whitelabel", () => {
         .and("include", "https://www.metabase.com/help?");
     });
 
+    it("it should validate the url", () => {
+      cy.signInAsAdmin();
+      cy.visit("/admin/settings/whitelabel");
+
+      cy.findByTestId("help-link-setting")
+        .findByText("Go to a custom destination...")
+        .click();
+
+      getHelpLinkCustomDestinationInput()
+        .clear()
+        .type("ftp://something")
+        .blur();
+      main()
+        .findByText(/This needs to be/i)
+        .should("exist");
+
+      getHelpLinkCustomDestinationInput().clear().type("https://").blur();
+      main()
+        .findByText(/Invalid URL/i)
+        .should("exist");
+    });
+
     it("should not create a race condition - scenario 1: default ->  custom  -> non custom", () => {
       cy.signInAsAdmin();
       cy.visit("/admin/settings/whitelabel");
@@ -252,7 +273,7 @@ describeEE("formatting > whitelabel", () => {
         .findByText("Go to a custom destination...")
         .click();
 
-      cy.findByLabelText("Help link custom destination").type(
+      getHelpLinkCustomDestinationInput().type(
         "https://example.org/custom-destination",
       );
 
@@ -274,7 +295,7 @@ describeEE("formatting > whitelabel", () => {
         .findByText("Go to a custom destination...")
         .click();
 
-      cy.findByLabelText("Help link custom destination").type(
+      getHelpLinkCustomDestinationInput().type(
         "https://example.org/custom-destination",
       );
 
@@ -307,3 +328,6 @@ function setApplicationFontTo(font) {
 const openSettingsMenu = () => appBar().icon("gear").click();
 
 const helpLink = () => popover().findByRole("link", { name: "Help" });
+
+const getHelpLinkCustomDestinationInput = () =>
+  cy.findByPlaceholderText("Enter a URL it should go to");
