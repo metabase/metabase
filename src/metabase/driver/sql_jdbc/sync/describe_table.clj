@@ -90,8 +90,10 @@
           (let [metadata (.getMetaData rs)]
             (reduce
              ((map (fn [^Integer i]
-                     {:name          (.getColumnName metadata i)
-                      :database-type (.getColumnTypeName metadata i)})) rf)
+                     ;; TODO: missing :database-required column
+                     {:name                       (.getColumnName metadata i)
+                      :database-type              (.getColumnTypeName metadata i)
+                      :database-is-auto-increment (.isAutoIncrement metadata i)})) rf)
              init
              (range 1 (inc (.getColumnCount metadata))))))))))
 
@@ -117,10 +119,10 @@
              column-name        (.getString rs "COLUMN_NAME")
              required?          (and no-default? not-nullable? no-auto-increment?)]
          (merge
-           {:name                      column-name
-            :database-type             (.getString rs "TYPE_NAME")
+           {:name                       column-name
+            :database-type              (.getString rs "TYPE_NAME")
             :database-is-auto-increment auto-increment?
-            :database-required         required?}
+            :database-required          required?}
            (when-let [remarks (.getString rs "REMARKS")]
              (when-not (str/blank? remarks)
                {:field-comment remarks})))))))
