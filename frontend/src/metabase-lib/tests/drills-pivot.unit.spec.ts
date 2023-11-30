@@ -1,6 +1,7 @@
 import {
   createOrdersCreatedAtDatasetColumn,
   createOrdersTotalDatasetColumn,
+  createProductsCategoryDatasetColumn,
 } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
 import {
@@ -40,7 +41,7 @@ describe("drill-thru/pivot", () => {
       value: 10,
     });
 
-    it("should drill thru with all supported pivot columns", () => {
+    it("should drill thru an aggregated cell", () => {
       const { drill } = findDrillThru(
         query,
         stageIndex,
@@ -60,15 +61,21 @@ describe("drill-thru/pivot", () => {
       breakoutColumnTableName: "ORDERS",
     });
     const clickObject = createAggregatedCellClickObject({
-      aggregationColumn: createCountDatasetColumn(),
-      aggregationColumnValue: 10,
-      breakoutColumn: createOrdersCreatedAtDatasetColumn({
-        source: "breakout",
-      }),
-      breakoutColumnValue: "2020-01-01",
+      aggregation: {
+        column: createCountDatasetColumn(),
+        value: 10,
+      },
+      breakouts: [
+        {
+          column: createOrdersCreatedAtDatasetColumn({
+            source: "breakout",
+          }),
+          value: "2020-01-01",
+        },
+      ],
     });
 
-    it("should drill thru with category and location columns", () => {
+    it("should drill thru an aggregated cell without time columns", () => {
       const { drill } = findDrillThru(
         query,
         stageIndex,
@@ -77,6 +84,40 @@ describe("drill-thru/pivot", () => {
       );
       const pivotTypes = Lib.pivotTypes(drill);
       expect(pivotTypes).toEqual(["category", "location"]);
+      verifyDrillThru(query, stageIndex, drill, pivotTypes);
+    });
+  });
+
+  describe("1 aggregation and 1 category breakout", () => {
+    const query = createAggregatedQueryWithBreakout({
+      aggregationOperatorName: "count",
+      breakoutColumnName: "CATEGORY",
+      breakoutColumnTableName: "PEOPLE",
+    });
+    const clickObject = createAggregatedCellClickObject({
+      aggregation: {
+        column: createCountDatasetColumn(),
+        value: 10,
+      },
+      breakouts: [
+        {
+          column: createProductsCategoryDatasetColumn({
+            source: "breakout",
+          }),
+          value: "2020-01-01",
+        },
+      ],
+    });
+
+    it("should drill thru an aggregated cell without location columns", () => {
+      const { drill } = findDrillThru(
+        query,
+        stageIndex,
+        clickObject,
+        drillType,
+      );
+      const pivotTypes = Lib.pivotTypes(drill);
+      expect(pivotTypes).toEqual(["category", "time"]);
       verifyDrillThru(query, stageIndex, drill, pivotTypes);
     });
   });

@@ -51,10 +51,16 @@ describe.skip("drill-thru/zoom-in.binning (metabase#36177)", () => {
           breakoutColumnBinningStrategyName: bucketName,
         });
         const clickObject = createAggregatedCellClickObject({
-          aggregationColumn,
-          aggregationColumnValue: 10,
-          breakoutColumn,
-          breakoutColumnValue: 20,
+          aggregation: {
+            column: aggregationColumn,
+            value: 10,
+          },
+          breakouts: [
+            {
+              column: breakoutColumn,
+              value: 20,
+            },
+          ],
         });
         const { drill } = findDrillThru(
           query,
@@ -76,10 +82,16 @@ describe.skip("drill-thru/zoom-in.binning (metabase#36177)", () => {
         breakoutColumnBinningStrategyName: "Don't bin",
       });
       const clickObject = createAggregatedCellClickObject({
-        aggregationColumn,
-        aggregationColumnValue: 10,
-        breakoutColumn,
-        breakoutColumnValue: 20,
+        aggregation: {
+          column: aggregationColumn,
+          value: 10,
+        },
+        breakouts: [
+          {
+            column: breakoutColumn,
+            value: 20,
+          },
+        ],
       });
       const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
       expect(drill).toBeNull();
@@ -110,10 +122,16 @@ describe.skip("drill-thru/zoom-in.binning (metabase#36177)", () => {
         }),
       );
       const clickObject = createAggregatedCellClickObject({
-        aggregationColumn,
-        aggregationColumnValue: 10,
-        breakoutColumn,
-        breakoutColumnValue: 20,
+        aggregation: {
+          column: aggregationColumn,
+          value: 10,
+        },
+        breakouts: [
+          {
+            column: breakoutColumn,
+            value: 20,
+          },
+        ],
       });
 
       const drill = queryDrillThru(query, stageIndex, clickObject, drillType);

@@ -190,84 +190,48 @@ export function createRawCellClickObject({
 }
 
 interface AggregatedCellClickObjectOpts {
-  aggregationColumn: DatasetColumn;
-  aggregationColumnValue: RowValue;
-  breakoutColumn: DatasetColumn;
-  breakoutColumnValue: RowValue;
+  aggregation: Lib.ClickObjectDimension;
+  breakouts: Lib.ClickObjectDimension[];
 }
 
 export function createAggregatedCellClickObject({
-  aggregationColumn,
-  aggregationColumnValue,
-  breakoutColumn,
-  breakoutColumnValue,
+  aggregation,
+  breakouts,
 }: AggregatedCellClickObjectOpts): Lib.ClickObject {
-  const data = [
-    {
-      key: breakoutColumn.name,
-      col: breakoutColumn,
-      value: breakoutColumnValue,
-    },
-    {
-      key: aggregationColumn.name,
-      col: aggregationColumn,
-      value: aggregationColumnValue,
-    },
-  ];
-  const dimensions = [
-    {
-      column: breakoutColumn,
-      value: breakoutColumnValue,
-    },
-  ];
+  const data = [...breakouts, aggregation].map(({ column, value }) => ({
+    key: column.name,
+    col: column,
+    value,
+  }));
 
   return {
-    column: aggregationColumn,
-    value: aggregationColumnValue,
+    column: aggregation.column,
+    value: aggregation.value,
     data,
-    dimensions,
+    dimensions: breakouts,
   };
 }
 
 interface PivotCellClickObjectOpts {
-  aggregationColumn: DatasetColumn;
-  aggregationColumnValue: RowValue;
-  breakoutColumn1: DatasetColumn;
-  breakoutColumn1Value: RowValue;
-  breakoutColumn2: DatasetColumn;
-  breakoutColumn2Value: RowValue;
+  aggregation: Lib.ClickObjectDimension;
+  breakouts: Lib.ClickObjectDimension[];
 }
 
 export function createPivotCellClickObject({
-  aggregationColumn,
-  aggregationColumnValue,
-  breakoutColumn1,
-  breakoutColumn1Value,
-  breakoutColumn2,
-  breakoutColumn2Value,
+  aggregation,
+  breakouts,
 }: PivotCellClickObjectOpts): Lib.ClickObject {
-  const data = [
-    { col: breakoutColumn1, value: breakoutColumn1Value },
-    { col: breakoutColumn2, value: breakoutColumn2Value },
-    { col: aggregationColumn, value: aggregationColumnValue },
-  ];
-  const dimensions = [
-    { column: breakoutColumn1, value: breakoutColumn1Value },
-    { column: breakoutColumn2, value: breakoutColumn2Value },
-  ];
+  const data = [...breakouts, aggregation].map(({ column, value }) => ({
+    key: column.name,
+    col: column,
+    value,
+  }));
 
-  return { value: aggregationColumnValue, data, dimensions };
+  return { value: aggregation.value, data, dimensions: breakouts };
 }
 
-interface LegendItemClickObjectOpts {
-  breakoutColumn: DatasetColumn;
-  breakoutColumnValue: RowValue;
-}
-
-export function createLegendItemClickObject({
-  breakoutColumn,
-  breakoutColumnValue,
-}: LegendItemClickObjectOpts) {
-  const dimensions = [{ column: breakoutColumn, value: breakoutColumnValue }];
-  return { value: breakoutColumnValue, dimensions };
+export function createLegendItemClickObject(
+  dimension: Lib.ClickObjectDimension,
+) {
+  return { value: dimension.value, dimensions: [dimension] };
 }

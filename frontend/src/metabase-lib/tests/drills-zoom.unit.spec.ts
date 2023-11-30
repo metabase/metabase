@@ -69,10 +69,16 @@ describe("drill-thru/zoom", () => {
       breakoutColumnTableName: "ORDERS",
     });
     const clickObject = createAggregatedCellClickObject({
-      aggregationColumn: createCountDatasetColumn(),
-      aggregationColumnValue: 10,
-      breakoutColumn: createOrdersTotalDatasetColumn({ source: "breakout" }),
-      breakoutColumnValue: 20,
+      aggregation: {
+        column: createCountDatasetColumn(),
+        value: 10,
+      },
+      breakouts: [
+        {
+          column: createOrdersTotalDatasetColumn({ source: "breakout" }),
+          value: 20,
+        },
+      ],
     });
     const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
     expect(drill).toBeNull();

@@ -42,10 +42,16 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
         breakoutColumnTemporalBucketName: bucketName,
       });
       const clickObject = createAggregatedCellClickObject({
-        aggregationColumn,
-        aggregationColumnValue: 10,
-        breakoutColumn,
-        breakoutColumnValue: "2020-01-01",
+        aggregation: {
+          column: aggregationColumn,
+          value: 10,
+        },
+        breakouts: [
+          {
+            column: breakoutColumn,
+            value: "2020-01-01",
+          },
+        ],
       });
       const { drill, drillInfo } = findDrillThru(
         query,
@@ -72,14 +78,22 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
         breakoutColumn2TableName: "ORDERS",
       });
       const clickObject = createPivotCellClickObject({
-        aggregationColumn,
-        aggregationColumnValue: 10,
-        breakoutColumn1: breakoutColumn,
-        breakoutColumn1Value: "2020-01-01",
-        breakoutColumn2: createOrdersQuantityDatasetColumn({
-          source: "breakout",
-        }),
-        breakoutColumn2Value: 0,
+        aggregation: {
+          column: aggregationColumn,
+          value: 10,
+        },
+        breakouts: [
+          {
+            column: breakoutColumn,
+            value: "2020-01-01",
+          },
+          {
+            column: createOrdersQuantityDatasetColumn({
+              source: "breakout",
+            }),
+            value: 0,
+          },
+        ],
       });
       const { drill, drillInfo } = findDrillThru(
         query,
@@ -106,8 +120,8 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
         breakoutColumn2TableName: "ORDERS",
       });
       const clickObject = createLegendItemClickObject({
-        breakoutColumn,
-        breakoutColumnValue: "2020-01-01",
+        column: breakoutColumn,
+        value: "2020-01-01",
       });
       const { drill, drillInfo } = findDrillThru(
         query,
@@ -148,10 +162,16 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
         }),
       );
       const clickObject = createAggregatedCellClickObject({
-        aggregationColumn,
-        aggregationColumnValue: 10,
-        breakoutColumn,
-        breakoutColumnValue: "2020-01-01",
+        aggregation: {
+          column: aggregationColumn,
+          value: 10,
+        },
+        breakouts: [
+          {
+            column: breakoutColumn,
+            value: "2020-01-01",
+          },
+        ],
       });
       const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
       expect(drill).toBeNull();
@@ -177,10 +197,16 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
       breakoutColumnTemporalBucketName: bucketName,
     });
     const clickObject = createAggregatedCellClickObject({
-      aggregationColumn,
-      aggregationColumnValue: null,
-      breakoutColumn,
-      breakoutColumnValue: "2020-01-01",
+      aggregation: {
+        column: aggregationColumn,
+        value: 10,
+      },
+      breakouts: [
+        {
+          column: breakoutColumn,
+          value: "2020-01-01",
+        },
+      ],
     });
     const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
     expect(drill).toBeNull();

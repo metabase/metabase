@@ -83,10 +83,16 @@ describe("drill-thru/pk", () => {
       breakoutColumnTableName: "ORDERS",
     });
     const clickObject = createAggregatedCellClickObject({
-      aggregationColumn: createCountDatasetColumn(),
-      aggregationColumnValue: 20,
-      breakoutColumn: createOrdersTotalDatasetColumn({ source: "breakout" }),
-      breakoutColumnValue: 10,
+      aggregation: {
+        column: createCountDatasetColumn(),
+        value: 20,
+      },
+      breakouts: [
+        {
+          column: createOrdersTotalDatasetColumn({ source: "breakout" }),
+          value: 10,
+        },
+      ],
     });
     const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
     expect(drill).toBeNull();

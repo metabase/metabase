@@ -35,10 +35,16 @@ describe("drill-thru/underlying-records", () => {
 
   it("should drill thru an aggregated cell", () => {
     const clickObject = createAggregatedCellClickObject({
-      aggregationColumn,
-      aggregationColumnValue: 10,
-      breakoutColumn,
-      breakoutColumnValue: "2020-01-01",
+      aggregation: {
+        column: aggregationColumn,
+        value: 10,
+      },
+      breakouts: [
+        {
+          column: breakoutColumn,
+          value: "2020-01-01",
+        },
+      ],
     });
     const { drill } = findDrillThru(
       defaultQuery,
@@ -61,14 +67,22 @@ describe("drill-thru/underlying-records", () => {
       breakoutColumn2TableName: "ORDERS",
     });
     const clickObject = createPivotCellClickObject({
-      aggregationColumn,
-      aggregationColumnValue: 10,
-      breakoutColumn1: breakoutColumn,
-      breakoutColumn1Value: "2020-01-01",
-      breakoutColumn2: createOrdersQuantityDatasetColumn({
-        source: "breakout",
-      }),
-      breakoutColumn2Value: 0,
+      aggregation: {
+        column: aggregationColumn,
+        value: 10,
+      },
+      breakouts: [
+        {
+          column: breakoutColumn,
+          value: "2020-01-01",
+        },
+        {
+          column: createOrdersQuantityDatasetColumn({
+            source: "breakout",
+          }),
+          value: 0,
+        },
+      ],
     });
     const { drill } = findDrillThru(query, stageIndex, clickObject, drillType);
     const newQuery = Lib.drillThru(query, stageIndex, drill);
@@ -86,8 +100,8 @@ describe("drill-thru/underlying-records", () => {
       breakoutColumn2TableName: "ORDERS",
     });
     const clickObject = createLegendItemClickObject({
-      breakoutColumn,
-      breakoutColumnValue: 10,
+      column: breakoutColumn,
+      value: 10,
     });
     const { drill } = findDrillThru(query, stageIndex, clickObject, drillType);
     const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
@@ -98,10 +112,16 @@ describe("drill-thru/underlying-records", () => {
   // eslint-disable-next-line jest/no-disabled-tests
   it.skip("should use the default row count for aggregations with negative values (metabase#36143)", () => {
     const clickObject = createAggregatedCellClickObject({
-      aggregationColumn,
-      aggregationColumnValue: -10,
-      breakoutColumn,
-      breakoutColumnValue: "2020-01-01",
+      aggregation: {
+        column: aggregationColumn,
+        value: -10,
+      },
+      breakouts: [
+        {
+          column: breakoutColumn,
+          value: "2020-01-01",
+        },
+      ],
     });
     const { drillInfo } = findDrillThru(
       defaultQuery,
@@ -118,10 +138,16 @@ describe("drill-thru/underlying-records", () => {
 
   it("should drill thru an aggregated cell with null value", () => {
     const clickObject = createAggregatedCellClickObject({
-      aggregationColumn,
-      aggregationColumnValue: null,
-      breakoutColumn,
-      breakoutColumnValue: "2020-01-01",
+      aggregation: {
+        column: aggregationColumn,
+        value: null,
+      },
+      breakouts: [
+        {
+          column: breakoutColumn,
+          value: "2020-01-01",
+        },
+      ],
     });
     const { drillInfo } = findDrillThru(
       defaultQuery,
@@ -148,10 +174,16 @@ describe("drill-thru/underlying-records", () => {
   it.skip("should not drill thru a non-editable query (metabase#36125)", () => {
     const query = createNotEditableQuery(defaultQuery);
     const clickObject = createAggregatedCellClickObject({
-      aggregationColumn,
-      aggregationColumnValue: 10,
-      breakoutColumn,
-      breakoutColumnValue: "2020-01-01",
+      aggregation: {
+        column: aggregationColumn,
+        value: 10,
+      },
+      breakouts: [
+        {
+          column: breakoutColumn,
+          value: "2020-01-01",
+        },
+      ],
     });
     const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
     expect(drill).toBeNull();
