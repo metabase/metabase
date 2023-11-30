@@ -10,22 +10,20 @@ import {
   createPivotCellClickObject,
   createQuery,
   createRawCellClickObject,
+  createSingleStageQuery,
   findDrillThru,
   queryDrillThru,
 } from "metabase-lib/test-helpers";
 import {
-  createAggregatedQueryWithBreakout,
-  createAggregatedQueryWithBreakouts,
   createCountDatasetColumn,
   createNotEditableQuery,
 } from "./drills-common";
 
 describe("drill-thru/underlying-records", () => {
   const drillType = "drill-thru/underlying-records";
-  const defaultQuery = createAggregatedQueryWithBreakout({
-    aggregationOperatorName: "count",
-    breakoutColumnName: "CREATED_AT",
-    breakoutColumnTableName: "ORDERS",
+  const defaultQuery = createSingleStageQuery({
+    aggregations: [{ operatorName: "count" }],
+    breakouts: [{ columnName: "CREATED_AT", tableName: "ORDERS" }],
   });
   const stageIndex = 0;
   const aggregationColumn = createCountDatasetColumn();
@@ -59,12 +57,18 @@ describe("drill-thru/underlying-records", () => {
 
   // eslint-disable-next-line jest/no-disabled-tests
   it.skip("should drill thru a pivot cell (metabase#35394)", () => {
-    const query = createAggregatedQueryWithBreakouts({
-      aggregationOperatorName: "count",
-      breakoutColumn1Name: "CREATED_AT",
-      breakoutColumn1TableName: "ORDERS",
-      breakoutColumn2Name: "QUANTITY",
-      breakoutColumn2TableName: "ORDERS",
+    const query = createSingleStageQuery({
+      aggregations: [{ operatorName: "count" }],
+      breakouts: [
+        {
+          columnName: "CREATED_AT",
+          tableName: "ORDERS",
+        },
+        {
+          columnName: "QUANTITY",
+          tableName: "ORDERS",
+        },
+      ],
     });
     const clickObject = createPivotCellClickObject({
       aggregation: {
@@ -92,12 +96,15 @@ describe("drill-thru/underlying-records", () => {
 
   // eslint-disable-next-line jest/no-disabled-tests
   it.skip("should drill thru a legend item (metabase#35343)", () => {
-    const query = createAggregatedQueryWithBreakouts({
-      aggregationOperatorName: "count",
-      breakoutColumn1Name: "CREATED_AT",
-      breakoutColumn1TableName: "ORDERS",
-      breakoutColumn2Name: "QUANTITY",
-      breakoutColumn2TableName: "ORDERS",
+    const query = createSingleStageQuery({
+      aggregations: [{ operatorName: "count" }],
+      breakouts: [
+        { columnName: "CREATED_AT", tableName: "ORDERS" },
+        {
+          columnName: "QUANTITY",
+          tableName: "ORDERS",
+        },
+      ],
     });
     const clickObject = createLegendItemClickObject({
       column: breakoutColumn,

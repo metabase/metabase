@@ -10,12 +10,12 @@ import {
   createColumnClickObject,
   createQuery,
   createRawCellClickObject,
+  createSingleStageQuery,
   findDrillThru,
   queryDrillThru,
 } from "metabase-lib/test-helpers";
 import {
   createNotEditableQuery,
-  createSortedQuery,
   createOrdersStructuredDatasetColumn,
   createOrdersStructuredField,
 } from "./drills-common";
@@ -53,10 +53,14 @@ describe("drill-thru/sort", () => {
   it.each<Lib.OrderByDirection>(["asc", "desc"])(
     'should thru a column from a sorted query with "%s" direction',
     direction => {
-      const query = createSortedQuery({
-        columnName: "TOTAL",
-        columnTableName: "ORDERS",
-        direction: direction === "asc" ? "desc" : "asc",
+      const query = createSingleStageQuery({
+        orderBys: [
+          {
+            columnName: "TOTAL",
+            tableName: "ORDERS",
+            direction: direction === "asc" ? "desc" : "asc",
+          },
+        ],
       });
       const clickObject = createColumnClickObject({
         column: defaultColumn,

@@ -7,15 +7,12 @@ import * as Lib from "metabase-lib";
 import {
   createAggregatedCellClickObject,
   createQuery,
+  createSingleStageQuery,
   createRawCellClickObject,
   findDrillThru,
   queryDrillThru,
 } from "metabase-lib/test-helpers";
-import {
-  createAggregatedQuery,
-  createAggregatedQueryWithBreakout,
-  createCountDatasetColumn,
-} from "./drills-common";
+import { createCountDatasetColumn } from "./drills-common";
 
 describe("drill-thru/pivot", () => {
   const drillType = "drill-thru/pivot";
@@ -35,7 +32,9 @@ describe("drill-thru/pivot", () => {
   });
 
   describe("1 aggregation", () => {
-    const query = createAggregatedQuery({ aggregationOperatorName: "count" });
+    const query = createSingleStageQuery({
+      aggregations: [{ operatorName: "count" }],
+    });
     const clickObject = createRawCellClickObject({
       column: createCountDatasetColumn(),
       value: 10,
@@ -55,10 +54,9 @@ describe("drill-thru/pivot", () => {
   });
 
   describe("1 aggregation and 1 date breakout", () => {
-    const query = createAggregatedQueryWithBreakout({
-      aggregationOperatorName: "count",
-      breakoutColumnName: "CREATED_AT",
-      breakoutColumnTableName: "ORDERS",
+    const query = createSingleStageQuery({
+      aggregations: [{ operatorName: "count" }],
+      breakouts: [{ columnName: "CREATED_AT", tableName: "ORDERS" }],
     });
     const clickObject = createAggregatedCellClickObject({
       aggregation: {
@@ -89,10 +87,9 @@ describe("drill-thru/pivot", () => {
   });
 
   describe("1 aggregation and 1 category breakout", () => {
-    const query = createAggregatedQueryWithBreakout({
-      aggregationOperatorName: "count",
-      breakoutColumnName: "CATEGORY",
-      breakoutColumnTableName: "PEOPLE",
+    const query = createSingleStageQuery({
+      aggregations: [{ operatorName: "count" }],
+      breakouts: [{ columnName: "CATEGORY", tableName: "PEOPLE" }],
     });
     const clickObject = createAggregatedCellClickObject({
       aggregation: {

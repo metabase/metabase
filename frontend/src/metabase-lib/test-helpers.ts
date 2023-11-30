@@ -129,6 +129,85 @@ export const findAggregationOperator = (
   return operator;
 };
 
+function withTemporalBucketAndBinningStrategy(
+  query: Lib.Query,
+  column: Lib.ColumnMetadata,
+  temporalBucketName = "Don't bin",
+  binningStrategyName = "Don't bin",
+) {
+  return Lib.withTemporalBucket(
+    Lib.withBinning(
+      column,
+      findBinningStrategy(query, column, binningStrategyName),
+    ),
+    findTemporalBucket(query, column, temporalBucketName),
+  );
+}
+
+interface AggregationClauseOpts {
+  operatorName: string;
+}
+
+interface BreakoutClauseOpts {
+  columnName: string;
+  tableName: string;
+  temporalBucketName?: string;
+  binningStrategyName?: string;
+}
+
+interface OrderByClauseOpts {
+  columnName: string;
+  tableName: string;
+  direction: Lib.OrderByDirection;
+}
+
+interface AggregatedQueryOpts {
+  aggregations?: AggregationClauseOpts[];
+  breakouts?: BreakoutClauseOpts[];
+  orderBys?: OrderByClauseOpts[];
+}
+
+export function createSingleStageQuery({
+  aggregations = [],
+  breakouts = [],
+  orderBys = [],
+}: AggregatedQueryOpts) {
+  const queryWithAggregations = aggregations.reduce((query, aggregation) => {
+    return Lib.aggregate(
+      query,
+      -1,
+      Lib.aggregationClause(
+        findAggregationOperator(query, aggregation.operatorName),
+      ),
+    );
+  }, createQuery());
+
+  const queryWithBreakouts = breakouts.reduce((query, breakout) => {
+    const breakoutColumn = columnFinder(
+      query,
+      Lib.breakoutableColumns(query, -1),
+    )(breakout.tableName, breakout.columnName);
+    return Lib.breakout(
+      query,
+      -1,
+      withTemporalBucketAndBinningStrategy(
+        query,
+        breakoutColumn,
+        breakout.temporalBucketName,
+        breakout.binningStrategyName,
+      ),
+    );
+  }, queryWithAggregations);
+
+  return orderBys.reduce((query, orderBy) => {
+    const orderByColumn = columnFinder(query, Lib.orderableColumns(query, -1))(
+      orderBy.tableName,
+      orderBy.columnName,
+    );
+    return Lib.orderBy(query, -1, orderByColumn, orderBy.direction);
+  }, queryWithBreakouts);
+}
+
 export const queryDrillThru = (
   query: Lib.Query,
   stageIndex: number,

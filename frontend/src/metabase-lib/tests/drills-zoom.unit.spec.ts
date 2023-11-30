@@ -15,11 +15,11 @@ import {
   createColumnClickObject,
   createQuery,
   createRawCellClickObject,
+  createSingleStageQuery,
   findDrillThru,
   queryDrillThru,
 } from "metabase-lib/test-helpers";
 import {
-  createAggregatedQueryWithBreakout,
   createCountDatasetColumn,
   createNotEditableQuery,
 } from "metabase-lib/tests/drills-common";
@@ -63,10 +63,9 @@ describe("drill-thru/zoom", () => {
   });
 
   it("should not drill thru a non-PK or non-FK cell when the query is aggregated", () => {
-    const query = createAggregatedQueryWithBreakout({
-      aggregationOperatorName: "count",
-      breakoutColumnName: "TOTAL",
-      breakoutColumnTableName: "ORDERS",
+    const query = createSingleStageQuery({
+      aggregations: [{ operatorName: "count" }],
+      breakouts: [{ columnName: "TOTAL", tableName: "ORDERS" }],
     });
     const clickObject = createAggregatedCellClickObject({
       aggregation: {

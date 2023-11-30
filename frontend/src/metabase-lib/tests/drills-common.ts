@@ -5,13 +5,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
-import {
-  columnFinder,
-  createQuery,
-  findAggregationOperator,
-  findBinningStrategy,
-  findTemporalBucket,
-} from "metabase-lib/test-helpers";
+import { createQuery } from "metabase-lib/test-helpers";
 
 const FIELDS = {
   description: {
@@ -97,125 +91,6 @@ export function createCountDatasetColumn() {
     effective_type: "type/BigInteger",
     semantic_type: "type/Quantity",
   });
-}
-
-function withTemporalBucketAndBinningStrategy(
-  query: Lib.Query,
-  column: Lib.ColumnMetadata,
-  temporalBucketName = "Don't bin",
-  binningStrategyName = "Don't bin",
-) {
-  return Lib.withTemporalBucket(
-    Lib.withBinning(
-      column,
-      findBinningStrategy(query, column, binningStrategyName),
-    ),
-    findTemporalBucket(query, column, temporalBucketName),
-  );
-}
-
-interface AggregatedQueryOpts {
-  aggregationOperatorName: string;
-}
-
-export function createAggregatedQuery({
-  aggregationOperatorName,
-}: AggregatedQueryOpts) {
-  const query = createQuery();
-  return Lib.aggregate(
-    query,
-    -1,
-    Lib.aggregationClause(
-      findAggregationOperator(query, aggregationOperatorName),
-    ),
-  );
-}
-
-interface AggregatedQueryWithBreakoutOpts {
-  aggregationOperatorName: string;
-  breakoutColumnName: string;
-  breakoutColumnTableName: string;
-  breakoutColumnTemporalBucketName?: string;
-  breakoutColumnBinningStrategyName?: string;
-}
-
-export function createAggregatedQueryWithBreakout({
-  aggregationOperatorName,
-  breakoutColumnName,
-  breakoutColumnTableName,
-  breakoutColumnTemporalBucketName,
-  breakoutColumnBinningStrategyName,
-}: AggregatedQueryWithBreakoutOpts) {
-  const query = createAggregatedQuery({ aggregationOperatorName });
-  const breakoutColumn = columnFinder(
-    query,
-    Lib.breakoutableColumns(query, -1),
-  )(breakoutColumnTableName, breakoutColumnName);
-  return Lib.breakout(
-    query,
-    -1,
-    withTemporalBucketAndBinningStrategy(
-      query,
-      breakoutColumn,
-      breakoutColumnTemporalBucketName,
-      breakoutColumnBinningStrategyName,
-    ),
-  );
-}
-
-interface AggregatedQueryWithBreakoutsOpts {
-  aggregationOperatorName: string;
-  breakoutColumn1Name: string;
-  breakoutColumn1TableName: string;
-  breakoutColumn1TemporalBucketName?: string;
-  breakoutColumn1BinningStrategyName?: string;
-  breakoutColumn2Name: string;
-  breakoutColumn2TableName: string;
-}
-
-export function createAggregatedQueryWithBreakouts({
-  aggregationOperatorName,
-  breakoutColumn1Name,
-  breakoutColumn1TableName,
-  breakoutColumn1TemporalBucketName,
-  breakoutColumn1BinningStrategyName,
-  breakoutColumn2Name,
-  breakoutColumn2TableName,
-}: AggregatedQueryWithBreakoutsOpts) {
-  const queryWithBreakout = createAggregatedQueryWithBreakout({
-    aggregationOperatorName,
-    breakoutColumnName: breakoutColumn1Name,
-    breakoutColumnTableName: breakoutColumn1TableName,
-    breakoutColumnTemporalBucketName: breakoutColumn1TemporalBucketName,
-    breakoutColumnBinningStrategyName: breakoutColumn1BinningStrategyName,
-  });
-  return Lib.breakout(
-    queryWithBreakout,
-    -1,
-    columnFinder(
-      queryWithBreakout,
-      Lib.breakoutableColumns(queryWithBreakout, -1),
-    )(breakoutColumn2TableName, breakoutColumn2Name),
-  );
-}
-
-interface OrderedQueryOpts {
-  columnName: string;
-  columnTableName: string;
-  direction: Lib.OrderByDirection;
-}
-
-export function createSortedQuery({
-  columnName,
-  columnTableName,
-  direction,
-}: OrderedQueryOpts) {
-  const query = createQuery();
-  const column = columnFinder(query, Lib.orderableColumns(query, -1))(
-    columnTableName,
-    columnName,
-  );
-  return Lib.orderBy(query, -1, column, direction);
 }
 
 export function createNotEditableQuery(query: Lib.Query) {

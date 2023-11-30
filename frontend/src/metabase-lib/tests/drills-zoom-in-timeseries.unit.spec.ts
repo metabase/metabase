@@ -10,10 +10,9 @@ import {
   createPivotCellClickObject,
   findDrillThru,
   queryDrillThru,
+  createSingleStageQuery,
 } from "metabase-lib/test-helpers";
 import {
-  createAggregatedQueryWithBreakout,
-  createAggregatedQueryWithBreakouts,
   createCountDatasetColumn,
   createNotEditableQuery,
 } from "./drills-common";
@@ -35,11 +34,15 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     { bucketName: "Hour", displayName: "See this hour by minute" },
   ])("$bucketName", ({ bucketName, displayName }) => {
     it("should drill thru an aggregated cell", () => {
-      const query = createAggregatedQueryWithBreakout({
-        aggregationOperatorName: "count",
-        breakoutColumnName: breakoutColumn.name,
-        breakoutColumnTableName: "ORDERS",
-        breakoutColumnTemporalBucketName: bucketName,
+      const query = createSingleStageQuery({
+        aggregations: [{ operatorName: "count" }],
+        breakouts: [
+          {
+            columnName: breakoutColumn.name,
+            tableName: "ORDERS",
+            temporalBucketName: bucketName,
+          },
+        ],
       });
       const clickObject = createAggregatedCellClickObject({
         aggregation: {
@@ -69,13 +72,19 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     });
 
     it("should drill thru a pivot cell", () => {
-      const query = createAggregatedQueryWithBreakouts({
-        aggregationOperatorName: "count",
-        breakoutColumn1Name: "CREATED_AT",
-        breakoutColumn1TableName: "ORDERS",
-        breakoutColumn1TemporalBucketName: bucketName,
-        breakoutColumn2Name: "QUANTITY",
-        breakoutColumn2TableName: "ORDERS",
+      const query = createSingleStageQuery({
+        aggregations: [{ operatorName: "count" }],
+        breakouts: [
+          {
+            columnName: "CREATED_AT",
+            tableName: "ORDERS",
+            temporalBucketName: bucketName,
+          },
+          {
+            columnName: "QUANTITY",
+            tableName: "ORDERS",
+          },
+        ],
       });
       const clickObject = createPivotCellClickObject({
         aggregation: {
@@ -111,13 +120,19 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     });
 
     it("should drill thru a legend item", () => {
-      const query = createAggregatedQueryWithBreakouts({
-        aggregationOperatorName: "count",
-        breakoutColumn1Name: "CREATED_AT",
-        breakoutColumn1TableName: "ORDERS",
-        breakoutColumn1TemporalBucketName: bucketName,
-        breakoutColumn2Name: "QUANTITY",
-        breakoutColumn2TableName: "ORDERS",
+      const query = createSingleStageQuery({
+        aggregations: [{ operatorName: "count" }],
+        breakouts: [
+          {
+            columnName: "CREATED_AT",
+            tableName: "ORDERS",
+            temporalBucketName: bucketName,
+          },
+          {
+            columnName: "QUANTITY",
+            tableName: "ORDERS",
+          },
+        ],
       });
       const clickObject = createLegendItemClickObject({
         column: breakoutColumn,
@@ -139,11 +154,15 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     });
 
     it("should not drill thru a column", () => {
-      const query = createAggregatedQueryWithBreakout({
-        aggregationOperatorName: "count",
-        breakoutColumnName: breakoutColumn.name,
-        breakoutColumnTableName: "ORDERS",
-        breakoutColumnTemporalBucketName: bucketName,
+      const query = createSingleStageQuery({
+        aggregations: [{ operatorName: "count" }],
+        breakouts: [
+          {
+            columnName: breakoutColumn.name,
+            tableName: "ORDERS",
+            temporalBucketName: bucketName,
+          },
+        ],
       });
       const clickObject = createColumnClickObject({
         column: aggregationColumn,
@@ -154,11 +173,15 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
 
     it("should not drill thru a non-editable query", () => {
       const query = createNotEditableQuery(
-        createAggregatedQueryWithBreakout({
-          aggregationOperatorName: "count",
-          breakoutColumnName: breakoutColumn.name,
-          breakoutColumnTableName: "ORDERS",
-          breakoutColumnTemporalBucketName: bucketName,
+        createSingleStageQuery({
+          aggregations: [{ operatorName: "count" }],
+          breakouts: [
+            {
+              columnName: breakoutColumn.name,
+              tableName: "ORDERS",
+              temporalBucketName: bucketName,
+            },
+          ],
         }),
       );
       const clickObject = createAggregatedCellClickObject({
@@ -190,11 +213,15 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
     "Quarter of year",
     "Don't bin",
   ])('should not drill thru with "%s" temporal bucket', bucketName => {
-    const query = createAggregatedQueryWithBreakout({
-      aggregationOperatorName: "count",
-      breakoutColumnName: breakoutColumn.name,
-      breakoutColumnTableName: "ORDERS",
-      breakoutColumnTemporalBucketName: bucketName,
+    const query = createSingleStageQuery({
+      aggregations: [{ operatorName: "count" }],
+      breakouts: [
+        {
+          columnName: breakoutColumn.name,
+          tableName: "ORDERS",
+          temporalBucketName: bucketName,
+        },
+      ],
     });
     const clickObject = createAggregatedCellClickObject({
       aggregation: {

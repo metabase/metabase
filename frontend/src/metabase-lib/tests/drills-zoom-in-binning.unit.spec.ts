@@ -8,9 +8,9 @@ import {
   createColumnClickObject,
   findDrillThru,
   queryDrillThru,
+  createSingleStageQuery,
 } from "metabase-lib/test-helpers";
 import {
-  createAggregatedQueryWithBreakout,
   createCountDatasetColumn,
   createNotEditableQuery,
 } from "./drills-common";
@@ -26,13 +26,13 @@ describe.skip("drill-thru/zoom-in.binning (metabase#36177)", () => {
       name: "numeric",
       tableName: "ORDERS",
       breakoutColumn: createOrdersQuantityDatasetColumn({ source: "breakout" }),
-      buckets: ["Auto bin", "10 bins", "50 bins", "100 bins"],
+      binningStrategies: ["Auto bin", "10 bins", "50 bins", "100 bins"],
     },
     {
       name: "location",
       tableName: "PEOPLE",
       breakoutColumn: createPeopleLatitudeDatasetColumn({ source: "breakout" }),
-      buckets: [
+      binningStrategies: [
         "Auto bin",
         "Bin every 0.1 degrees",
         "Bin every 1 degree",
@@ -40,15 +40,19 @@ describe.skip("drill-thru/zoom-in.binning (metabase#36177)", () => {
         "Bin every 20 degrees",
       ],
     },
-  ])("$name", ({ tableName, breakoutColumn, buckets }) => {
-    it.each(buckets)(
+  ])("$name", ({ tableName, breakoutColumn, binningStrategies }) => {
+    it.each(binningStrategies)(
       'should drill thru an aggregated cell with "%s" binning strategy',
-      bucketName => {
-        const query = createAggregatedQueryWithBreakout({
-          aggregationOperatorName: "count",
-          breakoutColumnName: breakoutColumn.name,
-          breakoutColumnTableName: tableName,
-          breakoutColumnBinningStrategyName: bucketName,
+      binningStrategy => {
+        const query = createSingleStageQuery({
+          aggregations: [{ operatorName: "count" }],
+          breakouts: [
+            {
+              columnName: breakoutColumn.name,
+              tableName,
+              binningStrategyName: binningStrategy,
+            },
+          ],
         });
         const clickObject = createAggregatedCellClickObject({
           aggregation: {
@@ -75,11 +79,9 @@ describe.skip("drill-thru/zoom-in.binning (metabase#36177)", () => {
     );
 
     it("should not drill thru an aggregated cell when the column has no binning strategy", () => {
-      const query = createAggregatedQueryWithBreakout({
-        aggregationOperatorName: "count",
-        breakoutColumnName: breakoutColumn.name,
-        breakoutColumnTableName: tableName,
-        breakoutColumnBinningStrategyName: "Don't bin",
+      const query = createSingleStageQuery({
+        aggregations: [{ operatorName: "count" }],
+        breakouts: [{ columnName: breakoutColumn.name, tableName }],
       });
       const clickObject = createAggregatedCellClickObject({
         aggregation: {
@@ -98,11 +100,15 @@ describe.skip("drill-thru/zoom-in.binning (metabase#36177)", () => {
     });
 
     it("should not drill thru an aggregated column", () => {
-      const query = createAggregatedQueryWithBreakout({
-        aggregationOperatorName: "count",
-        breakoutColumnName: breakoutColumn.name,
-        breakoutColumnTableName: tableName,
-        breakoutColumnBinningStrategyName: "Auto bin",
+      const query = createSingleStageQuery({
+        aggregations: [{ operatorName: "count" }],
+        breakouts: [
+          {
+            columnName: breakoutColumn.name,
+            tableName,
+            binningStrategyName: "Auto bin",
+          },
+        ],
       });
       const clickObject = createColumnClickObject({
         column: aggregationColumn,
@@ -114,11 +120,15 @@ describe.skip("drill-thru/zoom-in.binning (metabase#36177)", () => {
 
     it("should not drill thru a non-editable query", () => {
       const query = createNotEditableQuery(
-        createAggregatedQueryWithBreakout({
-          aggregationOperatorName: "count",
-          breakoutColumnName: breakoutColumn.name,
-          breakoutColumnTableName: tableName,
-          breakoutColumnBinningStrategyName: "Auto bin",
+        createSingleStageQuery({
+          aggregations: [{ operatorName: "count" }],
+          breakouts: [
+            {
+              columnName: breakoutColumn.name,
+              tableName,
+              binningStrategyName: "Auto bin",
+            },
+          ],
         }),
       );
       const clickObject = createAggregatedCellClickObject({
