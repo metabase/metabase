@@ -1,23 +1,20 @@
 import styled from "@emotion/styled";
-
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { Icon } from "metabase/core/components/Icon";
+import { color, lighten } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import { isEmpty } from "metabase/lib/validate";
 
-// NIGHT-MODE TEXT HACK:
-// Our "fullscreen-night-text" className only supports one shade of text (white).
-// As a temporary fix, we create dark-mode analogs for "text-medium" and "text-light" using opacity:
-const detailsOpacity = 0.85; // approximates color("text-medium")
-const detailsNumberOpacity = 0.7; // approximates color("text-light")
-
 export const Variation = styled.div`
-  color: ${props => props.color};
-  opacity: ${props =>
-    isEmpty(props.color) ? detailsNumberOpacity * detailsOpacity : 1};
+  color: ${props => (isEmpty(props.color) ? color("text-light") : props.color)};
   display: flex;
   align-items: center;
   max-width: 100%;
+
+  .Dashboard.Dashboard--night.Dashboard--fullscreen .fullscreen-night-text & {
+    color: ${props =>
+      isEmpty(props.color) ? lighten("text-medium", 0.3) : props.color};
+  }
 `;
 
 export const VariationIcon = styled(Icon)`
@@ -54,16 +51,28 @@ export const Separator = styled.span`
   display: inline-block;
   transform: scale(0.7);
   margin: 0 0.2rem;
-  opacity: 0.4;
+  color: ${lighten("text-light", 0.25)};
+
+  .Dashboard.Dashboard--night.Dashboard--fullscreen .fullscreen-night-text & {
+    color: ${lighten("text-medium", 0.15)};
+  }
 `;
 
 export const PreviousValueDetails = styled.h4`
-  opacity: ${detailsOpacity};
+  color: ${color("text-medium")};
   white-space: pre;
+
+  .Dashboard.Dashboard--night.Dashboard--fullscreen .fullscreen-night-text & {
+    color: ${lighten("text-light", 0.25)};
+  }
 `;
 
 export const PreviousValueNumber = styled.span`
-  opacity: ${detailsNumberOpacity};
+  color: ${color("text-light")};
+
+  .Dashboard.Dashboard--night.Dashboard--fullscreen .fullscreen-night-text & {
+    color: ${lighten("text-medium", 0.45)};
+  }
 `;
 export const ScalarPeriodContent = styled.h3`
   text-align: center;
