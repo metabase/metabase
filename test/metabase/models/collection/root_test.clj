@@ -11,7 +11,7 @@
                                #{"/"}                 true
                                #{"/db/1/"}            false
                                #{"/collection/root/"} true}
-          ;; Audit content shouldn't affect can-read/can-write lookups on the root collection.
+          ;; Audit content should not affect can-read?/can-write? on the root collection.
           premium-feature-set [#{} #{:audit-app}]
           f                   [#'mi/can-read? #'mi/can-write?]]
     (testing (format "%s with perms %s and features %s"
