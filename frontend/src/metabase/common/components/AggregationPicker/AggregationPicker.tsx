@@ -5,18 +5,15 @@ import AccordionList from "metabase/core/components/AccordionList";
 import { Icon } from "metabase/core/components/Icon";
 
 import { useToggle } from "metabase/hooks/use-toggle";
+import { useSelector } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 
-import type {
-  Aggregation as LegacyAggregationClause,
-  Expression as LegacyExpressionClause,
-} from "metabase-types/api";
 import * as Lib from "metabase-lib";
-import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
-import type LegacyAggregation from "metabase-lib/queries/structured/Aggregation";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Question from "metabase-lib/Question";
 
 import { QueryColumnPicker } from "../QueryColumnPicker";
 import {
@@ -33,14 +30,12 @@ const DEFAULT_MAX_HEIGHT = 610;
 interface AggregationPickerProps {
   className?: string;
   query: Lib.Query;
+  clause?: Lib.AggregationClause;
   stageIndex: number;
   operators: Lib.AggregationOperator[];
   hasExpressionInput?: boolean;
-  legacyQuery: StructuredQuery;
-  legacyClause?: LegacyAggregation;
   maxHeight?: number;
   onSelect: (operator: Lib.Aggregatable) => void;
-  onSelectLegacy: (operator: LegacyAggregationClause) => void;
   onClose?: () => void;
 }
 
@@ -68,28 +63,34 @@ function isOperatorListItem(item: ListItem): item is OperatorListItem {
 export function AggregationPicker({
   className,
   query,
+  clause,
   stageIndex,
   operators,
   hasExpressionInput = true,
-  legacyQuery,
-  legacyClause,
   maxHeight = DEFAULT_MAX_HEIGHT,
   onSelect,
-  onSelectLegacy,
   onClose,
 }: AggregationPickerProps) {
+  const metadata = useSelector(getMetadata);
+  const initialOperator = getInitialOperator(query, stageIndex, operators);
   const [
     isEditingExpression,
     { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
-  ] = useToggle(isExpressionEditorInitiallyOpen(legacyClause));
+  ] = useToggle(isExpressionEditorInitiallyOpen(clause, initialOperator));
+  const datasetQuery = Lib.toLegacyQuery(query);
+  const legacyQuery = new StructuredQuery(
+    new Question({ dataset_query: datasetQuery }, metadata),
+    datasetQuery,
+  );
+  const displayInfo = clause
+    ? Lib.displayInfo(query, stageIndex, clause)
+    : undefined;
 
   // For really simple inline expressions like Average([Price]),
   // MLv2 can figure out that "Average" operator is used.
   // We don't want that though, so we don't break navigation inside the picker
   const [operator, setOperator] = useState<Lib.AggregationOperator | null>(
-    isEditingExpression
-      ? null
-      : getInitialOperator(query, stageIndex, operators),
+    isEditingExpression ? null : initialOperator,
   );
 
   const operatorInfo = useMemo(
@@ -101,9 +102,9 @@ export function AggregationPicker({
     const sections: Section[] = [];
 
     const metrics = Lib.availableMetrics(query);
-    const canUseExpressions = legacyQuery
-      .database()
-      ?.hasFeature("expression-aggregations");
+    const databaseId = Lib.databaseID(query);
+    const database = metadata.database(databaseId);
+    const canUseExpressions = database?.hasFeature("expression-aggregations");
 
     if (operators.length > 0) {
       sections.push({
@@ -137,7 +138,7 @@ export function AggregationPicker({
     }
 
     return sections;
-  }, [query, legacyQuery, stageIndex, operators, hasExpressionInput]);
+  }, [metadata, query, stageIndex, operators, hasExpressionInput]);
 
   const checkIsItemSelected = useCallback(
     (item: ListItem) => item.selected,
@@ -201,25 +202,27 @@ export function AggregationPicker({
     [openExpressionEditor],
   );
 
-  const handleExpressionChange = useCallback(
-    (name: string, expression: LegacyExpressionClause) => {
-      const aggregation = AGGREGATION.setName(expression, name);
-      onSelectLegacy(aggregation as LegacyAggregationClause);
+  const handleClauseChange = useCallback(
+    (name: string, clause: Lib.AggregationClause | Lib.ExpressionClause) => {
+      const updatedClause = Lib.withExpressionName(clause, name);
+      onSelect(updatedClause);
       onClose?.();
     },
-    [onSelectLegacy, onClose],
+    [onSelect, onClose],
   );
 
   if (isEditingExpression) {
     return (
       <ExpressionWidget
         legacyQuery={legacyQuery}
-        name={AGGREGATION.getName(legacyClause)}
-        expression={AGGREGATION.getContent(legacyClause)}
+        query={query}
+        stageIndex={stageIndex}
+        name={displayInfo?.displayName}
+        clause={clause}
         withName
         startRule="aggregation"
         header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
-        onChangeExpression={handleExpressionChange}
+        onChangeClause={handleClauseChange}
         onClose={closeExpressionEditor}
       />
     );
@@ -315,11 +318,14 @@ function getInitialOperator(
   return operator ?? null;
 }
 
-function isExpressionEditorInitiallyOpen(legacyClause?: LegacyAggregation) {
-  return (
-    legacyClause &&
-    (AGGREGATION.isCustom(legacyClause) || AGGREGATION.isNamed(legacyClause))
-  );
+function isExpressionEditorInitiallyOpen(
+  clause: Lib.AggregationClause | Lib.ExpressionClause | undefined,
+  initialOperator: Lib.AggregationOperator | null,
+) {
+  const isCustomExpression = initialOperator === null;
+  const hasCustomName = Boolean(clause && Lib.expressionName(clause));
+
+  return clause && (isCustomExpression || hasCustomName);
 }
 
 function getOperatorListItem(

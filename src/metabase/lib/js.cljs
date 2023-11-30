@@ -25,6 +25,7 @@
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.js :as mbql.js]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -1073,10 +1074,17 @@
   "Create an expression clause from `legacy-expression` at stage `stage-number` of `a-query`."
   [a-query stage-number legacy-expression]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (lib.convert/->pMBQL (lib.core/normalize (js->clj legacy-expression :keywordize-keys true)))))
+    (let [expr (js->clj legacy-expression :keywordize-keys true)
+          expr (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))]
+      (lib.convert/->pMBQL expr))))
 
 (defn ^:export legacy-expression-for-expression-clause
-  "Create a legacy expression from `an-expression-clause` at stage `stage-number` of `a-query`."
+  "Create a legacy expression from `an-expression-clause` at stage `stage-number` of `a-query`.
+  When processing aggregation clauses, the aggregation-options wrapper (e.g., specifying the name
+  of the aggregation expression) (if any) is thrown away."
   [a-query stage-number an-expression-clause]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (-> an-expression-clause lib.convert/->legacy-MBQL clj->js)))
+    (let [legacy-expr (-> an-expression-clause lib.convert/->legacy-MBQL)]
+      (clj->js (cond-> legacy-expr
+                 (= (first legacy-expr) :aggregation-options)
+                 (get 1))))))

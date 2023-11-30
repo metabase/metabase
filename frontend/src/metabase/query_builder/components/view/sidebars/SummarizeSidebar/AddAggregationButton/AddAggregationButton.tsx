@@ -2,7 +2,6 @@ import { t } from "ttag";
 import Tooltip from "metabase/core/components/Tooltip";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import * as Lib from "metabase-lib";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { AggregationPicker } from "../SummarizeSidebar.styled";
 import { AddAggregationButtonRoot } from "./AddAggregationButton.styled";
 
@@ -10,16 +9,12 @@ const STAGE_INDEX = -1;
 
 interface AddAggregationButtonProps {
   query: Lib.Query;
-  legacyQuery: StructuredQuery;
   onAddAggregation: (aggregation: Lib.Aggregatable) => void;
-  onLegacyQueryChange: (nextLegacyQuery: StructuredQuery) => void;
 }
 
 export function AddAggregationButton({
   query,
-  legacyQuery,
   onAddAggregation,
-  onLegacyQueryChange,
 }: AddAggregationButtonProps) {
   const hasAggregations = Lib.aggregations(query, STAGE_INDEX).length > 0;
   const operators = Lib.availableAggregationOperators(query, STAGE_INDEX);
@@ -45,16 +40,11 @@ export function AddAggregationButton({
       popoverContent={({ closePopover }) => (
         <AggregationPicker
           query={query}
-          legacyQuery={legacyQuery}
           stageIndex={STAGE_INDEX}
           operators={operators}
           hasExpressionInput={false}
           onSelect={aggregation => {
             onAddAggregation(aggregation);
-            closePopover();
-          }}
-          onSelectLegacy={legacyAggregation => {
-            onLegacyQueryChange(legacyQuery.aggregate(legacyAggregation));
             closePopover();
           }}
         />

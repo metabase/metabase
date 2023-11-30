@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import { AggregationPicker } from "metabase/common/components/AggregationPicker";
 import * as Lib from "metabase-lib";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type { NotebookStepUiComponentProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
 
@@ -19,7 +18,6 @@ const aggTetherOptions = {
 };
 
 export function AggregateStep({
-  query: legacyQuery,
   topLevelQuery,
   step,
   color,
@@ -74,10 +72,8 @@ export function AggregateStep({
           stageIndex={stageIndex}
           clause={aggregation}
           clauseIndex={index}
-          legacyQuery={legacyQuery}
           onAddAggregation={handleAddAggregation}
           onUpdateAggregation={handleUpdateAggregation}
-          onLegacyQueryChange={updateQuery}
         />
       )}
       onRemove={handleRemoveAggregation}
@@ -97,9 +93,7 @@ interface AggregationPopoverProps {
   ) => void;
   onAddAggregation: (aggregation: Lib.Aggregatable) => void;
 
-  legacyQuery: StructuredQuery;
   clauseIndex?: number;
-  onLegacyQueryChange: (query: StructuredQuery) => void;
 
   // Implicitly passed by metabase/components/Triggerable
   onClose?: () => void;
@@ -110,10 +104,8 @@ function AggregationPopover({
   stageIndex,
   clause,
   clauseIndex,
-  legacyQuery,
   onAddAggregation,
   onUpdateAggregation,
-  onLegacyQueryChange,
   onClose,
 }: AggregationPopoverProps) {
   const isUpdate = clause != null && clauseIndex != null;
@@ -125,15 +117,10 @@ function AggregationPopover({
       : baseOperators;
   }, [query, clause, stageIndex, isUpdate]);
 
-  const legacyClause = isUpdate
-    ? legacyQuery.aggregations()[clauseIndex]
-    : undefined;
-
   return (
     <AggregationPicker
       query={query}
-      legacyQuery={legacyQuery}
-      legacyClause={legacyClause}
+      clause={clause}
       stageIndex={stageIndex}
       operators={operators}
       onSelect={aggregation => {
@@ -141,15 +128,6 @@ function AggregationPopover({
           onUpdateAggregation(clause, aggregation);
         } else {
           onAddAggregation(aggregation);
-        }
-      }}
-      onSelectLegacy={newLegacyAggregation => {
-        if (isUpdate) {
-          onLegacyQueryChange(
-            legacyQuery.updateAggregation(clauseIndex, newLegacyAggregation),
-          );
-        } else {
-          onLegacyQueryChange(legacyQuery.aggregate(newLegacyAggregation));
         }
       }}
       onClose={onClose}
