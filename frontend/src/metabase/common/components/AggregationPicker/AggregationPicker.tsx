@@ -222,7 +222,12 @@ export function AggregationPicker({
         withName
         startRule="aggregation"
         header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
-        onChangeClause={handleClauseChange}
+        onChangeClause={(name, clause) => {
+          handleClauseChange(
+            name,
+            clause as Lib.AggregationClause | Lib.ExpressionClause,
+          );
+        }}
         onClose={closeExpressionEditor}
       />
     );

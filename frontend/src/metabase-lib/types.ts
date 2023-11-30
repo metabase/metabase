@@ -39,7 +39,8 @@ export type AggregationClause = unknown & { _opaque: typeof AggregationClause };
 export type Aggregatable =
   | AggregationClause
   | MetricMetadata
-  | ExpressionClause;
+  | ExpressionClause
+  | FilterClause;
 
 declare const AggregationOperator: unique symbol;
 export type AggregationOperator = unknown & {
