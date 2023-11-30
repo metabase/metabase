@@ -16,6 +16,7 @@ import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import {
   createAggregatedCellClickObject,
+  createPivotCellClickObject,
   createQuery,
   createQueryWithClauses,
   findDrillThru,
@@ -46,53 +47,6 @@ describe("drill-thru/zoom-in.geographic", () => {
         const clickObject = createAggregatedCellClickObject({
           aggregation: { column: createCountDatasetColumn(), value: 5 },
           breakouts: [{ column: breakoutColumn, value: 10 }],
-        });
-        const { drill } = findDrillThru(
-          query,
-          stageIndex,
-          clickObject,
-          drillType,
-        );
-        const newQuery = Lib.drillThru(query, stageIndex, drill);
-        expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
-        expect(Lib.breakouts(newQuery, stageIndex)).toHaveLength(2);
-      },
-    );
-  });
-
-  describe("LatLon -> LatLon", () => {
-    const clickObject = createAggregatedCellClickObject({
-      aggregation: { column: createCountDatasetColumn(), value: 5 },
-      breakouts: [
-        {
-          column: createPeopleLatitudeDatasetColumn({ source: "breakout" }),
-          value: 10,
-        },
-        {
-          column: createPeopleLongitudeDatasetColumn({ source: "breakout" }),
-          value: 20,
-        },
-      ],
-    });
-
-    it.each(["Auto bin", "Bin every 1 degree", "Bin every 0.1 degrees"])(
-      'should drill thru an aggregated cell with "%s" binning strategy',
-      binningStrategyName => {
-        const query = createQueryWithClauses({
-          query: defaultQuery,
-          aggregations: [{ operatorName: "count" }],
-          breakouts: [
-            {
-              columnName: "LATITUDE",
-              tableName: "PEOPLE",
-              binningStrategyName,
-            },
-            {
-              columnName: "LONGITUDE",
-              tableName: "PEOPLE",
-              binningStrategyName,
-            },
-          ],
         });
         const { drill } = findDrillThru(
           query,
@@ -197,4 +151,65 @@ describe("drill-thru/zoom-in.geographic", () => {
       expect(Lib.breakouts(newQuery, stageIndex)).toHaveLength(2);
     });
   });
+
+  describe.each(["Auto bin", "Bin every 1 degree", "Bin every 0.1 degrees"])(
+    'LatLon -> LatLon with "%s" binning strategy',
+    binningStrategyName => {
+      const query = createQueryWithClauses({
+        query: defaultQuery,
+        aggregations: [{ operatorName: "count" }],
+        breakouts: [
+          {
+            columnName: "LATITUDE",
+            tableName: "PEOPLE",
+            binningStrategyName,
+          },
+          {
+            columnName: "LONGITUDE",
+            tableName: "PEOPLE",
+            binningStrategyName,
+          },
+        ],
+      });
+      const dimensions = {
+        aggregation: { column: createCountDatasetColumn(), value: 5 },
+        breakouts: [
+          {
+            column: createPeopleLatitudeDatasetColumn({ source: "breakout" }),
+            value: 10,
+          },
+          {
+            column: createPeopleLongitudeDatasetColumn({ source: "breakout" }),
+            value: 20,
+          },
+        ],
+      };
+
+      it("should drill thru an aggregated cell", () => {
+        const clickObject = createAggregatedCellClickObject(dimensions);
+        const { drill } = findDrillThru(
+          query,
+          stageIndex,
+          clickObject,
+          drillType,
+        );
+        const newQuery = Lib.drillThru(query, stageIndex, drill);
+        expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+        expect(Lib.breakouts(newQuery, stageIndex)).toHaveLength(2);
+      });
+
+      it("should drill thru a pivot cell", () => {
+        const clickObject = createPivotCellClickObject(dimensions);
+        const { drill } = findDrillThru(
+          query,
+          stageIndex,
+          clickObject,
+          drillType,
+        );
+        const newQuery = Lib.drillThru(query, stageIndex, drill);
+        expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+        expect(Lib.breakouts(newQuery, stageIndex)).toHaveLength(2);
+      });
+    },
+  );
 });
