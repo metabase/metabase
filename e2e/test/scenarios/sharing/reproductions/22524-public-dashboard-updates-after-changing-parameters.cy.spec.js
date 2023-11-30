@@ -49,7 +49,7 @@ describe("issue 22524", () => {
     saveDashboard();
 
     // Share dashboard
-    createPublicLinkDropdown();
+    createPublicLinkDropdown("dashboard");
 
     cy.wait("@publicLink").then(({ response: { body } }) => {
       const { uuid } = body;

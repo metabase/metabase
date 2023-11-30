@@ -68,7 +68,7 @@ describe("scenarios > public > question", () => {
       // Make sure metadata fully loaded before we continue
       cy.get(".cellData").contains("Winner");
 
-      createPublicLinkDropdown();
+      createPublicLinkDropdown("card");
 
       // Although we already have API helper `visitPublicQuestion`,
       // it makes sense to use the UI here in order to check that the

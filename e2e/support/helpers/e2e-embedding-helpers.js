@@ -122,8 +122,11 @@ export function goToEmbedModal({ isAdmin = true } = {}) {
   }
 }
 
-export function createPublicLinkDropdown() {
-  cy.intercept("POST", "/api/card/*/public_link").as("sharingEnabled");
+// @param {("card"|"dashboard")} resourceType - The type of resource we are sharing
+export function createPublicLinkDropdown(resourceType) {
+  cy.intercept("POST", `/api/${resourceType}/*/public_link`).as(
+    "sharingEnabled",
+  );
 
   cy.icon("share").click();
   cy.findByTestId("embed-header-menu")
@@ -141,13 +144,11 @@ export function createPublicLinkDropdown() {
   );
 }
 
-export function openPublicLinkDropdown({ isAdmin = true } = {}) {
+export function openPublicLinkDropdown() {
   cy.icon("share").click();
-  if (isAdmin) {
-    cy.findByTestId("embed-header-menu")
-      .findByTestId("embed-menu-link-item")
-      .click();
-  }
+  cy.findByTestId("embed-header-menu")
+    .findByTestId("embed-menu-link-item")
+    .click();
 }
 
 export function openEmbeddingSettingsPage() {

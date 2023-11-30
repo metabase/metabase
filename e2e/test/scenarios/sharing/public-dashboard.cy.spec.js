@@ -96,7 +96,7 @@ describe("scenarios > public > dashboard", () => {
       visitDashboard(id);
     });
 
-    createPublicLinkDropdown();
+    createPublicLinkDropdown("dashboard");
 
     cy.wait("@publicLink").then(({ response }) => {
       expect(response.body.uuid).not.to.be.null;

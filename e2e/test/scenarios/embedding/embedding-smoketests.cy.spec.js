@@ -201,7 +201,6 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
     it("should not let you embed the dashboard", () => {
       visitDashboard(ORDERS_DASHBOARD_ID);
-      cy.icon("share").click();
       ensureEmbeddingIsDisabled();
     });
   });
@@ -382,7 +381,7 @@ function assertLinkMatchesUrl(text, url) {
 }
 
 function ensureEmbeddingIsDisabled() {
-  cy.icon("share").realHover();
+  cy.icon("share").trigger("mouseenter");
   cy.findByRole("tooltip", {
     name: "You must enable Embedding in the settings",
   }).should("be.visible");
