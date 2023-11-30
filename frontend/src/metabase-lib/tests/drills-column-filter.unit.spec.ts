@@ -30,7 +30,7 @@ describe("drill-thru/column-filter", () => {
     const defaultColumn = createOrdersTotalDatasetColumn();
     const expectedStageCount = 1;
 
-    it("should drill thru a column", () => {
+    it("should drill thru a column header", () => {
       const clickObject = createColumnClickObject({ column: defaultColumn });
       const { drill } = findDrillThru(
         defaultQuery,

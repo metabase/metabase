@@ -83,7 +83,7 @@ describe("drill-thru/zoom", () => {
     expect(drill).toBeNull();
   });
 
-  it("should not drill thru a column", () => {
+  it("should not drill thru a column header", () => {
     const clickObject = createColumnClickObject({
       column: defaultColumn,
     });

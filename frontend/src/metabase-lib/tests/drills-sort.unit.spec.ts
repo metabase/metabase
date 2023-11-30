@@ -27,7 +27,7 @@ describe("drill-thru/sort", () => {
   const defaultColumn = createOrdersTotalDatasetColumn();
 
   it.each<Lib.OrderByDirection>(["asc", "desc"])(
-    'should drill thru a column from a non-sorted query with "%s" direction',
+    'should drill thru a column header from a non-sorted query with "%s" direction',
     direction => {
       const clickObject = createColumnClickObject({ column: defaultColumn });
       const { drill, drillInfo } = findDrillThru(
@@ -51,7 +51,7 @@ describe("drill-thru/sort", () => {
   );
 
   it.each<Lib.OrderByDirection>(["asc", "desc"])(
-    'should thru a column from a sorted query with "%s" direction',
+    'should thru a column header from a sorted query with "%s" direction',
     direction => {
       const query = createQueryWithClauses({
         orderBys: [

@@ -109,7 +109,7 @@ describe.skip("drill-thru/automatic-insights (metabase#33558)", () => {
       expect(drill).toBeNull();
     });
 
-    it("should drill a query with x-rays disabled", () => {
+    it("should not drill a query with x-rays disabled", () => {
       const query = createQueryWithClauses({
         aggregations: [{ operatorName: "count" }],
         breakouts: [{ columnName: "CREATED_AT", tableName: "ORDERS" }],

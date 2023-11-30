@@ -153,7 +153,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
       expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
     });
 
-    it("should not drill thru a column", () => {
+    it("should not drill thru a column header", () => {
       const query = createQueryWithClauses({
         aggregations: [{ operatorName: "count" }],
         breakouts: [

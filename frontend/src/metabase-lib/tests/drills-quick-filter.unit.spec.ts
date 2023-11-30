@@ -109,7 +109,7 @@ describe("drill-thru/quick-filter", () => {
       verifyDrillThruDetails(drill, expectedStageCount);
     });
 
-    it("should not drill thru a column", () => {
+    it("should not drill thru a column header", () => {
       const column = createOrdersTotalDatasetColumn();
       const clickObject = createColumnClickObject({ column });
       const drill = queryDrillThru(

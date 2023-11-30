@@ -55,7 +55,7 @@ describe("drill-thru/summarize-column-by-time", () => {
     expect(drill).toBeNull();
   });
 
-  it("should not drill thru a column when there is no date column", () => {
+  it("should not drill thru a column header when there is no date column", () => {
     const metadata = createMockMetadata({
       databases: [
         createSampleDatabase({
