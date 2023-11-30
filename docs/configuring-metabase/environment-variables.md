@@ -532,6 +532,16 @@ Change this to a higher value if you notice that regular usage consumes all or c
 
 See [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size) for setting maximum connections to the Metabase application database.
 
+### `MB_JDBC_DATA_WAREHOUSE_UNRETURNED_CONNECTION_TIMEOUT_SECONDS`
+
+Type: integer<br>
+Default: `1200`<br>
+Since: v47.4
+
+Kill connections if they are unreturned after this amount of time. In theory this should not be needed, because the Query Processor will kill active connections that time out, but occasionally in practice some connections are severed and undetected by Metabase.
+
+Defaults to the 1200 seconds (20 minutes) based on default production value for `metabase.query-processor.query-timeout-ms`.
+
 ### `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`
 
 Type: integer<br>
