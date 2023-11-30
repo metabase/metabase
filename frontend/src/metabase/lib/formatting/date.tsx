@@ -65,6 +65,8 @@ type DateVal = string | number | Moment;
 interface DateRangeFormatSpec {
   same: null | moment.unitOfTime.StartOf;
   format: [string] | [string, string];
+  removedYearFormat?: [string] | [string, string];
+  removedDayFormat?: [string] | [string, string];
   dashPad?: string;
   test: {
     output: string;
@@ -79,17 +81,19 @@ export const DATE_RANGE_FORMAT_SPECS: {
   // dates
   const Y = "YYYY";
   const Q = "[Q]Q";
-  const QY = "[Q]Q YYYY";
+  const QY = `${Q} ${Y}`;
   const M = DATE_RANGE_MONTH_PLACEHOLDER;
-  const MY = `${M} YYYY`;
-  const MDY = `${M} D, YYYY`;
-  const MD = `${M} D`;
-  const DY = "D, YYYY";
+  const MY = `${M} ${Y}`;
+  const D = "D";
+  const MDY = `${M} ${D}, ${Y}`;
+  const MD = `${M} ${D}`;
+  const DY = `${D}, ${Y}`;
 
   // times
   const T = "h:mm";
-  const TA = "h:mm A";
+  const TA = `${T} A`;
   const MA = "mm A";
+  const MDT = `${MD}, ${T}`;
   const MDYT = `${MDY}, ${T}`;
   const MDYTA = `${MDY}, ${TA}`;
   const MDTA = `${MD}, ${TA}`;
@@ -127,6 +131,7 @@ export const DATE_RANGE_FORMAT_SPECS: {
       {
         same: "quarter",
         format: [QY],
+        removedYearFormat: [Q],
         test: {
           output: "Q2 2018",
           input: ["2018-04-01"],
@@ -173,6 +178,7 @@ export const DATE_RANGE_FORMAT_SPECS: {
       {
         same: "month",
         format: [MY],
+        removedYearFormat: [M],
         test: {
           output: "September 2018",
           input: ["2018-09-01"],
@@ -219,6 +225,7 @@ export const DATE_RANGE_FORMAT_SPECS: {
       {
         same: "month",
         format: [MD, DY],
+        removedYearFormat: [MD, D],
         test: {
           output: "January 1–21, 2017",
           verboseOutput: "January 1, 2017 – January 21, 2017",
@@ -228,6 +235,7 @@ export const DATE_RANGE_FORMAT_SPECS: {
       {
         same: "year",
         format: [MD, MDY],
+        removedYearFormat: [MD, MD],
         dashPad: " ",
         test: {
           output: "January 1 – May 20, 2017",
@@ -267,6 +275,7 @@ export const DATE_RANGE_FORMAT_SPECS: {
       {
         same: "day",
         format: [MDY],
+        removedYearFormat: [MD],
         test: {
           output: "January 1, 2018",
           input: ["2018-01-01"],
@@ -360,6 +369,8 @@ export const DATE_RANGE_FORMAT_SPECS: {
       {
         same: "hour",
         format: [MDYT, MA],
+        removedYearFormat: [MDT, MA],
+        removedDayFormat: [T, MA],
         test: {
           output: "January 1, 2018, 11:00–59 AM",
           input: ["2018-01-01T11:00"],
@@ -416,6 +427,8 @@ export const DATE_RANGE_FORMAT_SPECS: {
       {
         same: "minute",
         format: [MDYTA],
+        removedYearFormat: [MDTA],
+        removedDayFormat: [TA],
         test: {
           output: "January 1, 2018, 11:20 AM",
           input: ["2018-01-01T11:20"],
@@ -631,46 +644,111 @@ export function formatDateTimeRangeWithUnit(
   }
 
   const formatDate = (date: Moment, formatStr: string) => {
-    const yearRegex = /,*\s*YYYY/;
-    const dayRegex = /[\s\S]+,*\s*YYYY,*\s*/;
-
-    // day display is hide-able (if date being compared to is same day)
-    if (options.removeDay) {
-      return date.format(formatStr.replace(dayRegex, ""));
-    }
-
     // month format is configurable, so we need to insert it after lookup
-    const monthReplacementStr = formatStr.replace(
-      DATE_RANGE_MONTH_PLACEHOLDER,
-      monthFormat,
+    return date.format(
+      formatStr.replace(DATE_RANGE_MONTH_PLACEHOLDER, monthFormat),
     );
-
-    // year display is hide-able (if date being compared to is same year)
-    if (options.removeYear) {
-      return date.format(monthReplacementStr.replace(yearRegex, ""));
-    }
-
-    return date.format(monthReplacementStr);
   };
 
-  // Even if we don’t have want to condense, we should avoid empty date ranges like Jan 1 - Jan 1.
-  // This is indicated when the smallest matched format has no end format.
-  if (!matchSpec.format[1]) {
-    return formatDate(start, matchSpec.format[0]);
+  if (!condensed) {
+    const [matchStartFormat, matchEndFormat] = matchSpec.format;
+
+    // Even if we do not want to condense, if we supplied a single date with no time range,
+    // e.g. 2023, Q2 2023, January 2018, Jan 1, 2018, ...
+    // we should not display an empty range like Q2 2023 - Q2 2023
+    // which will happen since start and end are the same and the default spec
+    // has both a start and end format
+    if (!matchEndFormat) {
+      return formatDateString({
+        start,
+        startFormat: matchStartFormat,
+        formatDate,
+      });
+    }
+
+    const {
+      format: [startFormat, endFormat],
+      dashPad = "",
+    } = defaultSpec;
+
+    return formatDateString({
+      start,
+      end,
+      startFormat,
+      endFormat,
+      dashPad,
+      formatDate,
+    });
   }
 
-  const {
-    format: [startFormat, endFormat],
-    dashPad = "",
-  } = condensed ? matchSpec : defaultSpec;
+  const { removedDayFormat, removedYearFormat, dashPad = "" } = matchSpec;
 
-  return !endFormat
-    ? formatDate(start, startFormat)
-    : formatDate(start, startFormat) +
-        dashPad +
-        EN_DASH +
-        dashPad +
-        formatDate(end, endFormat);
+  if (options.removeDay && removedDayFormat) {
+    const [startFormat, endFormat] = removedDayFormat;
+
+    return formatDateString({
+      start,
+      end,
+      startFormat,
+      endFormat,
+      dashPad,
+      formatDate,
+    });
+  }
+
+  if (options.removeYear && removedYearFormat) {
+    const [startFormat, endFormat] = removedYearFormat;
+
+    return formatDateString({
+      start,
+      end,
+      startFormat,
+      endFormat,
+      dashPad,
+      formatDate,
+    });
+  }
+
+  const [startFormat, endFormat] = matchSpec.format;
+
+  return formatDateString({
+    start,
+    end,
+    startFormat,
+    endFormat,
+    dashPad,
+    formatDate,
+  });
+}
+
+interface formatDateStringParameters {
+  start: Moment;
+  startFormat: string;
+  formatDate: (date: Moment, format: string) => string;
+  end?: Moment;
+  endFormat?: string | undefined;
+  dashPad?: string;
+}
+
+function formatDateString({
+  start,
+  startFormat,
+  end,
+  endFormat,
+  dashPad = "",
+  formatDate,
+}: formatDateStringParameters) {
+  if (!endFormat || !end) {
+    return formatDate(start, startFormat);
+  }
+
+  return (
+    formatDate(start, startFormat) +
+    dashPad +
+    EN_DASH +
+    dashPad +
+    formatDate(end, endFormat)
+  );
 }
 
 export function formatRange(
