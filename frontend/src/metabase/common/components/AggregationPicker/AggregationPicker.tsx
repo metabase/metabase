@@ -6,7 +6,6 @@ import { Icon } from "metabase/core/components/Icon";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
@@ -323,10 +322,10 @@ function isExpressionEditorInitiallyOpen(
   clause: Lib.AggregationClause | Lib.ExpressionClause | undefined,
   initialOperator: Lib.AggregationOperator | null,
 ) {
-  return (
-    isNotNull(clause) &&
-    (initialOperator === null || Boolean(Lib.expressionName(clause)))
-  );
+  const isCustomExpression = initialOperator === null;
+  const hasCustomName = Boolean(clause && Lib.expressionName(clause));
+
+  return clause && (isCustomExpression || hasCustomName);
 }
 
 function getOperatorListItem(
