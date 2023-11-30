@@ -154,7 +154,7 @@ function PreviousValueComparison({
       isEnabled={fullDetailDisplay !== fittedDetailDisplay}
       placement="bottom"
       tooltip={
-        <VariationContainerTooltip>
+        <VariationContainerTooltip className="variation-container-tooltip">
           <VariationPercent iconSize={TOOLTIP_ICON_SIZE}>
             {display.percentChange}
           </VariationPercent>

@@ -11,7 +11,8 @@ export const Variation = styled.div`
   align-items: center;
   max-width: 100%;
 
-  .Dashboard.Dashboard--night.Dashboard--fullscreen .fullscreen-night-text & {
+  .Dashboard.Dashboard--night.Dashboard--fullscreen .fullscreen-night-text &,
+  .variation-container-tooltip & {
     color: ${props =>
       isEmpty(props.color) ? lighten("text-medium", 0.3) : props.color};
   }
@@ -53,7 +54,8 @@ export const Separator = styled.span`
   margin: 0 0.2rem;
   color: ${lighten("text-light", 0.25)};
 
-  .Dashboard.Dashboard--night.Dashboard--fullscreen .fullscreen-night-text & {
+  .Dashboard.Dashboard--night.Dashboard--fullscreen .fullscreen-night-text &,
+  .variation-container-tooltip & {
     color: ${lighten("text-medium", 0.15)};
   }
 `;
@@ -62,7 +64,8 @@ export const PreviousValueDetails = styled.h4`
   color: ${color("text-medium")};
   white-space: pre;
 
-  .Dashboard.Dashboard--night.Dashboard--fullscreen .fullscreen-night-text & {
+  .Dashboard.Dashboard--night.Dashboard--fullscreen .fullscreen-night-text &,
+  .variation-container-tooltip & {
     color: ${lighten("text-light", 0.25)};
   }
 `;
@@ -70,7 +73,8 @@ export const PreviousValueDetails = styled.h4`
 export const PreviousValueNumber = styled.span`
   color: ${color("text-light")};
 
-  .Dashboard.Dashboard--night.Dashboard--fullscreen .fullscreen-night-text & {
+  .Dashboard.Dashboard--night.Dashboard--fullscreen .fullscreen-night-text &,
+  .variation-container-tooltip & {
     color: ${lighten("text-medium", 0.45)};
   }
 `;
