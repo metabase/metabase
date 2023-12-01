@@ -184,7 +184,7 @@ export function suggest({
           return {
             type: "segments",
             name: displayInfo.displayName,
-            text: formatIdentifier(displayInfo.displayName),
+            text: formatIdentifier(displayInfo.longDisplayName),
             index: targetOffset,
             icon: "segment",
             order: 3,
