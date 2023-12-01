@@ -38,7 +38,7 @@ export const ClickActionsView = ({
             contentDirection={contentDirection}
           >
             {withTopDivider && <Divider />}
-            {actions.map((action, index) => (
+            {actions.map(action => (
               <ClickActionControl
                 key={action.name}
                 action={action}

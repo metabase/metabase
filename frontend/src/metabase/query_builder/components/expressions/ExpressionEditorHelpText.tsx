@@ -70,7 +70,7 @@ const ExpressionEditorHelpText = ({
 
             {args != null && (
               <ArgumentsGrid data-testid="expression-helper-popover-arguments">
-                {args.map(({ name, description: argDescription }, index) => (
+                {args.map(({ name, description: argDescription }) => (
                   <React.Fragment key={name}>
                     <ArgumentTitle>{name}</ArgumentTitle>
                     <div>{argDescription}</div>

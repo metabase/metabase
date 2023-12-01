@@ -175,7 +175,8 @@
           "error",
           {
             "vars": "all",
-            "args": "none",
+            "args": "after-used",
+            "argsIgnorePattern": "^_",
             "varsIgnorePattern": "^_.+",
             "ignoreRestSiblings": true,
             "destructuredArrayIgnorePattern": "^_"
