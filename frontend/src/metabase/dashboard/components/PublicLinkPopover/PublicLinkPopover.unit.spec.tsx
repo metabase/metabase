@@ -116,10 +116,20 @@ describe("PublicLinkPopover", () => {
       expect(await screen.findByText("sample-public-link")).toBeInTheDocument();
     });
 
-    it("should render `Remove this public link` for admins", () => {
-      setup({ isAdmin: true });
+    it("should render `Remove this public link` and warning tooltip for admins", async () => {
+      setup({
+        hasUUID: true,
+        isOpen: true,
+        isAdmin: true,
+      });
 
-      expect(screen.getByText("Remove this public link")).toBeInTheDocument();
+      userEvent.hover(screen.getByText("Remove this public link"));
+
+      expect(
+        await screen.findByText(
+          "Affects both public link and embed URL for this dashboard",
+        ),
+      ).toBeInTheDocument();
     });
 
     it("should not render `Remove this public link` for non-admins", () => {
@@ -132,19 +142,19 @@ describe("PublicLinkPopover", () => {
   });
 
   describe("when creating public links", () => {
-    it("should call createPublicLinkDropdown when uuid is null and isOpen is true", () => {
+    it("should call createPublicLink when uuid is null and isOpen is true", () => {
       const { createPublicLink } = setup({ hasUUID: false });
 
       expect(createPublicLink).toHaveBeenCalledTimes(1);
     });
 
-    it("should not call createPublicLinkDropdown when isOpen is false", () => {
+    it("should not call createPublicLink when isOpen is false", () => {
       const { createPublicLink } = setup({ isOpen: false, hasUUID: false });
 
       expect(createPublicLink).not.toHaveBeenCalled();
     });
 
-    it("should call createPublicLinkDropdown when uuid is null and the popover is opened", async () => {
+    it("should call createPublicLink when uuid is null and the popover is opened", async () => {
       const { createPublicLink } = setup({ hasUUID: false, isOpen: false });
 
       userEvent.click(screen.getByTestId("target"));
@@ -153,7 +163,7 @@ describe("PublicLinkPopover", () => {
       expect(createPublicLink).toHaveBeenCalledTimes(1);
     });
 
-    it("should not call createPublicLinkDropdown when uuid is not null and the popover is opened", async () => {
+    it("should not call createPublicLink when uuid is not null and the popover is opened", async () => {
       const { createPublicLink } = setup({ hasUUID: true, isOpen: false });
 
       userEvent.click(screen.getByTestId("target"));
