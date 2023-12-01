@@ -118,7 +118,9 @@ export function visitIframe() {
 export function goToEmbedModal({ isAdmin = true } = {}) {
   cy.icon("share").click();
   if (isAdmin) {
-    cy.findByTestId("embed-header-menu").findByText("Embed").click();
+    cy.findByTestId("embed-header-menu")
+      .findByTestId("embed-menu-embed-modal-item")
+      .click();
   }
 }
 
@@ -130,7 +132,7 @@ export function createPublicLinkDropdown(resourceType) {
 
   cy.icon("share").click();
   cy.findByTestId("embed-header-menu")
-    .findByTestId("embed-menu-link-item")
+    .findByTestId("embed-menu-public-link-item")
     .click();
 
   cy.wait("@sharingEnabled").then(
@@ -147,7 +149,7 @@ export function createPublicLinkDropdown(resourceType) {
 export function openPublicLinkDropdown() {
   cy.icon("share").click();
   cy.findByTestId("embed-header-menu")
-    .findByTestId("embed-menu-link-item")
+    .findByTestId("embed-menu-public-link-item")
     .click();
 }
 
