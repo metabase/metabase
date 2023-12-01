@@ -494,17 +494,17 @@
     data]
   (let [combined-cards-results (pu/execute-multi-card card dashcard)
         cards-with-data        (map
-                                   (comp
-                                    add-dashcard-timeline-events
-                                    (fn [c d] {:card c :data d}))
-                                   (cons card (map :card combined-cards-results))
-                                   (cons data (map #(get-in % [:result :data]) combined-cards-results)))
+                                (comp
+                                 add-dashcard-timeline-events
+                                 (fn [c d] {:card c :data d}))
+                                (cons card (map :card combined-cards-results))
+                                (cons data (map #(get-in % [:result :data]) combined-cards-results)))
         dashcard-viz-settings  (or
-                                   dashcard-viz-settings
-                                   card-viz-settings)
+                                dashcard-viz-settings
+                                card-viz-settings)
         image-bundle           (image-bundle/make-image-bundle
-                        render-type
-                        (js-svg/isomorphic cards-with-data dashcard-viz-settings))]
+                                render-type
+                                (js-svg/isomorphic cards-with-data dashcard-viz-settings))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))

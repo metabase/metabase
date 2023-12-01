@@ -93,29 +93,35 @@
       (is (= "A..." (subs long-rendered (- (count long-rendered) 4) (count long-rendered))))
       (is (not= long-heading long-rendered)))))
 
+;; TODO: these tests use some needlessly convoluted render test fns
+;; following commits will just swap out make-viz-data and make-card-and-data fns for
+;; good old fashioned Metabase test util mocking. That's much smarter.
+
 (deftest table-columns-test
-  (let [rows [["As" "Bs" "Cs"]
-              ["a" "b" "c"]]]
-    (testing "Column reordering is applied correctly to the table"
-      (let [{:keys [viz-tree]} (render.tu/make-viz-data
-                                rows :table {:reordered-columns {:order [1 0 2]}})]
-        (is (= ["Bs" "As" "Cs" "b" "a" "c"]
-               (-> viz-tree
-                   render.tu/remove-attrs
-                   ((juxt #(render.tu/nodes-with-tag % :th)
-                          #(render.tu/nodes-with-tag % :td)))
-                   (->> (apply concat))
-                   (->> (map second)))))))
-    (testing "A table with hidden columns does not render hidden columns"
-      (let [{:keys [viz-tree]} (render.tu/make-viz-data
-                                rows :table {:hidden-columns {:hide [1]}})]
-        (is (= ["As" "Cs" "a" "c"]
-               (-> viz-tree
-                   render.tu/remove-attrs
-                   ((juxt #(render.tu/nodes-with-tag % :th)
-                          #(render.tu/nodes-with-tag % :td)))
-                   (->> (apply concat))
-                   (->> (map second)))))))))
+  (testing "FIXME"
+    (is (= 1 0)))
+  #_(let [rows [["As" "Bs" "Cs"]
+                ["a" "b" "c"]]]
+      (testing "Column reordering is applied correctly to the table"
+        (let [{:keys [viz-tree]} (render.tu/make-viz-data
+                                  rows :table {:reordered-columns {:order [1 0 2]}})]
+          (is (= ["Bs" "As" "Cs" "b" "a" "c"]
+                 (-> viz-tree
+                     render.tu/remove-attrs
+                     ((juxt #(render.tu/nodes-with-tag % :th)
+                            #(render.tu/nodes-with-tag % :td)))
+                     (->> (apply concat))
+                     (->> (map second)))))))
+      (testing "A table with hidden columns does not render hidden columns"
+        (let [{:keys [viz-tree]} (render.tu/make-viz-data
+                                  rows :table {:hidden-columns {:hide [1]}})]
+          (is (= ["As" "Cs" "a" "c"]
+                 (-> viz-tree
+                     render.tu/remove-attrs
+                     ((juxt #(render.tu/nodes-with-tag % :th)
+                            #(render.tu/nodes-with-tag % :td)))
+                     (->> (apply concat))
+                     (->> (map second)))))))))
 
 (deftest table-column-formatting-test
   (let [rows [["A" "B" "C" "D" "E"]

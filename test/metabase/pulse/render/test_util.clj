@@ -17,8 +17,10 @@
    [metabase.pulse.render.datetime :as datetime]
    [metabase.pulse.render.image-bundle :as image-bundle]
    [metabase.pulse.render.js-svg :as js-svg]
+   [metabase.query-processor :as qp]
    [metabase.shared.models.visualization-settings :as mb.viz]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [toucan2.core :as t2])
   (:import
    (org.apache.batik.anim.dom SVGOMDocument AbstractElement$ExtendedNamedNodeHashMap)
    (org.apache.batik.dom GenericText)
@@ -177,34 +179,6 @@
              :cols             (mapv base-cols-settings indices header (first rows))
              :rows             rows
              :results_metadata {:columns (mapv base-results-metadata indices header cols)}}})))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;    validate-viz-scenarios
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(def valid-viz-scenarios
-  {:pin_map     #{}
-   :state       #{}
-   :country     #{}
-   :line        #{:goal-line :multi-series :stack}
-   :area        #{:goal-line :multi-series :stack}
-   :bar         #{:goal-line :multi-series :stack}
-   :combo       #{:goal-line :multi-series :stack}
-   :pie         #{:custom-column-formatting}
-   :funnel      #{}
-   :progress    #{:custom-column-formatting}
-   :scalar      #{:custom-column-formatting}
-   :smartscalar #{:custom-column-formatting}
-   :gauge       #{}
-   :table       #{:custom-column-names :reordered-columns :hidden-columns :custom-column-formatting}
-   :scatter     #{}
-   :row         #{}
-   :list        #{}
-   :pivot       #{}})
-
-(defn- validate-viz-scenario
-  [display-type viz-scenario]
-  (select-keys viz-scenario (valid-viz-scenarios display-type)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;    apply viz-scenarios
@@ -403,34 +377,6 @@
         (merge-column-settings-for-data data-col-settings)
         (update-in [:card :visualization_settings :column_settings] merge card-col-settings))))
 
-(defn apply-viz-scenario
-  "Add keys/vals to `card-and-data` mimicking a card and dataset-query result according to a `viz-scenario`.
-  Note that `viz-scenario` is just a name used in this namespace to describe possible viz configurations, it
-  does not map to any models.
-
-  A `viz-scenario` is a combination of 'scenario-keys' and optional maps with settings for that scenario.
-  For example, the following viz-scenario map will:
-  - add a goal line with a custom value and label to the card if the display-type of the card allows goal lines.
-  - add another series, using default data defined in the multi-series multimethod.
-
-  {:goal-line {:goal.value 10 :goal.label \"My Goal\"}
-   :multi-series ni}
-
-  Any viz-scenario may have different key/value requirements for the settings map on that key, according to what
-  the scenario actually needs to add/remove from the card-and-data. Every scenario has useful defaults for testing,
-  so you can always pass {} or nil if you don't know the correct shape of the settings.
-
-  Alternatively, if you already know what data is necessary and where, you can build up your own make-card-and-data
-  map using the util fns in this namespace, and call `render-as-hiccup` on that to get the tree."
-  [viz-scenario card-and-data]
-  (if (seq viz-scenario)
-    (let [viz-scenario-keys (vec (keys viz-scenario))
-          scenario-key (first viz-scenario-keys)
-          scenario-settings (get viz-scenario scenario-key)
-          xf-card-and-data  (apply-viz-scenario-key scenario-key scenario-settings card-and-data)]
-      (recur (dissoc viz-scenario scenario-key) xf-card-and-data))
-    card-and-data))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;    render-as-hiccup
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -570,31 +516,23 @@
           (edit-nodes wrapped-node? unwrap-node)             ;; eg: ([:div "content"]) -> [:div "content"]
           (edit-nodes wrapped-children? unwrap-children))))) ;; eg: [:tr ([:td 1] [:td 2])] -> [:tr [:td 1] [:td 2]]
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;    make-viz-data
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn make-viz-data
-  "Given a `rows` vector, a `display-type` key, and a `viz-scenario` set, returns a map with :card, :data, and :viz-tree keys.
-
-  Each entry in `rows` should be a vector of values, and each row should be of equal size.
-  The first row in `rows` is assumed to be the header, and the first entry in each row is assumed to be the x-axis series.
-
-  `display-type` is one of:
-  `[:table :gauge :bar :pie :state :scatter :combo :scalar :line :list :area :pivot :funnel :progress :pin_map :smartscalar :country :row]`
-
-  The output map will have:
-  :card contains a map with the necessary keys that configure the given `viz-scenario`
-  :"
-  ([rows display-type viz-scenario] (make-viz-data rows display-type :single viz-scenario))
-  ([rows display-type x-config viz-scenario]
-   (let [valid-viz-scenario (validate-viz-scenario display-type viz-scenario)
-         card-and-data      (->> (make-card-and-data rows display-type x-config)
-                                 (apply-viz-scenario valid-viz-scenario))]
-     (assoc card-and-data :viz-tree (render-as-hiccup card-and-data)))))
+(defn render-card-as-hiccup
+  [card-id]
+  (let [{:keys [dataset_query] :as card} (t2/select-one :model/Card :id card-id)
+        {:keys [data]}                    (qp/process-query dataset_query)]
+    (with-redefs [js-svg/svg-string->bytes       identity
+                  image-bundle/make-image-bundle (fn [_ s]
+                                                   {:image-src   s
+                                                    :render-type :inline})]
+      (let [content (-> (body/render (render/detect-pulse-chart-type card nil data) :inline "UTC" card nil data)
+                        :content)]
+        (-> content
+            (edit-nodes img-node? img-node->svg-node) ;; replace the :img tag with its parsed SVG.
+            (edit-nodes wrapped-node? unwrap-node)    ;; eg: ([:div "content"]) -> [:div "content"]
+            (edit-nodes wrapped-children? unwrap-children))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;   verification-utils
+;;   hiccup-node-utils
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn nodes-with-text

@@ -9,8 +9,7 @@
    [metabase.pulse.util :as pu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [schema.core :as s]))
+   [metabase.util :as u]))
 
 (use-fixtures :each
   (fn warn-possible-rebuild
@@ -567,3 +566,23 @@
             (testing "The underlying add-dashcard-timeline-events call adds the timeline events to the card"
               (is (=? [tl-a tl-b] (:timeline_events (#'body/add-dashcard-timeline-events {:card card})))))
             (is (= 2 (count (:timeline_events (first cards-with-data)))))))))))
+
+(deftest isomorphic-chart-render-test
+   []
+   (mt/dataset sample-dataset
+     (mt/with-temp [:model/Card {card-id :id}
+                    {:visualization_settings
+                     {:table.cell_column "SUBTOTAL", :graph.dimensions ["CREATED_AT"], :graph.metrics ["count"]},
+                     :display :line
+                     :dataset_query
+                     {:database (mt/id)
+                      :type     :query,
+                      :query
+                      {:source-table (mt/id :orders)
+                       :aggregation  [[:count]],
+                       :breakout     [[:field (mt/id :orders :created_at) {:base-type :type/DateTime, :temporal-unit :month}]]}}}]
+       (is (= "line/area/bar placeholder"
+              (-> (render.tu/render-card-as-hiccup card-id)
+                  (render.tu/nodes-with-text "line/area/bar placeholder")
+                  first
+                  last))))))
