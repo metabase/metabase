@@ -76,7 +76,9 @@ export function AggregationPicker({
   const [
     isEditingExpression,
     { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
-  ] = useToggle(isExpressionEditorInitiallyOpen(clause, initialOperator));
+  ] = useToggle(
+    isExpressionEditorInitiallyOpen(query, stageIndex, clause, initialOperator),
+  );
   const datasetQuery = Lib.toLegacyQuery(query);
   const legacyQuery = new StructuredQuery(
     new Question({ dataset_query: datasetQuery }, metadata),
@@ -319,13 +321,20 @@ function getInitialOperator(
 }
 
 function isExpressionEditorInitiallyOpen(
+  query: Lib.Query,
+  stageIndex: number,
   clause: Lib.AggregationClause | Lib.ExpressionClause | undefined,
   initialOperator: Lib.AggregationOperator | null,
-) {
-  const isCustomExpression = initialOperator === null;
-  const hasCustomName = Boolean(clause && Lib.expressionName(clause));
+): boolean {
+  if (!clause) {
+    return false;
+  }
 
-  return clause && (isCustomExpression || hasCustomName);
+  const isCustomExpression = initialOperator === null;
+  const displayInfo = Lib.displayInfo(query, stageIndex, clause);
+  const hasCustomName = Boolean(displayInfo?.isNamed);
+
+  return isCustomExpression || hasCustomName;
 }
 
 function getOperatorListItem(
