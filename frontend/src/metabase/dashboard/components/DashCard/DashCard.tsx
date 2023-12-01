@@ -42,8 +42,8 @@ import type {
   NavigateToNewCardFromDashboardOpts,
   DashCardOnChangeCardAndRunHandler,
 } from "./types";
-import { DashCardActionsPanel } from "./DashCardActionsPanel";
-import DashCardVisualization from "./DashCardVisualization";
+import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
+import { DashCardVisualization } from "./DashCardVisualization";
 import { DashCardRoot } from "./DashCard.styled";
 
 function preventDragging(event: React.SyntheticEvent) {
@@ -85,7 +85,7 @@ export interface DashCardProps {
   onChangeLocation: (location: LocationDescriptor) => void;
 }
 
-function DashCard({
+function DashCardInner({
   dashcard,
   dashcardData,
   dashboard,
@@ -317,7 +317,6 @@ function DashCard({
   );
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(DashCard, {
+export const DashCard = Object.assign(DashCardInner, {
   root: DashCardRoot,
 });

@@ -588,6 +588,30 @@
             (is (= 101
                    (count (csv/read-csv results))))))))))
 
+(deftest downloading-csv-json-xlsx-results-from-the-dashcard-endpoint-respects-column-settings
+  (testing "Downloading CSV/JSON/XLSX results should respect the column settings of the dashcard, such as column order and hidden/shown setting. (#33727)"
+    (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+      (with-embedding-enabled-and-new-secret-key
+        (with-temp-dashcard [dashcard {:dash     {:enable_embedding true}
+                                       :card     {:dataset_query (assoc (mt/mbql-query venues)
+                                                                        :limit 1
+                                                                        :middleware
+                                                                        {:add-default-userland-constraints? true
+                                                                         :userland-query?                   true})}
+                                       ;; we set column settings on the Dashcard only to see that the settings are respected in the output
+                                       :dashcard {:visualization_settings
+                                                  {:column_settings {}
+                                                   :table.columns
+                                                   [{:name "NAME" :fieldRef [:field (mt/id :venues :name) nil] :enabled true}
+                                                    {:name "ID" :fieldRef [:field (mt/id :venues :id) nil] :enabled true}
+                                                    {:name "CATEGORY_ID" :fieldRef [:field (mt/id :venues :category_id) nil] :enabled true}
+                                                    {:name "LATITUDE" :fieldRef [:field (mt/id :venues :latitude) nil] :enabled false}
+                                                    {:name "LONGITUDE" :fieldRef [:field (mt/id :venues :longitude) nil] :enabled false}
+                                                    {:name "PRICE" :fieldRef [:field (mt/id :venues :price) nil] :enabled true}]}}}]
+          (let [results (client/client :get 200 (str (dashcard-url dashcard) "/csv"))]
+            (is (= ["Name" "ID" "Category ID" "Price"]
+                   (first (csv/read-csv results))))))))))
+
 (deftest generic-query-failed-exception-test
   (testing (str "...but if the card has an invalid query we should just get a generic \"query failed\" exception "
                 "(rather than leaking query info)")
