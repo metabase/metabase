@@ -2826,9 +2826,9 @@
      (let [;; Make the file-name unique so the table names don't collide
            csv-file-name     (str "example csv file " (random-uuid) ".csv")
            file              (upload-test/csv-file-with
-                              ["id, name"
-                               "1, Luke Skywalker"
-                               "2, Darth Vader"]
+                              ["name"
+                               "Luke Skywalker"
+                               "Darth Vader"]
                               csv-file-name)
            group-id          (u/the-id (perms-group/all-users))
            can-already-read? (mi/can-read? (mt/db))
@@ -2883,7 +2883,6 @@
                          (:initial_sync_status new-table))
                       "The table is synced and marked as complete")
                   (is (= #{["_mb_row_id" :type/PK]
-                           ["id"   :type/PK]
                            ["name" :type/Name]}
                          (->> (t2/select Field :table_id (:id new-table))
                               (map (fn [field] [(u/lower-case-en (:name field))
