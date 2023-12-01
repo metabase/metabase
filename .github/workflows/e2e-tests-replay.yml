@@ -3,7 +3,7 @@ name: E2E Tests using Replay.io browser
 on:
   # We'll record runs using Replay.io and their browser on a schedule as an experiment
   schedule:
-    - cron: '0 */3 * * *'
+    - cron: '0 */2 * * *'
 
 jobs:
   e2e-matrix-builder:
@@ -19,7 +19,7 @@ jobs:
 
 
   e2e-tests:
-    needs: [test-run-id, e2e-matrix-builder]
+    needs: e2e-matrix-builder
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     name: e2e-tests-${{ matrix.name }}-${{ matrix.edition }}
