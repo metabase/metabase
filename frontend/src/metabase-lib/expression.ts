@@ -21,12 +21,6 @@ export function expression(
   return ML.expression(query, stageIndex, expressionName, clause);
 }
 
-export function expressionName(
-  clause: AggregationClause | ExpressionClause,
-): string | null {
-  return ML.expression_name(clause);
-}
-
 export function withExpressionName<
   Clause extends AggregationClause | ExpressionClause,
 >(clause: Clause, newName: string): Clause {
