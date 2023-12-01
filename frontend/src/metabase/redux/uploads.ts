@@ -102,7 +102,7 @@ export const uploadFile = createThunkAction(
 interface UploadStartPayload {
   id: number;
   name: string;
-  collectionId: string;
+  collectionId: CollectionId;
 }
 
 interface UploadEndPayload {
