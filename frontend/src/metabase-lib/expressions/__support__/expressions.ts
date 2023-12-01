@@ -109,9 +109,7 @@ const database = createMockDatabase({
     "foreign-keys",
     "native-parameters",
     "expressions",
-    // TODO: uladzimir. Either fix a type of remove this feature
-    // Type '"advanced-math-expressions"' is not assignable to type 'DatabaseFeature'
-    // "advanced-math-expressions",
+    "advanced-math-expressions",
     "right-join",
     "left-join",
     "inner-join",
