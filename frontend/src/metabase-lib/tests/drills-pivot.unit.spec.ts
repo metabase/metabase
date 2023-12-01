@@ -198,7 +198,7 @@ describe.skip("drill-thru/pivot (metabase#33559)", () => {
       },
       breakouts: [
         {
-          column: createOrdersTotalDatasetColumn({
+          column: createOrdersCreatedAtDatasetColumn({
             source: "breakout",
           }),
           value: "2020-01-01",

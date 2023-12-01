@@ -314,5 +314,5 @@ export function createPivotCellClickObject({
 export function createLegendItemClickObject(
   dimension: Lib.ClickObjectDimension,
 ) {
-  return { value: dimension.value, dimensions: [dimension] };
+  return { dimensions: [dimension] };
 }
