@@ -72,21 +72,19 @@ export function AggregationPicker({
   onClose,
 }: AggregationPickerProps) {
   const metadata = useSelector(getMetadata);
+  const displayInfo = clause
+    ? Lib.displayInfo(query, stageIndex, clause)
+    : undefined;
   const initialOperator = getInitialOperator(query, stageIndex, operators);
   const [
     isEditingExpression,
     { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
-  ] = useToggle(
-    isExpressionEditorInitiallyOpen(query, stageIndex, clause, initialOperator),
-  );
+  ] = useToggle(isExpressionEditorInitiallyOpen(displayInfo, initialOperator));
   const datasetQuery = Lib.toLegacyQuery(query);
   const legacyQuery = new StructuredQuery(
     new Question({ dataset_query: datasetQuery }, metadata),
     datasetQuery,
   );
-  const displayInfo = clause
-    ? Lib.displayInfo(query, stageIndex, clause)
-    : undefined;
 
   // For really simple inline expressions like Average([Price]),
   // MLv2 can figure out that "Average" operator is used.
@@ -321,18 +319,11 @@ function getInitialOperator(
 }
 
 function isExpressionEditorInitiallyOpen(
-  query: Lib.Query,
-  stageIndex: number,
-  clause: Lib.AggregationClause | Lib.ExpressionClause | undefined,
+  displayInfo: Lib.ClauseDisplayInfo | undefined,
   initialOperator: Lib.AggregationOperator | null,
 ): boolean {
-  if (!clause) {
-    return false;
-  }
-
   const isCustomExpression = initialOperator === null;
-  const displayInfo = Lib.displayInfo(query, stageIndex, clause);
-  const hasCustomName = displayInfo.isNamed;
+  const hasCustomName = Boolean(displayInfo?.isNamed);
 
   return isCustomExpression || hasCustomName;
 }
