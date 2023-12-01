@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.public-test :as public-test]
-   [metabase.models :refer [Card Dashboard DashboardCard Field]]
+   [metabase.models :refer [Card Field]]
    [metabase.models.params :as params]
    [metabase.test :as mt]
    [toucan2.core :as t2]
