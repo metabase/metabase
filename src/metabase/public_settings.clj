@@ -113,34 +113,6 @@
   :visibility :public
   :audit      :getter)
 
-  ;; TODO: the settings on the BE will be done at the end, with help from the backend team
-(defsetting help-link
-  (deferred-tru "TODO")
-  :default    :default
-  :type       :keyword
-  :audit      :getter
-  :visibility :public)
-
-(defn- normalize-help-link-custom-destination [^String s]
-  (let [;; remove trailing slashes
-        s (str/replace s #"/$" "")
-        ;; add protocol if missing
-        s (if (str/starts-with? s "http")
-            s
-            (str "http://" s))]
-    ;; check that the URL is valid
-    (when-not (u/url? s)
-      (throw (ex-info (tru "Invalid URL: {0}" (pr-str s)) {:url (pr-str s)})))
-    s))
-
-(defsetting help-link-custom-destination
-  (deferred-tru "TODO")
-  :type       :string
-  :visibility :public
-  :setter     (fn [new-value]
-                (let [new-value (some-> new-value normalize-help-link-custom-destination)]
-                  (setting/set-value-of-type! :string :help-link-custom-destination new-value))))
-
 (defsetting dismissed-custom-dashboard-toast
   (deferred-tru "Toggle which is true after a user has dismissed the custom dashboard toast.")
   :user-local :only
