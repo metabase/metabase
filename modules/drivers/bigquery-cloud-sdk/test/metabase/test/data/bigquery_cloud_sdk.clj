@@ -69,7 +69,7 @@
 (defn- bigquery
   "Get an instance of a `Bigquery` client."
   ^BigQuery []
-  (#'bigquery/database->client {:details (test-db-details)}))
+  (#'bigquery/database-details->client (test-db-details)))
 
 (defn project-id
   "BigQuery project ID that we're using for tests, either from the env var `MB_BIGQUERY_TEST_PROJECT_ID`, or if that is
@@ -82,7 +82,10 @@
 
 (defmethod tx/dbdef->connection-details :bigquery-cloud-sdk
   [_driver _context {:keys [database-name]}]
-  (assoc (test-db-details) :dataset-id (test-dataset-id database-name) :include-user-id-and-hash true))
+  (assoc (test-db-details)
+         :dataset-filters-type "inclusion"
+         :dataset-filters-patterns (test-dataset-id database-name)
+         :include-user-id-and-hash true))
 
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------

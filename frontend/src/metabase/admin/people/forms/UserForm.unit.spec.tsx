@@ -230,5 +230,51 @@ describe("UserForm", () => {
         );
       });
     });
+
+    it("should should not change the order of the inputs when working with numbers (#35316)", async () => {
+      setup({
+        hasEnterprisePlugins: true,
+        initialValues: eeUser,
+      });
+
+      userEvent.click(await screen.findByText("Add an attribute"));
+
+      userEvent.type((await screen.findAllByPlaceholderText("Key"))[1], "1");
+
+      expect((await screen.findAllByPlaceholderText("Key"))[1]).toHaveValue(
+        "1",
+      );
+    });
+
+    it("should show errors messages and disable form submit when 2 login attributes have the same key (#30196)", async () => {
+      setup({
+        hasEnterprisePlugins: true,
+        initialValues: eeUser,
+      });
+
+      userEvent.click(await screen.findByText("Add an attribute"));
+
+      // We need a delay in typing into the form so that the error
+      // state is handled apropriately. Formik clears errors when you call
+      // setValue, so we need to ensure that no other setValue calls are in
+      // flight before typing the letter can causes the error.
+      await userEvent.type(
+        (
+          await screen.findAllByPlaceholderText("Key")
+        )[1],
+        "team",
+        { delay: 100 },
+      );
+
+      expect(
+        await screen.findAllByText("Attribute keys can't have the same name"),
+      ).toHaveLength(2);
+
+      await waitFor(async () =>
+        expect(
+          await screen.findByRole("button", { name: "Update" }),
+        ).toBeDisabled(),
+      );
+    });
   });
 });

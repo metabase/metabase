@@ -53,6 +53,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
@@ -148,21 +149,25 @@
                      card)))
             cards))))
 
-(defn hydrate-for-frontend
+(defn hydrate-card-details
   "Adds additional information to a `Card` selected with toucan that is needed by the frontend. This should be the same information
   returned by all API endpoints where the card entity is cached (i.e. GET, PUT, POST) since the frontend replaces the Card
   it currently has with returned one -- See #4283"
-  [card]
-  (-> card
-      (t2/hydrate :creator
-                  :dashboard_count
-                  :can_write
-                  :average_query_time
-                  :last_query_start
-                  [:collection :is_personal]
-                  [:moderation_reviews :moderator_details])
-      (cond-> ; card
-        (:dataset card) (t2/hydrate :persisted))))
+  [{card-id :id :as card}]
+  (span/with-span!
+    {:name       "hydrate-card-details"
+     :attributes {:card/id card-id}}
+    (-> card
+        (t2/hydrate :creator
+                    :dashboard_count
+                    :can_write
+                    :average_query_time
+                    :last_query_start
+                    :parameter_usage_count
+                    [:collection :is_personal]
+                    [:moderation_reviews :moderator_details])
+        (cond->                                             ; card
+          (:dataset card) (t2/hydrate :persisted)))))
 
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
@@ -172,9 +177,7 @@
   (let [raw-card (t2/select-one Card :id id)
         card (-> raw-card
                  api/read-check
-                 hydrate-for-frontend
-                 ;; Cal 2023-11-27: why is parameter_usage_count not hydrated for other endpoints? Maybe it should be
-                 (t2/hydrate :parameter_usage_count)
+                 hydrate-card-details
                  ;; Cal 2023-11-27: why is last-edit-info hydrated differently for GET vs PUT and POST
                  (last-edit/with-last-edit-info :card)
                  collection.root/hydrate-root-collection)]
@@ -413,7 +416,7 @@
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (collection/check-write-perms-for-collection collection_id)
   (-> (card/create-card! body @api/*current-user*)
-      hydrate-for-frontend
+      hydrate-card-details
       (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
 
 (api/defendpoint POST "/:id/copy"
@@ -424,7 +427,7 @@
         new-name  (str (trs "Copy of ") (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
     (-> (card/create-card! new-card @api/*current-user*)
-        hydrate-for-frontend
+        hydrate-card-details
         (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
@@ -494,7 +497,7 @@
       (u/prog1 (-> (card/update-card! {:card-before-update card-before-update
                                        :card-updates       card-updates
                                        :actor              @api/*current-user*})
-                   hydrate-for-frontend
+                   hydrate-card-details
                    (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
         (when timed-out?
           (log/info (trs "Metadata not available soon enough. Saving card {0} and asynchronously updating metadata" id))
@@ -907,7 +910,7 @@
                                :upload-seconds upload-seconds}
                               stats))
       (.delete csv-file)
-      (hydrate-for-frontend card))
+      (hydrate-card-details card))
     (catch Throwable e
       (snowplow/track-event! ::snowplow/csv-upload-failed
                              api/*current-user-id*
