@@ -91,6 +91,17 @@ export const COMPARISON_OPTIONS = {
   },
 };
 
+export type SelectedComparisonOption = {
+  type: string;
+  value?: number;
+};
+
+export type ComparisonOption = SelectedComparisonOption & {
+  name: string;
+  MenuItemComponent?: React.ComponentType<any>;
+  maxValue?: number;
+};
+
 export function getComparisonOptions(series, settings) {
   const [
     {
@@ -106,6 +117,17 @@ export function getComparisonOptions(series, settings) {
     return [COMPARISON_OPTIONS.COMPARE_TO_PREVIOUS];
   }
 
+  const options: ComparisonOption[] = [
+    COMPARISON_OPTIONS.COMPARE_TO_PREVIOUS,
+    {
+      ...COMPARISON_OPTIONS.PREVIOUS_PERIOD,
+      name: COMPARISON_OPTIONS.PREVIOUS_PERIOD.nameTemplate.replace(
+        PLACEHOLDER_STR,
+        dateUnit,
+      ),
+    },
+  ];
+
   // column locations for date and metric
   const dimensionIndex = cols.findIndex(col => isDate(col));
 
@@ -119,22 +141,18 @@ export function getComparisonOptions(series, settings) {
     dateUnit,
   );
 
-  return [
-    COMPARISON_OPTIONS.COMPARE_TO_PREVIOUS,
-    {
-      ...COMPARISON_OPTIONS.PREVIOUS_PERIOD,
-      name: COMPARISON_OPTIONS.PREVIOUS_PERIOD.nameTemplate.replace(
-        PLACEHOLDER_STR,
-        dateUnit,
-      ),
-    },
-    {
+  // only add this option is # number of selectable periods ago is >= 2
+  // since we already have an option for 1 period ago -> PREVIOUS_PERIOD
+  if (maxPeriodsAgo >= 2) {
+    options.push({
       ...COMPARISON_OPTIONS.PERIODS_AGO,
       name: COMPARISON_OPTIONS.PERIODS_AGO.nameTemplate.replace(
         PLACEHOLDER_STR,
         `${dateUnit}s`,
       ),
       maxValue: maxPeriodsAgo,
-    },
-  ];
+    });
+  }
+
+  return options;
 }

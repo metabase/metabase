@@ -10,21 +10,12 @@ import {
   StyledNumberInput,
 } from "./SmartScalarSettingsWidgets.styled";
 
-interface SelectedOption {
-  type: string;
-  value?: number;
-}
-
-type Option = SelectedOption & {
-  name: string;
-  MenuItemComponent?: React.ComponentType<any>;
-  maxValue?: number;
-};
+import type { ComparisonOption, SelectedComparisonOption } from "./utils";
 
 interface SmartScalarComparisonWidgetProps {
   onChange: (setting: { type: string; value?: number }) => void;
-  options: Option[];
-  value: SelectedOption;
+  options: ComparisonOption[];
+  value: SelectedComparisonOption;
 }
 
 export function SmartScalarComparisonWidget({
@@ -98,7 +89,7 @@ interface PeriodsAgoInputWidget {
   minValue: number;
   name: string;
   onChange: (setting: { type: string; value?: number }) => void;
-  selectedValue: SelectedOption;
+  selectedValue: SelectedComparisonOption;
   setOpen: (value: boolean) => void;
   type: string;
 }
@@ -115,13 +106,7 @@ export function PeriodsAgoInputWidget({
   const value = useMemo(() => {
     return selectedValue.value ? Number(selectedValue.value) : null;
   }, [selectedValue]);
-  const minValue = useMemo(() => {
-    if (maxValue <= 2) {
-      return maxValue;
-    }
-
-    return 2;
-  }, [maxValue]);
+  const minValue = 2;
 
   const [inputValue, setInputValue] = useState(value ?? minValue);
 
