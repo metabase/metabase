@@ -67,26 +67,24 @@
 (deftest kill-an-in-flight-query-test
   (mt/test-driver
    :mongo
-   (mt/dataset
-    sample-dataset
-    ;; Dummy query execution here. If the dataset was not initialized before running this test, the timing gets out of
-    ;; sync and test fails. I suspect dataset initialization happens after (or while) the future is executed.
-    ;; To overcome that next line is executed - and dataset initialization forced - before the test code runs.
-    (mt/run-mbql-query people {:limit 10})
-    (let [canceled-chan (a/chan)]
-      (with-redefs [qp.context/canceled-chan (constantly canceled-chan)]
-        (let [query (mt/mbql-query orders
-                                   {:aggregation [[:sum $total]],
-                                    :breakout [!month.created_at],
-                                    :order-by [[:asc !month.created_at]],
-                                    :joins [{:alias "People_User",
-                                             :strategy :left-join,
-                                             :condition
-                                             [:!= $user_id &People_User.people.id],
-                                             :source-table $$people}]})]
-          (future (Thread/sleep 500)
-                  (a/>!! canceled-chan ::streaming-response/request-canceled))
-          (testing "Cancel signal kills the in progress query"
-            (is (thrown-with-msg? Throwable
-                                  #"Command failed with error 11601.*operation was interrupted"
-                                  (qp/process-query query))))))))))
+   ;; Dummy query execution here. If the dataset was not initialized before running this test, the timing gets out of
+   ;; sync and test fails. I suspect dataset initialization happens after (or while) the future is executed.
+   ;; To overcome that next line is executed - and dataset initialization forced - before the test code runs.
+   (mt/run-mbql-query people {:limit 10})
+   (let [canceled-chan (a/chan)]
+     (with-redefs [qp.context/canceled-chan (constantly canceled-chan)]
+       (let [query (mt/mbql-query orders
+                                  {:aggregation [[:sum $total]],
+                                   :breakout [!month.created_at],
+                                   :order-by [[:asc !month.created_at]],
+                                   :joins [{:alias "People_User",
+                                            :strategy :left-join,
+                                            :condition
+                                            [:!= $user_id &People_User.people.id],
+                                            :source-table $$people}]})]
+         (future (Thread/sleep 500)
+                 (a/>!! canceled-chan ::streaming-response/request-canceled))
+         (testing "Cancel signal kills the in progress query"
+           (is (thrown-with-msg? Throwable
+                                 #"Command failed with error 11601.*operation was interrupted"
+                                 (qp/process-query query)))))))))
