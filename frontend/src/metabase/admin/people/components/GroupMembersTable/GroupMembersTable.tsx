@@ -1,15 +1,18 @@
-import { Fragment, useMemo } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { Tooltip } from "metabase/ui";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { getFullName } from "metabase/lib/user";
 import { Icon } from "metabase/core/components/Icon";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import PaginationControls from "metabase/components/PaginationControls";
+import Link from "metabase/core/components/Link";
 
 import User from "metabase/entities/users";
 
-import type { Group, Member, User as IUser } from "metabase-types/api";
+import { ApiKeysApi } from "metabase/services";
+import type { ApiKey, Group, Member, User as IUser } from "metabase-types/api";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import type { State } from "metabase-types/store";
 import { isNotNull } from "metabase/lib/types";
@@ -56,6 +59,14 @@ function GroupMembersTable({
   onPreviousPage,
   reload,
 }: GroupMembersTableProps) {
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+
+  useEffect(() => {
+    ApiKeysApi.list().then((apiKeys: ApiKey[]) =>
+      setApiKeys(apiKeys.filter(apiKey => apiKey.group.id === group.id)),
+    );
+  }, [group.id]);
+
   // you can't remove people from Default and you can't remove the last user from Admin
   const isCurrentUser = ({ id }: Partial<IUser>) => id === currentUserId;
   const canRemove = (user: IUser) =>
@@ -96,6 +107,9 @@ function GroupMembersTable({
             onDone={handleAddUser}
           />
         )}
+        {apiKeys.map((apiKey: ApiKey) => (
+          <ApiKeyRow key={`apiKey-${apiKey.id}`} apiKey={apiKey} />
+        ))}
         {groupUsers.map((user: IUser) => {
           return (
             <UserRow
@@ -205,3 +219,22 @@ function getName(user: IUser): string {
 
   return name;
 }
+
+const ApiKeyRow = ({ apiKey }: { apiKey: ApiKey }) => {
+  return (
+    <tr>
+      <td className="text-bold">{apiKey.name}</td>
+      <td></td>
+      <td className="text-right">
+        <Link to="/admin/settings/authentication/api-keys">
+          <Tooltip
+            label={t`Manage API keys on Settings \\ Authentication page`}
+            position="left"
+          >
+            <Icon name="link" size={16} />
+          </Tooltip>
+        </Link>
+      </td>
+    </tr>
+  );
+};
