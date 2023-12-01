@@ -95,12 +95,12 @@ class DashboardInner extends Component {
     });
 
     if (result.error) {
-      setErrorPage(result.payload);
+      p.setErrorPage(result.payload);
       return;
     }
 
     try {
-      if (editingOnLoad) {
+      if (p.editingOnLoad) {
         this.setEditing(this.props.dashboard);
       }
       if (p.addCardOnLoad != null) {
