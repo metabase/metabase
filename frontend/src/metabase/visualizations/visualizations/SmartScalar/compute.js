@@ -384,6 +384,10 @@ function getIndexOfPeriodsAgo({
   // comparison date
   const searchIndexEnd = rows.length - 2 - (dateUnitsAgo - 1);
 
+  if (searchIndexEnd < 0) {
+    return -1;
+  }
+
   for (let i = searchIndexStart; i >= searchIndexEnd; i--) {
     const row = rows[i];
     const rowDate = row[dimensionIndex];
