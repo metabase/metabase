@@ -22,8 +22,8 @@ import { measureTextWidth } from "metabase/lib/measure-text";
 import { formatValue } from "metabase/lib/formatting/value";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 import { isNumeric } from "metabase-lib/types/utils/isa";
-
 import { ScalarContainer } from "../Scalar/Scalar.styled";
+import { SmartScalarComparisonWidget } from "./SmartScalarSettingsWidgets";
 
 import {
   DASHCARD_HEADER_HEIGHT,
@@ -45,6 +45,8 @@ import {
   ScalarPeriodContent,
 } from "./SmartScalar.styled";
 import {
+  COMPARISON_OPTIONS,
+  getComparisonOptions,
   formatChangeAutoPrecision,
   getChangeWidth,
   getValueHeight,
@@ -261,7 +263,8 @@ Object.assign(SmartScalar, {
 
   settings: {
     ...fieldSetting("scalar.field", {
-      title: t`Field to show`,
+      section: "Data",
+      title: t`Primary number`,
       fieldFilter: isNumeric,
       getHidden: ([
         {
@@ -269,7 +272,25 @@ Object.assign(SmartScalar, {
         },
       ]) => cols.filter(isNumeric).length < 2,
     }),
+    "scalar.comparisons": {
+      section: "Data",
+      title: t`Comparisons`,
+      widget: SmartScalarComparisonWidget,
+      getDefault: (series, vizSettings) => ({
+        type: COMPARISON_OPTIONS.COMPARE_TO_PREVIOUS.type,
+      }),
+      getProps: (series, vizSettings) => ({
+        options: getComparisonOptions(series, vizSettings),
+      }),
+    },
+    "scalar.switch_positive_negative": {
+      section: "Display",
+      title: t`Switch positive / negative colors?`,
+      widget: "toggle",
+      inline: true,
+    },
     ...columnSettings({
+      section: "Display",
       getColumns: (
         [
           {
@@ -287,11 +308,6 @@ Object.assign(SmartScalar, {
       ],
       readDependencies: ["scalar.field"],
     }),
-    "scalar.switch_positive_negative": {
-      title: t`Switch positive / negative colors?`,
-      widget: "toggle",
-      inline: true,
-    },
     click_behavior: {},
   },
 
