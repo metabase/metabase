@@ -1,6 +1,7 @@
 (ns metabase.lib.drill-thru.quick-filter
   (:require
    [medley.core :as m]
+   [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
@@ -9,7 +10,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
-   [metabase.lib.stage :as lib.stage]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.malli :as mu]))
 
@@ -55,17 +55,14 @@
              (some? value) ; Deliberately allows value :null, only a missing value should fail this test.
              (not (lib.types.isa/primary-key? column))
              (not (lib.types.isa/foreign-key? column)))
-    ;; for aggregate columns, we want to introduce a new stage when applying the drill-thru, `:new-stage?` is used to
-    ;; track this. (#34346)
-    (let [{:keys [column new-stage?]} (if (= (:lib/source column) :source/aggregations)
-                                        {:column     (assoc column :lib/source :source/previous-stage)
-                                         :new-stage? true}
-                                        {:column    column
-                                         :new-stage? false})]
-      {:lib/type   :metabase.lib.drill-thru/drill-thru
-       :type       :drill-thru/quick-filter
-       :operators  (operators-for column value)
-       :new-stage? new-stage?})))
+    ;; For aggregate columns, we want to introduce a new stage when applying the drill-thru.
+    ;; [[lib.drill-thru.column-filter/filter-drill-adjusted-query]] handles this. (#34346)
+    (let [adjusted (lib.drill-thru.column-filter/filter-drill-adjusted-query query stage-number column)]
+      (merge {:lib/type   :metabase.lib.drill-thru/drill-thru
+              :type       :drill-thru/quick-filter
+              :operators  (operators-for (:column adjusted) value)
+              :value      value}
+             adjusted))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/quick-filter
   [_query _stage-number drill-thru]
@@ -73,16 +70,15 @@
    :operators (map :name (:operators drill-thru))})
 
 (mu/defmethod lib.drill-thru.common/drill-thru-method :drill-thru/quick-filter :- ::lib.schema/query
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   drill        :- ::lib.schema.drill-thru/drill-thru.quick-filter
-   filter-op    :- ::lib.schema.common/non-blank-string]
+  [_query                      :- ::lib.schema/query
+   _stage-number               :- :int
+   {:keys [query stage-number]
+    :as drill}                 :- ::lib.schema.drill-thru/drill-thru.quick-filter
+   filter-op                   :- ::lib.schema.common/non-blank-string]
   (let [quick-filter (or (m/find-first #(= (:name %) filter-op) (:operators drill))
                          (throw (ex-info (str "No matching filter for operator " filter-op)
                                          {:drill-thru   drill
                                           :operator     filter-op
                                           :query        query
-                                          :stage-number stage-number})))
-        query        (cond-> query
-                       (:new-stage? drill) lib.stage/append-stage)]
+                                          :stage-number stage-number})))]
     (lib.filter/filter query stage-number (:filter quick-filter))))

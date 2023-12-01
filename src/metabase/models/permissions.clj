@@ -1088,7 +1088,7 @@
 (defenterprise default-audit-collection
   "OSS implementation of `audit-db/default-audit-collection`, which is an enterprise feature, so does nothing in the OSS
   version."
-  metabase-enterprise.audit-db [] ::noop)
+  metabase-enterprise.audit-db [] nil)
 
 (defenterprise default-custom-reports-collection
   "OSS implementation of `audit-db/default-custom-reports-collection`, which is an enterprise feature, so does nothing in the OSS
@@ -1107,6 +1107,13 @@
       (throw (ex-info (tru
                        (str "Audit database permissions can only be changed by updating audit collection permissions."))
                       {:status-code 400})))))
+
+(defn audit-namespace-clause
+  "SQL clause to filter namespaces depending on if audit app is enabled or not, and if the namespace is the default one."
+  [namespace-keyword namespace-val]
+  (if (and (nil? namespace-val) (premium-features/enable-audit-app?))
+    [:or [:= namespace-keyword nil] [:= namespace-keyword "analytics"]]
+    [:= namespace-keyword namespace-val]))
 
 (defn is-collection-id-audit?
   "Check if an id is one of the audit collection ids."
