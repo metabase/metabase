@@ -46,7 +46,7 @@ describe("formatDateTimeRangeWithUnit", () => {
         if (compact) {
           const { output, input } = compact;
 
-          it(`should correctly compact format a ${unit} range ${inside}`, () => {
+          it(`(options.compact) should correctly compact format a ${unit} range ${inside}`, () => {
             const options = { compact: true };
 
             expect(formatDateTimeRangeWithUnit(input, unit, options)).toBe(
@@ -58,7 +58,7 @@ describe("formatDateTimeRangeWithUnit", () => {
         if (removedYear) {
           const { output, input } = removedYear;
 
-          it(`should correctly format a ${unit} range ${inside} with the year removed`, () => {
+          it(`(options.removeYear) should correctly format a ${unit} range ${inside} with the year removed`, () => {
             const options = { type: "tooltip", removeYear: true };
 
             expect(formatDateTimeRangeWithUnit(input, unit, options)).toBe(
@@ -70,7 +70,7 @@ describe("formatDateTimeRangeWithUnit", () => {
         if (removedDay) {
           const { output, input } = removedDay;
 
-          it(`should correctly format a ${unit} range ${inside} with the day removed`, () => {
+          it(`(options.removeDay) should correctly format a ${unit} range ${inside} with the day removed`, () => {
             const options = { type: "tooltip", removeDay: true };
 
             expect(formatDateTimeRangeWithUnit(input, unit, options)).toBe(
