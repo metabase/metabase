@@ -56,9 +56,6 @@ function setup(step = createMockNotebookStep()) {
   render(
     <BreakoutStep
       step={step}
-      stageIndex={step.stageIndex}
-      query={step.query}
-      topLevelQuery={step.topLevelQuery}
       color="summarize"
       isLastOpened={false}
       reportTimezone="UTC"

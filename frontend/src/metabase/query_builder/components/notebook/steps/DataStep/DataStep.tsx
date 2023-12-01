@@ -14,19 +14,17 @@ import { FieldsPickerIcon, FIELDS_PICKER_STYLES } from "../../FieldsPickerIcon";
 import { DataStepCell } from "./DataStep.styled";
 
 export const DataStep = ({
-  topLevelQuery,
-  query,
   step,
   readOnly,
   color,
   updateQuery,
 }: NotebookStepUiComponentProps) => {
-  const { stageIndex } = step;
+  const { stageIndex, query: legacyQuery, topLevelQuery } = step;
 
-  const question = query.question();
+  const question = legacyQuery.question();
   const metadata = question.metadata();
   const collectionId = question.collectionId();
-  const tableId = query.sourceTableId();
+  const tableId = legacyQuery.sourceTableId();
 
   const databaseId = Lib.databaseID(topLevelQuery);
   const table = tableId

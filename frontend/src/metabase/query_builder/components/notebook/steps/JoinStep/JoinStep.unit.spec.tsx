@@ -134,10 +134,10 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
 
     return (
       <JoinStep
-        step={step}
-        query={step.query}
-        stageIndex={step.stageIndex}
-        topLevelQuery={query}
+        step={{
+          ...step,
+          topLevelQuery: query,
+        }}
         color="brand"
         isLastOpened={false}
         readOnly={readOnly}
@@ -560,7 +560,7 @@ describe("Notebook Editor > Join Step", () => {
         column => Lib.displayInfo(query, 0, column).name === "PRICE",
       );
       expect(columns).not.toHaveLength(0);
-      expect(vendor).not.toBeUndefined();
+      expect(vendor).toBeDefined();
       expect(category).toBeUndefined();
       expect(price).toBeUndefined();
     });

@@ -6,27 +6,28 @@ import type { NotebookStepUiComponentProps } from "../types";
 import ClauseStep from "./ClauseStep";
 
 function FilterStep({
-  query,
+  step,
   color,
   isLastOpened,
   readOnly,
   updateQuery,
 }: NotebookStepUiComponentProps) {
+  const { query: legacyQuery } = step;
   return (
     <ClauseStep
       color={color}
       initialAddText={t`Add filters to narrow your answer`}
-      items={query.filters()}
+      items={legacyQuery.filters()}
       renderName={item => item.displayName()}
       readOnly={readOnly}
       renderPopover={filter => (
         <FilterPopover
-          query={query}
+          query={legacyQuery}
           filter={filter}
           onChangeFilter={newFilter =>
             filter
               ? updateQuery(filter.replace(newFilter))
-              : updateQuery(query.filter(newFilter))
+              : updateQuery(legacyQuery.filter(newFilter))
           }
         />
       )}

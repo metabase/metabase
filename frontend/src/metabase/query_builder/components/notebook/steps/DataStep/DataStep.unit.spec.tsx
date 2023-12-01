@@ -52,9 +52,6 @@ const setup = async (
   renderWithProviders(
     <DataStep
       step={step}
-      topLevelQuery={step.topLevelQuery}
-      stageIndex={step.stageIndex}
-      query={step.query}
       readOnly={readOnly}
       color="brand"
       isLastOpened={false}

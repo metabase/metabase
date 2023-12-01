@@ -5,14 +5,14 @@ import ClauseStep from "./ClauseStep";
 
 const ExpressionStep = ({
   color,
-  query: legacyQuery,
-  topLevelQuery: query,
-  stageIndex,
   updateQuery,
   isLastOpened,
   reportTimezone,
   readOnly,
+  step,
 }: NotebookStepUiComponentProps): JSX.Element => {
+  const { stageIndex, topLevelQuery: query, query: legacyQuery } = step;
+
   const items = Object.entries(legacyQuery.expressions()).map(
     ([name, expression]) => ({ name, expression }),
   );

@@ -26,14 +26,13 @@ import {
 } from "./JoinStep.styled";
 
 export function JoinStep({
-  topLevelQuery: query,
   step,
   color,
   readOnly,
   sourceQuestion,
   updateQuery,
 }: NotebookStepUiComponentProps) {
-  const { stageIndex, itemIndex } = step;
+  const { stageIndex, itemIndex, topLevelQuery: query } = step;
 
   const joins = Lib.joins(query, stageIndex);
   const join = typeof itemIndex === "number" ? joins[itemIndex] : undefined;

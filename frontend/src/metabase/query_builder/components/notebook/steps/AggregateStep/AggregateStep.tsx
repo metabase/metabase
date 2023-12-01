@@ -19,15 +19,13 @@ const aggTetherOptions = {
 };
 
 export function AggregateStep({
-  query: legacyQuery,
-  topLevelQuery,
   step,
   color,
   isLastOpened,
   readOnly,
   updateQuery,
 }: NotebookStepUiComponentProps) {
-  const { stageIndex } = step;
+  const { stageIndex, topLevelQuery, query: legacyQuery } = step;
 
   const clauses = useMemo(() => {
     return Lib.aggregations(topLevelQuery, stageIndex);

@@ -7,7 +7,7 @@ import { StepContainer, StepLabel, StepRoot } from "./SummarizeStep.styled";
 
 function SummarizeStep({
   color,
-  query,
+  step,
   isLastOpened,
   ...props
 }: NotebookStepUiComponentProps) {
@@ -16,7 +16,7 @@ function SummarizeStep({
       <StepContainer>
         <AggregateStep
           color={color}
-          query={query}
+          step={step}
           isLastOpened={isLastOpened}
           {...props}
         />
@@ -25,7 +25,7 @@ function SummarizeStep({
       <StepContainer>
         <BreakoutStep
           color={color}
-          query={query}
+          step={step}
           isLastOpened={false}
           {...props}
         />
