@@ -5,9 +5,9 @@ import { Button, Group, Menu, Stack, Text, Box } from "metabase/ui";
 import { isEmpty } from "metabase/lib/validate";
 import { COMPARISON_OPTIONS } from "./utils";
 import {
-  StyledMenuItem,
-  StyledMenuTarget,
-  StyledNumberInput,
+  MenuItemStyled,
+  MenuTargetStyled,
+  NumberInputStyled,
 } from "./SmartScalarSettingsWidgets.styled";
 
 import type { ComparisonOption, SelectedComparisonOption } from "./utils";
@@ -38,14 +38,14 @@ export function SmartScalarComparisonWidget({
 
   return (
     <Menu opened={open} onChange={setOpen} position="bottom-start" shadow="sm">
-      <StyledMenuTarget>
+      <MenuTargetStyled>
         <Button pr="0" pl="1rem" disabled={isDisabled}>
           <Group spacing="sm">
             <span>{selectedName}</span>
             <Icon name="chevrondown" size="14" />
           </Group>
         </Button>
-      </StyledMenuTarget>
+      </MenuTargetStyled>
 
       <Menu.Dropdown miw="18.25rem">
         <Stack spacing="sm">
@@ -66,7 +66,7 @@ export function SmartScalarComparisonWidget({
             }
 
             return (
-              <StyledMenuItem
+              <MenuItemStyled
                 key={type}
                 isSelected={selectedOption?.type === type}
                 onClick={() => onChange({ type })}
@@ -74,7 +74,7 @@ export function SmartScalarComparisonWidget({
                 <Text fw="bold" ml="0.5rem">
                   {name}
                 </Text>
-              </StyledMenuItem>
+              </MenuItemStyled>
             );
           })}
         </Stack>
@@ -164,11 +164,11 @@ export function PeriodsAgoInputWidget({
   );
 
   return (
-    <StyledMenuItem py="0.25rem" isSelected={isSelected}>
+    <MenuItemStyled py="0.25rem" isSelected={isSelected}>
       <Box onClick={handleButtonClick} onMouseDown={handleParentMouseDown}>
         <Group position="apart" px="0.5rem">
           <Text fw="bold">{`${inputValue} ${name}`}</Text>
-          <StyledNumberInput
+          <NumberInputStyled
             value={inputValue}
             onChange={(value: number) => setInputValue(value)}
             onMouseDown={handleChildMouseDownAndUp}
@@ -177,9 +177,9 @@ export function PeriodsAgoInputWidget({
             w="3.5rem"
             type="number"
             required
-          ></StyledNumberInput>
+          ></NumberInputStyled>
         </Group>
       </Box>
-    </StyledMenuItem>
+    </MenuItemStyled>
   );
 }

@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import type { MouseEvent } from "react";
 import { Menu, NumberInput } from "metabase/ui";
 
-export const StyledMenuTarget = styled(Menu.Target)`
+export const MenuTargetStyled = styled(Menu.Target)`
   width: 100%;
 
   .emotion-Button-label {
@@ -11,7 +11,7 @@ export const StyledMenuTarget = styled(Menu.Target)`
   }
 `;
 
-export const StyledMenuItem = styled(Menu.Item)<{
+export const MenuItemStyled = styled(Menu.Item)<{
   onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
   isSelected?: boolean;
   py?: string;
@@ -23,7 +23,7 @@ export const StyledMenuItem = styled(Menu.Item)<{
     background-color: ${theme.colors.brand[0]};`}
 `;
 
-export const StyledNumberInput = styled(NumberInput)`
+export const NumberInputStyled = styled(NumberInput)`
   .emotion-Input-wrapper {
     margin-top: 0;
   }
