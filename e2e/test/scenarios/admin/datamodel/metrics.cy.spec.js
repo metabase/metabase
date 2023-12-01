@@ -122,7 +122,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.wait("@dataset");
 
       // verify popover is closed, otherwise its state will reset
-      cy.findByRole("grid").findByText("Custom Expression").should("not.exist");
+      cy.findByRole("grid").should("not.exist");
 
       cy.get(".GuiBuilder").findByText("Result: 93.8");
 
