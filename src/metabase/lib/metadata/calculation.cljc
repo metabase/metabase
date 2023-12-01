@@ -278,6 +278,8 @@
               [:map
                [:display-name :string]
                [:long-display-name {:optional true} :string]
+               ;; for things with user specified names
+               [:named? {:optional true} :boolean]
    ;; for things that have a Table, e.g. a Field
                [:table {:optional true} [:maybe [:ref ::display-info]]]
    ;; these are derived from the `:lib/source`/`:metabase.lib.schema.metadata/column-source`, but instead of using
