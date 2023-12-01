@@ -287,8 +287,8 @@
 
 (mr/def ::context
   [:map
-   [:column     [:ref ::lib.schema.metadata/column]]
-   [:column-ref [:ref ::lib.schema.ref/ref]]
+   [:column     [:maybe [:ref ::lib.schema.metadata/column]]]
+   [:column-ref [:maybe [:ref ::lib.schema.ref/ref]]]
    [:value      [:maybe :any]]
    [:row        {:optional true} [:ref ::context.row]]
    [:dimensions {:optional true} [:maybe [:ref ::context.row]]]])
