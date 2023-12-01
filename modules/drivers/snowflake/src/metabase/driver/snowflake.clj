@@ -459,7 +459,7 @@
                                  table-name)
                (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))
      (catch SnowflakeSQLException e
-       ;; dynamic tables doesn't support pks and it'll throw an error if you try to get one
+       ;; dynamic tables doesn't support pks so it's fine to suppress the exception
        (if (= "DYNAMIC_TABLE"
               (-> (.getTables metadata db-name-or-nil schema-name table-name nil)
                   jdbc/result-set-seq first :table_type))
@@ -485,7 +485,7 @@
                                                                       :schema (.getString rs "PKTABLE_SCHEM")}
                                                    :dest-column-name (.getString rs "PKCOLUMN_NAME")}))))
      (catch SnowflakeSQLException e
-       ;; dynamic tables doesn't support fks and it'll throw an error if you try to get one
+       ;; dynamic tables doesn't support kks so it's fine to suppress the exception
        (if (= "DYNAMIC_TABLE"
               (-> (.getTables metadata db-name-or-nil schema-name table-name nil)
                   jdbc/result-set-seq first :table_type))
