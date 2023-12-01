@@ -51,6 +51,7 @@ import {
   getChangeWidth,
   getValueHeight,
   getValueWidth,
+  isComparisonValid,
   isPeriodVisible,
 } from "./utils";
 import { computeTrend, PREVIOUS_VALUE_OPTIONS } from "./compute";
@@ -276,6 +277,7 @@ Object.assign(SmartScalar, {
       section: "Data",
       title: t`Comparisons`,
       widget: SmartScalarComparisonWidget,
+      isValid: (series, vizSettings) => isComparisonValid(series, vizSettings),
       getDefault: (series, vizSettings) => ({
         type: COMPARISON_OPTIONS.COMPARE_TO_PREVIOUS.type,
       }),

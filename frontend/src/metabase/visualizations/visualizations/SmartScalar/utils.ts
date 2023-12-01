@@ -72,7 +72,7 @@ export const COMPARISON_TYPES = {
   COMPARE_TO_PREVIOUS: "previousValue",
   PREVIOUS_PERIOD: "previousPeriod",
   PERIODS_AGO: "periodsAgo",
-};
+} as const;
 
 const PLACEHOLDER_STR = "[placeholder]";
 export const COMPARISON_OPTIONS = {
@@ -89,17 +89,6 @@ export const COMPARISON_OPTIONS = {
     type: COMPARISON_TYPES.COMPARE_TO_PREVIOUS,
     name: "Compare to previous",
   },
-};
-
-export type SelectedComparisonOption = {
-  type: string;
-  value?: number;
-};
-
-export type ComparisonOption = SelectedComparisonOption & {
-  name: string;
-  MenuItemComponent?: React.ComponentType<any>;
-  maxValue?: number;
 };
 
 export function getComparisonOptions(series, settings) {
@@ -128,18 +117,7 @@ export function getComparisonOptions(series, settings) {
     },
   ];
 
-  // column locations for date and metric
-  const dimensionIndex = cols.findIndex(col => isDate(col));
-
-  const latestNonEmptyRow = rows.findLast(row => !isEmpty(row[dimensionIndex]));
-  const latestNonEmptyDate = latestNonEmptyRow[dimensionIndex];
-  const earliestNonEmptyRow = rows.find(row => !isEmpty(row[dimensionIndex]));
-  const earliestNonEmptyDate = earliestNonEmptyRow[dimensionIndex];
-
-  const maxPeriodsAgo = dayjs(latestNonEmptyDate).diff(
-    earliestNonEmptyDate,
-    dateUnit,
-  );
+  const maxPeriodsAgo = getMaxPeriodsAgo({ cols, rows, dateUnit });
 
   // only add this option is # number of selectable periods ago is >= 2
   // since we already have an option for 1 period ago -> PREVIOUS_PERIOD
@@ -156,3 +134,68 @@ export function getComparisonOptions(series, settings) {
 
   return options;
 }
+
+export function isComparisonValid(series, settings) {
+  const [
+    {
+      data: { cols, insights, rows },
+    },
+  ] = series;
+
+  const comparison: SelectedComparisonOption = settings["scalar.comparisons"];
+
+  const dateUnit = insights?.find(
+    insight => insight.col === settings["scalar.field"],
+  )?.unit;
+
+  if (isEmpty(dateUnit)) {
+    return false;
+  }
+
+  // ! check with product + design to see if we want to over-ride this setting
+  // * or not in this case
+  if (comparison.type === COMPARISON_TYPES.PERIODS_AGO) {
+    const selectedPeriodsAgo = comparison.value;
+    const maxPeriodsAgo = getMaxPeriodsAgo({ cols, rows, dateUnit });
+
+    if (selectedPeriodsAgo > maxPeriodsAgo) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function getMaxPeriodsAgo({ cols, rows, dateUnit }) {
+  // column locations for date and metric
+  const dimensionIndex = cols.findIndex(col => isDate(col));
+
+  const latestNonEmptyRow = rows.findLast(row => !isEmpty(row[dimensionIndex]));
+  const latestNonEmptyDate = latestNonEmptyRow[dimensionIndex];
+  const earliestNonEmptyRow = rows.find(row => !isEmpty(row[dimensionIndex]));
+  const earliestNonEmptyDate = earliestNonEmptyRow[dimensionIndex];
+
+  return dayjs(latestNonEmptyDate).diff(earliestNonEmptyDate, dateUnit);
+}
+
+export type SelectedComparisonOption =
+  | {
+      type: typeof COMPARISON_TYPES.COMPARE_TO_PREVIOUS;
+    }
+  | {
+      type: typeof COMPARISON_TYPES.PREVIOUS_PERIOD;
+    }
+  | {
+      type: typeof COMPARISON_TYPES.PERIODS_AGO;
+      value: number;
+    };
+
+export type ComparisonOption = {
+  type:
+    | typeof COMPARISON_TYPES.COMPARE_TO_PREVIOUS
+    | typeof COMPARISON_TYPES.PREVIOUS_PERIOD
+    | typeof COMPARISON_TYPES.PERIODS_AGO;
+  name: string;
+  MenuItemComponent?: React.ComponentType<any>;
+  maxValue?: number;
+};
