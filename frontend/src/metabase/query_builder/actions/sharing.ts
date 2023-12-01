@@ -1,19 +1,23 @@
 import { createAction } from "redux-actions";
+import type { Card, CardId } from "metabase-types/api";
+import type { EmbedOptions } from "metabase-types/store";
 import { CardApi } from "metabase/services";
+
+type CardIdPayload = {
+  id: CardId;
+};
 
 export const CREATE_PUBLIC_LINK = "metabase/card/CREATE_PUBLIC_LINK";
 
 export const createPublicLink = createAction(
   CREATE_PUBLIC_LINK,
-  /**
-   * @param {import("metabase-types/api").Card} payload - The dashboard to create a public link for
-   *
-   * @returns {Promise<{
-   *     id: import("metabase-types/api").CardId,
-   *     uuid: string,
-   * }>} Resolves to the dashboard id and its corresponding public uuid
-   */
-  ({ id }) => {
+  ({
+    id,
+  }: Card): Promise<
+    CardIdPayload & {
+      uuid: Card["public_uuid"];
+    }
+  > => {
     return CardApi.createPublicLink({ id });
   },
 );
@@ -22,20 +26,19 @@ export const DELETE_PUBLIC_LINK = "metabase/card/DELETE_PUBLIC_LINK";
 
 export const deletePublicLink = createAction(
   DELETE_PUBLIC_LINK,
-  /**
-   * @param {import("metabase-types/api").Card} payload - The card to create a public link for
-   */
-  ({ id }) => CardApi.deletePublicLink({ id }),
+  ({ id }: CardIdPayload) => CardApi.deletePublicLink({ id }),
 );
 
 export const UPDATE_ENABLE_EMBEDDING = "metabase/card/UPDATE_ENABLE_EMBEDDING";
 export const updateEnableEmbedding = createAction(
   UPDATE_ENABLE_EMBEDDING,
-  ({ id }, enable_embedding) => CardApi.update({ id, enable_embedding }),
+  ({ id }: CardIdPayload, enable_embedding: boolean) =>
+    CardApi.update({ id, enable_embedding }),
 );
 
 export const UPDATE_EMBEDDING_PARAMS = "metabase/card/UPDATE_EMBEDDING_PARAMS";
 export const updateEmbeddingParams = createAction(
   UPDATE_EMBEDDING_PARAMS,
-  ({ id }, embedding_params) => CardApi.update({ id, embedding_params }),
+  ({ id }: CardIdPayload, embedding_params: EmbedOptions) =>
+    CardApi.update({ id, embedding_params }),
 );
