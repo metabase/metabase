@@ -434,6 +434,8 @@
                               {:fields [$id $last_login]
                                :filter [:time-interval $last_login -500 :day {:include-current false}]})
               compiled-sql (-> query-to-cache qp/compile :query)]
+          ;; BEWARE: Following expression has a flake potential. If that happens, see the discussion in attached link
+          ;;         for more info. https://github.com/metabase/metabase/pull/35995#discussion_r1409850657
           (dotimes [_ 2]
             (qp/process-query query-to-cache))
           (let [last-queries (last-queries-of-a-session sid)
@@ -527,14 +529,15 @@
      (mt/with-report-timezone-id "America/New_York"
        (mt/with-system-timezone-id "UTC"
          (mt/with-clock (t/zoned-date-time (t/local-date-time 2014 8 10 0 30 1 0) "UTC")
-           (is (= (-> (mt/run-mbql-query
-                       test_data_users
-                       {:filter [:and
-                                 [:>= $last_login [:relative-datetime -1 :week]]
-                                 [:< $last_login [:relative-datetime 0 :week]]]
-                        :order-by [[:asc $last_login]]})
-                      mt/rows)
-                  [[13 "Dwight Gresham" "2014-08-01T10:30:00-04:00" "75a1ebf1-cae7-4a50-8743-32d97500f2cf"]
-                   [15 "Rüstem Hebel" "2014-08-01T12:45:00-04:00" "02ad6b15-54b0-4491-bf0f-d781b0a2c4f5"]
-                   [7 "Conchúr Tihomir" "2014-08-02T09:30:00-04:00" "900335ad-e03b-4259-abc7-76aac21cedca"]
-                   [6 "Shad Ferdynand" "2014-08-02T12:30:00-04:00" "d35c9d78-f9cf-4f52-b1cc-cb9078eebdcb"]]))))))))
+           (is (= [[13 "Dwight Gresham" "2014-08-01T10:30:00-04:00"]
+                   [15 "Rüstem Hebel" "2014-08-01T12:45:00-04:00"]
+                   [7 "Conchúr Tihomir" "2014-08-02T09:30:00-04:00"]
+                   [6 "Shad Ferdynand" "2014-08-02T12:30:00-04:00"]]
+                  (->> (mt/run-mbql-query
+                        test_data_users
+                        {:fields [$id $name $last_login]
+                         :filter [:and
+                                  [:>= $last_login [:relative-datetime -1 :week]]
+                                  [:< $last_login [:relative-datetime 0 :week]]]
+                         :order-by [[:asc $last_login]]})
+                       (mt/formatted-rows [int str str]))))))))))
