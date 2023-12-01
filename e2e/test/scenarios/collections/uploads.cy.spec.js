@@ -197,7 +197,7 @@ describeWithSnowplow(
 );
 
 describe("permissions", () => {
-  it("should not snow you upload buttons if you are a sandboxed user", () => {
+  it("should not show you upload buttons if you are a sandboxed user", () => {
     restore("postgres-12");
     cy.signInAsAdmin();
 
