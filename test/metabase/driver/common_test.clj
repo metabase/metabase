@@ -1,12 +1,10 @@
 (ns metabase.driver.common-test
   (:require
-   [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.util :as driver.u]
    [metabase.models.setting :as setting]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]))
 
 (deftest ^:parallel base-type-inference-test
@@ -56,7 +54,6 @@
 (deftest cloud-ip-address-info-test
   (testing "The cloud-ip-address-info field is correctly resolved when fetching driver connection properties"
     (with-redefs [premium-features/is-hosted? (constantly true)]
-      (memoize/memo-clear! @#'public-settings/fetch-cloud-gateway-ips-fn)
       ;; make sure Postgres driver is initialized before trying to get its connection properties.
       (driver/the-initialized-driver :postgres)
       (let [connection-props (-> (driver.u/available-drivers-info)
