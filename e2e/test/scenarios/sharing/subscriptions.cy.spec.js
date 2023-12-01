@@ -69,13 +69,13 @@ describe("scenarios > dashboard > subscriptions", () => {
   describe("sidebar toggling behavior", () => {
     it("should allow toggling the sidebar", () => {
       openDashboardSubscriptions();
-      cy.findByLabelText("subscriptions").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Email it");
       cy.findByLabelText("subscriptions").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Email it").should("not.exist");
+      cy.findByLabelText("subscriptions").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Email it");
     });
   });
 
