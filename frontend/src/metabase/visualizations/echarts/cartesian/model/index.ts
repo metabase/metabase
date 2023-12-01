@@ -32,10 +32,9 @@ export const getCardsColumns = (
   });
 };
 
-export const getCardsSeries = (
+export const getCardsSeriesModels = (
   rawSeries: RawSeries,
   cardsColumns: CartesianChartColumns[],
-  settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ) => {
   return rawSeries.flatMap((cardDataset, index) => {
@@ -59,10 +58,9 @@ export const getCartesianChartModel = (
   const cardsColumns = getCardsColumns(rawSeries, settings);
 
   const dimensionModel = getDimensionModel(rawSeries, cardsColumns);
-  const seriesModels = getCardsSeries(
+  const seriesModels = getCardsSeriesModels(
     rawSeries,
     cardsColumns,
-    settings,
     renderingContext,
   );
 
@@ -71,12 +69,12 @@ export const getCartesianChartModel = (
 
   const yAxisSplit: AxisSplit = [seriesDataKeys, []];
 
-  const [leftSeries, rightSeries] = yAxisSplit;
+  const [leftSeriesDataKeys, rightSeriesDataKeys] = yAxisSplit;
   const leftAxisColumn = seriesModels.find(
-    seriesModel => seriesModel.dataKey === leftSeries[0],
+    seriesModel => seriesModel.dataKey === leftSeriesDataKeys[0],
   )?.column;
   const rightAxisColumn = seriesModels.find(
-    seriesModel => seriesModel.dataKey === rightSeries[0],
+    seriesModel => seriesModel.dataKey === rightSeriesDataKeys[0],
   )?.column;
 
   return {

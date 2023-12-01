@@ -34,7 +34,7 @@ export const sumMetric = (left: RowValue, right: RowValue): number | null => {
  */
 export const getDatasetKey = (
   column: DatasetColumn,
-  cardId?: number,
+  cardId: number | undefined,
   breakoutValue?: RowValue,
 ): string => {
   const cardIdPart = cardId != null ? `${cardId}:` : "";
@@ -84,7 +84,7 @@ const aggregateMetricsForDatum = (
  * of each card.
  *
  * @param {RawSeries} rawSeries - An array of raw cards merged with raw datasets.
- * @param {CartesianChartColumns[]} cardsColumns - The columns of each card.
+ * @param {CartesianChartColumns[]} cardsColumns - The column descriptors of each card.
  * @returns {Record<DataKey, RowValue>[]} The aggregated dataset.
  */
 export const getJoinedCardsDataset = (
