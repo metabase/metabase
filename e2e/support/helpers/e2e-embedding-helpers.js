@@ -149,7 +149,7 @@ export function createPublicLinkDropdown(resourceType) {
   );
 }
 
-export function openPublicLinkDropdown({ isAdmin = true }) {
+export function openPublicLinkDropdown({ isAdmin = true } = {}) {
   cy.icon("share").click();
   if (isAdmin) {
     cy.findByTestId("embed-header-menu")
