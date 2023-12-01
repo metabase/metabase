@@ -43,7 +43,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
     });
 
     it(
-      "should default to saving saving audit content in custom reports collection",
+      "should default to saving audit content in custom reports collection",
       { tags: "@flaky" },
       () => {
         cy.log("saving edited question");
@@ -104,7 +104,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
         cy.log("saving copied dashboard");
 
         getItemId(ANALYTICS_COLLECTION_NAME, "Person overview").then(id => {
-          visitModel(id);
+          visitDashboard(id);
         });
 
         cy.findByTestId("dashboard-header").findByText("Make a copy").click();
@@ -120,7 +120,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
       },
     );
 
-    it.only("should not allow moving or archiving analytics collections", () => {
+    it("should not allow moving or archiving analytics collections", () => {
       cy.log(
         "**-- Custom Reports collection should not be archivable or movable --**",
       );
@@ -154,9 +154,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
       );
       visitCollection(ANALYTICS_COLLECTION_NAME);
 
-      cy.findByTestId("collection-menu")
-        .icon("ellipsis")
-        .should('not.exist');
+      cy.findByTestId("collection-menu").icon("ellipsis").should("not.exist");
 
       visitCollection("Our analytics");
 
@@ -176,7 +174,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
       });
     });
 
-    it.skip("should not allow editing analytics content (metabase#36228)", () => {
+    it("should not allow editing analytics content (metabase#36228)", () => {
       // dashboard
       getItemId(ANALYTICS_COLLECTION_NAME, METRICS_DASHBOARD_NAME).then(id => {
         visitDashboard(id);
@@ -192,12 +190,10 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
         visitModel(id);
       });
 
-      cy.findByTestId("qb-header").within(() => {
-        cy.icon("ellipsis").click();
-      });
+      cy.findByTestId("qb-header").icon("ellipsis").click();
 
       popover().within(() => {
-        cy.findByText("duplicate").should("be.visible");
+        cy.findByText("Duplicate").should("be.visible");
         cy.findByText("Edit query definition").should("not.exist");
       });
     });
@@ -215,7 +211,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
       setTokenFeatures("all");
     });
 
-    it.skip("should not allow editing analytics content (metabase#36228)", () => {
+    it("should not allow editing analytics content (metabase#36228)", () => {
       // get the analytics collection
       cy.request("GET", "/api/collection/root/items").then(({ body }) => {
         const analyticsCollection = body.data.find(
