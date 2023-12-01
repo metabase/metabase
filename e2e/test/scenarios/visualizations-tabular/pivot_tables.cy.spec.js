@@ -11,7 +11,7 @@ import {
   main,
   modal,
   openPublicLinkDropdown,
-  openEmbeddingSettingsPage,
+  openStaticEmbeddingModal,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -701,7 +701,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
 
         it("should display pivot table in an embed URL", () => {
-          openEmbeddingSettingsPage();
+          openStaticEmbeddingModal();
 
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Publish").click();

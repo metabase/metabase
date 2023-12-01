@@ -28,8 +28,8 @@ export const DashboardPublicLinkPopover = ({
   const createPublicDashboardLink = async () => {
     await dispatch(createPublicLink(dashboard));
   };
-  const deletePublicDashboardLink = async () => {
-    await dispatch(deletePublicLink(dashboard));
+  const deletePublicDashboardLink = () => {
+    dispatch(deletePublicLink(dashboard));
   };
 
   return (

@@ -7,7 +7,7 @@ import {
   visitIframe,
   getDashboardCard,
   addOrUpdateDashboardCard,
-  openEmbeddingSettingsPage,
+  openStaticEmbeddingModal,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -51,7 +51,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         visitDashboard(dashboardId);
       });
 
-      openEmbeddingSettingsPage();
+      openStaticEmbeddingModal();
 
       cy.findByRole("heading", { name: "Parameters" })
         .parent()
@@ -132,7 +132,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         visitDashboard(dashboardId);
       });
 
-      openEmbeddingSettingsPage();
+      openStaticEmbeddingModal();
 
       cy.get("@allParameters").findByText("Locked").click();
       popover().contains("Disabled").click();
@@ -351,7 +351,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
   });
 
   it("card parameter defaults should apply for disabled parameters, but not for editable or locked parameters", () => {
-    openEmbeddingSettingsPage();
+    openStaticEmbeddingModal();
     // ID param is disabled by default
     setParameter("Name", "Editable");
     setParameter("Source", "Locked");

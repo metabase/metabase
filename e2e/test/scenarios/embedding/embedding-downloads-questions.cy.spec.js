@@ -1,7 +1,7 @@
 import {
   describeEE,
   filterWidget,
-  openEmbeddingSettingsPage,
+  openStaticEmbeddingModal,
   popover,
   restore,
   setTokenFeatures,
@@ -43,7 +43,7 @@ describeEE("scenarios > embedding > questions > downloads", () => {
     it("should not be possible to disable downloads", () => {
       cy.get("@questionId").then(questionId => {
         visitQuestion(questionId);
-        openEmbeddingSettingsPage();
+        openStaticEmbeddingModal();
 
         cy.log(
           "Embedding settings page should not show option to disable downloads",
@@ -102,7 +102,7 @@ describeEE("scenarios > embedding > questions > downloads", () => {
     it("should be possible to disable downloads", () => {
       cy.get("@questionId").then(questionId => {
         visitQuestion(questionId);
-        openEmbeddingSettingsPage();
+        openStaticEmbeddingModal();
 
         cy.log("Disable downloads");
         cy.findByLabelText("Enable users to download data from this embed?")

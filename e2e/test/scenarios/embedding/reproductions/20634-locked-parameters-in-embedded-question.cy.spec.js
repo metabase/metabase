@@ -1,5 +1,5 @@
 import {
-  openEmbeddingSettingsPage,
+  openStaticEmbeddingModal,
   restore,
   visitIframe,
 } from "e2e/support/helpers";
@@ -32,7 +32,7 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
   });
 
   it("should let the user lock parameters to specific values", () => {
-    openEmbeddingSettingsPage();
+    openStaticEmbeddingModal();
 
     cy.get(".Modal--full").within(() => {
       // select the dropdown next to the Text parameter so that we can set the value to "Locked"

@@ -46,11 +46,10 @@ export const createPublicLink = createAction(
   CREATE_PUBLIC_LINK,
   async ({
     id,
-  }: DashboardIdPayload): Promise<
-    DashboardIdPayload & {
-      uuid: Dashboard["public_uuid"];
-    }
-  > => {
+  }: DashboardIdPayload): Promise<{
+    id: DashboardId;
+    uuid: Dashboard["public_uuid"];
+  }> => {
     const { uuid } = await DashboardApi.createPublicLink({ id });
     return { id, uuid };
   },

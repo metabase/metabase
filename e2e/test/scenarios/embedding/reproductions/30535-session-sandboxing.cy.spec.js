@@ -3,7 +3,7 @@ import {
   visitQuestion,
   describeEE,
   setTokenFeatures,
-  openEmbeddingSettingsPage,
+  openStaticEmbeddingModal,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -38,7 +38,7 @@ describeEE("issue 30535", () => {
   });
 
   it("user session should not apply sandboxing to a signed embedded question (metabase#30535)", () => {
-    openEmbeddingSettingsPage();
+    openStaticEmbeddingModal();
 
     cy.document().then(doc => {
       const iframe = doc.querySelector("iframe");

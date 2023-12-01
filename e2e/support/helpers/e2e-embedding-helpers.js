@@ -115,7 +115,7 @@ export function visitIframe() {
   });
 }
 
-export function goToEmbedModal({ isAdmin = true } = {}) {
+export function openToEmbedModal({ isAdmin = true } = {}) {
   cy.icon("share").click();
   if (isAdmin) {
     cy.findByTestId("embed-header-menu")
@@ -153,10 +153,10 @@ export function openPublicLinkDropdown() {
     .click();
 }
 
-export function openEmbeddingSettingsPage() {
+export function openStaticEmbeddingModal() {
   cy.intercept("GET", "/api/session/properties").as("sessionProperties");
 
-  goToEmbedModal();
+  openToEmbedModal();
   cy.get(".Modal--full").findByText("Embed in your application").click();
   cy.wait("@sessionProperties");
 }

@@ -4,7 +4,7 @@ import {
   visitDashboard,
   modal,
   visitIframe,
-  openEmbeddingSettingsPage,
+  openStaticEmbeddingModal,
 } from "e2e/support/helpers";
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
 import {
@@ -396,7 +396,7 @@ function visitAndEnableSharing(object) {
     visitDashboard(ORDERS_DASHBOARD_ID);
   }
 
-  openEmbeddingSettingsPage();
+  openStaticEmbeddingModal();
 }
 
 function sidebar() {

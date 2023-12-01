@@ -4,7 +4,7 @@ import {
   visitDashboard,
   visitQuestion,
   setTokenFeatures,
-  openEmbeddingSettingsPage,
+  openStaticEmbeddingModal,
 } from "e2e/support/helpers";
 import {
   ORDERS_QUESTION_ID,
@@ -25,7 +25,7 @@ features.forEach(feature => {
 
     it("dashboard should have the correct embed snippet", () => {
       visitDashboard(ORDERS_DASHBOARD_ID);
-      openEmbeddingSettingsPage();
+      openStaticEmbeddingModal();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Code").click();
 
@@ -89,7 +89,7 @@ features.forEach(feature => {
 
     it("question should have the correct embed snippet", () => {
       visitQuestion(ORDERS_QUESTION_ID);
-      openEmbeddingSettingsPage();
+      openStaticEmbeddingModal();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Code").click();
 

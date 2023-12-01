@@ -188,7 +188,9 @@ describe("EmbedMenu", () => {
 
         userEvent.click(screen.getByLabelText("share icon"));
 
-        expect(await screen.findByText("Public link")).toBeInTheDocument();
+        expect(
+          await screen.findByTestId("public-link-popover-content"),
+        ).toBeInTheDocument();
       });
     });
   });

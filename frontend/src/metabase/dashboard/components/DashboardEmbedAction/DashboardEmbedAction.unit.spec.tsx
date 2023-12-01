@@ -69,7 +69,7 @@ const setup = ({
 
 describe("DashboardEmbedAction", () => {
   describe("which label should be rendered", () => {
-    it("should have a `You must enable Embedding` tooltip if embedding is false", async () => {
+    it("should have a `You must enable Embedding` tooltip if embedding is disabled", async () => {
       setup({
         isAdmin: true,
         publicLinksEnabled: true,
@@ -81,13 +81,13 @@ describe("DashboardEmbedAction", () => {
       ).toBeInTheDocument();
     });
 
-    it("should have a `Sharing` tooltip if public sharing is true", async () => {
+    it("should have a `Sharing` tooltip if public sharing is enabled", async () => {
       setup({ isAdmin: true, publicLinksEnabled: true });
       userEvent.hover(screen.getByLabelText("share icon"));
       expect(await screen.findByText("Sharing")).toBeInTheDocument();
     });
 
-    it("should have an `Embedding` tooltip if public sharing is false", () => {
+    it("should have an `Embedding` tooltip if public sharing is disabled", () => {
       setup({ isAdmin: true, publicLinksEnabled: false });
       userEvent.hover(screen.getByLabelText("share icon"));
       expect(screen.getByText("Embedding")).toBeInTheDocument();
@@ -126,7 +126,7 @@ describe("DashboardEmbedAction", () => {
   });
 
   describe("when the popover or modal should be rendered", () => {
-    it("should render the popover when public sharing is true", async () => {
+    it("should render the popover when public sharing is enabled", async () => {
       setup({ publicLinksEnabled: true, isAdmin: true });
       userEvent.click(screen.getByLabelText("share icon"));
       expect(
@@ -134,7 +134,7 @@ describe("DashboardEmbedAction", () => {
       ).toBeInTheDocument();
     });
 
-    it("should render the embedding modal when public sharing is false", async () => {
+    it("should render the embedding modal when public sharing is disabled", async () => {
       setup({ publicLinksEnabled: false, isAdmin: true });
       userEvent.click(await screen.findByLabelText("share icon"));
 

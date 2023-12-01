@@ -13,11 +13,10 @@ export const createPublicLink = createAction(
   CREATE_PUBLIC_LINK,
   ({
     id,
-  }: Card): Promise<
-    CardIdPayload & {
-      uuid: Card["public_uuid"];
-    }
-  > => {
+  }: Card): Promise<{
+    id: CardId;
+    uuid: Card["public_uuid"];
+  }> => {
     return CardApi.createPublicLink({ id });
   },
 );

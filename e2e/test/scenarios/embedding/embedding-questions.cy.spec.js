@@ -3,7 +3,7 @@ import {
   visitQuestion,
   popover,
   visitIframe,
-  openEmbeddingSettingsPage,
+  openStaticEmbeddingModal,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -43,7 +43,7 @@ describe("scenarios > embedding > questions ", () => {
       visitQuestion(id);
     });
 
-    openEmbeddingSettingsPage();
+    openStaticEmbeddingModal();
 
     visitIframe();
 
@@ -86,7 +86,7 @@ describe("scenarios > embedding > questions ", () => {
       visitQuestion(id);
     });
 
-    openEmbeddingSettingsPage();
+    openStaticEmbeddingModal();
 
     visitIframe();
 
@@ -119,7 +119,7 @@ describe("scenarios > embedding > questions ", () => {
       });
     });
 
-    openEmbeddingSettingsPage();
+    openStaticEmbeddingModal();
 
     visitIframe();
 
@@ -155,7 +155,7 @@ describe("scenarios > embedding > questions ", () => {
       visitQuestion(id);
     });
 
-    openEmbeddingSettingsPage();
+    openStaticEmbeddingModal();
 
     visitIframe();
 
@@ -196,7 +196,7 @@ describe("scenarios > embedding > questions ", () => {
 
     visitQuestion(ORDERS_QUESTION_ID);
 
-    openEmbeddingSettingsPage();
+    openStaticEmbeddingModal();
 
     visitIframe();
 

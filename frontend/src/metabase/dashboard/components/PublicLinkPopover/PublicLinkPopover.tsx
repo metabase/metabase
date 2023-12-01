@@ -19,7 +19,7 @@ export type PublicLinkPopoverProps = {
   isOpen: boolean;
   onClose: () => void;
   createPublicLink: () => Promise<void>;
-  deletePublicLink: () => Promise<void>;
+  deletePublicLink: () => void;
   uuid: string | null;
   getPublicLink: ({
     exportFormat,
@@ -54,9 +54,9 @@ export const PublicLinkPopover = ({
     return uuid;
   }, [uuid, isOpen]);
 
-  const onRemoveLink = async () => {
+  const onRemoveLink = () => {
     onClose();
-    await deletePublicLink();
+    deletePublicLink();
   };
 
   return (
