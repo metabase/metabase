@@ -68,20 +68,25 @@ export const getChangeWidth = (width: number): number => {
   return Math.max(width - ICON_SIZE - ICON_MARGIN_RIGHT - 2 * SPACING, 0);
 };
 
+export const COMPARISON_TYPES = {
+  COMPARE_TO_PREVIOUS: "previousValue",
+  PREVIOUS_PERIOD: "previousPeriod",
+  PERIODS_AGO: "periodsAgo",
+};
+
+const PLACEHOLDER_STR = "[placeholder]";
 export const COMPARISON_OPTIONS = {
   PREVIOUS_PERIOD: {
-    type: "previousPeriod",
-    placeHolderStr: "Previous [dateUnit]",
-    placeholder: "[dateUnit]",
+    type: COMPARISON_TYPES.PREVIOUS_PERIOD,
+    nameTemplate: `Previous ${PLACEHOLDER_STR}`,
   },
   PERIODS_AGO: {
-    type: "periodsAgo",
-    placeHolderStr: "[X dateUnits] ago",
-    placeholder: "[X dateUnits]",
+    type: COMPARISON_TYPES.PERIODS_AGO,
+    nameTemplate: `${PLACEHOLDER_STR} ago`,
     MenuItemComponent: PeriodsAgoInputWidget,
   },
   COMPARE_TO_PREVIOUS: {
-    type: "previousValue",
+    type: COMPARISON_TYPES.COMPARE_TO_PREVIOUS,
     name: "Compare to previous",
   },
 };
@@ -118,15 +123,15 @@ export function getComparisonOptions(series, settings) {
     COMPARISON_OPTIONS.COMPARE_TO_PREVIOUS,
     {
       ...COMPARISON_OPTIONS.PREVIOUS_PERIOD,
-      name: COMPARISON_OPTIONS.PREVIOUS_PERIOD.placeHolderStr.replace(
-        COMPARISON_OPTIONS.PREVIOUS_PERIOD.placeholder,
+      name: COMPARISON_OPTIONS.PREVIOUS_PERIOD.nameTemplate.replace(
+        PLACEHOLDER_STR,
         dateUnit,
       ),
     },
     {
       ...COMPARISON_OPTIONS.PERIODS_AGO,
-      name: COMPARISON_OPTIONS.PERIODS_AGO.placeHolderStr.replace(
-        COMPARISON_OPTIONS.PERIODS_AGO.placeholder,
+      name: COMPARISON_OPTIONS.PERIODS_AGO.nameTemplate.replace(
+        PLACEHOLDER_STR,
         `${dateUnit}s`,
       ),
       maxValue: maxPeriodsAgo,

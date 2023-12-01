@@ -5,7 +5,7 @@ import { formatValue } from "metabase/lib/formatting/value";
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
 import { color } from "metabase/lib/colors";
 import {
-  COMPARISON_OPTIONS,
+  COMPARISON_TYPES,
   formatChange,
 } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import { isEmpty } from "metabase/lib/validate";
@@ -16,15 +16,15 @@ export const FALLBACK_DATE_UNIT = "day";
 export function computeTrend(series, insights, settings) {
   const { type } = settings["scalar.comparisons"];
 
-  if (type === COMPARISON_OPTIONS.COMPARE_TO_PREVIOUS.type) {
+  if (type === COMPARISON_TYPES.COMPARE_TO_PREVIOUS) {
     return computeTrendPreviousValue(series, insights, settings);
   }
 
-  if (type === COMPARISON_OPTIONS.PREVIOUS_PERIOD.type) {
-    return computeTrendPeriodsAgo(series, insights, settings);
-  }
-
-  if (type === COMPARISON_OPTIONS.PERIODS_AGO.type) {
+  if (
+    [COMPARISON_TYPES.PREVIOUS_PERIOD, COMPARISON_TYPES.PERIODS_AGO].includes(
+      type,
+    )
+  ) {
     return computeTrendPeriodsAgo(series, insights, settings);
   }
 }
@@ -372,7 +372,13 @@ function getIndexOfPeriodsAgo({
   dimensionIndex,
   rows,
 }) {
+  // skip the last element since that is our current value
   const searchIndexStart = rows.length - 2;
+
+  // only look dateUnitsAgo elements (dates) into the past,
+  // since looking any further would automatically result in a date before
+  // X periods ago and any prior dates would be further beyond our desired
+  // comparison date
   const searchIndexEnd = rows.length - 2 - (dateUnitsAgo - 1);
 
   for (let i = searchIndexStart; i >= searchIndexEnd; i--) {
