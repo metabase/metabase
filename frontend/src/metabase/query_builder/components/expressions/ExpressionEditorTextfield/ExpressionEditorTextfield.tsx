@@ -429,10 +429,10 @@ class ExpressionEditorTextfield extends React.Component<
       // TODO: uladzimir
       // using stage index apart from -1 is possible only in the notebook editor, filter pills, and the filter modal
       // first 2 are migrated in the filters integration branch. The latter is in progress
-      query: query ?? this.props.legacyQuery.question()._getMLv2Query(),
-      stageIndex: stageIndex ?? -1,
-      // query,
-      // stageIndex,
+      // query: query ?? this.props.legacyQuery.question()._getMLv2Query(),
+      // stageIndex: stageIndex ?? -1,
+      query,
+      stageIndex,
       metadata,
       getColumnIcon,
     });
