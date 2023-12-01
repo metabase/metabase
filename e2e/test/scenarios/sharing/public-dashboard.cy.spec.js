@@ -5,6 +5,7 @@ import {
   filterWidget,
   popover,
   createPublicLinkDropdown,
+  openPublicLinkDropdown,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -67,7 +68,7 @@ describe("scenarios > public > dashboard", () => {
       questionDetails,
       dashboardDetails,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
-      cy.wrap(dashboard_id).as("dashboardId");
+      cy.wrap(dashboard_id).as("publicDashboardId");
       // Connect filter to the card
       cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
         dashcards: [
@@ -89,10 +90,16 @@ describe("scenarios > public > dashboard", () => {
         ],
       });
     });
+
+    cy.createDashboard({ name: "test dashboard" }).then(
+      ({ body: { id: dashboardId } }) => {
+        cy.wrap(dashboardId).as("nonPublicDashboardId");
+      },
+    );
   });
 
   it("should allow users to create public dashboards", () => {
-    cy.get("@dashboardId").then(id => {
+    cy.get("@publicDashboardId").then(id => {
       visitDashboard(id);
     });
 
@@ -117,10 +124,41 @@ describe("scenarios > public > dashboard", () => {
     });
   });
 
+  it("should only allow non-admin users to see a public link if one has already been created", () => {
+    cy.get("@publicDashboardId").then(id => {
+      visitDashboard(id);
+      createPublicLinkDropdown("dashboard");
+      cy.signOut();
+    });
+
+    cy.signInAsNormalUser().then(() => {
+      cy.get("@publicDashboardId").then(id => {
+        visitDashboard(id);
+      });
+
+      openPublicLinkDropdown({ isAdmin: false });
+
+      cy.findByTestId("public-link-popover-content").within(() => {
+        cy.findByText("Public link").should("be.visible");
+        cy.findByText(/^http/).should("be.visible");
+        cy.findByText("Remove public URL").should("not.exist");
+      });
+    });
+  });
+
+  it("should not allow users to see the embed button or the public link dropdown if a link hasn't been created", () => {
+    cy.signInAsNormalUser();
+    cy.get("@nonPublicDashboardId").then(id => {
+      visitDashboard(id);
+    });
+
+    cy.findByTestId("dashboard-header").icon("share").should("not.exist");
+  });
+
   Object.entries(USERS).map(([userType, setUser]) =>
     describe(`${userType}`, () => {
       it(`should be able to view public dashboards`, () => {
-        cy.get("@dashboardId").then(id => {
+        cy.get("@publicDashboardId").then(id => {
           cy.request("POST", `/api/dashboard/${id}/public_link`).then(
             ({ body: { uuid } }) => {
               setUser();
@@ -143,7 +181,7 @@ describe("scenarios > public > dashboard", () => {
   );
 
   it("should respect 'disable auto-apply filters' in a public dashboard", () => {
-    cy.get("@dashboardId").then(id => {
+    cy.get("@publicDashboardId").then(id => {
       cy.request("PUT", `/api/dashboard/${id}`, {
         auto_apply_filters: false,
       });

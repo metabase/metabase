@@ -115,9 +115,12 @@ export function visitIframe() {
   });
 }
 
-export function openToEmbedModal({ isAdmin = true } = {}) {
+export function openToEmbedModal({
+  isAdmin = true,
+  isPublicSharingEnabled = true,
+} = {}) {
   cy.icon("share").click();
-  if (isAdmin) {
+  if (isAdmin && isPublicSharingEnabled) {
     cy.findByTestId("embed-header-menu")
       .findByTestId("embed-menu-embed-modal-item")
       .click();
@@ -146,11 +149,13 @@ export function createPublicLinkDropdown(resourceType) {
   );
 }
 
-export function openPublicLinkDropdown() {
+export function openPublicLinkDropdown({ isAdmin = true }) {
   cy.icon("share").click();
-  cy.findByTestId("embed-header-menu")
-    .findByTestId("embed-menu-public-link-item")
-    .click();
+  if (isAdmin) {
+    cy.findByTestId("embed-header-menu")
+      .findByTestId("embed-menu-public-link-item")
+      .click();
+  }
 }
 
 export function openStaticEmbeddingModal() {
