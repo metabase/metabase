@@ -350,8 +350,8 @@
 
 (defmethod custom-name-method :default
   [x]
-  ;; we assume that clauses only get a :display-name option if the user explicitly specifies it
-  ;; expressions from the :expressions clause of pMBQL queries have custom names by default
+  ;; We assume that clauses only get a :display-name option if the user explicitly specifies it.
+  ;; Expressions from the :expressions clause of pMBQL queries have custom names by default.
   (when (lib.util/clause? x)
     ((some-fn :display-name :lib/expression-name) (lib.options/options x))))
 
