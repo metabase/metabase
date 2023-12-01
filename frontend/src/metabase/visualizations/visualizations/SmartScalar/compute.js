@@ -283,7 +283,9 @@ function computeComparisonPeriodsAgo({
 }) {
   const dateUnitDisplay = Lib.describeTemporalUnit(dateUnit).toLowerCase();
   const dateUnitsAgo = settings["scalar.comparisons"].value ?? 1;
-  const prevDate = dayjs(nextDate).subtract(dateUnitsAgo, dateUnit);
+  const prevDate = dayjs(nextDate)
+    .subtract(dateUnitsAgo, dateUnit)
+    .format("YYYY-MM-DDTHH:mm:ssZ");
 
   const comparisonPeriodStr =
     dateUnitsAgo === 1
@@ -372,6 +374,7 @@ function getIndexOfPeriodsAgo({
   dimensionIndex,
   rows,
 }) {
+  const date = dayjs(prevDate);
   // skip the last element since that is our current value
   const searchIndexStart = rows.length - 2;
 
@@ -385,11 +388,11 @@ function getIndexOfPeriodsAgo({
     const row = rows[i];
     const rowDate = row[dimensionIndex];
 
-    if (prevDate.isSame(rowDate)) {
+    if (date.isSame(rowDate)) {
       return i;
     }
 
-    if (prevDate.isAfter(rowDate)) {
+    if (date.isAfter(rowDate)) {
       return -1;
     }
   }
