@@ -267,7 +267,7 @@
 (defn dashcard-results-async
   "Return results for running the query belonging to a DashboardCard. Returns a `StreamingResponse`."
   {:style/indent 0}
-  [& {:keys [dashboard-id dashcard-id card-id export-format embedding-params token-params
+  [& {:keys [dashboard-id dashcard-id card-id export-format embedding-params token-params middleware
              query-params constraints qp-runner]
       :or   {constraints (qp.constraints/default-query-constraints)
              qp-runner   qp/process-query-and-save-execution!}}]
@@ -283,7 +283,8 @@
      :parameters    parameters
      :qp-runner     qp-runner
      :context       :embedded-dashboard
-     :constraints   constraints)))
+     :constraints   constraints
+     :middleware    middleware)))
 
 
 ;;; ------------------------------------- Other /api/embed-specific utility fns --------------------------------------
@@ -392,7 +393,7 @@
   Returns a `StreamingResponse`."
   {:style/indent 1}
   [token dashcard-id card-id export-format query-params
-   & {:keys [constraints qp-runner]
+   & {:keys [constraints qp-runner middleware]
       :or   {constraints (qp.constraints/default-query-constraints)
              qp-runner   qp/process-query-and-save-execution!}}]
   (let [unsigned-token (embed/unsign token)
@@ -407,7 +408,8 @@
       :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
       :query-params     query-params
       :constraints      constraints
-      :qp-runner        qp-runner)))
+      :qp-runner        qp-runner
+      :middleware       middleware)))
 
 (api/defendpoint GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
