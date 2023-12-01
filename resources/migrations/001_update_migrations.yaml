@@ -4198,6 +4198,22 @@ databaseChangeLog:
 
   - changeSet:
       id: v49.00-003
+      author: johnswanson
+      comment: Add a `type` to users
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: type
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+                  defaultValue: 'personal'
+                  remarks: The type of user
+            tableName: core_user
+
+  - changeSet:
+      id: v49.00-008
       author: qnkhuat
       comment: Add metabase_field.database_indexed
       changes:
