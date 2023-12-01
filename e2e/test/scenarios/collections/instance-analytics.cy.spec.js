@@ -131,7 +131,10 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
       },
     );
 
-    it("should not allow moving or archiving custom reports collection", () => {
+    it("should not allow moving or archiving analytics collections", () => {
+      cy.log(
+        "**-- Custom Reports collection should not be archivable or movable --**",
+      );
       navigationSidebar().within(() => {
         cy.findByText(ANALYTICS_COLLECTION_NAME).click();
         cy.findByText("Custom reports").click();
@@ -151,11 +154,46 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
         if (el.text() === "Custom reports") {
           cy.wrap(el).within(() => {
             cy.icon("ellipsis").click();
-            cy.contains("Archive").should("not.exist");
-            cy.contains("Move").should("not.exist");
           });
           return false; // stop iterating
         }
+      });
+
+      popover().within(() => {
+        cy.findByText("Bookmark").should("be.visible");
+        cy.findByText("Archive").should("not.exist");
+        cy.findByText("Move").should("not.exist");
+      });
+
+      cy.log(
+        "**-- Metabase Analytics collection should not be archivable or movable --**",
+      );
+      navigationSidebar().within(() => {
+        cy.findByText(ANALYTICS_COLLECTION_NAME).click();
+        cy.findByText("Our analytics").click();
+      });
+
+      cy.findByTestId("collection-menu").within(() => {
+        cy.icon("ellipsis").click();
+        cy.contains("Archive").should("not.exist");
+        cy.contains("Move").should("not.exist");
+      });
+
+      navigationSidebar().findByText("Our analytics").click();
+
+      cy.findAllByTestId("collection-entry").each(el => {
+        if (el.text() === ANALYTICS_COLLECTION_NAME) {
+          cy.wrap(el).within(() => {
+            cy.icon("ellipsis").click();
+          });
+          return false; // stop iterating
+        }
+      });
+
+      popover().within(() => {
+        cy.findByText("Bookmark").should("be.visible");
+        cy.findByText("Archive").should("not.exist");
+        cy.findByText("Move").should("not.exist");
       });
     });
   });
