@@ -234,7 +234,7 @@
                                (map normalize-column-name))
         ;; remove columns from the rows with the same normalized name as the auto-pk-column-name
         auto-pk-col-indices (set (indices-where #(= auto-pk-column-name %) normalized-header))
-        ;; remove the auto-pk column from each row as we parse all the rows
+        ;; this function removes the auto-pk columns from each row for parsing and type detection
         remove-auto-pk-cols (fn [row]
                               (remove-indices auto-pk-col-indices row))
         rows              (cond->> rows
