@@ -122,24 +122,25 @@
 (deftest sync-dynamic-tables-test
   (testing "Should be able to sync dynamic tables"
     (mt/test-driver :snowflake
-      (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "dynamic_table_test"})
-            spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
-        (doseq [stmt ["DROP DATABASE IF EXISTS \"dynamic_table_test\";"
-                      "CREATE DATABASE \"dynamic_table_test\";"
-                      "CREATE TABLE \"dynamic_table_test\".\"PUBLIC\".\"metabase_users\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT);"
-                      "CREATE DYNAMIC TABLE \"dynamic_table_test\".\"PUBLIC\".\"metabase_fan\" target_lag = '1 minute' warehouse = 'COMPUTE_WH' AS
-                      SELECT * FROM \"dynamic_table_test\".\"PUBLIC\".\"metabase_users\" WHERE \"dynamic_table_test\".\"PUBLIC\".\"metabase_users\".\"name\" LIKE 'MB_%';"]]
-          (jdbc/execute! spec [stmt]))
-        (t2.with-temp/with-temp [Database database {:engine driver/*driver* :details (assoc details :db "dynamic_table_test")}]
-          (sync/sync-database! database)
+      (mt/dataset (mt/dataset-definition "dynamic-table"
+                    ["metabase_users"
+                     [{:field-name "name" :base-type :type/Text}]
+                     [["mb_qnkhuat"]]])
+        (let [db-id   (:id (mt/db))
+              details (:details (mt/db))
+              spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
+          (jdbc/execute! spec [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = '1 minute' warehouse = 'COMPUTE_WH' AS
+                                       SELECT * FROM \"%s\".\"PUBLIC\".\"metabase_users\" WHERE \"%s\".\"PUBLIC\".\"metabase_users\".\"name\" LIKE 'MB_%%';"
+                                       (:db details) (:db details) (:db details))])
+          (sync/sync-database! (t2/select-one :model/Database db-id))
           (testing "both base tables and dynamic tables should be synced"
             (is (= #{"metabase_fan" "metabase_users"}
-                   (t2/select-fn-set :name :model/Table :db_id (:id database))))
+                   (t2/select-fn-set :name :model/Table :db_id db-id)))
             (testing "the fields for dynamic tables are synced correctly"
               (is (= #{{:name "name" :base_type :type/Text}
                        {:name "id" :base_type :type/Number}}
                      (set (t2/select [:model/Field :name :base_type]
-                                     :table_id (t2/select-one-pk :model/Table :name "metabase_fan" :db_id (:id database)))))))))))))
+                                     :table_id (t2/select-one-pk :model/Table :name "metabase_fan" :db_id db-id))))))))))))
 
 (deftest describe-table-test
   (mt/test-driver :snowflake

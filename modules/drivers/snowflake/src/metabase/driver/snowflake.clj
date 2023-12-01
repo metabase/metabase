@@ -449,17 +449,20 @@
 ;; more context.
 (defmethod sql-jdbc.describe-table/get-table-pks :snowflake
   [_driver ^Connection conn db-name-or-nil table]
-  (let [^DatabaseMetaData metadata (.getMetaData conn)]
+  (let [^DatabaseMetaData metadata (.getMetaData conn)
+        schema-name                (-> table :schema escape-name-for-metadata)
+        table-name                 (-> table :name escape-name-for-metadata)]
     (try
      (into [] (sql-jdbc.sync.common/reducible-results
                #(.getPrimaryKeys metadata db-name-or-nil
-                                 (-> table :schema escape-name-for-metadata)
-                                 (-> table :name escape-name-for-metadata))
+                                 schema-name
+                                 table-name)
                (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))
      (catch SnowflakeSQLException e
        ;; dynamic tables doesn't support pks and it'll throw an error if you try to get one
-       (if (= "SQL compilation error: show [constraint] command doesnt support this domain."
-              (ex-message e))
+       (if (= "DYNAMIC_TABLE"
+              (-> (.getTables metadata db-name-or-nil schema-name table-name nil)
+                  jdbc/result-set-seq first :table_type))
          []
          (throw e))))))
 
@@ -468,12 +471,13 @@
   The only change is that it escapes `schema` and `table-name`."
   [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
   ;; Snowflake bug: schema and table name are interpreted as patterns
-  (let [schema (escape-name-for-metadata schema)
-        table-name (escape-name-for-metadata table-name)]
+  (let [metadata    (.getMetaData conn)
+        schema-name (escape-name-for-metadata schema)
+        table-name  (escape-name-for-metadata table-name)]
     (try
      (into
       #{}
-      (sql-jdbc.sync.common/reducible-results #(.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)
+      (sql-jdbc.sync.common/reducible-results #(.getImportedKeys metadata db-name-or-nil schema-name table-name)
                                               (fn [^ResultSet rs]
                                                 (fn []
                                                   {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
@@ -482,8 +486,9 @@
                                                    :dest-column-name (.getString rs "PKCOLUMN_NAME")}))))
      (catch SnowflakeSQLException e
        ;; dynamic tables doesn't support fks and it'll throw an error if you try to get one
-       (if (= "SQL compilation error: show [constraint] command doesnt support this domain."
-              (ex-message e))
+       (if (= "DYNAMIC_TABLE"
+              (-> (.getTables metadata db-name-or-nil schema-name table-name nil)
+                  jdbc/result-set-seq first :table_type))
          #{}
          (throw e))))))
 
