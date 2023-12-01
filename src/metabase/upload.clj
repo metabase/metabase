@@ -197,31 +197,52 @@
 
 (def auto-pk-column-name
   "The name of the auto-incrementing PK column."
-  :_mb_row_id)
+  "_mb_row_id")
 
-(defn- ->ordered-maps-with-pk-column
-  "Sets appropriate type information on the first PK column it finds, otherwise adds a new one.
+(defn- remove-indices
+  "Removes the elements at the given indices from the collection. Indices is a set."
+  [indices coll]
+  (keep-indexed (fn [idx item]
+                  (when-not (contains? indices idx)
+                    item))
+                coll))
 
-  Returns a *map* with two keys: `:extant-columns` and `:generated-columns`."
-  [name-type-pairs]
-  {:extant-columns    (ordered-map/ordered-map name-type-pairs)
-   :generated-columns (ordered-map/ordered-map auto-pk-column-name ::auto-incrementing-int-pk)})
+(defn- indices-where
+  "Returns a lazy seq of the indices where the predicate is true."
+  [pred coll]
+  (keep-indexed (fn [idx item]
+                  (when (pred item)
+                    idx))
+                coll))
 
 (defn- rows->schema
   "rows should be a lazy-seq"
   [header rows]
   (let [normalized-header (->> header
-                               (map normalize-column-name)
-                               (mbql.u/uniquify-names)
+                               (map normalize-column-name))
+        ;; remove columns from the rows with the same normalized name as the auto-pk-column-name
+        ;; this is a closure that we'll use later to remove the auto-pk-column from each row as we parse all the rows
+        auto-pk-match-indices (set (indices-where #(= auto-pk-column-name %) normalized-header))
+        filter-row        (when auto-pk-match-indices
+                            (fn [row]
+                              (remove-indices auto-pk-match-indices row)))
+        rows              (cond->> rows
+                            filter-row
+                            (map filter-row))
+        unique-header     (->> normalized-header
+                               filter-row
+                               mbql.u/uniquify-names
                                (map keyword))
         column-count      (count normalized-header)
-        settings          (upload-parsing/get-settings)]
-    (->> rows
-         (map #(row->types % settings))
-         (reduce coalesce-types (repeat column-count nil))
-         (map #(or % ::text))
-         (map vector normalized-header)
-         (->ordered-maps-with-pk-column))))
+        settings          (upload-parsing/get-settings)
+        col-name+type-pairs (->> rows
+                                 (map #(row->types % settings))
+                                 (reduce coalesce-types (repeat column-count nil))
+                                 (map #(or % ::text))
+                                 (map vector unique-header))]
+    {:extant-columns    (ordered-map/ordered-map col-name+type-pairs)
+     :generated-columns (ordered-map/ordered-map (keyword auto-pk-column-name) ::auto-incrementing-int-pk)
+     :filter-row        filter-row}))
 
 
 ;;;; +------------------+
@@ -269,11 +290,14 @@
   (update-vals col->upload-type (partial driver/upload-type->database-type driver)))
 
 (defn detect-schema
-  "Returns a map with two keys: `:extant-columns` (columns found in the CSV file) and `:generated-columns` (columns we
-  are adding ourselves). The value of each is an ordered map of `normalized-column-name -> type` for the given CSV
-  file. The CSV file *must* have headers as the first row. Supported types include `::int`, `::datetime`, etc.
+  "Returns a map with three keys:
+    - `:extant-columns`: columns found in the CSV file that we will insert
+    - `:generated-columns`: columns we are adding ourselves.
+    - `:filter-row` (optional): a function that takes a row and returns a row with the auto-incrementing PK column removed
 
-  A column that is completely blank is assumed to be of type ::text."
+  The value of `extant-columns` and `generated-columns` is an ordered map of normalized-column-name -> type for the
+  given CSV file. Supported types include `::int`, `::datetime`, etc. A column that is completely blank is assumed to
+  be of type ::text. The CSV file *must* have headers as the first row."
   [csv-file]
   (with-open [reader (bom/bom-reader csv-file)]
     (let [[header & rows] (csv/read-csv reader)]
@@ -284,42 +308,25 @@
   []
   (t2/select-one Database :id (public-settings/uploads-database-id)))
 
-(defn- drop-nth [coll n]
-  (concat (take n coll) (drop (inc n) coll)))
-
 (defn load-from-csv!
   "Loads a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
   [driver db-id table-name ^File csv-file]
-  (let [{col-to-insert->upload-type :extant-columns
-         gen-col->upload-type       :generated-columns} (detect-schema csv-file)
-        cols->upload-type       (merge col-to-insert->upload-type gen-col->upload-type)
+  (let [{:keys [extant-columns generated-columns filter-row]} (detect-schema csv-file)
+        cols->upload-type       (merge generated-columns extant-columns)
         col-to-create->col-spec (upload-type->col-specs driver cols->upload-type)
-        csv-col-names           (keys col-to-insert->upload-type)
-        [auto-pk-match-index _]
-        (first (keep-indexed (fn [idx col-name]
-                               (when (= (normalize-column-name (name col-name)) (name auto-pk-column-name))
-                                 [idx col-name]))
-                             csv-col-names))]
+        csv-col-names           (keys extant-columns)]
     (driver/create-table! driver db-id table-name col-to-create->col-spec)
-    (try
-      (with-open [reader (io/reader csv-file)]
-        (let [rows (->> (csv/read-csv reader)
-                        (drop 1) ; drop header
-                        (parse-rows col-to-insert->upload-type))
-              rows (cond->> rows
-                     auto-pk-match-index
-                     (map #(drop-nth % auto-pk-match-index)))
-              csv-col-names (cond-> csv-col-names
-                              auto-pk-match-index
-                              (drop-nth auto-pk-match-index))]
-          (driver/insert-into! driver db-id table-name csv-col-names rows)
-          {:num-rows          (count rows)
-           :num-columns       (count csv-col-names)
-           :generated-columns (- (count col-to-create->col-spec)
-                                 (count col-to-insert->upload-type))
-           :size-mb           (/ (.length csv-file)
-                                 1048576.0)}))
-      (catch Throwable e
-        (driver/drop-table! driver db-id table-name)
-        (throw (ex-info (ex-message e) {:status-code 400}))))))
+    (with-open [reader (io/reader csv-file)]
+      (let [rows (->> (csv/read-csv reader)
+                      (drop 1)) ; drop header
+            rows (cond->> rows
+                   filter-row
+                   (map filter-row))
+            rows (parse-rows extant-columns rows)]
+        (driver/insert-into! driver db-id table-name csv-col-names rows)
+        {:num-rows          (count rows)
+         :num-columns       (count csv-col-names)
+         :generated-columns (count generated-columns)
+         :size-mb           (/ (.length csv-file)
+                               1048576.0)}))))
