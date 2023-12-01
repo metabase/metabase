@@ -17,7 +17,7 @@ import {
   aggregationOpts,
   expressionOpts,
   metadata,
-  DEFAULT_QUERY as DEFAULT_EXPRESSION_QUERY,
+  DEFAULT_QUERY,
 } from "./__support__/expressions";
 import type { Suggestion } from "./suggest";
 import { suggest as suggest_ } from "./suggest";
@@ -77,8 +77,6 @@ const FIELDS_CUSTOM_NON_NUMERIC = [
   { type: "fields", text: "[date] " },
   { type: "fields", text: "[text] " },
 ];
-
-const DEFAULT_QUERY = DEFAULT_EXPRESSION_QUERY as DatasetQuery;
 
 describe("metabase/lib/expression/suggest", () => {
   describe("suggest()", () => {
