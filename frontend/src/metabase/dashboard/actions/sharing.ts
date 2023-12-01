@@ -1,4 +1,4 @@
-import type { Dashboard } from "metabase-types/api";
+import type { Dashboard, DashboardId } from "metabase-types/api";
 import type { Dispatch, EmbedOptions } from "metabase-types/store";
 import { createAction } from "metabase/lib/redux";
 
@@ -9,7 +9,7 @@ import { DashboardApi } from "metabase/services";
 import { setSidebar, closeSidebar } from "./ui";
 
 type DashboardIdPayload = {
-  id: Dashboard["id"];
+  id: DashboardId;
 };
 
 export const setSharing = (isSharing: boolean) => (dispatch: Dispatch) => {
