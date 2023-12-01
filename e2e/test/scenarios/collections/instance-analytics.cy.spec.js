@@ -10,12 +10,14 @@ import {
 const ANALYTICS_COLLECTION_NAME = "Metabase analytics";
 const PEOPLE_MODEL_NAME = "People";
 
-describeEE("scenarios > Instance Analytics Collection", () => {
+describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
   describe("admin", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/field/*/values").as("fieldValues");
       cy.intercept("POST", "/api/dataset").as("datasetQuery");
       cy.intercept("POST", "api/card").as("saveCard");
+      cy.intercept("GET", "api/dashboard/*").as("getDashboard");
+      cy.intercept("GET", "api/card/*").as("getCard");
       cy.intercept("POST", "api/dashboard/*/copy").as("copyDashboard");
 
       restore();
@@ -25,7 +27,6 @@ describeEE("scenarios > Instance Analytics Collection", () => {
     });
 
     it("allows admins to see the instance analytics collection content", () => {
-      cy.visit("/");
       navigationSidebar().findByText(ANALYTICS_COLLECTION_NAME).click();
       cy.findByTestId("pinned-items")
         .findByText(PEOPLE_MODEL_NAME)
@@ -130,7 +131,10 @@ describeEE("scenarios > Instance Analytics Collection", () => {
       },
     );
 
-    it("should not allow moving or archiving custom reports collection", () => {
+    it("should not allow moving or archiving analytics collections", () => {
+      cy.log(
+        "**-- Custom Reports collection should not be archivable or movable --**",
+      );
       navigationSidebar().within(() => {
         cy.findByText(ANALYTICS_COLLECTION_NAME).click();
         cy.findByText("Custom reports").click();
@@ -140,6 +144,56 @@ describeEE("scenarios > Instance Analytics Collection", () => {
         cy.icon("ellipsis").click();
         cy.contains("Archive").should("not.exist");
         cy.contains("Move").should("not.exist");
+      });
+
+      navigationSidebar().within(() => {
+        cy.findByText(ANALYTICS_COLLECTION_NAME).click();
+      });
+
+      cy.findAllByTestId("collection-entry").each(el => {
+        if (el.text() === "Custom reports") {
+          cy.wrap(el).within(() => {
+            cy.icon("ellipsis").click();
+          });
+          return false; // stop iterating
+        }
+      });
+
+      popover().within(() => {
+        cy.findByText("Bookmark").should("be.visible");
+        cy.findByText("Archive").should("not.exist");
+        cy.findByText("Move").should("not.exist");
+      });
+
+      cy.log(
+        "**-- Metabase Analytics collection should not be archivable or movable --**",
+      );
+      navigationSidebar().within(() => {
+        cy.findByText(ANALYTICS_COLLECTION_NAME).click();
+        cy.findByText("Our analytics").click();
+      });
+
+      cy.findByTestId("collection-menu").within(() => {
+        cy.icon("ellipsis").click();
+        cy.contains("Archive").should("not.exist");
+        cy.contains("Move").should("not.exist");
+      });
+
+      navigationSidebar().findByText("Our analytics").click();
+
+      cy.findAllByTestId("collection-entry").each(el => {
+        if (el.text() === ANALYTICS_COLLECTION_NAME) {
+          cy.wrap(el).within(() => {
+            cy.icon("ellipsis").click();
+          });
+          return false; // stop iterating
+        }
+      });
+
+      popover().within(() => {
+        cy.findByText("Bookmark").should("be.visible");
+        cy.findByText("Archive").should("not.exist");
+        cy.findByText("Move").should("not.exist");
       });
     });
   });
