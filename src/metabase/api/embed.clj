@@ -28,7 +28,7 @@
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.params :refer [fields-backing-params]]
+   [metabase.models.params :refer [dashcards->param-to-field-ids-map]]
    [metabase.pulse.parameters :as params]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -266,7 +266,7 @@
                                      (for [param filtering-parameters
                                            :when (not (contains? params param))]
                                        param-id))))
-        field-ids-to-remove (apply concat (map (fields-backing-params (:dashcards dashboard)) param-ids-to-remove))
+        field-ids-to-remove (apply concat (map (dashcards->param-to-field-ids-map (:dashcards dashboard)) param-ids-to-remove))
         remove-linked-param-values (fn [param-values parameter] (assoc-in param-values [parameter :values] []))]
     (update dashboard :param_values #(reduce remove-linked-param-values % field-ids-to-remove))))
 
@@ -275,7 +275,7 @@
         param-ids-to-remove (set (for [parameter (:parameters dashboard)
                                        :when     (contains? params-to-remove (keyword (:slug parameter)))]
                                    (:id parameter)))
-        field-ids-to-remove (apply concat (map (fields-backing-params (:dashcards dashboard)) param-ids-to-remove))
+        field-ids-to-remove (apply concat (map (dashcards->param-to-field-ids-map (:dashcards dashboard)) param-ids-to-remove))
         remove-parameters (fn [dashcard]
                             (update dashcard :parameter_mappings
                                     (fn [param-mappings]

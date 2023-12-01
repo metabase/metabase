@@ -251,7 +251,7 @@
           id))
    (cards->card-param-field-ids (map :card dashcards))))
 
-(defn fields-backing-params
+(defn dashcards->param-to-field-ids-map
   "Retrieve a map relating paramater ids to field ids."
   [dashcards]
   (letfn [(targets [params card]

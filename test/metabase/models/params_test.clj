@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.public-test :as public-test]
-   [metabase.models :refer [Card Field]]
+   [metabase.models :refer [Card Dashboard DashboardCard Field]]
    [metabase.models.params :as params]
    [metabase.test :as mt]
    [toucan2.core :as t2]
@@ -127,3 +127,25 @@
     (testing "card->template-tag-field-ids"
       (is (= #{(mt/id :venues :id)}
              (params/card->template-tag-field-ids card))))))
+
+(deftest dashcards->param-to-field-ids-map-test
+  (testing "dashcards->param-to-field-ids-map-test basic test"
+    (is (= {"foo" #{256}
+            "bar" #{267}}
+           (params/dashcards->param-to-field-ids-map
+            [{:parameter_mappings
+              [{:parameter_id "foo" :target [:dimension [:field 256 nil]]}
+               {:parameter_id "bar" :target [:dimension [:field 267 nil]]}]}]))))
+  (testing "dashcards->param-to-field-ids-map-test multiple fields to one param test"
+    (is (= {"foo" #{256 10}
+            "bar" #{267}}
+           (params/dashcards->param-to-field-ids-map
+            [{:parameter_mappings
+              [{:parameter_id "foo" :target [:dimension [:field 256 nil]]}
+               {:parameter_id "bar" :target [:dimension [:field 267 nil]]}]}
+             {:parameter_mappings
+              [{:parameter_id "foo" :target [:dimension [:field 10 nil]]}]}]))))
+  (testing "dashcards->param-to-field-ids-map-test no fields"
+    (is (= {}
+           (params/dashcards->param-to-field-ids-map
+            [{:parameter_mappings []}])))))

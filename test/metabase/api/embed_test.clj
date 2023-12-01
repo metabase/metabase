@@ -583,6 +583,7 @@
                                                                                   :target       [:dimension
                                                                                                  [:field (mt/id :categories :name) nil]]}]}]
         (let [embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}}))]
+          (is (= nil (-> embedding-dashboard :dashcards)))
           (is (= nil
                  (-> embedding-dashboard
                      :param_values
