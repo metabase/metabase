@@ -377,16 +377,16 @@ function getIndexOfPeriodsAgo({
   const date = dayjs(prevDate);
   // skip the last element since that is our current value
   const searchIndexStart = rows.length - 2;
+  if (searchIndexStart < 0) {
+    return -1;
+  }
 
   // only look dateUnitsAgo elements (dates) into the past,
   // since looking any further would automatically result in a date before
   // X periods ago and any prior dates would be further beyond our desired
   // comparison date
-  const searchIndexEnd = rows.length - 2 - (dateUnitsAgo - 1);
-
-  if (searchIndexEnd < 0) {
-    return -1;
-  }
+  const lastSearchCandidate = rows.length - 2 - (dateUnitsAgo - 1);
+  const searchIndexEnd = lastSearchCandidate >= 0 ? lastSearchCandidate : 0;
 
   for (let i = searchIndexStart; i >= searchIndexEnd; i--) {
     const row = rows[i];
