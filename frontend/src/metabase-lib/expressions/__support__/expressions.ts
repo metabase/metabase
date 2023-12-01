@@ -7,13 +7,15 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockMetadata } from "__support__/metadata";
 import { SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
+import { checkNotNull } from "metabase/lib/types";
+import type { DatasetQuery } from "metabase-types/api";
 import { TYPE } from "metabase-lib/types/constants";
 import { SAMPLE_DATABASE } from "metabase-lib/test-helpers";
 
 const DB_ID = SAMPLE_DB_ID;
 const TABLE_ID = 1;
 
-export const DEFAULT_QUERY = {
+export const DEFAULT_QUERY: DatasetQuery = {
   database: SAMPLE_DATABASE.id,
   type: "query",
   query: {
@@ -26,7 +28,7 @@ const database = createMockDatabase({
   name: "db",
   tables: [
     createMockTable({
-      db: DB_ID,
+      db_id: DB_ID,
       id: TABLE_ID,
       fields: [
         createMockField({
@@ -112,7 +114,6 @@ const database = createMockDatabase({
     "left-join",
     "inner-join",
     "nested-queries",
-    "advanced-math-expressions",
   ],
 });
 
@@ -120,6 +121,6 @@ export const metadata = createMockMetadata({
   databases: [database],
 });
 
-export const legacyQuery = metadata.table(TABLE_ID).query();
+export const legacyQuery = checkNotNull(metadata.table(TABLE_ID)).query();
 export const expressionOpts = { legacyQuery, startRule: "expression" };
 export const aggregationOpts = { legacyQuery, startRule: "aggregation" };

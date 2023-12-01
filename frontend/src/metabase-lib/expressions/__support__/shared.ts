@@ -11,6 +11,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { createMockMetadata } from "__support__/metadata";
 import { createMockMetric, createMockSegment } from "metabase-types/api/mocks";
+import { checkNotNull } from "metabase/lib/types";
 
 const SEGMENT_ID = 1;
 const METRIC_ID = 1;
@@ -51,20 +52,25 @@ const metadata = createMockMetadata({
   ],
 });
 
-const created = metadata.field(ORDERS.CREATED_AT).dimension().mbql();
-const total = metadata.field(ORDERS.TOTAL).dimension().mbql();
-const subtotal = metadata.field(ORDERS.SUBTOTAL).dimension().mbql();
-const tax = metadata.field(ORDERS.TAX).dimension().mbql();
-const userId = metadata.field(ORDERS.USER_ID).dimension().mbql();
-const userName = metadata
-  .field(ORDERS.USER_ID)
+const created = checkNotNull(metadata.field(ORDERS.CREATED_AT))
+  .dimension()
+  .mbql();
+const total = checkNotNull(metadata.field(ORDERS.TOTAL)).dimension().mbql();
+const subtotal = checkNotNull(metadata.field(ORDERS.SUBTOTAL))
+  .dimension()
+  .mbql();
+const tax = checkNotNull(metadata.field(ORDERS.TAX)).dimension().mbql();
+const userId = checkNotNull(metadata.field(ORDERS.USER_ID)).dimension().mbql();
+const userName = checkNotNull(metadata.field(ORDERS.USER_ID))
   .foreign(metadata.field(PEOPLE.NAME))
   .mbql();
 
-const segment = metadata.segment(SEGMENT_ID).filterClause();
-const metric = metadata.metric(METRIC_ID).aggregationClause();
+const segment = checkNotNull(metadata.segment(SEGMENT_ID)).filterClause();
+const metric = checkNotNull(metadata.metric(METRIC_ID)).aggregationClause();
 
-const legacyQuery = metadata.table(ORDERS_ID).query().addExpression("foo", 42);
+const legacyQuery = checkNotNull(metadata.table(ORDERS_ID))
+  .query()
+  .addExpression("foo", 42);
 
 // shared test cases used in compile, formatter, and syntax tests:
 //
@@ -288,7 +294,7 @@ const filter = [
   ["notempty([Total])", ["not-empty", total], "not empty"],
 ];
 
-export default [
+export const dataForFormatting = [
   ["expression", expression, { startRule: "expression", legacyQuery }],
   ["aggregation", aggregation, { startRule: "aggregation", legacyQuery }],
   ["filter", filter, { startRule: "boolean", legacyQuery }],
