@@ -195,7 +195,7 @@
     "unnamed_column"
     (u/slugify (str/trim raw-name))))
 
-(def auto-pk-column-name
+(def ^:private auto-pk-column-name
   "The name of the auto-incrementing PK column."
   "_mb_row_id")
 
@@ -238,7 +238,7 @@
         remove-auto-pk-cols (fn [row]
                               (remove-indices auto-pk-col-indices row))
         rows              (cond->> rows
-                            auto-pk-col-indices
+                            (seq auto-pk-col-indices)
                             (map remove-auto-pk-cols))
         unique-header     (->> normalized-header
                                remove-auto-pk-cols
@@ -253,12 +253,12 @@
                                  (map vector unique-header))]
     {:extant-columns    (ordered-map/ordered-map col-name+type-pairs)
      :generated-columns (ordered-map/ordered-map (keyword auto-pk-column-name) ::auto-incrementing-int-pk)
-     :parse-rows        (fn [rows]
-                          (let [rows (cond->> rows
-                                       auto-pk-col-indices
+     :parse-rows        (fn [rows']
+                          (let [rows' (cond->> rows'
+                                       (seq auto-pk-col-indices)
                                        (map remove-auto-pk-cols))
                                 col-types (map second col-name+type-pairs)]
-                            (parse-rows* col-types rows)))}))
+                            (parse-rows* col-types rows')))}))
 
 
 ;;;; +------------------+
@@ -326,13 +326,17 @@
         col-to-create->col-spec (upload-type->col-specs driver cols->upload-type)
         csv-col-names           (keys extant-columns)]
     (driver/create-table! driver db-id table-name col-to-create->col-spec)
-    (with-open [reader (io/reader csv-file)]
-      (let [rows (->> (csv/read-csv reader)
-                      (drop 1) ; drop header
-                      parse-rows)]
-        (driver/insert-into! driver db-id table-name csv-col-names rows)
-        {:num-rows          (count rows)
-         :num-columns       (count extant-columns)
-         :generated-columns (count generated-columns)
-         :size-mb           (/ (.length csv-file)
-                               1048576.0)}))))
+    (try
+      (with-open [reader (io/reader csv-file)]
+        (let [rows (->> (csv/read-csv reader)
+                        (drop 1) ; drop header
+                        parse-rows)]
+          (driver/insert-into! driver db-id table-name csv-col-names rows)
+          {:num-rows          (count rows)
+           :num-columns       (count extant-columns)
+           :generated-columns (count generated-columns)
+           :size-mb           (/ (.length csv-file)
+                                 1048576.0)}))
+      (catch Throwable e
+        (driver/drop-table! driver db-id table-name)
+        (throw (ex-info (ex-message e) {:status-code 400}))))))

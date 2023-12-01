@@ -221,7 +221,7 @@
 
 (defn- with-ai-id
   [col->type]
-  {:generated-columns {(keyword upload/auto-pk-column-name) auto-pk-type}
+  {:generated-columns {(keyword @#'upload/auto-pk-column-name) auto-pk-type}
    :extant-columns    col->type})
 
 (deftest ^:parallel detect-schema-test
@@ -557,7 +557,7 @@
           (let [table (t2/select-one Table :db_id (mt/id))]
             (is (=? {:name #"(?i)upload_test"} table))
             (testing "Check the data was uploaded into the table correctly"
-              (is (= [upload/auto-pk-column-name "unnamed_column" "ship_name" "unnamed_column_2"]
+              (is (= [@#'upload/auto-pk-column-name "unnamed_column" "ship_name" "unnamed_column_2"]
                      (column-names-for-table table))))))))))
 
 (deftest load-from-csv-duplicate-names-test
@@ -577,7 +577,7 @@
             (let [table (t2/select-one Table :db_id (mt/id))]
               (is (=? {:name #"(?i)upload_test"} table))
               (testing "Check the data was uploaded into the table correctly"
-                (is (= [upload/auto-pk-column-name "unknown" "unknown_2" "unknown_3" "unknown_2_2"]
+                (is (= [@#'upload/auto-pk-column-name "unknown" "unknown_2" "unknown_3" "unknown_2_2"]
                        (column-names-for-table table)))))))))))
 
 (deftest load-from-csv-existing-id-column-test
@@ -599,7 +599,7 @@
             (let [table (t2/select-one Table :db_id (mt/id))]
               (is (=? {:name #"(?i)upload_test"} table))
               (testing "Check the data was uploaded into the table correctly"
-                (is (= [upload/auto-pk-column-name "id" "ship" "name" "weapon"]
+                (is (= [@#'upload/auto-pk-column-name "id" "ship" "name" "weapon"]
                        (column-names-for-table table)))
                 (is (=? {:name                       #"(?i)id"
                          :semantic_type              :type/PK
@@ -624,7 +624,7 @@
             (let [table (t2/select-one Table :db_id (mt/id))]
               (is (=? {:name #"(?i)upload_test"} table))
               (testing "Check the data was uploaded into the table correctly"
-                (is (= [upload/auto-pk-column-name "id" "ship" "name" "weapon"]
+                (is (= [@#'upload/auto-pk-column-name "id" "ship" "name" "weapon"]
                        (column-names-for-table table)))
                 (is (=? {:name                       #"(?i)id"
                          :semantic_type              :type/PK
@@ -715,7 +715,7 @@
             (let [table (t2/select-one Table :db_id (mt/id))]
               (is (=? {:name #"(?i)upload_test"} table))
               (testing "Check the data was uploaded into the table correctly"
-                (is (= [upload/auto-pk-column-name "column_that_has_one_value", "column_that_doesnt_have_a_value"]
+                (is (= [@#'upload/auto-pk-column-name "column_that_has_one_value", "column_that_doesnt_have_a_value"]
                        (column-names-for-table table)))
                 (is (= [[1 2 nil]
                         [2 nil nil]]
@@ -738,7 +738,7 @@
             (let [table (t2/select-one Table :db_id (mt/id))]
               (is (=? {:name #"(?i)upload_test"} table))
               (testing "Check the data was uploaded into the table correctly"
-                (is (= [upload/auto-pk-column-name "ship", "captain"]
+                (is (= [@#'upload/auto-pk-column-name "ship", "captain"]
                        (column-names-for-table table)))
                 (is (= [[1 "Serenity" "Malcolm\tReynolds"]
                         [2 "Millennium\tFalcon" "Han\tSolo"]]
@@ -761,7 +761,7 @@
             (let [table (t2/select-one Table :db_id (mt/id))]
               (is (=? {:name #"(?i)upload_test"} table))
               (testing "Check the data was uploaded into the table correctly"
-                (is (= [upload/auto-pk-column-name, "ship", "captain"]
+                (is (= [@#'upload/auto-pk-column-name, "ship", "captain"]
                        (column-names-for-table table)))
                 (is (= [[1 "Serenity" "Malcolm\rReynolds"]
                         [2 "Millennium\rFalcon" "Han\rSolo"]]
@@ -786,7 +786,7 @@
             (let [table (t2/select-one Table :db_id (mt/id))]
               (is (=? {:name #"(?i)upload_test"} table))
               (testing "Check the data was uploaded into the table correctly"
-                (is (= [upload/auto-pk-column-name, "ship", "captain"]
+                (is (= [@#'upload/auto-pk-column-name, "ship", "captain"]
                        (column-names-for-table table)))))))))))
 
 (deftest load-from-csv-injection-test
@@ -807,7 +807,7 @@
             (let [table (t2/select-one Table :db_id (mt/id))]
               (is (=? {:name #"(?i)upload_test"} table))
               (testing "Check the data was uploaded into the table correctly"
-                (is (= [upload/auto-pk-column-name "id_integer_____" "ship" "captain"]
+                (is (= [@#'upload/auto-pk-column-name "id_integer_____" "ship" "captain"]
                        (column-names-for-table table)))
                 (is (= [[1 1 "Serenity"           "--Malcolm Reynolds"]
                         [2 2 ";Millennium Falcon" "Han Solo\""]]
