@@ -10,7 +10,11 @@ import {
   NumberInputStyled,
 } from "./SmartScalarSettingsWidgets.styled";
 
-import type { ComparisonOption, SelectedComparisonOption } from "./utils";
+import type {
+  ComparisonOption,
+  ComparisonPeriodsAgoType,
+  SelectedComparisonOption,
+} from "./utils";
 
 interface SmartScalarComparisonWidgetProps {
   onChange: (setting: { type: string; value?: number }) => void;
@@ -30,9 +34,9 @@ export function SmartScalarComparisonWidget({
   );
 
   const selectedName =
-    selectedOption?.type !== COMPARISON_OPTIONS.PERIODS_AGO.type
+    selectedValue.type !== COMPARISON_OPTIONS.PERIODS_AGO.type
       ? selectedOption?.name
-      : `${selectedValue?.value ?? ""} ${selectedOption?.name}`;
+      : `${selectedValue.value ?? ""} ${selectedOption?.name}`;
 
   const isDisabled = options.length === 1 && !isEmpty(selectedOption);
 
@@ -89,7 +93,7 @@ interface PeriodsAgoInputWidget {
   minValue: number;
   name: string;
   onChange: (setting: { type: string; value?: number }) => void;
-  selectedValue: SelectedComparisonOption;
+  selectedValue: ComparisonPeriodsAgoType;
   setOpen: (value: boolean) => void;
   type: string;
 }

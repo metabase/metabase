@@ -179,17 +179,23 @@ function getMaxPeriodsAgo({ cols, rows, dateUnit }) {
   return dayjs(latestNonEmptyDate).diff(earliestNonEmptyDate, dateUnit);
 }
 
+export type ComparisonPeriodsAgoType = {
+  type: typeof COMPARISON_TYPES.PERIODS_AGO;
+  value: number;
+};
+
+export type ComparisonPreviousPeriodType = {
+  type: typeof COMPARISON_TYPES.PREVIOUS_PERIOD;
+};
+
+export type ComparisonCompareToPreviousType = {
+  type: typeof COMPARISON_TYPES.COMPARE_TO_PREVIOUS;
+};
+
 export type SelectedComparisonOption =
-  | {
-      type: typeof COMPARISON_TYPES.COMPARE_TO_PREVIOUS;
-    }
-  | {
-      type: typeof COMPARISON_TYPES.PREVIOUS_PERIOD;
-    }
-  | {
-      type: typeof COMPARISON_TYPES.PERIODS_AGO;
-      value: number;
-    };
+  | ComparisonCompareToPreviousType
+  | ComparisonPreviousPeriodType
+  | ComparisonPeriodsAgoType;
 
 export type ComparisonOption = {
   type:
