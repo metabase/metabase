@@ -235,17 +235,17 @@ export class Api extends EventEmitter {
 
     return fetch(request)
       .then(response => {
-        return response.text().then(body => {
+        return response.text().then((body: any) => {
           if (options.json) {
             try {
               body = JSON.parse(body);
             } catch (e) {}
           }
 
-          const status = response.status;
-          // if (status === 202 && body && body._status > 0) {
-          //   status = body._status;
-          // }
+          let status = response.status;
+          if (status === 202 && body?._status > 0) {
+            status = body._status;
+          }
 
           const token = response.headers.get(ANTI_CSRF_HEADER);
           if (token) {
