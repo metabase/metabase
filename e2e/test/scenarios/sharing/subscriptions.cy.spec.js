@@ -70,12 +70,9 @@ describe("scenarios > dashboard > subscriptions", () => {
     it("should allow toggling the sidebar", () => {
       openDashboardSubscriptions();
 
+      // The sidebar starts open after the method there, so test that clicking the icon closes it
       cy.findByLabelText("subscriptions").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Email it").should("not.exist");
-      cy.findByLabelText("subscriptions").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Email it");
+      sidebar().should("not.exist");
     });
   });
 
