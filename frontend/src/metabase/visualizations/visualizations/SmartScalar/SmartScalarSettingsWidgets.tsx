@@ -137,6 +137,7 @@ export function PeriodsAgoInputWidget({
   const handleInputClick = (e: MouseEvent<HTMLInputElement>) => {
     e.preventDefault();
     e.stopPropagation();
+    e.currentTarget.select(); // auto-select all the text on click
   };
 
   return (
