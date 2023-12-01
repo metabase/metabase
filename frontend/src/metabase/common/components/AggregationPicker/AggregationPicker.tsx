@@ -332,7 +332,7 @@ function isExpressionEditorInitiallyOpen(
 
   const isCustomExpression = initialOperator === null;
   const displayInfo = Lib.displayInfo(query, stageIndex, clause);
-  const hasCustomName = Boolean(displayInfo?.isNamed);
+  const hasCustomName = displayInfo.isNamed;
 
   return isCustomExpression || hasCustomName;
 }
