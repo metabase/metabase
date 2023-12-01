@@ -175,7 +175,14 @@ function setup({
     return Lib.displayInfo(query, stageIndex, getRecentClause());
   }
 
-  return { metadata, getRecentClause, getRecentClauseInfo, onSelect };
+  return {
+    metadata,
+    query,
+    stageIndex,
+    getRecentClause,
+    getRecentClauseInfo,
+    onSelect,
+  };
 }
 
 describe("AggregationPicker", () => {
@@ -385,7 +392,8 @@ describe("AggregationPicker", () => {
 
   describe("custom expressions", () => {
     it("should allow to enter a custom expression", async () => {
-      const { getRecentClause, getRecentClauseInfo } = setup();
+      const { query, stageIndex, getRecentClause, getRecentClauseInfo } =
+        setup();
 
       const expression = "1 + 1";
       const expressionName = "My expression";
@@ -396,7 +404,9 @@ describe("AggregationPicker", () => {
       userEvent.click(screen.getByRole("button", { name: "Done" }));
 
       expect(getRecentClauseInfo()).toMatchObject({ displayName: expression });
-      expect(Lib.expressionName(getRecentClause())).toBe(expressionName);
+      expect(
+        Lib.displayInfo(query, stageIndex, getRecentClause()).displayName,
+      ).toBe(expressionName);
     });
 
     it("should open the editor when a named expression without operator is used", async () => {
