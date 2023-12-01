@@ -13,6 +13,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
+   [metabase.api.telemetry :as te]
    [metabase.driver :as driver]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
@@ -53,7 +54,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
@@ -153,21 +153,18 @@
   "Adds additional information to a `Card` selected with toucan that is needed by the frontend. This should be the same information
   returned by all API endpoints where the card entity is cached (i.e. GET, PUT, POST) since the frontend replaces the Card
   it currently has with returned one -- See #4283"
-  [{card-id :id :as card}]
-  (span/with-span!
-    {:name       "hydrate-card-details"
-     :attributes {:card/id card-id}}
-    (-> card
-        (t2/hydrate :creator
-                    :dashboard_count
-                    :can_write
-                    :average_query_time
-                    :last_query_start
-                    :parameter_usage_count
-                    [:collection :is_personal]
-                    [:moderation_reviews :moderator_details])
-        (cond->                                             ; card
-          (:dataset card) (t2/hydrate :persisted)))))
+  [card]
+  (-> card
+      (te/hydrate :creator
+                  :dashboard_count
+                  :can_write
+                  :average_query_time
+                  :last_query_start
+                  :parameter_usage_count
+                  [:collection :is_personal]
+                  [:moderation_reviews :moderator_details])
+      (cond->                                               ; card
+        (:dataset card) (t2/hydrate :persisted))))
 
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."

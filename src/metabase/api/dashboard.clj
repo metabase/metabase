@@ -10,6 +10,7 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
+   [metabase.api.telemetry :as te]
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.events :as events]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -51,25 +52,22 @@
 
 (defn- hydrate-dashboard-details
   "Get dashboard details for the complete dashboard, including tabs, dashcards, params, etc."
-  [{dashboard-id :id :as dashboard}]
+  [dashboard]
   ;; I'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
   ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
   ;; cannot be in this situation
-  (span/with-span!
-    {:name       "hydrate-dashboard-details"
-     :attributes {:dashboard/id dashboard-id}}
-    (t2/hydrate dashboard [:dashcards
-                           [:card [:moderation_reviews :moderator_details]]
-                           [:card :can_write]
-                           :series
-                           :dashcard/action
-                           :dashcard/linkcard-info]
-                :tabs
-                :collection_authority_level
-                :can_write
-                :param_fields
-                :param_values
-                [:collection :is_personal])))
+  (te/hydrate dashboard [:dashcards
+                       [:card [:moderation_reviews :moderator_details]]
+                       [:card :can_write]
+                       :series
+                       :dashcard/action
+                       :dashcard/linkcard-info]
+            :tabs
+            :collection_authority_level
+            :can_write
+            :param_fields
+            :param_values
+            [:collection :is_personal]))
 
 (api/defendpoint POST "/"
   "Create a new Dashboard."
@@ -598,7 +596,7 @@
                 (api/check-not-archived current-dash))
               (let [{current-dashcards :dashcards
                      current-tabs      :tabs
-                     :as               hydrated-current-dash} (t2/hydrate current-dash [:dashcards :series :card] :tabs)
+                     :as               hydrated-current-dash} (te/hydrate current-dash [:dashcards :series :card] :tabs)
                     _                       (when (and (seq current-tabs)
                                                        (not (every? #(some? (:dashboard_tab_id %)) dashcards)))
                                               (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
@@ -834,7 +832,7 @@
   "Get filter values when only field-refs (e.g. `[:field \"SOURCE\" {:base-type :type/Text}]`)
   are provided (rather than field-ids). This is a common case for nested queries."
   [dashboard param-key]
-  (let [dashboard       (t2/hydrate dashboard :resolved-params)
+  (let [dashboard       (te/hydrate dashboard :resolved-params)
         param           (get-in dashboard [:resolved-params param-key])
         results         (for [{:keys [target] {:keys [card]} :dashcard} (:mappings param)
                               :let [[_ dimension] (->> (mbql.normalize/normalize-tokens target :ignore-path)
@@ -861,7 +859,7 @@
     param-key                   :- ms/NonBlankString
     constraint-param-key->value :- ms/Map
     query                       :- [:maybe ms/NonBlankString]]
-   (let [dashboard   (t2/hydrate dashboard :resolved-params)
+   (let [dashboard   (te/hydrate dashboard :resolved-params)
          constraints (chain-filter-constraints dashboard constraint-param-key->value)
          param       (get-in dashboard [:resolved-params param-key])
          field-ids   (map :field-id (param->fields param))]
@@ -903,7 +901,7 @@
     param-key                   :- ms/NonBlankString
     constraint-param-key->value :- :map
     query                       :- [:maybe ms/NonBlankString]]
-   (let [dashboard (t2/hydrate dashboard :resolved-params)
+   (let [dashboard (te/hydrate dashboard :resolved-params)
          param     (get (:resolved-params dashboard) param-key)]
      (when-not param
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))

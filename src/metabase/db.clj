@@ -34,7 +34,9 @@
    [metabase.db.setup :as mdb.setup]
    [methodical.core :as methodical]
    [potemkin :as p]
-   [toucan2.pipeline :as t2.pipeline]))
+   [steffan-westcott.clj-otel.api.trace.span :as span]
+   [toucan2.pipeline :as t2.pipeline]
+   [toucan2.tools.hydrate :as t2.hydrate]))
 
 ;; TODO - determine if we *actually* need to import any of these
 ;;
@@ -78,3 +80,11 @@
     (throw (ex-info "Application database calls are not allowed inside core.async dispatch pool threads."
                     {})))
   resolved-query)
+
+(methodical/defmethod t2.hydrate/hydrate-with-strategy :around :default
+  "Add OpenTelemetry spans around calls to hydrate-with-strategy."
+  [model strategy k instances]
+  (span/with-span!
+    {:name       "hydrate-with-strategy"
+     :attributes {:hydrate/key k}}
+    (next-method model strategy k instances)))
