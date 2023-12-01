@@ -96,7 +96,7 @@ describe.skip("drill-thru/automatic-insights (metabase#33558)", () => {
         drillType,
       );
       const newQuery = Lib.drillThru(query, stageIndex, drill);
-      expect(Lib.filters(newQuery, stageIndex)).toBeGreaterThanOrEqual(1);
+      expect(Lib.filters(newQuery, stageIndex).length).toBeGreaterThanOrEqual(1);
     });
 
     it("should not drill a non-editable query", () => {
