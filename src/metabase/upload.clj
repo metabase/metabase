@@ -215,22 +215,33 @@
                     idx))
                 coll))
 
+(defn- parse-rows*
+  "Returns a lazy seq of parsed rows, given a sequence of upload types for each column.
+  Replaces empty strings with nil."
+  [col-upload-types rows]
+  (let [settings (upload-parsing/get-settings)
+        parsers  (map #(upload-parsing/upload-type->parser % settings) col-upload-types)]
+    (for [row rows]
+      (for [[value parser] (map-with-nils vector row parsers)]
+        (when (not (str/blank? value))
+          (parser value))))))
+
 (defn- rows->schema
-  "rows should be a lazy-seq"
+  "Rows should be a lazy-seq. This function hides the logic for ignoring any columns in the CSV that have the same
+  normalized name as the auto-pk-column-name."
   [header rows]
   (let [normalized-header (->> header
                                (map normalize-column-name))
         ;; remove columns from the rows with the same normalized name as the auto-pk-column-name
-        ;; this is a closure that we'll use later to remove the auto-pk-column from each row as we parse all the rows
-        auto-pk-match-indices (set (indices-where #(= auto-pk-column-name %) normalized-header))
-        filter-row        (when auto-pk-match-indices
-                            (fn [row]
-                              (remove-indices auto-pk-match-indices row)))
+        auto-pk-col-indices (set (indices-where #(= auto-pk-column-name %) normalized-header))
+        ;; remove the auto-pk column from each row as we parse all the rows
+        remove-auto-pk-cols (fn [row]
+                              (remove-indices auto-pk-col-indices row))
         rows              (cond->> rows
-                            filter-row
-                            (map filter-row))
+                            auto-pk-col-indices
+                            (map remove-auto-pk-cols))
         unique-header     (->> normalized-header
-                               filter-row
+                               remove-auto-pk-cols
                                mbql.u/uniquify-names
                                (map keyword))
         column-count      (count normalized-header)
@@ -242,22 +253,17 @@
                                  (map vector unique-header))]
     {:extant-columns    (ordered-map/ordered-map col-name+type-pairs)
      :generated-columns (ordered-map/ordered-map (keyword auto-pk-column-name) ::auto-incrementing-int-pk)
-     :filter-row        filter-row}))
+     :parse-rows        (fn [rows]
+                          (let [rows (cond->> rows
+                                       auto-pk-col-indices
+                                       (map remove-auto-pk-cols))
+                                col-types (map second col-name+type-pairs)]
+                            (parse-rows* col-types rows)))}))
 
 
 ;;;; +------------------+
 ;;;; |  Parsing values  |
 ;;;; +------------------+
-
-(defn- parse-rows
-  "Returns a lazy seq of parsed rows from the `reader`. Replaces empty strings with nil."
-  [col->upload-type rows]
-  (let [settings (upload-parsing/get-settings)
-        parsers  (map #(upload-parsing/upload-type->parser % settings) (vals col->upload-type))]
-    (for [row rows]
-      (for [[value parser] (map-with-nils vector row parsers)]
-        (when (not (str/blank? value))
-          (parser value))))))
 
 ;;;; +------------------+
 ;;;; | Public Functions |
@@ -290,14 +296,17 @@
   (update-vals col->upload-type (partial driver/upload-type->database-type driver)))
 
 (defn detect-schema
-  "Returns a map with three keys:
-    - `:extant-columns`: columns found in the CSV file that we will insert
-    - `:generated-columns`: columns we are adding ourselves.
-    - `:filter-row` (optional): a function that takes a row and returns a row with the auto-incrementing PK column removed
+  "Consumes a CSV file that *must* have headers as the first row.
+
+  Returns a map with three keys:
+    - `:extant-columns`: an ordered map of columns found in the CSV file, excluding columns that have the same normalized name as the generated columns.
+    - `:generated-columns`: an ordered map of columns we are generating ourselves. Currently, this is just the auto-incrementing PK.
+    - `:parse-rows`: a function that takes a single lazy-seq of rows, and returns a lazy-seq of rows. It parses the
+          string values in each row and removes columns that have the same normalized name as the generated columns.
 
   The value of `extant-columns` and `generated-columns` is an ordered map of normalized-column-name -> type for the
   given CSV file. Supported types include `::int`, `::datetime`, etc. A column that is completely blank is assumed to
-  be of type ::text. The CSV file *must* have headers as the first row."
+  be of type ::text."
   [csv-file]
   (with-open [reader (bom/bom-reader csv-file)]
     (let [[header & rows] (csv/read-csv reader)]
@@ -312,21 +321,18 @@
   "Loads a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
   [driver db-id table-name ^File csv-file]
-  (let [{:keys [extant-columns generated-columns filter-row]} (detect-schema csv-file)
+  (let [{:keys [extant-columns generated-columns parse-rows]} (detect-schema csv-file)
         cols->upload-type       (merge generated-columns extant-columns)
         col-to-create->col-spec (upload-type->col-specs driver cols->upload-type)
         csv-col-names           (keys extant-columns)]
     (driver/create-table! driver db-id table-name col-to-create->col-spec)
     (with-open [reader (io/reader csv-file)]
       (let [rows (->> (csv/read-csv reader)
-                      (drop 1)) ; drop header
-            rows (cond->> rows
-                   filter-row
-                   (map filter-row))
-            rows (parse-rows extant-columns rows)]
+                      (drop 1) ; drop header
+                      parse-rows)]
         (driver/insert-into! driver db-id table-name csv-col-names rows)
         {:num-rows          (count rows)
-         :num-columns       (count csv-col-names)
+         :num-columns       (count extant-columns)
          :generated-columns (count generated-columns)
          :size-mb           (/ (.length csv-file)
                                1048576.0)}))))
