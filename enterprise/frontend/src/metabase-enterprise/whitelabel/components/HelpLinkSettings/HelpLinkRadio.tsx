@@ -1,5 +1,6 @@
 import { t } from "ttag";
 import { useState } from "react";
+import M_utils from "cljs/metabase.util.js";
 import { Radio, Stack, Text } from "metabase/ui";
 import type { HelpLinkSetting, SettingKey, Settings } from "metabase-types/api";
 import { SettingInputBlurChange } from "metabase/admin/settings/components/widgets/SettingInput.styled";
@@ -17,8 +18,6 @@ interface Props {
   ) => Promise<void>;
   settingValues: Settings;
 }
-
-const supportedPrefixes = ["http://", "https://", "mailto:"];
 
 export const HelpLinkRadio = ({
   setting,
@@ -42,7 +41,7 @@ export const HelpLinkRadio = ({
   const handleChange = async (value: string) => {
     if (value === "") {
       setError(t`This field can't be left empty.`);
-    } else if (!supportedPrefixes.some(prefix => value.startsWith(prefix))) {
+    } else if (!M_utils.url_QMARK_(value)) {
       setError(t`This needs to be an "http://", "https://" or "mailto:" URL.`);
     } else {
       setError("");

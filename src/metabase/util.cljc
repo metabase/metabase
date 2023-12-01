@@ -290,7 +290,7 @@
   (let [alpha #?(:clj "IsAlphabetic" :cljs "Alphabetic")]
     (str "^[\\p{" alpha "}\\d_\\-]+(\\.[\\p{" alpha "}\\d_\\-]+)*(:\\d*)?")))
 
-(defn url?
+(defn ^:export url?
   "Is `s` a valid HTTP/HTTPS URL string?"
   ^Boolean [s]
   #?(:clj  (let [validator (UrlValidator. (u.jvm/varargs String ["http" "https"])

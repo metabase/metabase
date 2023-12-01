@@ -18,6 +18,7 @@
    :entries    [metabase.domain-entities.queries.util
                 metabase.lib.column-group
                 metabase.lib.js
+                metabase.util
                 metabase.lib.limit
                 metabase.lib.types.isa
                 metabase.mbql.js
