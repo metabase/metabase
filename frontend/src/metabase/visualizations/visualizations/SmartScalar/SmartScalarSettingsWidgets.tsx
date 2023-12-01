@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import { Icon } from "metabase/core/components/Icon";
 import { Button, Group, Menu, Stack, Text, Box } from "metabase/ui";
@@ -110,45 +110,69 @@ export function PeriodsAgoInputWidget({
 
   const [inputValue, setInputValue] = useState(value ?? minValue);
 
-  const handleButtonClick = (e: MouseEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    e.preventDefault();
+  // used to prevent accidental button click when mouseDown inside input field
+  // but dragged to highlight all text and accidentally mouseUp on the button
+  // outside the input field
+  const mouseDownInChild = useRef(false);
+  const handleChildMouseDownAndUp = useCallback(
+    (e: MouseEvent<HTMLInputElement>) => {
+      e.stopPropagation();
+      e.preventDefault();
+      e.currentTarget.select();
 
-    if (inputValue < minValue) {
-      return setInputValue(minValue);
-    }
+      mouseDownInChild.current = true;
+    },
+    [],
+  );
+  const handleParentMouseDown = useCallback(
+    (e: MouseEvent<HTMLInputElement>) => {
+      mouseDownInChild.current = false;
+    },
+    [],
+  );
 
-    if (inputValue > maxValue) {
-      return setInputValue(maxValue);
-    }
+  const handleButtonClick = useCallback(
+    (e: MouseEvent<HTMLDivElement>) => {
+      e.stopPropagation();
+      e.preventDefault();
 
-    if (!Number.isInteger(inputValue)) {
-      return setInputValue(value ?? minValue);
-    }
+      if (mouseDownInChild.current) {
+        mouseDownInChild.current = false;
+        return;
+      }
 
-    onChange({
-      type,
-      value: inputValue,
-    });
+      if (inputValue < minValue) {
+        return setInputValue(minValue);
+      }
 
-    setOpen(false);
-  };
+      if (inputValue > maxValue) {
+        return setInputValue(maxValue);
+      }
 
-  const handleInputClick = (e: MouseEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.currentTarget.select(); // auto-select all the text on click
-  };
+      if (!Number.isInteger(inputValue)) {
+        return setInputValue(value ?? minValue);
+      }
+
+      onChange({
+        type,
+        value: inputValue,
+      });
+
+      setOpen(false);
+    },
+    [inputValue, maxValue, type, onChange, setOpen, value],
+  );
 
   return (
     <StyledMenuItem py="0.25rem" isSelected={isSelected}>
-      <Box onClick={handleButtonClick}>
+      <Box onClick={handleButtonClick} onMouseDown={handleParentMouseDown}>
         <Group position="apart" px="0.5rem">
           <Text fw="bold">{`${inputValue} ${name}`}</Text>
           <StyledNumberInput
             value={inputValue}
             onChange={(value: number) => setInputValue(value)}
-            onClick={handleInputClick}
+            onMouseDown={handleChildMouseDownAndUp}
+            onMouseUp={handleChildMouseDownAndUp}
             size="xs"
             w="3.5rem"
             type="number"
