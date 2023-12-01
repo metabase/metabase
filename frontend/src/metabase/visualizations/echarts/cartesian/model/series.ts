@@ -7,6 +7,7 @@ import type {
 } from "metabase-types/api";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type {
+  LegacySeriesSettingsObjectKey,
   SeriesModel,
   VizSettingsKey,
 } from "metabase/visualizations/echarts/cartesian/model/types";
@@ -31,7 +32,7 @@ type SeriesVizSettingsKeyParams = {
   isFirstCard: boolean;
 } & (MetricSeriesParams | BreakoutSeriesParams);
 
-export const getSeriesVizSettingsKey = ({
+const getSeriesVizSettingsKey = ({
   cardName,
   isFirstCard,
   ...params
@@ -57,16 +58,16 @@ export const getSeriesVizSettingsKey = ({
 // This workaround is necessary for generating a compatible key with `keyForSingleSeries` function,
 // ensuring the correct retrieval of series visualization settings based on the provided `seriesVizSettingsKey`.
 // Will be replaced with just a string key when implementing the dynamic line/area/bar.
-const createLegacySeriesObjectKey = (seriesVizSettingsKey: string) => ({
+const createLegacySeriesObjectKey = (
+  seriesVizSettingsKey: string,
+): LegacySeriesSettingsObjectKey => ({
   card: {
     _seriesKey: seriesVizSettingsKey,
   },
 });
 
-export const getBreakoutDistinctValues = (
-  data: DatasetData,
-  breakoutIndex: number,
-) => Array.from(new Set<RowValue>(data.rows.map(row => row[breakoutIndex])));
+const getBreakoutDistinctValues = (data: DatasetData, breakoutIndex: number) =>
+  Array.from(new Set<RowValue>(data.rows.map(row => row[breakoutIndex])));
 
 /**
  * Generates series models for a given card with a dataset.

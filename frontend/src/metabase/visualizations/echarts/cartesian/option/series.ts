@@ -36,7 +36,7 @@ const buildEChartsLabelOptions = (
       const dimensionIndex = datum?.encode?.y[0];
       const dimensionName =
         dimensionIndex != null ? datum?.dimensionNames?.[dimensionIndex] : null;
-      if (dimensionIndex == null || dimensionName == null) {
+      if (dimensionName == null) {
         return " ";
       }
       const value = (datum?.value as any)?.[dimensionName];

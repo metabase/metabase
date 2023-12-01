@@ -21,8 +21,9 @@ import {
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import {
   getCardsColumns,
-  getCardsSeries,
+  getCardsSeriesModels,
 } from "metabase/visualizations/echarts/cartesian/model";
+import type { LegacySeriesSettingsObjectKey } from "metabase/visualizations/echarts/cartesian/model/types";
 
 const fillWithDefaultValue = (
   settings: Record<string, unknown>,
@@ -39,7 +40,7 @@ const getSeriesFunction = (
   settings: Partial<ComputedVisualizationSettings>,
   keys: string[],
 ) => {
-  return (legacySeriesObject: any) => {
+  return (legacySeriesObject: LegacySeriesSettingsObjectKey) => {
     const seriesSettings = settings[SETTING_ID] ?? {};
     const key = legacySeriesObject.card._seriesKey;
     const singleSeriesSettings = seriesSettings[key] ?? {};
@@ -90,7 +91,7 @@ export const computeStaticComboChartSettings = (
   const settings = getCommonStaticVizSettings(rawSeries, dashcardSettings);
 
   const cardsColumns = getCardsColumns(rawSeries, settings);
-  const seriesModels = getCardsSeries(
+  const seriesModels = getCardsSeriesModels(
     rawSeries,
     cardsColumns,
     settings,
@@ -117,10 +118,7 @@ export const computeStaticComboChartSettings = (
   fillWithDefaultValue(
     settings,
     "graph.series_order",
-    getSeriesOrderVisibilitySettings(
-      settings,
-      seriesModels.map(seriesModel => seriesModel.vizSettingsKey),
-    ),
+    getSeriesOrderVisibilitySettings(settings, seriesVizSettingsKeys),
   );
 
   return settings;

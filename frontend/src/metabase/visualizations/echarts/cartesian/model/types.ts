@@ -2,6 +2,11 @@ import type { DatasetColumn, RowValue } from "metabase-types/api";
 
 export type DataKey = string;
 export type VizSettingsKey = string;
+export type LegacySeriesSettingsObjectKey = {
+  card: {
+    _seriesKey: VizSettingsKey;
+  };
+};
 
 export type RegularSeriesModel = {
   dataKey: DataKey;
@@ -10,7 +15,7 @@ export type RegularSeriesModel = {
   // TODO: remove when the settings definitions are updated for the dynamic combo chart.
   // This object is used as a key for the `series` function of the computed
   // visualization settings to get the computed series settings
-  legacySeriesSettingsObjectKey: any;
+  legacySeriesSettingsObjectKey: LegacySeriesSettingsObjectKey;
 
   cardId?: number;
 
