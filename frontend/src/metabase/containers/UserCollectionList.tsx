@@ -64,7 +64,10 @@ export const UserCollectionList = () => {
             {users.map(
               user =>
                 user.personal_collection_id && (
-                  <ListGridItem key={user.personal_collection_id}>
+                  <ListGridItem
+                    key={user.personal_collection_id}
+                    role="list-item"
+                  >
                     <Link to={`/collection/${user.personal_collection_id}`}>
                       <Card className="p2" hoverable>
                         <CardContent>
