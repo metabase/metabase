@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import { t } from "ttag";
 import { isEmpty } from "metabase/lib/validate";
 import { formatNumber } from "metabase/lib/formatting";
 import { measureText } from "metabase/lib/measure-text";
@@ -78,16 +79,16 @@ const PLACEHOLDER_STR = "[placeholder]";
 export const COMPARISON_OPTIONS = {
   PREVIOUS_PERIOD: {
     type: COMPARISON_TYPES.PREVIOUS_PERIOD,
-    nameTemplate: `Previous ${PLACEHOLDER_STR}`,
+    nameTemplate: t`Previous ${PLACEHOLDER_STR}`,
   },
   PERIODS_AGO: {
     type: COMPARISON_TYPES.PERIODS_AGO,
-    nameTemplate: `${PLACEHOLDER_STR} ago`,
+    nameTemplate: t`${PLACEHOLDER_STR} ago`,
     MenuItemComponent: PeriodsAgoInputWidget,
   },
   COMPARE_TO_PREVIOUS: {
     type: COMPARISON_TYPES.COMPARE_TO_PREVIOUS,
-    name: "Compare to previous",
+    name: t`Compare to previous`,
   },
 };
 
@@ -112,7 +113,7 @@ export function getComparisonOptions(series, settings) {
       ...COMPARISON_OPTIONS.PREVIOUS_PERIOD,
       name: COMPARISON_OPTIONS.PREVIOUS_PERIOD.nameTemplate.replace(
         PLACEHOLDER_STR,
-        dateUnit,
+        t`${dateUnit}`,
       ),
     },
   ];
@@ -126,7 +127,7 @@ export function getComparisonOptions(series, settings) {
       ...COMPARISON_OPTIONS.PERIODS_AGO,
       name: COMPARISON_OPTIONS.PERIODS_AGO.nameTemplate.replace(
         PLACEHOLDER_STR,
-        `${dateUnit}s`,
+        t`${dateUnit}s`,
       ),
       maxValue: maxPeriodsAgo,
     });
@@ -153,7 +154,7 @@ export function isComparisonValid(series, settings) {
   }
 
   // ! check with product + design to see if we want to over-ride this setting
-  // * or not in this case
+  // ! or not in this case
   if (comparison.type === COMPARISON_TYPES.PERIODS_AGO) {
     const selectedPeriodsAgo = comparison.value;
     const maxPeriodsAgo = getMaxPeriodsAgo({ cols, rows, dateUnit });
