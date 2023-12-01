@@ -220,23 +220,29 @@
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (let [test-dashboard-name "Test Create Dashboard"]
           (mt/with-model-cleanup [:model/Dashboard]
-            (is (= (merge
-                    dashboard-defaults
-                    {:name           test-dashboard-name
-                     :creator_id     (mt/user->id :rasta)
-                     :parameters     [{:id "abc123", :name "test", :type "date"}]
-                     :updated_at     true
-                     :created_at     true
-                     :collection_id  true
-                     :collection     false
-                     :cache_ttl      1234
-                     :last-edit-info {:timestamp true :id true :first_name "Rasta"
-                                      :last_name "Toucan" :email "rasta@metabase.com"}})
-                   (-> (mt/user-http-request :rasta :post 200 "dashboard" {:name          test-dashboard-name
-                                                                           :parameters    [{:id "abc123", :name "test", :type "date"}]
-                                                                           :cache_ttl     1234
-                                                                           :collection_id (u/the-id collection)})
-                       dashboard-response)))))))))
+            (let [{dashboard-id :id
+                   :as          created} (mt/user-http-request :rasta :post 200 "dashboard"
+                                                               {:name          test-dashboard-name
+                                                                :parameters    [{:id "abc123", :name "test", :type "date"}]
+                                                                :cache_ttl     1234
+                                                                :collection_id (u/the-id collection)})]
+              (is (=? (merge
+                        dashboard-defaults
+                        {:name           test-dashboard-name
+                         :creator_id     (mt/user->id :rasta)
+                         :parameters     [{:id "abc123", :name "test", :type "date"}]
+                         :updated_at     true
+                         :created_at     true
+                         :collection_id  true
+                         :collection     true
+                         :cache_ttl      1234
+                         :last-edit-info {:timestamp true :id true :first_name "Rasta"
+                                          :last_name "Toucan" :email "rasta@metabase.com"}})
+                      (dashboard-response created)))
+              (testing "A POST /api/dashboard should return the same essential data as a GET of that same dashboard after creation (#34828)"
+                (let [retrieved (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id))]
+                  (is (= (update created :last-edit-info dissoc :timestamp)
+                         (update retrieved :last-edit-info dissoc :timestamp))))))))))))
 
 (deftest create-dashboard-with-collection-position-test
   (testing "POST /api/dashboard"
@@ -593,23 +599,27 @@
                  (dashboard-response (t2/select-one Dashboard :id dashboard-id)))))
 
         (testing "PUT response"
-          (is (= (merge dashboard-defaults {:name           "My Cool Dashboard"
-                                            :dashcards      []
-                                            :tabs           []
-                                            :description    "Some awesome description"
-                                            :creator_id     (mt/user->id :rasta)
-                                            :cache_ttl      1234
-                                            :last-edit-info {:timestamp true     :id    true :first_name "Rasta"
-                                                             :last_name "Toucan" :email "rasta@metabase.com"}
-                                            :collection     true
-                                            :collection_id  true})
-                 (dashboard-response
-                  (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
-                                        {:name        "My Cool Dashboard"
-                                         :description "Some awesome description"
-                                         :cache_ttl   1234
-                                         ;; these things should fail to update
-                                         :creator_id  (mt/user->id :trashbird)})))))
+          (let [put-response (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                               {:name        "My Cool Dashboard"
+                                                :description "Some awesome description"
+                                                :cache_ttl   1234
+                                                ;; these things should fail to update
+                                                :creator_id  (mt/user->id :trashbird)})
+                get-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id))]
+            (is (=? (merge dashboard-defaults {:name           "My Cool Dashboard"
+                                               :dashcards      []
+                                               :tabs           []
+                                               :description    "Some awesome description"
+                                               :creator_id     (mt/user->id :rasta)
+                                               :cache_ttl      1234
+                                               :last-edit-info {:timestamp true :id true :first_name "Rasta"
+                                                                :last_name "Toucan" :email "rasta@metabase.com"}
+                                               :collection     true
+                                               :collection_id  true})
+                    (dashboard-response put-response)))
+            (testing "A PUT should return the updated value so a follow-on GET is not needed (#34828)"
+              (is (= (update put-response :last-edit-info dissoc :timestamp)
+                     (update get-response :last-edit-info dissoc :timestamp))))))
 
         (testing "GET after update"
           (is (= (merge dashboard-defaults {:name          "My Cool Dashboard"
@@ -621,8 +631,8 @@
                  (dashboard-response (t2/select-one Dashboard :id dashboard-id)))))
 
         (testing "No-op PUT: Do not return 500"
-          (t2.with-temp/with-temp [Card          {card-id :id} {}
-                                   DashboardCard dashcard      {:card_id card-id, :dashboard_id dashboard-id}]
+          (t2.with-temp/with-temp [Card {card-id :id} {}
+                                   DashboardCard dashcard {:card_id card-id, :dashboard_id dashboard-id}]
             ;; so, you can't actually set `:cards` with THIS endpoint (you have to use PUT /api/dashboard/:id/cards)
             ;; but the e2e tests are trying to do it. With Toucan 1, it would silently do nothing and return truthy for
             ;; whatever reason (I'm guessing it was a bug?) if you did something like (update! Dashboard 1 {}). Toucan 2
@@ -634,7 +644,7 @@
                                           {:cards [(select-keys dashcard [:id :card_id :row_col :size_x :size_y])]})))))))
     (testing "auto_apply_filters test"
       (doseq [enabled? [true false]]
-        (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:name "Test Dashboard"
+        (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:name               "Test Dashboard"
                                                                :auto_apply_filters enabled?}]
           (testing "Can set it"
             (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
@@ -647,29 +657,30 @@
             (is (= (not enabled?)
                    (t2/select-one-fn :auto_apply_filters Dashboard :id dashboard-id)))))))))
 
+
 (deftest update-dashboard-guide-columns-test
   (testing "PUT /api/dashboard/:id"
     (testing "allow `:caveats` and `:points_of_interest` to be empty strings, and `:show_in_getting_started` should be a boolean"
       (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:name "Test Dashboard"}]
         (with-dashboards-in-writeable-collection [dashboard-id]
-          (is (= (merge dashboard-defaults {:name                    "Test Dashboard"
-                                            :creator_id              (mt/user->id :rasta)
-                                            :collection              true
-                                            :collection_id           true
-                                            :dashcards               []
-                                            :tabs                    []
-                                            :caveats                 ""
-                                            :points_of_interest      ""
-                                            :cache_ttl               1337
-                                            :last-edit-info
-                                            {:timestamp true, :id true, :first_name "Rasta"
-                                             :last_name "Toucan", :email "rasta@metabase.com"}
-                                            :show_in_getting_started true})
-                 (dashboard-response (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
-                                                           {:caveats                 ""
-                                                            :points_of_interest      ""
-                                                            :cache_ttl               1337
-                                                            :show_in_getting_started true})))))))))
+          (is (=? (merge dashboard-defaults {:name                    "Test Dashboard"
+                                             :creator_id              (mt/user->id :rasta)
+                                             :collection              true
+                                             :collection_id           true
+                                             :dashcards               []
+                                             :tabs                    []
+                                             :caveats                 ""
+                                             :points_of_interest      ""
+                                             :cache_ttl               1337
+                                             :last-edit-info
+                                             {:timestamp true, :id true, :first_name "Rasta"
+                                              :last_name "Toucan", :email "rasta@metabase.com"}
+                                             :show_in_getting_started true})
+                  (dashboard-response (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                                            {:caveats                 ""
+                                                             :points_of_interest      ""
+                                                             :cache_ttl               1337
+                                                             :show_in_getting_started true})))))))))
 
 (deftest update-dashboard-clear-description-test
   (testing "PUT /api/dashboard/:id"
@@ -720,7 +731,6 @@
             (is (=? {:message "You do not have curate permissions for this Collection."}
                     (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dash))
                                           {:collection_id (u/the-id new-collection)})))))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    UPDATING DASHBOARD COLLECTION POSITIONS                                     |
@@ -1765,7 +1775,7 @@
 
 (deftest simple-creation-with-no-additional-series-test
   (mt/with-temp [Dashboard {dashboard-id :id} {}
-                 Card      {card-id :id}] {}
+                 Card {card-id :id}] {}
     (with-dashboards-in-writeable-collection [dashboard-id]
       (api.card-test/with-cards-in-readable-collection [card-id]
         (let [resp (:dashcards (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
@@ -1784,22 +1794,22 @@
           ;; extra sure here because the dashcard we given has a negative id
           (testing "the inserted dashcards has ids auto-generated"
             (is (pos-int? (:id (first resp)))))
-          (is (= {:size_x                     4
-                  :size_y                     4
-                  :col                        4
-                  :row                        4
-                  :series                     []
-                  :dashboard_tab_id           nil
-                  :parameter_mappings         [{:parameter_id "abc" :card_id 123, :hash "abc", :target "foo"}]
-                  :visualization_settings     {}
-                  :created_at                 true
-                  :updated_at                 true
-                  :collection_authority_level nil}
-                 (-> resp
-                     first
-                     (dissoc :id :dashboard_id :action_id :card_id :entity_id)
-                     (update :created_at boolean)
-                     (update :updated_at boolean))))
+          (is (=? {:size_x                     4
+                   :size_y                     4
+                   :col                        4
+                   :row                        4
+                   :series                     []
+                   :dashboard_tab_id           nil
+                   :parameter_mappings         [{:parameter_id "abc" :card_id 123, :hash "abc", :target "foo"}]
+                   :visualization_settings     {}
+                   :created_at                 true
+                   :updated_at                 true
+                   :collection_authority_level nil}
+                  (-> resp
+                      first
+                      (dissoc :id :dashboard_id :action_id :card_id :entity_id)
+                      (update :created_at boolean)
+                      (update :updated_at boolean))))
           (is (= [{:size_x                 4
                    :size_y                 4
                    :col                    4
@@ -1808,7 +1818,7 @@
                    :visualization_settings {}}]
                  (map (partial into {})
                       (t2/select [DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
-                                 :dashboard_id dashboard-id)))))))))
+                        :dashboard_id dashboard-id)))))))))
 
 (deftest can-update-card-parameter-with-legacy-field-and-expression-test
   (testing "PUT /api/dashboard/:id/cards accepts legacy field as parameter's target"

@@ -4,7 +4,6 @@ import {
   addOrUpdateDashboardCard,
   editDashboard,
   getActionCardDetails,
-  getBrokenUpTextMatcher,
   getDashboardCard,
   getHeadingCardDetails,
   getLinkCardDetails,
@@ -1623,37 +1622,21 @@ const getTableCell = index => {
 const getCreatedAtToQuestionMapping = () => {
   return cy
     .get("aside")
-    .findByText(
-      getBrokenUpTextMatcher(
-        `${CREATED_AT_COLUMN_NAME} goes to "${TARGET_QUESTION.name}"`,
-      ),
-    );
+    .contains(`${CREATED_AT_COLUMN_NAME} goes to "${TARGET_QUESTION.name}"`);
 };
 
 const getCountToDashboardMapping = () => {
   return cy
     .get("aside")
-    .findByText(
-      getBrokenUpTextMatcher(
-        `${COUNT_COLUMN_NAME} goes to "${TARGET_DASHBOARD.name}"`,
-      ),
-    );
+    .contains(`${COUNT_COLUMN_NAME} goes to "${TARGET_DASHBOARD.name}"`);
 };
 
 const getCreatedAtToUrlMapping = () => {
-  return cy
-    .get("aside")
-    .findByText(
-      getBrokenUpTextMatcher(`${CREATED_AT_COLUMN_NAME} goes to URL`),
-    );
+  return cy.get("aside").contains(`${CREATED_AT_COLUMN_NAME} goes to URL`);
 };
 
 const getCountToDashboardFilterMapping = () => {
-  return cy
-    .get("aside")
-    .findByText(
-      getBrokenUpTextMatcher(`${COUNT_COLUMN_NAME} updates 1 filter`),
-    );
+  return cy.get("aside").contains(`${COUNT_COLUMN_NAME} updates 1 filter`);
 };
 
 const createDashboardWithTabs = ({ dashboard, tabs, options }) => {

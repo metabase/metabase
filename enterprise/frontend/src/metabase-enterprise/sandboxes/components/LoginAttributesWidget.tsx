@@ -17,13 +17,20 @@ export const LoginAttributesWidget = ({
   className,
   style,
 }: Props) => {
-  const [{ value }, , { setValue }] = useField(name);
+  const [{ value }, , { setValue, setError }] = useField(name);
+
+  const handleError = (error: boolean) => {
+    if (error) {
+      setError(t`Duplicate login attribute keys`);
+    }
+  };
 
   return (
     <FormField className={className} style={style} title={title}>
       <MappingEditor
         value={value || {}}
         onChange={setValue}
+        onError={handleError}
         addText={t`Add an attribute`}
       />
     </FormField>

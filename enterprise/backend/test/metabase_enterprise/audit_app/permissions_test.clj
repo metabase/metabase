@@ -5,10 +5,13 @@
    [metabase-enterprise.audit-app.permissions :as audit-app.permissions]
    [metabase-enterprise.audit-db :as audit-db]
    [metabase-enterprise.audit-db-test :as audit-db-test]
+   [metabase.api.common :as api]
+   [metabase.core :as mbc]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.collection.graph :refer [update-graph!]]
    [metabase.models.collection.graph-test :refer [graph]]
    [metabase.models.database :refer [Database]]
+   [metabase.models.interface :as mi]
    [metabase.models.permissions
     :as perms
     :refer [Permissions table-query-path]]
@@ -99,3 +102,52 @@
                Exception
                #"Unable to make audit collections writable."
                (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :write)))))))))
+
+(defn- install-audit-db-if-needed!
+  "Checks if there's an audit-db. if not, it will create it and serialize audit content, including the
+  `default-audit-collection`. If the audit-db is there, this does nothing."
+  []
+  (when-not (t2/select-one :model/Database :is_audit true)
+    (mbc/ensure-audit-db-installed!)))
+
+(deftest can-write-false-for-audit-card-content-test
+  (install-audit-db-if-needed!)
+  (t2.with-temp/with-temp [:model/Card audit-child-card {:collection_id (:id (perms/default-audit-collection))}
+                           :model/Card root-child-card {:collection_id nil}]
+    (is (false? (mi/can-write? audit-child-card)))
+    (binding [api/*current-user-permissions-set* (delay #{"/collection/root/"})]
+      (is (true? (mi/can-write? root-child-card))))
+    (binding [api/*current-user-permissions-set* (delay #{"/"})]
+      (is (true? (mi/can-write? root-child-card))))))
+
+(deftest can-write-is-false-for-audit-content-cards-test
+  (install-audit-db-if-needed!)
+  (let [audit-cards (t2/select :model/Card :collection_id (:id (perms/default-audit-collection)))]
+    (is (= #{false} (set (map mi/can-write? audit-cards))))))
+
+(deftest cannot-edit-audit-content-cards-over-api
+  (install-audit-db-if-needed!)
+  (let [card (t2/select-one :model/Card :collection_id (:id (perms/default-audit-collection)))]
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card)) {:name "My new title"})))))
+
+(deftest can-write-false-for-audit-dashboard-content-test
+  (install-audit-db-if-needed!)
+  (t2.with-temp/with-temp [:model/Dashboard audit-child-dashboard {:collection_id (:id (perms/default-audit-collection))}
+                           :model/Dashboard root-child-dashboard {:collection_id nil}]
+    (is (false? (mi/can-write? audit-child-dashboard)))
+    (binding [api/*current-user-permissions-set* (delay #{"/collection/root/"})]
+      (is (true? (mi/can-write? root-child-dashboard))))
+    (binding [api/*current-user-permissions-set* (delay #{"/"})]
+      (is (true? (mi/can-write? root-child-dashboard))))))
+
+(deftest can-write-is-false-for-audit-content-dashboards-test
+  (install-audit-db-if-needed!)
+  (let [audit-dashboards (t2/select :model/Dashboard :collection_id (:id (perms/default-audit-collection)))]
+    (is (= #{false} (set (map mi/can-write? audit-dashboards))))))
+
+(deftest cannot-edit-audit-content-dashboards-over-api
+  (install-audit-db-if-needed!)
+  (let [dashboard (t2/select-one :model/Dashboard :collection_id (:id (perms/default-audit-collection)))]
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dashboard)) {:name "My new title"})))))
