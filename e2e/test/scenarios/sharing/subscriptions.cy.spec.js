@@ -47,8 +47,8 @@ describe("scenarios > dashboard > subscriptions", () => {
 
     openToEmbedModal();
     cy.get(".Modal--full").within(() => {
-      cy.findByText(/Public embed/).should("be.visible");
-      cy.findByText(/Embed in your application/).should("be.visible");
+      cy.findByText("Public embed").should("be.visible");
+      cy.findByText("Embed in your application").should("be.visible");
     });
   });
 

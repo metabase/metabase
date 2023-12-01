@@ -158,10 +158,13 @@ export function openPublicLinkDropdown({ isAdmin = true }) {
   }
 }
 
-export function openStaticEmbeddingModal() {
+export function openStaticEmbeddingModal({
+  isAdmin = true,
+  isPublicSharingEnabled = true,
+} = {}) {
   cy.intercept("GET", "/api/session/properties").as("sessionProperties");
 
-  openToEmbedModal();
+  openToEmbedModal({ isAdmin, isPublicSharingEnabled });
   cy.get(".Modal--full").findByText("Embed in your application").click();
   cy.wait("@sessionProperties");
 }
