@@ -7,13 +7,8 @@ import * as Lib from "metabase-lib";
 import type { NotebookStepUiComponentProps } from "../../types";
 import { NotebookCell } from "../../NotebookCell";
 
-function LimitStep({
-  topLevelQuery,
-  step,
-  color,
-  updateQuery,
-}: NotebookStepUiComponentProps) {
-  const { stageIndex } = step;
+function LimitStep({ step, color, updateQuery }: NotebookStepUiComponentProps) {
+  const { stageIndex, topLevelQuery } = step;
 
   const limit = Lib.currentLimit(topLevelQuery, stageIndex);
   const value = typeof limit === "number" ? limit : "";

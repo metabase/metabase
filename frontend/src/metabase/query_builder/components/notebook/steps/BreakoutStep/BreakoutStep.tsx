@@ -18,14 +18,13 @@ const breakoutTetherOptions = {
 };
 
 function BreakoutStep({
-  topLevelQuery,
   step,
   color,
   isLastOpened,
   readOnly,
   updateQuery,
 }: NotebookStepUiComponentProps) {
-  const { stageIndex } = step;
+  const { stageIndex, topLevelQuery } = step;
 
   const breakouts = useMemo(() => {
     return Lib.breakouts(topLevelQuery, stageIndex);

@@ -51,9 +51,6 @@ export interface NotebookStepAction {
 
 export interface NotebookStepUiComponentProps {
   step: NotebookStep;
-  topLevelQuery: Query;
-  stageIndex: number;
-  query: StructuredQuery;
   sourceQuestion?: Question;
   color: string;
   isLastOpened: boolean;

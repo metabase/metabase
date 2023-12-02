@@ -8,14 +8,13 @@ import ClauseStep from "../ClauseStep";
 import { SortDirectionButton } from "./SortStep.styled";
 
 function SortStep({
-  topLevelQuery,
   step,
   color,
   isLastOpened,
   readOnly,
   updateQuery,
 }: NotebookStepUiComponentProps) {
-  const { stageIndex } = step;
+  const { stageIndex, topLevelQuery } = step;
 
   const clauses = useMemo(() => {
     return Lib.orderBys(topLevelQuery, stageIndex);
