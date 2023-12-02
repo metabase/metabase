@@ -46,6 +46,9 @@ export function ScatterPlot({
     computedVisualizationSettings,
     renderingContext,
   );
+  // Need to disable animations because they don't run in storybook
+  // (but somehow do for the combo chart ¯\_(ツ)_/¯ )
+  option.animation = false;
 
   chart.setOption(option);
 
