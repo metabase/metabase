@@ -14,7 +14,8 @@
    :output-dir "target/cljs_release/"
    :dev        {:output-dir "target/cljs_dev/"
                 :compiler-options {:reader-features #{:cljs-dev}}}
-   :compiler-options {:reader-features #{:cljs-release}}
+   :compiler-options {:optimization :whitespace :reader-features #{:cljs-release}}
+   :cache-root ".shadow-cljs"
    :entries    [metabase.domain-entities.queries.util
                 metabase.lib.column-group
                 metabase.lib.js
@@ -31,7 +32,7 @@
                 metabase.types
                 metabase.util.devtools]}
 
-  :test
+:test
   {:target    :node-test
    :output-to "target/node-tests.js"
    :ns-regexp "-test$"

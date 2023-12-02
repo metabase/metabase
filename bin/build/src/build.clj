@@ -38,6 +38,7 @@
                :env {"PATH"       (env/env :path)
                      "HOME"       (env/env :user-home)
                      "WEBPACK_BUNDLE"   "production"
+                     "FS_CACHE"   (env/env :fs-cache)
                      "MB_EDITION" mb-edition}}
               "yarn" "build-release"))
       (u/step "Build static viz"
@@ -45,6 +46,7 @@
                :env {"PATH"       (env/env :path)
                      "HOME"       (env/env :user-home)
                      "WEBPACK_BUNDLE"   "production"
+                     "FS_CACHE"   (env/env :fs-cache)
                      "MB_EDITION" mb-edition}}
               "yarn" "build-static-viz"))
       (u/announce "Frontend built successfully."))))
