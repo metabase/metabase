@@ -2900,7 +2900,8 @@
                   (is (= "complete"
                          (:initial_sync_status new-table))
                       "The table is synced and marked as complete")
-                  (is (= #{["id"   :type/PK]
+                  (is (= #{["_mb_row_id" :type/PK]
+                           ["id"   :type/PK]
                            ["name" :type/Name]}
                          (->> (t2/select Field :table_id (:id new-table))
                               (map (fn [field] [(u/lower-case-en (:name field))

@@ -403,7 +403,7 @@
 ;; 'notification' used below means a map that has information needed to send a Pulse/Alert, including results of
 ;; running the underlying query
 (defmulti ^:private notification
-  "Polymorphoic function for creating notifications. This logic is different for pulse type (i.e. alert vs. pulse) and
+  "Polymorphic function for creating notifications. This logic is different for pulse type (i.e. alert vs. pulse) and
   channel_type (i.e. email vs. slack)"
   {:arglists '([alert-or-pulse parts channel])}
   (fn [pulse _ {:keys [channel_type]}]
@@ -503,16 +503,16 @@
   "Execute the underlying queries for a sequence of Pulses and return the parts as 'notification' maps."
   [{:keys [cards], pulse-id :id, :as pulse} dashboard]
   (parts->notifications pulse
-                          (if dashboard
-                            ;; send the dashboard
-                            (execute-dashboard pulse dashboard)
-                            ;; send the cards instead
-                            (for [card  cards
-                                  ;; Pulse ID may be `nil` if the Pulse isn't saved yet
-                                  :let  [part (assoc (pu/execute-card pulse (u/the-id card) :pulse-id pulse-id) :type :card)]
-                                  ;; some cards may return empty part, e.g. if the card has been archived
-                                  :when part]
-                              part))))
+                        (if dashboard
+                          ;; send the dashboard
+                          (execute-dashboard pulse dashboard)
+                          ;; send the cards instead
+                          (for [card cards
+                                ;; Pulse ID may be `nil` if the Pulse isn't saved yet
+                                :let [part (assoc (pu/execute-card pulse (u/the-id card) :pulse-id pulse-id) :type :card)]
+                                ;; some cards may return empty part, e.g. if the card has been archived
+                                :when part]
+                            part))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Sending Notifications                                              |
