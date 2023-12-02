@@ -25,31 +25,32 @@
   (testing "Can each database that allows for persistence actually persist"
     (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
       (testing (str driver/*driver* " can persist")
-        (let [[success? error] (ddl.i/check-can-persist (mt/db))]
-          (is success? (str "Not able to persist on " driver/*driver*))
-          (is (= :persist.check/valid error)))
-        (testing "Populates the `cache_info` table with v1 information"
-          (let [schema-name (ddl.i/schema-name (mt/db) (public-settings/site-uuid))
-                query       {:query
-                             (first
-                              (sql/format {:select [:key :value]
-                                           :from   [(keyword schema-name "cache_info")]}
-                                          {:dialect (if (= (:engine (mt/db)) :mysql)
-                                                      :mysql
-                                                      :ansi)}))}
-                values      (into {} (->> query mt/native-query qp/process-query mt/rows))]
-            (is (partial= {"settings-version" "1"
-                           "instance-uuid"    (public-settings/site-uuid)}
-                          (into {} (->> query mt/native-query qp/process-query mt/rows))))
-            (let [[low high]       [(.minus (Instant/now) 1 ChronoUnit/MINUTES)
-                                    (.plus (Instant/now) 1 ChronoUnit/MINUTES)]
-                  ^Instant created (some-> (get values "created-at")
-                                           (java.time.Instant/parse))]
-              (if created
-                (is (and (.isAfter created low) (.isBefore created high))
-                    "Date was not created recently")
-                (throw (ex-info "Did not find `created-at` in `cache_info` table"
-                                {}))))))))))
+        (mt/dataset test-data
+          (let [[success? error] (ddl.i/check-can-persist (mt/db))]
+            (is success? (str "Not able to persist on " driver/*driver*))
+            (is (= :persist.check/valid error)))
+          (testing "Populates the `cache_info` table with v1 information"
+            (let [schema-name (ddl.i/schema-name (mt/db) (public-settings/site-uuid))
+                  query       {:query
+                               (first
+                                (sql/format {:select [:key :value]
+                                             :from   [(keyword schema-name "cache_info")]}
+                                            {:dialect (if (= (:engine (mt/db)) :mysql)
+                                                        :mysql
+                                                        :ansi)}))}
+                  values      (into {} (->> query mt/native-query qp/process-query mt/rows))]
+              (is (partial= {"settings-version" "1"
+                             "instance-uuid"    (public-settings/site-uuid)}
+                            (into {} (->> query mt/native-query qp/process-query mt/rows))))
+              (let [[low high]       [(.minus (Instant/now) 1 ChronoUnit/MINUTES)
+                                      (.plus (Instant/now) 1 ChronoUnit/MINUTES)]
+                    ^Instant created (some-> (get values "created-at")
+                                             (java.time.Instant/parse))]
+                (if created
+                  (is (and (.isAfter created low) (.isBefore created high))
+                      "Date was not created recently")
+                  (throw (ex-info "Did not find `created-at` in `cache_info` table"
+                                  {})))))))))))
 
 (deftest persisted-models-max-rows-test
   (testing "Persisted models should have the full number of rows of the underlying query,

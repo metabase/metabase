@@ -129,30 +129,31 @@
   (find-values field-values-id))
 
 (deftest get-or-create-full-field-values!-test
-  (testing "create a full Fieldvalues if it does not exist"
-    (t2/delete! FieldValues :field_id (mt/id :categories :name) :type :full)
-    (is (= :full (-> (t2/select-one Field :id (mt/id :categories :name))
-                     field-values/get-or-create-full-field-values!
-                     :type))
-        (is (= 1 (t2/count FieldValues :field_id (mt/id :categories :name) :type :full))))
+  (mt/dataset test-data
+    (testing "create a full Fieldvalues if it does not exist"
+      (t2/delete! FieldValues :field_id (mt/id :categories :name) :type :full)
+      (is (= :full (-> (t2/select-one Field :id (mt/id :categories :name))
+                       field-values/get-or-create-full-field-values!
+                       :type))
+          (is (= 1 (t2/count FieldValues :field_id (mt/id :categories :name) :type :full))))
 
-    (testing "if an Advanced FieldValues Exists, make sure we still returns the full FieldValues"
-      (t2.with-temp/with-temp [FieldValues _ {:field_id (mt/id :categories :name)
-                                              :type     :sandbox
-                                              :hash_key "random-hash"}]
-        (is (= :full (:type (field-values/get-or-create-full-field-values! (t2/select-one Field :id (mt/id :categories :name))))))))
+      (testing "if an Advanced FieldValues Exists, make sure we still returns the full FieldValues"
+        (t2.with-temp/with-temp [FieldValues _ {:field_id (mt/id :categories :name)
+                                                :type     :sandbox
+                                                :hash_key "random-hash"}]
+          (is (= :full (:type (field-values/get-or-create-full-field-values! (t2/select-one Field :id (mt/id :categories :name))))))))
 
-    (testing "if an old FieldValues Exists, make sure we still return the full FieldValues and update last_used_at"
-      (t2/query-one {:update :metabase_fieldvalues
-                     :where [:and
-                             [:= :field_id (mt/id :categories :name)]
-                             [:= :type "full"]]
-                     :set {:last_used_at (t/offset-date-time 2001 12)}})
-      (is (= (t/offset-date-time 2001 12)
-             (:last_used_at (t2/select-one FieldValues :field_id (mt/id :categories :name) :type :full))))
-      (is (seq (:values (field-values/get-or-create-full-field-values! (t2/select-one Field :id (mt/id :categories :name))))))
-      (is (not= (t/offset-date-time 2001 12)
-                (:last_used_at (t2/select-one FieldValues :field_id (mt/id :categories :name) :type :full)))))))
+      (testing "if an old FieldValues Exists, make sure we still return the full FieldValues and update last_used_at"
+        (t2/query-one {:update :metabase_fieldvalues
+                       :where [:and
+                               [:= :field_id (mt/id :categories :name)]
+                               [:= :type "full"]]
+                       :set {:last_used_at (t/offset-date-time 2001 12)}})
+        (is (= (t/offset-date-time 2001 12)
+               (:last_used_at (t2/select-one FieldValues :field_id (mt/id :categories :name) :type :full))))
+        (is (seq (:values (field-values/get-or-create-full-field-values! (t2/select-one Field :id (mt/id :categories :name))))))
+        (is (not= (t/offset-date-time 2001 12)
+                  (:last_used_at (t2/select-one FieldValues :field_id (mt/id :categories :name) :type :full))))))))
 
 (deftest normalize-human-readable-values-test
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"

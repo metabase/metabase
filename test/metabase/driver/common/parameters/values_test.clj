@@ -381,52 +381,53 @@
   (mt/with-test-user :rasta
     (testing "Persisted Models are substituted"
       (mt/test-driver :postgres
-        (mt/with-persistence-enabled [persist-models!]
-          (let [mbql-query (mt/mbql-query categories)]
-            (mt/with-temp [Card model {:name "model"
-                                       :dataset true
-                                       :dataset_query mbql-query
-                                       :database_id (mt/id)}]
-              (persist-models!)
-              (testing "tag uses persisted table"
-                (let [pi (t2/select-one 'PersistedInfo :card_id (u/the-id model))]
-                  (is (= "persisted" (:state pi)))
-                  (is (re-matches #"select \* from \"metabase_cache_[a-z0-9]+_[0-9]+\".\"model_[0-9]+_model\""
-                                  (:query
-                                   (value-for-tag
-                                    {:name         "card-template-tag-test"
-                                     :display-name "Card template tag test"
-                                     :type         :card
-                                     :card-id      (:id model)}
-                                    []))))
-                  (testing "query hits persisted table"
-                    (let [persisted-schema (ddl.i/schema-name {:id (mt/id)}
-                                                              (public-settings/site-uuid))
-                          update-query     (format "update %s.%s set name = name || ' from cached table'"
-                                                   persisted-schema (:table_name pi))
-                          model-query (format "select c_orig.name, c_cached.name
+        (mt/dataset test-data
+          (mt/with-persistence-enabled [persist-models!]
+            (let [mbql-query (mt/mbql-query categories)]
+              (mt/with-temp [Card model {:name "model"
+                                         :dataset true
+                                         :dataset_query mbql-query
+                                         :database_id (mt/id)}]
+                (persist-models!)
+                (testing "tag uses persisted table"
+                  (let [pi (t2/select-one 'PersistedInfo :card_id (u/the-id model))]
+                    (is (= "persisted" (:state pi)))
+                    (is (re-matches #"select \* from \"metabase_cache_[a-z0-9]+_[0-9]+\".\"model_[0-9]+_model\""
+                                    (:query
+                                     (value-for-tag
+                                      {:name         "card-template-tag-test"
+                                       :display-name "Card template tag test"
+                                       :type         :card
+                                       :card-id      (:id model)}
+                                      []))))
+                    (testing "query hits persisted table"
+                      (let [persisted-schema (ddl.i/schema-name {:id (mt/id)}
+                                                                (public-settings/site-uuid))
+                            update-query     (format "update %s.%s set name = name || ' from cached table'"
+                                                     persisted-schema (:table_name pi))
+                            model-query (format "select c_orig.name, c_cached.name
                                                from categories c_orig
                                                left join {{#%d}} c_cached
                                                on c_orig.id = c_cached.id
                                                order by c_orig.id desc limit 3"
-                                              (u/the-id model))
-                          tag-name    (format "#%d" (u/the-id model))]
-                      (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                                     [update-query])
-                      (is (= [["Winery" "Winery from cached table"]
-                              ["Wine Bar" "Wine Bar from cached table"]
-                              ["Vegetarian / Vegan" "Vegetarian / Vegan from cached table"]]
-                             (mt/rows (qp/process-query
-                                       {:database (mt/id)
-                                        :type :native
-                                        :native {:query model-query
-                                                 :template-tags
-                                                 {(keyword tag-name)
-                                                  {:id "c6558da4-95b0-d829-edb6-45be1ee10d3c"
-                                                   :name tag-name
-                                                   :display-name tag-name
-                                                   :type "card"
-                                                   :card-id (u/the-id model)}}}})))))))))))))))
+                                                (u/the-id model))
+                            tag-name    (format "#%d" (u/the-id model))]
+                        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                                       [update-query])
+                        (is (= [["Winery" "Winery from cached table"]
+                                ["Wine Bar" "Wine Bar from cached table"]
+                                ["Vegetarian / Vegan" "Vegetarian / Vegan from cached table"]]
+                               (mt/rows (qp/process-query
+                                         {:database (mt/id)
+                                          :type :native
+                                          :native {:query model-query
+                                                   :template-tags
+                                                   {(keyword tag-name)
+                                                    {:id "c6558da4-95b0-d829-edb6-45be1ee10d3c"
+                                                     :name tag-name
+                                                     :display-name tag-name
+                                                     :type "card"
+                                                     :card-id (u/the-id model)}}}}))))))))))))))))
 
 (deftest ^:parallel card-query-test-4
   (mt/with-test-user :rasta
