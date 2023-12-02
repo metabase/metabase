@@ -76,7 +76,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.on("uncaught:exception", err => {
         expect(
           err.message.includes(
-            "Cannot read properties of null (reading 'type')",
+            "Cannot read properties of undefined (reading 'type')",
           ),
         ).to.be.false;
       });
