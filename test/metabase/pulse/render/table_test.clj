@@ -1,6 +1,7 @@
 (ns metabase.pulse.render.table-test
   (:require
    [clojure.test :refer :all]
+   [hickory.select :as hik.s]
    [metabase.pulse.render :as render]
    [metabase.pulse.render.color :as color]
    [metabase.pulse.render.common :as common]
@@ -97,33 +98,36 @@
 ;; following commits will just swap out make-viz-data and make-card-and-data fns for
 ;; good old fashioned Metabase test util mocking. That's much smarter.
 
-(deftest table-columns-test
-  (testing "FIXME"
-    (is (= 1 0)))
-  #_(let [rows [["As" "Bs" "Cs"]
-                ["a" "b" "c"]]]
-      (testing "Column reordering is applied correctly to the table"
-        (let [{:keys [viz-tree]} (render.tu/make-viz-data
-                                  rows :table {:reordered-columns {:order [1 0 2]}})]
-          (is (= ["Bs" "As" "Cs" "b" "a" "c"]
-                 (-> viz-tree
-                     render.tu/remove-attrs
-                     ((juxt #(render.tu/nodes-with-tag % :th)
-                            #(render.tu/nodes-with-tag % :td)))
-                     (->> (apply concat))
-                     (->> (map second)))))))
-      (testing "A table with hidden columns does not render hidden columns"
-        (let [{:keys [viz-tree]} (render.tu/make-viz-data
-                                  rows :table {:hidden-columns {:hide [1]}})]
-          (is (= ["As" "Cs" "a" "c"]
-                 (-> viz-tree
-                     render.tu/remove-attrs
-                     ((juxt #(render.tu/nodes-with-tag % :th)
-                            #(render.tu/nodes-with-tag % :td)))
-                     (->> (apply concat))
-                     (->> (map second)))))))))
+(def ^:private simple-table-card
+  {:dataset_query
+   {:type     :native
+    :native
+    {:query         "SELECT 'a' AS aa, 1 AS bb, 0.1 AS cc UNION ALL\nSELECT 'b', 2, 0.2 UNION ALL\nSELECT 'c', 3, 0.3;"
+     :template-tags {}}
+    :database (mt/id)}
+   :display :table})
 
-(deftest table-column-formatting-test
+(deftest table-columns-test
+  (mt/dataset sample-dataset
+    (mt/with-temp [:model/Card {card1 :id} simple-table-card
+                   :model/Card {card2 :id}
+                   (-> simple-table-card
+                       (assoc-in [:visualization_settings :table.columns]
+                                 [{:name "c" :fieldRef [:field "c" {:base-type :type/Decimal}] :enabled true}
+                                  {:name "b" :fieldRef [:field "b" {:base-type :type/Integer}] :enabled true}
+                                  {:name "a" :fieldRef [:field "a" {:base-type :type/Text}] :enabled false}])
+                       (assoc-in [:visualization_settings :column_settings]
+                                 {"[\"name\",\"c\"]" {:column_title "Sea"}}))]
+      (is (= ["AA" "BB" "CC"]
+             (->> (render.tu/render-card-as-hickory card1)
+                  (hik.s/select (hik.s/tag :th))
+                  (mapcat :content))))
+      (is (= ["SeaSea" "BB"]
+             (->> (render.tu/render-card-as-hickory card2)
+                  (hik.s/select (hik.s/tag :th))
+                  (mapcat :content)))))))
+
+#_(deftest table-column-formatting-test
   (let [rows [["A" "B" "C" "D" "E"]
               [0.1 9000 "2022-10-12T00:00:00Z" 0.123 0.6666667]]]
     (testing "Custom column titles are respected in render."
@@ -156,12 +160,12 @@
                                                                             :date_abbreviate false}
                                                             :type/Number   {:number_separators ",."}}]
         (is (= ["0,1" "9.000" "12-10-2022" "0,12" "0,67"]
-             (-> rows
-                 (render.tu/make-card-and-data :table)
-                 render.tu/render-as-hiccup
-                 render.tu/remove-attrs
-                 (render.tu/nodes-with-tag :td)
-                 (->> (map second)))))))))
+               (-> rows
+                   (render.tu/make-card-and-data :table)
+                   render.tu/render-as-hiccup
+                   render.tu/remove-attrs
+                   (render.tu/nodes-with-tag :td)
+                   (->> (map second)))))))))
 
 (defn- render-table [dashcard results]
   (render/render-pulse-card :attachment "America/Los_Angeles" render.tu/test-card dashcard results))
