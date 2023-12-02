@@ -72,8 +72,8 @@ export function TypeSelector({
   const handleSelect = useCallback(
     value => {
       if (value !== clickBehavior.type) {
-        updateSettings(value === "menu" ? undefined : { type: value });
-      } else if (value !== "menu") {
+        updateSettings(value === "actionMenu" ? undefined : { type: value });
+      } else if (value !== "actionMenu") {
         moveToNextPage();
       }
     },

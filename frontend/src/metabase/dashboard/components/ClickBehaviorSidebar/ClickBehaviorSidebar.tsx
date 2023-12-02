@@ -114,6 +114,15 @@ export function ClickBehaviorSidebar({
   const handleChangeSettings = useCallback(
     nextClickBehavior => {
       const { id } = dashcard;
+      // ERROR:
+      // let nextClick;
+      // if (nextClickBehavior.type === "actionMenu") {
+      //   nextClick = null;
+      // } else {
+      //   nextClick = nextClickBehavior;
+      // }
+      // Success:
+      // const nextClick = nextClickBehavior;
 
       if (selectedColumn == null) {
         onUpdateDashCardVisualizationSettings(id, {
@@ -125,9 +134,15 @@ export function ClickBehaviorSidebar({
         });
       }
 
+      // const changedType =
+      //   // nextClickBehavior is `undefined` for drill-through menu
+      //   nextClick.type !== clickBehavior?.type;
+
+      // FIXED:
       const changedType =
         // nextClickBehavior is `undefined` for drill-through menu
         !!nextClickBehavior && nextClickBehavior.type !== clickBehavior?.type;
+      // nextClickBehavior.type !== "actionMenu";
       if (changedType) {
         // move to next screen
         setTypeSelectorVisible(false);
