@@ -509,20 +509,24 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     popover().contains("No description");
   });
 
-  it("should allow to pick a saved question when there are models", () => {
-    cy.createNativeQuestion({
-      name: "Orders, Model",
-      dataset: true,
-      native: { query: "SELECT * FROM ORDERS" },
-    });
+  it(
+    "should allow to pick a saved question when there are models",
+    { tags: "@flaky" },
+    () => {
+      cy.createNativeQuestion({
+        name: "Orders, Model",
+        dataset: true,
+        native: { query: "SELECT * FROM ORDERS" },
+      });
 
-    startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved Questions").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders, Count").click();
-    visualize();
-  });
+      startNewQuestion();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Saved Questions").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Orders, Count").click();
+      visualize();
+    },
+  );
 
   it('should not show "median" aggregation option for databases that do not support "percentile-aggregations" driver feature', () => {
     startNewQuestion();

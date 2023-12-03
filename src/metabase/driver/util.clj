@@ -144,7 +144,8 @@
   (if throw-exceptions
     (try
       (u/with-timeout (db-connection-timeout-ms)
-        (driver/can-connect? driver details-map))
+        (or (driver/can-connect? driver details-map)
+            (throw (Exception. "Failed to connect to Database"))))
       ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
       ;; first
       (catch Throwable e

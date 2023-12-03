@@ -1570,12 +1570,15 @@
                      set))))
 
       (testing "selecting a collection gets all its contents"
-        (let [grandchild-paths  #{[{:model "Collection"    :id coll3-eid :label "grandchild_collection"}]
+        (let [grandchild-paths  #{[{:model "Collection"    :id coll1-eid :label "some_collection"}]
+                                  [{:model "Collection"    :id coll2-eid :label "nested_collection"}]
+                                  [{:model "Collection"    :id coll3-eid :label "grandchild_collection"}]
                                   [{:model "Dashboard"     :id dash3-eid :label "dashboard_3"}]
                                   [{:model "Card"          :id c3-1-eid  :label "question_3_1"}]
                                   [{:model "Card"          :id c3-2-eid  :label "question_3_2"}]
                                   [{:model "Card"          :id c3-3-eid  :label "question_3_3"}]}
-              middle-paths      #{[{:model "Collection"    :id coll2-eid :label "nested_collection"}]
+              middle-paths      #{[{:model "Collection"    :id coll1-eid :label "some_collection"}]
+                                  [{:model "Collection"    :id coll2-eid :label "nested_collection"}]
                                   [{:model "Dashboard"     :id dash2-eid :label "dashboard_2"}]
                                   [{:model "Card"          :id c2-1-eid  :label "question_2_1"}]
                                   [{:model "Card"          :id c2-2-eid  :label "question_2_2"}]
@@ -1660,3 +1663,25 @@
                           (extract/extract {:targets       [["Collection" coll2-id]]
                                             :no-settings   true
                                             :no-data-model true})))))))))
+
+(deftest recursive-colls-test
+  (mt/with-empty-h2-app-db
+    (mt/with-temp [Collection {parent-id  :id
+                               parent-eid :entity_id} {:name "Top-Level Collection"}
+                   Collection {middle-id  :id
+                               middle-eid :entity_id} {:name     "Nested Collection"
+                                                       :location (format "/%s/" parent-id)}
+                   Collection {nested-id  :id
+                               nested-eid :entity_id} {:name     "Nested Collection"
+                                                       :location (format "/%s/%s/" parent-id middle-id)}
+                   Card       _                       {:name          "Card To Skip"
+                                                       :collection_id parent-id}
+                   Card       {ncard-eid :entity_id}  {:name          "Card To Export"
+                                                       :collection_id nested-id}]
+      (let [ser (extract/extract {:targets       [["Collection" nested-id]]
+                                  :no-settings   true
+                                  :no-data-model true})]
+        (is (= #{parent-eid middle-eid nested-eid}
+               (by-model "Collection" ser)))
+        (is (= #{ncard-eid}
+               (by-model "Card" ser)))))))

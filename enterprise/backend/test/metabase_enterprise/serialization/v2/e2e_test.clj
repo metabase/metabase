@@ -14,8 +14,8 @@
                             Dashboard
                             DashboardCard
                             Database
-                            ParameterCard
                             Field
+                            ParameterCard
                             Table]]
    [metabase.models.action :as action]
    [metabase.models.serialization :as serdes]

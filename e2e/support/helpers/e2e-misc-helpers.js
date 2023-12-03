@@ -163,7 +163,7 @@ export function visitDashboard(dashboard_id, { params = {} } = {}) {
     url: `/api/dashboard/${dashboard_id}`,
     // That's why we have to ignore failures
     failOnStatusCode: false,
-  }).then(({ status, body: { dashcards } }) => {
+  }).then(({ status, body: { dashcards, tabs } }) => {
     const dashboardAlias = "getDashboard" + dashboard_id;
 
     cy.intercept("GET", `/api/dashboard/${dashboard_id}`).as(dashboardAlias);
@@ -171,9 +171,12 @@ export function visitDashboard(dashboard_id, { params = {} } = {}) {
     const canViewDashboard = hasAccess(status);
 
     let validQuestions = dashboardHasQuestions(dashcards);
-    if (params.tab != null) {
+
+    // if dashboard has tabs, only expect cards on the first tab
+    if (tabs?.length > 0) {
+      const firstTab = tabs[0];
       validQuestions = validQuestions.filter(
-        card => card.dashboard_tab_id === params.tab,
+        card => card.dashboard_tab_id === firstTab.id,
       );
     }
 
@@ -303,24 +306,4 @@ export function visitPublicDashboard(id, { params = {} } = {}) {
       });
     },
   );
-}
-
-/**
- * Returns a matcher function to find text content that is broken up by multiple elements
- * There is also a version of this for unit tests - frontend/test/__support__/ui.tsx
- * In case of changes, please, add them there as well
- *
- * @param {string} textToFind
- * @example
- * cy.findByText(getBrokenUpTextMatcher("my text with a styled word"))
- */
-export function getBrokenUpTextMatcher(textToFind) {
-  return (content, element) => {
-    const hasText = node => node?.textContent === textToFind;
-    const childrenDoNotHaveText = element
-      ? Array.from(element.children).every(child => !hasText(child))
-      : true;
-
-    return hasText(element) && childrenDoNotHaveText;
-  };
 }

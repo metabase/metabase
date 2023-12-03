@@ -391,6 +391,18 @@
 (defmethod descendants :default [_ _]
   nil)
 
+(defmulti ascendants
+  "Return set of `[model-name database-id]` pairs for all entities containing this entity, required to successfully
+  load this entity in destination db. Notice that ascendants are searched recursively, but their descendants are not
+  analyzed.
+
+  Dispatched on model-name."
+  {:arglists '([model-name db-id])}
+  (fn [model-name _] model-name))
+
+(defmethod ascendants :default [_ _]
+  nil)
+
 ;;; # Import Process
 ;;; Deserialization is split into two stages, mirroring serialization. They are called *ingestion* and *loading*.
 ;;; Ingestion turns whatever serialized form was produced by storage (eg. a tree of YAML files) into Clojure maps with
@@ -617,13 +629,18 @@
   (fn [ingested _]
     (ingested-model ingested)))
 
-(defmethod load-one! :default [ingested maybe-local]
+(defn default-load-one!
+  "Default implementation of `load-one!`"
+  [ingested maybe-local]
   (let [model    (ingested-model ingested)
         adjusted (load-xform ingested)]
     (binding [mi/*deserializing?* true]
       (if (nil? maybe-local)
         (load-insert! model adjusted)
         (load-update! model adjusted maybe-local)))))
+
+(defmethod load-one! :default [ingested maybe-local]
+  (default-load-one! ingested maybe-local))
 
 (defn entity-id?
   "Checks if the given string is a 21-character NanoID. Useful for telling entity IDs apart from identity hashes."

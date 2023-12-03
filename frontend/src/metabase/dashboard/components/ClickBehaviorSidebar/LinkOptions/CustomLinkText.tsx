@@ -15,7 +15,7 @@ interface Props {
   updateSettings: (settings: ClickBehavior) => void;
 }
 
-const CustomLinkText = ({ clickBehavior, updateSettings }: Props) => {
+export const CustomLinkText = ({ clickBehavior, updateSettings }: Props) => {
   const handleChange = useCallback(
     (e: { target: HTMLInputElement }) => {
       updateSettings({
@@ -38,6 +38,3 @@ const CustomLinkText = ({ clickBehavior, updateSettings }: Props) => {
     </div>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default CustomLinkText;
