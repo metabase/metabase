@@ -1,5 +1,6 @@
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import * as Lib from "metabase-lib";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { AggregationPicker } from "../SummarizeSidebar.styled";
 import { AggregationName, RemoveIcon, Root } from "./AggregationItem.styled";
 
@@ -8,6 +9,7 @@ const STAGE_INDEX = -1;
 interface AggregationItemProps {
   query: Lib.Query;
   aggregation: Lib.AggregationClause;
+  legacyQuery: StructuredQuery;
   onUpdate: (nextAggregation: Lib.Aggregable) => void;
   onRemove: () => void;
 }
@@ -15,6 +17,7 @@ interface AggregationItemProps {
 export function AggregationItem({
   query,
   aggregation,
+  legacyQuery,
   onUpdate,
   onRemove,
 }: AggregationItemProps) {
@@ -44,6 +47,7 @@ export function AggregationItem({
           stageIndex={STAGE_INDEX}
           operators={operators}
           hasExpressionInput={false}
+          legacyQuery={legacyQuery}
           onSelect={nextAggregation => {
             onUpdate(nextAggregation);
             closePopover();

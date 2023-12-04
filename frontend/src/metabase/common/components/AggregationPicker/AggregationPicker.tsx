@@ -12,8 +12,7 @@ import { ExpressionWidget } from "metabase/query_builder/components/expressions/
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 
 import * as Lib from "metabase-lib";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import Question from "metabase-lib/Question";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { QueryColumnPicker } from "../QueryColumnPicker";
 import {
@@ -34,6 +33,7 @@ interface AggregationPickerProps {
   stageIndex: number;
   operators: Lib.AggregationOperator[];
   hasExpressionInput?: boolean;
+  legacyQuery: StructuredQuery;
   maxHeight?: number;
   onSelect: (operator: Lib.Aggregable) => void;
   onClose?: () => void;
@@ -63,6 +63,7 @@ function isOperatorListItem(item: ListItem): item is OperatorListItem {
 export function AggregationPicker({
   className,
   query,
+  legacyQuery,
   clause,
   stageIndex,
   operators,
@@ -80,11 +81,6 @@ export function AggregationPicker({
     isEditingExpression,
     { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
   ] = useToggle(isExpressionEditorInitiallyOpen(displayInfo, initialOperator));
-  const datasetQuery = Lib.toLegacyQuery(query);
-  const legacyQuery = new StructuredQuery(
-    new Question({ dataset_query: datasetQuery }, metadata),
-    datasetQuery,
-  );
 
   // For really simple inline expressions like Average([Price]),
   // MLv2 can figure out that "Average" operator is used.

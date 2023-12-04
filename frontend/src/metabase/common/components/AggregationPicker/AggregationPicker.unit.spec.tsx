@@ -4,12 +4,13 @@ import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 
-import type { Metric } from "metabase-types/api";
+import type { Metric, StructuredDatasetQuery } from "metabase-types/api";
 import {
   createMockMetric,
   COMMON_DATABASE_FEATURES,
 } from "metabase-types/api/mocks";
 import {
+  createAdHocCard,
   createSampleDatabase,
   createOrdersTable,
   createPeopleTable,
@@ -22,7 +23,9 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
+import Question from "metabase-lib/Question";
 import type Metadata from "metabase-lib/metadata/Metadata";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import {
   createQuery,
   columnFinder,
@@ -144,6 +147,9 @@ function setup({
   query = createQuery({ metadata }),
   hasExpressionInput = true,
 }: SetupOpts = {}) {
+  const dataset_query = Lib.toLegacyQuery(query) as StructuredDatasetQuery;
+  const question = new Question(createAdHocCard({ dataset_query }), metadata);
+  const legacyQuery = question.query() as StructuredQuery;
   const stageIndex = 0;
   const clause = Lib.aggregations(query, stageIndex)[0];
 
@@ -157,6 +163,7 @@ function setup({
   renderWithProviders(
     <AggregationPicker
       query={query}
+      legacyQuery={legacyQuery}
       clause={clause}
       stageIndex={stageIndex}
       operators={operators}
