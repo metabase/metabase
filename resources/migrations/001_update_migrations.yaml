@@ -4172,6 +4172,28 @@ databaseChangeLog:
                     nullable: true
                   remarks: 'Hash of normalized query, calculated in middleware.cache'
 
+  - changeSet:
+      id: v48.00-067
+      author: adam-james
+      comment: Migrate pulse_card.include_csv to 'true' when the joined card.display is 'table'
+      changes:
+        - sql:
+            dbms: mariadb,mysql
+            sql: >-
+              UPDATE pulse_card AS pc
+              JOIN report_card AS rc ON rc.id = pc.card_id
+              SET pc.include_csv = TRUE
+              WHERE rc.display = 'table';
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE pulse_card
+              SET include_csv = TRUE
+              FROM report_card
+              WHERE pulse_card.card_id = report_card.id
+              AND report_card.display = 'table';
+      rollback: # no change
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 
