@@ -1,6 +1,5 @@
 (ns metabase-enterprise.audit-app.permissions-test
-  (:require ;;  [metabase.api.common :as api]
- ;;  [metabase.core :as mbc]
+  (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.permissions :as audit-app.permissions]
@@ -113,10 +112,9 @@
   `default-audit-collection`. If the audit-db is there, this does nothing."
   []
   (let [coll (boolean (perms/default-audit-collection))
-        cards (boolean (seq (t2/select :model/Card :collection_id
-                                       (:id (perms/default-audit-collection)))))
-        dashboards (boolean (seq (t2/select :model/Dashboard :collection_id
-                                            (:id (perms/default-audit-collection)))))]
+        default-audit-id (:id (perms/default-audit-collection))
+        cards (t2/exists? :model/Card :collection_id default-audit-id)
+        dashboards (t2/exists? :model/Dashboard :collection_id default-audit-id)]
     (when-not (and coll cards dashboards)
       (mbc/ensure-audit-db-installed!))))
 
