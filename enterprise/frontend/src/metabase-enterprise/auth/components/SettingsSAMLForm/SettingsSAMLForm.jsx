@@ -132,7 +132,6 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
                 label={t`SAML Identity Provider URL`}
                 placeholder="https://your-org-name.yourIDP.com"
                 required
-                autoFocus
               />
               <FormTextarea
                 {...fields["saml-identity-provider-certificate"]}

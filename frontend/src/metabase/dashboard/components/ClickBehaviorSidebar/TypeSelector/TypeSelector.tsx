@@ -68,7 +68,7 @@ interface TypeSelectorProps {
   moveToNextPage: () => void;
 }
 
-function TypeSelector({
+export function TypeSelector({
   dashcard,
   clickBehavior,
   parameters,
@@ -108,6 +108,3 @@ function TypeSelector({
     </div>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default TypeSelector;

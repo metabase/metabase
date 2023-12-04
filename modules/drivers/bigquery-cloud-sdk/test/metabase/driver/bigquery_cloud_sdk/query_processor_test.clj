@@ -29,12 +29,12 @@
    [metabase.util.honeysql-extensions :as hx]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(def ^:private test-db-name (bigquery.tx/normalize-name :db "test_data"))
+(def ^:private test-db-name (bigquery.tx/test-dataset-id "test_data"))
 
-(def ^:private sample-dataset-name (bigquery.tx/normalize-name :db "sample_dataset"))
+(def ^:private sample-dataset-name (bigquery.tx/test-dataset-id "sample_dataset"))
 
 (defn- with-test-db-name
-  "Replaces instances of v3_test_data with the full per-test-run DB name"
+  "Replaces instances of v3_test_data with the full per-test-run DB name (aka dataset ID)"
   [x]
   (cond
     (string? x) (str/replace x "v3_test_data" test-db-name)
@@ -659,7 +659,7 @@
                            :type       :native
                            :native     {:query         (str "SELECT count(*)\n"
                                                             (format "FROM `%s.attempts`\n"
-                                                                    (bigquery.tx/normalize-name :db "attempted_murders"))
+                                                                    (bigquery.tx/test-dataset-id "attempted_murders"))
                                                             "WHERE {{d}}")
                                         :template-tags {"d" {:name         "d"
                                                              :display-name "Date"

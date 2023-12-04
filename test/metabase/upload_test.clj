@@ -29,9 +29,7 @@
 (def ^:private datetime-type  ::upload/datetime)
 (def ^:private offset-dt-type ::upload/offset-datetime)
 (def ^:private text-type      ::upload/text)
-(def ^:private int-pk-type    ::upload/int-pk)
-(def ^:private ai-int-pk-type ::upload/auto-incrementing-int-pk)
-(def ^:private string-pk-type ::upload/string-pk)
+(def ^:private auto-pk-type ::upload/auto-incrementing-int-pk)
 
 (defn- local-infile-on? []
   (= "ON" (-> (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
@@ -223,48 +221,48 @@
 
 (defn- with-ai-id
   [col->type]
-  {:generated-columns {:id ai-int-pk-type}
+  {:generated-columns {(keyword @#'upload/auto-pk-column-name) auto-pk-type}
    :extant-columns    col->type})
 
 (deftest ^:parallel detect-schema-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "Well-formed CSV file"
-      (is (= (with-ai-id {:name             vchar-type
-                          :age              int-type
-                          :favorite_pokemon vchar-type})
-             (upload/detect-schema
-              (csv-file-with ["Name, Age, Favorite Pokémon"
-                              "Tim, 12, Haunter"
-                              "Ryan, 97, Paras"])))))
+      (is (=? (with-ai-id {:name             vchar-type
+                           :age              int-type
+                           :favorite_pokemon vchar-type})
+              (upload/detect-schema
+               (csv-file-with ["Name, Age, Favorite Pokémon"
+                               "Tim, 12, Haunter"
+                               "Ryan, 97, Paras"])))))
     (testing "CSV missing data"
-      (is (= (with-ai-id {:name       vchar-type
-                          :height     int-type
-                          :birth_year float-type})
-             (upload/detect-schema
-              (csv-file-with ["Name, Height, Birth Year"
-                              "Luke Skywalker, 172, -19"
-                              "Darth Vader, 202, -41.9"
-                              "Watto, 137"          ; missing column
-                              "Sebulba, 112,"]))))) ; comma, but blank column
+      (is (=? (with-ai-id {:name       vchar-type
+                           :height     int-type
+                           :birth_year float-type})
+              (upload/detect-schema
+               (csv-file-with ["Name, Height, Birth Year"
+                               "Luke Skywalker, 172, -19"
+                               "Darth Vader, 202, -41.9"
+                               "Watto, 137"          ; missing column
+                               "Sebulba, 112,"]))))) ; comma, but blank column
     (testing "Type coalescing"
-      (is (= (with-ai-id {:name       vchar-type
-                          :height     float-type
-                          :birth_year vchar-type})
-             (upload/detect-schema
-              (csv-file-with ["Name, Height, Birth Year"
-                              "Rey Skywalker, 170, 15"
-                              "Darth Vader, 202.0, 41.9BBY"])))))
+      (is (=? (with-ai-id {:name       vchar-type
+                           :height     float-type
+                           :birth_year vchar-type})
+              (upload/detect-schema
+               (csv-file-with ["Name, Height, Birth Year"
+                               "Rey Skywalker, 170, 15"
+                               "Darth Vader, 202.0, 41.9BBY"])))))
     (testing "Boolean coalescing"
-      (is (= (with-ai-id {:name          vchar-type
-                          :is_jedi_      bool-type
-                          :is_jedi__int_ int-type
-                          :is_jedi__vc_  vchar-type})
-             (upload/detect-schema
-              (csv-file-with ["Name, Is Jedi?, Is Jedi (int), Is Jedi (VC)"
-                              "Rey Skywalker, yes, true, t"
-                              "Darth Vader, YES, TRUE, Y"
-                              "Grogu, 1, 9001, probably?"
-                              "Han Solo, no, FaLsE, 0"])))))
+      (is (=? (with-ai-id {:name          vchar-type
+                           :is_jedi_      bool-type
+                           :is_jedi__int_ int-type
+                           :is_jedi__vc_  vchar-type})
+              (upload/detect-schema
+               (csv-file-with ["Name, Is Jedi?, Is Jedi (int), Is Jedi (VC)"
+                               "Rey Skywalker, yes, true, t"
+                               "Darth Vader, YES, TRUE, Y"
+                               "Grogu, 1, 9001, probably?"
+                               "Han Solo, no, FaLsE, 0"])))))
     (testing "Order is ensured"
       (let [header "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,zz,yy,xx,ww,vv,uu,tt,ss,rr,qq,pp,oo,nn,mm,ll,kk,jj,ii,hh,gg,ff,ee,dd,cc,bb,aa"]
         (is (= (map keyword (str/split header #","))
@@ -274,115 +272,68 @@
                   (csv-file-with [header
                                   "Luke,ah'm,yer,da,,,missing,columns,should,not,matter"]))))))))
     (testing "Empty contents (with header) are okay"
-      (is (= (with-ai-id {:name     text-type
-                          :is_jedi_ text-type})
-             (upload/detect-schema
-              (csv-file-with ["Name, Is Jedi?"])))))
+      (is (=? (with-ai-id {:name     text-type
+                           :is_jedi_ text-type})
+              (upload/detect-schema
+               (csv-file-with ["Name, Is Jedi?"])))))
     (testing "Completely empty contents are okay"
-      (is (= (with-ai-id {})
-             (upload/detect-schema
-              (csv-file-with [""])))))
+      (is (=? (with-ai-id {})
+              (upload/detect-schema
+               (csv-file-with [""])))))
     (testing "CSV missing data in the top row"
-      (is (= (with-ai-id {:name       vchar-type
-                          :height     int-type
-                          :birth_year float-type})
-             (upload/detect-schema
-              (csv-file-with ["Name, Height, Birth Year"
+      (is (=? (with-ai-id {:name       vchar-type
+                           :height     int-type
+                           :birth_year float-type})
+              (upload/detect-schema
+               (csv-file-with ["Name, Height, Birth Year"
                               ;; missing column
-                              "Watto, 137"
-                              "Luke Skywalker, 172, -19"
-                              "Darth Vader, 202, -41.9"
+                               "Watto, 137"
+                               "Luke Skywalker, 172, -19"
+                               "Darth Vader, 202, -41.9"
                               ;; comma, but blank column
-                              "Sebulba, 112,"])))))
+                               "Sebulba, 112,"])))))
+    (testing "Existing _mb_row_id column"
+      (is (=? {:extant-columns    {:ship       vchar-type
+                                   :name       vchar-type
+                                   :weapon     vchar-type}
+               :generated-columns {:_mb_row_id auto-pk-type}}
+              (upload/detect-schema
+               (csv-file-with ["_mb_row_id,ship,name,weapon"
+                               "1,Serenity,Malcolm Reynolds,Pistol"
+                               "2,Millennium Falcon, Han Solo,Blaster"])))))
     (testing "Existing ID column"
-      (testing "Integer ID; various names for it"
-        (is (= {:extant-columns    {:id     int-pk-type
-                                    :ship   vchar-type
-                                    :name   vchar-type
-                                    :weapon vchar-type}
-                :generated-columns {}}
-               (upload/detect-schema
-                (csv-file-with ["id,ship,name,weapon"
-                                "1,Serenity,Malcolm Reynolds,Pistol"
-                                "2,Millennium Falcon, Han Solo,Blaster"]))))
-        (is (= {:extant-columns    {:id     int-pk-type
-                                    :ship   vchar-type
-                                    :name   vchar-type
-                                    :weapon vchar-type}
-                :generated-columns {}}
-               (upload/detect-schema
-                (csv-file-with ["ID,ship,name,weapon"
-                                "1,Serenity,Malcolm Reynolds,Pistol"
-                                "2,Millennium Falcon, Han Solo,Blaster"]))))
-        (is (= {:extant-columns    {:pk     int-pk-type
-                                    :ship   vchar-type
-                                    :name   vchar-type
-                                    :weapon vchar-type}
-                :generated-columns {}}
-               (upload/detect-schema
-                (csv-file-with ["pk,ship,name,weapon"
-                                "1,Serenity,Malcolm Reynolds,Pistol"
-                                "2,Millennium Falcon, Han Solo,Blaster"]))))
-        (is (= {:extant-columns    {:pk     int-pk-type
-                                    :ship   vchar-type
-                                    :name   vchar-type
-                                    :weapon vchar-type}
-                :generated-columns {}}
-               (upload/detect-schema
-                (csv-file-with ["PK,ship,name,weapon"
-                                "1,Serenity,Malcolm Reynolds,Pistol"
-                                "2,Millennium Falcon, Han Solo,Blaster"]))))
-        (is (= {:extant-columns    {:guid   int-pk-type
-                                    :ship   vchar-type
-                                    :name   vchar-type
-                                    :weapon vchar-type}
-                :generated-columns {}}
-               (upload/detect-schema
-                (csv-file-with ["GUID,ship,name,weapon"
-                                "1,Serenity,Malcolm Reynolds,Pistol"
-                                "2,Millennium Falcon, Han Solo,Blaster"]))))
-        (is (= {:extant-columns    {:uuid   int-pk-type
-                                    :ship   vchar-type
-                                    :name   vchar-type
-                                    :weapon vchar-type}
-                :generated-columns {}}
-               (upload/detect-schema
-                (csv-file-with ["UUID,ship,name,weapon"
-                                "1,Serenity,Malcolm Reynolds,Pistol"
-                                "2,Millennium Falcon, Han Solo,Blaster"])))))
-      (testing "String ID"
-        (is (= {:extant-columns {:id     string-pk-type
-                                 :ship   vchar-type
-                                 :name   vchar-type
-                                 :weapon vchar-type}
-                :generated-columns {}}
-               (upload/detect-schema
-                (csv-file-with ["id,ship,name,weapon"
-                                "a,Serenity,Malcolm Reynolds,Pistol"
-                                "b,Millennium Falcon, Han Solo,Blaster"]))))))))
+      (is (=? {:extant-columns    {:id         int-type
+                                   :ship       vchar-type
+                                   :name       vchar-type
+                                   :weapon     vchar-type}
+               :generated-columns {:_mb_row_id auto-pk-type}}
+              (upload/detect-schema
+               (csv-file-with ["id,ship,name,weapon"
+                               "1,Serenity,Malcolm Reynolds,Pistol"
+                               "2,Millennium Falcon, Han Solo,Blaster"])))))))
 
 (deftest ^:parallel detect-schema-dates-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "Dates"
-      (is (= (with-ai-id {:date         date-type
-                          :not_date     vchar-type
-                          :datetime     datetime-type
-                          :not_datetime vchar-type})
-             (upload/detect-schema
-              (csv-file-with ["Date      ,Not Date  ,Datetime           ,Not datetime       "
-                              "2022-01-01,2023-02-28,2022-01-01T00:00:00,2023-02-28T00:00:00"
-                              "2022-02-01,2023-02-29,2022-01-01T00:00:00,2023-02-29T00:00:00"])))))))
+      (is (=? (with-ai-id {:date         date-type
+                           :not_date     vchar-type
+                           :datetime     datetime-type
+                           :not_datetime vchar-type})
+              (upload/detect-schema
+               (csv-file-with ["Date      ,Not Date  ,Datetime           ,Not datetime       "
+                               "2022-01-01,2023-02-28,2022-01-01T00:00:00,2023-02-28T00:00:00"
+                               "2022-02-01,2023-02-29,2022-01-01T00:00:00,2023-02-29T00:00:00"])))))))
 
 (deftest ^:parallel detect-schema-offset-datetimes-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "Dates"
-      (is (= (with-ai-id {:offset_datetime offset-dt-type
-                          :not_datetime   vchar-type})
-             (upload/detect-schema
-              (csv-file-with ["Offset Datetime,Not Datetime"
-                              "2022-01-01T00:00:00-01:00,2023-02-28T00:00:00-01:00"
-                              "2022-01-01T00:00:00-01:00,2023-02-29T00:00:00-01:00"
-                              "2022-01-01T00:00:00Z,2023-02-29T00:00:00-01:00"])))))))
+      (is (=? (with-ai-id {:offset_datetime offset-dt-type
+                           :not_datetime   vchar-type})
+              (upload/detect-schema
+               (csv-file-with ["Offset Datetime,Not Datetime"
+                               "2022-01-01T00:00:00-01:00,2023-02-28T00:00:00-01:00"
+                               "2022-01-01T00:00:00-01:00,2023-02-29T00:00:00-01:00"
+                               "2022-01-01T00:00:00Z,2023-02-29T00:00:00-01:00"])))))))
 
 (deftest ^:parallel unique-table-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -434,28 +385,32 @@
               (is (=? {:name         #"(?i)upload_test"
                        :display_name "Upload Test"}
                       table))
-              (is (=? {:name          #"(?i)id"
+              (is (=? {:name          #"(?i)_mb_row_id"
                        :semantic_type :type/PK
                        :base_type     :type/BigInteger}
                       (t2/select-one Field :database_position 0 :table_id (:id table))))
+              (is (=? {:name          #"(?i)id"
+                       :semantic_type :type/PK
+                       :base_type     :type/BigInteger}
+                      (t2/select-one Field :database_position 1 :table_id (:id table))))
               (is (=? {:name      #"(?i)nulls"
                        :base_type :type/Text}
-                      (t2/select-one Field :database_position 1 :table_id (:id table))))
+                      (t2/select-one Field :database_position 2 :table_id (:id table))))
               (is (=? {:name      #"(?i)string"
                        :base_type :type/Text}
-                      (t2/select-one Field :database_position 2 :table_id (:id table))))
+                      (t2/select-one Field :database_position 3 :table_id (:id table))))
               (is (=? {:name      #"(?i)bool"
                        :base_type :type/Boolean}
-                      (t2/select-one Field :database_position 3 :table_id (:id table))))
+                      (t2/select-one Field :database_position 4 :table_id (:id table))))
               (is (=? {:name      #"(?i)number"
                        :base_type :type/Float}
-                      (t2/select-one Field :database_position 4 :table_id (:id table))))
+                      (t2/select-one Field :database_position 5 :table_id (:id table))))
               (is (=? {:name      #"(?i)date"
                        :base_type :type/Date}
-                      (t2/select-one Field :database_position 5 :table_id (:id table))))
+                      (t2/select-one Field :database_position 6 :table_id (:id table))))
               (is (=? {:name      #"(?i)datetime"
                        :base_type (if (= driver/*driver* :mysql) :type/DateTimeWithLocalTZ :type/DateTime)}
-                      (t2/select-one Field :database_position 6 :table_id (:id table))))
+                      (t2/select-one Field :database_position 7 :table_id (:id table))))
               (testing "Check the data was uploaded into the table"
                 (is (= 2
                        (count (rows-for-table table))))))))))))
@@ -552,9 +507,9 @@
               (testing "Check the boolean column has a boolean base_type"
                 (is (=? {:name      #"(?i)bool"
                          :base_type :type/Boolean}
-                        (t2/select-one Field :database_position 1 :table_id (:id table)))))
+                        (t2/select-one Field :database_position 2 :table_id (:id table)))))
               (testing "Check the data was uploaded into the table correctly"
-                (let [bool-column (map second (rows-for-table table))
+                (let [bool-column (map #(nth % 2) (rows-for-table table))
                       alternating (map even? (range (count bool-column)))]
                   (is (= alternating bool-column)))))))))))
 
@@ -602,7 +557,7 @@
           (let [table (t2/select-one Table :db_id (mt/id))]
             (is (=? {:name #"(?i)upload_test"} table))
             (testing "Check the data was uploaded into the table correctly"
-              (is (= ["id" "unnamed_column" "ship_name" "unnamed_column_2"]
+              (is (= [@#'upload/auto-pk-column-name "unnamed_column" "ship_name" "unnamed_column_2"]
                      (column-names-for-table table))))))))))
 
 (deftest load-from-csv-duplicate-names-test
@@ -622,7 +577,7 @@
             (let [table (t2/select-one Table :db_id (mt/id))]
               (is (=? {:name #"(?i)upload_test"} table))
               (testing "Check the data was uploaded into the table correctly"
-                (is (= ["id" "unknown" "unknown_2" "unknown_3" "unknown_2_2"]
+                (is (= [@#'upload/auto-pk-column-name "unknown" "unknown_2" "unknown_3" "unknown_2_2"]
                        (column-names-for-table table)))))))))))
 
 (deftest load-from-csv-existing-id-column-test
@@ -644,13 +599,13 @@
             (let [table (t2/select-one Table :db_id (mt/id))]
               (is (=? {:name #"(?i)upload_test"} table))
               (testing "Check the data was uploaded into the table correctly"
-                (is (= ["id" "ship" "name" "weapon"]
+                (is (= [@#'upload/auto-pk-column-name "id" "ship" "name" "weapon"]
                        (column-names-for-table table)))
                 (is (=? {:name                       #"(?i)id"
                          :semantic_type              :type/PK
                          :base_type                  :type/BigInteger
                          :database_is_auto_increment false}
-                        (t2/select-one Field :database_position 0 :table_id (:id table))))))))))))
+                        (t2/select-one Field :database_position 1 :table_id (:id table))))))))))))
 
 (deftest load-from-csv-existing-string-id-column-test
   (testing "Upload a CSV file with an existing string ID column"
@@ -669,33 +624,79 @@
             (let [table (t2/select-one Table :db_id (mt/id))]
               (is (=? {:name #"(?i)upload_test"} table))
               (testing "Check the data was uploaded into the table correctly"
-                (is (= ["id" "ship" "name" "weapon"]
+                (is (= [@#'upload/auto-pk-column-name "id" "ship" "name" "weapon"]
                        (column-names-for-table table)))
                 (is (=? {:name                       #"(?i)id"
                          :semantic_type              :type/PK
                          :base_type                  :type/Text
                          :database_is_auto_increment false}
-                        (t2/select-one Field :database_position 0 :table_id (:id table))))))))))))
+                        (t2/select-one Field :database_position 1 :table_id (:id table))))))))))))
 
 (deftest load-from-csv-reserved-db-words-test
-  (testing "Upload a CSV file with column names that are reserved by the DB"
-    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-      (with-mysql-local-infile-on-and-off
-        (mt/with-empty-db
-          (upload/load-from-csv!
-           driver/*driver*
-           (mt/id)
-           "upload_test"
-           (csv-file-with ["id,ship,captain"
-                           "1,Serenity,Malcolm Reynolds"
-                           "2,Millennium Falcon, Han Solo"]))
-          (testing "Table and Fields exist after sync"
-            (sync/sync-database! (mt/db))
-            (let [table (t2/select-one Table :db_id (mt/id))]
-              (is (=? {:name #"(?i)upload_test"} table))
-              (testing "Check the data was uploaded into the table correctly"
-                (is (= ["id", "ship", "captain"]
-                       (column-names-for-table table)))))))))))
+  (testing "Upload a CSV file with column names that are reserved by the DB, ignoring them"
+    (testing "A single column whose name normalizes to _mb_row_id"
+      (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+        (with-mysql-local-infile-on-and-off
+          (mt/with-empty-db
+            (upload/load-from-csv!
+             driver/*driver*
+             (mt/id)
+             "upload_test"
+             (csv-file-with ["_mb_ROW-id,ship,captain"
+                             "100,Serenity,Malcolm Reynolds"
+                             "3,Millennium Falcon, Han Solo"]))
+            (testing "Table and Fields exist after sync"
+              (sync/sync-database! (mt/db))
+              (let [table (t2/select-one Table :db_id (mt/id))]
+                (is (=? {:name #"(?i)upload_test"} table))
+                (testing "Check the data was uploaded into the table correctly"
+                  (is (= ["_mb_row_id", "ship", "captain"]
+                         (column-names-for-table table)))
+                  (is (= [[1 "Serenity" "Malcolm Reynolds"]
+                          [2 "Millennium Falcon" " Han Solo"]]
+                         (rows-for-table table))))))))))
+    (testing "Multiple identical column names that normalize to _mb_row_id"
+      (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+        (with-mysql-local-infile-on-and-off
+          (mt/with-empty-db
+            (upload/load-from-csv!
+             driver/*driver*
+             (mt/id)
+             "upload_test"
+             (csv-file-with ["_mb row id,ship,captain,_mb row id"
+                             "100,Serenity,Malcolm Reynolds,200"
+                             "3,Millennium Falcon, Han Solo,4"]))
+            (testing "Table and Fields exist after sync"
+              (sync/sync-database! (mt/db))
+              (let [table (t2/select-one Table :db_id (mt/id))]
+                (is (=? {:name #"(?i)upload_test"} table))
+                (testing "Check the data was uploaded into the table correctly"
+                  (is (= ["_mb_row_id", "ship", "captain"]
+                         (column-names-for-table table)))
+                  (is (= [[1 "Serenity" "Malcolm Reynolds"]
+                          [2 "Millennium Falcon" " Han Solo"]]
+                         (rows-for-table table))))))))))
+    (testing "Multiple different column names that normalize to _mb_row_id"
+      (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+        (with-mysql-local-infile-on-and-off
+          (mt/with-empty-db
+            (upload/load-from-csv!
+             driver/*driver*
+             (mt/id)
+             "upload_test"
+             (csv-file-with ["_mb row id,ship,captain,_MB_ROW_ID"
+                             "100,Serenity,Malcolm Reynolds,200"
+                             "3,Millennium Falcon, Han Solo,4"]))
+            (testing "Table and Fields exist after sync"
+              (sync/sync-database! (mt/db))
+              (let [table (t2/select-one Table :db_id (mt/id))]
+                (is (=? {:name #"(?i)upload_test"} table))
+                (testing "Check the data was uploaded into the table correctly"
+                  (is (= ["_mb_row_id", "ship", "captain"]
+                         (column-names-for-table table)))
+                  (is (= [[1 "Serenity" "Malcolm Reynolds"]
+                          [2 "Millennium Falcon" " Han Solo"]]
+                         (rows-for-table table))))))))))))
 
 (deftest load-from-csv-missing-values-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -706,15 +707,15 @@
            driver/*driver*
            (mt/id)
            "upload_test"
-           (csv-file-with ["id,column_that_has_one_value,column_that_doesnt_have_a_value"
-                           "1,2"
-                           "2,  ,\n"]))
+           (csv-file-with ["column_that_has_one_value,column_that_doesnt_have_a_value"
+                           "2"
+                           "  ,\n"]))
           (testing "Table and Fields exist after sync"
             (sync/sync-database! (mt/db))
             (let [table (t2/select-one Table :db_id (mt/id))]
               (is (=? {:name #"(?i)upload_test"} table))
               (testing "Check the data was uploaded into the table correctly"
-                (is (= ["id" "column_that_has_one_value", "column_that_doesnt_have_a_value"]
+                (is (= [@#'upload/auto-pk-column-name "column_that_has_one_value", "column_that_doesnt_have_a_value"]
                        (column-names-for-table table)))
                 (is (= [[1 2 nil]
                         [2 nil nil]]
@@ -729,15 +730,15 @@
            driver/*driver*
            (mt/id)
            "upload_test"
-           (csv-file-with ["id,ship,captain"
-                           "1,Serenity,Malcolm\tReynolds"
-                           "2,Millennium\tFalcon,Han\tSolo"]))
+           (csv-file-with ["ship,captain"
+                           "Serenity,Malcolm\tReynolds"
+                           "Millennium\tFalcon,Han\tSolo"]))
           (testing "Table and Fields exist after sync"
             (sync/sync-database! (mt/db))
             (let [table (t2/select-one Table :db_id (mt/id))]
               (is (=? {:name #"(?i)upload_test"} table))
               (testing "Check the data was uploaded into the table correctly"
-                (is (= ["id", "ship", "captain"]
+                (is (= [@#'upload/auto-pk-column-name "ship", "captain"]
                        (column-names-for-table table)))
                 (is (= [[1 "Serenity" "Malcolm\tReynolds"]
                         [2 "Millennium\tFalcon" "Han\tSolo"]]
@@ -752,15 +753,15 @@
            driver/*driver*
            (mt/id)
            "upload_test"
-           (csv-file-with ["id,ship,captain"
-                           "1,Serenity,\"Malcolm\rReynolds\""
-                           "2,\"Millennium\rFalcon\",\"Han\rSolo\""]))
+           (csv-file-with ["ship,captain"
+                           "Serenity,\"Malcolm\rReynolds\""
+                           "\"Millennium\rFalcon\",\"Han\rSolo\""]))
           (testing "Table and Fields exist after sync"
             (sync/sync-database! (mt/db))
             (let [table (t2/select-one Table :db_id (mt/id))]
               (is (=? {:name #"(?i)upload_test"} table))
               (testing "Check the data was uploaded into the table correctly"
-                (is (= ["id", "ship", "captain"]
+                (is (= [@#'upload/auto-pk-column-name, "ship", "captain"]
                        (column-names-for-table table)))
                 (is (= [[1 "Serenity" "Malcolm\rReynolds"]
                         [2 "Millennium\rFalcon" "Han\rSolo"]]
@@ -775,9 +776,9 @@
            driver/*driver*
            (mt/id)
            "upload_test"
-           (csv-file-with ["id,ship,captain"
-                           "1,Serenity,Malcolm Reynolds"
-                           "2,Millennium Falcon, Han Solo"]
+           (csv-file-with ["ship,captain"
+                           "Serenity,Malcolm Reynolds"
+                           "Millennium Falcon, Han Solo"]
                           "star-wars"
                           (partial bom/bom-writer "UTF-8")))
           (testing "Table and Fields exist after sync"
@@ -785,7 +786,7 @@
             (let [table (t2/select-one Table :db_id (mt/id))]
               (is (=? {:name #"(?i)upload_test"} table))
               (testing "Check the data was uploaded into the table correctly"
-                (is (= ["id", "ship", "captain"]
+                (is (= [@#'upload/auto-pk-column-name, "ship", "captain"]
                        (column-names-for-table table)))))))))))
 
 (deftest load-from-csv-injection-test
@@ -806,7 +807,7 @@
             (let [table (t2/select-one Table :db_id (mt/id))]
               (is (=? {:name #"(?i)upload_test"} table))
               (testing "Check the data was uploaded into the table correctly"
-                (is (= ["id" "id_integer_____" "ship" "captain"]
+                (is (= [@#'upload/auto-pk-column-name "id_integer_____" "ship" "captain"]
                        (column-names-for-table table)))
                 (is (= [[1 1 "Serenity"           "--Malcolm Reynolds"]
                         [2 2 ";Millennium Falcon" "Han Solo\""]]
