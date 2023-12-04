@@ -41,9 +41,9 @@ interface Options {
 }
 
 async function setup({ dashboard }: Options = {}) {
-  const TEST_COLLECTION = createMockCollection();
+  const testCollection = createMockCollection();
 
-  const TEST_DATABASE_WITH_ACTIONS = createMockDatabase({
+  const testDatabaseWithActions = createMockDatabase({
     settings: { "database-enable-actions": true },
   });
 
@@ -53,16 +53,16 @@ async function setup({ dashboard }: Options = {}) {
   const channelData = { channels: {} };
   fetchMock.get("path:/api/pulse/form_input", channelData);
 
-  setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
+  setupDatabasesEndpoints([testDatabaseWithActions]);
   setupDashboardEndpoints(mockDashboard);
   setupCollectionsEndpoints({ collections: [] });
   setupCollectionItemsEndpoint({
-    collection: TEST_COLLECTION,
+    collection: testCollection,
     collectionItems: [],
   });
   setupSearchEndpoints([
     createMockCollectionItem({
-      collection: TEST_COLLECTION,
+      collection: testCollection,
       model: "dataset",
     }),
   ]);
@@ -95,7 +95,7 @@ async function setup({ dashboard }: Options = {}) {
       storeInitialState: {
         dashboard: createMockDashboardState(),
         entities: createMockEntitiesState({
-          databases: [TEST_DATABASE_WITH_ACTIONS],
+          databases: [testDatabaseWithActions],
         }),
       },
     },
