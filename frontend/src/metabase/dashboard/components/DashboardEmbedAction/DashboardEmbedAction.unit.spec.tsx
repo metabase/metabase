@@ -41,7 +41,7 @@ jest.mock(
   () => {
     return {
       __esModule: true,
-      default: TestEmbeddingModalComponent,
+      DashboardSharingEmbeddingModalConnected: TestEmbeddingModalComponent,
     };
   },
 );
