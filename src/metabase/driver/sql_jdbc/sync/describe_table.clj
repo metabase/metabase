@@ -90,7 +90,8 @@
           (let [metadata (.getMetaData rs)]
             (reduce
              ((map (fn [^Integer i]
-                     ;; TODO: missing :database-required column
+                     ;; TODO: missing :database-required column as ResultSetMetadata does not have information about
+                     ;; the default value of a column, so we can't make sure whether a column is required or not
                      {:name                       (.getColumnName metadata i)
                       :database-type              (.getColumnTypeName metadata i)
                       :database-is-auto-increment (.isAutoIncrement metadata i)})) rf)
