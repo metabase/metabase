@@ -41,10 +41,10 @@
   "Returns true if this is a clause."
   [clause]
   (and (vector? clause)
-       (> (count clause) 1)
        (keyword? (first clause))
-       (map? (second clause))
-       (contains? (second clause) :lib/uuid)))
+       (let [opts (get clause 1)]
+         (and (map? opts)
+              (contains? opts :lib/uuid)))))
 
 (defn clause-of-type?
   "Returns true if this is a clause."

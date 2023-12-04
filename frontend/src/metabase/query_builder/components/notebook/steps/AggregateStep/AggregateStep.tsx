@@ -31,14 +31,14 @@ export function AggregateStep({
     return Lib.aggregations(topLevelQuery, stageIndex);
   }, [topLevelQuery, stageIndex]);
 
-  const handleAddAggregation = (aggregation: Lib.Aggregatable) => {
+  const handleAddAggregation = (aggregation: Lib.Aggregable) => {
     const nextQuery = Lib.aggregate(topLevelQuery, stageIndex, aggregation);
     updateQuery(nextQuery);
   };
 
   const handleUpdateAggregation = (
     currentClause: Lib.AggregationClause,
-    nextClause: Lib.Aggregatable,
+    nextClause: Lib.Aggregable,
   ) => {
     const nextQuery = Lib.replaceClause(
       topLevelQuery,
@@ -88,9 +88,9 @@ interface AggregationPopoverProps {
   clause?: Lib.AggregationClause;
   onUpdateAggregation: (
     currentClause: Lib.AggregationClause,
-    nextClause: Lib.Aggregatable,
+    nextClause: Lib.Aggregable,
   ) => void;
-  onAddAggregation: (aggregation: Lib.Aggregatable) => void;
+  onAddAggregation: (aggregation: Lib.Aggregable) => void;
 
   clauseIndex?: number;
 

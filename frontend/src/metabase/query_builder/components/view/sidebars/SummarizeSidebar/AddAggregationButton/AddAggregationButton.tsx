@@ -9,7 +9,7 @@ const STAGE_INDEX = -1;
 
 interface AddAggregationButtonProps {
   query: Lib.Query;
-  onAddAggregation: (aggregation: Lib.Aggregatable) => void;
+  onAddAggregation: (aggregation: Lib.Aggregable) => void;
 }
 
 export function AddAggregationButton({

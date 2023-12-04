@@ -35,7 +35,7 @@ interface AggregationPickerProps {
   operators: Lib.AggregationOperator[];
   hasExpressionInput?: boolean;
   maxHeight?: number;
-  onSelect: (operator: Lib.Aggregatable) => void;
+  onSelect: (operator: Lib.Aggregable) => void;
   onClose?: () => void;
 }
 

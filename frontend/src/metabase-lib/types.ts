@@ -25,10 +25,7 @@ export type MetricMetadata = unknown & { _opaque: typeof MetricMetadata };
 declare const AggregationClause: unique symbol;
 export type AggregationClause = unknown & { _opaque: typeof AggregationClause };
 
-export type Aggregatable =
-  | AggregationClause
-  | MetricMetadata
-  | ExpressionClause;
+export type Aggregable = AggregationClause | MetricMetadata | ExpressionClause;
 
 declare const AggregationOperator: unique symbol;
 export type AggregationOperator = unknown & {
@@ -135,7 +132,7 @@ export type ClauseDisplayInfo = Pick<
   ColumnDisplayInfo,
   "name" | "displayName" | "longDisplayName" | "table"
 > & {
-  isNamed: boolean;
+  isNamed?: boolean;
 };
 
 export type AggregationClauseDisplayInfo = ClauseDisplayInfo;

@@ -42,7 +42,7 @@ export function SummarizeSidebar({
   const hasAggregations = aggregations.length > 0;
 
   const handleAddAggregation = useCallback(
-    (aggregation: Lib.Aggregatable) => {
+    (aggregation: Lib.Aggregable) => {
       const nextQuery = Lib.aggregate(query, STAGE_INDEX, aggregation);
       onQueryChange(nextQuery);
     },
@@ -50,7 +50,7 @@ export function SummarizeSidebar({
   );
 
   const handleUpdateAggregation = useCallback(
-    (aggregation: Lib.AggregationClause, nextAggregation: Lib.Aggregatable) => {
+    (aggregation: Lib.AggregationClause, nextAggregation: Lib.Aggregable) => {
       const nextQuery = Lib.replaceClause(
         query,
         STAGE_INDEX,

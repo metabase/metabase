@@ -69,7 +69,7 @@ export function expressionClauseForLegacyExpression(
 export function legacyExpressionForExpressionClause(
   query: Query,
   stageIndex: number,
-  expressionClause: ExpressionClause | AggregationClause,
+  expressionClause: ExpressionClause | AggregationClause | FilterClause,
 ): any {
   return ML.legacy_expression_for_expression_clause(
     query,

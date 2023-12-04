@@ -8,7 +8,7 @@ const STAGE_INDEX = -1;
 interface AggregationItemProps {
   query: Lib.Query;
   aggregation: Lib.AggregationClause;
-  onUpdate: (nextAggregation: Lib.Aggregatable) => void;
+  onUpdate: (nextAggregation: Lib.Aggregable) => void;
   onRemove: () => void;
 }
 
