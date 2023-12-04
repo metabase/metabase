@@ -86,7 +86,7 @@
     "react-dom": "~16.14.0",
     "react-draggable": "^3.3.2",
     "react-dropzone": "^14.2.3",
-    "react-grid-layout": "^1.2.5",
+    "react-grid-layout": "^1.4.1",
     "react-innertext": "^1.1.5",
     "react-is": "^17.0.2",
     "react-markdown": "^8.0.4",
