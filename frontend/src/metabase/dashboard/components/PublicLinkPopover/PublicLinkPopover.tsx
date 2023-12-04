@@ -86,6 +86,7 @@ export const PublicLinkPopover = ({
             <Group my="sm">
               {extensions.map(extension => (
                 <ExtensionOption
+                  data-testid="extension-option"
                   key={extension}
                   isSelected={extension === exportFormat}
                   onClick={() =>

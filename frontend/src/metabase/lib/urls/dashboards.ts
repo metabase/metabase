@@ -32,8 +32,13 @@ export function dashboard(
   }
 }
 
-export function publicDashboard(uuid: string) {
-  const siteUrl = MetabaseSettings.get("site-url");
+export function publicDashboard({
+  uuid,
+  siteUrl = MetabaseSettings.get("site-url"),
+}: {
+  uuid: string;
+  siteUrl?: string;
+}) {
   return `${siteUrl}/public/dashboard/${uuid}`;
 }
 
