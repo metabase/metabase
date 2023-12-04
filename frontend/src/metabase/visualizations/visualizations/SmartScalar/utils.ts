@@ -163,11 +163,9 @@ export function getComparisonOptions(series, settings) {
 export function isComparisonValid(series, settings) {
   const [
     {
-      data: { cols, insights, rows },
+      data: { insights },
     },
   ] = series;
-
-  const comparison: SelectedComparisonOption = settings["scalar.comparisons"];
 
   const dateUnit = insights?.find(
     insight => insight.col === settings["scalar.field"],
@@ -175,17 +173,6 @@ export function isComparisonValid(series, settings) {
 
   if (isEmpty(dateUnit)) {
     return false;
-  }
-
-  // ! check with product + design to see if we want to over-ride this setting
-  // ! or not in this case
-  if (comparison.type === COMPARISON_TYPES.PERIODS_AGO) {
-    const selectedPeriodsAgo = comparison.value;
-    const maxPeriodsAgo = getMaxPeriodsAgo({ cols, rows, dateUnit });
-
-    if (selectedPeriodsAgo > maxPeriodsAgo) {
-      return false;
-    }
   }
 
   return true;
