@@ -223,6 +223,7 @@
                                   [org.ow2.asm/asm-all]}
     lambdaisland/deep-diff2      {:mvn/version "2.10.211"}                  ; way better diffs
     methodical/methodical        {:mvn/version "0.15.1"}                    ; drop-in replacements for Clojure multimethods and adds several advanced features
+    org.clj-commons/hickory      {:mvn/version "0.7.3"}                     ; Parse HTML into Clojure data structures
     org.clojure/algo.generic     {:mvn/version "0.1.3"}
     pjstadig/humane-test-output  {:mvn/version "0.11.0"}
     reifyhealth/specmonstah      {:mvn/version "2.1.0"
