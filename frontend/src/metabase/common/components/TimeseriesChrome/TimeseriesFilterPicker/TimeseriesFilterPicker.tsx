@@ -22,8 +22,10 @@ export function TimeseriesFilterPicker({
 }: TimeseriesFilterPickerProps) {
   const [isOpened, setIsOpened] = useState(false);
 
-  const filterInfo = useMemo(() => {
-    return filter && Lib.displayInfo(query, stageIndex, filter);
+  const filterName = useMemo(() => {
+    return filter
+      ? Lib.filterArgsDisplayName(query, stageIndex, filter)
+      : t`All time`;
   }, [query, stageIndex, filter]);
 
   const handleButtonClick = () => {
@@ -43,7 +45,7 @@ export function TimeseriesFilterPicker({
           data-testid="timeseries-filter-button"
           onClick={handleButtonClick}
         >
-          {filterInfo ? filterInfo.displayName : t`All time`}
+          {filterName}
         </Button>
       </Popover.Target>
       <Popover.Dropdown>

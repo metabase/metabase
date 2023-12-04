@@ -84,7 +84,7 @@ describe("TimeseriesFilterPicker", () => {
     const { query, column, filter } = createQueryWithFilter();
     const { getNextFilterParts } = setup({ query, column, filter });
 
-    userEvent.click(screen.getByText("Created At is on Jan 10, 2020"));
+    userEvent.click(screen.getByText("Jan 10, 2020"));
     const input = await screen.findByLabelText("Date");
     userEvent.clear(input);
     userEvent.type(input, "Feb 20, 2020");
@@ -101,7 +101,7 @@ describe("TimeseriesFilterPicker", () => {
     const { query, column, filter } = createQueryWithFilter();
     const { getNextFilterParts } = setup({ query, column, filter });
 
-    userEvent.click(screen.getByText("Created At is on Jan 10, 2020"));
+    userEvent.click(screen.getByText("Jan 10, 2020"));
     userEvent.click(await screen.findByDisplayValue("On"));
     userEvent.click(await screen.findByText("All time"));
     userEvent.click(screen.getByText("Apply"));

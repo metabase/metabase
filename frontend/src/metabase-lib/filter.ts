@@ -89,6 +89,14 @@ export function filters(query: Query, stageIndex: number): FilterClause[] {
   return ML.filters(query, stageIndex);
 }
 
+export function filterArgsDisplayName(
+  query: Query,
+  stageIndex: number,
+  clause: FilterClause,
+): string {
+  return ML.filter_args_display_name(query, stageIndex, clause);
+}
+
 export function stringFilterClause({
   operator,
   column,
