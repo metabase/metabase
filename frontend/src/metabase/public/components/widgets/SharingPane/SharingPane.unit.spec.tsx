@@ -56,7 +56,7 @@ const setup = ({
     onCreatePublicLink,
     onDisablePublicLink,
     getPublicUrl,
-  }
+  };
 };
 
 describe("SharingPane", () => {
@@ -65,39 +65,41 @@ describe("SharingPane", () => {
       it("should render `Edit settings` when the resource is published", () => {
         setup({ isResourcePublished: true });
 
-        expect(screen.getByRole("button", { name: /edit settings/i })).toBeInTheDocument();
-      })
+        expect(
+          screen.getByRole("button", { name: /edit settings/i }),
+        ).toBeInTheDocument();
+      });
       it("should render `Set this up` when the resource isn't published", () => {
         setup({ isResourcePublished: false });
 
-        expect(screen.getByRole("button", { name: /set this up/i })).toBeInTheDocument();
-      })
-    })
+        expect(
+          screen.getByRole("button", { name: /set this up/i }),
+        ).toBeInTheDocument();
+      });
+    });
 
     describe("when clicking the button", () => {
       it("should call `onChangeEmbedType` with `application` when `Set this up` is clicked", () => {
-        const {onChangeEmbedType} = setup({ isResourcePublished: false });
+        const { onChangeEmbedType } = setup({ isResourcePublished: false });
 
         screen.getByRole("button", { name: /set this up/i }).click();
 
         expect(onChangeEmbedType).toHaveBeenCalledWith("application");
-      })
+      });
 
       it("should call `onChangeEmbedType` with `application` when `Edit settings` is clicked", () => {
-        const {onChangeEmbedType} = setup({ isResourcePublished: true });
+        const { onChangeEmbedType } = setup({ isResourcePublished: true });
 
         screen.getByRole("button", { name: /edit settings/i }).click();
 
         expect(onChangeEmbedType).toHaveBeenCalledWith("application");
-      })
-    })
+      });
+    });
   });
 
   describe("public embed button", () => {
     describe("rendering the button", () => {
-      it("should render iframe link, copy button, and `Copy snippet` description when public link exists", () => {
-
-      });
+      it("should render iframe link, copy button, and `Copy snippet` description when public link exists", () => {});
       it("should render `Get an embed link` and `Use this` description when public link doesn't exist", () => {});
       it("should render link to settings and a disabled button with `Get an embed link` when public sharing is disabled", () => {});
     });
@@ -108,6 +110,5 @@ describe("SharingPane", () => {
       it("should display an iframe link when the resource has a UUID", () => {});
       it("should redirect to settings when public sharing is disabled and `Settings` is clicked", () => {});
     });
-
   });
 });
