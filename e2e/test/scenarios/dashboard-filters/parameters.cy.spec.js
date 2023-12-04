@@ -774,7 +774,7 @@ describe("scenarios > dashboard > parameters", () => {
           },
         ];
 
-        createDashboardWithCards({ cards: cards }).then(dashboardId => {
+        createDashboardWithCards({ cards }).then(dashboardId => {
           visitDashboardAndCreateTab({
             dashboardId,
             save: false,
@@ -821,7 +821,7 @@ describe("scenarios > dashboard > parameters", () => {
           },
         ];
 
-        createDashboardWithCards({ cards: cards }).then(dashboardId => {
+        createDashboardWithCards({ cards }).then(dashboardId => {
           visitDashboard(dashboardId);
         });
 
@@ -872,7 +872,7 @@ describe("scenarios > dashboard > parameters", () => {
           },
         ];
 
-        createDashboardWithCards({ cards: cards }).then(dashboardId => {
+        createDashboardWithCards({ cards }).then(dashboardId => {
           visitDashboard(dashboardId);
         });
 
@@ -921,7 +921,7 @@ describe("scenarios > dashboard > parameters", () => {
           },
         ];
 
-        createDashboardWithCards({ cards: cards }).then(dashboardId => {
+        createDashboardWithCards({ cards }).then(dashboardId => {
           visitDashboard(dashboardId);
         });
 
@@ -967,7 +967,7 @@ describe("scenarios > dashboard > parameters", () => {
           },
         ];
 
-        createDashboardWithCards({ cards: cards }).then(dashboardId => {
+        createDashboardWithCards({ cards }).then(dashboardId => {
           visitDashboard(dashboardId);
         });
 
@@ -1011,7 +1011,7 @@ describe("scenarios > dashboard > parameters", () => {
           },
         ];
 
-        createDashboardWithCards({ cards: cards }).then(dashboardId => {
+        createDashboardWithCards({ cards }).then(dashboardId => {
           visitDashboard(dashboardId);
         });
 
