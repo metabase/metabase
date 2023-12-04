@@ -101,7 +101,6 @@ export type ColumnDisplayInfo = {
   name: string;
   displayName: string;
   longDisplayName: string;
-  isNamed: boolean;
 
   fkReferenceName?: string;
   isCalculated: boolean;
@@ -134,8 +133,10 @@ export type MetricDisplayInfo = {
 
 export type ClauseDisplayInfo = Pick<
   ColumnDisplayInfo,
-  "name" | "displayName" | "longDisplayName" | "isNamed" | "table"
->;
+  "name" | "displayName" | "longDisplayName" | "table"
+> & {
+  isNamed: boolean;
+};
 
 export type AggregationClauseDisplayInfo = ClauseDisplayInfo;
 
