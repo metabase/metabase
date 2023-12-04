@@ -35,7 +35,7 @@ export function timeout(
 
 // returns a promise that resolves after a given duration
 export function delay(duration: number) {
-  return new Promise((resolve, reject) => setTimeout(resolve, duration));
+  return new Promise(resolve => setTimeout(resolve, duration));
 }
 
 export interface Deferred<T = unknown> {

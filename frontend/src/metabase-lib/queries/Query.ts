@@ -63,7 +63,7 @@ class Query {
     return this._datasetQuery;
   }
 
-  setDatasetQuery(datasetQuery: DatasetQuery): Query {
+  setDatasetQuery(_datasetQuery: DatasetQuery): Query {
     return this;
   }
 
@@ -94,7 +94,7 @@ class Query {
    * NOTE: Ideally we'd also have `dimensions()` that returns a flat list, but currently StructuredQuery has it's own `dimensions()` for another purpose.
    */
   dimensionOptions(
-    filter?: (dimension: Dimension) => boolean,
+    _filter?: (dimension: Dimension) => boolean,
   ): DimensionOptions {
     return new DimensionOptions();
   }
@@ -102,7 +102,7 @@ class Query {
   /**
    * Variables exposed by this query
    */
-  variables(filter?: (variable: Variable) => boolean): Variable[] {
+  variables(_filter?: (variable: Variable) => boolean): Variable[] {
     return [];
   }
 
