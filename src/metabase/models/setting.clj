@@ -82,7 +82,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.config :as config]
-   [metabase.models.audit-log :as audit-log]
+   [metabase.events :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting.cache :as setting.cache]
@@ -188,7 +188,8 @@
      humanization-strategy
      landing-page
      loading-message
-     max-results-bare-rows
+     max-aggregated-query-row-limit
+     max-unaggregated-query-row-limit
      native-query-autocomplete-match-style
      persisted-models-enabled
      report-timezone
@@ -204,7 +205,10 @@
      site-name
      source-address-header
      start-of-week
-     subscription-allowed-domains})
+     subscription-allowed-domains
+     uploads-enabled
+     uploads-database-id
+     uploads-schema-name})
 
 (defmethod serdes/extract-all "Setting" [_model _opts]
   (for [{:keys [key value]} (admin-writable-site-wide-settings
@@ -827,15 +831,15 @@
 
 (defn- audit-setting-change!
   [{:keys [name audit sensitive?]} previous-value new-value]
-  (let [maybe-obfuscate #(if sensitive? (obfuscate-value %) %)]
-   (audit-log/record-event!
-    :setting-update
-    {:details (merge {:key name}
-                     (when (not= audit :no-value)
-                       {:previous-value (maybe-obfuscate previous-value)
-                        :new-value      (maybe-obfuscate new-value)}))
-     :user-id api/*current-user-id*
-     :model  :model/Setting})))
+  (let [maybe-obfuscate #(cond-> % sensitive? obfuscate-value)]
+    (events/publish-event!
+     :event/setting-update
+     {:details (merge {:key name}
+                      (when (not= audit :no-value)
+                        {:previous-value (maybe-obfuscate previous-value)
+                         :new-value      (maybe-obfuscate new-value)}))
+      :user-id api/*current-user-id*
+      :model  :model/Setting})))
 
 (defn- should-audit?
   "Returns true if the setting change should be written to the `audit_log`."

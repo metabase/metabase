@@ -4,7 +4,7 @@
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.drill-thru.distribution :as lib.drill-thru.distribution]
    [metabase.lib.drill-thru.fk-details :as lib.drill-thru.fk-details]
-   [metabase.lib.drill-thru.foreign-key :as lib.drill-thru.foreign-key]
+   [metabase.lib.drill-thru.fk-filter :as lib.drill-thru.fk-filter]
    [metabase.lib.drill-thru.object-details :as lib.drill-thru.object-details]
    [metabase.lib.drill-thru.pivot :as lib.drill-thru.pivot]
    [metabase.lib.drill-thru.pk :as lib.drill-thru.pk]
@@ -20,6 +20,8 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (comment
@@ -44,7 +46,7 @@
   `:return-drills-for-dimensions?` specifies which type we have."
   [{:f #'lib.drill-thru.distribution/distribution-drill,                         :return-drills-for-dimensions? true}
    {:f #'lib.drill-thru.column-filter/column-filter-drill,                       :return-drills-for-dimensions? true}
-   {:f #'lib.drill-thru.foreign-key/foreign-key-drill,                           :return-drills-for-dimensions? false}
+   {:f #'lib.drill-thru.fk-filter/fk-filter-drill,                               :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.object-details/object-detail-drill,                      :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.pivot/pivot-drill,                                       :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.quick-filter/quick-filter-drill,                         :return-drills-for-dimensions? false}
@@ -109,4 +111,6 @@
     stage-number :- :int
     drill        :- ::lib.schema.drill-thru/drill-thru
     & args]
+   (log/infof "Applying drill thru: %s"
+              (u/pprint-to-str {:query query, :stage-number stage-number, :drill drill, :args args}))
    (apply lib.drill-thru.common/drill-thru-method query stage-number drill args)))

@@ -81,8 +81,8 @@
   (testing "test that a Card's :public_uuid comes back if public sharing is enabled..."
     (tu/with-temporary-setting-values [enable-public-sharing true]
       (t2.with-temp/with-temp [:model/Card card {:public_uuid (str (random-uuid))}]
-        (is (schema= u/uuid-regex
-                     (:public_uuid card)))))
+        (is (=? u/uuid-regex
+                (:public_uuid card)))))
 
     (testing "...but if public sharing is *disabled* it should come back as `nil`"
       (tu/with-temporary-setting-values [enable-public-sharing false]
@@ -218,7 +218,7 @@
         (try
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"A Card can only go in Collections in the \"default\" namespace"
+               #"A Card can only go in Collections in the \"default\" or :analytics namespace."
                (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card) :collection_id collection-id, :name card-name))))
           (finally
             (t2/delete! :model/Card :name card-name)))))
@@ -227,7 +227,7 @@
       (t2.with-temp/with-temp [:model/Card {card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"A Card can only go in Collections in the \"default\" namespace"
+             #"A Card can only go in Collections in the \"default\" or :analytics namespace."
              (t2/update! :model/Card card-id {:collection_id collection-id})))))))
 
 (deftest normalize-result-metadata-test
@@ -788,3 +788,23 @@
       ;; we store version of metabase which created the card
       (is (= config/mb-version-string
              (t2/select-one-fn :metabase_version :model/Card :id (:id card)))))))
+
+(deftest changed?-test
+  (letfn [(changed? [before after]
+            (#'card/changed? @#'card/card-compare-keys before after))]
+    (testing "Ignores keyword/string"
+      (is (false? (changed? {:dataset_query {:type :query}} {:dataset_query {:type "query"}}))))
+    (testing "Ignores properties not in `api.card/card-compare-keys"
+      (is (false? (changed? {:collection_id 1
+                             :collection_position 0}
+                            {:collection_id 2
+                             :collection_position 1}))))
+    (testing "Sees changes"
+      (is (true? (changed? {:dataset_query {:type :query}}
+                           {:dataset_query {:type :query
+                                            :query {}}})))
+      (testing "But only when they are different in the after, not just omitted"
+        (is (false? (changed? {:dataset_query {} :collection_id 1}
+                              {:collection_id 1})))
+        (is (true? (changed? {:dataset_query {} :collection_id 1}
+                             {:dataset_query nil :collection_id 1})))))))

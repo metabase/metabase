@@ -17,6 +17,7 @@
    [net.cgrand.macrovich :as macros]
    [weavejester.dependency :as dep]
    #?@(:clj  ([clojure.math.numeric-tower :as math]
+              [me.flowthing.pp :as pp]
               [metabase.config :as config]
               #_{:clj-kondo/ignore [:discouraged-namespace]}
               [metabase.util.jvm :as u.jvm]
@@ -615,9 +616,19 @@
 
      (pprint-to-str 'green some-obj)"
   (^String [x]
-   (with-out-str
-     #_{:clj-kondo/ignore [:discouraged-var]}
-     (pprint/pprint x)))
+   (#?@
+    (:clj
+     (with-out-str
+       #_{:clj-kondo/ignore [:discouraged-var]}
+       (pp/pprint x {:max-width 120}))
+
+     :cljs
+     ;; we try to set this permanently above, but it doesn't seem to work in Cljs, so just bind it every time. The
+     ;; default value wastes too much space, 120 is a little easier to read actually.
+     (binding [pprint/*print-right-margin* 120]
+       (with-out-str
+         #_{:clj-kondo/ignore [:discouraged-var]}
+         (pprint/pprint x))))))
 
   (^String [color-symb x]
    (u.format/colorize color-symb (pprint-to-str x))))
@@ -842,8 +853,22 @@
   (or (empty? xs)
       (apply distinct? xs)))
 
-(defn deep-sort-map
-  "Converts a map (with potentially nested maps as values) into a sorted map of sorted maps."
-  [m]
-  (into (sorted-map)
-        (update-vals m (fn [val] (cond-> val (map? val) deep-sort-map)))))
+(defn traverse
+  "Traverses a graph of nodes using a user-defined function.
+
+  `nodes`: A collection of initial nodes to start the traversal from.
+  `traverse-fn`: A function that, given a node, returns its directly connected nodes.
+
+  The function performs a breadth-first traversal starting from the initial nodes, applying
+  `traverse-fn` to each node to find connected nodes, and continues until all reachable nodes
+  have been visited. Returns a set of all traversed nodes."
+  [nodes traverse-fn]
+  (loop [to-traverse (set nodes)
+         traversed   #{}]
+    (let [item        (first to-traverse)
+          found       (traverse-fn item)
+          traversed   (conj traversed item)
+          to-traverse (set/union (disj to-traverse item) (set/difference found traversed))]
+      (if (empty? to-traverse)
+        traversed
+        (recur to-traverse traversed)))))

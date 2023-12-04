@@ -11,6 +11,7 @@
    [mb.hawk.parallel]
    [metabase.actions.test-util :as actions.test-util]
    [metabase.config :as config]
+   [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
@@ -294,6 +295,8 @@
  [tx.env
   set-test-drivers!
   with-test-drivers]
+ [schema-migrations-test.impl
+  with-temp-empty-app-db])
 
  ;; TODO: define these in hawk and we simply import them
  ;; [mb.hawk.assert-exprs.approximately-equal
@@ -301,7 +304,6 @@
  ;;  =?-exacty
  ;;  =?-schema
  ;;  =?-approx]
- )
 
 ;; TODO: replace this with above imports
 ;; This will be defined in the mb.hawk.assert-exprs.approximately-equal namespace

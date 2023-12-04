@@ -18,6 +18,7 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import SelectList from "metabase/components/SelectList";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
+import { isPublicCollection } from "metabase/collections/utils";
 import { QuestionList } from "./QuestionList";
 
 import {
@@ -114,10 +115,7 @@ function QuestionPicker({ onSelect, collectionsById, getCollectionIcon }) {
   );
 }
 
-function isPublicCollection(collection) {
-  return !collection.is_personal;
-}
-export default _.compose(
+export const QuestionPickerConnected = _.compose(
   entityObjectLoader({
     id: () => "root",
     entityType: "collections",

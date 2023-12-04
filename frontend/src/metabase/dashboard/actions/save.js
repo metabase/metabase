@@ -8,6 +8,7 @@ import Dashboards from "metabase/entities/dashboards";
 import { CardApi } from "metabase/services";
 import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavior";
 
+import { trackDashboardSaved } from "../analytics";
 import { getDashboardBeforeEditing } from "../selectors";
 
 import { fetchDashboard } from "./data-fetching";
@@ -22,6 +23,7 @@ export const updateDashboardAndCards = createThunkAction(
   UPDATE_DASHBOARD_AND_CARDS,
   function () {
     return async function (dispatch, getState) {
+      const startTime = performance.now();
       const state = getState();
       const { dashboards, dashcards, dashboardId } = state.dashboard;
       const dashboard = {
@@ -121,9 +123,20 @@ export const updateDashboardAndCards = createThunkAction(
         }),
       );
 
+      const endTime = performance.now();
+      const duration_milliseconds = parseInt(endTime - startTime);
+      trackDashboardSaved({
+        dashboard_id: dashboard.id,
+        duration_milliseconds,
+      });
+
       // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
       dispatch(
-        fetchDashboard(dashboard.id, null, { preserveParameters: false }),
+        fetchDashboard({
+          dashId: dashboard.id,
+          queryParams: null,
+          options: { preserveParameters: false },
+        }),
       ); // disable using query parameters when saving
     };
   },
@@ -152,7 +165,11 @@ export const updateDashboard = createThunkAction(
 
       // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
       dispatch(
-        fetchDashboard(dashboard.id, null, { preserveParameters: true }),
+        fetchDashboard({
+          dashId: dashboard.id,
+          queryParam: null,
+          options: { preserveParameters: true },
+        }),
       );
     };
   },

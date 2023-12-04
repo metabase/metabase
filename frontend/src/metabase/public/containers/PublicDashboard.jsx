@@ -8,8 +8,8 @@ import _ from "underscore";
 import { isWithinIframe } from "metabase/lib/dom";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import DashboardGrid from "metabase/dashboard/components/DashboardGrid";
-import DashboardControls from "metabase/dashboard/hoc/DashboardControls";
+import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
+import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import title from "metabase/hoc/Title";
 
@@ -82,8 +82,18 @@ class PublicDashboard extends Component {
     }
 
     initialize();
+
+    const result = await fetchDashboard({
+      dashId: uuid || token,
+      queryParams: location.query,
+    });
+
+    if (result.error) {
+      setErrorPage(result.payload);
+      return;
+    }
+
     try {
-      await fetchDashboard(uuid || token, location.query);
       if (this.props.dashboard.tabs.length === 0) {
         await fetchDashboardCardData({ reload: false, clearCache: true });
       }
@@ -156,7 +166,7 @@ class PublicDashboard extends Component {
               <DashboardTabs location={this.props.location} />
               <Separator />
               <DashboardGridContainer>
-                <DashboardGrid
+                <DashboardGridConnected
                   {...this.props}
                   isPublic
                   className="spread"

@@ -15,7 +15,8 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   #?@(:clj ([metabase.util.log :as log]))))
 
 (defmulti =
   "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule
@@ -158,15 +159,38 @@
         (not-empty (filter #(clojure.core/= (:id %) ref-id) columns)))
       []))
 
+(defn- ambiguous-match-error [a-ref columns]
+  (ex-info "Ambiguous match! Implement more logic in disambiguate-matches."
+           {:ref a-ref
+            :columns columns}))
+
+(mu/defn ^:private expression-column? [column]
+  (or (= (:lib/source column) :source/expressions)
+      (:lib/expression-name column)))
+
+(mu/defn ^:private disambiguate-matches-dislike-field-refs-to-expressions :- [:maybe ::lib.schema.metadata/column]
+  "If a custom column is a simple wrapper for a field, that column gets `:id`, `:table_id`, etc.
+  A custom column should get a ref like `[:expression {} \"expr name\"]`, not `[:field {} 17]`.
+  If we got a `:field` ref, prefer matches which are not `:lib/source :source/expressions`."
+  [a-ref   :- ::lib.schema.ref/ref
+   columns :- [:sequential ::lib.schema.metadata/column]]
+  (or (when (= (first a-ref) :field)
+        (when-let [non-exprs (not-empty (remove expression-column? columns))]
+          (when-not (next non-exprs)
+            (first non-exprs))))
+      ;; In all other cases, this is an ambiguous match.
+      #_(throw (ambiguous-match-error a-ref columns))
+      #?(:cljs (js/console.warn (ambiguous-match-error a-ref columns))
+         :clj  (log/warn (ambiguous-match-error a-ref columns)))))
+
 (mu/defn ^:private disambiguate-matches-prefer-explicit :- [:maybe ::lib.schema.metadata/column]
+  "Prefers table-default or explicitly joined columns over implicitly joinable ones."
   [a-ref   :- ::lib.schema.ref/ref
    columns :- [:sequential ::lib.schema.metadata/column]]
   (if-let [no-implicit (not-empty (remove :fk-field-id columns))]
     (if-not (next no-implicit)
       (first no-implicit)
-      (throw (ex-info "Ambiguous match! Implement more logic in disambiguate-matches."
-                      {:ref a-ref
-                       :columns columns})))
+      (disambiguate-matches-dislike-field-refs-to-expressions a-ref no-implicit))
     nil))
 
 (mu/defn ^:private disambiguate-matches-no-alias :- [:maybe ::lib.schema.metadata/column]
@@ -196,7 +220,11 @@
       (when-let [matches (not-empty (filter #(clojure.core/= (column-join-alias %) join-alias) columns))]
         (if-not (next matches)
           (first matches)
-          (throw (ex-info "Multiple plausible matches with the same :join-alias - more disambiguation needed"
+          (#?(:cljs js/console.warn :clj log/warn)
+           "Multiple plausible matches with the same :join-alias - more disambiguation needed"
+           {:ref     a-ref
+            :matches matches})
+          #_(throw (ex-info "Multiple plausible matches with the same :join-alias - more disambiguation needed"
                           {:ref     a-ref
                            :matches matches}))))
       (disambiguate-matches-no-alias a-ref columns))))
@@ -205,7 +233,7 @@
   [:map [:generous? {:optional true} :boolean]])
 
 (mu/defn find-matching-column :- [:maybe ::lib.schema.metadata/column]
-  "Given `a-ref` and a list of `columns`, finds the column that best matches this ref.
+  "Given `a-ref-or-column` and a list of `columns`, finds the column that best matches this ref or column.
 
   Matching is based on finding the basically plausible matches first. There is often zero or one plausible matches, and
   this can return quickly.
@@ -250,24 +278,35 @@
                        (disambiguate-matches a-ref plausible)))
      (throw (ex-info "Unknown type of ref" {:ref a-ref}))))
 
-  ([query stage-number a-ref columns]
-   (find-matching-column query stage-number a-ref columns {}))
+  ([query stage-number a-ref-or-column columns]
+   (find-matching-column query stage-number a-ref-or-column columns {}))
 
-  ([query                              :- [:maybe ::lib.schema/query]
-    stage-number                       :- :int
-    [_ref-kind _opts ref-id :as a-ref] :- ::lib.schema.ref/ref
-    columns                            :- [:sequential ::lib.schema.metadata/column]
-    opts                               :- FindMatchingColumnOptions]
-   (or (find-matching-column a-ref columns opts)
-       ;; We failed to match by ID, so try again with the column's name. Any columns with `:id` set are dropped.
-       ;; Why? Suppose there are two CREATED_AT columns in play - if one has an :id and it failed to match above, then
-       ;; it certainly shouldn't match by name just because of the coincidence of column names!
+  ([query           :- [:maybe ::lib.schema/query]
+    stage-number    :- :int
+    a-ref-or-column :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
+    columns         :- [:sequential ::lib.schema.metadata/column]
+    opts            :- FindMatchingColumnOptions]
+   (let [[_ref-kind _opts ref-id :as a-ref] (if (lib.util/clause? a-ref-or-column)
+                                              a-ref-or-column
+                                              (lib.ref/ref a-ref-or-column))]
+     (or (find-matching-column a-ref columns opts)
+         ;; We failed to match by ID, so try again with the column's name. Any columns with `:id` set are dropped.
+         ;; Why? Suppose there are two CREATED_AT columns in play - if one has an :id and it failed to match above, then
+         ;; it certainly shouldn't match by name just because of the coincidence of column names!
        (when (and query (number? ref-id))
          (when-let [no-id-columns (not-empty (remove :id columns))]
-           (when-let [resolved (resolve-field-id query stage-number ref-id)]
-             (find-matching-column (assoc a-ref 2 (or (:lib/desired-column-alias resolved)
-                                                      (:name resolved)))
-                                   no-id-columns opts)))))))
+           (when-let [resolved (if (lib.util/clause? a-ref-or-column)
+                                 (resolve-field-id query stage-number ref-id)
+                                 a-ref-or-column)]
+             (find-matching-column (-> (assoc a-ref 2 (or (:lib/desired-column-alias resolved)
+                                                          (:name resolved)))
+                                       ;; make sure the :field ref has a `:base-type`, it's against the rules for a
+                                       ;; nominal :field ref not to have a base-type -- this can fail schema
+                                       ;; validation if it's missing in the Field ID ref we generate the nominal ref
+                                       ;; from.
+                                       (lib.options/update-options (partial merge {:base-type :type/*})))
+                                   no-id-columns
+                                   opts))))))))
 
 (defn- ref-id-or-name [[_ref-kind _opts id-or-name]]
   id-or-name)
@@ -321,7 +360,7 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    legacy-ref   :- some?
+    legacy-ref   :- :some
     metadatas    :- [:maybe [:sequential ::lib.schema.metadata/column]]]
    (find-matching-column query stage-number (lib.convert/legacy-ref->pMBQL query stage-number legacy-ref) metadatas)))
 

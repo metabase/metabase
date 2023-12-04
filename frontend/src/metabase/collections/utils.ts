@@ -11,13 +11,25 @@ export function nonPersonalOrArchivedCollection(
   collection: Collection,
 ): boolean {
   // @TODO - should this be an API thing?
-  return !isPersonalCollection(collection) && !collection.archived;
+  return !isRootPersonalCollection(collection) && !collection.archived;
 }
 
-export function isPersonalCollection(
+export function isRootPersonalCollection(
   collection: Partial<Collection> | CollectionItem,
 ): boolean {
   return typeof collection.personal_owner_id === "number";
+}
+
+export function isPersonalCollection(
+  collection: Pick<Collection, "is_personal">,
+) {
+  return collection.is_personal;
+}
+
+export function isPublicCollection(
+  collection: Pick<Collection, "is_personal">,
+) {
+  return !isPersonalCollection(collection);
 }
 
 export function isInstanceAnalyticsCollection(
@@ -92,7 +104,7 @@ export function isPersonalCollectionOrChild(
   collectionList: Collection[],
 ): boolean {
   return (
-    isPersonalCollection(collection) ||
+    isRootPersonalCollection(collection) ||
     isPersonalCollectionChild(collection, collectionList)
   );
 }
@@ -117,6 +129,10 @@ export function isItemCollection(item: CollectionItem) {
   return item.model === "collection";
 }
 
+export function isReadOnlyCollection(collection: CollectionItem) {
+  return isItemCollection(collection) && !collection.can_write;
+}
+
 export function canPinItem(item: CollectionItem, collection: Collection) {
   return collection.can_write && item.setPinned != null;
 }
@@ -128,15 +144,17 @@ export function canPreviewItem(item: CollectionItem, collection: Collection) {
 export function canMoveItem(item: CollectionItem, collection: Collection) {
   return (
     collection.can_write &&
+    !isReadOnlyCollection(item) &&
     item.setCollection != null &&
-    !(isItemCollection(item) && isPersonalCollection(item))
+    !(isItemCollection(item) && isRootPersonalCollection(item))
   );
 }
 
 export function canArchiveItem(item: CollectionItem, collection: Collection) {
   return (
     collection.can_write &&
-    !(isItemCollection(item) && isPersonalCollection(item))
+    !isReadOnlyCollection(item) &&
+    !(isItemCollection(item) && isRootPersonalCollection(item))
   );
 }
 
@@ -191,7 +209,7 @@ function isPersonalOrPersonalChild(
     return false;
   }
   return (
-    isPersonalCollection(collection) ||
+    isRootPersonalCollection(collection) ||
     isPersonalCollectionChild(collection, collections)
   );
 }
@@ -200,7 +218,7 @@ export function canManageCollectionAuthorityLevel(
   collection: Partial<Collection>,
   collectionMap: Partial<Record<CollectionId, Collection>>,
 ) {
-  if (isPersonalCollection(collection)) {
+  if (isRootPersonalCollection(collection)) {
     return false;
   }
   const parentId = coerceCollectionId(collection.parent_id);

@@ -9,25 +9,20 @@
    [metabase.events.audit-log :as events.audit-log]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
-    :refer [Card Dashboard DashboardCard Table Metric Pulse Segment]]
+    :refer [Card Dashboard DashboardCard Metric Pulse Segment]]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
 (comment events.audit-log/keep-me)
 
-(defn latest-event
-  ([topic]
-   (latest-event topic nil))
-
-  ([topic model-id]
-   (t2/select-one [:model/AuditLog :topic :user_id :model :model_id :details]
-                  :topic    topic
-                  :model_id model-id
-                  {:order-by [[:id :desc]]})))
+(clojure.test/use-fixtures :once
+  (fn [test-fn]
+    (premium-features-test/with-premium-features #{:audit-app}
+      (test-fn))))
 
 (deftest card-create-test
   (testing ":card-create event"
@@ -40,7 +35,7 @@
             :model    "Card"
             :model_id (:id card)
             :details  {:name "My Cool Card", :description nil, :database_id (mt/id) :table_id nil}}
-           (latest-event "card-create" (:id card)))))))
+           (mt/latest-audit-log-entry "card-create" (:id card)))))))
 
 (deftest card-create-nested-query-test
   (testing :card-create
@@ -64,7 +59,7 @@
                          :description nil
                          :database_id (mt/id)
                          :table_id    (mt/id :venues)}}
-             (latest-event "card-create" (:id card-2))))))))
+             (mt/latest-audit-log-entry "card-create" (:id card-2))))))))
 
 (deftest card-update-event-test
   (testing :card-update
@@ -84,7 +79,7 @@
                                      :table_id    nil
                                      :database_id (mt/id)}
                               dataset? (assoc :model? true))}
-                 (latest-event "card-update" (:id card))))))))))
+                 (mt/latest-audit-log-entry "card-update" (:id card))))))))))
 
 (deftest card-delete-event-test
   (testing :card-delete
@@ -101,41 +96,7 @@
                   :model_id (:id card)
                   :details  (cond-> {:name "My Cool Card", :description nil}
                               dataset? (assoc :model? true))}
-                 (latest-event "card-delete" (:id card))))))))))
-
-(deftest card-read-event-test
-  (testing :card-read
-    (doseq [dataset? [false true]]
-      (testing (if dataset? "Dataset" "Card")
-        (t2.with-temp/with-temp [Card card {:name "My Cool Card", :dataset dataset?}]
-          (is (= {:object card :user-id (mt/user->id :rasta)}
-                 (events/publish-event! :event/card-read {:object card :user-id (mt/user->id :rasta)})))
-          (is (partial=
-               {:topic    :card-read
-                :user_id  (mt/user->id :rasta)
-                :model    "Card"
-                :model_id (:id card)
-                :details  (cond-> {:name "My Cool Card", :description nil}
-                            dataset? (assoc :model? true))}
-               (latest-event "card-read" (:id card)))))))))
-
-(deftest card-query-event-test
-  (testing :card-query
-    (doseq [dataset? [false true]]
-      (testing (if dataset? "Dataset" "Card")
-        (t2.with-temp/with-temp [Card card {:name "My Cool Card", :dataset dataset?}]
-          (events/publish-event! :event/card-query {:user-id      (mt/user->id :rasta)
-                                                    :card-id      (u/the-id card)
-                                                    :cached       false
-                                                    :ignore_cache false
-                                                    :context      :question})
-          (is (partial=
-               {:topic    :card-query
-                :user_id  (mt/user->id :rasta)
-                :model    "Card"
-                :model_id (:id card)
-                :details  {:cached false :ignore_cache false :context "question"}}
-               (latest-event "card-query" (:id card)))))))))
+                 (mt/latest-audit-log-entry "card-delete" (:id card))))))))))
 
 (deftest dashboard-create-event-test
   (testing :dashboard-create
@@ -148,7 +109,7 @@
             :model    "Dashboard"
             :model_id (:id dashboard)
             :details  {:name "My Cool Dashboard", :description nil}}
-           (latest-event "dashboard-create" (:id dashboard)))))))
+           (mt/latest-audit-log-entry "dashboard-create" (:id dashboard)))))))
 
 (deftest dashboard-delete-event-test
   (testing :dashboard-delete
@@ -161,7 +122,7 @@
             :model    "Dashboard"
             :model_id (:id dashboard)
             :details  {:name "My Cool Dashboard", :description nil}}
-           (latest-event "dashboard-delete" (:id dashboard)))))))
+           (mt/latest-audit-log-entry "dashboard-delete" (:id dashboard)))))))
 
 (deftest dashboard-add-cards-event-test
   (testing :dashboard-add-cards
@@ -184,7 +145,7 @@
                                         :name        (:name card)
                                         :id          (:id dashcard)
                                         :card_id     (:id card)}]}}
-             (latest-event "dashboard-add-cards" (:id dashboard))))))))
+             (mt/latest-audit-log-entry "dashboard-add-cards" (:id dashboard))))))))
 
 (deftest dashboard-remove-cards-event-test
   (testing :dashboard-remove-cards
@@ -207,33 +168,7 @@
                                            :name        (:name card)
                                            :id          (:id dashcard)
                                            :card_id     (:id card)}]}}
-             (latest-event "dashboard-remove-cards" (:id dashboard))))))))
-
-(deftest dashboard-read-event-test
-  (testing :dashboard-read
-    (t2.with-temp/with-temp [Dashboard dashboard {:name "My Cool Dashboard"}]
-      (is (= {:object dashboard :user-id (mt/user->id :rasta)}
-             (events/publish-event! :event/dashboard-read {:object dashboard :user-id (mt/user->id :rasta)})))
-      (is (partial=
-           {:topic    :dashboard-read
-            :user_id  (mt/user->id :rasta)
-            :model    "Dashboard"
-            :model_id (:id dashboard)
-            :details  {:name "My Cool Dashboard", :description nil}}
-           (latest-event "dashboard-read" (:id dashboard)))))))
-
-(deftest table-read-event-test
-  (testing :table-read
-    (t2.with-temp/with-temp [Table table {:name "My Cool Table"}]
-      (is (= {:object table :user-id (mt/user->id :rasta)}
-             (events/publish-event! :event/table-read {:object table :user-id (mt/user->id :rasta)})))
-      (is (partial=
-           {:topic    :table-read
-            :user_id  (mt/user->id :rasta)
-            :model    "Table"
-            :model_id (:id table)
-            :details  {}}
-           (latest-event "table-read" (:id table)))))))
+             (mt/latest-audit-log-entry "dashboard-remove-cards" (:id dashboard))))))))
 
 (deftest install-event-test
   (testing :install
@@ -244,7 +179,7 @@
             :model       nil
             :model_id    nil
             :details     {}}
-           (latest-event "install")))))
+           (mt/latest-audit-log-entry "install")))))
 
 (deftest metric-create-event-test
   (testing :metric-create
@@ -259,7 +194,7 @@
                             :description (:description metric)
                             :database_id (mt/id)
                             :table_id    (mt/id :venues)}}
-             (latest-event "metric-create" (:id metric)))))))
+             (mt/latest-audit-log-entry "metric-create" (:id metric)))))))
 
 (deftest metric-update-event-test
   (testing :metric-update
@@ -278,7 +213,7 @@
                               :database_id (mt/id)
                               :table_id    (mt/id :venues)
                               :revision-message "update this mofo"}}
-               (latest-event "metric-update" (:id metric))))))))
+               (mt/latest-audit-log-entry "metric-update" (:id metric))))))))
 
 (deftest metric-delete-event-test
   (testing :metric-delete
@@ -297,7 +232,7 @@
                              :revision-message "deleted"
                              :database_id (mt/id)
                              :table_id    (mt/id :venues)}}
-              (latest-event "metric-delete" (:id metric))))))))
+              (mt/latest-audit-log-entry "metric-delete" (:id metric))))))))
 
 (deftest subscription-events-test
   (t2.with-temp/with-temp [Dashboard      {dashboard-id :id} {}
@@ -326,7 +261,7 @@
                               :channel      ["email"]
                               :schedule     ["daily"]
                               :recipients   [recipients]}}
-               (latest-event "subscription-update" (:id pulse)))))
+               (mt/latest-audit-log-entry "subscription-update" (:id pulse)))))
       (testing :subscription-create
         (is (= {:object pulse :user-id (mt/user->id :rasta)}
                (events/publish-event! :event/subscription-create {:object pulse :user-id (mt/user->id :rasta)})))
@@ -341,7 +276,7 @@
                               :channel      ["email"]
                               :schedule     ["daily"]
                               :recipients   [recipients]}}
-               (latest-event "subscription-create" (:id pulse))))))))
+               (mt/latest-audit-log-entry "subscription-create" (:id pulse))))))))
 
 (deftest alert-events-test
   (t2.with-temp/with-temp [Dashboard      {dashboard-id :id} {}
@@ -377,7 +312,7 @@
                                             {:id    (mt/user->id :rasta)
                                              :email "rasta@metabase.com"}]
                                            [{:id (mt/user->id :rasta)}]]}}
-               (latest-event "alert-update" (:id pulse))))))))
+               (mt/latest-audit-log-entry "alert-update" (:id pulse))))))))
 
 (deftest subscription-unsubscribe-event-test
   (testing :subscription-unsubscribe
@@ -388,7 +323,7 @@
               :model       "Pulse"
               :model_id    nil
               :details     {:email "test"}}
-             (latest-event "subscription-unsubscribe"))))))
+             (mt/latest-audit-log-entry "subscription-unsubscribe"))))))
 
 (deftest subscription-unsubscribe-undo-event-test
   (testing :subscription-unsubscribe-undo
@@ -399,7 +334,41 @@
               :model       "Pulse"
               :model_id    nil
               :details     {:email "test"}}
-             (latest-event "subscription-unsubscribe-undo"))))))
+             (mt/latest-audit-log-entry "subscription-unsubscribe-undo"))))))
+
+(deftest subscription-send-event-test
+  (testing :subscription-send
+    (premium-features-test/with-premium-features #{:audit-app}
+      (let [id 1]
+        (mt/with-test-user :rasta
+          (events/publish-event! :event/subscription-send {:id      id
+                                                           :user-id (mt/user->id :lucky)
+                                                           :object  {:recipients [[{:email "test"}]]
+                                                                     :filters    []}}))
+        (is (= {:topic       :subscription-send
+                :user_id     (mt/user->id :lucky)
+                :model       "Pulse"
+                :model_id    id
+                :details     {:recipients [[{:email "test"}]]
+                              :filters    []}}
+               (mt/latest-audit-log-entry "subscription-send" id)))))))
+
+(deftest alert-send-event-test
+  (testing :alert-send
+    (mt/with-model-cleanup [:model/AuditLog]
+      (let [id 1]
+        (mt/with-test-user :rasta
+          (events/publish-event! :event/alert-send {:id      id
+                                                    :user-id (mt/user->id :lucky)
+                                                    :object  {:recipients [[{:email "test"}]]
+                                                              :filters    []}}))
+        (is (= {:topic       :alert-send
+                :user_id     (mt/user->id :lucky)
+                :model       "Pulse"
+                :model_id    id
+                :details     {:recipients [[{:email "test"}]]
+                              :filters    []}}
+               (mt/latest-audit-log-entry "alert-send" id)))))))
 
 (deftest alert-unsubscribe-event-test
   (testing :alert-unsubscribe
@@ -410,7 +379,7 @@
               :model       "Pulse"
               :model_id    nil
               :details     {:email "test"}}
-             (latest-event "alert-unsubscribe"))))))
+             (mt/latest-audit-log-entry "alert-unsubscribe"))))))
 
 (deftest segment-create-event-test
   (testing :segment-create
@@ -426,7 +395,7 @@
                              :description (:description segment)
                              :database_id (mt/id)
                              :table_id    (mt/id :checkins)}}
-              (latest-event "segment-create" (:id segment))))))))
+              (mt/latest-audit-log-entry "segment-create" (:id segment))))))))
 
 (deftest segment-update-event-test
   (testing :segment-update
@@ -445,7 +414,7 @@
                              :revision-message "update this mofo"
                              :database_id (mt/id)
                              :table_id    (mt/id :checkins)}}
-              (latest-event "segment-update" (:id segment))))))))
+              (mt/latest-audit-log-entry "segment-update" (:id segment))))))))
 
 (deftest segment-delete-event-test
   (testing :segment-delete
@@ -464,7 +433,7 @@
                              :revision-message "deleted"
                              :database_id (mt/id)
                              :table_id    (mt/id :checkins)}}
-              (latest-event "segment-delete" (:id segment))))))))
+              (mt/latest-audit-log-entry "segment-delete" (:id segment))))))))
 
 (deftest user-joined-event-test
   (testing :user-joined
@@ -476,7 +445,7 @@
             :model       "User"
             :model_id    (mt/user->id :rasta)
             :details     {}}
-           (latest-event :user-joined (mt/user->id :rasta))))))
+           (mt/latest-audit-log-entry :user-joined (mt/user->id :rasta))))))
 
 (deftest user-invited-event-test
   (testing :event/user-invited
@@ -491,7 +460,7 @@
                                :user_group_memberships [{:id 1}])
               :topic    :user-invited
               :model    "User"}
-             (latest-event :user-invited id)))))))
+             (mt/latest-audit-log-entry :user-invited id)))))))
 
 (deftest user-update-event-test
   (testing :event/user-update
@@ -507,7 +476,7 @@
                          :new      {:last_name "Pigeon"}}
               :topic    :user-update
               :model    "User"}
-             (latest-event :user-update (mt/user->id :lucky))))))))
+             (mt/latest-audit-log-entry :user-update (mt/user->id :lucky))))))))
 
 (deftest user-deactivated-event-test
  (testing :event/user-deactivated
@@ -520,7 +489,7 @@
                :details  {}
                :topic    :user-deactivated
                :model    "User"}
-              (latest-event :user-deactivated (mt/user->id :lucky))))))))
+              (mt/latest-audit-log-entry :user-deactivated (mt/user->id :lucky))))))))
 
 (deftest user-reactivated-event-test
  (testing :event/user-reactivated
@@ -533,7 +502,7 @@
                :details  {}
                :topic    :user-reactivated
                :model    "User"}
-              (latest-event :user-reactivated (mt/user->id :lucky))))))))
+              (mt/latest-audit-log-entry :user-reactivated (mt/user->id :lucky))))))))
 
 (deftest password-reset-initiated-event-test
   (testing :event/password-reset-initiated
@@ -546,7 +515,7 @@
                 :details  {:token "hash"}
                 :topic    :password-reset-initiated
                 :model    "User"}
-               (latest-event :password-reset-initiated (mt/user->id :rasta))))))))
+               (mt/latest-audit-log-entry :password-reset-initiated (mt/user->id :rasta))))))))
 
 (deftest password-reset-successful-event-test
   (testing :event/password-reset-successful
@@ -559,4 +528,4 @@
                 :details  {:token "hash"}
                 :topic    :password-reset-successful
                 :model    "User"}
-               (latest-event :password-reset-successful (mt/user->id :rasta))))))))
+               (mt/latest-audit-log-entry :password-reset-successful (mt/user->id :rasta))))))))

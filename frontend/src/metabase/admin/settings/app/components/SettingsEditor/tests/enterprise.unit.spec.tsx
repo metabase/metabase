@@ -142,9 +142,11 @@ describe("SettingsEditor", () => {
       await setupEnterprise({
         settings: [
           createMockSettingDefinition({ key: "subscription-allowed-domains" }),
+          createMockSettingDefinition({ key: "email-configured?" }),
         ],
         settingValues: createMockSettings({
           "subscription-allowed-domains": "somedomain.com",
+          "email-configured?": true,
         }),
         initialRoute: EMAIL_URL,
       });
@@ -158,8 +160,14 @@ describe("SettingsEditor", () => {
   describe("subscription user visibility", () => {
     it("should not be visible", async () => {
       await setupEnterprise({
-        settings: [createMockSettingDefinition({ key: "user-visibility" })],
-        settingValues: createMockSettings({ "user-visibility": "all" }),
+        settings: [
+          createMockSettingDefinition({ key: "user-visibility" }),
+          createMockSettingDefinition({ key: "email-configured?" }),
+        ],
+        settingValues: createMockSettings({
+          "user-visibility": "all",
+          "email-configured?": true,
+        }),
         initialRoute: EMAIL_URL,
       });
 
@@ -167,6 +175,46 @@ describe("SettingsEditor", () => {
         screen.queryByText(
           /suggest recipients on dashboard subscriptions and alerts/i,
         ),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("SMTP configuration", () => {
+    it("should be visible with self-hosted email", async () => {
+      await setupEnterprise({
+        settings: [
+          createMockSettingDefinition({ key: "user-visibility" }),
+          createMockSettingDefinition({ key: "email-configured?" }),
+          createMockSettingDefinition({ key: "is-hosted?" }),
+        ],
+        settingValues: createMockSettings({
+          "user-visibility": "all",
+          "email-configured?": true,
+          "is-hosted?": false,
+        }),
+        initialRoute: EMAIL_URL,
+      });
+
+      expect(screen.getByTestId("smtp-connection-card")).toBeInTheDocument();
+    });
+
+    it("should not be visible with cloud-hosted email", async () => {
+      await setupEnterprise({
+        settings: [
+          createMockSettingDefinition({ key: "user-visibility" }),
+          createMockSettingDefinition({ key: "email-configured?" }),
+          createMockSettingDefinition({ key: "is-hosted?" }),
+        ],
+        settingValues: createMockSettings({
+          "user-visibility": "all",
+          "email-configured?": true,
+          "is-hosted?": true,
+        }),
+        initialRoute: EMAIL_URL,
+      });
+
+      expect(
+        screen.queryByTestId("smtp-connection-card"),
       ).not.toBeInTheDocument();
     });
   });

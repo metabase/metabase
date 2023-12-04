@@ -82,6 +82,7 @@ export interface CollectionItem {
   database_id?: DatabaseId;
   moderated_status?: string;
   type?: string;
+  can_write?: boolean;
   getIcon: () => { name: IconName };
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean) => void;

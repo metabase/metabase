@@ -10,10 +10,14 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [malli.core :as mc]
+   [metabase.config :as config]
    [metabase.db.query :as mdb.query]
+   [metabase.driver.h2 :as h2]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as field-values]
    [metabase.sync.schedules :as sync.schedules]
@@ -28,7 +32,11 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (org.quartz CronTrigger JobDetail JobKey TriggerKey)))
+   (org.quartz
+    CronTrigger
+    JobDetail
+    JobKey
+    TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -66,21 +74,43 @@
          end-time
          (< (.toMinutes (t/duration start-time end-time)) analyze-duration-threshold-for-refingerprinting))))
 
+(defn- sync-and-analyze-database*!
+  [database-id]
+  (log/info (trs "Starting sync task for Database {0}." database-id))
+  (when-let [database (or (t2/select-one Database :id database-id)
+                          (do
+                            (unschedule-tasks-for-db! (mi/instance Database {:id database-id}))
+                            (log/warn (trs "Cannot sync Database {0}: Database does not exist." database-id))))]
+    (if-let [ex (try
+                  ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
+                  ;; purposes of creating a new H2 database.
+                  (binding [h2/*allow-testing-h2-connections* true]
+                    (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
+                  nil
+                  (catch Throwable e
+                    e))]
+      (log/warnf ex "Cannot sync Database %s: %s" (:name database) (ex-message ex))
+      (do
+        (sync-metadata/sync-db-metadata! database)
+        ;; only run analysis if this is a "full sync" database
+        (when (:is_full_sync database)
+          (let [results (analyze/analyze-db! database)]
+            (when (and (:refingerprint database) (should-refingerprint-fields? results))
+              (analyze/refingerprint-db! database))))))))
+
 (defn- sync-and-analyze-database!
   "The sync and analyze database job, as a function that can be used in a test"
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
-    (log/info (trs "Starting sync task for Database {0}." database-id))
-    (when-let [database (or (t2/select-one Database :id database-id)
-                            (do
-                              (unschedule-tasks-for-db! (mi/instance Database {:id database-id}))
-                              (log/warn (trs "Cannot sync Database {0}: Database does not exist." database-id))))]
-      (sync-metadata/sync-db-metadata! database)
-      ;; only run analysis if this is a "full sync" database
-      (when (:is_full_sync database)
-        (let [results (analyze/analyze-db! database)]
-          (when (and (:refingerprint database) (should-refingerprint-fields? results))
-            (analyze/refingerprint-db! database)))))))
+    (if (= perms/audit-db-id database-id)
+      (do
+        (log/warn (trs "Cannot sync Database: It is the audit db."))
+        (when-not config/is-prod?
+          (throw (ex-info "Cannot sync Database: It is the audit db."
+                          {:database-id database-id
+                           :raw-job-context job-context
+                           :job-context (pr-str job-context)}))))
+      (sync-and-analyze-database*! database-id))))
 
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Sync and analyze the database"}
@@ -227,58 +257,43 @@
       ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
       (cron/with-misfire-handling-instruction-do-nothing)))))
 
-(defn is-audit-db-sync-job?
-  "Returns true when the job is a sync job, and the database is an audit database.
-
-  This is in [[check-and-schedule-tasks-for-db!]] to skip the creation of the sync job test for audit databases."
-  [database {:keys [key db-schedule-column]}]
-  (and (:is_audit database)
-       (= key :sync-and-analyze)
-       (= db-schedule-column :metadata_sync_schedule)))
-
 ;; called [[from metabase.models.database/schedule-tasks!]] from the post-insert and the pre-update
 (mu/defn check-and-schedule-tasks-for-db!
   "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
   [database :- (ms/InstanceOf Database)]
-  (let [sync-job (task/job-info (job-key sync-analyze-task-info))
-        fv-job   (task/job-info (job-key field-values-task-info))
+  (if (= perms/audit-db-id (:id database))
+    (log/info (u/format-color :red "Not scheduling tasks for audit database"))
+    (let [sync-job (task/job-info (job-key sync-analyze-task-info))
+          fv-job   (task/job-info (job-key field-values-task-info))
 
-        sync-trigger (trigger database sync-analyze-task-info)
-        fv-trigger   (trigger database field-values-task-info)
+          sync-trigger (trigger database sync-analyze-task-info)
+          fv-trigger   (trigger database field-values-task-info)
 
-        existing-sync-trigger (some (fn [trigger] (when (= (:key trigger) (.. sync-trigger getKey getName))
-                                                    trigger))
-                                    (:triggers sync-job))
-        existing-fv-trigger   (some (fn [trigger] (when (= (:key trigger) (.. fv-trigger getKey getName))
-                                                    trigger))
-                                    (:triggers fv-job))
-        job-data [{:existing-trigger  existing-sync-trigger
-                   :existing-schedule (:metadata_sync_schedule database)
-                   :ti                sync-analyze-task-info
-                   :trigger           sync-trigger
-                   :description       "sync/analyze"}
-                  {:existing-trigger  existing-fv-trigger
-                   :existing-schedule (:cache_field_values_schedule database)
-                   :ti                field-values-task-info
-                   :trigger           fv-trigger
-                   :description       "field-values"}]
-        {:keys [jobs-to-create
-                jobs-to-skip]} (group-by (fn [{:keys [ti]}]
-                                           (if (is-audit-db-sync-job? database ti)
-                                             :jobs-to-skip
-                                             :jobs-to-create))
-                                         job-data)]
-    (doseq [{:keys [description]} jobs-to-skip]
-      (log/info (u/format-color :red "Not scheduling %s for database %d" description (:id database))))
-    (doseq [{:keys [existing-trigger existing-schedule ti trigger description]} jobs-to-create
-            :when (or (not existing-trigger)
-                      (not= (:schedule existing-trigger) existing-schedule))]
-      (delete-task! database ti)
-      (log/info
-       (u/format-color :green "Scheduling %s for database %d: trigger: %s"
-                       description (:id database) (.. ^org.quartz.Trigger trigger getKey getName)))
-      ;; now (re)schedule the task
-      (task/add-trigger! trigger))))
+          existing-sync-trigger (some (fn [trigger] (when (= (:key trigger) (.. sync-trigger getKey getName))
+                                                      trigger))
+                                      (:triggers sync-job))
+          existing-fv-trigger   (some (fn [trigger] (when (= (:key trigger) (.. fv-trigger getKey getName))
+                                                      trigger))
+                                      (:triggers fv-job))
+          jobs-to-create [{:existing-trigger  existing-sync-trigger
+                           :existing-schedule (:metadata_sync_schedule database)
+                           :ti                sync-analyze-task-info
+                           :trigger           sync-trigger
+                           :description       "sync/analyze"}
+                          {:existing-trigger  existing-fv-trigger
+                           :existing-schedule (:cache_field_values_schedule database)
+                           :ti                field-values-task-info
+                           :trigger           fv-trigger
+                           :description       "field-values"}]]
+      (doseq [{:keys [existing-trigger existing-schedule ti trigger description]} jobs-to-create
+              :when (or (not existing-trigger)
+                        (not= (:schedule existing-trigger) existing-schedule))]
+        (delete-task! database ti)
+        (log/info
+         (u/format-color :green "Scheduling %s for database %d: trigger: %s"
+                         description (:id database) (.. ^org.quartz.Trigger trigger getKey getName)))
+        ;; now (re)schedule the task
+        (task/add-trigger! trigger)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

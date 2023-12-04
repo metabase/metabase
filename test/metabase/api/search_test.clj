@@ -24,7 +24,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
-   [toucan2.execute :as t2.execute]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- ordered-subset?
@@ -779,41 +778,47 @@
               (is (= nil (search-for-pulses pulse))))))))))
 
 (deftest search-db-call-count-test
-  (t2.with-temp/with-temp
-    [Card      _              {:name "card db count test 1"}
-     Card      _              {:name "card db count test 2"}
-     Card      _              {:name "card db count test 3"}
-     Dashboard _              {:name "dash count test 1"}
-     Dashboard _              {:name "dash count test 2"}
-     Dashboard _              {:name "dash count test 3"}
-     Database  {db-id :id}    {:name "database count test 1"}
-     Database  _              {:name "database count test 2"}
-     Database  _              {:name "database count test 3"}
-     Table     {table-id :id} {:db_id  db-id
-                               :schema nil}
-     Metric    _              {:table_id table-id
-                               :name     "metric count test 1"}
-     Metric    _              {:table_id table-id
-                               :name     "metric count test 1"}
-     Metric    _              {:table_id table-id
-                               :name     "metric count test 2"}
-     Segment   _              {:table_id table-id
-                               :name     "segment count test 1"}
-     Segment   _              {:table_id table-id
-                               :name     "segment count test 2"}
-     Segment   _              {:table_id table-id
-                               :name     "segment count test 3"}]
-    (mt/with-current-user (mt/user->id :crowberto)
-      (t2.execute/with-call-count [call-count]
-        (#'api.search/search {:search-string      "count test"
-                              :archived?          false
-                              :models             search.config/all-models
-                              :current-user-perms #{"/"}
-                              :limit-int          100})
-        ;; the call count number here are expected to change if we change the search api
-        ;; we have this test here just to keep tracks this number to remind us to put effort
-        ;; into keep this number as low as we can
-        (is (= 11 (call-count)))))))
+  (let [search-string (mt/random-name)]
+    (t2.with-temp/with-temp
+      [Card      _              {:name (str "card db 1 " search-string)}
+       Card      _              {:name (str "card db 2 " search-string)}
+       Card      _              {:name (str "card db 3 " search-string)}
+       Dashboard _              {:name (str "dash 1 " search-string)}
+       Dashboard _              {:name (str "dash 2 " search-string)}
+       Dashboard _              {:name (str "dash 3 " search-string)}
+       Database  {db-id :id}    {:name (str "database 1 " search-string)}
+       Database  _              {:name (str "database 2 " search-string)}
+       Database  _              {:name (str "database 3 " search-string)}
+       Table     {table-id :id} {:db_id  db-id
+                                 :schema nil}
+       Metric    _              {:table_id table-id
+                                 :name     (str "metric 1 " search-string)}
+       Metric    _              {:table_id table-id
+                                 :name     (str "metric 1 " search-string)}
+       Metric    _              {:table_id table-id
+                                 :name     (str "metric 2 " search-string)}
+       Segment   _              {:table_id table-id
+                                 :name     (str "segment 1 " search-string)}
+       Segment   _              {:table_id table-id
+                                 :name     (str "segment 2 " search-string)}
+       Segment   _              {:table_id table-id
+                                 :name     (str "segment 3 " search-string)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [do-search (fn []
+                          (#'api.search/search {:search-string      search-string
+                                                :archived?          false
+                                                :models             search.config/all-models
+                                                :current-user-perms #{"/"}
+                                                :limit-int          100}))]
+          ;; warm it up, in case the DB call depends on the order of test execution and it needs to
+          ;; do some initialization
+          (do-search)
+          (t2/with-call-count [call-count]
+            (do-search)
+            ;; the call count number here are expected to change if we change the search api
+            ;; we have this test here just to keep tracks this number to remind us to put effort
+            ;; into keep this number as low as we can
+            (is (= 9 (call-count)))))))))
 
 (deftest snowplow-new-search-query-event-test
   (testing "Send a snowplow event when a search query is triggered and context is passed"
@@ -1519,3 +1524,21 @@
         (is (= #{"dashboard" "collection"}
                (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term
                                           :filter_items_in_personal_collection "exclude"))))))))
+
+(deftest archived-search-results-with-no-write-perms-test
+  (testing "Results which the searching user has no write permissions for are filtered out. #33602"
+    (mt/with-temp [Collection  {collection-id :id} (archived {:name "collection test collection"})
+                   Card        _ (archived {:name "card test card is returned"})
+                   Card        _ (archived {:name "card test card"
+                                            :collection_id collection-id})
+                   Card        _ (archived {:name "dataset test dataset" :dataset true
+                                            :collection_id collection-id})
+                   Dashboard   _ (archived {:name          "dashboard test dashboard"
+                                            :collection_id collection-id})]
+      ;; remove read/write access and add back read access to the collection
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
+      (is (= ["card test card is returned"]
+             (->> (mt/user-http-request :lucky :get 200 "search" :archived true :q "test")
+                  :data
+                  (map :name)))))))

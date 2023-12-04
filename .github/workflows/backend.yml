@@ -22,6 +22,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       backend_all: ${{ steps.changes.outputs.backend_all }}
+      frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
     steps:
       - uses: actions/checkout@v3
       - name: Test which files changed
@@ -33,7 +34,7 @@ jobs:
 
   static-viz-files-changed:
     needs: files-changed
-    if: needs.files-changed.outputs.backend_all != 'true'
+    if: needs.files-changed.outputs.backend_all != 'true' && needs.files-changed.outputs.frontend_sources == 'true'
     name: Check whether static-viz files changed
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -94,6 +95,10 @@ jobs:
       DOWNLOAD_URL: https://github.com/clj-kondo/clj-kondo/releases/download
     steps:
       - uses: actions/checkout@v3
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: 'kondo'
       - name: Install clj-kondo
         run: |
           curl -OL ${DOWNLOAD_URL}/v${CLJ_KONDO_VERSION}/clj-kondo-${CLJ_KONDO_VERSION}-linux-static-amd64.zip
@@ -216,11 +221,10 @@ jobs:
           fail-on-error: false
 
   be-tests-stub:
-    needs: [files-changed, static-viz-files-changed]
+    needs: [be-tests]
     if: |
-      always() &&
-      github.event.pull_request.draft == false &&
-      (needs.files-changed.outputs.backend_all == 'false' && needs.static-viz-files-changed.outputs.static_viz == 'false')
+      !cancelled() &&
+      github.event.pull_request.draft == false && needs.be-tests.result == 'skipped'
     runs-on: ubuntu-22.04
     name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
     timeout-minutes: 5
@@ -257,11 +261,11 @@ jobs:
         run: clojure -M:ee:drivers:check
 
   be-check-stub:
-    needs: [files-changed, static-viz-files-changed]
+    needs: [files-changed, static-viz-files-changed, be-check]
     if: |
       always() &&
       github.event.pull_request.draft == false &&
-      (needs.files-changed.outputs.backend_all == 'false' && needs.static-viz-files-changed.outputs.static_viz == 'false')
+      needs.be-check.result == 'skipped'
     runs-on: ubuntu-22.04
     name: be-check-java-${{ matrix.java-version }}
     timeout-minutes: 10

@@ -24,6 +24,7 @@ export interface BaseUser {
 export interface User extends BaseUser {
   google_auth: boolean;
   login_attributes: Record<UserAttribute, UserAttribute> | null;
+  user_group_memberships?: { id: number; is_group_manager: boolean }[];
   is_installer: boolean;
   has_invited_second_user: boolean;
   has_question_and_dashboard: boolean;
@@ -54,3 +55,7 @@ export type UserInfo = Pick<
   | "is_superuser"
   | "is_qbnewb"
 >;
+
+export type UserListQuery = {
+  recipients: boolean;
+};

@@ -1,14 +1,45 @@
 (ns metabase.models.audit-log-test
   (:require [clojure.test :refer :all]
+            [clojure.test.check.clojure-test :as ct :refer [defspec]]
+            [clojure.test.check.generators :as gen]
+            [clojure.test.check.properties :as prop]
+            [malli.generator :as mg]
             [metabase.models.audit-log :as audit-log]
+            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
+            [metabase.util :as u]
             [toucan2.core :as t2]
             [toucan2.tools.with-temp :as t2.with-temp]))
 
 (derive :event/test-event :metabase/event)
 
+(def topic-generator (gen/fmap (fn [k] (keyword "event" (name k))) (mg/generator :keyword)))
+
+(defspec topic-gets-unqualified 5000
+  (prop/for-all [ns-kw topic-generator]
+    (is (= (keyword (name ns-kw)) (:unqualified-topic (audit-log/construct-event ns-kw {} nil))))))
+
+(defspec params-take-precedence 1000
+  (prop/for-all [topic topic-generator
+                 event-params (mg/generator ::audit-log/event-params)
+                 user-id (mg/generator [:maybe pos-int?])]
+    (let [object (:object event-params)
+          constructed-event (audit-log/construct-event topic event-params user-id)]
+      (testing "user-id in event takes precident over current-user-id"
+        (is (= (cond
+                 (:user-id event-params) (:user-id event-params)
+                 user-id user-id
+                 :else nil)
+               (:user-id constructed-event))))
+      (testing "model-id in event takes precident over model id on object"
+        (is (= (cond
+                 (:model-id event-params) (:model-id event-params)
+                 (u/id object) (u/id object)
+                 :else nil)
+               (:model-id constructed-event)))))))
+
 (deftest basic-record-event-test
-  (mt/with-model-cleanup [:model/AuditLog]
+  (premium-features-test/with-premium-features #{:audit-app}
     (mt/with-test-user :rasta
       (testing "Test that `record-event!` succesfully records basic card events"
         (t2.with-temp/with-temp [:model/Card {card-id :id :as card} {:name "Test card"}]

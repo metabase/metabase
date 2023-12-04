@@ -1,6 +1,8 @@
 (ns metabase.dashboard-subscription-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.email.messages :as messages]
    [metabase.models
     :refer [Card
             Collection
@@ -22,9 +24,10 @@
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(set! *warn-on-reflection* true)
 
 (defn- do-with-dashboard-sub-for-card
   "Creates a Pulse, Dashboard, and other relevant rows for a `card` (using `pulse` and `pulse-card` properties if
@@ -221,7 +224,7 @@
 ;;; |                                                     Tests                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest execute-dashboard-test
+(deftest ^:parallel execute-dashboard-test
   (testing "it runs for each non-virtual card"
     (mt/with-temp [Card          {card-id-1 :id} {}
                    Card          {card-id-2 :id} {}
@@ -230,12 +233,16 @@
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2}
                    User {user-id :id} {}]
       (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
-        (is (= (count result) 2))
-        (is (schema= [{:card     (s/pred map?)
-                       :dashcard (s/pred map?)
-                       :result   (s/pred map?)
-                       :type     (s/eq :card)}]
-                     result)))))
+        (is (malli= [:sequential
+                     {:min 2, :max 2}
+                     [:map
+                      [:card     :map]
+                      [:dashcard :map]
+                      [:result   :map]
+                      [:type     [:= :card]]]]
+                    result))))))
+
+(deftest ^:parallel execute-dashboard-test-2
   (testing "hides empty card when card.hide_empty is true"
     (mt/with-temp [Card          {card-id-1 :id} {}
                    Card          {card-id-2 :id} {}
@@ -244,7 +251,9 @@
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2 :visualization_settings {:card.hide_empty true}}
                    User {user-id :id} {}]
       (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
-        (is (= (count result) 1)))))
+        (is (= (count result) 1))))))
+
+(deftest ^:parallel execute-dashboard-test-3
   (testing "dashboard cards are ordered correctly -- by rows, and then by columns (#17419)"
     (mt/with-temp [Card          {card-id-1 :id} {}
                    Card          {card-id-2 :id} {}
@@ -256,7 +265,9 @@
                    User {user-id :id} {}]
       (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
         (is (= [card-id-3 card-id-2 card-id-1]
-               (map #(-> % :card :id) result))))))
+               (map #(-> % :card :id) result)))))))
+
+(deftest ^:parallel execute-dashboard-test-4
   (testing "virtual (text) cards are returned as a viz settings map"
     (mt/with-temp [Card          _ {}
                    Card          _ {}
@@ -264,7 +275,8 @@
                    DashboardCard _ {:dashboard_id dashboard-id
                                     :visualization_settings {:virtual_card {}, :text "test"}}
                    User {user-id :id} {}]
-      (is (= [{:virtual_card {} :text "test" :type :text}] (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard))))))
+      (is (= [{:virtual_card {} :text "test" :type :text}]
+             (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard))))))
 
 (deftest basic-table-test
   (tests {:pulse {:skip_if_empty false} :display :table}
@@ -873,7 +885,57 @@
                   [{:type "divider"}
                    {:type "context",
                     :elements
-                    [{:type "mrkdwn",
+                    [{:type "mrkdwn"
                       :text
                       #"<https://metabase\.com/testmb/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\|\*Sent from Metabase Test\*>"}]}]}]}
                (pulse.test-util/thunk->boolean pulse-results))))}}))
+
+(defn- result-attachment
+  [{{{:keys [rows]} :data, :as result} :result}]
+  (when (seq rows)
+    [(let [^java.io.ByteArrayOutputStream baos (java.io.ByteArrayOutputStream.)]
+       (with-open [os baos]
+         (#'messages/stream-api-results-to-export-format :csv os result)
+         (let [output-string (.toString baos "UTF-8")]
+           {:type         :attachment
+            :content-type :csv
+            :content      output-string})))]))
+
+(defn- metadata->field-ref
+  [{:keys [name field_ref]} enabled?]
+  {:name name :field_ref field_ref :enabled enabled?})
+
+(deftest dashboard-subscription-attachments-test
+  (testing "Dashboard subscription attachments respect dashcard viz settings."
+    (mt/with-fake-inbox
+      (mt/with-temp [Card {card-id :id :as c} (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+                     Dashboard     {dash-id :id} {:name "just dash"}]
+        (let [;; with the helper `metadata->field-ref` we turn column metadata into column field refs
+              ;; with an additional key `:enabled`. Here the 1st col is enabled, and the 2nd is disabled
+              viz {:table.columns (mapv metadata->field-ref (:result_metadata c) [true false])}]
+          (mt/with-temp [DashboardCard {dash-card-id :id} {:dashboard_id           dash-id
+                                                           :card_id                card-id
+                                                           :visualization_settings viz}
+                         Pulse         {pulse-id :id, :as pulse}  {:name         "just pulse"
+                                                                   :dashboard_id dash-id}
+                         PulseCard     _ {:pulse_id          pulse-id
+                                          :card_id           card-id
+                                          :position          0
+                                          :dashboard_card_id dash-card-id
+                                          :include_csv       true}
+                         PulseChannel  {pc-id :id} {:pulse_id pulse-id}
+                         PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                  :pulse_channel_id pc-id}]
+            (with-redefs [messages/result-attachment result-attachment]
+              (metabase.pulse/send-pulse! pulse)
+              (is (= 1
+                     (-> @mt/inbox
+                         (get (:email (mt/fetch-user :rasta)))
+                         last
+                         :body
+                         last
+                         :content
+                         str/split-lines
+                         (->> (mapv #(str/split % #",")))
+                         first
+                         count))))))))))

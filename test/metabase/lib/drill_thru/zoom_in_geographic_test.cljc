@@ -253,3 +253,53 @@
                                                      [:field {} (meta/id :people :longitude)]
                                                      50
                                                      55]]}]}})))))
+
+(deftest ^:parallel zoom-in-on-join-test
+  (testing "#11210"
+    (let [base       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (lib/join (meta/table-metadata :people))
+                         (lib/aggregate (lib/count)))
+          join-alias (-> base :stages first :joins first :alias)
+          query      (-> base
+                         (lib/breakout (-> (meta/field-metadata :people :latitude)
+                                           (lib/with-binning {:strategy :bin-width, :bin-width 10})
+                                           (lib/with-join-alias join-alias)))
+                         (lib/breakout (-> (meta/field-metadata :people :longitude)
+                                           (lib/with-binning {:strategy :bin-width, :bin-width 10})
+                                           (lib/with-join-alias join-alias))))]
+      (doseq [column ["LATITUDE" "LONGITUDE"]]
+        (lib.drill-thru.tu/test-drill-application
+         {:click-type     :cell
+          :query-type     :aggregated
+          :custom-query   query
+          :custom-row     {"count"     100
+                           "LATITUDE"  20
+                           "LONGITUDE" 50}
+          :column-name    column
+          :drill-type     :drill-thru/zoom-in.geographic
+          :expected       {:type      :drill-thru/zoom-in.geographic
+                           :subtype   :drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon
+                           :latitude  {:column    {:name "LATITUDE"}
+                                       :bin-width 1.0
+                                       :min       20
+                                       :max       30}
+                           :longitude {:column    {:name "LONGITUDE"}
+                                       :bin-width 1.0
+                                       :min       50
+                                       :max       60}}
+          :expected-query {:stages [{:source-table (meta/id :orders)
+                                     :aggregation  [[:count {}]]
+                                     :breakout     [[:field
+                                                     {:binning {:strategy :bin-width, :bin-width 1.0}}
+                                                     (meta/id :people :latitude)]
+                                                    [:field
+                                                     {:binning {:strategy :bin-width, :bin-width 1.0}}
+                                                     (meta/id :people :longitude)]]
+                                     :filters      [[:between {}
+                                                     [:field {} (meta/id :people :latitude)]
+                                                     20
+                                                     30]
+                                                    [:between {}
+                                                     [:field {} (meta/id :people :longitude)]
+                                                     50
+                                                     60]]}]}})))))

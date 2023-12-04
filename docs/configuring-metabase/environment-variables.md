@@ -1190,15 +1190,11 @@ Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Ente
 Type: string (`"none"`, `"lax"`, `"strict"`)<br>
 Default: `"lax"`
 
-When using interactive embedding, and the embedding website is hosted under a domain other than the one your Metabase instance is hosted under, you most likely need to set it to `"none"`.
-
-Setting the variable to `"none"` requires you to use HTTPS, otherwise browsers will reject the request.
+See [Embedding Metabase in a different domain](../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain).
 
 Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about [interactive Embedding](../embedding/interactive-embedding.md).
 
 Learn more about SameSite cookies: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite
-
-> WARNING: If you're NOT embedding Metabase and you set `MB_SESSION_COOKIE_SAMESITE` to "none", Chrome and Safari will reject authentication attempts.
 
 ### `MB_SESSION_COOKIES`
 

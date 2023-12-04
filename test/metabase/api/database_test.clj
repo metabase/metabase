@@ -4,10 +4,12 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.database :as api.database]
    [metabase.api.table :as api.table]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
@@ -18,10 +20,14 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.sync :as sync]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as field-values]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
+   [metabase.test.data.impl :as data.impl]
+   [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
@@ -29,9 +35,12 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
-   [schema.core :as s]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import
+   (java.sql Connection)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
@@ -48,6 +57,10 @@
 (defmethod driver/can-connect? ::test-driver
   [_ _]
   true)
+
+(defmethod driver/dbms-version ::test-driver
+  [_ _]
+  "1.0")
 
 (defn- db-details
   "Return default column values for a database (either the test database, via `(mt/db)`, or optionally passed in)."
@@ -224,20 +237,18 @@
 (defn- create-db-via-api! [& [m]]
   (let [db-name (mt/random-name)]
     (try
-      (let [{db-id :id, :as response} (with-redefs [driver/available?   (constantly true)
-                                                    driver/can-connect? (constantly true)]
-                                        (mt/user-http-request :crowberto :post 200 "database"
-                                                              (merge
-                                                               {:name    db-name
-                                                                :engine  (u/qualified-name ::test-driver)
-                                                                :details {:db "my_db"}}
-                                                               m)))]
-        (is (schema= {:id       s/Int
-                      s/Keyword s/Any}
-                     response))
-        (when (integer? db-id)
-          (t2/select-one Database :id db-id)))
-      (finally (t2/delete! Database :name db-name)))))
+     (let [{db-id :id, :as response} (with-redefs [driver/available?   (constantly true)
+                                                   driver/can-connect? (constantly true)]
+                                       (mt/user-http-request :crowberto :post 200 "database"
+                                                             (merge
+                                                              {:name    db-name
+                                                               :engine  (u/qualified-name ::test-driver)
+                                                               :details {:db "my_db"}}
+                                                              m)))]
+       (is (malli= [:map [:id ::lib.schema.id/database]]
+                   response))
+       (t2/select-one Database :id db-id))
+     (finally (t2/delete! Database :name db-name)))))
 
 (deftest create-db-test
   (testing "POST /api/database"
@@ -331,14 +342,36 @@
         (is (partial= {:cache_ttl 13}
                       (create-db-via-api! {:cache_ttl 13})))))))
 
+(deftest create-db-succesful-track-snowplow-test
+  ;; h2 is no longer supported as a db source
+  ;; the rests are disj because it's timeouted when adding it as a DB for some reasons
+  (mt/test-drivers (disj (mt/normal-drivers) :h2 :bigquery-cloud-sdk :athena :snowflake)
+    (snowplow-test/with-fake-snowplow-collector
+      (let [dataset-def (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'avian-singles))]
+        ;; trigger this to make sure the database exists before we add them
+        (data.impl/get-or-create-database! driver/*driver* dataset-def)
+        (mt/with-model-cleanup [:model/Database]
+          (is (=? {:id int?}
+                  (mt/user-http-request :crowberto :post 200 "database"
+                                        {:name    (mt/random-name)
+                                         :engine  (u/qualified-name driver/*driver*)
+                                         :details (tx/dbdef->connection-details driver/*driver* nil dataset-def)})))
+          (is (=? {"database"     (name driver/*driver*)
+                   "database_id"  int?
+                   "source"       "admin"
+                   "dbms_version" string?
+                   "event"        "database_connection_successful"}
+                  (:data (last (snowplow-test/pop-event-data-and-user-id!))))))))))
+
 (deftest create-db-audit-log-test
   (testing "POST /api/database"
     (testing "The id captured in the database-create event matches the new db's id"
-      (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
-        (let [{:keys [id] :as _db} (create-db-via-api! {:id 19999999})
-              audit-entry (mt/latest-audit-log-entry "database-create")]
-          (is (= id (-> audit-entry :model_id)))
-          (is (= id (-> audit-entry :details :id))))))))
+      (premium-features-test/with-premium-features #{:audit-app}
+        (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
+          (let [{:keys [id] :as _db} (create-db-via-api! {:id 19999999})
+                audit-entry (mt/latest-audit-log-entry "database-create")]
+            (is (= id (-> audit-entry :model_id)))
+            (is (= id (-> audit-entry :details :id)))))))))
 
 (deftest disallow-creating-h2-database-test
   (testing "POST /api/database/:id"
@@ -364,8 +397,8 @@
   (deftest delete-database-audit-log-test
     (testing "DELETE /api/database/:id"
       (testing "Check that an audit log entry is created when someone deletes a Database"
-        (t2.with-temp/with-temp [Database db]
-          (mt/with-model-cleanup [:model/AuditLog :model/Activity]
+        (premium-features-test/with-premium-features #{:audit-app}
+          (t2.with-temp/with-temp [Database db]
             (mt/user-http-request :crowberto :delete 204 (format "database/%d" (:id db)))
             (is (= (audit-log/model-details db :model/Database)
                    (->> (mt/latest-audit-log-entry "database-delete")
@@ -438,17 +471,18 @@
 
 (deftest update-database-audit-log-test
   (testing "Check that we get audit log entries that match the db when updating a Database"
-    (t2.with-temp/with-temp [Database {db-id :id}]
-      (with-redefs [driver/can-connect? (constantly true)]
-        (is (= "Original Database Name" (:name (api-update-database! 200 db-id {:name "Original Database Name"})))
-            "A db update occured")
-        (is (= "Updated Database Name" (:name (api-update-database! 200 db-id {:name "Updated Database Name"})))
-            "A db update occured")
-        (let [audit-log-entry (mt/latest-audit-log-entry)]
-          (is (partial=
-               {:previous {:name "Original Database Name"}
-                :new      {:name "Updated Database Name"}}
-               (:details audit-log-entry))))))))
+    (premium-features-test/with-premium-features #{:audit-app}
+      (t2.with-temp/with-temp [Database {db-id :id}]
+        (with-redefs [driver/can-connect? (constantly true)]
+          (is (= "Original Database Name" (:name (api-update-database! 200 db-id {:name "Original Database Name"})))
+              "A db update occured")
+          (is (= "Updated Database Name" (:name (api-update-database! 200 db-id {:name "Updated Database Name"})))
+              "A db update occured")
+          (let [audit-log-entry (mt/latest-audit-log-entry)]
+            (is (partial=
+                 {:previous {:name "Original Database Name"}
+                  :new      {:name "Updated Database Name"}}
+                 (:details audit-log-entry)))))))))
 
 (deftest disallow-updating-h2-database-details-test
   (testing "PUT /api/database/:id"
@@ -485,6 +519,42 @@
                                                (format "database/%s" db-id)
                                                {:settings {:database-enable-actions true}})
                          [:settings :database-enable-actions]))))))
+
+(deftest update-database-enable-actions-open-connection-test
+  (testing "Updating a database's `database-enable-actions` setting shouldn't close existing connections (metabase#27877)"
+    (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :actions))
+      (let [;; 1. create a database and sync
+            database-name      (name (gensym))
+            empty-dbdef        {:database-name database-name}
+            _                  (tx/create-db! driver/*driver* empty-dbdef)
+            connection-details (tx/dbdef->connection-details driver/*driver* :db empty-dbdef)
+            db                 (first (t2/insert-returning-instances! :model/Database {:name    database-name
+                                                                                       :engine  (u/qualified-name driver/*driver*)
+                                                                                       :details connection-details}))
+            _                  (sync/sync-database! db)]
+        (let [;; 2. start a long running process on another thread that uses a connection
+              connections-stay-open? (future
+                                       (sql-jdbc.execute/do-with-connection-with-options
+                                        driver/*driver*
+                                        db
+                                        nil
+                                        (fn [^Connection conn]
+                                          ;; sleep long enough to make sure the PUT request below finishes processing,
+                                          ;; including any async operations that it might trigger
+                                          (Thread/sleep 1000)
+                                          ;; test the connection is open by executing a query
+                                          (try
+                                            (let [stmt      (.createStatement conn)
+                                                  resultset (.executeQuery stmt "SELECT 1")]
+                                              (.next resultset))
+                                            (catch Exception _e
+                                              false)))))]
+          ;; 3. update the database's `database-enable-actions` setting
+          (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
+                                {:settings {:database-enable-actions true}})
+          ;; 4. test the connection was still open at the end of it of the long running process
+          (is (true? @connections-stay-open?))
+          (tx/destroy-db! driver/*driver* empty-dbdef))))))
 
 (deftest fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
@@ -1040,7 +1110,7 @@
   (testing "Can we trigger a metadata sync for a DB?"
     (let [sync-called?    (promise)
           analyze-called? (promise)]
-      (mt/with-model-cleanup [:model/AuditLog :model/Activity]
+      (premium-features-test/with-premium-features #{:audit-app}
         (t2.with-temp/with-temp [Database {db-id :id :as db} {:engine "h2", :details (:details (mt/db))}]
           (with-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db)
                         analyze/analyze-db!             (deliver-when-db analyze-called? db)]
@@ -1081,17 +1151,18 @@
 
 (deftest can-rescan-fieldvalues-for-a-db
   (testing "Can we RESCAN all the FieldValues for a DB?"
-    (let [update-field-values-called? (promise)]
-      (t2.with-temp/with-temp [Database db {:engine "h2", :details (:details (mt/db))}]
-        (with-redefs [field-values/update-field-values! (fn [synced-db]
-                                                          (when (= (u/the-id synced-db) (u/the-id db))
-                                                            (deliver update-field-values-called? :sync-called)))]
-          (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
-          (is (= :sync-called
-                 (deref update-field-values-called? long-timeout :sync-never-called)))
-          (is (= (:id db) (:model_id (mt/latest-audit-log-entry "database-manual-scan"))))
-          (is (= (:id db) (-> (mt/latest-audit-log-entry "database-manual-scan")
-                              :details :id))))))))
+    (premium-features-test/with-premium-features #{:audit-app}
+      (let [update-field-values-called? (promise)]
+        (t2.with-temp/with-temp [Database db {:engine "h2", :details (:details (mt/db))}]
+          (with-redefs [field-values/update-field-values! (fn [synced-db]
+                                                            (when (= (u/the-id synced-db) (u/the-id db))
+                                                              (deliver update-field-values-called? :sync-called)))]
+            (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
+            (is (= :sync-called
+                   (deref update-field-values-called? long-timeout :sync-never-called)))
+            (is (= (:id db) (:model_id (mt/latest-audit-log-entry "database-manual-scan"))))
+            (is (= (:id db) (-> (mt/latest-audit-log-entry "database-manual-scan")
+                                :details :id)))))))))
 
 (deftest nonadmins-cant-trigger-rescan
   (testing "Non-admins should not be allowed to trigger re-scan"
@@ -1117,9 +1188,9 @@
                (t2/exists? FieldValues :id (u/the-id values-2))))))))
 
 (deftest discard-db-fieldvalues-audit-log-test
-  (testing "Can we DISCARD all the FieldValues for a DB?"
-    (mt/with-model-cleanup [:model/AuditLog :model/Activity]
-      (mt/with-temp [Database db    {:engine "h2", :details (:details (mt/db))}]
+  (testing "Do we get an audit log entry when we discard all the FieldValues for a DB?"
+    (premium-features-test/with-premium-features #{:audit-app}
+      (mt/with-temp [Database db {:engine "h2", :details (:details (mt/db))}]
         (is (= {:status "ok"} (mt/user-http-request :crowberto :post 200 (format "database/%d/discard_values" (u/the-id db)))))
         (is (= (:id db) (:model_id (mt/latest-audit-log-entry))))))))
 
@@ -1384,13 +1455,15 @@
           (let [response (mt/user-http-request :lucky :get 200
                                                (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id
                                                        (api.table/root-collection-schema-name)))]
-            (is (schema= [{:id               #"^card__\d+$"
-                           :db_id            s/Int
-                           :display_name     s/Str
-                           :moderated_status (s/enum nil "verified")
-                           :schema           (s/eq (api.table/root-collection-schema-name))
-                           :description      (s/maybe s/Str)}]
-                         response))
+            (is (malli= [:sequential
+                         [:map
+                          [:id               #"^card__\d+$"]
+                          [:db_id            ::lib.schema.id/database]
+                          [:display_name     :string]
+                          [:moderated_status [:maybe [:= "verified"]]]
+                          [:schema           [:= (api.table/root-collection-schema-name)]]
+                          [:description      [:maybe :string]]]]
+                        response))
             (is (not (contains? (set (map :display_name response)) "Card 3")))
             (is (contains? (set response)
                            {:id               (format "card__%d" (:id card-2))
@@ -1432,13 +1505,15 @@
           (let [response (mt/user-http-request :lucky :get 200
                                                (format "database/%d/datasets/%s" lib.schema.id/saved-questions-virtual-database-id
                                                        (api.table/root-collection-schema-name)))]
-            (is (schema= [{:id               #"^card__\d+$"
-                           :db_id            s/Int
-                           :display_name     s/Str
-                           :moderated_status (s/enum nil "verified")
-                           :schema           (s/eq (api.table/root-collection-schema-name))
-                           :description      (s/maybe s/Str)}]
-                         response))
+            (is (malli= [:sequential
+                         [:map
+                          [:id               [:re #"^card__\d+$"]]
+                          [:db_id            ::lib.schema.id/database]
+                          [:display_name     :string]
+                          [:moderated_status [:maybe [:= :verified]]]
+                          [:schema           [:= (api.table/root-collection-schema-name)]]
+                          [:description      [:maybe :string]]]]
+                        response))
             (is (contains? (set response)
                            {:id               (format "card__%d" (:id card-2))
                             :db_id            (mt/id)
@@ -1520,9 +1595,8 @@
                           "\nGET /api/database/:id/schema/:schema")
               (let [url (format "database/%d/schema/%s" db-id (codec/url-encode schema-name))]
                 (testing (str "\nGET /api/" url)
-                  (is (schema= [{:schema (s/eq schema-name)
-                                 s/Keyword s/Any}]
-                               (mt/user-http-request :rasta :get 200 url))))))))))))
+                  (is (=? [{:schema schema-name}]
+                          (mt/user-http-request :rasta :get 200 url))))))))))))
 
 (deftest ^:parallel upsert-sensitive-fields-no-changes-test
   (testing "empty maps are okay"
@@ -1735,33 +1809,33 @@
           (is (nil? (settings))))
         (testing "Set initial value"
           (testing "response"
-            (is (partial= {:settings {:max-results-bare-rows 1337}}
-                          (set-settings! {:max-results-bare-rows 1337}))))
+            (is (partial= {:settings {:max-unaggregated-query-row-limit 1337}}
+                          (set-settings! {:max-unaggregated-query-row-limit 1337}))))
           (testing "App DB"
-            (is (= {:max-results-bare-rows 1337}
+            (is (= {:max-unaggregated-query-row-limit 1337}
                    (settings)))))
         (testing "Setting a different value should not affect anything not specified (PATCH-style update)"
           (testing "response"
-            (is (partial= {:settings {:max-results-bare-rows   1337
+            (is (partial= {:settings {:max-unaggregated-query-row-limit   1337
                                       :database-enable-actions true}}
                           (set-settings! {:database-enable-actions true}))))
           (testing "App DB"
-            (is (= {:max-results-bare-rows   1337
+            (is (= {:max-unaggregated-query-row-limit   1337
                     :database-enable-actions true}
                    (settings)))))
         (testing "Update existing value"
           (testing "response"
-            (is (partial= {:settings {:max-results-bare-rows   1337
+            (is (partial= {:settings {:max-unaggregated-query-row-limit   1337
                                       :database-enable-actions false}}
                           (set-settings! {:database-enable-actions false}))))
           (testing "App DB"
-            (is (= {:max-results-bare-rows   1337
+            (is (= {:max-unaggregated-query-row-limit   1337
                     :database-enable-actions false}
                    (settings)))))
         (testing "Unset a value"
           (testing "response"
             (is (partial= {:settings {:database-enable-actions false}}
-                          (set-settings! {:max-results-bare-rows nil}))))
+                          (set-settings! {:max-unaggregated-query-row-limit nil}))))
           (testing "App DB"
             (is (= {:database-enable-actions false}
                    (settings)))))))))

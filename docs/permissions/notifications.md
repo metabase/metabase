@@ -38,9 +38,12 @@ From Metabase's [auditing tools](../usage-and-performance-tools/audit.md#subscri
 
 Admins can add recipients without changing the permissions of the alert or subscription. For example, if an admin adds Anya to a subscription created by Beau, Anya will receive emails with the same data that the Beau can see.
 
-## Restricting email domains
+## More control over email options
 
-On some plans, Admins can limit email recipients to [approved domains for notifications](../configuring-metabase/email.md#approved-domains-for-notifications). 
+On [Enterprise](https://www.metabase.com/product/enterprise) and [Pro](https://www.metabase.com/product/pro) plans, Admins can:
+
+- Limit email recipients to [approved domains for notifications](../configuring-metabase/email.md#approved-domains-for-notifications).
+- [Limit which recipients Metabase suggests](../configuring-metabase/email.md#suggest-recipients-on-dashboard-subscriptions-and-alerts) when people set up a subscription or alert.
 
 ## Further reading
 

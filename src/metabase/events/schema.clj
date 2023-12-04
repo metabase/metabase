@@ -32,12 +32,9 @@
      :event/card-update default-schema
      :event/card-delete default-schema
      :event/card-query  [:map {:closed true}
-                         [:card-id                       pos-int?]
-                         [:user-id                       [:maybe pos-int?]]
-                         [:cached       {:optional true} :any]
-                         [:context      {:optional true} :any]
-                         [:ignore_cache {:optional true} :any]]}))
-
+                         [:card-id pos-int?]
+                         [:user-id [:maybe pos-int?]]
+                         [:context {:optional true} :any]]}))
 
 ;; user events
 
@@ -114,6 +111,20 @@
                        [:user-id  pos-int?]
                        [:object [:fn #(t2/instance-of? :model/Table %)]]])})
 
+(let [default-schema (mc/schema
+                      [:map {:closed true}
+                       [:user-id [:maybe pos-int?]]
+                       [:object [:maybe [:fn #(boolean (t2/model %))]]]
+                       [:has-access {:optional true} [:maybe :boolean]]])]
+  (def ^:private permission-failure-events
+    {:event/read-permission-failure default-schema
+     :event/write-permission-failure default-schema
+     :event/update-permission-failure default-schema
+     :event/create-permission-failure (mc/schema
+                                       [:map {:closed true}
+                                        [:user-id [:maybe pos-int?]]
+                                        [:model [:or :keyword :string]]])}))
+
 (def topic->schema
   "Returns the schema for an event topic."
   (merge dashboard-events-schemas
@@ -124,4 +135,5 @@
          database-events
          alert-schema
          pulse-schemas
-         table-events))
+         table-events
+         permission-failure-events))

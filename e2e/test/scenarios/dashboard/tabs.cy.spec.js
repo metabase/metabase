@@ -62,7 +62,7 @@ describe("scenarios > dashboard > tabs", () => {
       cy.findByText("Orders, Count").click();
     });
     saveDashboard();
-    cy.url().should("include", "2-tab-2");
+    cy.url().should("match", /\d+\-tab\-2/); // id is not stable
 
     // Go back to first tab
     goToTab("Tab 1");
@@ -130,6 +130,12 @@ describe("scenarios > dashboard > tabs", () => {
       cy.findAllByTestId("toast-undo").should("have.length", 2);
       getDashboardCards().should("have.length", 0);
 
+      cy.log("should show undo toast with the correct text");
+      cy.findByTestId("undo-list").within(() => {
+        cy.findByText("Text card moved").should("be.visible");
+        cy.findByText("Card moved: Orders").should("be.visible");
+      });
+
       cy.log("cards should be in second tab");
       goToTab("Tab 2");
       getDashboardCards().should("have.length", 2);
@@ -174,6 +180,9 @@ describe("scenarios > dashboard > tabs", () => {
       const cards = [
         getTextCardDetails({
           text: "Text card",
+          // small card aligned to the left so that move icon is out of the viewport
+          // unless the left alignment logic kicks in
+          size_x: 1,
         }),
         getHeadingCardDetails({
           text: "Heading card",
@@ -204,6 +213,14 @@ describe("scenarios > dashboard > tabs", () => {
       goToTab("Tab 2");
 
       getDashboardCards().should("have.length", cards.length);
+
+      cy.findAllByTestId("toast-undo").should("have.length", cards.length);
+
+      cy.log("'Undo' toasts should be dismissed when saving the dashboard");
+
+      saveDashboard();
+
+      cy.findAllByTestId("toast-undo").should("have.length", 0);
     },
   );
 
@@ -288,7 +305,8 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     // Visit first tab and confirm only first card was queried
-    visitDashboard(ORDERS_DASHBOARD_ID, { params: { tab: 1 } });
+    visitDashboard(ORDERS_DASHBOARD_ID);
+
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("not.have.been.called");
 
@@ -356,12 +374,14 @@ describeWithSnowplow("scenarios > dashboard > tabs", () => {
     editDashboard();
     createNewTab();
     saveDashboard();
-    expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 1); // dashboard_tab_created
+    expectGoodSnowplowEvent({ event: "dashboard_saved" }, 1);
+    expectGoodSnowplowEvent({ event: "dashboard_tab_created" }, 1);
 
     editDashboard();
     deleteTab("Tab 2");
     saveDashboard();
-    expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 2); // dashboard_tab_deleted
+    expectGoodSnowplowEvent({ event: "dashboard_saved" }, 2);
+    expectGoodSnowplowEvent({ event: "dashboard_tab_deleted" }, 1);
   });
 
   it("should send snowplow events when cards are moved between tabs", () => {

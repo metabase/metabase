@@ -12,10 +12,13 @@
 
 (def currency-regex "Supported currency signs" #"[$€£¥₹₪₩₿¢\s]")
 
-(defn get-number-separators
-  "Setting-dependent number separators. Defaults to `.` and `,`. Stored/returned as a string."
+(defn get-settings
+  "Settings that determine how the CSV is parsed.
+
+  Includes:
+    - number-separators: Decimal delimiter defaults to `.` and group delimiter defaults to `,`. Stored/returned as a string."
   []
-  (get-in (public-settings/custom-formatting) [:type/Number :number_separators] ".,"))
+  {:number-separators (get-in (public-settings/custom-formatting) [:type/Number :number_separators] ".,")})
 
 (defn parse-bool
   "Parses a boolean value (true/t/yes/y/1 and false/f/no/n/0). Case-insensitive."
@@ -27,27 +30,57 @@
                                                  (tru "{0} is not a recognizable boolean" s)))))
 
 (defn parse-date
-  "Parses a date."
+  "Parses a date.
+
+  Supported formats:
+    - yyyy-MM-dd"
   [s]
   (t/local-date s))
 
 (defn parse-datetime
-  "Parses a datetime (without timezone)."
+  "Parses a string representing a local datetime into a LocalDateTime.
+
+  Supported formats:
+    - yyyy-MM-dd'T'HH:mm
+    - yyyy-MM-dd'T'HH:mm:ss
+    - yyyy-MM-dd'T'HH:mm:ss.SSS (and any other number of S's)
+    - the above formats, with a space instead of a 'T'
+
+  Parsing is case-insensitive."
+  [s]
+  (-> s (str/replace \space \T) t/local-date-time))
+
+(defn parse-as-datetime
+  "Parses a string `s` as a LocalDateTime. Supports all the formats for [[parse-date]] and [[parse-datetime]]."
   [s]
   (try
-    (t/local-date-time (t/local-date s) (t/local-time "00:00:00"))
+    (t/local-date-time (parse-date s) (t/local-time "00:00:00"))
     (catch Exception _
       (try
-        (t/local-date-time s)
+        (parse-datetime s)
         (catch Exception _
           (throw (IllegalArgumentException.
                   (tru "{0} is not a recognizable datetime" s))))))))
 
 (defn parse-offset-datetime
-  "Parses a datetime (with offset)."
+  "Parses a string representing an offset datetime into an OffsetDateTime.
+
+  The format consists of:
+    1) The a date and time, with the formats:
+      - yyyy-MM-dd'T'HH:mm
+      - yyyy-MM-dd'T'HH:mm:ss
+      - yyyy-MM-dd'T'HH:mm:ss.SSS (and any other number of S's)
+      - the above formats, with a space instead of a 'T'
+    2) An offset, with the formats:
+      - Z (for UTC)
+      - +HH or -HH
+      - +HH:mm or -HH:mm
+      - +HH:mm:ss or -HH:mm:ss
+
+  Parsing is case-insensitive."
   [s]
   (try
-    (t/offset-date-time s)
+    (-> s (str/replace \space \T) t/offset-date-time)
     (catch Exception e
       (throw (IllegalArgumentException. (tru "{0} is not a recognizable zoned datetime" s) e)))))
 
@@ -89,57 +122,50 @@
 (defmulti upload-type->parser
   "Returns a function for the given `metabase.upload` type that will parse a string value (from a CSV) into a value
   suitable for insertion."
-  {:arglists '([upload-type])}
-  identity)
+  {:arglists '([upload-type settings])}
+  (fn [upload-type _]
+    upload-type))
 
 (defmethod upload-type->parser :metabase.upload/varchar-255
-  [_]
+  [_ _]
   identity)
 
 (defmethod upload-type->parser :metabase.upload/text
-  [_]
+  [_ _]
   identity)
 
 (defmethod upload-type->parser :metabase.upload/int
-  [_]
-  (partial parse-number (get-number-separators)))
+  [_ {:keys [number-separators]}]
+  (partial parse-number number-separators))
 
 (defmethod upload-type->parser :metabase.upload/float
-  [_]
-  (partial parse-number (get-number-separators)))
-
-(defmethod upload-type->parser :metabase.upload/int-pk
-  [_]
-  (partial parse-number (get-number-separators)))
+  [_ {:keys [number-separators]}]
+  (partial parse-number number-separators))
 
 (defmethod upload-type->parser :metabase.upload/auto-incrementing-int-pk
-  [_]
-  (partial parse-number (get-number-separators)))
-
-(defmethod upload-type->parser :metabase.upload/string-pk
-  [_]
-  identity)
+  [_ {:keys [number-separators]}]
+  (partial parse-number number-separators))
 
 (defmethod upload-type->parser :metabase.upload/boolean
-  [_]
+  [_ _]
   (comp
    parse-bool
    str/trim))
 
 (defmethod upload-type->parser :metabase.upload/date
-  [_]
+  [_ _]
   (comp
    parse-date
    str/trim))
 
 (defmethod upload-type->parser :metabase.upload/datetime
-  [_]
+  [_ _]
   (comp
-   parse-datetime
+   parse-as-datetime
    str/trim))
 
 (defmethod upload-type->parser :metabase.upload/offset-datetime
-  [_]
+  [_ _]
   (comp
    parse-offset-datetime
    str/trim))

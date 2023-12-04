@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase.api.user :as api.user]
    [metabase.config :as config]
-   [metabase.events.audit-log-test :as audit-log-test]
    [metabase.http-client :as client]
    [metabase.models
     :refer [Card Collection Dashboard LoginHistory PermissionsGroup
@@ -21,7 +20,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -1058,9 +1056,8 @@
               (testing group
                 (testing (format "attempt to set locale to %s" new-locale)
                   (testing "response"
-                    (is (schema= {:errors {:locale #".*String must be a valid two-letter ISO language or language-country code.*"}
-                                  s/Any   s/Any}
-                                 (set-locale! 400 {:locale new-locale}))))
+                    (is (=? {:errors {:locale #".*String must be a valid two-letter ISO language or language-country code.*"}}
+                            (set-locale! 400 {:locale new-locale}))))
                   (testing "value in DB should be unchanged"
                     (is (= "en_US"
                            (locale-from-db)))))))))))))
@@ -1089,9 +1086,8 @@
                (mt/user-http-request :crowberto :put 404 (format "user/%s/reactivate" Integer/MAX_VALUE)))))
 
       (testing " Attempting to reactivate an already active user should fail"
-        (is (schema= {:message  (s/eq "Not able to reactivate an active user")
-                      s/Keyword s/Any}
-                     (mt/user-http-request :crowberto :put 400 (format "user/%s/reactivate" (mt/user->id :rasta)))))))
+        (is (=? {:message "Not able to reactivate an active user"}
+                (mt/user-http-request :crowberto :put 400 (format "user/%s/reactivate" (mt/user->id :rasta)))))))
 
     (testing (str "test that when disabling Google auth if a user gets disabled and re-enabled they are no longer "
                   "Google Auth (#3323)")
@@ -1155,10 +1151,10 @@
     (testing "Test that we return a session if we are changing our own password"
       (t2.with-temp/with-temp [User user {:password "def", :is_superuser false}]
         (let [creds {:username (:email user), :password "def"}]
-          (is (schema= {:session_id (s/pred mt/is-uuid-string? "session")
-                        :success    (s/eq true)}
-                       (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password     "abc123!!DEF"
-                                                                                         :old_password "def"}))))))
+          (is (=? {:session_id mt/is-uuid-string?
+                   :success    true}
+                  (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password     "abc123!!DEF"
+                                                                                    :old_password "def"}))))))
 
     (testing "Test that we don't return a session if we are changing our someone else's password as a superuser"
       (t2.with-temp/with-temp [User user {:password "def", :is_superuser false}]
@@ -1234,7 +1230,7 @@
 
 (deftest user-activate-deactivate-event-test
   (testing "User Deactivate/Reactivate events via the API are recorded in the audit log"
-    (mt/with-model-cleanup [:model/Activity :model/AuditLog]
+    (premium-features-test/with-premium-features #{:audit-app}
       (t2.with-temp/with-temp [User {:keys [id]} {:first_name "John"
                                                   :last_name  "Cena"}]
         (testing "DELETE /api/user/:id and PUT /api/user/:id/reactivate"
@@ -1250,22 +1246,23 @@
                    :model    "User"
                    :model_id id
                    :details  {}}]
-                 [(audit-log-test/latest-event :user-deactivated id)
-                  (audit-log-test/latest-event :user-reactivated id)])))))))
+                 [(mt/latest-audit-log-entry :user-deactivated id)
+                  (mt/latest-audit-log-entry :user-reactivated id)])))))))
 
 (deftest user-update-event-test
   (testing "User Updates via the API are recorded in the audit log"
     (t2.with-temp/with-temp [User {:keys [id]} {:first_name "John"
                                                 :last_name  "Cena"}]
-      (testing "PUT /api/user/:id"
-        (mt/user-http-request :crowberto :put 200 (format "user/%s" id)
-                              {:first_name "Johnny" :last_name "Appleseed"})
-        (is (= {:topic    :user-update
-                :user_id  (mt/user->id :crowberto)
-                :model    "User"
-                :model_id id
-                :details  {:new {:first_name "Johnny"
-                                 :last_name "Appleseed"}
-                           :previous {:first_name "John"
-                                      :last_name "Cena"}}}
-               (audit-log-test/latest-event :user-update id)))))))
+      (premium-features-test/with-premium-features #{:audit-app}
+        (testing "PUT /api/user/:id"
+          (mt/user-http-request :crowberto :put 200 (format "user/%s" id)
+                                {:first_name "Johnny" :last_name "Appleseed"})
+          (is (= {:topic    :user-update
+                  :user_id  (mt/user->id :crowberto)
+                  :model    "User"
+                  :model_id id
+                  :details  {:new {:first_name "Johnny"
+                                   :last_name "Appleseed"}
+                             :previous {:first_name "John"
+                                        :last_name "Cena"}}}
+                 (mt/latest-audit-log-entry :user-update id))))))))

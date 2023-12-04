@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - "master"
-      - "auditv2-main"
     paths-ignore:
       # config files
       - ".**"
@@ -195,7 +194,6 @@ jobs:
   containerize_multi_arch:
     runs-on: ubuntu-22.04
     name: Containerize multi-arch ${{ matrix.edition }}
-    if: ${{ github.ref_name == 'master' }}
     needs: check_jar_health
     strategy:
       matrix:
@@ -253,20 +251,23 @@ jobs:
         run: while ! curl -s 'http://localhost:3001/api/health' | grep '{"status":"ok"}'; do sleep 1; done
         timeout-minutes: 3
       - name: Login to Docker Hub
+        if: ${{ github.ref_name == 'master' }}
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       # Push experimental ubuntu image only for versions based on a master
       - name: Install regctl
+        if: ${{ github.ref_name == 'master' }}
         uses: regclient/actions/regctl-installer@main
         with:
           release: 'v0.4.7'
       - name: Switch regctl to point to localhost:5000 via http
+        if: ${{ github.ref_name == 'master' }}
         run: regctl registry set --tls disabled localhost:5000
       - name: Retag and push ubuntu-based images if master (ee)
-        if: ${{ matrix.edition == 'ee' }}
+        if: ${{ (matrix.edition == 'ee') && (github.ref_name == 'master') }}
         run: regctl image copy localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee-ubuntu ${{ github.repository_owner }}/metabase-enterprise-head:latest-ubuntu
       - name: Retag and push ubuntu-based images if master (oss)
-        if: ${{ matrix.edition == 'oss' }}
+        if: ${{ (matrix.edition == 'oss') && (github.ref_name == 'master') }}
         run: regctl image copy localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-oss-ubuntu ${{ github.repository_owner }}/metabase-head:latest-ubuntu

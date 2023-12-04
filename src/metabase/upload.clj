@@ -3,7 +3,6 @@
    [clj-bom.core :as bom]
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
-   [clojure.set :as set]
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [flatland.ordered.set :as ordered-set]
@@ -12,7 +11,6 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Database]]
    [metabase.public-settings :as public-settings]
-   [metabase.search.util :as search.util]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -21,7 +19,6 @@
    (java.io File)))
 
 (set! *warn-on-reflection* true)
-
 
 ;;;; <pre><code>
 ;;;;
@@ -34,72 +31,43 @@
 ;;               |
 ;;          varchar-255┐
 ;;              / \    │
-;;             /   \   └──────────┬─────────────┐
-;;            /     \             │             │
-;;         float   datetime  offset-datetime  string-pk
+;;             /   \   └──────────┬
+;;            /     \             │
+;;         float   datetime  offset-datetime
 ;;           │       │
 ;;           │       │
 ;;          int     date
 ;;         /   \
 ;;        /     \
-;;  int-pk     boolean
-;;     │
-;;     │
-;;   auto-
-;; incrementing-
-;;  int-pk
+;;    boolean auto-incrementing-int-pk
 ;;
 ;; </code></pre>
 
 (def ^:private type->parent
   ;; listed in depth-first order
-  {::varchar-255              ::text
+  {::text                     nil
+   ::varchar-255              ::text
    ::float                    ::varchar-255
    ::int                      ::float
-   ::int-pk                   ::int
-   ::auto-incrementing-int-pk ::int-pk
+   ::auto-incrementing-int-pk ::int
    ::boolean                  ::int
    ::datetime                 ::varchar-255
    ::date                     ::datetime
-   ::offset-datetime          ::varchar-255
-   ::string-pk                ::varchar-255})
-
-(def ^:private base-type->pk-type
-  {::varchar-255 ::string-pk
-   ::int         ::int-pk})
+   ::offset-datetime          ::varchar-255})
 
 (def ^:private types
-  (set/union (set (keys type->parent))
-             (set (vals type->parent))))
-
-(def ^:private pk-base-types
-  (set (keys base-type->pk-type)))
+  (keys type->parent))
 
 (def ^:private type->ancestors
   (into {} (for [type types]
              [type (loop [ret (ordered-set/ordered-set)
                           type type]
-                     (if-let [parent (type->parent type)]
+                     (if-some [parent (type->parent type)]
                        (recur (conj ret parent) parent)
                        ret))])))
 
-(defn- date-string? [s]
-  (try (t/local-date s)
-       true
-       (catch Exception _
-         false)))
-
-(defn- datetime-string? [s]
-  (try (t/local-date-time s)
-       true
-       (catch Exception _
-         false)))
-
-(defn- offset-datetime-string? [s]
-  (try (t/offset-date-time s)
-       true
-       (catch Exception _
-         false)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; [[value->type]] helpers
 
 (defn- with-parens
   "Returns a regex that matches the argument, with or without surrounding parentheses."
@@ -133,7 +101,31 @@
         ", " #"\d[\d \u00A0]*\,[\d.]+"
         ".’" #"\d[\d’]*\.[\d.]+"))))
 
-(defn value->type
+(defmacro does-not-throw?
+  "Returns true if the given body does not throw an exception."
+  [body]
+  `(try
+     ~body
+     true
+     (catch Throwable e#
+       false)))
+
+(defn- date-string? [s]
+  (does-not-throw? (t/local-date s)))
+
+(defn- datetime-string? [s]
+  (does-not-throw? (upload-parsing/parse-datetime s)))
+
+(defn- offset-datetime-string? [s]
+  (does-not-throw? (upload-parsing/parse-offset-datetime s)))
+
+(defn- boolean-string? [s]
+  (boolean (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" s)))
+
+;; end [[value->type]] helpers
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn- value->type
   "The most-specific possible type for a given value. Possibilities are:
 
     - `::boolean`
@@ -149,23 +141,22 @@
     1. ints/floats are assumed to use the separators and decimal points corresponding to the locale defined in the
        application settings
     2. 0 and 1 are assumed to be booleans, not ints."
-  [value]
-  (let [number-separators (upload-parsing/get-number-separators)
-        trimmed-val       (str/trim value)]
+  [value {:keys [number-separators] :as _settings}]
+  (let [trimmed (str/trim value)]
     (cond
-      (str/blank? value)                                            nil
-      (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" trimmed-val) ::boolean
-      (offset-datetime-string? trimmed-val)                         ::offset-datetime
-      (datetime-string? trimmed-val)                                ::datetime
-      (date-string? trimmed-val)                                    ::date
-      (re-matches (int-regex number-separators) trimmed-val)        ::int
-      (re-matches (float-regex number-separators) trimmed-val)      ::float
-      (re-matches #".{1,255}" value)                                ::varchar-255
-      :else                                                         ::text)))
+      (str/blank? value)                                        nil
+      (boolean-string? trimmed)                                 ::boolean
+      (offset-datetime-string? trimmed)                         ::offset-datetime
+      (datetime-string? trimmed)                                ::datetime
+      (date-string? trimmed)                                    ::date
+      (re-matches (int-regex number-separators) trimmed)        ::int
+      (re-matches (float-regex number-separators) trimmed)      ::float
+      (<= (count trimmed) 255)                                  ::varchar-255
+      :else                                                     ::text)))
 
 (defn- row->types
-  [row]
-  (map (comp value->type search.util/normalize) row))
+  [row settings]
+  (map #(value->type % settings) row))
 
 (defn- lowest-common-member [[x & xs :as all-xs] ys]
   (cond
@@ -182,15 +173,21 @@
     (contains? (type->ancestors type-b) type-a) type-a
     :else (lowest-common-member (type->ancestors type-a) (type->ancestors type-b))))
 
-(defn- coalesce-types
-  [types-so-far new-types]
-  (->> (map vector types-so-far new-types)
-       (mapv (partial apply lowest-common-ancestor))))
+(defn- map-with-nils
+  "like map with two args except it continues to apply f until ALL of the colls are
+  exhausted. if colls are of uneven length, nils are supplied."
+  [f c1 c2]
+  (lazy-seq
+   (let [s1 (seq c1) s2 (seq c2)]
+     (when (or s1 s2)
+       (cons (f (first s1) (first s2))
+             (map-with-nils f (rest s1) (rest s2)))))))
 
-(defn- pad
-  "Lengthen `values` until it is of length `n` by filling it with nils."
-  [n values]
-  (first (partition n n (repeat nil) values)))
+(defn- coalesce-types
+  "compares types-a and types-b pairwise, finding the lowest-common-ancestor for each pair.
+  types-a and types-b can be different lengths."
+  [types-a types-b]
+  (map-with-nils lowest-common-ancestor types-a types-b))
 
 (defn- normalize-column-name
   [raw-name]
@@ -198,54 +195,75 @@
     "unnamed_column"
     (u/slugify (str/trim raw-name))))
 
-(defn- is-pk?
-  [[col-name type]]
-  (and (#{"id" "pk" "uuid" "guid"} (u/lower-case-en (name col-name)))
-       (pk-base-types type)))
+(def ^:private auto-pk-column-name
+  "The name of the auto-incrementing PK column."
+  "_mb_row_id")
 
-(defn- ->ordered-maps-with-pk-column
-  "Sets appropriate type information on the first PK column it finds, otherwise adds a new one.
+(defn- remove-indices
+  "Removes the elements at the given indices from the collection. Indices is a set."
+  [indices coll]
+  (keep-indexed (fn [idx item]
+                  (when-not (contains? indices idx)
+                    item))
+                coll))
 
-  Returns a *map* with two keys: `:extant-columns` and `:generated-columns`."
-  [name-type-pairs]
-  (if-let [[pk-name pk-base-type] (first (filter is-pk? name-type-pairs))]
-    {:extant-columns    (assoc (ordered-map/ordered-map name-type-pairs) pk-name (base-type->pk-type pk-base-type))
-     :generated-columns (ordered-map/ordered-map)}
-    {:extant-columns    (ordered-map/ordered-map name-type-pairs)
-     :generated-columns (ordered-map/ordered-map :id ::auto-incrementing-int-pk)}))
+(defn- indices-where
+  "Returns a lazy seq of the indices where the predicate is true."
+  [pred coll]
+  (keep-indexed (fn [idx item]
+                  (when (pred item)
+                    idx))
+                coll))
+
+(defn- parse-rows*
+  "Returns a lazy seq of parsed rows, given a sequence of upload types for each column.
+  Replaces empty strings with nil."
+  [col-upload-types rows]
+  (let [settings (upload-parsing/get-settings)
+        parsers  (map #(upload-parsing/upload-type->parser % settings) col-upload-types)]
+    (for [row rows]
+      (for [[value parser] (map-with-nils vector row parsers)]
+        (when (not (str/blank? value))
+          (parser value))))))
 
 (defn- rows->schema
+  "Rows should be a lazy-seq. This function hides the logic for ignoring any columns in the CSV that have the same
+  normalized name as the auto-pk-column-name."
   [header rows]
   (let [normalized-header (->> header
-                               (map normalize-column-name)
-                               (mbql.u/uniquify-names)
+                               (map normalize-column-name))
+        ;; remove columns from the rows with the same normalized name as the auto-pk-column-name
+        auto-pk-col-indices (set (indices-where #(= auto-pk-column-name %) normalized-header))
+        ;; this function removes the auto-pk columns from each row for parsing and type detection
+        remove-auto-pk-cols (fn [row]
+                              (remove-indices auto-pk-col-indices row))
+        rows              (cond->> rows
+                            (seq auto-pk-col-indices)
+                            (map remove-auto-pk-cols))
+        unique-header     (->> normalized-header
+                               remove-auto-pk-cols
+                               mbql.u/uniquify-names
                                (map keyword))
-        column-count      (count normalized-header)]
-    (->> rows
-         (map row->types)
-         (map (partial pad column-count))
-         (reduce coalesce-types (repeat column-count nil))
-         (map #(or % ::text))
-         (map vector normalized-header)
-         (->ordered-maps-with-pk-column))))
+        column-count      (count normalized-header)
+        settings          (upload-parsing/get-settings)
+        col-name+type-pairs (->> rows
+                                 (map #(row->types % settings))
+                                 (reduce coalesce-types (repeat column-count nil))
+                                 (map #(or % ::text))
+                                 (map vector unique-header))]
+    {:extant-columns    (ordered-map/ordered-map col-name+type-pairs)
+     :generated-columns (ordered-map/ordered-map (keyword auto-pk-column-name) ::auto-incrementing-int-pk)
+     :parse-rows        (fn [rows']
+                          (let [rows' (cond->> rows'
+                                       (seq auto-pk-col-indices)
+                                       (map remove-auto-pk-cols))
+                                col-types (map second col-name+type-pairs)]
+                            (parse-rows* col-types rows')))}))
+
 
 ;;;; +------------------+
 ;;;; |  Parsing values  |
 ;;;; +------------------+
-
-
-
-(defn- parsed-rows
-  "Returns a lazy seq of parsed rows from the `reader`.
-   Replaces empty strings with nil."
-  [col->upload-type reader]
-  (let [[header & rows] (csv/read-csv reader)
-        column-count    (count header)
-        parsers         (map upload-parsing/upload-type->parser (vals col->upload-type))]
-    (for [row rows]
-      (for [[value parser] (map vector (pad column-count row) parsers)]
-        (when (not (str/blank? value))
-          (parser value))))))
 
 ;;;; +------------------+
 ;;;; | Public Functions |
@@ -278,11 +296,17 @@
   (update-vals col->upload-type (partial driver/upload-type->database-type driver)))
 
 (defn detect-schema
-  "Returns a map with two keys: `:extant-columns` (columns found in the CSV file) and `:generated-columns` (columns we
-  are adding ourselves). The value of each is an ordered map of `normalized-column-name -> type` for the given CSV
-  file. The CSV file *must* have headers as the first row. Supported types include `::int`, `::datetime`, etc.
+  "Consumes a CSV file that *must* have headers as the first row.
 
-  A column that is completely blank is assumed to be of type ::text."
+  Returns a map with three keys:
+    - `:extant-columns`: an ordered map of columns found in the CSV file, excluding columns that have the same normalized name as the generated columns.
+    - `:generated-columns`: an ordered map of columns we are generating ourselves. Currently, this is just the auto-incrementing PK.
+    - `:parse-rows`: a function that takes a single lazy-seq of rows, and returns a lazy-seq of rows. It parses the
+          string values in each row and removes columns that have the same normalized name as the generated columns.
+
+  The value of `extant-columns` and `generated-columns` is an ordered map of normalized-column-name -> type for the
+  given CSV file. Supported types include `::int`, `::datetime`, etc. A column that is completely blank is assumed to
+  be of type ::text."
   [csv-file]
   (with-open [reader (bom/bom-reader csv-file)]
     (let [[header & rows] (csv/read-csv reader)]
@@ -297,20 +321,20 @@
   "Loads a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
   [driver db-id table-name ^File csv-file]
-  (let [{col-to-insert->upload-type :extant-columns
-         gen-col->upload-type       :generated-columns} (detect-schema csv-file)
-        col-to-create->col-spec                         (upload-type->col-specs driver
-                                                                                (merge gen-col->upload-type col-to-insert->upload-type))
-        csv-col-names                                   (keys col-to-insert->upload-type)]
+  (let [{:keys [extant-columns generated-columns parse-rows]} (detect-schema csv-file)
+        cols->upload-type       (merge generated-columns extant-columns)
+        col-to-create->col-spec (upload-type->col-specs driver cols->upload-type)
+        csv-col-names           (keys extant-columns)]
     (driver/create-table! driver db-id table-name col-to-create->col-spec)
     (try
       (with-open [reader (io/reader csv-file)]
-        (let [rows (parsed-rows col-to-insert->upload-type reader)]
+        (let [rows (->> (csv/read-csv reader)
+                        (drop 1) ; drop header
+                        parse-rows)]
           (driver/insert-into! driver db-id table-name csv-col-names rows)
           {:num-rows          (count rows)
-           :num-columns       (count csv-col-names)
-           :generated-columns (- (count col-to-create->col-spec)
-                                 (count col-to-insert->upload-type))
+           :num-columns       (count extant-columns)
+           :generated-columns (count generated-columns)
            :size-mb           (/ (.length csv-file)
                                  1048576.0)}))
       (catch Throwable e

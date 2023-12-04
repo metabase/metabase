@@ -2,9 +2,12 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [goog.object :as gobject]
+   [metabase.lib.core :as lib]
    [metabase.lib.js :as lib.js]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.test-runner.assert-exprs.approximately-equal]
    [metabase.test.util.js :as test.js]))
 
 (deftest ^:parallel query=-test
@@ -133,3 +136,56 @@
 (deftest ^:parallel is-column-metadata-test
   (is (true? (lib.js/is-column-metadata (meta/field-metadata :venues :id))))
   (is (false? (lib.js/is-column-metadata 1))))
+
+(deftest ^:parallel cljs-key->js-key-test
+  (is (= "isManyPks"
+         (#'lib.js/cljs-key->js-key :many-pks?))))
+
+(deftest ^:parallel expression-clause-<->-legacy-expression-test
+  (testing "conversion works both ways, even with aggregations (#34830, #36087)"
+    (let [query (-> lib.tu/venues-query
+                    (lib/expression "double-price" (lib/* (meta/field-metadata :venues :price) 2))
+                    (lib/aggregate (lib/sum [:expression {:lib/uuid (str (random-uuid))} "double-price"])))
+          agg-uuid (-> query lib/aggregations first lib.options/uuid)
+          legacy-expr #js [">" #js ["aggregation" 0] 100]
+          pmbql-expr (lib.js/expression-clause-for-legacy-expression query -1 legacy-expr)
+          legacy-expr' (lib.js/legacy-expression-for-expression-clause query -1 pmbql-expr)
+          legacy-filter #js ["<" #js ["field" (meta/id :venues :price) nil] 100]
+          pmbql-filter (lib.js/expression-clause-for-legacy-expression query -1 legacy-filter)
+          legacy-filter' (lib.js/legacy-expression-for-expression-clause query -1 pmbql-filter)]
+      (testing "from legacy expression"
+        (is (=? [:> {} [:aggregation {} agg-uuid] 100]
+                pmbql-expr)))
+      (testing "from pMBQL expression"
+        (is (= (js->clj legacy-expr) (js->clj legacy-expr'))))
+      (testing "from legacy filter"
+        (is (=? [:< {} [:field {} (meta/id :venues :price)] 100]
+                pmbql-filter)))
+      (testing "from pMBQL filter"
+        (is (= (js->clj legacy-filter) (js->clj legacy-filter'))))))
+  (testing "conversion drops aggregation-options (#36120)"
+    (let [query (-> lib.tu/venues-query
+                    (lib/aggregate (lib.options/update-options (lib/sum (meta/field-metadata :venues :price))
+                                                               assoc :display-name "price sum")))
+          agg-expr (-> query lib/aggregations first)
+          legacy-agg-expr #js ["sum" #js ["field" (meta/id :venues :price) #js {:base-type "Integer"}]]
+          legacy-agg-expr' (lib.js/legacy-expression-for-expression-clause query -1 agg-expr)]
+      (is (= (js->clj legacy-agg-expr) (js->clj legacy-agg-expr')))))
+  (testing "legacy expressions are converted properly (#36120)"
+    (let [query (-> lib.tu/venues-query
+                    (lib/aggregate (lib/count)))
+          agg-expr (-> query lib/aggregations first)
+          legacy-agg-expr #js ["count"]
+          legacy-agg-expr' (lib.js/legacy-expression-for-expression-clause query -1 agg-expr)]
+      (is (= (js->clj legacy-agg-expr) (js->clj legacy-agg-expr'))))))
+
+(deftest ^:parallel filter-drill-details-test
+  (testing ":value field on the filter drill"
+    (testing "returns directly for most values"
+      (is (=? 7
+              (.-value (lib.js/filter-drill-details {:value 7}))))
+      (is (=? "some string"
+              (.-value (lib.js/filter-drill-details {:value "some string"})))))
+    (testing "converts :null keyword used by drill-thrus back to JS null"
+      (is (=? nil
+              (.-value (lib.js/filter-drill-details {:value :null})))))))

@@ -3,7 +3,8 @@ import { getIn } from "icepick";
 
 import { useMount, usePrevious } from "react-use";
 
-import Sidebar from "metabase/dashboard/components/Sidebar";
+import { useDashboardQuery } from "metabase/common/hooks";
+import { Sidebar } from "metabase/dashboard/components/Sidebar";
 
 import type {
   Dashboard,
@@ -16,12 +17,15 @@ import type {
 } from "metabase-types/api";
 import { isTableDisplay } from "metabase/lib/click-behavior";
 import type { UiParameter } from "metabase-lib/parameters/types";
-import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavior";
+import {
+  canSaveClickBehavior,
+  clickBehaviorIsValid,
+} from "metabase-lib/parameters/utils/click-behavior";
 
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { getClickBehaviorForColumn } from "./utils";
-import ClickBehaviorSidebarContent from "./ClickBehaviorSidebarContent";
-import { ClickBehaviorSidebarHeader } from "./ClickBehaviorSidebarHeader";
+import { ClickBehaviorSidebarContent } from "./ClickBehaviorSidebarContent";
+import { ClickBehaviorSidebarHeader } from "./ClickBehaviorSidebarHeader/ClickBehaviorSidebarHeader";
 
 function shouldShowTypeSelector(clickBehavior?: ClickBehavior) {
   return !clickBehavior || clickBehavior.type == null;
@@ -50,7 +54,7 @@ interface Props {
   ) => void;
 }
 
-function ClickBehaviorSidebar({
+export function ClickBehaviorSidebar({
   dashboard,
   dashcard,
   dashcardData,
@@ -90,9 +94,21 @@ function ClickBehaviorSidebar({
     }
   }, [dashcard, selectedColumn, hasSelectedColumn]);
 
+  const isDashboardLink =
+    clickBehavior?.type === "link" && clickBehavior.linkType === "dashboard";
+  const { data: targetDashboard } = useDashboardQuery({
+    enabled: isDashboardLink,
+    id: isDashboardLink ? clickBehavior.targetId : undefined,
+  });
+
   const isValidClickBehavior = useMemo(
     () => clickBehaviorIsValid(clickBehavior),
     [clickBehavior],
+  );
+
+  const closeIsDisabled = useMemo(
+    () => !canSaveClickBehavior(clickBehavior, targetDashboard),
+    [clickBehavior, targetDashboard],
   );
 
   const handleChangeSettings = useCallback(
@@ -185,7 +201,7 @@ function ClickBehaviorSidebar({
     <Sidebar
       onClose={hideClickBehaviorSidebar}
       onCancel={handleCancel}
-      closeIsDisabled={!isValidClickBehavior}
+      closeIsDisabled={closeIsDisabled}
     >
       <ClickBehaviorSidebarHeader
         dashcard={dashcard}
@@ -209,6 +225,3 @@ function ClickBehaviorSidebar({
     </Sidebar>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ClickBehaviorSidebar;

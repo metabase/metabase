@@ -72,6 +72,10 @@ const defaultConfig = {
      **                           TASKS                                **
      ********************************************************************/
     on("task", {
+      log(...messages) {
+        console.log(...messages);
+        return null; // tasks must have a return value
+      },
       ...dbTasks,
       ...verifyDownloadTasks,
       removeDirectory,
@@ -99,7 +103,10 @@ const defaultConfig = {
     require("@cypress/grep/src/plugin")(config);
 
     if (runWithReplay) {
-      replay.default(on, config);
+      replay.default(on, config, {
+        upload: true,
+        apiKey: process.env.REPLAY_API_KEY,
+      });
     }
 
     return config;
@@ -118,7 +125,7 @@ const mainConfig = {
   ...defaultConfig,
   viewportHeight: 800,
   viewportWidth: 1280,
-  numTestsKeptInMemory: 1,
+  numTestsKeptInMemory: process.env["CI"] ? 1 : 50,
   reporter: "mochawesome",
   reporterOptions: {
     reportDir: "cypress/reports/mochareports",

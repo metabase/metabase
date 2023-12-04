@@ -1,6 +1,8 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
   (:require
+   [buddy.core.codecs :as codecs]
+   [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -24,9 +26,11 @@
    [metabase.driver.sync :as driver.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.secret :as secret]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -37,7 +41,7 @@
   (:import
    (java.io File)
    (java.sql Connection DatabaseMetaData ResultSet Types)
-   (java.time OffsetDateTime ZonedDateTime)))
+   (java.time OffsetDateTime OffsetTime ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -201,8 +205,15 @@
    [:raw (int amount)]
    (h2x/->timestamp hsql-form)])
 
-(defn- extract    [unit expr] [:date_part  unit (h2x/->timestamp expr)])
-(defn- date-trunc [unit expr] [:date_trunc unit (h2x/->timestamp expr)])
+(defn- extract
+  [unit expr]
+  (-> [:date_part unit (h2x/->timestamp expr)]
+      (h2x/with-database-type-info "integer")))
+
+(defn- date-trunc
+  [unit expr]
+  (-> [:date_trunc unit expr]
+      (h2x/with-database-type-info (h2x/database-type expr))))
 
 (defmethod sql.qp/date [:snowflake :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:snowflake :minute]          [_ _ expr] (date-trunc :minute expr))
@@ -533,6 +544,10 @@
   [driver t]
   (unprepare/unprepare-value driver (t/offset-date-time t)))
 
+(defmethod unprepare/unprepare-value [:snowflake OffsetTime]
+  [driver t]
+  (unprepare/unprepare-value driver (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
+
 ;; Like Vertica, Snowflake doesn't seem to be able to return a LocalTime/OffsetTime like everyone else, but it can
 ;; return a String that we can parse
 
@@ -576,6 +591,28 @@
   [driver ps i t]
   (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC")))))
 
+;;; --------------------------------------------------- Query remarks ---------------------------------------------------
+
+;  Snowflake strips comments prepended to the SQL statement (default remark injection behavior). We should append the
+;  remark instead.
+(defmethod sql-jdbc.execute/inject-remark :snowflake
+  [_ sql remark]
+  (str sql "\n\n-- " remark))
+
+(defmethod qp.util/query->remark :snowflake
+  [_ {{:keys [context executed-by card-id pulse-id dashboard-id query-hash]} :info,
+      query-type :type,
+      database-id :database}]
+  (json/generate-string {:client      "Metabase"
+                         :context     context
+                         :queryType   query-type
+                         :userId      executed-by
+                         :pulseId     pulse-id
+                         :cardId      card-id
+                         :dashboardId dashboard-id
+                         :databaseId  database-id
+                         :queryHash   (when (bytes? query-hash) (codecs/bytes->hex query-hash))
+                         :serverId    (public-settings/site-uuid)}))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 

@@ -23,7 +23,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private test-db-name (bigquery.tx/normalize-name :db "test_data"))
+(def ^:private test-db-name (bigquery.tx/test-dataset-id "test_data"))
 
 (deftest can-connect?-test
   (mt/test-driver :bigquery-cloud-sdk

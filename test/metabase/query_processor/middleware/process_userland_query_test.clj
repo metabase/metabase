@@ -5,19 +5,17 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.events :as events]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.process-userland-query
     :as process-userland-query]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
 
-(defn- do-with-query-execution [query run]
+(defn do-with-query-execution [query run]
   (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
     (let [original-hash (qp.util/query-hash query)
           result        (promise)]
@@ -33,7 +31,7 @@
                 (:hash qe)         (update :hash (fn [^bytes a-hash]
                                                    (some-> a-hash codecs/bytes->hex)))))))))))
 
-(defmacro ^:private with-query-execution {:style/indent 1} [[qe-result-binding query] & body]
+(defmacro with-query-execution {:style/indent 1} [[qe-result-binding query] & body]
   `(do-with-query-execution ~query (fn [~qe-result-binding] ~@body)))
 
 (defn- process-userland-query
@@ -60,7 +58,8 @@
               :json_query             query
               :average_execution_time nil
               :context                nil
-              :running_time           true}
+              :running_time           true
+              :cached                 false}
              (process-userland-query query))
           "Result should have query execution info")
       (is (= {:hash         "29f0bca06d6679e873b1f5a3a36dac18a5b4642c6545d24456ad34b1cad4ecc6"
@@ -73,9 +72,11 @@
               :pulse_id     nil
               :card_id      nil
               :action_id    nil
+              :is_sandboxed false
               :context      nil
               :running_time true
               :cache_hit    false
+              :cache_hash   nil ;; this is filled only for eligible queries
               :dashboard_id nil}
              (qe))
           "QueryExecution should be saved"))))
@@ -108,8 +109,6 @@
 
 (def ^:private ^:dynamic *viewlog-call-count* nil)
 
-(derive :event/card-query ::event)
-
 (methodical/defmethod events/publish-event! ::event
   [_topic _event]
   (when *viewlog-call-count*
@@ -120,36 +119,6 @@
     (binding [*viewlog-call-count* (atom 0)]
       (mt/test-qp-middleware process-userland-query/process-userland-query {:query? true} {} [] nil)
       (is (zero? @*viewlog-call-count*)))))
-
-(deftest record-view-log-when-process-userland-query-test
-  (testing "record a view log with only card id"
-    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query users)}]
-      (qp/process-userland-query (assoc
-                                  (:dataset_query card)
-                                  :info {:card-id (:id card)}))
-
-      (is (true? (t2/exists? :model/ViewLog :model "card" :model_id (:id card) :user_id nil)))))
-
-  (testing "record a view log with card id and executed by"
-    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query users)}]
-      (qp/process-userland-query (assoc
-                                  (:dataset_query card)
-                                  :info {:card-id (:id card)
-                                         :executed-by (mt/user->id :rasta)}))
-
-      (is (true? (t2/exists? :model/ViewLog :model "card" :model_id (:id card) :user_id (mt/user->id :rasta))))))
-
-  (testing "skip if context is dashboard or collection"
-    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query users)}]
-      (qp/process-userland-query (assoc
-                                  (:dataset_query card)
-                                  :info {:card-id     (:id card)
-                                         :context     "collection"}))
-      (qp/process-userland-query (assoc
-                                  (:dataset_query card)
-                                  :info {:card-id     (:id card)
-                                         :context     "dashboard"}))
-      (is (false? (t2/exists? :model/ViewLog :model "card" :model_id (:id card)))))))
 
 (defn- async-middleware [qp]
   (fn async-middleware-qp [query rff context]

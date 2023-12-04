@@ -693,8 +693,8 @@
   (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."
     (tu/with-temporary-setting-values [enable-public-sharing true]
       (t2.with-temp/with-temp [Dashboard dashboard {:public_uuid (str (random-uuid))}]
-        (is (schema= u/uuid-regex
-                     (:public_uuid dashboard)))))
+        (is (=? u/uuid-regex
+                (:public_uuid dashboard)))))
 
     (testing "...but if public sharing is *disabled* it should come back as `nil`"
       (tu/with-temporary-setting-values [enable-public-sharing false]
@@ -871,7 +871,7 @@
         (try
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"A Dashboard can only go in Collections in the \"default\" namespace"
+               #"A Dashboard can only go in Collections in the \"default\" or :analytics namespace."
                (t2/insert! Dashboard (assoc (t2.with-temp/with-temp-defaults Dashboard) :collection_id collection-id, :name dashboard-name))))
           (finally
             (t2/delete! Dashboard :name dashboard-name)))))
@@ -880,7 +880,7 @@
       (t2.with-temp/with-temp [Dashboard {card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"A Dashboard can only go in Collections in the \"default\" namespace"
+             #"A Dashboard can only go in Collections in the \"default\" or :analytics namespace."
              (t2/update! Dashboard card-id {:collection_id collection-id})))))))
 
 (deftest validate-parameters-test

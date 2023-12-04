@@ -1,20 +1,27 @@
+name: Last activity on question
 description: null
+entity_id: MOAq881VSlM2BhVUv5e_K
+created_at: '2023-11-01T02:47:25.64266Z'
+creator_id: internal@metabase.com
+display: table
 archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
 collection_position: null
+query_type: query
+dataset: false
+cache_ttl: null
+database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
 - public
 - v_audit_log
-result_metadata: null
-database_id: Internal Metabase Database
 enable_embedding: false
-collection_id: vG58R8k-QddHWA7_47umn
-query_type: query
-name: Last activity on question
-creator_id: internal@metabase.com
-made_public_by_id: null
 embedding_params: null
-cache_ttl: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
   query:
@@ -58,6 +65,13 @@ dataset_query:
         - - Internal Metabase Database
           - public
           - v_users
+          - user_id
+        - base-type: type/Integer
+          join-alias: Question 1
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
           - full_name
         - base-type: type/Text
           join-alias: Question 1
@@ -80,24 +94,6 @@ dataset_query:
           join-alias: Question 35
       fields: none
       source-table: AxSackBiyXVRUzM_TyyQY
-    - alias: Question 34
-      condition:
-      - =
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_audit_log
-          - user_id
-        - base-type: type/Integer
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_group_members
-          - user_id
-        - base-type: type/Integer
-          join-alias: Question 34
-      fields: none
-      source-table: lTp-ATFsCUFEr9I0fMEaO
     order-by:
     - - desc
       - - field
@@ -108,15 +104,11 @@ dataset_query:
         - base-type: type/DateTimeWithLocalTZ
     source-table: -lNDM3tJmuL5ltGbX0oyT
   type: query
-parameter_mappings: []
-serdes/meta:
-- model: Card
-  id: MOAq881VSlM2BhVUv5e_K
-  label: last_activity_on_question
-display: table
-entity_id: MOAq881VSlM2BhVUv5e_K
-collection_preview: true
+result_metadata: null
 visualization_settings:
+  column_settings:
+    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
+    : column_title: Person
   table.cell_column: model_id
   table.columns:
   - enabled: true
@@ -125,9 +117,29 @@ visualization_settings:
     - - Internal Metabase Database
       - public
       - v_audit_log
+      - topic
+    - base-type: type/Text
+    name: topic
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_audit_log
       - timestamp
-    - temporal-unit: default
+    - base-type: type/DateTimeWithLocalTZ
+      temporal-unit: default
     name: timestamp
+  - enabled: false
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_users
+      - user_id
+    - base-type: type/Integer
+      join-alias: Question 1
+    name: user_id
   - enabled: true
     fieldRef:
     - field
@@ -135,218 +147,12 @@ visualization_settings:
       - public
       - v_users
       - full_name
-    - join-alias: Question 1
-    name: full_name
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - id
-    - join-alias: Question 35
-    name: id
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - entity_type
-    - join-alias: Question 35
-    name: entity_type
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - created_at
-    - join-alias: Question 35
-    name: created_at
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - updated_at
-    - join-alias: Question 35
-    name: updated_at
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - creator_id
-    - join-alias: Question 35
-    name: creator_id
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - name
-    - join-alias: Question 35
-    name: name
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - description
-    - join-alias: Question 35
-    name: description
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - collection_id
-    - join-alias: Question 35
-    name: collection_id
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - made_public_by_user
-    - join-alias: Question 35
-    name: made_public_by_user
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - is_embedding_enabled
-    - join-alias: Question 35
-    name: is_embedding_enabled
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - archived
-    - join-alias: Question 35
-    name: archived
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - action_type
-    - join-alias: Question 35
-    name: action_type
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - action_model_id
-    - join-alias: Question 35
-    name: action_model_id
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - collection_is_official
-    - join-alias: Question 35
-    name: collection_is_official
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - collection_is_personal
-    - join-alias: Question 35
-    name: collection_is_personal
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - question_viz_type
-    - join-alias: Question 35
-    name: question_viz_type
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - question_database_id
-    - join-alias: Question 35
-    name: question_database_id
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - question_is_native
-    - join-alias: Question 35
-    name: question_is_native
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - event_timestamp
-    - join-alias: Question 35
-    name: event_timestamp
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_group_members
-      - user_id
-    - join-alias: Question 34
-    name: user_id
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_group_members
-      - group_id
-    - join-alias: Question 34
-    name: group_id
-  - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_group_members
-      - group_name
-    - join-alias: Question 34
-    name: group_name
-  - enabled: true
-    fieldRef:
-    - field
-    - topic
     - base-type: type/Text
-    name: topic
+      join-alias: Question 1
+    name: full_name
   table.pivot_column: end_timestamp
-  column_settings:
-    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
-    : column_title: Person
+serdes/meta:
+- id: MOAq881VSlM2BhVUv5e_K
+  label: last_activity_on_question
+  model: Card
 metabase_version: vUNKNOWN (13e6090)
-parameters: []
-dataset: false
-created_at: '2023-11-01T02:47:25.64266Z'
-public_uuid: null

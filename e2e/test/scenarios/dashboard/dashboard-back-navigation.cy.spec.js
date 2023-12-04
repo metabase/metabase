@@ -33,6 +33,8 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 const { ORDERS_ID } = SAMPLE_DATABASE;
 const PG_DB_ID = 2;
 const PERMISSION_ERROR = "Sorry, you don't have permission to see this card.";
+const MAX_CARDS = 5;
+const MAX_XRAY_WAIT_TIMEOUT = 15000;
 
 describe("scenarios > dashboard > dashboard back navigation", () => {
   beforeEach(() => {
@@ -103,9 +105,9 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     "should display a back to the dashboard button in table x-ray dashboards",
     { tags: "@slow" },
     () => {
-      const cardTitle = "Sales per state";
-      cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
-      cy.wait("@dataset");
+      const cardTitle = "Total transactions";
+      cy.visit(`/auto/dashboard/table/${ORDERS_ID}?#show=${MAX_CARDS}`);
+      cy.wait("@dataset", { timeout: MAX_XRAY_WAIT_TIMEOUT });
 
       getDashboardCards()
         .filter(`:contains("${cardTitle}")`)
@@ -127,8 +129,10 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     () => {
       const cardTitle = "Orders by Subtotal";
       cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
-      cy.visit(`/auto/dashboard/model/${ORDERS_QUESTION_ID}`);
-      cy.wait("@dataset");
+      cy.visit(
+        `/auto/dashboard/model/${ORDERS_QUESTION_ID}?#show=${MAX_CARDS}`,
+      );
+      cy.wait("@dataset", { timeout: MAX_XRAY_WAIT_TIMEOUT });
 
       getDashboardCards()
         .filter(`:contains("${cardTitle}")`)
@@ -151,7 +155,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     cy.wait("@dashcardQuery");
 
     getDashboardCard().within(() => {
-      cy.findByText("101.04").should("be.visible"); // table data
+      cy.findByText("110.93").should("be.visible"); // table data
       cy.findByText("Orders").click();
       cy.wait("@cardQuery");
     });
@@ -159,7 +163,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
     // cached data
-    getDashboardCard(0).findByText("101.04").should("be.visible");
+    getDashboardCard(0).findByText("110.93").should("be.visible");
     getDashboardCard(1).findByText("Text card").should("be.visible");
     getDashboardCard(2).findByText("Action card").should("be.visible");
 

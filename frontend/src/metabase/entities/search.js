@@ -124,6 +124,15 @@ export default createEntity({
   },
 
   objectSelectors: {
+    getCollection: object => {
+      const entity = entityForObject(object);
+      return entity
+        ? entity?.objectSelectors?.getCollection?.(object) ??
+            object?.collection ??
+            null
+        : warnEntityAndReturnObject(object);
+    },
+
     getName: object => {
       const entity = entityForObject(object);
       return entity

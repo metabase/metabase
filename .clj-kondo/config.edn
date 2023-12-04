@@ -137,11 +137,13 @@
    clojure.pprint/pprint                              {:message "Use metabase.util.log instead of clojure.pprint/pprint"}
    clojure.string/lower-case                          {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}
    clojure.string/upper-case                          {:message "Use metabase.util/upper-case-en instead of clojure.string/upper-case"}
+   fipp.edn/pprint                                    {:message "Use metabase.util.log instead of fipp.edn/pprint"}
    honeysql.core/call                                 {:message "Use hx/call instead because it is Honey SQL 2 friendly"}
    honeysql.core/raw                                  {:message "Use hx/raw instead because it is Honey SQL 2 friendly"}
    java-time/with-clock                               {:message "Use mt/with-clock"}
    java.util.UUID/randomUUID                          {:message "Use clojure.core/random-uuid instead of java.util.UUID/randomUUID"}
    malli.core/explainer                               {:message "Use metabase.util.malli.registry/explainer instead of malli.core/explainer"}
+   me.flowthing.pp/pprint                             {:message "Use metabase.util.log instead of me.flowthing.pp/pprint"}
    medley.core/random-uuid                            {:message "Use clojure.core/random-uuid instead of medley.core/random-uuid"}
    metabase.lib.equality/find-column-indexes-for-refs {:message "Use lib.equality/closest-matches-in-metadata or lib.equality/find-closest-matches-for-refs instead of lib.equality/find-column-indexes-for-refs"}
    metabase.test/with-temp*                           {:message "Use mt/with-temp instead of mt/with-temp*"}
@@ -335,6 +337,7 @@
     metabase.pulse.render.body                                      body
     metabase.pulse.render.common                                    common
     metabase.pulse.render.style                                     style
+    metabase.pulse.test-util                                        pulse.test-util
     metabase.pulse.parameters                                       params
     metabase.query-processor-test                                   qp.test
     metabase.query-processor.context                                qp.context
@@ -446,7 +449,8 @@
 
   :metabase/validate-deftest                                           {:level :warning}
   :metabase/missing-test-expr-requires-in-cljs                         {:level :warning}
-  :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests {:level :warning}}
+  :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests {:level :warning}
+  :metabase/warn-about-schema=                                         {:level :warning}}
 
  :lint-as
  {clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
@@ -496,6 +500,7 @@
   metabase.test/with-single-admin-user                                                 clojure.core/fn
 
   metabase.test/with-temp-dir                                                          clojure.core/let
+  metabase.test/with-temp-empty-app-db                                                 clojure.core/let
   metabase.test/with-temp-file                                                         clojure.core/let
   metabase.test/with-user-in-groups                                                    clojure.core/let
   metabase.util.files/with-open-path-to-resource                                       clojure.core/let

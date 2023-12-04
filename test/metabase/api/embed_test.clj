@@ -27,7 +27,6 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -104,7 +103,6 @@
        ~@body)))
 
 (defn ^:deprecated test-query-results
-  "DEPRECATED -- you should use `schema=` instead"
   ([actual]
    (is (=? {:data       {:cols             [(mt/obj->json->obj (qp.test-util/aggregate-col :count))]
                          :rows             [[100]]
@@ -590,6 +588,30 @@
             (is (= 101
                    (count (csv/read-csv results))))))))))
 
+(deftest downloading-csv-json-xlsx-results-from-the-dashcard-endpoint-respects-column-settings
+  (testing "Downloading CSV/JSON/XLSX results should respect the column settings of the dashcard, such as column order and hidden/shown setting. (#33727)"
+    (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+      (with-embedding-enabled-and-new-secret-key
+        (with-temp-dashcard [dashcard {:dash     {:enable_embedding true}
+                                       :card     {:dataset_query (assoc (mt/mbql-query venues)
+                                                                        :limit 1
+                                                                        :middleware
+                                                                        {:add-default-userland-constraints? true
+                                                                         :userland-query?                   true})}
+                                       ;; we set column settings on the Dashcard only to see that the settings are respected in the output
+                                       :dashcard {:visualization_settings
+                                                  {:column_settings {}
+                                                   :table.columns
+                                                   [{:name "NAME" :fieldRef [:field (mt/id :venues :name) nil] :enabled true}
+                                                    {:name "ID" :fieldRef [:field (mt/id :venues :id) nil] :enabled true}
+                                                    {:name "CATEGORY_ID" :fieldRef [:field (mt/id :venues :category_id) nil] :enabled true}
+                                                    {:name "LATITUDE" :fieldRef [:field (mt/id :venues :latitude) nil] :enabled false}
+                                                    {:name "LONGITUDE" :fieldRef [:field (mt/id :venues :longitude) nil] :enabled false}
+                                                    {:name "PRICE" :fieldRef [:field (mt/id :venues :price) nil] :enabled true}]}}}]
+          (let [results (client/client :get 200 (str (dashcard-url dashcard) "/csv"))]
+            (is (= ["Name" "ID" "Category ID" "Price"]
+                   (first (csv/read-csv results))))))))))
+
 (deftest generic-query-failed-exception-test
   (testing (str "...but if the card has an invalid query we should just get a generic \"query failed\" exception "
                 "(rather than leaking query info)")
@@ -631,11 +653,9 @@
                (client/client :get 400 (dashcard-url dashcard)))))
 
       (testing "if `:locked` param is supplied, request should succeed"
-        (is (schema= {:status   (s/eq "completed")
-                      :data     {:rows     (s/eq [[1]])
-                                 s/Keyword s/Any}
-                      s/Keyword s/Any}
-                     (client/client :get 202 (dashcard-url dashcard {:params {:venue_id 100}})))))
+        (is (=? {:status   "completed"
+                 :data     {:rows [[1]]}}
+                (client/client :get 202 (dashcard-url dashcard {:params {:venue_id 100}})))))
 
       (testing "if `:locked` parameter is present in URL params, request should fail"
         (is (= "You must specify a value for :venue_id in the JWT."
@@ -661,18 +681,14 @@
                (client/client :get 400 (str (dashcard-url dashcard {:params {:venue_id 100}}) "?venue_id=200")))))
 
       (testing "If an `:enabled` param is present in the JWT, that's ok"
-        (is (schema= {:status   (s/eq "completed")
-                      :data     {:rows     (s/eq [[1]])
-                                 s/Keyword s/Any}
-                      s/Keyword s/Any}
-                     (client/client :get 202 (dashcard-url dashcard {:params {:venue_id 50}})))))
+        (is (=? {:status "completed"
+                 :data   {:rows [[1]]}}
+                (client/client :get 202 (dashcard-url dashcard {:params {:venue_id 50}})))))
 
       (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
-        (is (schema= {:status   (s/eq "completed")
-                      :data     {:rows     (s/eq [[1]])
-                                 s/Keyword s/Any}
-                      s/Keyword s/Any}
-                     (client/client :get 202 (str (dashcard-url dashcard) "?venue_id=1"))))))))
+        (is (=? {:status   "completed"
+                 :data     {:rows [[1]]}}
+                (client/client :get 202 (str (dashcard-url dashcard) "?venue_id=1"))))))))
 
 (deftest dashboard-native-query-params-with-default-test
   (testing "GET api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id with default values for params"

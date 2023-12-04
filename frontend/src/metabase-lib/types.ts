@@ -25,7 +25,7 @@ export type MetricMetadata = unknown & { _opaque: typeof MetricMetadata };
 declare const AggregationClause: unique symbol;
 export type AggregationClause = unknown & { _opaque: typeof AggregationClause };
 
-export type Aggregatable = AggregationClause | MetricMetadata;
+export type Aggregable = AggregationClause | MetricMetadata;
 
 declare const AggregationOperator: unique symbol;
 export type AggregationOperator = unknown & {
@@ -275,7 +275,7 @@ export type QuickFilterDrillThruInfo =
 type ObjectDetailsDrillThruInfo<Type extends DrillThruType> =
   BaseDrillThruInfo<Type> & {
     objectId: string | number;
-    "manyPks?": boolean; // TODO [33479]: this should be "manyPks"
+    isManyPks: boolean;
   };
 export type PKDrillThruInfo = ObjectDetailsDrillThruInfo<"drill-thru/pk">;
 export type ZoomDrillThruInfo = ObjectDetailsDrillThruInfo<"drill-thru/zoom">;
@@ -334,6 +334,12 @@ export type DrillThruDisplayInfo =
   | ColumnFilterDrillThruInfo
   | UnderlyingRecordsDrillThruInfo
   | ZoomTimeseriesDrillThruInfo;
+
+export type FilterDrillDetails = {
+  query: Query;
+  stageNumber: number;
+  column: ColumnMetadata;
+};
 
 export interface Dimension {
   column: DatasetColumn;

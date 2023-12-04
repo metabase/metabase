@@ -448,14 +448,3 @@
     2 1250.04
     1 1250.0
     0 1250.0))
-
-(deftest ^:parallel deep-sort-map-test
-  (is (= (into [] (u/deep-sort-map {:c 3 :a 1 :b 2}))
-         [[:a 1] [:b 2] [:c 3]])
-      "top level map should be sorted.")
-
-  (let [m {:d {:d.c 3 :d.a 1 :d.b 2} :c 3 :a 1 :b 2}
-        deeply-sorted (u/deep-sort-map m)]
-    (is (= (keys deeply-sorted) [:a :b :c :d]) "top level map should be sorted.")
-    (is (= (sort [[:d.c 3] [:d.a 1] [:d.b 2]]) (into [] (:d deeply-sorted)))
-        "submaps should be sorted.")))

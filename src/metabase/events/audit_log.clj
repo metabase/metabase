@@ -18,24 +18,6 @@
   [topic event]
   (audit-log/record-event! topic event))
 
-(derive ::card-read-event :metabase/event)
-(derive :event/card-read ::card-read-event)
-
-(methodical/defmethod events/publish-event! ::card-read-event
-  [topic event]
-  (audit-log/record-event! topic event))
-
-(derive ::card-query-event ::event)
-(derive :event/card-query ::card-query-event)
-
-(methodical/defmethod events/publish-event! ::card-query-event
-  [topic {:keys [user-id card-id] :as object}]
-  (let [details (select-keys object [:cached :ignore_cache :context])]
-    (audit-log/record-event! topic {:details    details
-                                    :user-id    user-id
-                                    :model      :model/Card
-                                    :model-id   card-id})))
-
 (derive ::dashboard-event ::event)
 (derive :event/dashboard-create ::dashboard-event)
 (derive :event/dashboard-delete ::dashboard-event)
@@ -62,20 +44,13 @@
                                             (assoc :id id)
                                             (assoc :card_id card_id)))))]
     (audit-log/record-event! topic
-                               {:details  details
-                                :user-id  user-id
-                                :model    :model/Dashboard
-                                :model-id (u/id object)})))
+                             {:details  details
+                              :user-id  user-id
+                              :model    :model/Dashboard
+                              :model-id (u/id object)})))
 
-(derive ::dashboard-read-event ::event)
-(derive :event/dashboard-read ::dashboard-read-event)
-
-(methodical/defmethod events/publish-event! ::dashboard-read-event
-  [topic event]
-  (audit-log/record-event! topic event))
 
 (derive ::table-event ::event)
-(derive :event/table-read ::table-event)
 (derive :event/table-manual-scan ::table-event)
 
 (methodical/defmethod events/publish-event! ::table-event
@@ -101,6 +76,8 @@
 (derive :event/alert-unsubscribe ::pulse-event)
 (derive :event/subscription-create ::pulse-event)
 (derive :event/subscription-update ::pulse-event)
+(derive :event/subscription-send ::pulse-event)
+(derive :event/alert-send ::pulse-event)
 
 (defn- create-details-map [pulse name is-alert parent]
   (let [channels  (:channels pulse)
@@ -114,16 +91,17 @@
      :recipients (map :recipients channels)}))
 
 (methodical/defmethod events/publish-event! ::pulse-event
-  [topic {:keys [object user-id] :as _event}]
-  ;; Check if topic is a pulse or not (can be an unsubscribe event, which only contains email)
+  [topic {:keys [id object user-id] :as _event}]
+  ;; Check if object contains the keys that we want populated, if not then may be a unsubscribe/send event
   (let [details-map (if (some? (:id object))
                       (create-details-map object (:name object) false (:dashboard_id object))
-                      object)]
+                      object)
+        model-id    (or id (:id object))]
     (audit-log/record-event! topic
                              {:details  details-map
                               :user-id  user-id
                               :model    :model/Pulse
-                              :model-id (:id object)})))
+                              :model-id model-id})))
 
 (derive ::alert-event ::event)
 (derive :event/alert-create ::alert-event)
@@ -203,5 +181,21 @@
 (derive :event/database-update ::database-update-event)
 
 (methodical/defmethod events/publish-event! ::database-update-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
+(derive ::permission-failure-event ::event)
+(derive :event/write-permission-failure ::permission-failure-event)
+(derive :event/update-permission-failure ::permission-failure-event)
+(derive :event/create-permission-failure ::permission-failure-event)
+
+(methodical/defmethod events/publish-event! ::permission-failure-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
+(derive ::settings-changed-event ::event)
+(derive :event/setting-update ::settings-changed-event)
+
+(methodical/defmethod events/publish-event! ::settings-changed-event
   [topic event]
   (audit-log/record-event! topic event))

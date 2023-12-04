@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.events.audit-log-test :as audit-log-test]
    [metabase.models
     :refer [Card Collection Dashboard DashboardCard Database Pulse PulseCard
             PulseChannel PulseChannelRecipient Table User]]
@@ -11,10 +10,10 @@
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :as pulse]
    [metabase.models.serialization :as serdes]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -187,27 +186,28 @@
   (testing "Creating pulse also logs event."
     (t2.with-temp/with-temp [Card card {:name "Test Card"}]
       (mt/with-model-cleanup [Pulse]
-        (let [pulse (pulse/create-pulse! [(pulse/card->ref card)]
-                                         [{:channel_type  :email
-                                           :schedule_type :daily
-                                           :schedule_hour 18
-                                           :enabled       true
-                                           :recipients    [{:email "foo@bar.com"}]}]
-                                         {:name          "pulse-name"
-                                          :creator_id    (mt/user->id :rasta)
-                                          :skip_if_empty false})]
-          (is (= {:topic    :subscription-create
-                  :user_id  nil
-                  :model    "Pulse"
-                  :model_id (u/the-id pulse)
-                  :details  {:archived     false
-                             :name         "pulse-name",
-                             :dashboard_id nil,
-                             :parameters   [],
-                             :channel      ["email"],
-                             :schedule     ["daily"],
-                             :recipients   [[{:email "foo@bar.com"}]]}}
-                 (audit-log-test/latest-event :subscription-create (u/the-id pulse)))))))))
+        (premium-features-test/with-premium-features #{:audit-app}
+          (let [pulse (pulse/create-pulse! [(pulse/card->ref card)]
+                                           [{:channel_type  :email
+                                             :schedule_type :daily
+                                             :schedule_hour 18
+                                             :enabled       true
+                                             :recipients    [{:email "foo@bar.com"}]}]
+                                           {:name          "pulse-name"
+                                            :creator_id    (mt/user->id :rasta)
+                                            :skip_if_empty false})]
+            (is (= {:topic    :subscription-create
+                    :user_id  nil
+                    :model    "Pulse"
+                    :model_id (u/the-id pulse)
+                    :details  {:archived     false
+                               :name         "pulse-name",
+                               :dashboard_id nil,
+                               :parameters   [],
+                               :channel      ["email"],
+                               :schedule     ["daily"],
+                               :recipients   [[{:email "foo@bar.com"}]]}}
+                   (mt/latest-audit-log-entry :subscription-create (u/the-id pulse))))))))))
 
 (deftest create-dashboard-subscription-test
   (testing "Make sure that the dashboard_id is set correctly when creating a Dashboard Subscription pulse"
@@ -216,25 +216,22 @@
                      Dashboard     {dashboard-id :id} {:collection_id collection-id}
                      Card          {card-id :id :as card} {}
                      DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id :card_id card-id}]
-        (is (schema= {:name          (s/eq "Abnormal Pulse")
-                      :dashboard_id  (s/eq dashboard-id)
-                      :collection_id (s/eq collection-id)
-                      :cards         [(s/one {:dashboard_id      (s/eq dashboard-id)
-                                              :dashboard_card_id (s/eq dashcard-id)
-                                              s/Keyword          s/Any}
-                                             "pulse card")]
-                      s/Keyword      s/Any}
-                     (create-pulse-then-select!
-                      "Abnormal Pulse"
-                      (mt/user->id :rasta)
-                      [(assoc (pulse/card->ref card) :dashboard_card_id dashcard-id)]
-                      [{:channel_type  :email
-                        :schedule_type :daily
-                        :schedule_hour 18
-                        :enabled       true
-                        :recipients    [{:email "foo@bar.com"}]}]
-                      false
-                      dashboard-id)))))))
+        (is (=? {:name          "Abnormal Pulse"
+                 :dashboard_id  dashboard-id
+                 :collection_id collection-id
+                 :cards         [{:dashboard_id      dashboard-id
+                                  :dashboard_card_id dashcard-id}]}
+                (create-pulse-then-select!
+                 "Abnormal Pulse"
+                 (mt/user->id :rasta)
+                 [(assoc (pulse/card->ref card) :dashboard_card_id dashcard-id)]
+                 [{:channel_type  :email
+                   :schedule_type :daily
+                   :schedule_hour 18
+                   :enabled       true
+                   :recipients    [{:email "foo@bar.com"}]}]
+                 false
+                 dashboard-id)))))))
 
 ;; update-pulse!
 ;; basic update.  we are testing several things here
@@ -246,65 +243,66 @@
 ;;  6. ability to update cards and ensure proper ordering
 ;;  7. subscription-update event is called
 (deftest update-pulse-test
-  (t2.with-temp/with-temp [Pulse pulse  {}
-                           Card  card-1 {:name "Test Card"}
-                           Card  card-2 {:name "Bar Card" :display :bar}]
-    (is (= (merge pulse-defaults
-                  {:creator_id (mt/user->id :rasta)
-                   :name       "We like to party"
-                   :entity_id  true
-                   :cards      [{:name               "Bar Card"
-                                 :description        nil
-                                 :collection_id      nil
-                                 :display            :bar
-                                 :include_csv        false
-                                 :include_xls        false
-                                 :dashboard_card_id  nil
-                                 :dashboard_id       nil
-                                 :parameter_mappings nil}
-                                {:name               "Test Card"
-                                 :description        nil
-                                 :collection_id      nil
-                                 :display            :table
-                                 :include_csv        false
-                                 :include_xls        false
-                                 :dashboard_card_id  nil
-                                 :dashboard_id       nil
-                                 :parameter_mappings nil}]
-                   :channels   [(merge pulse-channel-defaults
-                                       {:schedule_type :daily
-                                        :schedule_hour 18
-                                        :channel_type  :email
-                                        :recipients    [{:email "foo@bar.com"}
-                                                        (dissoc (user-details :crowberto) :is_superuser :is_qbnewb)]})]})
-           (mt/derecordize
-            (update-pulse-then-select! {:id            (u/the-id pulse)
-                                        :name          "We like to party"
-                                        :cards         (map pulse/card->ref [card-2 card-1])
-                                        :channels      [{:channel_type  :email
-                                                         :schedule_type :daily
-                                                         :schedule_hour 18
-                                                         :enabled       true
-                                                         :recipients    [{:email "foo@bar.com"}
-                                                                         {:id (mt/user->id :crowberto)}]}]
-                                        :skip_if_empty false}))))
-    (is (= {:topic    :subscription-update
-            :user_id  nil
-            :model    "Pulse"
-            :model_id (u/the-id pulse)
-            :details  {:archived     false
-                       :name         "We like to party",
-                       :dashboard_id nil,
-                       :parameters   [],
-                       :channel      ["email"],
-                       :schedule     ["daily"],
-                       :recipients   [[{:email       "foo@bar.com"}
-                                       {:first_name  "Crowberto"
-                                        :last_name   "Corv"
-                                        :email       "crowberto@metabase.com"
-                                        :common_name "Crowberto Corv"
-                                        :id          (mt/user->id :crowberto)}]]}}
-           (audit-log-test/latest-event :subscription-update (u/the-id pulse))))))
+  (premium-features-test/with-premium-features #{:audit-app}
+    (t2.with-temp/with-temp [Pulse pulse  {}
+                             Card  card-1 {:name "Test Card"}
+                             Card  card-2 {:name "Bar Card" :display :bar}]
+      (is (= (merge pulse-defaults
+                    {:creator_id (mt/user->id :rasta)
+                     :name       "We like to party"
+                     :entity_id  true
+                     :cards      [{:name               "Bar Card"
+                                   :description        nil
+                                   :collection_id      nil
+                                   :display            :bar
+                                   :include_csv        false
+                                   :include_xls        false
+                                   :dashboard_card_id  nil
+                                   :dashboard_id       nil
+                                   :parameter_mappings nil}
+                                  {:name               "Test Card"
+                                   :description        nil
+                                   :collection_id      nil
+                                   :display            :table
+                                   :include_csv        false
+                                   :include_xls        false
+                                   :dashboard_card_id  nil
+                                   :dashboard_id       nil
+                                   :parameter_mappings nil}]
+                     :channels   [(merge pulse-channel-defaults
+                                         {:schedule_type :daily
+                                          :schedule_hour 18
+                                          :channel_type  :email
+                                          :recipients    [{:email "foo@bar.com"}
+                                                          (dissoc (user-details :crowberto) :is_superuser :is_qbnewb)]})]})
+             (mt/derecordize
+              (update-pulse-then-select! {:id            (u/the-id pulse)
+                                          :name          "We like to party"
+                                          :cards         (map pulse/card->ref [card-2 card-1])
+                                          :channels      [{:channel_type  :email
+                                                           :schedule_type :daily
+                                                           :schedule_hour 18
+                                                           :enabled       true
+                                                           :recipients    [{:email "foo@bar.com"}
+                                                                           {:id (mt/user->id :crowberto)}]}]
+                                          :skip_if_empty false}))))
+      (is (= {:topic    :subscription-update
+              :user_id  nil
+              :model    "Pulse"
+              :model_id (u/the-id pulse)
+              :details  {:archived     false
+                         :name         "We like to party",
+                         :dashboard_id nil,
+                         :parameters   [],
+                         :channel      ["email"],
+                         :schedule     ["daily"],
+                         :recipients   [[{:email       "foo@bar.com"}
+                                         {:first_name  "Crowberto"
+                                          :last_name   "Corv"
+                                          :email       "crowberto@metabase.com"
+                                          :common_name "Crowberto Corv"
+                                          :id          (mt/user->id :crowberto)}]]}}
+             (mt/latest-audit-log-entry :subscription-update (u/the-id pulse)))))))
 
 (deftest dashboard-subscription-update-test
   (testing "collection_id and dashboard_id of a dashboard subscription cannot be directly modified"
@@ -434,7 +432,7 @@
         (try
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"A Pulse can only go in Collections in the \"default\" namespace"
+               #"A Pulse can only go in Collections in the \"default\" or :analytics namespace."
                (t2/insert! Pulse (assoc (t2.with-temp/with-temp-defaults Pulse) :collection_id collection-id, :name pulse-name))))
           (finally
             (t2/delete! Pulse :name pulse-name)))))
@@ -443,7 +441,7 @@
       (t2.with-temp/with-temp [Pulse {card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"A Pulse can only go in Collections in the \"default\" namespace"
+             #"A Pulse can only go in Collections in the \"default\" or :analytics namespace."
              (t2/update! Pulse card-id {:collection_id collection-id})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
