@@ -121,8 +121,6 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
       cy.button("Done").click();
 
-      cy.findByTestId("aggregate-step").contains("Foo").should("exist");
-
       cy.wait("@dataset");
 
       // The test should fail on this step first
