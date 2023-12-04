@@ -214,6 +214,8 @@ export function AggregationPicker({
     return (
       <ExpressionWidget
         legacyQuery={legacyQuery}
+        query={query}
+        stageIndex={stageIndex}
         name={AGGREGATION.getName(legacyClause)}
         expression={AGGREGATION.getContent(legacyClause)}
         withName

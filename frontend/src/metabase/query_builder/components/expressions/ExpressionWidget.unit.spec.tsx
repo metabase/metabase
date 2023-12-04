@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import { checkNotNull } from "metabase/lib/types";
-import { getIcon, render, screen } from "__support__/ui";
+import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { createMockEntitiesState } from "__support__/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Expression } from "metabase-types/api";
@@ -163,7 +163,8 @@ function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
     onChangeExpression: jest.fn(),
   };
 
-  const props = {
+  // we test only legacy queries for now
+  const props: Omit<ExpressionWidgetProps, "query" | "stageIndex"> = {
     expression: undefined,
     name: undefined,
     legacyQuery: createMockQueryForExpressions(),
@@ -172,7 +173,7 @@ function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
     ...additionalProps,
   };
 
-  render(<ExpressionWidget {...props} />);
+  renderWithProviders(<ExpressionWidget {...props} />);
 
   return mocks;
 }

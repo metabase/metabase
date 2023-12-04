@@ -31,6 +31,7 @@ function setup(step = createMockNotebookStep()) {
     <AggregateStep
       step={step}
       query={step.query}
+      stageIndex={step.stageIndex}
       topLevelQuery={step.topLevelQuery}
       color="summarize"
       isLastOpened={false}
