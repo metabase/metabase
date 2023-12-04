@@ -23,7 +23,7 @@ import { CreateAlertModalContent } from "metabase/query_builder/components/Alert
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
-import { BulkFilterModal } from "metabase/query_builder/components/filters/BulkFilterModal";
+import { FilterModal } from "metabase/querying/filters/components/FilterModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
@@ -372,7 +372,7 @@ class QueryModals extends Component<QueryModalsProps> {
       <>
         {this.renderLegacyModal()}
         {question.isStructured() && (
-          <BulkFilterModal
+          <FilterModal
             opened={modal === MODAL_TYPES.FILTERS}
             query={query}
             onSubmit={this.onQueryChange}

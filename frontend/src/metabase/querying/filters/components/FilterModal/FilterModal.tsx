@@ -17,7 +17,7 @@ import {
   ModalBody,
   ModalFooter,
   ScrollableTabPanel,
-} from "./BulkFilterModal.styled";
+} from "./FilterModal.styled";
 
 interface BulkFilterModalProps {
   query: Lib.Query;
@@ -48,7 +48,7 @@ function toGroupListItem(
   };
 }
 
-export function BulkFilterModal({
+export function FilterModal({
   query: initialQuery,
   opened,
   onSubmit,
