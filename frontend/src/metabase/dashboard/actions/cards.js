@@ -66,10 +66,8 @@ export const addCardToDashboard =
       parameter_mappings: [],
       visualization_settings: {},
     };
-    await dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
-    await dispatch(
-      fetchCardData(card, dashcard, { reload: true, clearCache: true }),
-    );
+    dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
+    dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
 
     await dispatch(loadMetadataForDashboard([dashcard]));
 
