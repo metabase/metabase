@@ -17,6 +17,11 @@ To run all Cypress tests programmatically in the terminal:
 yarn run test-cypress-run
 ```
 
+Frontend is not built automatically, so you need to run it separately:
+```
+yarn build-hot
+```
+
 You can run a specific set of scenarios by using the `--folder` flag, which will pick up the chosen scenarios under `e2e/test/scenarios/`.
 
 ```
