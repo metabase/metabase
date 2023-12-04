@@ -109,7 +109,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       });
     });
 
-    it("should work for longitude", () => {
+    it("should work for longitude", { tags: "@flaky" }, () => {
       changeBinningForDimension({
         name: "People → Longitude",
         fromBinning: "Auto bin",

@@ -15,7 +15,7 @@ import { createMockMetadata } from "__support__/metadata";
 
 import { createMockState } from "metabase-types/store/mocks";
 import type { DashCardProps } from "./DashCard";
-import Dashcard from "./DashCard";
+import { DashCard } from "./DashCard";
 
 registerVisualizations();
 
@@ -37,7 +37,7 @@ function setup(
   storeOptions?: Partial<typeof store>,
 ) {
   return renderWithProviders(
-    <Dashcard
+    <DashCard
       dashboard={dashboard}
       dashcard={tableDashcard}
       gridItemWidth={4}

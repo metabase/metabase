@@ -15,7 +15,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.email :as email]
    [metabase.models.collection :as collection]
-   [metabase.models.dashboard :as dashboard]
    [metabase.models.permissions :as perms]
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
@@ -322,7 +321,8 @@
            :titleUrl                  (params/dashboard-url dashboard-id (params/parameters pulse dashboard))
            :dashboardDescription      (:description dashboard)
            ;; There are legacy pulses that exist without being tied to a dashboard
-           :dashboardHasTabs          (when dashboard-id (dashboard/has-tabs? dashboard-id))
+           :dashboardHasTabs          (when dashboard-id
+                                        (boolean (seq (t2/hydrate dashboard :tabs))))
            :creator                   (-> pulse :creator :common_name)
            :sectionStyle              (style/style (style/section-style))
            :notificationText          (if (nil? non-user-email)
