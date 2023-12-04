@@ -1,3 +1,4 @@
+import {EmbedModalWrapper} from "metabase/public/components/widgets/EmbedModalWrapper";
 import { Component } from "react";
 import { connect } from "react-redux";
 
@@ -280,12 +281,12 @@ class QueryModals extends Component<QueryModalsProps> {
         );
       case MODAL_TYPES.EMBED:
         return (
-          <Modal full onClose={onCloseModal}>
+          <EmbedModalWrapper onClose={onCloseModal}>
             <QuestionEmbedWidget
               card={this.props.card}
               onClose={onCloseModal}
             />
-          </Modal>
+          </EmbedModalWrapper>
         );
       case MODAL_TYPES.CLONE:
         return (

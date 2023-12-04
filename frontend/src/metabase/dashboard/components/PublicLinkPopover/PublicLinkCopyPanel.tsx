@@ -6,7 +6,7 @@ import {
 import { color } from "metabase/lib/colors";
 import type { exportFormats } from "metabase/lib/urls";
 import { ExtensionOption } from "metabase/public/components/widgets/SharingPane/SharingPane.styled";
-import { Anchor, Group, Stack, Text } from "metabase/ui";
+import { Anchor, Box, Group, Stack, Text, Tooltip } from "metabase/ui";
 
 export type ExportFormatType = typeof exportFormats[number] | null;
 
@@ -17,6 +17,8 @@ export const PublicLinkCopyPanel = ({
   extensions = [],
   selectedExtension,
   onChangeExtension,
+  removeButtonLabel,
+  removeTooltipLabel,
 }: {
   loading?: boolean;
   url: string | null;
@@ -24,6 +26,8 @@ export const PublicLinkCopyPanel = ({
   selectedExtension?: ExportFormatType;
   onChangeExtension?: (extension: ExportFormatType) => void;
   extensions?: ExportFormatType[];
+  removeButtonLabel?: string;
+  removeTooltipLabel?: string;
 }) => {
   return (
     <Stack>
@@ -67,9 +71,20 @@ export const PublicLinkCopyPanel = ({
         </Group>
       )}
       {onRemoveLink && (
-        <Anchor fz="sm" c="error.0" fw={700} onClick={onRemoveLink}>
-          {t`Remove this public link`}
-        </Anchor>
+        // The box is needed to center the tooltip on the anchor
+        <Box>
+          <Tooltip
+            label={
+              <Text fw={700} c="inherit">
+                {removeTooltipLabel}
+              </Text>
+            }
+          >
+            <Anchor fz="sm" c="error.0" fw={700} onClick={onRemoveLink}>
+              {removeButtonLabel}
+            </Anchor>
+          </Tooltip>
+        </Box>
       )}
     </Stack>
   );

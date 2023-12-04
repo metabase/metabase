@@ -3,7 +3,7 @@ import {
   SharingPaneButtonContent,
   SharingPaneButtonTitle,
 } from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton.styled";
-import { Box, Paper, Stack, Text } from "metabase/ui";
+import { Box, Center, Stack, Text } from "metabase/ui";
 
 type SharingOptionProps = {
   illustration: ReactNode;
@@ -21,15 +21,15 @@ export const SharingPaneButton = ({
   disabled,
 }: SharingOptionProps) => {
   return (
-    <Paper withBorder>
-      <SharingPaneButtonContent disabled={disabled} h="22.5rem" p="8rem">
+    <SharingPaneButtonContent disabled={disabled} withBorder>
+      <Center h="22.5rem" p="8rem">
         <Stack w="17.5rem" justify="center" align="center">
           {illustration}
           <SharingPaneButtonTitle>{header}</SharingPaneButtonTitle>
           <Text>{description}</Text>
           <Box w="100%">{children}</Box>
         </Stack>
-      </SharingPaneButtonContent>
-    </Paper>
+      </Center>
+    </SharingPaneButtonContent>
   );
 };

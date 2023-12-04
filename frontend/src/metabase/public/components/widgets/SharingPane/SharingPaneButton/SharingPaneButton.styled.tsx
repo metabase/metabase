@@ -1,8 +1,8 @@
 import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
 import { css } from "@emotion/react";
-import type { CenterProps, ButtonProps } from "metabase/ui";
-import { Button, Center, Title } from "metabase/ui";
+import type { PaperProps, ButtonProps } from "metabase/ui";
+import { Button, Paper, Title } from "metabase/ui";
 
 export const SharingPaneButtonTitle = styled(Title)`
   transition: 200ms all;
@@ -13,8 +13,8 @@ export const SharingPaneActionButton = styled(Button)<
   transition: 200ms all;
 `;
 
-export const SharingPaneButtonContent = styled(Center)<
-  CenterProps & HTMLAttributes<HTMLDivElement> & { disabled?: boolean }
+export const SharingPaneButtonContent = styled(Paper)<
+  PaperProps & { disabled?: boolean }
 >`
   ${({ disabled, theme }) =>
     !disabled &&

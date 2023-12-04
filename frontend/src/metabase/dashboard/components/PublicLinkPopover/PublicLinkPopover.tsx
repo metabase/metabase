@@ -70,6 +70,8 @@ export const PublicLinkPopover = ({
             extensions={extensions}
             selectedExtension={exportFormat}
             onChangeExtension={setExportFormat}
+            removeButtonLabel={t`Remove public link`}
+            removeTooltipLabel={t`Affects both public link and embed URL for this dashboard`}
           />
         </Box>
       </Popover.Dropdown>

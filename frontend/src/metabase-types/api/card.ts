@@ -13,6 +13,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   description: string | null;
   dataset: boolean;
   public_uuid: string | null;
+  enable_embedding: boolean;
   can_write: boolean;
 
   database_id?: DatabaseId;

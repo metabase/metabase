@@ -2,13 +2,10 @@ import { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import { t } from "ttag";
-
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
 
 import * as Urls from "metabase/lib/urls";
 import MetabaseSettings from "metabase/lib/settings";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 
@@ -18,7 +15,6 @@ import {
   updateEnableEmbedding,
   updateEmbeddingParams,
 } from "../../actions";
-import { TriggerIcon } from "./QuestionEmbedWidget.styled";
 
 const QuestionEmbedWidgetPropTypes = {
   className: PropTypes.string,
@@ -28,10 +24,6 @@ const QuestionEmbedWidgetPropTypes = {
   updateEnableEmbedding: PropTypes.func,
   updateEmbeddingParams: PropTypes.func,
   metadata: PropTypes.object,
-};
-
-const QuestionEmbedWidgetTriggerPropTypes = {
-  onClick: PropTypes.func,
 };
 
 const mapStateToProps = (state, props) => ({
@@ -103,22 +95,4 @@ export default connect(
   mapDispatchToProps,
 )(QuestionEmbedWidget);
 
-export function QuestionEmbedWidgetTrigger({ onClick }) {
-  return (
-    <TriggerIcon
-      name="share"
-      tooltip={t`Sharing`}
-      onClick={() => {
-        MetabaseAnalytics.trackStructEvent(
-          "Sharing / Embedding",
-          "question",
-          "Sharing Link Clicked",
-        );
-        onClick();
-      }}
-    />
-  );
-}
-
-QuestionEmbedWidgetTrigger.propTypes = QuestionEmbedWidgetTriggerPropTypes;
 QuestionEmbedWidget.propTypes = QuestionEmbedWidgetPropTypes;
