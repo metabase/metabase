@@ -21,7 +21,10 @@ const findMilestone = async ({
   });
 
   // our milestones don't have the v prefix or a .0 suffix
-  const expectedMilestoneName = getOSSVersion(version).replace(/^v/, "").replace(/\.0$/, '');
+  const expectedMilestoneName = getOSSVersion(version)
+    .replace(/^v/, "")
+    .replace(/-rc\d+$/i, "") // RC versions use the major version milestone
+    .replace(/\.0$/, '');
 
   return milestones.data.find(
     (milestone: { title: string; number: number }) =>
