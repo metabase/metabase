@@ -21,9 +21,12 @@
     :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest audit-db-view-names-test
   (testing "`audit-db-view-names` includes all views in the app DB prefixed with `v_`"

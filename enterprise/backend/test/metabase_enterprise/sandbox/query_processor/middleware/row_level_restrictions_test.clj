@@ -731,7 +731,7 @@
         (testing "Run the query, should not be cached"
           (let [result (run-query)]
             (is (= nil
-                   (:cached result)))
+                   (:cached (:cache/details result))))
             (is (= [[10]]
                    (mt/rows result)))))
         (testing "Cache entry should be saved within 5 seconds"
@@ -742,7 +742,7 @@
         (testing "Run it again, should be cached"
           (let [result (run-query)]
             (is (= true
-                   (:cached result)))
+                   (:cached (:cache/details result))))
             (is (= [[10]]
                    (mt/rows result)))))
         (testing "Run the query with different User attributes, should not get the cached result"
@@ -753,7 +753,7 @@
                      (:login_attributes @api/*current-user*)))
               (let [result (run-query)]
                 (is (= nil
-                       (:cached result)))
+                       (:cached (:cache/details result))))
                 (is (= [[9]]
                        (mt/rows result)))))))))))
 
@@ -1042,7 +1042,7 @@
             query     (t2/select-one-fn :dataset_query Card :id card-id)
             run-query (fn []
                         (let [results (qp/process-query (assoc query :cache-ttl 100))]
-                          {:cached?  (boolean (:cached results))
+                          {:cached?  (boolean (:cached (:cache/details results)))
                            :num-rows (count (mt/rows results))}))]
         (mt/with-temporary-setting-values [enable-query-caching  true
                                            query-caching-min-ttl 0]
