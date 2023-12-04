@@ -5,8 +5,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru :as lib.drill-thru]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.util :as u]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal])
@@ -35,6 +37,20 @@
     :query-type  :aggregated
     :column-name "max"
     :expected    {:type :drill-thru/underlying-records, :row-count 2, :table-name "Orders"}}))
+
+(deftest ^:parallel returns-underlying-records-test-4-table-name-correct-for-nested-query
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type   :drill-thru/underlying-records
+    :click-type   :cell
+    :query-type   :aggregated
+    :column-name  "count"
+    :custom-query (-> (lib/query lib.tu/metadata-provider-with-mock-cards (lib.tu/mock-cards :orders))
+                      (lib/aggregate (lib/count))
+                      (lib/breakout (lib.metadata/field lib.tu/metadata-provider-with-mock-cards
+                                                        (meta/id :orders :created-at))))
+    :custom-row   {"CREATED_AT" "2023-12-01"
+                   "count"      9}
+    :expected     {:type :drill-thru/underlying-records, :row-count 9, :table-name "Mock orders card"}}))
 
 (deftest ^:parallel do-not-return-fk-filter-for-non-fk-column-test
   (testing "underlying-records should only get shown once for aggregated query (#34439)"
