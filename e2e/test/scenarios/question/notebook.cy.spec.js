@@ -308,7 +308,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       cy.button("Done").should("not.be.disabled").click();
 
-      getNotebookStep("filter").contains("Example").should("exist");
+      getNotebookStep("expression").contains("Example").should("exist");
 
       visualize();
 
