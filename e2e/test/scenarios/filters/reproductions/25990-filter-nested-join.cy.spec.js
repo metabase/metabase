@@ -1,4 +1,8 @@
-import { restore, visitQuestionAdhoc } from "e2e/support/helpers";
+import {
+  restore,
+  visitQuestionAdhoc,
+  queryBuilderHeader,
+} from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -41,15 +45,18 @@ describe("issue 25990", () => {
   it("should allow to filter by a column in a joined table (metabase#25990)", () => {
     visitQuestionAdhoc(questionDetails);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Filter").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("People - User").click();
-    cy.findByPlaceholderText("Enter an ID").type("10");
-    cy.button("Apply Filters").click();
+    queryBuilderHeader().button("Filter").click();
+
+    cy.get(".Modal").within(() => {
+      cy.findByText("People - User").click();
+      cy.findByPlaceholderText("Enter an ID").type("10");
+      cy.button("Apply Filters").click();
+    });
+
     cy.wait("@dataset");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("ID is 10").should("be.visible");
+    cy.findByTestId("qb-filters-panel")
+      .findByText("People - User → ID is 10")
+      .should("be.visible");
   });
 });

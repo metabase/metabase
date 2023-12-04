@@ -1,9 +1,12 @@
 import { useCallback, useMemo } from "react";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
+import {
+  getColumnGroupIcon,
+  getColumnGroupName,
+} from "metabase/common/utils/column-groups";
 import type { IconName } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
-import { singularize } from "metabase/lib/formatting";
 import type { ColorName } from "metabase/lib/colors/types";
 
 import * as Lib from "metabase-lib";
@@ -63,8 +66,8 @@ export function QueryColumnPicker({
         }));
 
         return {
-          name: getGroupName(groupInfo),
-          icon: getGroupIcon(groupInfo),
+          name: getColumnGroupName(groupInfo),
+          icon: getColumnGroupIcon(groupInfo),
           items,
         };
       }),
@@ -180,23 +183,4 @@ function omitItemDescription() {
 
 function renderItemIcon(item: ColumnListItem) {
   return <Icon name={getColumnIcon(item.column)} size={18} />;
-}
-
-function getGroupName(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
-  const columnInfo = groupInfo as Lib.ColumnDisplayInfo;
-  const tableInfo = groupInfo as Lib.TableDisplayInfo;
-  return columnInfo.fkReferenceName || singularize(tableInfo.displayName);
-}
-
-function getGroupIcon(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
-  if ((groupInfo as Lib.TableDisplayInfo).isSourceTable) {
-    return "table";
-  }
-  if (groupInfo.isFromJoin) {
-    return "join_left_outer";
-  }
-  if (groupInfo.isImplicitlyJoinable) {
-    return "connections";
-  }
-  return;
 }
