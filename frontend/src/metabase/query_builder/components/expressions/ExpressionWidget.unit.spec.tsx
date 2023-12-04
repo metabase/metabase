@@ -93,9 +93,7 @@ describe("ExpressionWidget", () => {
 
     expect(onChangeClause).toHaveBeenCalledTimes(1);
     expect(onChangeClause).toHaveBeenCalledWith("", expect.anything());
-    expect(getRecentExpressionClauseInfo()).toMatchObject({
-      displayName: "1 + 1",
-    });
+    expect(getRecentExpressionClauseInfo().displayName).toBe("1 + 1");
   });
 
   it(`should render interactive header if it is passed`, () => {
@@ -179,9 +177,7 @@ describe("ExpressionWidget", () => {
         "Some n_am!e 2q$w&YzT(6i~#sLXv7+HjP}Ku1|9c*RlF@4o5N=e8;G*-bZ3/U0:Qa'V,t(W-_D",
         expect.anything(),
       );
-      expect(getRecentExpressionClauseInfo()).toMatchObject({
-        displayName: "1 + 1",
-      });
+      expect(getRecentExpressionClauseInfo().displayName).toBe("1 + 1");
     });
   });
 });
