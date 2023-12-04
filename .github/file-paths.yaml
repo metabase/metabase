@@ -118,6 +118,11 @@ codeql:
   - "frontend/src/**"
   - "enterprise/frontend/src/**"
 
+snyk:
+  - "**/deps.edn"
+  - "**/package.json"
+  - "**/yarn.lock"
+
 i18n:
   - *default
   - ".github/actions/prepare-frontend/**"
