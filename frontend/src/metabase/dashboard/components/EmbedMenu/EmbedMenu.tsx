@@ -140,11 +140,11 @@ const useEmbedMenuMode = ({
     if (!isEmbeddingEnabled) {
       return "embedding-disabled";
     }
-    
+
     if (isPublicSharingEnabled) {
-      return "embed-menu"
+      return "embed-menu";
     }
-    
+
     return "embed-modal";
   }
 
