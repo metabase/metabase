@@ -1,4 +1,15 @@
 import type { DatasetColumn, RowValue } from "metabase-types/api";
+import type {
+  BOOLEAN_FILTER_OPERATORS,
+  COORDINATE_FILTER_OPERATORS,
+  NUMBER_FILTER_OPERATORS,
+  STRING_FILTER_OPERATORS,
+  EXCLUDE_DATE_BUCKETS,
+  EXCLUDE_DATE_FILTER_OPERATORS,
+  SPECIFIC_DATE_FILTER_OPERATORS,
+  RELATIVE_DATE_BUCKETS,
+  TIME_FILTER_OPERATORS,
+} from "./constants";
 
 /**
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,
@@ -79,6 +90,26 @@ export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };
 declare const Bucket: unique symbol;
 export type Bucket = unknown & { _opaque: typeof Bucket };
 
+export type BucketName =
+  | "minute"
+  | "hour"
+  | "day"
+  | "week"
+  | "quarter"
+  | "month"
+  | "year"
+  | "day-of-week"
+  | "month-of-year"
+  | "quarter-of-year"
+  | "hour-of-day";
+
+export type BucketDisplayInfo = {
+  shortName: BucketName;
+  displayName: string;
+  default?: boolean;
+  selected?: boolean;
+};
+
 export type TableDisplayInfo = {
   name: string;
   displayName: string;
@@ -99,15 +130,27 @@ export type ColumnDisplayInfo = {
   displayName: string;
   longDisplayName: string;
 
-  fkReferenceName?: string;
   isCalculated: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
   table?: TableInlineDisplayInfo;
 
   breakoutPosition?: number;
+  filterPositions?: number[];
   orderByPosition?: number;
   selected?: boolean; // used in aggregation and field clauses
+};
+
+export type ColumnGroupDisplayInfo = TableDisplayInfo & {
+  fkReferenceName?: string;
+};
+
+export type SegmentDisplayInfo = {
+  name: string;
+  displayName: string;
+  longDisplayName: string;
+  description: string;
+  filterPositions?: number[];
 };
 
 export type AggregationOperatorDisplayInfo = {
@@ -137,53 +180,38 @@ export type AggregationClauseDisplayInfo = ClauseDisplayInfo;
 
 export type BreakoutClauseDisplayInfo = ClauseDisplayInfo;
 
-export type BucketDisplayInfo = {
-  displayName: string;
-  default?: boolean;
-  selected?: boolean;
-};
-
 export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;
 };
 
-export type ExpressionOperator =
+export type ExpressionOperatorName =
   | "+"
-  | "-"
-  | "*"
-  | "/"
   | "="
   | "!="
   | ">"
-  | ">="
   | "<"
+  | ">="
   | "<="
+  | "between"
+  | "contains"
+  | "does-not-contain"
   | "is-null"
   | "not-null"
   | "is-empty"
   | "not-empty"
-  | "contains"
-  | "does-not-contain"
   | "starts-with"
-  | "ends-width"
-  | "between"
+  | "ends-with"
+  | "concat"
   | "interval"
   | "time-interval"
-  | "relative-datetime";
-
-export type TemporalUnit =
-  | "minute"
-  | "hour"
-  | "day"
-  | "week"
-  | "quarter"
-  | "month"
-  | "year";
+  | "relative-datetime"
+  | "inside"
+  | "segment";
 
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 
 export type ExpressionParts = {
-  operator: ExpressionOperator;
+  operator: ExpressionOperatorName;
   args: (ExpressionArg | ExpressionParts)[];
   options: ExpressionOptions;
 };
@@ -193,40 +221,122 @@ export type ExpressionOptions = {
   "include-current"?: boolean;
 };
 
-export type TextFilterParts = {
-  operator: ExpressionOperator;
-  column: ColumnMetadata;
-  values: string[];
-  options: TextFilterOptions;
+declare const FilterOperator: unique symbol;
+export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
+
+export type FilterOperatorName =
+  | StringFilterOperatorName
+  | NumberFilterOperatorName
+  | BooleanFilterOperatorName
+  | SpecificDateFilterOperatorName
+  | ExcludeDateFilterOperatorName
+  | CoordinateFilterOperatorName;
+
+export type StringFilterOperatorName = typeof STRING_FILTER_OPERATORS[number];
+
+export type NumberFilterOperatorName = typeof NUMBER_FILTER_OPERATORS[number];
+
+export type CoordinateFilterOperatorName =
+  typeof COORDINATE_FILTER_OPERATORS[number];
+
+export type BooleanFilterOperatorName = typeof BOOLEAN_FILTER_OPERATORS[number];
+
+export type SpecificDateFilterOperatorName =
+  typeof SPECIFIC_DATE_FILTER_OPERATORS[number];
+
+export type ExcludeDateFilterOperatorName =
+  typeof EXCLUDE_DATE_FILTER_OPERATORS[number];
+
+export type TimeFilterOperatorName = typeof TIME_FILTER_OPERATORS[number];
+
+export type RelativeDateBucketName = typeof RELATIVE_DATE_BUCKETS[number];
+
+export type ExcludeDateBucketName = typeof EXCLUDE_DATE_BUCKETS[number];
+
+export type FilterOperatorDisplayInfo = {
+  shortName: FilterOperatorName;
+  displayName: string;
+  longDisplayName: string;
+  default?: boolean;
 };
 
-export type TextFilterOptions = {
+export type FilterParts =
+  | StringFilterParts
+  | NumberFilterParts
+  | BooleanFilterParts
+  | SpecificDateFilterParts
+  | RelativeDateFilterParts
+  | ExcludeDateFilterParts
+  | TimeFilterParts
+  | CoordinateFilterParts;
+
+export type StringFilterParts = {
+  operator: StringFilterOperatorName;
+  column: ColumnMetadata;
+  values: string[];
+  options: StringFilterOptions;
+};
+
+export type StringFilterOptions = {
   "case-sensitive"?: boolean;
 };
 
 export type NumberFilterParts = {
-  operator: ExpressionOperator;
+  operator: NumberFilterOperatorName;
   column: ColumnMetadata;
   values: number[];
 };
 
+export type CoordinateFilterParts = {
+  operator: CoordinateFilterOperatorName;
+  column: ColumnMetadata;
+  longitudeColumn?: ColumnMetadata;
+  values: number[];
+};
+
 export type BooleanFilterParts = {
-  operator: ExpressionOperator;
+  operator: BooleanFilterOperatorName;
   column: ColumnMetadata;
   values: boolean[];
 };
 
+export type SpecificDateFilterParts = {
+  operator: SpecificDateFilterOperatorName;
+  column: ColumnMetadata;
+  values: Date[];
+};
+
 export type RelativeDateFilterParts = {
   column: ColumnMetadata;
+  bucket: RelativeDateBucketName;
   value: number | "current";
-  unit: TemporalUnit;
-  offsetValue?: number;
-  offsetUnit?: TemporalUnit;
+  offsetBucket: RelativeDateBucketName | null;
+  offsetValue: number | null;
   options: RelativeDateFilterOptions;
 };
 
 export type RelativeDateFilterOptions = {
   "include-current"?: boolean;
+};
+
+/*
+ * values depend on the bucket
+ * day-of-week => 1-7 (Monday-Sunday)
+ * month-of-year => 0-11 (January-December)
+ * quarter-of-year => 1-4
+ * hour-of-day => 0-23
+ */
+export type ExcludeDateFilterParts = {
+  operator: ExcludeDateFilterOperatorName;
+  column: ColumnMetadata;
+  bucket: ExcludeDateBucketName | null;
+  values: number[];
+};
+
+export type TimeFilterParts = {
+  operator: TimeFilterOperatorName;
+  column: ColumnMetadata;
+  values: Date[];
 };
 
 export type JoinConditionOperatorDisplayInfo = {

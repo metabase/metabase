@@ -1,6 +1,6 @@
+import { TimeseriesChrome } from "metabase/common/components/TimeseriesChrome";
 import { getPivotDrill } from "metabase/visualizations/click-actions/drills/PivotDrill";
 import type { QueryClickActionsMode } from "../../types";
-import { TimeseriesModeFooter } from "../components/TimeseriesModeFooter";
 import { DefaultMode } from "./DefaultMode";
 
 export const TimeseriesMode: QueryClickActionsMode = {
@@ -9,5 +9,5 @@ export const TimeseriesMode: QueryClickActionsMode = {
     getPivotDrill({ withTime: false }),
     ...DefaultMode.clickActions,
   ],
-  ModeFooter: TimeseriesModeFooter,
+  ModeFooter: TimeseriesChrome,
 };
