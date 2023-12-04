@@ -188,7 +188,8 @@
      humanization-strategy
      landing-page
      loading-message
-     max-results-bare-rows
+     max-aggregated-query-row-limit
+     max-unaggregated-query-row-limit
      native-query-autocomplete-match-style
      persisted-models-enabled
      report-timezone
@@ -204,7 +205,10 @@
      site-name
      source-address-header
      start-of-week
-     subscription-allowed-domains})
+     subscription-allowed-domains
+     uploads-enabled
+     uploads-database-id
+     uploads-schema-name})
 
 (defmethod serdes/extract-all "Setting" [_model _opts]
   (for [{:keys [key value]} (admin-writable-site-wide-settings

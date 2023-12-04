@@ -157,7 +157,6 @@ describe("ClickActionsPopover", function () {
             column: ORDERS_COLUMNS.ID,
             value: undefined,
           },
-          rowValues: undefined,
         });
 
         expect(queryIcon("arrow_up")).not.toBeInTheDocument();
@@ -389,14 +388,12 @@ async function setup({
   settings = {},
   dimension: inputDimension,
   columns = ORDERS_COLUMNS_LIST,
-  rowValues = ORDERS_ROW_VALUES,
 }: Partial<{
   question: Question;
   clicked: ClickObject;
   settings: Record<string, any>;
   dimension?: Dimension;
   columns?: DatasetColumn[];
-  rowValues?: Record<string, RowValue>;
 }> = {}) {
   const mode = checkNotNull(getMode(question));
 

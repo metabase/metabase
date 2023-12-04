@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Dashboard } from "metabase-types/api";
-import DashboardSharingEmbeddingModal from "metabase/dashboard/containers/DashboardSharingEmbeddingModal";
+import { DashboardSharingEmbeddingModalConnected } from "metabase/dashboard/containers/DashboardSharingEmbeddingModal";
 import { EmbedMenu } from "../EmbedMenu";
 
 export const DashboardEmbedAction = ({
@@ -18,7 +18,7 @@ export const DashboardEmbedAction = ({
         hasPublicLink={!!dashboard.public_uuid}
         onModalOpen={() => setIsModalOpen(true)}
       />
-      <DashboardSharingEmbeddingModal
+      <DashboardSharingEmbeddingModalConnected
         key="dashboard-embed"
         dashboard={dashboard}
         enabled={isModalOpen}
