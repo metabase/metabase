@@ -6,7 +6,7 @@
   (:refer-clojure :exclude [compile])
   (:require
    [humane-are.core :as humane-are]
-   [mb.hawk.assert-exprs.approximately-equal]
+   [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
    [mb.hawk.init]
    [mb.hawk.parallel]
    [metabase.actions.test-util :as actions.test-util]
@@ -298,21 +298,7 @@
  [schema-migrations-test.impl
   with-temp-empty-app-db])
 
- ;; TODO: define these in hawk and we simply import them
- ;; [mb.hawk.assert-exprs.approximately-equal
- ;;  malli=?
- ;;  =?-exacty
- ;;  =?-schema
- ;;  =?-approx]
-
-;; TODO: replace this with above imports
-;; This will be defined in the mb.hawk.assert-exprs.approximately-equal namespace
-(defn malli=?
-  "Used inside hawk's =? expression to use a Malli schema for comparison.
-  For example:
-  (=? {:a (=?malli [:int])}
-      {:a 1})"
-  [schema]
-  (mb.hawk.assert-exprs.approximately-equal/->Malli schema))
+;; Rename this instead of using `import-vars` to make it clear that it's related to `=?`
+(p/import-fn hawk.approx/malli malli=?)
 
 (alter-meta! #'with-temp update :doc #(str % "\n\nNote: this version of [[with-temp]] will execute body in a transaction, for cases where that's not desired, use [[mt/with-temp!]]\n"))
