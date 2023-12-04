@@ -690,5 +690,5 @@
     ;; if the user has set the rowcount-override connection property, it ends up in the details map, but it actually
     ;; needs to be moved over to the settings map (which is where DB local settings go, as per #19399)
     (-> (update database :details #(dissoc % :rowcount-override))
-        (update :settings #(assoc % :max-results-bare-rows rowcount-override)))
+        (update :settings #(assoc % :max-unaggregated-query-row-limit rowcount-override)))
     database))

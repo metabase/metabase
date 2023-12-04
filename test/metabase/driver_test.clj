@@ -3,6 +3,7 @@
    [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.h2 :as h2]
    [metabase.driver.impl :as driver.impl]
    [metabase.plugins.classloader :as classloader]
    [metabase.task.sync-databases :as task.sync-databases]
@@ -79,14 +80,47 @@
                          :field-definitions [{:field-name "foo", :base-type :type/Text}]
                          :rows              [["bar"]]}]}))
 
+(deftest can-connect-with-destroy-db-test
+  (testing "driver/can-connect? should fail or throw after destroying a database"
+    (mt/test-drivers (->> (mt/normal-drivers)
+                          ;; athena is a special case because connections aren't made with a single database,
+                          ;; but to an S3 bucket that may contain many databases
+                          (remove #{:athena}))
+      (let [database-name (mt/random-name)
+            dbdef         (basic-db-definition database-name)]
+        (mt/dataset dbdef
+          (let [db (mt/db)
+                details (tx/dbdef->connection-details driver/*driver* :db dbdef)]
+            (testing "can-connect? should return true before deleting the database"
+              (is (true? (binding [h2/*allow-testing-h2-connections* true]
+                           (driver/can-connect? driver/*driver* details)))))
+            ;; release db resources like connection pools so we don't have to wait to finish syncing before destroying the db
+            (driver/notify-database-updated driver/*driver* db)
+            (testing "after deleting a database, can-connect? should return false or throw an exception"
+              (let [;; in the case of some cloud databases, the test database is never created, and can't or shouldn't be destroyed.
+                    ;; so fake it by changing the database details
+                    details (case driver/*driver*
+                              (:redshift :snowfake :vertica) (assoc details :db (mt/random-name))
+                              :oracle                        (assoc details :service-name (mt/random-name))
+                              :presto-jdbc                   (assoc details :catalog (mt/random-name))
+                              ;; otherwise destroy the db and use the original details
+                              (do
+                                (tx/destroy-db! driver/*driver* dbdef)
+                                details))]
+                (is (false? (try
+                              (binding [h2/*allow-testing-h2-connections* true]
+                                (driver/can-connect? driver/*driver* details))
+                              (catch Exception _
+                                false))))))
+            ;; clean up the database
+            (t2/delete! :model/Database (u/the-id db))))))))
+
 (deftest check-can-connect-before-sync-test
   (testing "Database sync should short-circuit and fail if the database at the connection has been deleted (metabase#7526)"
     (mt/test-drivers (->> (mt/normal-drivers)
                           ;; athena is a special case because connections aren't made with a single database,
                           ;; but to an S3 bucket that may contain many databases
-                          ;; TODO: other drivers are still failing with this test. For these drivers there's a good chance there's a bug in
-                          ;; test.data.<driver> code, and not with the driver itself.
-                          (remove #{:athena :oracle :vertica :presto-jdbc}))
+                          (remove #{:athena}))
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
@@ -97,7 +131,7 @@
                                       (fn [[log-level throwable message]]
                                         (and (= log-level :warn)
                                              (instance? clojure.lang.ExceptionInfo throwable)
-                                             (re-matches #"^Cannot sync Database (.+): (.+)" message)))
+                                             (re-matches #"^Cannot sync Database ([\s\S]+): ([\s\S]+)" message)))
                                       (mt/with-log-messages-for-level :warn
                                         (#'task.sync-databases/sync-and-analyze-database*! (u/the-id db))))))]
             (testing "sense checks before deleting the database"
@@ -109,11 +143,16 @@
             ;; release db resources like connection pools so we don't have to wait to finish syncing before destroying the db
             (driver/notify-database-updated driver/*driver* db)
             ;; destroy the db
-            (if (contains? #{:redshift :snowflake} driver/*driver*)
-              ;; in the case of some cloud databases, the test database is never created, and shouldn't be destroyed.
-              ;; so fake it by redefining the database name on the dbdef
-              (t2/update! :model/Database (u/the-id db)
-                          {:details (assoc (:details (mt/db)) :db "fake-db-name-that-definitely-wont-be-used")})
+            (if (contains? #{:redshift :snowflake :vertica :presto-jdbc :oracle} driver/*driver*)
+              ;; in the case of some cloud databases, the test database is never created, and can't or shouldn't be destroyed.
+              ;; so fake it by changing the database details
+              (let [details     (:details (mt/db))
+                    new-details (case driver/*driver*
+                                  (:redshift :snowflake :vertica) (assoc details :db (mt/random-name))
+                                  :oracle                         (assoc details :service-name (mt/random-name))
+                                  :presto-jdbc                    (assoc details :catalog (mt/random-name)))]
+                (t2/update! :model/Database (u/the-id db) {:details new-details}))
+              ;; otherwise destroy the db and use the original details
               (tx/destroy-db! driver/*driver* dbdef))
             (testing "after deleting a database, sync should fail"
               (testing "1: sync-and-analyze-database! should log a warning and fail early"

@@ -135,7 +135,7 @@
     "@percy/cli": "^1.27.2",
     "@percy/cypress": "^3.1.2",
     "@pmmmwh/react-refresh-webpack-plugin": "0.5.10",
-    "@replayio/cypress": "^1.0.5",
+    "@replayio/cypress": "^1.7.5",
     "@sinonjs/fake-timers": "^9.1.2",
     "@storybook/addon-a11y": "^6.5.16",
     "@storybook/addon-actions": "6.5.15",
