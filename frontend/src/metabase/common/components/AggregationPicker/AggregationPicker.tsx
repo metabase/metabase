@@ -80,7 +80,9 @@ export function AggregationPicker({
   const [
     isEditingExpression,
     { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
-  ] = useToggle(isExpressionEditorInitiallyOpen(displayInfo, initialOperator));
+  ] = useToggle(
+    isExpressionEditorInitiallyOpen(query, stageIndex, clause, operators),
+  );
 
   // For really simple inline expressions like Average([Price]),
   // MLv2 can figure out that "Average" operator is used.
@@ -315,10 +317,18 @@ function getInitialOperator(
 }
 
 function isExpressionEditorInitiallyOpen(
-  displayInfo: Lib.ClauseDisplayInfo | undefined,
-  initialOperator: Lib.AggregationOperator | null,
+  query: Lib.Query,
+  stageIndex: number,
+  clause: Lib.AggregationClause | undefined,
+  operators: Lib.AggregationOperator[],
 ): boolean {
+  if (!clause) {
+    return false;
+  }
+
+  const initialOperator = getInitialOperator(query, stageIndex, operators);
   const isCustomExpression = initialOperator === null;
+  const displayInfo = Lib.displayInfo(query, stageIndex, clause);
   const hasCustomName = Boolean(displayInfo?.isNamed);
 
   return isCustomExpression || hasCustomName;
