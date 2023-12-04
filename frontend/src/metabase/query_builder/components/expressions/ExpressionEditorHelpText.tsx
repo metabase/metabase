@@ -78,7 +78,7 @@ const ExpressionEditorHelpText = ({
                 data-testid="expression-helper-popover-arguments"
                 data-ignore-outside-clicks
               >
-                {args.map(({ name, description: argDescription }, index) => (
+                {args.map(({ name, description: argDescription }) => (
                   <React.Fragment key={name}>
                     <ArgumentTitle data-ignore-outside-clicks>
                       {name}

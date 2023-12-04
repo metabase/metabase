@@ -137,7 +137,7 @@ const SingleSelectListField = ({
                 checkedColor ?? isDashboardFilter ? "brand" : "filter"
               }
               selected={selectedValue === option[0]}
-              onClick={e => onClickOption(option[0])}
+              onClick={() => onClickOption(option[0])}
               onMouseDown={e => e.preventDefault()}
             >
               {optionRenderer(option)}

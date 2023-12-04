@@ -144,7 +144,7 @@ export default class Dimension {
    */
   // TODO Atte Keinänen 5/21/17: Rename either this or the instance method with the same name
   // Also making it clear in the method name that we're working with sub-dimensions would be good
-  static dimensions(parent: Dimension): Dimension[] {
+  static dimensions(_parent: Dimension): Dimension[] {
     return [];
   }
 
@@ -152,7 +152,7 @@ export default class Dimension {
    * The default sub-dimension for the provided dimension of this type, if any.
    * @abstract
    */
-  static defaultDimension(parent: Dimension): Dimension | null | undefined {
+  static defaultDimension(_parent: Dimension): Dimension | null | undefined {
     return null;
   }
 
@@ -277,11 +277,11 @@ export default class Dimension {
     return isExpressionDimension(this);
   }
 
-  foreign(dimension: Dimension): FieldDimension {
+  foreign(_dimension: Dimension): FieldDimension {
     return null;
   }
 
-  datetime(unit: DatetimeUnit): FieldDimension {
+  datetime(_unit: DatetimeUnit): FieldDimension {
     return null;
   }
 
@@ -398,7 +398,7 @@ export default class Dimension {
     return this._query;
   }
 
-  setQuery(query: StructuredQuery): Dimension {
+  setQuery(_query: StructuredQuery): Dimension {
     return this;
   }
 
@@ -483,7 +483,7 @@ export default class Dimension {
    * Return a copy of this Dimension that includes the specified `options`.
    * @abstract
    */
-  withOptions(options: any): Dimension {
+  withOptions(_options: any): Dimension {
     return this;
   }
 
@@ -536,7 +536,7 @@ export default class Dimension {
    * Return a copy of this Dimension that excludes `options`.
    * @abstract
    */
-  withoutOptions(...options: string[]): Dimension {
+  withoutOptions(..._options: string[]): Dimension {
     return this;
   }
 
