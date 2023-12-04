@@ -7,29 +7,28 @@ import {
 import type { Parameter } from "metabase-types/api";
 import { Dashboard as DashboardComponent } from "./Dashboard";
 
-type TestedProps = {
+type SetupOpts = {
   dashboardId: number;
   selectedTabId: number | null; // when there's no tabs, is null
   parameters: Parameter[]; // when empty, is an empty array
   parameterValues?: Record<string, any>; // when empty, is undefined
 };
 
-type SetupReturn = {
-  rerender: (props: TestedProps) => void;
-  mockLoadDashboardParams: jest.Mock;
-  mockFetchDashboard: jest.Mock;
-  mockFetchDashboardCardData: jest.Mock;
-  mockFetchDashboardCardMetadata: jest.Mock;
-};
-
-async function setup(props: TestedProps): Promise<SetupReturn> {
+async function setup(overrides: Partial<SetupOpts> = {}) {
+  const opts: SetupOpts = {
+    dashboardId: 10,
+    selectedTabId: null,
+    parameters: [],
+    parameterValues: undefined,
+    ...overrides,
+  };
   const mockDashboard = createMockDashboard({ id: 10 }); // value is irrelevant
   const mockLoadDashboardParams = jest.fn();
   const mockFetchDashboard = jest.fn(() => mockDashboard);
   const mockFetchDashboardCardData = jest.fn();
   const mockFetchDashboardCardMetadata = jest.fn();
 
-  function TestComponent(props: TestedProps) {
+  function TestComponent(props: SetupOpts) {
     return (
       <DashboardComponent
         dashboard={mockDashboard}
@@ -89,17 +88,18 @@ async function setup(props: TestedProps): Promise<SetupReturn> {
 
   const { rerender } = renderWithProviders(
     <TestComponent
-      dashboardId={props.dashboardId}
-      selectedTabId={props.selectedTabId}
-      parameters={props.parameters}
-      parameterValues={props.parameterValues}
+      dashboardId={opts.dashboardId}
+      selectedTabId={opts.selectedTabId}
+      parameters={opts.parameters}
+      parameterValues={opts.parameterValues}
     />,
   );
 
   await waitForLoaderToBeRemoved();
 
   return {
-    rerender: (props: TestedProps) => rerender(<TestComponent {...props} />),
+    rerender: (overrides: Partial<SetupOpts> = {}) =>
+      rerender(<TestComponent {...{ ...opts, ...overrides }} />),
     mockLoadDashboardParams,
     mockFetchDashboard,
     mockFetchDashboardCardData,
@@ -108,47 +108,39 @@ async function setup(props: TestedProps): Promise<SetupReturn> {
 }
 
 describe("Dashboard data fetching", () => {
-  const DEFAULT_PROPS: TestedProps = {
-    dashboardId: 10,
-    selectedTabId: null,
-    parameters: [],
-    parameterValues: undefined,
-  };
-
   afterEach(() => jest.clearAllMocks());
 
   it("should fetch dashboard on first load", async () => {
-    const mocks = await setup(DEFAULT_PROPS);
+    const mocks = await setup();
     expect(mocks.mockFetchDashboard).toHaveBeenCalledTimes(1);
   });
 
   it("should not fetch anything on re-render", async () => {
-    const mocks = await setup(DEFAULT_PROPS);
+    const mocks = await setup();
     jest.clearAllMocks();
-    mocks.rerender(DEFAULT_PROPS);
+    mocks.rerender();
     expect(mocks.mockFetchDashboard).toHaveBeenCalledTimes(0);
     expect(mocks.mockFetchDashboardCardData).toHaveBeenCalledTimes(0);
     expect(mocks.mockFetchDashboardCardMetadata).toHaveBeenCalledTimes(0);
   });
 
   it("should fetch dashboard on dashboard id change", async () => {
-    const mocks = await setup(DEFAULT_PROPS);
-    mocks.rerender({ ...DEFAULT_PROPS, dashboardId: 20 });
+    const mocks = await setup();
+    mocks.rerender({ dashboardId: 20 });
     expect(mocks.mockFetchDashboard).toHaveBeenCalledTimes(2);
   });
 
   it("should fetch card data and metadata when tab id changes", async () => {
-    const mocks = await setup(DEFAULT_PROPS);
-    mocks.rerender({ ...DEFAULT_PROPS, selectedTabId: 1 });
+    const mocks = await setup();
+    mocks.rerender({ selectedTabId: 1 });
     expect(mocks.mockFetchDashboardCardData).toHaveBeenCalledTimes(1);
     expect(mocks.mockFetchDashboardCardMetadata).toHaveBeenCalledTimes(1);
   });
 
   it("should fetch card data when parameters change", async () => {
-    const mocks = await setup(DEFAULT_PROPS);
+    const mocks = await setup();
     jest.clearAllMocks();
     mocks.rerender({
-      ...DEFAULT_PROPS,
       parameters: [createMockActionParameter()],
     });
     expect(mocks.mockFetchDashboardCardMetadata).toHaveBeenCalledTimes(0);
@@ -157,12 +149,10 @@ describe("Dashboard data fetching", () => {
 
   it("should fetch card data when parameter properties change", async () => {
     const mocks = await setup({
-      ...DEFAULT_PROPS,
       parameters: [createMockActionParameter()],
     });
     jest.clearAllMocks();
     mocks.rerender({
-      ...DEFAULT_PROPS,
       parameters: [createMockActionParameter({ id: "another" })],
     });
     expect(mocks.mockFetchDashboardCardMetadata).toHaveBeenCalledTimes(0);
