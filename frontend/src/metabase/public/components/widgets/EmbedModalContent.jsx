@@ -31,7 +31,6 @@ class EmbedModalContent extends Component {
     };
     this.state = {
       pane: "preview",
-      embedType: null,
       embeddingParams: getDefaultEmbeddingParams(props),
       displayOptions,
       parameterValues: {},
@@ -42,8 +41,8 @@ class EmbedModalContent extends Component {
 
   handleSave = async () => {
     try {
-      const { resource } = this.props;
-      const { embeddingParams, embedType } = this.state;
+      const { resource, embedType } = this.props;
+      const { embeddingParams } = this.state;
       if (embedType === "application") {
         if (!resource.enable_embedding) {
           await this.props.onUpdateEnableEmbedding(true);
@@ -94,15 +93,17 @@ class EmbedModalContent extends Component {
   }
 
   render() {
-    const { siteUrl, secretKey, resource, resourceType, resourceParameters } =
-      this.props;
     const {
-      pane,
+      siteUrl,
+      secretKey,
+      resource,
+      resourceType,
+      resourceParameters,
       embedType,
-      embeddingParams,
-      parameterValues,
-      displayOptions,
-    } = this.state;
+      setEmbedType,
+    } = this.props;
+    const { pane, embeddingParams, parameterValues, displayOptions } =
+      this.state;
 
     const previewParametersBySlug = this.getPreviewParamsBySlug();
     const previewParameters = this.getPreviewParameters(
@@ -113,10 +114,10 @@ class EmbedModalContent extends Component {
     return embedType == null ? (
       <SharingPane
         {...this.props}
-        onChangeEmbedType={embedType => this.setState({ embedType })}
+        onChangeEmbedType={embedType => setEmbedType(embedType)}
       />
     ) : embedType === "application" ? (
-      <div className="flex flex-full">
+      <div className="flex flex-full" style={{ height: "100%" }}>
         <AdvancedEmbedPane
           pane={pane}
           resource={resource}

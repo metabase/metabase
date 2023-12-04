@@ -7,13 +7,13 @@ import EmbedModalContent from "metabase/public/components/widgets/EmbedModalCont
 import { getParameters } from "metabase/dashboard/selectors";
 import * as Urls from "metabase/lib/urls";
 
+import { EmbedModal } from "metabase/public/components/widgets/EmbedModal";
 import {
   createPublicLink,
   deletePublicLink,
   updateEnableEmbedding,
   updateEmbeddingParams,
 } from "../actions";
-import {EmbedModalWrapper} from "metabase/public/components/widgets/EmbedModalWrapper";
 
 const defaultProps = {
   isLinkEnabled: true,
@@ -31,6 +31,12 @@ const mapDispatchToProps = {
 };
 
 class DashboardSharingEmbeddingModal extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      embedType: null,
+    };
+  }
   render() {
     const {
       className,
@@ -51,15 +57,18 @@ class DashboardSharingEmbeddingModal extends Component {
       return null;
     }
     return (
-      <EmbedModalWrapper
+      <EmbedModal
         isOpen={enabled}
         onClose={onClose}
+        embedType={this.state.embedType}
         fit
         formModal={false}
         header={t`Embed Metabase`}
       >
         <EmbedModalContent
           {...props}
+          embedType={this.state.embedType}
+          setEmbedType={embedType => this.setState({ embedType })}
           className={className}
           resource={dashboard}
           resourceParameters={parameters}
@@ -77,7 +86,7 @@ class DashboardSharingEmbeddingModal extends Component {
             Urls.publicDashboard({ uuid: public_uuid })
           }
         />
-      </EmbedModalWrapper>
+      </EmbedModal>
     );
   }
 }

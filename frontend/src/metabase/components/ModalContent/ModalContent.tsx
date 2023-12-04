@@ -163,11 +163,15 @@ export const ModalBody = ({
     className={cx("ModalBody", {
       px4: formModal,
       "flex flex-full flex-basis-auto": !formModal,
+      height: "100%",
     })}
   >
     <div
       className="flex-full ml-auto mr-auto flex flex-column"
-      style={{ maxWidth: formModal && fullPageModal ? FORM_WIDTH : undefined }}
+      style={{
+        maxWidth: formModal && fullPageModal ? FORM_WIDTH : undefined,
+        height: "100%",
+      }}
     >
       {children}
     </div>

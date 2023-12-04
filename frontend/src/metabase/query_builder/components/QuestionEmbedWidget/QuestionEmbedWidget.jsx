@@ -5,8 +5,8 @@ import { connect } from "react-redux";
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
 
 import * as Urls from "metabase/lib/urls";
-import MetabaseSettings from "metabase/lib/settings";
 import { getMetadata } from "metabase/selectors/metadata";
+import { EmbedModal } from "metabase/public/components/widgets/EmbedModal";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 
 import {
@@ -24,6 +24,7 @@ const QuestionEmbedWidgetPropTypes = {
   updateEnableEmbedding: PropTypes.func,
   updateEmbeddingParams: PropTypes.func,
   metadata: PropTypes.object,
+  onClose: PropTypes.func,
 };
 
 const mapStateToProps = (state, props) => ({
@@ -38,6 +39,13 @@ const mapDispatchToProps = {
 };
 
 class QuestionEmbedWidget extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      embedType: null,
+    };
+  }
+
   render() {
     const {
       className,
@@ -47,45 +55,33 @@ class QuestionEmbedWidget extends Component {
       updateEnableEmbedding,
       updateEmbeddingParams,
       metadata,
+      onClose,
       ...props
     } = this.props;
     return (
-      <EmbedModalContent
-        {...props}
-        className={className}
-        resource={card}
-        resourceType="question"
-        resourceParameters={getCardUiParameters(card, metadata)}
-        onCreatePublicLink={() => createPublicLink(card)}
-        onDisablePublicLink={() => deletePublicLink(card)}
-        onUpdateEnableEmbedding={enableEmbedding =>
-          updateEnableEmbedding(card, enableEmbedding)
-        }
-        onUpdateEmbeddingParams={embeddingParams =>
-          updateEmbeddingParams(card, embeddingParams)
-        }
-        getPublicUrl={({ public_uuid }, extension) =>
-          Urls.publicQuestion({ uuid: public_uuid, type: extension })
-        }
-        extensions={Urls.exportFormats}
-      />
-    );
-  }
-
-  static shouldRender({
-    question,
-    isAdmin,
-    // preferably this would come from props
-    isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing"),
-    isEmbeddingEnabled = MetabaseSettings.get("enable-embedding"),
-  }) {
-    if (question.isDataset()) {
-      return false;
-    }
-
-    return (
-      (isPublicLinksEnabled && (isAdmin || question.publicUUID())) ||
-      (isEmbeddingEnabled && isAdmin)
+      <EmbedModal onClose={onClose} embedType={this.state.embedType}>
+        <EmbedModalContent
+          {...props}
+          embedType={this.state.embedType}
+          setEmbedType={embedType => this.setState({ embedType })}
+          className={className}
+          resource={card}
+          resourceType="question"
+          resourceParameters={getCardUiParameters(card, metadata)}
+          onCreatePublicLink={() => createPublicLink(card)}
+          onDisablePublicLink={() => deletePublicLink(card)}
+          onUpdateEnableEmbedding={enableEmbedding =>
+            updateEnableEmbedding(card, enableEmbedding)
+          }
+          onUpdateEmbeddingParams={embeddingParams =>
+            updateEmbeddingParams(card, embeddingParams)
+          }
+          getPublicUrl={({ public_uuid }, extension) =>
+            Urls.publicQuestion({ uuid: public_uuid, type: extension })
+          }
+          extensions={Urls.exportFormats}
+        />
+      </EmbedModal>
     );
   }
 }
