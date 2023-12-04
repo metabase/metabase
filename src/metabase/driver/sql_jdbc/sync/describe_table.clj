@@ -67,12 +67,12 @@
     semantic-type))
 
 (defmethod sql-jdbc.sync.interface/fallback-metadata-query :sql-jdbc
-  [driver db schema table]
-  {:pre [(string? table)]}
+  [driver db-name-or-nil schema-name table-name]
+  {:pre [(string? table-name)]}
   ;; Using our SQL compiler here to get portable LIMIT (e.g. `SELECT TOP n ...` for SQL Server/Oracle)
   (sql.qp/with-driver-honey-sql-version driver
     (let [honeysql {:select [:*]
-                    :from   [(sql.qp/maybe-wrap-unaliased-expr (sql.qp/->honeysql driver (hx/identifier :table db schema table)))]
+                    :from   [(sql.qp/maybe-wrap-unaliased-expr (sql.qp/->honeysql driver (hx/identifier :table db-name-or-nil schema-name table-name)))]
                     :where  [:not= (sql.qp/inline-num 1) (sql.qp/inline-num 1)]}
           honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
       (sql.qp/format-honeysql driver honeysql))))
@@ -80,9 +80,9 @@
 (defn fallback-fields-metadata-from-select-query
   "In some rare cases `:column_name` is blank (eg. SQLite's views with group by) fallback to sniffing the type from a
   SELECT * query."
-  [driver ^Connection conn table-db table-schema table-name]
+  [driver ^Connection conn db-name-or-nil schema table]
   ;; some DBs (:sqlite) don't actually return the correct metadata for LIMIT 0 queries
-  (let [[sql & params] (sql-jdbc.sync.interface/fallback-metadata-query driver table-db table-schema table-name)]
+  (let [[sql & params] (sql-jdbc.sync.interface/fallback-metadata-query driver db-name-or-nil schema table)]
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
         (with-open [stmt (sql-jdbc.sync.common/prepare-statement driver conn sql params)
