@@ -226,12 +226,14 @@ const config = (module.exports = {
       chunksSortMode: "manual",
       chunks: ["vendor", "styles", "app-public"],
       template: __dirname + "/resources/frontend_client/index_template.html",
+      alwaysWriteToDisk: true,
     }),
     new HtmlWebpackPlugin({
       filename: "../../embed.html",
       chunksSortMode: "manual",
       chunks: ["vendor", "styles", "app-embed"],
       template: __dirname + "/resources/frontend_client/index_template.html",
+      alwaysWriteToDisk: true,
     }),
     new HtmlWebpackHarddiskPlugin({
       outputPath: __dirname + "/resources/frontend_client/app/dist",
@@ -308,9 +310,7 @@ if (WEBPACK_BUNDLE === "hot") {
   };
 
   config.watchOptions = {
-    ignored: [
-      CLJS_SRC_PATH_DEV + "/**",
-    ],
+    ignored: [CLJS_SRC_PATH_DEV + "/**"],
   };
 
   config.plugins.unshift(
