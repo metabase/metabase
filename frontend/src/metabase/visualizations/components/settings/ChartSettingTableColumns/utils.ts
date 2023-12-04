@@ -117,7 +117,7 @@ export const getAdditionalMetadataColumns = (
 ): Lib.ColumnMetadata[] => {
   const additionalColumns = new Set(metadataColumns);
 
-  columnSettingItems.forEach(({ enabled, metadataColumn }) => {
+  columnSettingItems.forEach(({ metadataColumn }) => {
     if (metadataColumn) {
       additionalColumns.delete(metadataColumn);
     }
@@ -126,13 +126,8 @@ export const getAdditionalMetadataColumns = (
   return Array.from(additionalColumns);
 };
 
-const getColumnGroupName = (
-  displayInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo,
-) => {
-  const columnInfo = displayInfo as Lib.ColumnDisplayInfo;
-  const tableInfo = displayInfo as Lib.TableDisplayInfo;
-  return columnInfo.fkReferenceName || tableInfo.displayName;
-};
+const getColumnGroupName = (displayInfo: Lib.ColumnGroupDisplayInfo) =>
+  displayInfo.fkReferenceName || displayInfo.displayName;
 
 export const getColumnGroups = (
   query: Lib.Query,

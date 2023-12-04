@@ -311,6 +311,7 @@ class TokenField extends Component<TokenFieldProps, TokenFieldState> {
       keyCode === KEYCODE_ENTER
     ) {
       if (this.addSelectedOption(event)) {
+        event.preventDefault();
         event.stopPropagation();
       }
     } else if (event.keyCode === KEYCODE_UP) {
@@ -418,7 +419,8 @@ class TokenField extends Component<TokenFieldProps, TokenFieldState> {
       // if we previously updated on input change then we don't need to do it again,
       if (this.props.updateOnInputChange) {
         // if multi=true also prevent the input from changing due to this key press
-        if (multi) {
+        const value = this.props.parseFreeformValue(input?.value);
+        if (multi && value !== null) {
           e.preventDefault();
         }
         // and clear the input

@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { CardApi } from "metabase/services";
 import Collections from "metabase/entities/collections";
 
-import type { Dispatch, GetState, State } from "metabase-types/store";
+import type { Dispatch, State } from "metabase-types/store";
 import type { CollectionId } from "metabase-types/api";
 import type { FileUploadState } from "metabase-types/store/upload";
 
@@ -44,59 +44,58 @@ export const hasActiveUploads = (state: State) =>
 
 export const uploadFile = createThunkAction(
   UPLOAD_FILE_TO_COLLECTION,
-  (file: File, collectionId: CollectionId) =>
-    async (dispatch: Dispatch, getState: GetState) => {
-      const id = Date.now();
+  (file: File, collectionId: CollectionId) => async (dispatch: Dispatch) => {
+    const id = Date.now();
 
-      const clear = () =>
-        setTimeout(() => {
-          dispatch(clearUpload({ id }));
-        }, CLEAR_AFTER_MS);
+    const clear = () =>
+      setTimeout(() => {
+        dispatch(clearUpload({ id }));
+      }, CLEAR_AFTER_MS);
+
+    dispatch(
+      uploadStart({
+        id,
+        name: file.name,
+        collectionId,
+      }),
+    );
+
+    if (file.size > MAX_UPLOAD_SIZE) {
+      dispatch(
+        uploadError({
+          id,
+          message: t`You cannot upload files larger than ${MAX_UPLOAD_STRING} MB`,
+        }),
+      );
+      clear();
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("collection_id", String(collectionId));
+      const response = await CardApi.uploadCSV(formData);
 
       dispatch(
-        uploadStart({
+        uploadEnd({
           id,
-          name: file.name,
-          collectionId,
+          modelId: response,
         }),
       );
 
-      if (file.size > MAX_UPLOAD_SIZE) {
-        dispatch(
-          uploadError({
-            id,
-            message: t`You cannot upload files larger than ${MAX_UPLOAD_STRING} MB`,
-          }),
-        );
-        clear();
-        return;
-      }
-
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("collection_id", String(collectionId));
-        const response = await CardApi.uploadCSV(formData);
-
-        dispatch(
-          uploadEnd({
-            id,
-            modelId: response,
-          }),
-        );
-
-        dispatch(Collections.actions.invalidateLists());
-        clear();
-      } catch (err: any) {
-        dispatch(
-          uploadError({
-            id,
-            message: t`There was an error uploading the file`,
-            error: err?.data?.message ?? err?.data,
-          }),
-        );
-      }
-    },
+      dispatch(Collections.actions.invalidateLists());
+      clear();
+    } catch (err: any) {
+      dispatch(
+        uploadError({
+          id,
+          message: t`There was an error uploading the file`,
+          error: err?.data?.message ?? err?.data,
+        }),
+      );
+    }
+  },
 );
 
 interface UploadStartPayload {

@@ -20,7 +20,7 @@
                                       :cache-ttl 10)
               run-query        (fn []
                                  (let [results (qp/process-query query)]
-                                   {:cached?  (boolean (:cached results))
+                                   {:cached?  (boolean (:cached (:cache/details results)))
                                     :num-rows (count (mt/rows results))}))
               expected-results (qp/preprocess query)]
           (testing "Check preprocess before caching to make sure results make sense"
