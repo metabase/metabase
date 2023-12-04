@@ -43,7 +43,7 @@ export function processSource(options) {
     expression = adjustBooleans(resolve(parsed, startRule, resolveMBQLField));
 
     // query and stageIndex are not available outside of notebook editor (e.g. in Metrics or Segments).
-    if (typeof query !== "undefined" && typeof stageIndex !== "undefined") {
+    if (query && typeof stageIndex !== "undefined") {
       expressionClause = Lib.expressionClauseForLegacyExpression(
         query,
         stageIndex,
