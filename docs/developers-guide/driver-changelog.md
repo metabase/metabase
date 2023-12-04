@@ -75,6 +75,9 @@ title: Driver interface changelog
   will be used to call the corresponding `metabase.driver.sql.query-processor/date` implementation to convert the `field`.
   Returns `nil` if the conversion is not necessary for this `field` and `param-type` combination.
 
+- The arity of multimethod `metabase.driver.sql-jdbc.sync.interface/fallback-metadata-query` has been updated from 3 to 4,
+  it now takes an additional `db` argument. The new function arguments are: `[driver db schema table]`.
+
 ## Metabase 0.47.0
 
 - A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in

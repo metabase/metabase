@@ -109,7 +109,7 @@
 ;; The normal SELECT * FROM table WHERE 1 <> 1 LIMIT 0 query doesn't return any information for SQLite views -- it
 ;; seems to be the case that the query has to return at least one row
 (defmethod sql-jdbc.sync/fallback-metadata-query :sqlite
-  [driver schema table]
+  [driver _db schema table]
   (sql.qp/format-honeysql driver {:select [:*]
                                   :from   [[(h2x/identifier :table schema table)]]
                                   :limit  1}))
