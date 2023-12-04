@@ -4,25 +4,29 @@ import {
   createMockActionParameter,
   createMockDashboard,
 } from "metabase-types/api/mocks";
-import type { Parameter } from "metabase-types/api";
+import type { Dashboard, Parameter } from "metabase-types/api";
 import { Dashboard as DashboardComponent } from "./Dashboard";
 
 type SetupOpts = {
-  dashboardId: number;
+  dashboardId: number | null;
+  dashboard: Dashboard | null;
   selectedTabId: number | null; // when there's no tabs, is null
   parameters: Parameter[]; // when empty, is an empty array
   parameterValues?: Record<string, any>; // when empty, is undefined
+  skipLoader?: boolean;
 };
 
 async function setup(overrides: Partial<SetupOpts> = {}) {
+  const mockDashboard = createMockDashboard({ id: 10 }); // value is irrelevant
+
   const opts: SetupOpts = {
     dashboardId: 10,
+    dashboard: mockDashboard,
     selectedTabId: null,
     parameters: [],
     parameterValues: undefined,
     ...overrides,
   };
-  const mockDashboard = createMockDashboard({ id: 10 }); // value is irrelevant
   const mockLoadDashboardParams = jest.fn();
   const mockFetchDashboard = jest.fn(() => mockDashboard);
   const mockFetchDashboardCardData = jest.fn();
@@ -31,7 +35,7 @@ async function setup(overrides: Partial<SetupOpts> = {}) {
   function TestComponent(props: SetupOpts) {
     return (
       <DashboardComponent
-        dashboard={mockDashboard}
+        dashboard={props.dashboard}
         dashboardId={props.dashboardId}
         parameters={props.parameters}
         parameterValues={props.parameterValues}
@@ -88,6 +92,7 @@ async function setup(overrides: Partial<SetupOpts> = {}) {
 
   const { rerender } = renderWithProviders(
     <TestComponent
+      dashboard={opts.dashboard}
       dashboardId={opts.dashboardId}
       selectedTabId={opts.selectedTabId}
       parameters={opts.parameters}
@@ -95,7 +100,9 @@ async function setup(overrides: Partial<SetupOpts> = {}) {
     />,
   );
 
-  await waitForLoaderToBeRemoved();
+  if (!opts.skipLoader) {
+    await waitForLoaderToBeRemoved();
+  }
 
   return {
     rerender: (overrides: Partial<SetupOpts> = {}) =>
@@ -156,6 +163,21 @@ describe("Dashboard data fetching", () => {
       parameters: [createMockActionParameter({ id: "another" })],
     });
     expect(mocks.mockFetchDashboardCardMetadata).toHaveBeenCalledTimes(0);
+    expect(mocks.mockFetchDashboardCardData).toHaveBeenCalledTimes(1);
+  });
+
+  it("should fetch card data when dashboard changes to non-empty", async () => {
+    const mocks = await setup({
+      dashboardId: null,
+      dashboard: null,
+      skipLoader: true,
+    });
+    expect(mocks.mockFetchDashboardCardData).toHaveBeenCalledTimes(0);
+
+    mocks.rerender({
+      dashboardId: null,
+      dashboard: createMockDashboard({ id: 20 }),
+    });
     expect(mocks.mockFetchDashboardCardData).toHaveBeenCalledTimes(1);
   });
 });
