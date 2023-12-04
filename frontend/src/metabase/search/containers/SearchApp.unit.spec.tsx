@@ -164,7 +164,7 @@ describe("SearchApp", () => {
   describe("filtering search results with the sidebar", () => {
     it.each(TEST_SEARCH_RESULTS)(
       "should reload with filtered searches when type=$model is changed in the dropdown sidebar filter",
-      async ({ model, name }) => {
+      async ({ model }) => {
         const { history } = await setup({
           searchText: "Test",
         });

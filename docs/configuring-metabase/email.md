@@ -44,6 +44,10 @@ You'll also need to specify your:
 - **From address**: The email address you want to use for the sender of emails.
 - **Reply-to address**: The email address you want the replies to go to, if different from the from address.
 
+## Add recipients as CC or BCC
+
+By default, Metabase will hide email recipients by including them in the BCC list (Blind Carbon Copy) of the email. But if you're having issues with your email provider blocking emails with BCC recipients, and you don't mind having people see who else has been copied on the email Metabase sends them, you can tell Metabase to CC (Carbon Copy) recipients instead.
+
 ### Recommended email settings
 
 - SSL is strongly recommended because it’s more secure and gives your account extra protection from threats.

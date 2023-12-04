@@ -5,7 +5,7 @@ import _ from "underscore";
 import { isa } from "cljs/metabase.types";
 import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
 import type {
-  FieldReference as AbstractField,
+  FieldReference,
   ConcreteFieldReference,
   LocalFieldReference,
   ExpressionReference,
@@ -100,7 +100,7 @@ export default class Dimension {
    * Metadata should be provided if you intend to use the display name or render methods.
    */
   static parseMBQL(
-    mbql: ConcreteFieldReference | VariableTarget,
+    mbql: FieldReference | VariableTarget,
     metadata?: Metadata,
     query?: StructuredQuery | NativeQuery | null | undefined,
   ): Dimension | null | undefined {
@@ -144,7 +144,7 @@ export default class Dimension {
    */
   // TODO Atte Keinänen 5/21/17: Rename either this or the instance method with the same name
   // Also making it clear in the method name that we're working with sub-dimensions would be good
-  static dimensions(parent: Dimension): Dimension[] {
+  static dimensions(_parent: Dimension): Dimension[] {
     return [];
   }
 
@@ -152,7 +152,7 @@ export default class Dimension {
    * The default sub-dimension for the provided dimension of this type, if any.
    * @abstract
    */
-  static defaultDimension(parent: Dimension): Dimension | null | undefined {
+  static defaultDimension(_parent: Dimension): Dimension | null | undefined {
     return null;
   }
 
@@ -277,11 +277,11 @@ export default class Dimension {
     return isExpressionDimension(this);
   }
 
-  foreign(dimension: Dimension): FieldDimension {
+  foreign(_dimension: Dimension): FieldDimension {
     return null;
   }
 
-  datetime(unit: DatetimeUnit): FieldDimension {
+  datetime(_unit: DatetimeUnit): FieldDimension {
     return null;
   }
 
@@ -398,7 +398,7 @@ export default class Dimension {
     return this._query;
   }
 
-  setQuery(query: StructuredQuery): Dimension {
+  setQuery(_query: StructuredQuery): Dimension {
     return this;
   }
 
@@ -483,7 +483,7 @@ export default class Dimension {
    * Return a copy of this Dimension that includes the specified `options`.
    * @abstract
    */
-  withOptions(options: any): Dimension {
+  withOptions(_options: any): Dimension {
     return this;
   }
 
@@ -536,7 +536,7 @@ export default class Dimension {
    * Return a copy of this Dimension that excludes `options`.
    * @abstract
    */
-  withoutOptions(...options: string[]): Dimension {
+  withoutOptions(..._options: string[]): Dimension {
     return this;
   }
 
@@ -639,7 +639,7 @@ export default class Dimension {
     return this._parent ? this._parent.render() : this.displayName();
   }
 
-  mbql(): AbstractField | null | undefined {
+  mbql(): FieldReference | null | undefined {
     throw new Error("Abstract method `mbql` not implemented");
   }
 
@@ -1227,28 +1227,31 @@ export class ExpressionDimension extends Dimension {
     const table = query ? query.table() : null;
 
     // fallback
-    let type = MONOTYPE.Number;
+    const baseTypeOption = this.getOption("base-type");
+    let type = baseTypeOption || MONOTYPE.Number;
     let semantic_type = null;
 
-    if (query) {
-      const datasetQuery = query.query();
-      const expressions = datasetQuery?.expressions ?? {};
-      const expr = expressions[this.name()];
+    if (!baseTypeOption) {
+      if (query) {
+        const datasetQuery = query.query();
+        const expressions = datasetQuery?.expressions ?? {};
+        const expr = expressions[this.name()];
 
-      const field = mbql => {
-        const dimension = Dimension.parseMBQL(
-          mbql,
-          this._metadata,
-          this._query,
-        );
-        return dimension?.field();
-      };
+        const field = mbql => {
+          const dimension = Dimension.parseMBQL(
+            mbql,
+            this._metadata,
+            this._query,
+          );
+          return dimension?.field();
+        };
 
-      type = infer(expr, mbql => field(mbql)?.base_type) ?? type;
-      semantic_type =
-        infer(expr, mbql => field(mbql)?.semantic_type) ?? semantic_type;
-    } else {
-      type = infer(this._expressionName);
+        type = infer(expr, mbql => field(mbql)?.base_type) ?? type;
+        semantic_type =
+          infer(expr, mbql => field(mbql)?.semantic_type) ?? semantic_type;
+      } else {
+        type = infer(this._expressionName);
+      }
     }
 
     let base_type = type;

@@ -187,7 +187,7 @@ Go to **Admin settings** > **Settings** > **Caching** > **Models** to turn the f
 
 ![Model caching](./images/model-caching-custom.png)
 
-You can set models to refresh based on one of the default frequencies, or select the **Custom** option to use [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html) to specify your own caching update frequency. We recommend scheduling the cache to refresh on a frequency that makes sense with how often your source tables update with new data.
+You can set models to refresh based on one of the default frequencies, or select the **Custom** option to use [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html) to specify your own caching update frequency. We recommend scheduling the cache to refresh on a frequency that makes sense with how often your source tables update with new data. The cron scheduler uses the [Report Timezone](../configuring-metabase/localization.md#report-timezone) if selected and otherwise uses the System Timezone (which defaults to GMT in Metabase Cloud).
 
 If someone [changes the query definition of a model](#edit-a-models-query), any question based on that model will skip the cache until the next cache refresh.
 

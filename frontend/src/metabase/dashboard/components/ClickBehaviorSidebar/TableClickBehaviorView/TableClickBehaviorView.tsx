@@ -10,7 +10,7 @@ import type {
 } from "metabase-types/api";
 
 import { hasActionsMenu } from "metabase/lib/click-behavior";
-import Column from "./Column";
+import { Column } from "./Column";
 
 const COLUMN_SORTING_ORDER_BY_CLICK_BEHAVIOR_TYPE = [
   "link",
@@ -41,7 +41,7 @@ interface Props {
   onColumnClick: (column: DatasetColumn) => void;
 }
 
-function TableClickBehaviorView({
+export function TableClickBehaviorView({
   columns,
   dashcard,
   getClickBehaviorForColumn,
@@ -96,6 +96,3 @@ function TableClickBehaviorView({
 
   return <>{groupedColumns.map(renderColumnGroup)}</>;
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default TableClickBehaviorView;

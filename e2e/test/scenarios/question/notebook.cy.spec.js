@@ -73,7 +73,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
     popover().within(() => {
       cy.icon("int").click();
-      cy.get("input").type("46");
+      cy.findByPlaceholderText("Enter a number").type("46");
       cy.contains("Add filter").click();
     });
 
@@ -116,14 +116,14 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("ID between 96 97").click();
+    cy.findByText("ID is between 96 and 97").click();
+    cy.findByDisplayValue("Between").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Between").click();
-    cy.findByTestId("operator-select-list").within(() => {
-      cy.contains("Is not");
-      cy.contains("Greater than");
-      cy.contains("Less than");
-    });
+    cy.contains("Is not");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.contains("Greater than");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.contains("Less than");
   });
 
   it("should append indexes to duplicate custom expression names (metabase#12104)", () => {
@@ -216,13 +216,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID is 2").click();
 
-    popover().find("input").type("3{enter}");
+    popover().findByRole("textbox").type("3{enter}{enter}");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID is 2 selections");
-
-    // Still loading
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Showing 98 rows");
 
     cy.wait("@dataset");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -509,20 +505,24 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     popover().contains("No description");
   });
 
-  it("should allow to pick a saved question when there are models", () => {
-    cy.createNativeQuestion({
-      name: "Orders, Model",
-      dataset: true,
-      native: { query: "SELECT * FROM ORDERS" },
-    });
+  it(
+    "should allow to pick a saved question when there are models",
+    { tags: "@flaky" },
+    () => {
+      cy.createNativeQuestion({
+        name: "Orders, Model",
+        dataset: true,
+        native: { query: "SELECT * FROM ORDERS" },
+      });
 
-    startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved Questions").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders, Count").click();
-    visualize();
-  });
+      startNewQuestion();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Saved Questions").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Orders, Count").click();
+      visualize();
+    },
+  );
 
   it('should not show "median" aggregation option for databases that do not support "percentile-aggregations" driver feature', () => {
     startNewQuestion();

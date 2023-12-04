@@ -689,115 +689,119 @@ const MODEL_NAME = "Test Action Model";
           });
         });
 
-        it("properly loads and updates date and time fields for implicit update actions", () => {
-          cy.get("@modelId").then(id => {
-            createImplicitAction({
-              kind: "update",
-              model_id: id,
-            });
-          });
-
-          createDashboardWithActionButton({
-            actionName: "Update",
-            idFilter: true,
-          });
-
-          filterWidget().click();
-          addWidgetStringFilter("1");
-
-          cy.findByRole("button", { name: "Update" }).click();
-
-          cy.wait("@prefetchValues");
-
-          const oldRow = many_data_types_rows[0];
-          const newTime = "2020-01-10T01:35:55";
-
-          modal().within(() => {
-            changeValue({
-              fieldName: "Date",
-              fieldType: "date",
-              oldValue: oldRow.date,
-              newValue: newTime.slice(0, 10),
+        it(
+          "properly loads and updates date and time fields for implicit update actions",
+          { tags: "@flaky" },
+          () => {
+            cy.get("@modelId").then(id => {
+              createImplicitAction({
+                kind: "update",
+                model_id: id,
+              });
             });
 
-            changeValue({
-              fieldName: "Datetime",
-              fieldType: "datetime-local",
-              oldValue: oldRow.datetime.replace(" ", "T"),
-              newValue: newTime,
+            createDashboardWithActionButton({
+              actionName: "Update",
+              idFilter: true,
             });
 
-            changeValue({
-              fieldName: "Time",
-              fieldType: "time",
-              oldValue: oldRow.time,
-              newValue: newTime.slice(-8),
-            });
+            filterWidget().click();
+            addWidgetStringFilter("1");
 
-            changeValue({
-              fieldName: "Timestamp",
-              fieldType: "datetime-local",
-              oldValue: oldRow.timestamp.replace(" ", "T"),
-              newValue: newTime,
-            });
+            cy.findByRole("button", { name: "Update" }).click();
 
-            // only postgres has timezone-aware columns
-            // the instance is in US/Pacific so it's -8 hours
-            if (dialect === "postgres") {
+            cy.wait("@prefetchValues");
+
+            const oldRow = many_data_types_rows[0];
+            const newTime = "2020-01-10T01:35:55";
+
+            modal().within(() => {
               changeValue({
-                fieldName: "DatetimeTZ",
+                fieldName: "Date",
+                fieldType: "date",
+                oldValue: oldRow.date,
+                newValue: newTime.slice(0, 10),
+              });
+
+              changeValue({
+                fieldName: "Datetime",
                 fieldType: "datetime-local",
-                oldValue: "2020-01-01T00:35:55",
+                oldValue: oldRow.datetime.replace(" ", "T"),
                 newValue: newTime,
               });
 
               changeValue({
-                fieldName: "TimestampTZ",
-                fieldType: "datetime-local",
-                oldValue: "2020-01-01T00:35:55",
-                newValue: newTime,
-              });
-            }
-
-            if (dialect === "mysql") {
-              changeValue({
-                fieldName: "DatetimeTZ",
-                fieldType: "datetime-local",
-                oldValue: oldRow.datetimeTZ.replace(" ", "T"),
-                newValue: newTime,
+                fieldName: "Time",
+                fieldType: "time",
+                oldValue: oldRow.time,
+                newValue: newTime.slice(-8),
               });
 
               changeValue({
-                fieldName: "TimestampTZ",
+                fieldName: "Timestamp",
                 fieldType: "datetime-local",
-                oldValue: oldRow.timestampTZ.replace(" ", "T"),
+                oldValue: oldRow.timestamp.replace(" ", "T"),
                 newValue: newTime,
               });
-            }
-            cy.button("Update").click();
-          });
 
-          cy.wait("@executeAction");
+              // only postgres has timezone-aware columns
+              // the instance is in US/Pacific so it's -8 hours
+              if (dialect === "postgres") {
+                changeValue({
+                  fieldName: "DatetimeTZ",
+                  fieldType: "datetime-local",
+                  oldValue: "2020-01-01T00:35:55",
+                  newValue: newTime,
+                });
 
-          queryWritableDB(
-            `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
-            dialect,
-          ).then(result => {
-            const row = result.rows[0];
+                changeValue({
+                  fieldName: "TimestampTZ",
+                  fieldType: "datetime-local",
+                  oldValue: "2020-01-01T00:35:55",
+                  newValue: newTime,
+                });
+              }
 
-            // the driver adds a time to this date so we have to use .include
-            expect(row.date).to.include(newTime.slice(0, 10));
-            expect(row.time).to.equal(newTime.slice(-8));
+              if (dialect === "mysql") {
+                changeValue({
+                  fieldName: "DatetimeTZ",
+                  fieldType: "datetime-local",
+                  oldValue: oldRow.datetimeTZ.replace(" ", "T"),
+                  newValue: newTime,
+                });
 
-            // metabase is smart and localizes these, so all of these are +8 hours
-            const newTimeAdjusted = newTime.replace("T01", "T09");
-            // we need to use .include because the driver adds milliseconds to the timestamp
-            expect(row.datetime).to.include(newTimeAdjusted);
-            expect(row.timestamp).to.include(newTimeAdjusted);
-            expect(row.datetimeTZ).to.include(newTimeAdjusted);
-            expect(row.timestampTZ).to.include(newTimeAdjusted);
-          });
-        });
+                changeValue({
+                  fieldName: "TimestampTZ",
+                  fieldType: "datetime-local",
+                  oldValue: oldRow.timestampTZ.replace(" ", "T"),
+                  newValue: newTime,
+                });
+              }
+              cy.button("Update").click();
+            });
+
+            cy.wait("@executeAction");
+
+            queryWritableDB(
+              `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
+              dialect,
+            ).then(result => {
+              const row = result.rows[0];
+
+              // the driver adds a time to this date so we have to use .include
+              expect(row.date).to.include(newTime.slice(0, 10));
+              expect(row.time).to.equal(newTime.slice(-8));
+
+              // metabase is smart and localizes these, so all of these are +8 hours
+              const newTimeAdjusted = newTime.replace("T01", "T09");
+              // we need to use .include because the driver adds milliseconds to the timestamp
+              expect(row.datetime).to.include(newTimeAdjusted);
+              expect(row.timestamp).to.include(newTimeAdjusted);
+              expect(row.datetimeTZ).to.include(newTimeAdjusted);
+              expect(row.timestampTZ).to.include(newTimeAdjusted);
+            });
+          },
+        );
       });
 
       describe("editing action before executing it", () => {
@@ -994,34 +998,38 @@ describe("action error handling", { tags: ["@external", "@actions"] }, () => {
     );
   });
 
-  it("should show detailed form errors for constraint violations when executing model actions", () => {
-    const actionName = "Update";
+  it(
+    "should show detailed form errors for constraint violations when executing model actions",
+    { tags: "@flaky" },
+    () => {
+      const actionName = "Update";
 
-    cy.get("@modelId").then(modelId => {
-      createImplicitAction({ kind: "update", model_id: modelId });
-    });
+      cy.get("@modelId").then(modelId => {
+        createImplicitAction({ kind: "update", model_id: modelId });
+      });
 
-    createDashboardWithActionButton({ actionName, idFilter: true });
+      createDashboardWithActionButton({ actionName, idFilter: true });
 
-    filterWidget().click();
-    addWidgetStringFilter("5");
-    cy.button(actionName).click();
-
-    cy.wait("@prefetchValues");
-
-    modal().within(() => {
-      cy.findByLabelText("Team Name").clear().type("Kind Koalas");
+      filterWidget().click();
+      addWidgetStringFilter("5");
       cy.button(actionName).click();
-      cy.wait("@executeAction");
 
-      cy.findByLabelText("Team Name").should("not.exist");
-      cy.findByLabelText(
-        "Team Name: This Team_name value already exists.",
-      ).should("exist");
+      cy.wait("@prefetchValues");
 
-      cy.findByText("Team_name already exists.").should("exist");
-    });
-  });
+      modal().within(() => {
+        cy.findByLabelText("Team Name").clear().type("Kind Koalas");
+        cy.button(actionName).click();
+        cy.wait("@executeAction");
+
+        cy.findByLabelText("Team Name").should("not.exist");
+        cy.findByLabelText(
+          "Team Name: This Team_name value already exists.",
+        ).should("exist");
+
+        cy.findByText("Team_name already exists.").should("exist");
+      });
+    },
+  );
 });
 
 describe(

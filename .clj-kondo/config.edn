@@ -338,6 +338,7 @@
     metabase.pulse.render.body                                      body
     metabase.pulse.render.common                                    common
     metabase.pulse.render.style                                     style
+    metabase.pulse.test-util                                        pulse.test-util
     metabase.pulse.parameters                                       pulse-params
     metabase.query-processor-test                                   qp.test
     metabase.query-processor.context                                qp.context
