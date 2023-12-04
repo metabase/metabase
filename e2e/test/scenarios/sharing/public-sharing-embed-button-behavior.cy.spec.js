@@ -10,8 +10,8 @@ import {
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
-describe("embed modal behavior", () => {
-  ["dashboard", "question"].forEach(resource => {
+["dashboard", "card"].forEach(resource => {
+  describe(`embed modal behavior for ${resource}s`, () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
@@ -142,7 +142,10 @@ describe("embed modal behavior", () => {
               visitResource(resource, id);
             });
 
-            openToEmbedModal({ isAdmin: true, isPublicSharingEnabled: false });
+            openToEmbedModal({
+              isAdmin: true,
+              isPublicSharingEnabled: false,
+            });
 
             cy.get(".Modal--full")
               .findByText("Embed in your application")
@@ -166,7 +169,7 @@ describe("embed modal behavior", () => {
 });
 
 function createResource(resource) {
-  if (resource === "question") {
+  if (resource === "card") {
     return cy.createQuestion({
       name: "Question",
       query: { "source-table": PRODUCTS_ID },
@@ -181,7 +184,7 @@ function createResource(resource) {
 
 function visitResource(resource, id) {
   console.log(id);
-  if (resource === "question") {
+  if (resource === "card") {
     visitQuestion(id);
   }
 
