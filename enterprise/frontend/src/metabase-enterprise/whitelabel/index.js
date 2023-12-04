@@ -27,7 +27,7 @@ import {
   enabledApplicationNameReplacement,
 } from "./lib/whitelabel";
 import { getLoadingMessageOptions } from "./lib/loading-message";
-import { HelpLinkRadio } from "./components/HelpLinkSettings";
+import { HelpLinkSettings } from "./components/HelpLinkSettings";
 
 if (hasPremiumFeature("whitelabel")) {
   PLUGIN_LANDING_PAGE.push(() => MetabaseSettings.get("landing-page"));
@@ -89,7 +89,7 @@ if (hasPremiumFeature("whitelabel")) {
               {t` by default.`}
             </p>
           ),
-          widget: HelpLinkRadio,
+          widget: HelpLinkSettings,
           defaultValue: "metabase",
         },
         {

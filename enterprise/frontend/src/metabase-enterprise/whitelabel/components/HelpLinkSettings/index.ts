@@ -1,1 +1,1 @@
-export { HelpLinkRadio } from "./HelpLinkRadio";
+export { HelpLinkSettings } from "./HelpLinkSettings";

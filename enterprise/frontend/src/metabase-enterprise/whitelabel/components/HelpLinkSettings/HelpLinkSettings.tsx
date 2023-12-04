@@ -20,7 +20,7 @@ interface Props {
 
 const supportedPrefixes = ["http://", "https://", "mailto:"];
 
-export const HelpLinkRadio = ({
+export const HelpLinkSettings = ({
   setting,
   onChangeSetting,
   settingValues,
