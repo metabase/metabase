@@ -1,6 +1,7 @@
 import _ from "underscore";
 import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
+import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 
@@ -22,6 +23,8 @@ import {
   PRODUCTS,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
+import type { State } from "metabase-types/store";
+import { createMockState } from "metabase-types/store/mocks";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
 import type Metadata from "metabase-lib/metadata/Metadata";
@@ -137,12 +140,18 @@ function createMetadata({
 }
 
 type SetupOpts = {
-  query?: Lib.Query;
+  state?: State;
   metadata?: Metadata;
+  query?: Lib.Query;
   hasExpressionInput?: boolean;
 };
 
 function setup({
+  state = createMockState({
+    entities: createMockEntitiesState({
+      databases: [createSampleDatabase()],
+    }),
+  }),
   metadata = createMetadata(),
   query = createQuery({ metadata }),
   hasExpressionInput = true,
@@ -170,6 +179,7 @@ function setup({
       hasExpressionInput={hasExpressionInput}
       onSelect={onSelect}
     />,
+    { storeInitialState: state },
   );
 
   function getRecentClause() {
@@ -399,8 +409,7 @@ describe("AggregationPicker", () => {
 
   describe("custom expressions", () => {
     it("should allow to enter a custom expression", async () => {
-      const { query, stageIndex, getRecentClause, getRecentClauseInfo } =
-        setup();
+      const { getRecentClauseInfo } = setup();
 
       const expression = "1 + 1";
       const expressionName = "My expression";
@@ -409,11 +418,7 @@ describe("AggregationPicker", () => {
       userEvent.type(screen.getByLabelText("Expression"), expression);
       userEvent.type(screen.getByLabelText("Name"), expressionName);
       userEvent.click(screen.getByRole("button", { name: "Done" }));
-
-      expect(getRecentClauseInfo()).toMatchObject({ displayName: expression });
-      expect(
-        Lib.displayInfo(query, stageIndex, getRecentClause()).displayName,
-      ).toBe(expressionName);
+      expect(getRecentClauseInfo().displayName).toBe(expressionName);
     });
 
     it("should open the editor when a named expression without operator is used", async () => {
@@ -431,7 +436,22 @@ describe("AggregationPicker", () => {
     });
 
     it("shouldn't be available if database doesn't support custom expressions", () => {
-      setup({ metadata: createMetadata({ hasExpressionSupport: false }) });
+      setup({
+        state: createMockState({
+          entities: createMockEntitiesState({
+            databases: [
+              {
+                ...createSampleDatabase(),
+                features: _.without(
+                  COMMON_DATABASE_FEATURES,
+                  "expression-aggregations",
+                ),
+              },
+            ],
+          }),
+        }),
+        metadata: createMetadata({ hasExpressionSupport: false }),
+      });
       expect(screen.queryByText("Custom Expression")).not.toBeInTheDocument();
     });
 
