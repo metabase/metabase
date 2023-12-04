@@ -143,7 +143,7 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "custom-formatting": {},
   "custom-homepage": false,
   "custom-homepage-dashboard": null,
-  "help-link": "default",
+  "help-link": "metabase",
   "help-link-custom-destination": "",
   "deprecation-notice-version": undefined,
   "email-configured?": false,

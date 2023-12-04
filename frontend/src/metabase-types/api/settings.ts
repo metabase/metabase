@@ -187,7 +187,7 @@ export interface OpenAiModel {
   owned_by: string;
 }
 
-export type HelpLinkSetting = "default" | "hidden" | "custom";
+export type HelpLinkSetting = "metabase" | "hidden" | "custom";
 
 export interface Settings {
   "active-users-count"?: number;

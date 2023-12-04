@@ -26,7 +26,7 @@ export const HelpLinkRadio = ({
   settingValues,
 }: Props) => {
   const [helpLinkSetting, setHelpLinkSetting] = useState(
-    settingValues["help-link"] || "default",
+    settingValues["help-link"] || "metabase",
   );
 
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +58,7 @@ export const HelpLinkRadio = ({
     <Stack>
       <Radio.Group value={helpLinkSetting} onChange={handleRadioChange}>
         <Stack>
-          <Radio label={t`Link to Metabase help`} value="default" />
+          <Radio label={t`Link to Metabase help`} value="metabase" />
           <Radio label={t`Hide it`} value="hidden" />
           <Radio label={t`Go to a custom destination...`} value="custom" />
         </Stack>
