@@ -374,8 +374,8 @@ export default class Filter extends MBQLClause {
         .filter(([value, options]) => value !== undefined && !options.hide)
         .map(
           (
-            [value, options],
-            index, // FIXME: remapping
+            [value, _options],
+            _index, // FIXME: remapping
           ) => value, // <Value
           //   key={index}
           //   value={value}

@@ -6,8 +6,6 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import type { IconProps } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
 
-import { color } from "metabase/lib/colors";
-
 import Search from "metabase/entities/search";
 
 import type { Collection } from "metabase-types/api";
@@ -53,8 +51,6 @@ interface Props<TId> {
   getCollectionIcon: (collection: Collection) => IconProps;
   children: React.ReactNode;
 }
-
-const getDefaultCollectionIconColor = () => color("text-light");
 
 function ItemPickerView<TId>({
   collections,
@@ -150,9 +146,6 @@ function ItemPickerView<TId>({
             key={`collection-${collection.id}`}
             item={collection}
             name={collection.name}
-            color={
-              icon.color ? color(icon.color) : getDefaultCollectionIconColor()
-            }
             icon={icon}
             selected={canSelect && checkIsItemSelected(collection)}
             canSelect={canSelect}
@@ -192,7 +185,6 @@ function ItemPickerView<TId>({
             key={`${item.id}`}
             item={item}
             name={item.getName()}
-            color={item.getColor()}
             icon={item.getIcon().name}
             selected={checkIsItemSelected(item)}
             canSelect={hasPermission}
