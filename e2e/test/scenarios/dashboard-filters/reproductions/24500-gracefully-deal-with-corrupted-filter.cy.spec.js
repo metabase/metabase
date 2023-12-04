@@ -51,6 +51,9 @@ describe("issues 15279 and 24500", () => {
   });
 
   it("corrupted dashboard filter should still appear in the UI without breaking other filters (metabase#15279, metabase#24500)", () => {
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         // Connect filters to the question
@@ -84,6 +87,8 @@ describe("issues 15279 and 24500", () => {
         visitDashboard(dashboard_id);
       },
     );
+    cy.wait("@dashcardQuery");
+    cy.findByTestId("dashcard").findByText("15279");
 
     cy.intercept("GET", "/api/dashboard/*/params/*/values").as("values");
 
