@@ -448,6 +448,18 @@ class DashboardGrid extends Component {
     const { layouts } = this.state;
     const rowHeight = this.getRowHeight();
 
+    const margin = [6, 6];
+    const containerPadding = [0, 0];
+
+    const positionParams = {
+      cols: GRID_COLUMNS.desktop,
+      containerPadding,
+      containerWidth: width,
+      margin,
+      rowHeight,
+      maxRows: Infinity,
+    };
+
     return (
       <>
         <GridLayout
@@ -459,8 +471,11 @@ class DashboardGrid extends Component {
           breakpoints={GRID_BREAKPOINTS}
           cols={GRID_COLUMNS}
           width={width}
-          margin={{ desktop: [6, 6], mobile: [6, 10] }}
-          containerPadding={[0, 0]}
+          margin={{
+            desktop: margin,
+            mobile: [6, 10],
+          }}
+          containerPadding={containerPadding}
           rowHeight={rowHeight}
           isDroppable
           droppingItem={{ i: String(outsideDraggedCardId), w: 4, h: 2 }}
@@ -484,11 +499,13 @@ class DashboardGrid extends Component {
           }}
           onDragStop={this.onDragStop}
           isEditing={this.isEditingLayout}
-          compactType="vertical"
+          compactType={null}
           items={this.getVisibleCards()}
           itemRenderer={this.renderGridItem}
         />
-        {this.isEditingLayout && <NewDashCardDragArea />}
+        {this.isEditingLayout && (
+          <NewDashCardDragArea positionParams={positionParams} />
+        )}
       </>
     );
   }
@@ -496,7 +513,10 @@ class DashboardGrid extends Component {
   render() {
     const { width } = this.props;
     return (
-      <div className="flex layout-centered" data-testid="dashboard-grid">
+      <div
+        className="flex layout-centered relative"
+        data-testid="dashboard-grid"
+      >
         {width > 0 ? this.renderGrid() : <div />}
         {this.renderAddSeriesModal()}
       </div>
