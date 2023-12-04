@@ -1,6 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
 import type {
-  Aggregatable,
+  Aggregable,
   AggregationClause,
   AggregationOperator,
   ColumnMetadata,
@@ -30,7 +30,7 @@ export function selectedAggregationOperators(
 export function aggregate(
   query: Query,
   stageIndex: number,
-  clause: Aggregatable,
+  clause: Aggregable,
 ): Query {
   return ML.aggregate(query, stageIndex, clause);
 }
