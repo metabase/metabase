@@ -251,7 +251,7 @@
           id))
    (cards->card-param-field-ids (map :card dashcards))))
 
-(defn dashcards->param-to-field-ids-map
+(defn get-linked-field-ids
   "Retrieve a map relating paramater ids to field ids."
   [dashcards]
   (letfn [(targets [params card]
@@ -264,12 +264,9 @@
                                      id)]
                         :when (seq ids)]
                     [(:parameter_id param) (set ids)])))]
-    (reduce (fn [acc {params :parameter_mappings card :card}]
-              (merge-with (fnil set/union #{})
-                acc
-                (targets params card)))
-            {}
-            dashcards)))
+    (->> dashcards
+         (mapv (fn [{params :parameter_mappings card :card}] (targets params card)))
+         (apply merge-with set/union))))
 
 (defn- dashboard->param-field-values
   "Return a map of Field ID to FieldValues (if any) for any Fields referenced by Cards in `dashboard`,

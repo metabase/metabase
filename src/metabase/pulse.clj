@@ -20,7 +20,7 @@
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.markdown :as markdown]
-   [metabase.pulse.parameters :as params]
+   [metabase.pulse.parameters :as pulse-params]
    [metabase.pulse.render :as render]
    [metabase.pulse.util :as pu]
    [metabase.query-processor :as qp]
@@ -158,7 +158,7 @@
   (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (cond
     (:card_id dashcard)
-    (let [parameters (merge-default-values (params/parameters pulse dashboard))]
+    (let [parameters (merge-default-values (pulse-params/parameters pulse dashboard))]
       (execute-dashboard-subscription-card dashboard dashcard (:card_id dashcard) parameters))
 
     ;; actions
@@ -172,9 +172,9 @@
     ;; text cards have existed for a while and I'm not sure if all existing text cards
     ;; will have virtual_card.display = "text", so assume everything else is a text card
     :else
-    (let [parameters (merge-default-values (params/parameters pulse dashboard))]
+    (let [parameters (merge-default-values (pulse-params/parameters pulse dashboard))]
       (-> dashcard
-          (params/process-virtual-dashcard parameters)
+          (pulse-params/process-virtual-dashcard parameters)
           escape-heading-markdown
           :visualization_settings
           (assoc :type :text)))))
@@ -284,7 +284,7 @@
 (defn- filter-text
   [filter]
   (truncate-mrkdwn
-   (format "*%s*\n%s" (:name filter) (params/value-string filter))
+   (format "*%s*\n%s" (:name filter) (pulse-params/value-string filter))
    attachment-text-length-limit))
 
 (defn- slack-dashboard-header
@@ -298,7 +298,7 @@
         creator-section {:type   "section"
                          :fields [{:type "mrkdwn"
                                    :text (str "Sent by " (-> pulse :creator :common_name))}]}
-        filters         (params/parameters pulse dashboard)
+        filters         (pulse-params/parameters pulse dashboard)
         filter-fields   (for [filter filters]
                           {:type "mrkdwn"
                            :text (filter-text filter)})
@@ -316,7 +316,7 @@
    [{:type "divider"}
     {:type "context"
      :elements [{:type "mrkdwn"
-                 :text (str "<" (params/dashboard-url (u/the-id dashboard) (params/parameters pulse dashboard)) "|"
+                 :text (str "<" (pulse-params/dashboard-url (u/the-id dashboard) (pulse-params/parameters pulse dashboard)) "|"
                             "*Sent from " (public-settings/site-name) "*>")}]}]})
 
 (def slack-width
