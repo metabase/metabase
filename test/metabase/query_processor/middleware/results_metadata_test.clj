@@ -319,3 +319,39 @@
                                                               {:name      "count"
                                                                :field_ref [:aggregation 0]}]}})}
                   (qp/process-query query))))))))
+
+(deftest ^:parallel result-metadata-preservation-test
+  (testing "result_metadata is preserved in the query processor if passed into the context"
+    (mt/dataset sample-dataset
+      (mt/with-temp [Card {base-card-id :id} {:dataset_query {:database (mt/id)
+                                                              :type     :query
+                                                              :query    {:source-table (mt/id :orders)
+                                                                         :expressions  {"Tax Rate" [:/
+                                                                                                    [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                                                                    [:field (mt/id :orders :total) {:base-type :type/Float}]]},
+                                                                         :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                                                        [:field (mt/id :orders :total) {:base-type :type/Float}]
+                                                                                        [:expression "Tax Rate"]]
+                                                                         :limit        10}}}
+                     Card {:keys [dataset_query result_metadata]
+                           :as   _card} {:dataset_query   {:type     :query
+                                                           :database (mt/id)
+                                                           :query    {:source-table (format "card__%s" base-card-id)}}
+                                         :result_metadata [{:semantic_type :type/Percentage
+                                                            :field_ref     [:field "Tax Rate" {:base-type :type/Float}]}]}]
+        (testing "The baseline behavior is for data results_metadata to be independently computed"
+          (let [results (qp/process-query dataset_query)]
+            ;; :type/Share is the computed semantic type as of 2023-11-30
+            (is (not= :type/Percentage (->> (get-in results [:data :results_metadata :columns])
+                                            (some (fn [{field-name :name :as field-metadata}]
+                                                    (when (= field-name "Tax Rate")
+                                                      field-metadata)))
+                                            :semantic_type)))))
+        (testing "When result_metadata is passed into the query processor context, it is preserved in the result."
+          (let [results (qp/process-query
+                          (assoc-in dataset_query [:info :metadata/dataset-metadata] result_metadata))]
+            (is (= :type/Percentage (->> (get-in results [:data :results_metadata :columns])
+                                         (some (fn [{field-name :name :as field-metadata}]
+                                                 (when (= field-name "Tax Rate")
+                                                   field-metadata)))
+                                         :semantic_type)))))))))

@@ -178,12 +178,9 @@
   HTML"
   ([timezone-id :- (s/maybe s/Str) card data]
    (prep-for-html-rendering timezone-id card data {}))
-  ([timezone-id :- (s/maybe s/Str) {:keys [result_metadata] :as card} {:keys [cols rows viz-settings]}
+  ([timezone-id :- (s/maybe s/Str) card {:keys [cols rows viz-settings]}
     {:keys [bar-column] :as data-attributes}]
-   (let [field-ref->curated-meta (zipmap (map :field_ref result_metadata) result_metadata)
-         ;; Add in user-curated metadata
-         cols (map (fn [{:keys [field_ref] :as col}] (into col (field-ref->curated-meta field_ref))) cols)
-         remapping-lookup (create-remapping-lookup cols)]
+   (let [remapping-lookup (create-remapping-lookup cols)]
      (cons
       (query-results->header-row remapping-lookup card cols bar-column)
       (query-results->row-seq
