@@ -96,13 +96,9 @@ const QueryDownloadWidget = ({
 
 interface QueryDownloadWidgetOpts {
   result?: Dataset;
-  isResultDirty?: boolean;
 }
 
-QueryDownloadWidget.shouldRender = ({
-  result,
-  isResultDirty,
-}: QueryDownloadWidgetOpts) => {
+QueryDownloadWidget.shouldRender = ({ result }: QueryDownloadWidgetOpts) => {
   return (
     result &&
     !result.error &&

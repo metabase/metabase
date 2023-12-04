@@ -81,7 +81,6 @@ export const SaveQuestionModal = ({
   onClose,
   multiStep,
   initialCollectionId,
-  onClickNewCollection,
 }: SaveQuestionModalProps) => {
   const handleOverwrite = useCallback(
     async (originalQuestion: Question) => {

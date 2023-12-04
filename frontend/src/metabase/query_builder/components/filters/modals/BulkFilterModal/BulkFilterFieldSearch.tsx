@@ -47,7 +47,7 @@ export const FieldSearch = ({
     <SearchContainer
       isActive={showSearch}
       onMouseEnter={() => setShowSearch(true)}
-      onMouseLeave={e => shouldClose() && setShowSearch(false)}
+      onMouseLeave={() => shouldClose() && setShowSearch(false)}
     >
       <SearchIcon
         name="search"

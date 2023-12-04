@@ -34,7 +34,7 @@ const STEPS: NotebookStepDef[] = [
   {
     type: "data",
     valid: query => !query.sourceQuery(),
-    active: query => true,
+    active: _query => true,
     clean: query => query,
     revert: null,
   },

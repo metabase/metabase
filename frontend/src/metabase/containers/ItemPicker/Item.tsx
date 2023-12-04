@@ -11,7 +11,6 @@ interface Props<TId> {
   item: PickerItem<TId>;
   name: string;
   icon: IconName | IconProps;
-  color: string;
   selected: boolean;
   canSelect: boolean;
   hasChildren?: boolean;
@@ -23,7 +22,6 @@ function Item<TId>({
   item,
   name,
   icon,
-  color,
   selected,
   canSelect,
   hasChildren,
