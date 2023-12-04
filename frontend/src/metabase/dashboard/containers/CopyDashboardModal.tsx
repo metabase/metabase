@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { dissoc } from "icepick";
 import { push } from "react-router-redux";
 import type { Params } from "react-router/lib/Router";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 
 import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
 import ModalContent from "metabase/components/ModalContent";
@@ -11,21 +11,20 @@ import ModalContent from "metabase/components/ModalContent";
 import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";
-import type { Dashboard } from "metabase-types/api";
+import type { Dashboard, DashboardId } from "metabase-types/api";
+import { useDashboardQuery } from "metabase/common/hooks";
 import {
-  type CopyDashboardFormProps,
   type CopyDashboardProperties,
   CopyDashboardForm,
 } from "../forms/CopyDashboardForm";
-import { getDashboardComplete } from "../selectors";
 
-interface CreateDashboardModalOwnProps
-  extends Omit<CopyDashboardFormProps, "onCancel"> {
+interface CreateDashboardModalOwnProps {
+  originalDashboardId?: DashboardId;
   onClose?: () => void;
-  params: Params;
+  params?: Params;
 }
 
-type Props = CreateDashboardModalOwnProps & CopyDashboardFormProps;
+type Props = CreateDashboardModalOwnProps;
 
 const getTitle = (dashboard: Dashboard | null, isShallowCopy: boolean) => {
   if (!dashboard?.name) {
@@ -37,19 +36,30 @@ const getTitle = (dashboard: Dashboard | null, isShallowCopy: boolean) => {
   }
 };
 
-export function CopyDashboardModal({ onClose, params, ...props }: Props) {
+export function CopyDashboardModal({
+  onClose,
+  params,
+  originalDashboardId,
+  ...props
+}: Props) {
   const [isShallowCopy, setIsShallowCopy] = useState(false);
 
-  const originalDashboard = useSelector(getDashboardComplete);
+  const dashboardId = originalDashboardId || Urls.extractEntityId(params?.slug);
+
+  const { data: originalDashboard, isLoading } = useDashboardQuery({
+    id: dashboardId,
+    reload: false,
+  });
+
   const dispatch = useDispatch();
 
+  if (!originalDashboard || isLoading) {
+    return null;
+  }
+
   const handleCopy = async (dashboard: CopyDashboardProperties) => {
-    const originalDashboardId = Urls.extractEntityId(params.slug);
     const action = await dispatch(
-      Dashboards.actions.copy(
-        { id: originalDashboardId },
-        dissoc(dashboard, "id"),
-      ),
+      Dashboards.actions.copy({ id: dashboardId }, dissoc(dashboard, "id")),
     );
     const newDashboard = Dashboards.HACK_getObjectFromAction(action);
     dispatch(push(Urls.dashboard(newDashboard)));

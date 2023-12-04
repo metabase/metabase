@@ -6,6 +6,7 @@ import ModalContent from "metabase/components/ModalContent";
 import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
 import { useCollectionListQuery } from "metabase/common/hooks";
 import { Flex, Loader } from "metabase/ui";
+import { CopyDashboardModal } from "metabase/dashboard/containers/CopyDashboardModal";
 
 interface EntityCopyModalProps {
   entityType: string;
@@ -26,6 +27,16 @@ const EntityCopyModal = ({
   ...props
 }: EntityCopyModalProps) => {
   const { data: collections } = useCollectionListQuery();
+
+  if (entityObject.model === "dashboard") {
+    return (
+      <CopyDashboardModal
+        onClose={onClose}
+        {...props}
+        originalDashboardId={entityObject.id}
+      />
+    );
+  }
 
   return (
     <CreateCollectionOnTheGo>
