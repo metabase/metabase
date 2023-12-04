@@ -1,5 +1,5 @@
 import type { MouseEvent } from "react";
-import { forwardRef, useState } from "react";
+import { forwardRef, useMemo, useState } from "react";
 import { useEvent } from "react-use";
 
 // TODO Add .d.ts file
@@ -22,36 +22,38 @@ export function NewDashCardDragArea({
   positionParams,
 }: NewDashCardDragAreaProps) {
   const [isActive, setActive] = useState(false);
-  const [nextCardPosition, setNextCardPosition] = useState({
-    col: 0,
-    row: 0,
-    size_x: 0,
-    size_y: 0,
+  const [position, setPosition] = useState({
+    top: 0,
+    left: 0,
+    width: 0,
+    height: 0,
   });
 
-  const handleSelectionEnd = ({
-    top,
-    left,
-    width,
-    height,
-  }: Position & Size) => {
+  const nextCardPosition = useMemo(() => {
     const { x: col, y: row } = calculateUtils.calcXY(
       positionParams,
-      top,
-      left,
+      position.top,
+      position.left,
       1, // hardcode 1:1 square
       1,
     );
     const { w: size_x, h: size_y } = calculateUtils.calcWH(
       positionParams,
-      width,
-      height,
+      position.width,
+      position.height,
       col,
       row,
     );
+    return { col, row, size_x, size_y };
+  }, [position, positionParams]);
 
-    setNextCardPosition({ col, row, size_x, size_y });
+  const handleSelectionEnd = () => {
     setActive(true);
+  };
+
+  const handleReset = () => {
+    setActive(false);
+    setPosition({ top: 0, left: 0, width: 0, height: 0 });
   };
 
   return (
@@ -59,11 +61,18 @@ export function NewDashCardDragArea({
       opened={isActive}
       disabled={!isActive}
       nextCardPosition={nextCardPosition}
-      onClose={() => setActive(false)}
+      onClose={handleReset}
     >
       <DragArea
         disabled={isActive}
-        onSelectionStart={() => setActive(false)}
+        position={position}
+        onSelectionStart={({ top, left }: Position) => {
+          setPosition({ top, left, width: 0, height: 0 });
+          setActive(false);
+        }}
+        onSelection={size => {
+          setPosition(position => ({ ...position, ...size }));
+        }}
         onSelectionEnd={handleSelectionEnd}
       />
     </NewDashCardMenu>
@@ -71,19 +80,18 @@ export function NewDashCardDragArea({
 }
 
 interface DragAreaProps {
+  position: Position & Size;
   disabled?: boolean;
-  onSelectionStart: () => void;
-  onSelectionEnd: (selection: Position & Size) => void;
+  onSelectionStart: (position: Position) => void;
+  onSelection: (size: Size) => void;
+  onSelectionEnd: () => void;
 }
 
 const DragArea = forwardRef<HTMLDivElement, DragAreaProps>(function DragArea(
-  { disabled, onSelectionStart, onSelectionEnd },
+  { position, disabled, onSelectionStart, onSelection, onSelectionEnd },
   ref,
 ) {
   const [isDragging, setIsDragging] = useState(false);
-
-  const [position, setPosition] = useState({ top: 0, left: 0 });
-  const [size, setSize] = useState({ width: 0, height: 0 });
 
   useEvent(
     "mousedown",
@@ -92,14 +100,13 @@ const DragArea = forwardRef<HTMLDivElement, DragAreaProps>(function DragArea(
         return;
       }
       setIsDragging(true);
-      setSize({ width: 0, height: 0 });
-      setPosition({
+
+      document.documentElement.classList.add("user-select-none");
+
+      onSelectionStart({
         top: event.offsetY + GRID_TOP_MARGIN,
         left: event.offsetX,
       });
-      document.documentElement.classList.add("user-select-none");
-
-      onSelectionStart();
     },
   );
 
@@ -112,7 +119,7 @@ const DragArea = forwardRef<HTMLDivElement, DragAreaProps>(function DragArea(
       if (isDragging) {
         const width = event.offsetX - position.left;
         const height = event.offsetY - position.top;
-        setSize({ width, height });
+        onSelection({ width, height });
       }
     },
   );
@@ -124,12 +131,12 @@ const DragArea = forwardRef<HTMLDivElement, DragAreaProps>(function DragArea(
     setIsDragging(false);
     document.documentElement.classList.remove("user-select-none");
 
-    if (size.width > 0 && size.height > 0) {
-      onSelectionEnd({ ...position, ...size });
+    if (position.width > 0 && position.height > 0) {
+      onSelectionEnd();
     }
   });
 
-  return <Area style={{ ...position, ...size }} ref={ref} />;
+  return <Area style={position} ref={ref} />;
 });
 
 const Area = styled.div`
