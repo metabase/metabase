@@ -7,7 +7,6 @@ const webpack = require("webpack");
 
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
-const HtmlWebpackHarddiskPlugin = require("html-webpack-harddisk-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
 const ReactRefreshPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
@@ -219,7 +218,6 @@ const config = (module.exports = {
       chunksSortMode: "manual",
       chunks: ["vendor", "styles", "app-main"],
       template: __dirname + "/resources/frontend_client/index_template.html",
-      alwaysWriteToDisk: true,
     }),
     new HtmlWebpackPlugin({
       filename: "../../public.html",
@@ -232,9 +230,6 @@ const config = (module.exports = {
       chunksSortMode: "manual",
       chunks: ["vendor", "styles", "app-embed"],
       template: __dirname + "/resources/frontend_client/index_template.html",
-    }),
-    new HtmlWebpackHarddiskPlugin({
-      outputPath: __dirname + "/resources/frontend_client/app/dist",
     }),
     new webpack.BannerPlugin({
       banner:
@@ -297,6 +292,7 @@ if (WEBPACK_BUNDLE === "hot") {
         warnings: true,
         errorDetails: false,
       },
+      writeToDisk: true,
     },
     // if webpack doesn't reload UI after code change in development
     // watchOptions: {
@@ -308,9 +304,7 @@ if (WEBPACK_BUNDLE === "hot") {
   };
 
   config.watchOptions = {
-    ignored: [
-      CLJS_SRC_PATH_DEV + "/**",
-    ],
+    ignored: [CLJS_SRC_PATH_DEV + "/**"],
   };
 
   config.plugins.unshift(
