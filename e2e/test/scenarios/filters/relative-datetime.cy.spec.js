@@ -292,7 +292,7 @@ const addStartingFrom = () => {
 
 const setRelativeDatetimeUnit = unit => {
   cy.findByLabelText("Unit").click();
-  cy.findByRole("listbox").findByText(unit).click();
+  cy.findAllByText(unit).last().click();
 };
 
 const setRelativeDatetimeValue = value => {
@@ -301,7 +301,7 @@ const setRelativeDatetimeValue = value => {
 
 const setStartingFromUnit = unit => {
   cy.findByLabelText("Starting from unit").click();
-  cy.findByRole("listbox").findByText(unit).click();
+  cy.findAllByText(unit).last().click();
 };
 
 const setStartingFromValue = value => {
