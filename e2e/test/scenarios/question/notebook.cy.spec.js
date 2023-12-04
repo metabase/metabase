@@ -172,9 +172,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     cy.button("Done").click();
 
-    cy.findByTestId("step-filter-0-0")
-      .contains("Price is greater than 1")
-      .click();
+    getNotebookStep("filter").contains("Price is greater than 1").click();
 
     // change the corresponding custom expression
     cy.get(".Icon-chevronleft").click();
@@ -183,12 +181,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     cy.get("@formula").clear().type("[Price] > 1 AND [Price] < 5{enter}");
 
-    cy.findByTestId("step-filter-0-0")
+    getNotebookStep("filter")
       .contains("Price is greater than 1")
       .should("exist");
-    cy.findByTestId("step-filter-0-0")
-      .contains("Price is less than 5")
-      .should("exist");
+    getNotebookStep("filter").contains("Price is less than 5").should("exist");
   });
 
   it("should show the real number of rows instead of HARD_ROW_LIMIT when loading (metabase#17397)", () => {
@@ -312,7 +308,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       cy.button("Done").should("not.be.disabled").click();
 
-      cy.findByTestId("step-filter-0-0").contains("Example").should("exist");
+      getNotebookStep("filter").contains("Example").should("exist");
 
       visualize();
 
