@@ -365,8 +365,8 @@
     ;; manually.
     (when-not write?
       (try
-        (log/trace (pr-str '(.setAutoCommit conn false)))
-        (.setAutoCommit conn false)
+        (log/trace (pr-str '(.setAutoCommit conn true)))
+        (.setAutoCommit conn true)
         (catch Throwable e
           (log/debug e "Error enabling connection autoCommit"))))
     (try
