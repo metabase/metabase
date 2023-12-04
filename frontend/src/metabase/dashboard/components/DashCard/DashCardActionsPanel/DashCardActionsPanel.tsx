@@ -16,12 +16,12 @@ import type {
 import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard } from "metabase/dashboard/utils";
 
-import { ChartSettingsButton } from "./ChartSettingsButton";
-import { DashCardTabMenu } from "./DashCardTabMenu";
-import { DashCardActionButton } from "./DashCardActionButton";
-import { AddSeriesButton } from "./AddSeriesButton";
-import { ActionSettingsButton } from "./ActionSettingsButton";
-import { LinkCardEditButton } from "./LinkCardEditButton";
+import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
+import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
+import { DashCardActionButton } from "./DashCardActionButton/DashCardActionButton";
+import { AddSeriesButton } from "./AddSeriesButton/AddSeriesButton";
+import { ActionSettingsButtonConnected } from "./ActionSettingsButton/ActionSettingsButton";
+import { LinkCardEditButton } from "./LinkCardEditButton/LinkCardEditButton";
 import {
   DashCardActionButtonsContainer,
   DashCardActionsPanelContainer,
@@ -142,7 +142,7 @@ export function DashCardActionsPanel({
 
     if (dashcard && isActionDashCard(dashcard)) {
       buttons.push(
-        <ActionSettingsButton
+        <ActionSettingsButtonConnected
           key="action-settings-button"
           dashboard={dashboard}
           dashcard={dashcard}

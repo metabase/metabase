@@ -71,7 +71,7 @@ describe("SettingsEditorApp", () => {
     });
 
     expect(
-      await screen.findByLabelText("SAML Identity Provider URL"),
+      await screen.findByLabelText(/SAML Identity Provider URL/),
     ).toHaveValue("Using value of env var $MB_SAML_IDENTITY_PROVIDER_URI");
   });
 });

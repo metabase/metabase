@@ -20,7 +20,7 @@ export type ErrorActionButtonProps = QueryValidationErrorProps & {
   toggleTemplateTagsEditor: () => void;
 };
 
-const mapStateToProps = (state: any, props: QueryValidationErrorProps) => ({
+const mapStateToProps = (state: any) => ({
   uiControls: getUiControls(state),
 });
 

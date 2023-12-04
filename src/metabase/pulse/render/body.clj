@@ -151,8 +151,15 @@
 
 (s/defn ^:private query-results->row-seq
   "Returns a seq of stringified formatted rows that can be rendered into HTML"
-  [timezone-id :- (s/maybe s/Str) remapping-lookup cols rows viz-settings {:keys [bar-column min-value max-value]}]
-  (let [formatters (into [] (map #(get-format timezone-id % viz-settings)) cols)]
+  [timezone-id :- (s/maybe s/Str)
+   remapping-lookup
+   cols
+   rows
+   viz-settings
+   {:keys [bar-column min-value max-value]}]
+  (let [formatters (into []
+                         (map #(get-format timezone-id % viz-settings))
+                         cols)]
     (for [row rows]
       {:bar-width (some-> (and bar-column (bar-column row))
                           (normalize-bar-value min-value max-value))
@@ -176,10 +183,13 @@
    (let [remapping-lookup (create-remapping-lookup cols)]
      (cons
       (query-results->header-row remapping-lookup card cols bar-column)
-      (query-results->row-seq timezone-id remapping-lookup cols
-                              (take rows-limit rows)
-                              viz-settings
-                              data-attributes)))))
+      (query-results->row-seq
+       timezone-id
+       remapping-lookup
+       cols
+       (take rows-limit rows)
+       viz-settings
+       data-attributes)))))
 
 (defn- strong-limit-text [number]
   [:strong {:style (style/style {:color style/color-gray-3})} (h (common/format-number number))])
@@ -203,7 +213,6 @@
     [:div {:style (style/style {:color         style/color-gray-2
                                 :margin-bottom :16px})}
      (trs "More results have been included as a file attachment")]))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     render                                                     |
@@ -1000,7 +1009,6 @@
      [:div
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
-
 
 (s/defmethod render :empty :- common/RenderedPulseCard
   [_ render-type _ _ _ _]

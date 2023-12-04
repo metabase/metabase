@@ -10,6 +10,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database Table]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.store :as qp.store]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
@@ -183,3 +184,27 @@
            (fn [{schema-name :schema}]
              (testing (format "schema name = %s" (pr-str schema-name))
                (is (not= \v (first schema-name)))))))))))
+
+(deftest have-select-privilege?-test
+  (testing "cheking select privilege works with and without auto commit (#36040)"
+    (let [default-have-slect-privilege?
+          #(identical? (get-method sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc)
+                       (get-method sql-jdbc.sync.interface/have-select-privilege? %))]
+      (mt/test-drivers (into #{}
+                             (filter default-have-slect-privilege?)
+                             (descendants driver/hierarchy :sql-jdbc))
+        (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :users))]
+          (qp.store/with-metadata-provider (mt/id)
+            (testing (sql-jdbc.describe-database/simple-select-probe-query driver/*driver* schema table-name)
+              (doseq [auto-commit [true false]]
+                (testing (pr-str {:auto-commit auto-commit :schema schema :name table-name})
+                  (sql-jdbc.execute/do-with-connection-with-options
+                   driver/*driver*
+                   (mt/db)
+                   nil
+                   (fn [^java.sql.Connection conn]
+                     (.setAutoCommit conn auto-commit)
+                     (is (false? (sql-jdbc.sync.interface/have-select-privilege?
+                                  driver/*driver* conn schema (str table-name "_should_not_exist"))))
+                     (is (true? (sql-jdbc.sync.interface/have-select-privilege?
+                                 driver/*driver* conn schema table-name))))))))))))))

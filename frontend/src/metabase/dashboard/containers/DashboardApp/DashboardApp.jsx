@@ -11,7 +11,7 @@ import title from "metabase/hoc/Title";
 import favicon from "metabase/hoc/Favicon";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
-import Dashboard from "metabase/dashboard/components/Dashboard/Dashboard";
+import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
 
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
@@ -24,8 +24,6 @@ import {
   canManageSubscriptions,
   getUserIsAdmin,
 } from "metabase/selectors/user";
-
-import { getEmbedOptions } from "metabase/selectors/embed";
 
 import { parseHashOptions } from "metabase/lib/browser";
 import * as Urls from "metabase/lib/urls";
@@ -103,7 +101,6 @@ const mapStateToProps = state => {
     isLoadingComplete: getIsLoadingComplete(state),
     isHeaderVisible: getIsHeaderVisible(state),
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
-    embedOptions: getEmbedOptions(state),
     selectedTabId: getSelectedTabId(state),
     isAutoApplyFilters: getIsAutoApplyFilters(state),
     isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
@@ -236,7 +233,7 @@ DashboardApp.propTypes = {
   route: PropTypes.object,
 };
 
-export default _.compose(
+export const DashboardAppConnected = _.compose(
   connect(mapStateToProps, mapDispatchToProps),
   favicon(({ pageFavicon }) => pageFavicon),
   title(({ dashboard, documentTitle }) => ({

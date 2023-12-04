@@ -171,7 +171,7 @@ export function FilterPopover({
       : undefined;
     return (
       <ExpressionWidget
-        query={query}
+        legacyQuery={query}
         expression={expression}
         startRule="boolean"
         header={<ExpressionWidgetHeader onBack={handleExpressionWidgetClose} />}

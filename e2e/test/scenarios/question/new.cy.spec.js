@@ -176,7 +176,6 @@ describe("scenarios > question > new", () => {
       cy.signIn("nocollection");
       startNewQuestion();
       popover().within(() => {
-        cy.findByText("Raw Data").click();
         cy.findByText("Orders").click();
       });
       visualize();

@@ -39,7 +39,7 @@ interface AggregationPickerProps {
   legacyQuery: StructuredQuery;
   legacyClause?: LegacyAggregation;
   maxHeight?: number;
-  onSelect: (operator: Lib.Aggregatable) => void;
+  onSelect: (operator: Lib.Aggregable) => void;
   onSelectLegacy: (operator: LegacyAggregationClause) => void;
   onClose?: () => void;
 }
@@ -213,7 +213,7 @@ export function AggregationPicker({
   if (isEditingExpression) {
     return (
       <ExpressionWidget
-        query={legacyQuery}
+        legacyQuery={legacyQuery}
         name={AGGREGATION.getName(legacyClause)}
         expression={AGGREGATION.getContent(legacyClause)}
         withName

@@ -1497,7 +1497,7 @@
       (t2.with-temp/with-temp [Collection {collection-id :id} {:namespace "x"}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"A Card can only go in Collections in the \"default\" namespace"
+             #"A Card can only go in Collections in the \"default\" or :analytics namespace."
              (collection/check-collection-namespace Card collection-id)))))
 
     (testing "Should throw exception if Collection does not exist"
@@ -1681,7 +1681,7 @@
 
 (deftest instance-analytics-collections-test
   (testing "Instance analytics and it's contents isn't writable, even for admins."
-    (t2.with-temp/with-temp [Collection audit-collection {}
+    (t2.with-temp/with-temp [Collection audit-collection {:type "instance-analytics"}
                              Card       audit-card       {:collection_id (:id audit-collection)}
                              Dashboard  audit-dashboard  {:collection_id (:id audit-collection)}
                              Collection cr-collection    {}
@@ -1690,7 +1690,7 @@
       (with-redefs [perms/default-audit-collection          (constantly audit-collection)
                     perms/default-custom-reports-collection (constantly cr-collection)]
         (mt/with-current-user (mt/user->id :crowberto)
-          (premium-features-test/with-premium-features #{:audit-app}
+          (premium-features-test/with-additional-premium-features #{:audit-app}
             (is (not (mi/can-write? audit-collection))
                 "Admin isn't able to write to audit collection")
             (is (not (mi/can-write? audit-card))

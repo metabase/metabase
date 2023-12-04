@@ -15,7 +15,8 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   #?@(:clj ([metabase.util.log :as log]))))
 
 (defmulti =
   "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule
@@ -158,15 +159,38 @@
         (not-empty (filter #(clojure.core/= (:id %) ref-id) columns)))
       []))
 
+(defn- ambiguous-match-error [a-ref columns]
+  (ex-info "Ambiguous match! Implement more logic in disambiguate-matches."
+           {:ref a-ref
+            :columns columns}))
+
+(mu/defn ^:private expression-column? [column]
+  (or (= (:lib/source column) :source/expressions)
+      (:lib/expression-name column)))
+
+(mu/defn ^:private disambiguate-matches-dislike-field-refs-to-expressions :- [:maybe ::lib.schema.metadata/column]
+  "If a custom column is a simple wrapper for a field, that column gets `:id`, `:table_id`, etc.
+  A custom column should get a ref like `[:expression {} \"expr name\"]`, not `[:field {} 17]`.
+  If we got a `:field` ref, prefer matches which are not `:lib/source :source/expressions`."
+  [a-ref   :- ::lib.schema.ref/ref
+   columns :- [:sequential ::lib.schema.metadata/column]]
+  (or (when (= (first a-ref) :field)
+        (when-let [non-exprs (not-empty (remove expression-column? columns))]
+          (when-not (next non-exprs)
+            (first non-exprs))))
+      ;; In all other cases, this is an ambiguous match.
+      #_(throw (ambiguous-match-error a-ref columns))
+      #?(:cljs (js/console.warn (ambiguous-match-error a-ref columns))
+         :clj  (log/warn (ambiguous-match-error a-ref columns)))))
+
 (mu/defn ^:private disambiguate-matches-prefer-explicit :- [:maybe ::lib.schema.metadata/column]
+  "Prefers table-default or explicitly joined columns over implicitly joinable ones."
   [a-ref   :- ::lib.schema.ref/ref
    columns :- [:sequential ::lib.schema.metadata/column]]
   (if-let [no-implicit (not-empty (remove :fk-field-id columns))]
     (if-not (next no-implicit)
       (first no-implicit)
-      (throw (ex-info "Ambiguous match! Implement more logic in disambiguate-matches."
-                      {:ref a-ref
-                       :columns columns})))
+      (disambiguate-matches-dislike-field-refs-to-expressions a-ref no-implicit))
     nil))
 
 (mu/defn ^:private disambiguate-matches-no-alias :- [:maybe ::lib.schema.metadata/column]
@@ -196,7 +220,11 @@
       (when-let [matches (not-empty (filter #(clojure.core/= (column-join-alias %) join-alias) columns))]
         (if-not (next matches)
           (first matches)
-          (throw (ex-info "Multiple plausible matches with the same :join-alias - more disambiguation needed"
+          (#?(:cljs js/console.warn :clj log/warn)
+           "Multiple plausible matches with the same :join-alias - more disambiguation needed"
+           {:ref     a-ref
+            :matches matches})
+          #_(throw (ex-info "Multiple plausible matches with the same :join-alias - more disambiguation needed"
                           {:ref     a-ref
                            :matches matches}))))
       (disambiguate-matches-no-alias a-ref columns))))

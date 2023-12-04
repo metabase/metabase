@@ -143,7 +143,7 @@ function setup({
   const onSelect = jest.fn();
   const onSelectLegacy = jest.fn();
 
-  function handleSelect(clause: Lib.Aggregatable) {
+  function handleSelect(clause: Lib.Aggregable) {
     const nextQuery = Lib.aggregate(query, 0, clause);
     const aggregations = Lib.aggregations(nextQuery, 0);
     const recentAggregation = aggregations[aggregations.length - 1];

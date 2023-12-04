@@ -22,8 +22,8 @@ import Bookmark from "metabase/entities/bookmarks";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 
 import { TextOptionsButton } from "metabase/dashboard/components/TextOptions/TextOptionsButton";
-import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
-import DashboardBookmark from "metabase/dashboard/components/DashboardBookmark";
+import { ParametersPopover } from "metabase/dashboard/components/ParametersPopover";
+import { DashboardBookmark } from "metabase/dashboard/components/DashboardBookmark";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import { getPulseFormInput } from "metabase/pulse/selectors";
@@ -208,11 +208,11 @@ class DashboardHeaderContainer extends Component {
   }
 
   onRevert() {
-    this.props.fetchDashboard(
-      this.props.dashboard.id,
-      this.props.location.query,
-      { preserveParameters: true },
-    );
+    this.props.fetchDashboard({
+      dashId: this.props.dashboard.id,
+      queryParams: this.props.location.query,
+      options: { preserveParameters: true },
+    });
   }
 
   async onSave() {
@@ -554,6 +554,7 @@ class DashboardHeaderContainer extends Component {
       collection,
       isEditing,
       isFullscreen,
+      isNavBarOpen,
       isAdditionalInfoVisible,
       setDashboardAttribute,
       setSidebar,
@@ -577,7 +578,7 @@ class DashboardHeaderContainer extends Component {
           }
           isLastEditInfoVisible={hasLastEditInfo && isAdditionalInfoVisible}
           isEditingInfo={isEditing}
-          isNavBarOpen={this.props.isNavBarOpen}
+          isNavBarOpen={isNavBarOpen}
           headerButtons={this.getHeaderButtons()}
           editWarning={this.getEditWarning(dashboard)}
           editingTitle={t`You're editing this dashboard.`.concat(

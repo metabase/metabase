@@ -52,9 +52,9 @@
   '("https://www.googleapis.com/auth/bigquery"
     "https://www.googleapis.com/auth/drive"))
 
-(defn- database->client
-  ^BigQuery [database]
-  (let [creds   (bigquery.common/database-details->service-account-credential (:details database))
+(defn- database-details->client
+  ^BigQuery [details]
+  (let [creds   (bigquery.common/database-details->service-account-credential details)
         bq-bldr (doto (BigQueryOptions/newBuilder)
                   (.setCredentials (.createScoped creds bigquery-scopes)))]
     (.. bq-bldr build getService)))
@@ -65,25 +65,23 @@
 
 (defn- list-tables
   "Fetch all tables (new pages are loaded automatically by the API)."
-  (^Iterable [database]
-   (list-tables database false))
-  (^Iterable [{{:keys [project-id dataset-filters-type dataset-filters-patterns]} :details, :as database} validate-dataset?]
-   (list-tables (database->client database)
-                (or project-id (bigquery.common/database-details->credential-project-id (:details database)))
-                dataset-filters-type
-                dataset-filters-patterns
-                (boolean validate-dataset?)))
-  (^Iterable [^BigQuery client ^String project-id ^String filter-type ^String filter-patterns ^Boolean validate-dataset?]
-   (let [datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
-         inclusion-patterns (when (= "inclusion" filter-type) filter-patterns)
-         exclusion-patterns (when (= "exclusion" filter-type) filter-patterns)
+  (^Iterable [database-details]
+   (list-tables database-details {:validate-dataset? false}))
+  (^Iterable [{:keys [project-id dataset-filters-type dataset-filters-patterns] :as details} {:keys [validate-dataset?]}]
+   (let [client (database-details->client details)
+         project-id (or project-id (bigquery.common/database-details->credential-project-id details))
+         datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
+         inclusion-patterns (when (= "inclusion" dataset-filters-type) dataset-filters-patterns)
+         exclusion-patterns (when (= "exclusion" dataset-filters-type) dataset-filters-patterns)
          dataset-iter (for [^Dataset dataset (.iterateAll datasets)
                             :let [^DatasetId dataset-id (.. dataset getDatasetId)]
                             :when (driver.s/include-schema? inclusion-patterns
                                                             exclusion-patterns
                                                             (.getDataset dataset-id))]
                         dataset-id)]
-     (when (and (not= filter-type "all") validate-dataset? (zero? (count dataset-iter)))
+     (when (and (not= dataset-filters-type "all")
+                validate-dataset?
+                (zero? (count dataset-iter)))
        (throw (ex-info (tru "Looks like we cannot find any matching datasets.")
                        {::driver/can-connect-message? true})))
      (apply concat (for [^DatasetId dataset-id dataset-iter]
@@ -94,7 +92,7 @@
 
 (defmethod driver/describe-database :bigquery-cloud-sdk
   [_ database]
-  (let [tables (list-tables database)]
+  (let [tables (list-tables (:details database))]
     {:tables (set (for [^Table table tables
                         :let  [^TableId table-id  (.getTableId table)
                                ^String dataset-id (.getDataset table-id)]]
@@ -103,7 +101,7 @@
 (defmethod driver/can-connect? :bigquery-cloud-sdk
   [_ details-map]
   ;; check whether we can connect by seeing whether listing tables succeeds
-  (try (some? (list-tables {:details details-map} ::validate-dataset))
+  (try (some? (list-tables details-map {:validate-dataset? true}))
        (catch Exception e
          (when (::driver/can-connect-message? (ex-data e))
            (throw e))
@@ -115,7 +113,7 @@
 
 (mu/defn ^:private get-table :- (ms/InstanceOfClass Table)
   (^Table [{{:keys [project-id]} :details, :as database} dataset-id table-id]
-   (get-table (database->client database) project-id dataset-id table-id))
+   (get-table (database-details->client (:details database)) project-id dataset-id table-id))
 
   (^Table [^BigQuery client :- (ms/InstanceOfClass BigQuery)
            project-id       :- [:maybe ::lib.schema.common/non-blank-string]
@@ -297,7 +295,7 @@
 (defn- execute-bigquery-on-db
   ^TableResult [database sql parameters cancel-chan cancel-requested?]
   (execute-bigquery
-   (database->client database)
+   (database-details->client (:details database))
    sql
    parameters
    cancel-chan
