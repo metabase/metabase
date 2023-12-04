@@ -204,7 +204,7 @@ function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
 
   function getRecentExpressionClause() {
     expect(onChangeClause).toHaveBeenCalled();
-    const [_name, clause] = onChangeClause.mock.calls.at(-1);
+    const [_name, clause] = onChangeClause.mock.lastCall;
     return clause;
   }
 
