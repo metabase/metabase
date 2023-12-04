@@ -114,3 +114,7 @@ textarea {
 .outline-none {
   outline: none;
 }
+
+.user-select-none {
+  user-select: none !important;
+}

@@ -39,6 +39,7 @@ import { generateMobileLayout } from "./grid/utils";
 
 import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
 import { DashCard } from "./DashCard/DashCard";
+import { NewDashCardDragArea } from "./NewDashCardDragArea";
 
 const mapDispatchToProps = { addUndo };
 
@@ -448,29 +449,25 @@ class DashboardGrid extends Component {
     const rowHeight = this.getRowHeight();
 
     return (
-      <GridLayout
-        className={cx("DashboardGrid", {
-          "Dash--editing": this.isEditingLayout,
-          "Dash--dragging": this.state.isDragging,
-        })}
-        layouts={layouts}
-        breakpoints={GRID_BREAKPOINTS}
-        cols={GRID_COLUMNS}
-        width={width}
-        margin={{ desktop: [6, 6], mobile: [6, 10] }}
-        containerPadding={[0, 0]}
-        rowHeight={rowHeight}
-        isDroppable
-        droppingItem={{ i: String(outsideDraggedCardId), w: 4, h: 2 }}
-        onLayoutChange={this.onLayoutChange}
-        onDrag={this.onDrag}
-        onDrop={(nextLayout, item, event) => {
-          console.log("### onDrop", {
-            layout: layouts.desktop,
-            nextLayout,
-            item,
-            outsideDraggedCardId,
-            addCardToDashboard: {
+      <>
+        <GridLayout
+          className={cx("DashboardGrid", {
+            "Dash--editing": this.isEditingLayout,
+            "Dash--dragging": this.state.isDragging,
+          })}
+          layouts={layouts}
+          breakpoints={GRID_BREAKPOINTS}
+          cols={GRID_COLUMNS}
+          width={width}
+          margin={{ desktop: [6, 6], mobile: [6, 10] }}
+          containerPadding={[0, 0]}
+          rowHeight={rowHeight}
+          isDroppable
+          droppingItem={{ i: String(outsideDraggedCardId), w: 4, h: 2 }}
+          onLayoutChange={this.onLayoutChange}
+          onDrag={this.onDrag}
+          onDrop={(nextLayout, item, event) => {
+            addCardToDashboard({
               dashId: dashboard.id,
               cardId: outsideDraggedCardId,
               tabId: selectedTabId,
@@ -480,30 +477,19 @@ class DashboardGrid extends Component {
                 size_x: item.w,
                 size_y: item.h,
               },
-            },
-          });
+            });
 
-          addCardToDashboard({
-            dashId: dashboard.id,
-            cardId: outsideDraggedCardId,
-            tabId: selectedTabId,
-            position: {
-              col: item.x,
-              row: item.y,
-              size_x: item.w,
-              size_y: item.h,
-            },
-          });
-
-          // `breakpoint: "desktop"` because dragging isn't enabled on mobile
-          this.onLayoutChange({ layout: nextLayout, breakpoint: "desktop" });
-        }}
-        onDragStop={this.onDragStop}
-        isEditing={this.isEditingLayout}
-        compactType="vertical"
-        items={this.getVisibleCards()}
-        itemRenderer={this.renderGridItem}
-      />
+            // `breakpoint: "desktop"` because dragging isn't enabled on mobile
+            this.onLayoutChange({ layout: nextLayout, breakpoint: "desktop" });
+          }}
+          onDragStop={this.onDragStop}
+          isEditing={this.isEditingLayout}
+          compactType="vertical"
+          items={this.getVisibleCards()}
+          itemRenderer={this.renderGridItem}
+        />
+        {this.isEditingLayout && <NewDashCardDragArea />}
+      </>
     );
   }
 
