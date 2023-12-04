@@ -41,22 +41,6 @@ export function initializeEmbedding(store) {
       }
     });
 
-    if (IS_EMBED_PREVIEW) {
-      let currentLocation;
-      store.subscribe(() => {
-        const previousLocation = currentLocation;
-        currentLocation = store.getState().routing.locationBeforeTransitions;
-
-        if (
-          previousLocation &&
-          (currentLocation.search !== previousLocation.search ||
-            currentLocation.hash !== previousLocation.hash)
-        ) {
-          store.dispatch(setOptions(currentLocation));
-        }
-      });
-    }
-
     store.dispatch(setOptions(window.location));
   }
 }
