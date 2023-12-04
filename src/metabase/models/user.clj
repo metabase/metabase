@@ -56,7 +56,7 @@
    :type             mi/transform-keyword})
 
 (def ^:private allowed-user-types
-  #{:internal :personal})
+  #{:internal :personal :api-key})
 
 (def ^:private insert-default-values
   {:date_joined  :%now
@@ -188,13 +188,23 @@
            common-name)
       (assoc :common_name common-name))))
 
+(defn- maybe-get-name-from-api-key
+  "If the user is an API Key user, replace any existing name with the name from the API Key table."
+  [{:keys [type] :as user}]
+  (cond-> user
+    (= :api-key type)
+    (assoc :first_name (i18n/tru "API Key:")
+           :last_name (:name (t2/select-one [:model/ApiKey :name] :user_id (:id user))))))
+
 (t2/define-after-select :model/User
   [user]
-  (add-common-name user))
+  (-> user
+      maybe-get-name-from-api-key
+      add-common-name))
 
 (def ^:private default-user-columns
   "Sequence of columns that are normally returned when fetching a User from the DB."
-  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb])
+  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb :type])
 
 (def admin-or-self-visible-columns
   "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user
