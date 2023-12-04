@@ -561,7 +561,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
           openTable({
             database: WRITABLE_DB_ID,
             table: tableId,
-            mode: "notebook",
+            mode: "notebook2",
           });
         },
       );
