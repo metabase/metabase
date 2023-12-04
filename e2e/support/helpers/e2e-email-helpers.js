@@ -97,7 +97,6 @@ export const setupSubscriptionWithRecipient = recipient => {
 };
 
 export const openPulseSubscription = () => {
-  cy.findByLabelText("subscriptions").click();
   sidebar().findByLabelText("Pulse Card").click();
 };
 
