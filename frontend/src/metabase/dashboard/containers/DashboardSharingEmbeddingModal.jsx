@@ -72,7 +72,9 @@ class DashboardSharingEmbeddingModal extends Component {
             updateEmbeddingParams(dashboard, embeddingParams)
           }
           onClose={onClose}
-          getPublicUrl={({ public_uuid }) => Urls.publicDashboard(public_uuid)}
+          getPublicUrl={({ public_uuid }) =>
+            Urls.publicDashboard({ uuid: public_uuid })
+          }
         />
       </Modal>
     );
@@ -81,7 +83,7 @@ class DashboardSharingEmbeddingModal extends Component {
 
 DashboardSharingEmbeddingModal.defaultProps = defaultProps;
 
-export default connect(
+export const DashboardSharingEmbeddingModalConnected = connect(
   mapStateToProps,
   mapDispatchToProps,
 )(DashboardSharingEmbeddingModal);

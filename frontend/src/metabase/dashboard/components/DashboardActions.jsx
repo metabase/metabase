@@ -43,7 +43,6 @@ export const getDashboardActions = (
       dashCard => !["text", "heading"].includes(dashCard.card.display),
     );
 
-  const canShareDashboard = hasCards;
   const canCreateSubscription = hasDataCards && canManageSubscriptions;
 
   const emailConfigured = formInput?.channels?.email?.configured || false;
@@ -72,9 +71,7 @@ export const getDashboardActions = (
       );
     }
 
-    if (canShareDashboard) {
-      buttons.push(<DashboardEmbedAction dashboard={dashboard} />);
-    }
+    buttons.push(<DashboardEmbedAction dashboard={dashboard} />);
   }
 
   if (!isEditing && !isEmpty) {

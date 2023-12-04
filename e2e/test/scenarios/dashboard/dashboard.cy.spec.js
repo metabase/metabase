@@ -874,6 +874,9 @@ describe("scenarios > dashboard", () => {
     cy.contains("37.65");
     assertScrollBarExists();
     cy.icon("share").click();
+
+    cy.findByTestId("embed-header-menu").findByText("Embed").click();
+
     cy.get(".Modal--full").within(() => {
       cy.icon("close").click();
     });

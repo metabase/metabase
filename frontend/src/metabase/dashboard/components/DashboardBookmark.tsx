@@ -9,7 +9,7 @@ export interface DashboardBookmarkProps {
   onDeleteBookmark: (dashboard: Dashboard) => void;
 }
 
-const DashboardBookmark = ({
+export const DashboardBookmark = ({
   dashboard,
   isBookmarked,
   onCreateBookmark,
@@ -31,6 +31,3 @@ const DashboardBookmark = ({
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DashboardBookmark;

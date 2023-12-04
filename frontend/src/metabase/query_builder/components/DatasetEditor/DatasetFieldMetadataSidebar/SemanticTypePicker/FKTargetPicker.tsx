@@ -39,7 +39,7 @@ function getOptionValue(option: FieldObject) {
   return option.id;
 }
 
-function getOptionIcon(option: FieldObject) {
+function getOptionIcon() {
   return null;
 }
 

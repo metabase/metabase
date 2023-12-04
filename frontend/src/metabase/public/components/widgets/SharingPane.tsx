@@ -43,7 +43,6 @@ export default function SharingPane({
   resourceType,
   onCreatePublicLink,
   onDisablePublicLink,
-  extensions = [],
   getPublicUrl,
   onChangeEmbedType,
   isAdmin,

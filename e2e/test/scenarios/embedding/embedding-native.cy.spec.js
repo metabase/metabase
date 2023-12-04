@@ -5,6 +5,7 @@ import {
   clearFilterWidget,
   visitEmbeddedPage,
   visitIframe,
+  openStaticEmbeddingModal,
 } from "e2e/support/helpers";
 
 import { questionDetails } from "./shared/embedding-native";
@@ -22,7 +23,7 @@ describe("scenarios > embedding > native questions", () => {
         visitQuestion: true,
       });
 
-      enableSharing();
+      openStaticEmbeddingModal();
     });
 
     it("should not display disabled parameters", () => {
@@ -265,7 +266,7 @@ describe("scenarios > embedding > native questions with default parameters", () 
     cy.createNativeQuestion(questionDetailsWithDefaults, {
       visitQuestion: true,
     });
-    enableSharing();
+    openStaticEmbeddingModal();
     // Note: ID is disabled
     setParameter("Source", "Locked");
     setParameter("Name", "Editable");
@@ -294,14 +295,6 @@ function setParameter(name, filter) {
     });
 
   popover().contains(filter).click();
-}
-
-function enableSharing() {
-  cy.intercept("GET", "/api/session/properties").as("sessionProperties");
-
-  cy.icon("share").click();
-  cy.findByText("Embed in your application").click();
-  cy.wait("@sessionProperties");
 }
 
 function publishChanges(callback) {

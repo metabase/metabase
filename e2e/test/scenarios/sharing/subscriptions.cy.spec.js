@@ -18,6 +18,8 @@ import {
   sendEmailAndVisitIt,
   clickSend,
   viewEmailPage,
+  openToEmbedModal,
+  openPublicLinkDropdown,
 } from "e2e/support/helpers";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { USERS } from "e2e/support/cypress_data";
@@ -30,21 +32,24 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.signInAsAdmin();
   });
 
-  it.skip("should not allow sharing if there are no dashboard cards", () => {
+  it("should allow sharing if there are no dashboard cards", () => {
     cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
       visitDashboard(DASHBOARD_ID);
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("This dashboard is looking empty.");
-
-    cy.icon("share")
-      .closest("a")
-      .should("have.attr", "aria-disabled", "true")
-      .click();
 
     cy.findByLabelText("subscriptions").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Share this dashboard with people *./i).should("not.exist");
+
+    openPublicLinkDropdown();
+    cy.findByTestId("public-link-popover-content").should("be.visible");
+
+    // close link popover
+    cy.icon("share").click();
+
+    openToEmbedModal();
+    cy.get(".Modal--full").within(() => {
+      cy.findByText("Public embed").should("be.visible");
+      cy.findByText("Embed in your application").should("be.visible");
+    });
   });
 
   it("should allow sharing if dashboard contains only text cards (metabase#15077)", () => {
@@ -55,15 +60,17 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.button("Save").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("You're editing this dashboard.").should("not.exist");
-    cy.icon("share").closest("a").click();
-
+    openToEmbedModal();
     // Ensure clicking share icon opens sharing and embedding modal directly,
     // without a menu with sharing and dashboard subscription options.
     // Dashboard subscriptions are not shown because
     // getting notifications with static text-only cards doesn't make a lot of sense
     cy.findByLabelText("subscriptions").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Share this dashboard with people *./i);
+
+    cy.get(".Modal--full").within(() => {
+      cy.findByText(/Public embed/).should("be.visible");
+      cy.findByText(/Embed in your application/).should("be.visible");
+    });
   });
 
   describe("with no channels set up", () => {

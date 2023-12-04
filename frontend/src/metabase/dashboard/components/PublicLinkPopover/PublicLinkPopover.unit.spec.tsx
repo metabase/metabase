@@ -10,9 +10,7 @@ import type {
 import { PublicLinkPopover } from "./PublicLinkPopover";
 
 // https://github.com/nkbt/react-copy-to-clipboard/issues/106#issuecomment-605227151
-jest.mock("copy-to-clipboard", () => {
-  return jest.fn();
-});
+jest.mock("copy-to-clipboard", () => jest.fn());
 
 const TestComponent = ({
   createPublicLink,
@@ -118,10 +116,20 @@ describe("PublicLinkPopover", () => {
       expect(await screen.findByText("sample-public-link")).toBeInTheDocument();
     });
 
-    it("should render `Remove this public link` for admins", () => {
-      setup({ isAdmin: true });
+    it("should render `Remove this public link` and warning tooltip for admins", async () => {
+      setup({
+        hasUUID: true,
+        isOpen: true,
+        isAdmin: true,
+      });
 
-      expect(screen.getByText("Remove this public link")).toBeInTheDocument();
+      userEvent.hover(screen.getByText("Remove this public link"));
+
+      expect(
+        await screen.findByText(
+          "Affects both public link and embed URL for this dashboard",
+        ),
+      ).toBeInTheDocument();
     });
 
     it("should not render `Remove this public link` for non-admins", () => {
@@ -188,7 +196,7 @@ describe("PublicLinkPopover", () => {
 
       userEvent.click(screen.getByLabelText("copy icon"));
 
-      expect(screen.getByText("Copied!")).toBeInTheDocument();
+      expect(await screen.findByText("Copied!")).toBeInTheDocument();
     });
 
     it("should allow non-admins to copy the link to the clipboard", async () => {
@@ -198,7 +206,7 @@ describe("PublicLinkPopover", () => {
 
       userEvent.click(screen.getByLabelText("copy icon"));
 
-      expect(screen.getByText("Copied!")).toBeInTheDocument();
+      expect(await screen.findByText("Copied!")).toBeInTheDocument();
     });
   });
 

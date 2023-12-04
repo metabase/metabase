@@ -3,7 +3,11 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 
 import { denormalize, normalize, schema } from "normalizr";
-import { createAction, createThunkAction } from "metabase/lib/redux";
+import {
+  createAction,
+  createAsyncThunk,
+  createThunkAction,
+} from "metabase/lib/redux";
 import { defer } from "metabase/lib/promise";
 
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
@@ -54,8 +58,6 @@ const dashcard = new schema.Entity("dashcard");
 const dashboard = new schema.Entity("dashboard", {
   dashcards: [dashcard],
 });
-
-export const FETCH_DASHBOARD = "metabase/dashboard/FETCH_DASHBOARD";
 
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
@@ -138,16 +140,27 @@ const loadingComplete = createThunkAction(
   },
 );
 
-export const fetchDashboard = createThunkAction(
-  FETCH_DASHBOARD,
-  function (
-    dashId,
-    queryParams,
-    { preserveParameters = false, clearCache = true } = {},
-  ) {
-    let entities;
-    let result;
-    return async function (dispatch, getState) {
+let fetchDashboardCancellation;
+
+export const fetchDashboard = createAsyncThunk(
+  "metabase/dashboard/FETCH_DASHBOARD",
+  async (
+    {
+      dashId,
+      queryParams,
+      options: { preserveParameters = false, clearCache = true } = {},
+    },
+    { getState, dispatch, rejectWithValue },
+  ) => {
+    if (fetchDashboardCancellation) {
+      fetchDashboardCancellation.resolve();
+    }
+    fetchDashboardCancellation = defer();
+
+    try {
+      let entities;
+      let result;
+
       const dashboardType = getDashboardType(dashId);
       const loadedDashboard = getDashboardById(getState(), dashId);
 
@@ -163,7 +176,10 @@ export const fetchDashboard = createThunkAction(
         };
         result = denormalize(dashId, dashboard, entities);
       } else if (dashboardType === "public") {
-        result = await PublicApi.dashboard({ uuid: dashId });
+        result = await PublicApi.dashboard(
+          { uuid: dashId },
+          { cancelled: fetchDashboardCancellation.promise },
+        );
         result = {
           ...result,
           id: dashId,
@@ -173,7 +189,10 @@ export const fetchDashboard = createThunkAction(
           })),
         };
       } else if (dashboardType === "embed") {
-        result = await EmbedApi.dashboard({ token: dashId });
+        result = await EmbedApi.dashboard(
+          { token: dashId },
+          { cancelled: fetchDashboardCancellation.promise },
+        );
         result = {
           ...result,
           id: dashId,
@@ -184,7 +203,10 @@ export const fetchDashboard = createThunkAction(
         };
       } else if (dashboardType === "transient") {
         const subPath = dashId.split("/").slice(3).join("/");
-        result = await AutoApi.dashboard({ subPath });
+        result = await AutoApi.dashboard(
+          { subPath },
+          { cancelled: fetchDashboardCancellation.promise },
+        );
         result = {
           ...result,
           id: dashId,
@@ -200,8 +222,13 @@ export const fetchDashboard = createThunkAction(
         result = expandInlineDashboard(dashId);
         dashId = result.id = String(dashId);
       } else {
-        result = await DashboardApi.get({ dashId: dashId });
+        result = await DashboardApi.get(
+          { dashId: dashId },
+          { cancelled: fetchDashboardCancellation.promise },
+        );
       }
+
+      fetchDashboardCancellation = null;
 
       if (dashboardType === "normal" || dashboardType === "transient") {
         const selectedTabId = getSelectedTabId(getState());
@@ -252,7 +279,12 @@ export const fetchDashboard = createThunkAction(
         parameterValues: parameterValuesById,
         preserveParameters,
       };
-    };
+    } catch (error) {
+      if (!error.isCancelled) {
+        console.error(error);
+      }
+      return rejectWithValue(error);
+    }
   },
 );
 

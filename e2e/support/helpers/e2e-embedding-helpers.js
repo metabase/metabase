@@ -114,3 +114,57 @@ export function visitIframe() {
     cy.visit(iframe.src);
   });
 }
+
+export function openToEmbedModal({
+  isAdmin = true,
+  isPublicSharingEnabled = true,
+} = {}) {
+  cy.icon("share").click();
+  if (isAdmin && isPublicSharingEnabled) {
+    cy.findByTestId("embed-header-menu")
+      .findByTestId("embed-menu-embed-modal-item")
+      .click();
+  }
+}
+
+// @param {("card"|"dashboard")} resourceType - The type of resource we are sharing
+export function createPublicLinkDropdown(resourceType) {
+  cy.intercept("POST", `/api/${resourceType}/*/public_link`).as(
+    "sharingEnabled",
+  );
+
+  cy.icon("share").click();
+  cy.findByTestId("embed-header-menu")
+    .findByTestId("embed-menu-public-link-item")
+    .click();
+
+  cy.wait("@sharingEnabled").then(
+    ({
+      response: {
+        body: { uuid },
+      },
+    }) => {
+      cy.wrap(uuid).as("uuid");
+    },
+  );
+}
+
+export function openPublicLinkDropdown({ isAdmin = true } = {}) {
+  cy.icon("share").click();
+  if (isAdmin) {
+    cy.findByTestId("embed-header-menu")
+      .findByTestId("embed-menu-public-link-item")
+      .click();
+  }
+}
+
+export function openStaticEmbeddingModal({
+  isAdmin = true,
+  isPublicSharingEnabled = true,
+} = {}) {
+  cy.intercept("GET", "/api/session/properties").as("sessionProperties");
+
+  openToEmbedModal({ isAdmin, isPublicSharingEnabled });
+  cy.get(".Modal--full").findByText("Embed in your application").click();
+  cy.wait("@sessionProperties");
+}

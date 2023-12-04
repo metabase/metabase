@@ -4,10 +4,12 @@ import {
   visitQuestion,
   downloadAndAssert,
   assertSheetRowsCount,
+  createPublicLinkDropdown,
+  openPublicLinkDropdown,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { PEOPLE } = SAMPLE_DATABASE;
+const { PEOPLE, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const questionData = {
   name: "Parameterized Public Question",
@@ -56,20 +58,26 @@ describe("scenarios > public > question", () => {
     cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
 
     cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
-      cy.wrap(id).as("questionId");
+      cy.wrap(id).as("publicQuestionId");
+    });
+
+    cy.createQuestion({
+      name: "Products Table",
+      query: { "source-table": PRODUCTS_ID, limit: 1 },
+    }).then(({ body: { id } }) => {
+      cy.wrap(id).as("nonPublicQuestionId");
     });
   });
 
   it("adds filters to url as get params and renders the results correctly (metabase#7120, metabase#17033, metabase#21993)", () => {
-    cy.get("@questionId").then(id => {
+    cy.get("@publicQuestionId").then(id => {
       visitQuestion(id);
 
       // Make sure metadata fully loaded before we continue
       cy.get(".cellData").contains("Winner");
 
-      cy.icon("share").click();
+      createPublicLinkDropdown("card");
 
-      enableSharing();
       // Although we already have API helper `visitPublicQuestion`,
       // it makes sense to use the UI here in order to check that the
       // generated url originally doesn't include query params
@@ -96,10 +104,41 @@ describe("scenarios > public > question", () => {
     });
   });
 
+  it("should only allow non-admin users to see a public link if one has already been created", () => {
+    cy.get("@publicQuestionId").then(id => {
+      visitQuestion(id);
+      createPublicLinkDropdown("card");
+      cy.signOut();
+    });
+
+    cy.signInAsNormalUser().then(() => {
+      cy.get("@publicQuestionId").then(id => {
+        visitQuestion(id);
+      });
+
+      openPublicLinkDropdown({ isAdmin: false });
+
+      cy.findByTestId("public-link-popover-content").within(() => {
+        cy.findByText("Public link").should("be.visible");
+        cy.findByText(/^http/).should("be.visible");
+        cy.findByText("Remove public URL").should("not.exist");
+      });
+    });
+  });
+
+  it("should not allow users to see the embed button or the public link dropdown if a link hasn't been created", () => {
+    cy.signInAsNormalUser();
+    cy.get("@nonPublicQuestionId").then(id => {
+      visitQuestion(id);
+    });
+
+    cy.findByTestId("view-footer").icon("share").should("not.exist");
+  });
+
   Object.entries(USERS).map(([userType, setUser]) =>
     describe(`${userType}`, () => {
       it(`should be able to view public questions`, () => {
-        cy.get("@questionId").then(id => {
+        cy.get("@publicQuestionId").then(id => {
           cy.request("POST", `/api/card/${id}/public_link`).then(
             ({ body: { uuid } }) => {
               setUser();
@@ -125,8 +164,8 @@ const visitPublicURL = () => {
   // Cypress finds an input before the copyable inputs are rendered
   cy.findByRole("heading", { name: "Public link" })
     .parent()
-    .findByDisplayValue(/^http/)
-    .invoke("val")
+    .findByText(/^http/)
+    .invoke("text")
     .then(publicURL => {
       // Copied URL has no get params
       expect(publicURL).to.match(PUBLIC_QUESTION_REGEX);
@@ -134,23 +173,4 @@ const visitPublicURL = () => {
       cy.signOut();
       cy.visit(publicURL);
     });
-};
-
-const enableSharing = () => {
-  cy.intercept("POST", "/api/card/*/public_link").as("sharingEnabled");
-
-  cy.findByRole("heading", { name: "Enable sharing" })
-    .parent()
-    .findByRole("switch")
-    .check();
-
-  cy.wait("@sharingEnabled").then(
-    ({
-      response: {
-        body: { uuid },
-      },
-    }) => {
-      cy.wrap(uuid).as("uuid");
-    },
-  );
 };
