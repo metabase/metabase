@@ -432,7 +432,7 @@
         (try
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"A Pulse can only go in Collections in the \"default\" namespace"
+               #"A Pulse can only go in Collections in the \"default\" or :analytics namespace."
                (t2/insert! Pulse (assoc (t2.with-temp/with-temp-defaults Pulse) :collection_id collection-id, :name pulse-name))))
           (finally
             (t2/delete! Pulse :name pulse-name)))))
@@ -441,7 +441,7 @@
       (t2.with-temp/with-temp [Pulse {card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"A Pulse can only go in Collections in the \"default\" namespace"
+             #"A Pulse can only go in Collections in the \"default\" or :analytics namespace."
              (t2/update! Pulse card-id {:collection_id collection-id})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

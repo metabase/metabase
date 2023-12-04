@@ -18,7 +18,7 @@ import { createMockState } from "metabase-types/store/mocks";
 import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import DashCardMenu from "./DashCardMenu";
+import { DashCardMenuConnected } from "./DashCardMenu";
 
 const TEST_CARD = createMockCard({
   can_write: true,
@@ -88,7 +88,9 @@ const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
     <>
       <Route
         path="dashboard/:slug"
-        component={() => <DashCardMenu question={question} result={result} />}
+        component={() => (
+          <DashCardMenuConnected question={question} result={result} />
+        )}
       />
       <Route path="question/:slug" component={() => <div />} />
       <Route path="question/:slug/notebook" component={() => <div />} />

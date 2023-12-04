@@ -15,7 +15,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.email :as email]
    [metabase.models.collection :as collection]
-   [metabase.models.dashboard :as dashboard]
    [metabase.models.permissions :as perms]
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
@@ -322,7 +321,8 @@
            :titleUrl                  (params/dashboard-url dashboard-id (params/parameters pulse dashboard))
            :dashboardDescription      (:description dashboard)
            ;; There are legacy pulses that exist without being tied to a dashboard
-           :dashboardHasTabs          (when dashboard-id (dashboard/has-tabs? dashboard-id))
+           :dashboardHasTabs          (when dashboard-id
+                                        (boolean (seq (t2/hydrate dashboard :tabs))))
            :creator                   (-> pulse :creator :common_name)
            :sectionStyle              (style/style (style/section-style))
            :notificationText          (if (nil? non-user-email)
@@ -654,6 +654,7 @@
 (def ^:private admin-unsubscribed-template (template-path "alert_admin_unsubscribed_you"))
 (def ^:private added-template              (template-path "alert_you_were_added"))
 (def ^:private stopped-template            (template-path "alert_stopped_working"))
+(def ^:private archived-template           (template-path "alert_archived"))
 
 (defn send-new-alert-email!
   "Send out the initial 'new alert' email to the `creator` of the alert"
@@ -685,9 +686,10 @@
 (defn send-alert-stopped-because-archived-email!
   "Email to notify users when a card associated to their alert has been archived"
   [alert user {:keys [first_name last_name] :as _archiver}]
-  (let [deletion-text (format "the question was archived by %s %s" first_name last_name)]
-    (send-email! user not-working-subject stopped-template (assoc (common-alert-context alert) :deletionCause deletion-text))))
-
+  (let [{card-id :id card-name :name} (first-card alert)]
+    (send-email! user not-working-subject archived-template {:archiveURL   (urls/archive-url)
+                                                             :questionName (format "%s (#%d)" card-name card-id)
+                                                             :archiverName (format "%s %s" first_name last_name)})))
 (defn send-alert-stopped-because-changed-email!
   "Email to notify users when a card associated to their alert changed in a way that invalidates their alert"
   [alert user {:keys [first_name last_name] :as _archiver}]

@@ -145,8 +145,8 @@ function TableSimple({
             onClick={onClick}
             isRightAligned={isColumnRightAligned(col)}
           >
-            <SortIcon name={iconName} />
             <Ellipsified>{getColumnTitle(colIndex)}</Ellipsified>
+            <SortIcon name={iconName} />
           </TableHeaderCellContent>
         </th>
       );
@@ -219,5 +219,5 @@ function TableSimple({
 
 export default ExplicitSize({
   refreshMode: props =>
-    props.isDashboard && !props.isEditing ? "debounce" : "throttle",
+    props.isDashboard && !props.isEditing ? "debounceLeading" : "throttle",
 })(TableSimple);

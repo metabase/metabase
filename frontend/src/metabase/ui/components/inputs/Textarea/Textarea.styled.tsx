@@ -5,10 +5,15 @@ export const getTextareaOverrides = (): MantineThemeOverride["components"] => ({
   Textarea: {
     defaultProps: {
       size: "md",
+      autosize: true,
+      minRows: 2,
+      maxRows: 6,
     },
     styles: (theme, _, { size = "md" }) => ({
       wrapper: {
-        marginTop: theme.spacing.xs,
+        "&:not(:only-child)": {
+          marginTop: theme.spacing.xs,
+        },
       },
       label: {
         color: theme.colors.text[1],

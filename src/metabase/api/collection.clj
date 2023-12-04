@@ -11,14 +11,13 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
-   [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.root :as collection.root]
@@ -61,13 +60,6 @@
       (remove personal? collections)
       collections)))
 
-(defn- filter-audit-collection
-  "We should filter the audit collection from showing up if audit app is no longer enabled."
-  [colls]
-  (if (premium-features/enable-audit-app?)
-    colls
-    (filter (fn [coll] (not (perms/is-collection-id-audit? (:id coll)))) colls)))
-
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
   additional property of each Collection so you can tell which of these you have write permissions for.)
@@ -84,7 +76,7 @@
   (as-> (t2/select Collection
                    {:where    [:and
                                [:= :archived archived]
-                               [:= :namespace namespace]
+                               (perms/audit-namespace-clause :namespace namespace)
                                (collection/visible-collection-ids->honeysql-filter-clause
                                 :id
                                 (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
@@ -103,7 +95,6 @@
           (mi/can-read? root)
           (cons root))))
     (t2/hydrate collections :can_write :is_personal)
-    (filter-audit-collection collections)
     ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
     ;; and for personal collections we translate the name to user's locale
     (for [collection collections]
@@ -150,15 +141,14 @@
                   {:where [:and
                            (when exclude-archived?
                              [:= :archived false])
-                           [:= :namespace namespace]
+                           (perms/audit-namespace-clause :namespace namespace)
                            (collection/visible-collection-ids->honeysql-filter-clause
                             :id
                             (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
                 exclude-other-user-collections?
                 (remove-other-users-personal-collections api/*current-user-id*))
-        colls-with-details (map collection/personal-collection-with-ui-details colls)
-        filtered-colls     (filter-audit-collection colls-with-details)]
-    (collection/collections->tree coll-type-ids filtered-colls)))
+        colls-with-details (map collection/personal-collection-with-ui-details colls)]
+    (collection/collections->tree coll-type-ids colls-with-details)))
 
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
@@ -458,7 +448,7 @@
   (-> (assoc (collection/effective-children-query
               collection
               [:= :archived archived?]
-              [:= :namespace (u/qualified-name collection-namespace)]
+              (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
               (snippets-collection-filter-clause))
              ;; We get from the effective-children-query a normal set of columns selected:
              ;; want to make it fit the others to make UNION ALL work
@@ -883,15 +873,15 @@
      (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
        (collection/perms-for-archiving collection-before-update)))))
 
-(defn- maybe-send-archived-notificaitons!
+(defn- maybe-send-archived-notifications!
   "When a collection is archived, all of it's cards are also marked as archived, but this is down in the model layer
   which will not cause the archive notification code to fire. This will delete the relevant alerts and notify the
   users just as if they had be archived individually via the card API."
-  [collection-before-update collection-updates]
+  [& {:keys [collection-before-update collection-updates actor]}]
   (when (api/column-will-change? :archived collection-before-update collection-updates)
     (when-let [alerts (seq (pulse/retrieve-alerts-for-cards
                             {:card-ids (t2/select-pks-set Card :collection_id (u/the-id collection-before-update))}))]
-      (api.card/delete-alert-and-notify-archived! alerts))))
+      (card/delete-alert-and-notify-archived! {:alerts alerts :actor actor}))))
 
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
@@ -923,7 +913,9 @@
     ;; if we're trying to *move* the Collection (instead or as well) go ahead and do that
     (move-collection-if-needed! collection-before-update collection-updates)
     ;; if we *did* end up archiving this Collection, we most post a few notifications
-    (maybe-send-archived-notificaitons! collection-before-update collection-updates))
+    (maybe-send-archived-notifications! {:collection-before-update collection-before-update
+                                         :collection-updates       collection-updates
+                                         :actor                    @api/*current-user*}))
   ;; finally, return the updated object
   (collection-detail (t2/select-one Collection :id id)))
 

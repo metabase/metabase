@@ -157,7 +157,6 @@ describe("ClickActionsPopover", function () {
             column: ORDERS_COLUMNS.ID,
             value: undefined,
           },
-          rowValues: undefined,
         });
 
         expect(queryIcon("arrow_up")).not.toBeInTheDocument();
@@ -191,7 +190,7 @@ describe("ClickActionsPopover", function () {
                       "field",
                       ORDERS.ID,
                       {
-                        "base-type": "type/BigInteger",
+                        "base-type": "type/Integer",
                       },
                     ],
                   ],
@@ -214,7 +213,7 @@ describe("ClickActionsPopover", function () {
               ORDERS.TOTAL,
               "type/Float",
             ),
-            display: "table",
+            display: "line",
           },
         },
         {
@@ -225,7 +224,7 @@ describe("ClickActionsPopover", function () {
               ORDERS.QUANTITY,
               "type/Integer",
             ),
-            display: "table",
+            display: "line",
           },
         },
       ])(
@@ -389,14 +388,12 @@ async function setup({
   settings = {},
   dimension: inputDimension,
   columns = ORDERS_COLUMNS_LIST,
-  rowValues = ORDERS_ROW_VALUES,
 }: Partial<{
   question: Question;
   clicked: ClickObject;
   settings: Record<string, any>;
   dimension?: Dimension;
   columns?: DatasetColumn[];
-  rowValues?: Record<string, RowValue>;
 }> = {}) {
   const mode = checkNotNull(getMode(question));
 
@@ -514,7 +511,6 @@ function getSummarizedOverTimeResultDatasetQuery(
           "field",
           ORDERS.CREATED_AT,
           {
-            "base-type": "type/DateTime",
             "temporal-unit": "month",
           },
         ],
