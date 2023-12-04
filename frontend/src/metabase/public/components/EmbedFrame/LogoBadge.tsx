@@ -1,4 +1,4 @@
-import { t, jt } from "ttag";
+import { jt } from "ttag";
 import LogoIcon from "metabase/components/LogoIcon";
 import type { Variant } from "./LogoBadge.styled";
 import { MetabaseLink, MetabaseName, Message } from "./LogoBadge.styled";
@@ -13,7 +13,8 @@ function LogoBadge({
   const logoSize = variant === "large" ? 42 : 28;
   const Metabase = (
     <MetabaseName key="metabase" isDark={dark} variant={variant}>
-      {t`Metabase`}
+      {/* We don't want to apply whitelabeled name to powered by Metabase banner */}
+      Metabase
     </MetabaseName>
   );
   return (

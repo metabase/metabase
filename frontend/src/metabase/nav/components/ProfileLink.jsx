@@ -16,7 +16,10 @@ import Modal from "metabase/components/Modal";
 import LogoIcon from "metabase/components/LogoIcon";
 import EntityMenu from "metabase/components/EntityMenu";
 import { getAdminPaths } from "metabase/admin/app/selectors";
-import { getApplicationName } from "metabase/selectors/whitelabel";
+import {
+  getApplicationName,
+  getIsWhiteLabeling,
+} from "metabase/selectors/whitelabel";
 
 // generate the proper set of list items for the current user
 // based on whether they're an admin or not
@@ -95,8 +98,9 @@ function ProfileLink({ user, adminItems, onLogout }) {
     }
   }, [user.is_superuser, isPaidPlan]);
 
-  // don't show trademark if application name is whitelabeled
-  const showTrademark = t`Metabase` === "Metabase";
+  // show trademark if application name is not whitelabeled
+  const isWhiteLabeling = useSelector(getIsWhiteLabeling);
+  const showTrademark = !isWhiteLabeling;
   return (
     <div>
       <EntityMenu
@@ -120,7 +124,8 @@ function ProfileLink({ user, adminItems, onLogout }) {
             <h2
               style={{ fontSize: "1.75em" }}
               className="text-dark"
-            >{t`Thanks for using Metabase!`}</h2>
+              // Screenshot 2023-12-04 at 11.40.55AM
+            >{t`Thanks for using ${applicationName}!`}</h2>
             <div className="pt2">
               <h3 className="text-dark mb1">
                 {t`You're on version`} {tag}
