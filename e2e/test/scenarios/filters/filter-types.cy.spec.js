@@ -558,7 +558,7 @@ describe("scenarios > filters > filter types", () => {
 
 function selectOperator(operatorName) {
   cy.findByLabelText("Filter operator").click();
-  cy.findByRole("listbox").findByText(operatorName).click();
+  cy.findByText(operatorName).click();
 }
 
 function assertFilterName(filterName, options) {
