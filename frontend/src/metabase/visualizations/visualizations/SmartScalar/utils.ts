@@ -92,6 +92,30 @@ export const COMPARISON_OPTIONS = {
   },
 };
 
+export function getDefaultComparison(series, settings) {
+  const [
+    {
+      data: { insights },
+    },
+  ] = series;
+
+  const dateUnit = insights?.find(
+    insight => insight.col === settings["scalar.field"],
+  )?.unit;
+
+  if (isEmpty(dateUnit)) {
+    return COMPARISON_OPTIONS.COMPARE_TO_PREVIOUS;
+  }
+
+  return {
+    ...COMPARISON_OPTIONS.PREVIOUS_PERIOD,
+    name: COMPARISON_OPTIONS.PREVIOUS_PERIOD.nameTemplate.replace(
+      PLACEHOLDER_STR,
+      t`${dateUnit}`,
+    ),
+  };
+}
+
 export function getComparisonOptions(series, settings) {
   const [
     {

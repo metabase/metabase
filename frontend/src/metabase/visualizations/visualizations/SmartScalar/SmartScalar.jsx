@@ -45,7 +45,7 @@ import {
   ScalarPeriodContent,
 } from "./SmartScalar.styled";
 import {
-  COMPARISON_OPTIONS,
+  getDefaultComparison,
   getComparisonOptions,
   formatChangeAutoPrecision,
   getChangeWidth,
@@ -278,9 +278,8 @@ Object.assign(SmartScalar, {
       title: t`Comparisons`,
       widget: SmartScalarComparisonWidget,
       isValid: (series, vizSettings) => isComparisonValid(series, vizSettings),
-      getDefault: (series, vizSettings) => ({
-        type: COMPARISON_OPTIONS.COMPARE_TO_PREVIOUS.type,
-      }),
+      getDefault: (series, vizSettings) =>
+        getDefaultComparison(series, vizSettings),
       getProps: (series, vizSettings) => ({
         options: getComparisonOptions(series, vizSettings),
       }),
