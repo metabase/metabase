@@ -39,7 +39,7 @@ interface AggregationPickerProps {
   legacyQuery: StructuredQuery;
   legacyClause?: LegacyAggregation;
   maxHeight?: number;
-  onSelect: (operator: Lib.Aggregatable) => void;
+  onSelect: (operator: Lib.Aggregable) => void;
   onSelectLegacy: (operator: LegacyAggregationClause) => void;
   onClose?: () => void;
 }

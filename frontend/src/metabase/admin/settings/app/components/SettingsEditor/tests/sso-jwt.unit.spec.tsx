@@ -38,7 +38,7 @@ describe("SettingsEditorApp", () => {
 
     expect(await screen.findByText("Server Settings")).toBeInTheDocument();
     expect(
-      await screen.findByText("JWT Identity Provider URI"),
+      await screen.findByText(/JWT Identity Provider URI/),
     ).toBeInTheDocument();
   });
 

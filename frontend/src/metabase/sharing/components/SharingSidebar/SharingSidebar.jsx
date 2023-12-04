@@ -12,7 +12,7 @@ import {
   AddEditEmailSidebar,
 } from "metabase/sharing/components/AddEditSidebar/AddEditSidebar";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import Sidebar from "metabase/dashboard/components/Sidebar";
+import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import Pulses from "metabase/entities/pulses";
 
 import {

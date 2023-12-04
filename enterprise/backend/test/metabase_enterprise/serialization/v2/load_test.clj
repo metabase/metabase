@@ -977,7 +977,7 @@
                                                                                 :type :snippet,
                                                                                 :snippet-name "filtered data",
                                                                                 :snippet-id (:id @snippet1s)}}}}))
-        (ts/create! User :first_name "Geddy" :last_name "Lee"     :email "glee@rush.yyz")
+        (ts/create! User :first_name "Geddy" :last_name "Lee" :email "glee@rush.yyz")
 
         (testing "on extraction"
           (reset! extracted (serdes/extract-one "Card" {} @card1s))
@@ -995,6 +995,40 @@
                        :template-tags
                        (get "snippet: things")
                        :snippet-id)))))))))
+
+(deftest snippet-with-unique-name
+  (testing "Snippets with the same name should be replaced/removed on deserialization"
+    (mt/with-empty-h2-app-db
+      (let [unique-name "some snippet"
+            snippet     (ts/create! NativeQuerySnippet :name unique-name)
+            id1         (u/generate-nano-id)
+            id2         (u/generate-nano-id)
+            load!       #(serdes.load/load-metabase!
+                          (ingestion-in-memory [(serdes/extract-one "NativeQuerySnippet" {} %)]))]
+
+        (testing "setup is correct"
+          (is (= (:entity_id snippet)
+                 (t2/select-one-fn :entity_id NativeQuerySnippet :name unique-name))))
+
+        (testing "loading snippet with same name will get it renamed"
+          (load! (assoc snippet :entity_id id1))
+          (testing "old snippet is in place"
+            (is (= (:entity_id snippet)
+                   (t2/select-one-fn :entity_id NativeQuerySnippet :name unique-name))))
+          (testing "new one got new name"
+            (is (= (str unique-name " (copy)")
+                   (t2/select-one-fn :name NativeQuerySnippet :entity_id id1)))))
+
+        (testing "can handle multiple name conflicts"
+          (load! (assoc snippet :entity_id id2))
+          (is (= (str unique-name " (copy) (copy)")
+                 (t2/select-one-fn :name NativeQuerySnippet :entity_id id2))))
+
+        (testing "will still update original one"
+          (load! (assoc snippet :content "11 = 11"))
+          (is (=? {:name unique-name
+                   :content "11 = 11"}
+                  (t2/select-one NativeQuerySnippet :entity_id (:entity_id snippet)))))))))
 
 (deftest load-action-test
   (let [serialized (atom nil)
