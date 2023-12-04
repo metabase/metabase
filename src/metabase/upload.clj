@@ -195,8 +195,8 @@
     "unnamed_column"
     (u/slugify (str/trim raw-name))))
 
-(def ^:private auto-pk-column-name
-  "The name of the auto-incrementing PK column."
+(def auto-pk-column-name
+  "The lower-case name of the auto-incrementing PK column. The actual name in the database could be in upper-case."
   "_mb_row_id")
 
 (defn- remove-indices
