@@ -1,4 +1,4 @@
-(ns metabase.task.email-deprecated-pulse
+(ns metabase.task.email-remove-legacy-pulse
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
@@ -17,10 +17,10 @@
 
 (def ^:private template-path (str "metabase/email/warn_deprecate_pulse.mustache"))
 
-(jobs/defjob ^{:doc "Send email to admins and warn about removal of Pulse in 49, This job will only run once."}
-  SendEmailWarnDeprecatePulse [_ctx]
-  (when (has-legacy-pulse?)
-    (log/info "Sending email to admins about deprecation of legacy pulses")
+(defn- email-remove-legacy-pulse []
+  (when (and (email/email-configured?)
+             (has-legacy-pulse?))
+    (log/info "Sending email to admins about removal of legacy pulses")
     (let [legacy-pulse (->> (t2/select :model/Pulse :dashboard_id nil :alert_condition nil)
                             (map #(assoc % :url (urls/legacy-pulse-url (:id %)))))]
       (doseq [admin (t2/select :model/User :is_superuser true)]
@@ -32,12 +32,16 @@
                                                             :pulses      legacy-pulse
                                                             :instanceURL (urls/site-url)})})))))
 
+(jobs/defjob ^{:doc "Send email to admins and warn about removal of Pulse in 49, This job will only run once."}
+  EmailRemoveLegacyPulse [_ctx]
+  (email-remove-legacy-pulse))
+
 (defmethod task/init! ::SendWarnPulseRemovalEmail [_job-name]
   (let [job     (jobs/build
-                 (jobs/of-type SendEmailWarnDeprecatePulse)
-                 (jobs/with-identity (jobs/key "metabase.task.email-deprecated-pulse.job"))
+                 (jobs/of-type EmailRemoveLegacyPulse)
+                 (jobs/with-identity (jobs/key "metabase.task.email-remove-legacy-pulse.job"))
                  (jobs/store-durably))
         trigger (triggers/build
-                 (triggers/with-identity (triggers/key "metabase.task.email-deprecated-pulse.trigger"))
+                 (triggers/with-identity (triggers/key "metabase.task.email-remove-legacy-pulse.trigger"))
                  (triggers/start-now))]
     (task/schedule-task! job trigger)))
