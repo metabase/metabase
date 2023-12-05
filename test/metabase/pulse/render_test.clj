@@ -200,7 +200,7 @@
         ;; the significant digits in the formatter, we'll need to modify this test as well.
         (letfn [(create-comparison-results [query-results card]
                   (let [expected      (mapv (fn [row]
-                                              (format "%s%%" (Math/round ^float (* 100 (peek row)))))
+                                              (format "%.2f%%" (* 100 (peek row))))
                                             (get-in query-results [:data :rows]))
                         rendered-card (render/render-pulse-card :inline (pulse/defaulted-timezone card) card nil query-results)
                         table         (-> rendered-card
