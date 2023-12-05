@@ -270,7 +270,7 @@
                     [(:parameter_id param) (set ids)])))]
     (->> dashcards
          (mapv (fn [{params :parameter_mappings card :card}] (targets params card)))
-         (apply merge-with set/union))))
+         (apply merge-with into {}))))
 
 (defn- dashboard->param-field-values
   "Return a map of Field ID to FieldValues (if any) for any Fields referenced by Cards in `dashboard`,

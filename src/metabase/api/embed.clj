@@ -277,7 +277,7 @@
         param-ids-to-remove (set (for [parameter (:parameters dashboard)
                                        :when     (contains? params-to-remove (keyword (:slug parameter)))]
                                    (:id parameter)))
-        linked-field-ids (mapcat (params/get-linked-field-ids (:dashcards dashboard)) param-ids-to-remove)
+        linked-field-ids (set (mapcat (params/get-linked-field-ids (:dashcards dashboard)) param-ids-to-remove))
         remove-parameters (fn [dashcard]
                             (update dashcard :parameter_mappings
                                     (fn [param-mappings]

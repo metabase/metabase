@@ -151,7 +151,7 @@
 
 (def successful-dashboard-info
   {:auto_apply_filters true, :description nil, :parameters [], :dashcards [], :tabs [],
-   :param_values nil, :param_fields nil})
+   :param_values {}, :param_fields nil})
 
 (def ^:private yesterday (time/minus (time/now) (time/days 1)))
 
