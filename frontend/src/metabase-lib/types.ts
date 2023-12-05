@@ -151,6 +151,7 @@ export type SegmentDisplayInfo = {
   longDisplayName: string;
   description: string;
   filterPositions?: number[];
+  effectiveType?: string;
 };
 
 export type AggregationOperatorDisplayInfo = {
@@ -169,14 +170,6 @@ export type MetricDisplayInfo = {
   longDisplayName: string;
   description: string;
   selected?: boolean;
-};
-
-export type SegmentDisplayInfo = {
-  name: string;
-  displayName: string;
-  longDisplayName: string;
-  description: string;
-  effectiveType: string;
 };
 
 export type ClauseDisplayInfo = Pick<
