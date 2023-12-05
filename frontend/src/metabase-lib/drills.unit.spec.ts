@@ -50,6 +50,8 @@ describe("availableDrillThrus", () => {
       expectedDrills: [
         {
           type: "drill-thru/fk-filter",
+          tableName: "Orders",
+          columnName: "User ID",
         },
         {
           type: "drill-thru/fk-details",
@@ -224,6 +226,8 @@ describe("availableDrillThrus", () => {
       expectedDrills: [
         {
           type: "drill-thru/fk-filter",
+          tableName: "Orders",
+          columnName: "Product ID",
         },
         {
           type: "drill-thru/fk-details",
