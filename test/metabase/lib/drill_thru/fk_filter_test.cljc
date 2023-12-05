@@ -93,9 +93,11 @@
           fk-filter-drill   (m/find-first #(= (:type %) :drill-thru/fk-filter)
                                           drills)]
       (testing "Drill should be returned"
-        (is (=? {:lib/type :metabase.lib.drill-thru/drill-thru
-                 :type     :drill-thru/fk-filter
-                 :filter   [:= {} [:field {} "USER_ID"] 1]}
+        (is (=? {:lib/type    :metabase.lib.drill-thru/drill-thru
+                 :type        :drill-thru/fk-filter
+                 :filter      [:= {} [:field {} "USER_ID"] 1]
+                 :column-name "User ID"
+                 :table-name  "Native query"}
                 fk-filter-drill)))
       (when fk-filter-drill
         (testing "Drill application"
@@ -116,3 +118,43 @@
                                    :filters  [[:> {} 3 1]
                                               [:= {} [:field {} "USER_ID"] 1]]}]}
                       (lib/drill-thru query 0 fk-filter-drill))))))))))
+
+(deftest ^:parallel fk-filter-display-info-test
+  (let [base            (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+        join-clause     (lib/join-clause
+                         (meta/table-metadata :venues)
+                         [(lib/=
+                           (meta/field-metadata :checkins :venue-id)
+                           (meta/field-metadata :venues :id))])
+        query           (-> base
+                            (lib/join join-clause)
+                            (lib/with-fields [(meta/field-metadata :checkins :id)
+                                              (lib/with-join-alias (meta/field-metadata :venues :id) "Venues")
+                                              (lib/with-join-alias (meta/field-metadata :venues :category-id) "Venues")]))
+        [checkins-id
+         venues-id
+         category-id]   (lib/returned-columns query)
+        context         {:column     category-id
+                         :column-ref (lib/ref category-id)
+                         :value      2
+                         :row        [{:column     checkins-id
+                                       :column-ref (lib/ref checkins-id)
+                                       :value      1}
+                                      {:column     venues-id
+                                       :column-ref (lib/ref venues-id)
+                                       :value      12}
+                                      {:column     category-id
+                                       :column-ref (lib/ref category-id)
+                                       :value      2}]}
+        fk-filter-drill (m/find-first #(= (:type %) :drill-thru/fk-filter)
+                                      (lib/available-drill-thrus query context))]
+    (is (=? {:lib/type    :metabase.lib.drill-thru/drill-thru,
+             :type        :drill-thru/fk-filter
+             :filter      [:= {} [:field {:join-alias "Venues"} (meta/id :venues :category-id)] 2]
+             :column-name "Venues → Category ID"
+             :table-name  "Checkins"}
+            fk-filter-drill))
+    (is (= {:type :drill-thru/fk-filter
+            :column-name "Venues → Category ID"
+            :table-name "Checkins"}
+           (lib/display-info query fk-filter-drill)))))

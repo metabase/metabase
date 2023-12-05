@@ -1,7 +1,7 @@
 import {
   isDatePickerExtractionUnit,
   isDatePickerOperator,
-} from "metabase/common/components/DatePicker";
+} from "metabase/querying/components/DatePicker";
 import type {
   DatePickerExtractionUnit,
   DatePickerOperator,
@@ -9,7 +9,7 @@ import type {
   ExcludeDatePickerValue,
   RelativeDatePickerValue,
   SpecificDatePickerValue,
-} from "metabase/common/components/DatePicker";
+} from "metabase/querying/components/DatePicker";
 import * as Lib from "metabase-lib";
 
 export function getPickerValue(

@@ -2840,6 +2840,10 @@
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                (:parameters card)))))))
 
+;; Cal TODO: move this to driver test multimethod
+(defn- supports-schemas? [driver]
+  (not= driver :mysql))
+
 (defn upload-example-csv!
   "Upload a small CSV file to the given collection ID"
   ([collection-id]
@@ -2864,7 +2868,7 @@
            (perms/revoke-data-perms! group-id (mt/id))))))))
 
 (deftest upload-csv!-schema-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
+  (mt/test-drivers (filter supports-schemas? (mt/normal-drivers-with-feature :uploads))
     (mt/with-empty-db
       (let [db                   (mt/db)
             db-id                (u/the-id db)
@@ -2927,21 +2931,40 @@
                                              uploads-database-id  db-id
                                              uploads-schema-name  nil
                                              uploads-table-prefix "uploaded_magic_"]
-            (if (= driver/*driver* :mysql)
+            (if (supports-schemas? driver/*driver*)
+              (is (thrown-with-msg?
+                    java.lang.Exception
+                    #"^A schema has not been set."
+                    (upload-example-csv! nil)))
               (let [new-model (upload-example-csv! nil)
                     new-table (t2/select-one Table :db_id db-id)]
                 (is (=? {:name #"(?i)example csv file(.*)"}
                         new-model))
                 (is (=? {:name #"(?i)uploaded_magic_example(.*)"}
                         new-table))
-                (if (= driver/*driver* :mysql)
-                  (is (nil? (:schema new-table)))
-                  (is (=? {:schema #"(?i)public"} new-table))))
-              ;; Else, for drivers that support schemas
-              (is (thrown-with-msg?
-                   java.lang.Exception
-                   #"^A schema has not been set."
-                   (upload-example-csv! nil))))))))))
+                (is (nil? (:schema new-table)))))))))))
+
+(deftest upload-csv!-auto-pk-column-display-name-test
+  (testing "The auto-generated column display_name should be the same as its name"
+   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+     (mt/with-empty-db
+       (let [db-id (u/the-id (mt/db))]
+         (when (supports-schemas? driver/*driver*)
+           (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
+             (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
+                            ["CREATE SCHEMA \"not_public\";"])))
+         (mt/with-temporary-setting-values [uploads-enabled      true
+                                            uploads-database-id  db-id
+                                            uploads-schema-name  (if (supports-schemas? driver/*driver*)
+                                                                   "not_public"
+                                                                   nil)
+                                            uploads-table-prefix "uploads_"]
+           (upload-example-csv! nil)
+           (let [new-table (t2/select-one Table :db_id db-id)
+                 new-field (t2/select-one Field :table_id (:id new-table) :name "_mb_row_id")]
+             (is (= "_mb_row_id"
+                    (:name new-field)
+                    (:display_name new-field))))))))))
 
 (deftest upload-csv!-failure-test
   ;; Just test with postgres because failure should be independent of the driver

@@ -1,7 +1,4 @@
-import type {
-  DatePickerOperator,
-  DatePickerValue,
-} from "metabase/common/components/DatePicker";
+import type { DatePickerOperator, DatePickerValue } from "../types";
 import {
   setOperator,
   getOperatorDefaultValue,

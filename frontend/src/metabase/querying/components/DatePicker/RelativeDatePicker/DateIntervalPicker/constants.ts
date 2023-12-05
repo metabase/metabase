@@ -1,4 +1,4 @@
-import type { DatePickerTruncationUnit } from "metabase/common/components/DatePicker";
+import type { DatePickerTruncationUnit } from "../../types";
 
 export const DEFAULT_OFFSETS: Record<DatePickerTruncationUnit, number> = {
   minute: 60,

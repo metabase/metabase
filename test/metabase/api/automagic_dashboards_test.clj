@@ -359,9 +359,9 @@
                                                  :linked-field-id %reviews.product_id}
                                                 {:linked-table-id $$orders
                                                  :linked-field-id %orders.product_id}])})]
-        (is (=? [{:id   #hawk/malli Tab-Id-Schema
+        (is (=? [{:id   (mt/malli=? Tab-Id-Schema)
                   :name "A look at Reviews" :position 0}
-                 {:id   #hawk/malli Tab-Id-Schema
+                 {:id   (mt/malli=? Tab-Id-Schema)
                   :name "A look at Orders" :position 1}]
                 (:tabs dash)))
         (testing "The first card for each tab is a linked model card to the source model"
@@ -387,7 +387,7 @@
           (let [pk-filters (expected-filters {:model             model
                                               :model-index       model-index
                                               :model-index-value model-index-value})]
-            (cards-have-filters? (:dashcards dash) pk-filters)))))
+            (cards-have-filters? (:dashcards dash) pk-filters))))))
     (testing "X-ray a native model"
       (letfn [(lower [x] (u/lower-case-en x))
               (by-id [cols col-name] (or (some (fn [col]
@@ -429,16 +429,16 @@
                                                         :linked-field-id %reviews.product_id}
                                                        {:linked-table-id $$orders
                                                         :linked-field-id %orders.product_id}])})]
-              (is (=? [{:id   #hawk/malli Tab-Id-Schema
+              (is (=? [{:id   (mt/malli=? Tab-Id-Schema)
                         :name "A look at Reviews" :position 0}
-                       {:id   #hawk/malli Tab-Id-Schema
+                       {:id   (mt/malli=? Tab-Id-Schema)
                         :name "A look at Orders" :position 1}]
                       (:tabs dash)))
               (testing "All query cards have the correct filters"
                 (let [pk-filters (expected-filters {:model             model
                                                     :model-index       model-index
                                                     :model-index-value model-index-value})]
-                  (cards-have-filters? (:dashcards dash) pk-filters))))))))))
+                  (cards-have-filters? (:dashcards dash) pk-filters)))))))))
 
 (deftest create-linked-dashboard-test-single-link
   (testing "with only single linked table"
