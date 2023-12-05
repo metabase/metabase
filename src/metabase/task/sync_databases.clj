@@ -25,7 +25,6 @@
    [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -76,11 +75,11 @@
 
 (defn- sync-and-analyze-database*!
   [database-id]
-  (log/info (trs "Starting sync task for Database {0}." database-id))
+  (log/infof "Starting sync task for Database %d." database-id)
   (when-let [database (or (t2/select-one Database :id database-id)
                           (do
                             (unschedule-tasks-for-db! (mi/instance Database {:id database-id}))
-                            (log/warn (trs "Cannot sync Database {0}: Database does not exist." database-id))))]
+                            (log/warnf "Cannot sync Database %d: Database does not exist." database-id)))]
     (if-let [ex (try
                   ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
                   ;; purposes of creating a new H2 database.
@@ -104,7 +103,7 @@
   (when-let [database-id (job-context->database-id job-context)]
     (if (= perms/audit-db-id database-id)
       (do
-        (log/warn (trs "Cannot sync Database: It is the audit db."))
+        (log/warn "Cannot sync Database: It is the audit db.")
         (when-not config/is-prod?
           (throw (ex-info "Cannot sync Database: It is the audit db."
                           {:database-id database-id
@@ -121,19 +120,20 @@
   "The update field values job, as a function that can be used in a test"
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
-    (log/info (trs "Update Field values task triggered for Database {0}." database-id))
+    (log/infof "Update Field values task triggered for Database %d." database-id)
     (when-let [database (or (t2/select-one Database :id database-id)
                             (do
                               (unschedule-tasks-for-db! (mi/instance Database {:id database-id}))
-                              (log/warn "Cannot update Field values for Database {0}: Database does not exist." database-id)))]
+                              (log/warnf "Cannot update Field values for Database %d: Database does not exist." database-id)))]
       (if (:is_full_sync database)
         (field-values/update-field-values! database)
-        (log/info (trs "Skipping update, automatic Field value updates are disabled for Database {0}." database-id))))))
+        (log/infof "Skipping update, automatic Field value updates are disabled for Database %d." database-id)))))
 
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Update field values"}
   UpdateFieldValues [job-context]
   (update-field-values! job-context))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         TASK INFO AND GETTER FUNCTIONS                                         |
@@ -211,7 +211,7 @@
    task-info :- TaskInfo]
   (let [trigger-key (trigger-key database task-info)]
     (log/debug (u/format-color 'red
-                   (trs "Unscheduling task for Database {0}: trigger: {1}" (u/the-id database) (.getName trigger-key))))
+                   (format "Unscheduling task for Database %d: trigger: %s" (u/the-id database) (.getName trigger-key))))
     (task/delete-trigger! trigger-key)))
 
 (mu/defn unschedule-tasks-for-db!
@@ -320,7 +320,7 @@
              (fn
                ([] 0)
                ([counter]
-                (log/info (trs "Updated default schedules for {0} databases" counter))
+                (log/info "Updated default schedules for %d databases" counter)
                 counter)
                ([counter db]
                 (try
@@ -329,9 +329,9 @@
                      (sync.schedules/default-randomized-schedule)))
                   (inc counter)
                   (catch Exception e
-                    (log/warn e
-                              (trs "Error updating database {0} for randomized schedules"
-                                   (u/the-id db)))
+                    (log/warnf e
+                               "Error updating database %d for randomized schedules"
+                               (u/the-id db))
                     counter))))
              (mdb.query/reducible-query
               {:select [:id :details]
