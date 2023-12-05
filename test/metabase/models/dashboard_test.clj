@@ -541,7 +541,7 @@
                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))
        ;; revert
        (revert-to-previous-revision Dashboard dashboard-id 2)
-       (is (=? [{:id #hawk/malli [:fn pos-int?] :name "Tab 1" :position 0}
+       (is (=? [{:id (mt/malli=? [:fn pos-int?]) :name "Tab 1" :position 0}
                 {:id tab-2-id :name "Tab 2" :position 1}]
                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
 
