@@ -1,7 +1,8 @@
 import _ from "underscore";
 import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
-import { render, screen, waitFor, within } from "__support__/ui";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 
 import type { Metric, StructuredDatasetQuery } from "metabase-types/api";
@@ -22,6 +23,8 @@ import {
   PRODUCTS,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
+import type { State } from "metabase-types/store";
+import { createMockState } from "metabase-types/store/mocks";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
 import type Metadata from "metabase-lib/metadata/Metadata";
@@ -75,6 +78,24 @@ function createQueryWithInlineExpression() {
   });
 }
 
+function createQueryWithInlineExpressionWithOperator() {
+  return createQuery({
+    query: {
+      database: SAMPLE_DB_ID,
+      type: "query",
+      query: {
+        aggregation: [
+          [
+            "aggregation-options",
+            ["count"],
+            { name: "My count", "display-name": "My count" },
+          ],
+        ],
+      },
+    },
+  });
+}
+
 const TEST_METRIC = createMockMetric({
   id: 1,
   table_id: ORDERS_ID,
@@ -119,12 +140,18 @@ function createMetadata({
 }
 
 type SetupOpts = {
-  query?: Lib.Query;
+  state?: State;
   metadata?: Metadata;
+  query?: Lib.Query;
   hasExpressionInput?: boolean;
 };
 
 function setup({
+  state = createMockState({
+    entities: createMockEntitiesState({
+      databases: [createSampleDatabase()],
+    }),
+  }),
   metadata = createMetadata(),
   query = createQuery({ metadata }),
   hasExpressionInput = true,
@@ -132,49 +159,53 @@ function setup({
   const dataset_query = Lib.toLegacyQuery(query) as StructuredDatasetQuery;
   const question = new Question(createAdHocCard({ dataset_query }), metadata);
   const legacyQuery = question.query() as StructuredQuery;
+  const stageIndex = 0;
+  const clause = Lib.aggregations(query, stageIndex)[0];
 
-  const clause = Lib.aggregations(query, 0)[0];
-
-  const baseOperators = Lib.availableAggregationOperators(query, 0);
+  const baseOperators = Lib.availableAggregationOperators(query, stageIndex);
   const operators = clause
     ? Lib.selectedAggregationOperators(baseOperators, clause)
     : baseOperators;
 
   const onSelect = jest.fn();
-  const onSelectLegacy = jest.fn();
 
-  function handleSelect(clause: Lib.Aggregable) {
-    const nextQuery = Lib.aggregate(query, 0, clause);
-    const aggregations = Lib.aggregations(nextQuery, 0);
-    const recentAggregation = aggregations[aggregations.length - 1];
-    onSelect(Lib.displayInfo(nextQuery, 0, recentAggregation));
-  }
-
-  render(
+  renderWithProviders(
     <AggregationPicker
       query={query}
       legacyQuery={legacyQuery}
-      legacyClause={legacyQuery.aggregations()[0]}
-      stageIndex={0}
+      clause={clause}
+      stageIndex={stageIndex}
       operators={operators}
       hasExpressionInput={hasExpressionInput}
-      onSelect={handleSelect}
-      onSelectLegacy={onSelectLegacy}
+      onSelect={onSelect}
     />,
+    { storeInitialState: state },
   );
 
   function getRecentClause() {
-    const [lastCall] = onSelect.mock.calls.slice(-1);
-    return lastCall?.[0];
+    expect(onSelect).toHaveBeenCalled();
+    const [clause] = onSelect.mock.lastCall;
+    return clause;
   }
 
-  return { metadata, getRecentClause, onSelectLegacy };
+  function getRecentClauseInfo() {
+    return Lib.displayInfo(query, stageIndex, getRecentClause());
+  }
+
+  return {
+    metadata,
+    query,
+    stageIndex,
+    getRecentClause,
+    getRecentClauseInfo,
+    onSelect,
+  };
 }
 
 describe("AggregationPicker", () => {
   it("should allow switching between aggregation approaches", () => {
     const metadata = createMetadata({ metrics: [TEST_METRIC] });
-    const { getRecentClause } = setup({
+    const { getRecentClauseInfo } = setup({
       query: createQueryWithCountAggregation({ metadata }),
       metadata,
     });
@@ -183,11 +214,9 @@ describe("AggregationPicker", () => {
     userEvent.click(screen.getByText("Common Metrics"));
     userEvent.click(screen.getByText(TEST_METRIC.name));
 
-    expect(getRecentClause()).toEqual(
-      expect.objectContaining({
-        displayName: metric.displayName(),
-      }),
-    );
+    expect(getRecentClauseInfo()).toMatchObject({
+      displayName: metric.displayName(),
+    });
   });
 
   describe("basic operators", () => {
@@ -226,45 +255,39 @@ describe("AggregationPicker", () => {
     });
 
     it("should apply a column-less operator", () => {
-      const { getRecentClause } = setup();
+      const { getRecentClauseInfo } = setup();
 
       userEvent.click(screen.getByText("Count of rows"));
 
-      expect(getRecentClause()).toEqual(
-        expect.objectContaining({
-          name: "count",
-          displayName: "Count",
-        }),
-      );
+      expect(getRecentClauseInfo()).toMatchObject({
+        name: "count",
+        displayName: "Count",
+      });
     });
 
     it("should apply an operator requiring columns", () => {
-      const { getRecentClause } = setup();
+      const { getRecentClauseInfo } = setup();
 
       userEvent.click(screen.getByText("Average of ..."));
       userEvent.click(screen.getByText("Quantity"));
 
-      expect(getRecentClause()).toEqual(
-        expect.objectContaining({
-          name: "avg",
-          displayName: "Average of Quantity",
-        }),
-      );
+      expect(getRecentClauseInfo()).toMatchObject({
+        name: "avg",
+        displayName: "Average of Quantity",
+      });
     });
 
     it("should allow picking a foreign column", () => {
-      const { getRecentClause } = setup();
+      const { getRecentClauseInfo } = setup();
 
       userEvent.click(screen.getByText("Average of ..."));
       userEvent.click(screen.getByText("Product"));
       userEvent.click(screen.getByText("Rating"));
 
-      expect(getRecentClause()).toEqual(
-        expect.objectContaining({
-          name: "avg",
-          displayName: "Average of Rating",
-        }),
-      );
+      expect(getRecentClauseInfo()).toMatchObject({
+        name: "avg",
+        displayName: "Average of Rating",
+      });
     });
 
     it("should highlight selected operator", () => {
@@ -302,7 +325,7 @@ describe("AggregationPicker", () => {
     });
 
     it("should allow to change an operator for existing aggregation", () => {
-      const { getRecentClause } = setup({
+      const { getRecentClauseInfo } = setup({
         query: createQueryWithMaxAggregation(),
       });
 
@@ -310,27 +333,23 @@ describe("AggregationPicker", () => {
       userEvent.click(screen.getByText("Average of ..."));
       userEvent.click(screen.getByText("Quantity"));
 
-      expect(getRecentClause()).toEqual(
-        expect.objectContaining({
-          name: "avg",
-          displayName: "Average of Quantity",
-        }),
-      );
+      expect(getRecentClauseInfo()).toMatchObject({
+        name: "avg",
+        displayName: "Average of Quantity",
+      });
     });
 
     it("should allow to change a column for existing aggregation", () => {
-      const { getRecentClause } = setup({
+      const { getRecentClauseInfo } = setup({
         query: createQueryWithMaxAggregation(),
       });
 
       userEvent.click(screen.getByText("Discount"));
 
-      expect(getRecentClause()).toEqual(
-        expect.objectContaining({
-          name: "max",
-          displayName: "Max of Discount",
-        }),
-      );
+      expect(getRecentClauseInfo()).toMatchObject({
+        name: "max",
+        displayName: "Max of Discount",
+      });
     });
   });
 
@@ -377,46 +396,62 @@ describe("AggregationPicker", () => {
 
     it("should allow picking a metric", () => {
       const metadata = createMetadata({ metrics: [TEST_METRIC] });
-      const { getRecentClause } = setupMetrics({ metadata });
+      const { getRecentClauseInfo } = setupMetrics({ metadata });
       const metric = checkNotNull(metadata.metric(TEST_METRIC.id));
 
       userEvent.click(screen.getByText(TEST_METRIC.name));
 
-      expect(getRecentClause()).toEqual(
-        expect.objectContaining({
-          displayName: metric.displayName(),
-        }),
-      );
+      expect(getRecentClauseInfo()).toMatchObject({
+        displayName: metric.displayName(),
+      });
     });
   });
 
   describe("custom expressions", () => {
     it("should allow to enter a custom expression", async () => {
-      const { onSelectLegacy } = setup();
+      const { getRecentClauseInfo } = setup();
+
+      const expression = "1 + 1";
+      const expressionName = "My expression";
 
       userEvent.click(screen.getByText("Custom Expression"));
-      userEvent.type(screen.getByLabelText("Expression"), "1 + 1");
-      userEvent.type(screen.getByLabelText("Name"), "My expression");
+      userEvent.type(screen.getByLabelText("Expression"), expression);
+      userEvent.type(screen.getByLabelText("Name"), expressionName);
       userEvent.click(screen.getByRole("button", { name: "Done" }));
-
-      await waitFor(() =>
-        expect(onSelectLegacy).toHaveBeenCalledWith([
-          "aggregation-options",
-          ["+", 1, 1],
-          { "display-name": "My expression", name: "My expression" },
-        ]),
-      );
+      expect(getRecentClauseInfo().displayName).toBe(expressionName);
     });
 
-    it("should open the editor when an expression is used", async () => {
+    it("should open the editor when a named expression without operator is used", async () => {
       setup({ query: createQueryWithInlineExpression() });
 
       expect(screen.getByText("Custom Expression")).toBeInTheDocument();
       expect(screen.getByDisplayValue("Avg Q")).toBeInTheDocument();
     });
 
+    it("should open the editor when a named expression with operator is used", async () => {
+      setup({ query: createQueryWithInlineExpressionWithOperator() });
+
+      expect(screen.getByText("Custom Expression")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("My count")).toBeInTheDocument();
+    });
+
     it("shouldn't be available if database doesn't support custom expressions", () => {
-      setup({ metadata: createMetadata({ hasExpressionSupport: false }) });
+      setup({
+        state: createMockState({
+          entities: createMockEntitiesState({
+            databases: [
+              {
+                ...createSampleDatabase(),
+                features: _.without(
+                  COMMON_DATABASE_FEATURES,
+                  "expression-aggregations",
+                ),
+              },
+            ],
+          }),
+        }),
+        metadata: createMetadata({ hasExpressionSupport: false }),
+      });
       expect(screen.queryByText("Custom Expression")).not.toBeInTheDocument();
     });
 
