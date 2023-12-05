@@ -357,10 +357,25 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn upload-csv!
-  "Main entry point for CSV uploading. Coordinates detecting the schema, inserting it into an appropriate database,
-  syncing and scanning the new data, and creating an appropriate model which is then returned. May throw validation or
-  DB errors. Requires that current-user dynamic vars are set as if by an API call. Returns the newly created card."
-  [{:keys [collection-id filename ^File file schema-name table-prefix database]}]
+  "Main entry point for CSV uploading.
+
+  What it does:
+  - detects the schema of the CSV file
+  - inserts the data it into the database
+  - syncs and scans the new table
+  - creates a model
+
+  Requires that current-user dynamic vars in [[metabase.api.common]] are bound as if by API middleware.
+  Returns the newly created model. May throw validation or DB errors.
+
+  Args:
+  - `collection-id`: the ID of the collection to upload to.
+  - `filename`: the name of the file being uploaded.
+  - `file`: the file being uploaded. This will be deleted after the upload is complete.
+  - `database`: the database to upload to.
+  - `schema-name`: the name of the schema to create the table in (optional).
+  - `table-prefix`: the prefix to use for the table name (optional)."
+  [{:keys [collection-id filename ^File file database schema-name table-prefix]}]
   (try
     (let [start-time        (System/currentTimeMillis)
           driver            (driver.u/database->driver database)
@@ -398,10 +413,9 @@
       (snowplow/track-event! ::snowplow/csv-upload-successful
                              api/*current-user-id*
                              (merge
-                              {:model-id (:id card)
+                              {:model-id       (:id card)
                                :upload-seconds upload-seconds}
                               stats))
-      (.delete file)
       card)
     (catch Throwable e
       (let [fail-stats (with-open [reader (bom/bom-reader file)]
@@ -410,5 +424,6 @@
                             :num-columns (count (first rows))
                             :num-rows    (count (rest rows))}))]
         (snowplow/track-event! ::snowplow/csv-upload-failed api/*current-user-id* fail-stats))
-      (.delete file)
-      (throw e))))
+
+      (throw e))
+    (finally (.delete file))))

@@ -2848,8 +2848,8 @@
       (when grant?
         (perms/grant-permissions! group-id (perms/data-perms-path (mt/id))))
       (u/prog1 (@#'api.card/from-csv! {:collection-id collection-id
-                                         :filename      filename
-                                         :file          file})
+                                       :filename      filename
+                                       :file          file})
         (when grant?
           (perms/revoke-data-perms! group-id (mt/id)))))))
 

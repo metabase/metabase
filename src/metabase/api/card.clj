@@ -802,9 +802,6 @@
    query     ms/NonBlankString}
   (param-values (api/read-check Card card-id) param-key query))
 
-;;
-;;
-
 (defn- can-upload-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
   [db schema-name]
