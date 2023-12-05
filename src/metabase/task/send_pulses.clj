@@ -52,10 +52,10 @@
        (try
          (task-history/with-task-history {:task         "send-pulse"
                                           :task_details {:pulse-id pulse-id}}
-           (log/debug (format "Starting Pulse Execution: %d" pulse-id))
+           (log/debugf "Starting Pulse Execution: %d" pulse-id)
            (when-let [pulse (pulse/retrieve-notification pulse-id :archived false)]
              (metabase.pulse/send-pulse! pulse :channel-ids (map :id channels)))
-           (log/debug (format "Finished Pulse Execution: %d" pulse-id)))
+           (log/debugf "Finished Pulse Execution: %d" pulse-id))
          (catch Throwable e
            (on-error pulse-id e)))))))
 

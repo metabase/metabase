@@ -77,11 +77,10 @@
     (try
       ;; don't bother logging namespace for now, maybe in the future if there's tasks of the same name in multiple
       ;; namespaces we can log it
-      (log/info (format "Initializing task %s" (u/format-color 'green (name k))) (u/emoji "📆"))
+      (log/infof "Initializing task %s" (u/format-color 'green (name k)) (u/emoji "📆"))
       (f k)
       (catch Throwable e
         (log/error e "Error initializing task {0}" k)))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Quartz Scheduler Connection Provider                                      |
