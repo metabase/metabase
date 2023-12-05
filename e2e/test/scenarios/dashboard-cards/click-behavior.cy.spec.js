@@ -4,7 +4,6 @@ import {
   addOrUpdateDashboardCard,
   editDashboard,
   getActionCardDetails,
-  getBrokenUpTextMatcher,
   getDashboardCard,
   getHeadingCardDetails,
   getLinkCardDetails,
@@ -129,6 +128,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("/api/dataset").as("dataset");
     setTokenFeatures("all");
   });
 
@@ -610,7 +610,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       clickLineChartPoint();
       cy.findByTestId("qb-filters-panel").should(
         "have.text",
-        "Created At is August 1–31, 2022",
+        "Created At is Aug 1–31, 2022",
       );
       cy.location().should(({ hash, pathname }) => {
         expect(pathname).to.equal("/question");
@@ -647,8 +647,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       saveDashboard();
 
       clickLineChartPoint();
+      cy.wait("@dataset");
       cy.findByTestId("qb-filters-panel")
-        .should("contain.text", "Created At is August 1–31, 2022")
+        .should("contain.text", "Created At is Aug 1–31, 2022")
         .should("contain.text", "Quantity is equal to 79");
       cy.location().should(({ hash, pathname }) => {
         expect(pathname).to.equal("/question");
@@ -1062,8 +1063,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           getTableCell(COLUMN_INDEX.CREATED_AT)
             .should("have.text", `Created at: ${POINT_CREATED_AT_FORMATTED}`)
             .click();
+          cy.wait("@dataset");
           cy.findByTestId("qb-filters-panel")
-            .should("contain.text", "Created At is August 1–31, 2022")
+            .should("contain.text", "Created At is Aug 1–31, 2022")
             .should("contain.text", "Quantity is equal to 79");
           cy.location().should(({ hash, pathname }) => {
             expect(pathname).to.equal("/question");
@@ -1623,37 +1625,21 @@ const getTableCell = index => {
 const getCreatedAtToQuestionMapping = () => {
   return cy
     .get("aside")
-    .findByText(
-      getBrokenUpTextMatcher(
-        `${CREATED_AT_COLUMN_NAME} goes to "${TARGET_QUESTION.name}"`,
-      ),
-    );
+    .contains(`${CREATED_AT_COLUMN_NAME} goes to "${TARGET_QUESTION.name}"`);
 };
 
 const getCountToDashboardMapping = () => {
   return cy
     .get("aside")
-    .findByText(
-      getBrokenUpTextMatcher(
-        `${COUNT_COLUMN_NAME} goes to "${TARGET_DASHBOARD.name}"`,
-      ),
-    );
+    .contains(`${COUNT_COLUMN_NAME} goes to "${TARGET_DASHBOARD.name}"`);
 };
 
 const getCreatedAtToUrlMapping = () => {
-  return cy
-    .get("aside")
-    .findByText(
-      getBrokenUpTextMatcher(`${CREATED_AT_COLUMN_NAME} goes to URL`),
-    );
+  return cy.get("aside").contains(`${CREATED_AT_COLUMN_NAME} goes to URL`);
 };
 
 const getCountToDashboardFilterMapping = () => {
-  return cy
-    .get("aside")
-    .findByText(
-      getBrokenUpTextMatcher(`${COUNT_COLUMN_NAME} updates 1 filter`),
-    );
+  return cy.get("aside").contains(`${COUNT_COLUMN_NAME} updates 1 filter`);
 };
 
 const createDashboardWithTabs = ({ dashboard, tabs, options }) => {

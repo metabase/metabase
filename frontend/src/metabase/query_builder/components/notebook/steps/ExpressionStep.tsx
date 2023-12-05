@@ -1,7 +1,7 @@
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 
 import type { NotebookStepUiComponentProps } from "../types";
-import ClauseStep from "./ClauseStep";
+import { ClauseStep } from "./ClauseStep";
 
 const ExpressionStep = ({
   color,
@@ -23,7 +23,7 @@ const ExpressionStep = ({
       items={items}
       renderName={({ name }) => name}
       readOnly={readOnly}
-      renderPopover={item => (
+      renderPopover={({ item }) => (
         <ExpressionWidget
           legacyQuery={legacyQuery}
           query={query}
@@ -46,7 +46,8 @@ const ExpressionStep = ({
         />
       )}
       isLastOpened={isLastOpened}
-      onRemove={({ name }) => updateQuery(legacyQuery.removeExpression(name))}
+      onRemove={({ name }) => updateQuery(query.removeExpression(name))}
+      withLegacyPopover
     />
   );
 };

@@ -548,11 +548,7 @@ describe(
             .should("not.be.checked");
           filterWidget().findByText("Gadget").should("be.visible");
 
-          // Card height isn't updated because we're mocking clock, this is because
-          // dashcard visualizations are wrapped within `ExplicitSize` HoC which uses
-          // either `setTimeout` or `setInterval` under the hood.
-          // That's why this dashcard is only showing 1 result per page.
-          getDashboardCard().findByText("Rows 1-1 of 53").should("be.visible");
+          getDashboardCard().findByText("Rows 1-5 of 53").should("be.visible");
 
           // Card result should be updated after manually updating the filter
           filterWidget().icon("close").click();
@@ -561,11 +557,7 @@ describe(
             .should("be.visible")
             .click();
 
-          // Card height isn't updated because we're mocking clock, this is because
-          // dashcard visualizations are wrapped within `ExplicitSize` HoC which uses
-          // either `setTimeout` or `setInterval` under the hood.
-          // That's why this dashcard is only showing 1 result per page.
-          getDashboardCard().findByText("Rows 1-1 of 200").should("be.visible");
+          getDashboardCard().findByText("Rows 1-5 of 200").should("be.visible");
         });
 
         it("should not display a toast when a dashboard takes longer than 15s to load if users have no write access to a dashboard", () => {
@@ -583,11 +575,7 @@ describe(
           // so to make sure callback in `setTimeout` is called, we need to advance the clock using cy.tick().
           cy.tick();
 
-          // Card height isn't updated because we're mocking clock, this is because
-          // dashcard visualizations are wrapped within `ExplicitSize` HoC which uses
-          // either `setTimeout` or `setInterval` under the hood.
-          // That's why this dashcard is only showing 1 result per page.
-          getDashboardCard().findByText("Rows 1-1 of 53").should("be.visible");
+          getDashboardCard().findByText("Rows 1-5 of 53").should("be.visible");
         });
       });
     });

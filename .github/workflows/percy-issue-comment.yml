@@ -14,19 +14,24 @@ jobs:
       branch_name: ${{ fromJson(steps.fetch_pr.outputs.data).head.ref }}
       commit_sha: ${{ fromJson(steps.fetch_pr.outputs.data).head.sha }}
     steps:
-      - uses: tibdex/github-app-token@v1.6.0
+      - uses: tibdex/github-app-token@v2.1.0
         id: generate-token
         with:
           app_id: ${{ secrets.METABASE_BOT_APP_ID }}
           private_key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
-      - id: is_organization_member
-        uses: JamesSingleton/is-organization-member@1.0.0
+      - uses: actions/checkout@v3
         with:
-          organization: metabase
-          username: ${{ github.event.issue.user.login }}
-          token: ${{ steps.generate-token.outputs.token }}
+          ref: ${{ needs.pr_info.outputs.branch_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify Membership
+        id: verify-membership
+        uses: ./.github/actions/verify-membership
+        with:
+          github_token: ${{ steps.generate-token.outputs.token }}
+          organization_name: metabase
+          username: ${{ github.event.comment.user.login }}
       - run: |
-          result=${{ steps.is_organization_member.outputs.result }}
+          result=${{ steps.verify-membership.outputs.is_member }}
           if [ $result == false ]; then
               echo User ${{ github.event.comment.user.login }} is not a member of Metabase organization
               exit 1

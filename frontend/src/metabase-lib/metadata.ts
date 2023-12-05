@@ -17,9 +17,12 @@ import type {
   ClauseDisplayInfo,
   ColumnDisplayInfo,
   ColumnGroup,
+  ColumnGroupDisplayInfo,
   ColumnMetadata,
   DrillThru,
   DrillThruDisplayInfo,
+  FilterOperator,
+  FilterOperatorDisplayInfo,
   JoinConditionOperator,
   JoinConditionOperatorDisplayInfo,
   JoinStrategy,
@@ -29,6 +32,9 @@ import type {
   MetricDisplayInfo,
   OrderByClause,
   OrderByClauseDisplayInfo,
+  Query,
+  SegmentMetadata,
+  SegmentDisplayInfo,
   TableDisplayInfo,
   TableMetadata,
   Query,
@@ -56,7 +62,7 @@ declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   columnGroup: ColumnGroup,
-): ColumnDisplayInfo | TableDisplayInfo;
+): ColumnGroupDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
@@ -125,6 +131,11 @@ declare function DisplayInfoFn(
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
+  filterOperator: FilterOperator,
+): FilterOperatorDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
   segment: SegmentMetadata,
 ): SegmentDisplayInfo;
 
@@ -147,22 +158,6 @@ export function describeTemporalUnit(
   n: number = 1,
 ): string {
   return ML.describe_temporal_unit(n, unit);
-}
-
-type IntervalAmount = number | "current" | "next" | "last";
-
-export function describeTemporalInterval(
-  n: IntervalAmount,
-  unit?: string,
-): string {
-  return ML.describe_temporal_interval(n, unit);
-}
-
-export function describeRelativeDatetime(
-  n: IntervalAmount,
-  unit?: string,
-): string {
-  return ML.describe_relative_datetime(n, unit);
 }
 
 export function tableOrCardMetadata(
@@ -196,8 +191,4 @@ export function returnedColumns(
   stageIndex: number,
 ): ColumnMetadata[] {
   return ML.returned_columns(query, stageIndex);
-}
-
-export function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
-  return ML.is_column_metadata(arg);
 }

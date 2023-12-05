@@ -1,9 +1,12 @@
 import {
+  addCustomColumn,
   enterCustomColumnDetails,
+  getNotebookStep,
   popover,
   visualize,
   restore,
   startNewQuestion,
+  queryBuilderMain,
 } from "e2e/support/helpers";
 
 const CC_NAME = "C-States";
@@ -21,37 +24,27 @@ describe("issue 13751", { tags: "@external" }, () => {
   });
 
   it("should allow using strings in filter based on a custom column (metabase#13751)", () => {
-    cy.log("Create custom column using `regexextract()`");
-
-    cy.icon("add_data").click();
+    addCustomColumn();
     popover().within(() => {
       enterCustomColumnDetails({
         formula: 'regexextract([State], "^C[A-Z]")',
       });
       cy.findByPlaceholderText("Something nice and descriptive").type(CC_NAME);
-      cy.get(".Button").contains("Done").should("not.be.disabled").click();
+      cy.button("Done").click();
     });
 
-    // Add filter based on custom column
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add filters to narrow your answer").click();
+    getNotebookStep("filter")
+      .findByText(/Add filter/)
+      .click();
     popover().within(() => {
       cy.findByText(CC_NAME).click();
-      cy.findByTestId("select-button").click();
-      cy.log(
-        "**It fails here already because it doesn't find any condition for strings. Only numbers.**",
-      );
-      cy.findByText("Is");
-      cy.get("input").type("CO");
-      cy.get(".Button")
-        .contains("Add filter")
-        .should("not.be.disabled")
-        .click();
+      cy.findByDisplayValue("Is").click();
+      cy.findByPlaceholderText("Enter some text").type("CO");
+      cy.button("Add filter").click();
     });
 
     visualize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Arnold Adams");
+    queryBuilderMain().findByText("Arnold Adams").should("be.visible");
   });
 });
