@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import type { PopoverBaseProps } from "metabase/ui";
-import { FilterPicker } from "metabase/common/components/FilterPicker";
+import { FilterPicker } from "metabase/querying";
 import * as Lib from "metabase-lib";
 import type LegacyQuery from "metabase-lib/queries/StructuredQuery";
 import type LegacyFilter from "metabase-lib/queries/structured/Filter";
