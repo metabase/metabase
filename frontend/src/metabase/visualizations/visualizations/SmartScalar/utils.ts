@@ -116,7 +116,7 @@ export function getDefaultComparison(
     insight => insight.col === settings["scalar.field"],
   )?.unit;
 
-  if (dateUnit === undefined) {
+  if (!dateUnit) {
     return COMPARISON_OPTIONS.COMPARE_TO_PREVIOUS;
   }
 
@@ -143,7 +143,7 @@ export function getComparisonOptions(
     insight => insight.col === settings["scalar.field"],
   )?.unit as RelativeDatetimeUnit | undefined;
 
-  if (dateUnit === undefined) {
+  if (!dateUnit) {
     return [COMPARISON_OPTIONS.COMPARE_TO_PREVIOUS];
   }
 
@@ -190,7 +190,7 @@ export function isComparisonValid(
     insight => insight.col === settings["scalar.field"],
   )?.unit;
 
-  if (dateUnit === undefined) {
+  if (!dateUnit) {
     return false;
   }
 
