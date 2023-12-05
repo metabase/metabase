@@ -3,7 +3,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.core.async :as a]
-   [clojure.string :as str]
+   [clojure.java.io :as io]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
    [metabase.api.common :as api]
@@ -11,8 +11,6 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
    [metabase.driver :as driver]
-   [metabase.driver.sync :as driver.s]
-   [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -25,7 +23,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.models.params.custom-values :as custom-values]
-   [metabase.models.permissions :as perms]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
@@ -802,68 +799,25 @@
    query     ms/NonBlankString}
   (param-values (api/read-check Card card-id) param-key query))
 
-(defn- can-upload-error
-  "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
-  [db schema-name]
-  (let [driver (driver.u/database->driver db)]
-    (cond
-      (not (public-settings/uploads-enabled))
-      (ex-info (tru "Uploads are not enabled.")
-               {:status-code 422})
-      (premium-features/sandboxed-user?)
-      (ex-info (tru "Uploads are not permitted for sandboxed users.")
-               {:status-code 403})
-      (not (driver/database-supports? driver :uploads nil))
-      (ex-info (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver)))
-               {:status-code 422})
-      (and (str/blank? schema-name)
-           (driver/database-supports? driver :schemas db))
-      (ex-info (tru "A schema has not been set.")
-               {:status-code 422})
-      (not (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                            (perms/data-perms-path (u/the-id db) schema-name)))
-      (ex-info (tru "You don''t have permissions to do that.")
-               {:status-code 403})
-      (and (some? schema-name)
-           (not (driver.s/include-schema? db schema-name)))
-      (ex-info (tru "The schema {0} is not syncable." schema-name)
-               {:status-code 422}))))
-
-(defn- check-can-upload
-  "Throws an error if the user cannot upload to the given database and schema."
-  [db schema-name]
-  (when-let [error (can-upload-error db schema-name)]
-    (throw error)))
-
-(defn can-upload?
-  "Returns true if the user can upload to the given database and schema, and false otherwise."
-  [db schema-name]
-  (nil? (can-upload-error db schema-name)))
-
 (defn- from-csv!
   "This helper function exists to make testing the POST /api/card/from-csv endpoint easier."
   [{:keys [collection-id filename file]}]
   (try
-    (collection/check-write-perms-for-collection collection-id)
-    (let [db-id       (public-settings/uploads-database-id)
-          database    (or (t2/select-one Database :id db-id)
-                          (throw (Exception. (tru "The uploads database does not exist."))))
-          schema-name (public-settings/uploads-schema-name)
-          _           (check-can-upload database schema-name)
-          model       (upload/upload-csv! {:collection-id collection-id
-                                           :filename      filename
-                                           :file          file
-                                           :user-id       @api/*current-user*
-                                           :schema-name   schema-name
-                                           :table-prefix  (public-settings/uploads-table-prefix)
-                                           :database      database})]
+    (let [model (upload/upload-csv! {:collection-id collection-id
+                                     :filename      filename
+                                     :file          file
+                                     :user-id       @api/*current-user*
+                                     :schema-name   (public-settings/uploads-schema-name)
+                                     :table-prefix  (public-settings/uploads-table-prefix)
+                                     :db-id         (public-settings/uploads-database-id)})]
       {:status 200
        :body   (:id model)})
     (catch Throwable e
       {:status (or (-> e ex-data :status-code)
                    500)
        :body   {:message (or (ex-message e)
-                             (tru "There was an error uploading the file"))}})))
+                             (tru "There was an error uploading the file"))}})
+    (finally (io/delete-file file :silently))))
 
 (api/defendpoint ^:multipart POST "/from-csv"
   "Create a table and model populated with the values from the attached CSV. Returns the model ID if successful."
