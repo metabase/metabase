@@ -15,6 +15,8 @@
        :clj  ([java-time.api :as jt]
               [metabase.util.malli.fn :as mu.fn]))))
 
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
 (deftest ^:parallel returns-underlying-records-test-1
   (lib.drill-thru.tu/test-returns-drill
    {:drill-type  :drill-thru/underlying-records
@@ -69,9 +71,7 @@
                                   drills))))))))))
 
 
-#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
-
-(def last-month
+(def ^:private last-month
   #?(:cljs (let [now    (js/Date.)
                  year   (.getFullYear now)
                  month  (.getMonth now)]
