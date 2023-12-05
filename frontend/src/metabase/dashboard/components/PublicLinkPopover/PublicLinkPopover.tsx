@@ -51,7 +51,6 @@ export const PublicLinkPopover = ({
     if (isOpen && !uuid) {
       await createPublicLink();
     }
-    return uuid;
   }, [uuid, isOpen]);
 
   const onRemoveLink = () => {
