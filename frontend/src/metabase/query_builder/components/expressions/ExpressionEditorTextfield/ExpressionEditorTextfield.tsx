@@ -417,7 +417,6 @@ class ExpressionEditorTextfield extends React.Component<
       source,
       startRule,
       legacyQuery,
-      name: null,
     });
     this.setState({ errorMessage });
 

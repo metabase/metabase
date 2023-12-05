@@ -135,10 +135,10 @@ export function FilterPopover({
     const newFilter =
       !filter || filter.query() !== dimension.query() || field?.isDate?.()
         ? new Filter(
-            [],
-            null,
-            dimension.query() || (filter && filter.query()) || query,
-          )
+          [],
+          null,
+          dimension.query() || (filter && filter.query()) || query,
+        )
         : filter;
 
     setFilter(
@@ -197,11 +197,11 @@ export function FilterPopover({
             isTopLevel
               ? query.topLevelFilterFieldOptionSections()
               : ((filter && filter.query()) || query).filterFieldOptionSections(
-                  filter,
-                  {
-                    includeSegments: showCustom,
-                  },
-                )
+                filter,
+                {
+                  includeSegments: showCustom,
+                },
+              )
           }
           onChangeDimension={(dimension: FieldDimension) =>
             handleDimensionChange(dimension)

@@ -194,7 +194,7 @@ export function quoteString(string: string, quote: string) {
       if (ch === quote && string[i - 1] !== BACKSLASH) {
         str += BACKSLASH + ch;
       } else {
-        const sub = STRING_ESCAPE[ch];
+        const sub = STRING_ESCAPE[ch as keyof typeof STRING_ESCAPE];
         str += sub ? sub : ch;
       }
     }
@@ -217,7 +217,7 @@ export function unquoteString(string: string) {
       const ch = string[i];
       if (ch === BACKSLASH) {
         const seq = string[i + 1];
-        const unescaped = STRING_UNESCAPE[seq];
+        const unescaped = STRING_UNESCAPE[seq as keyof typeof STRING_UNESCAPE];
         if (unescaped) {
           str += unescaped;
           ++i;
