@@ -1,6 +1,10 @@
+import type * as Lib from "metabase-lib";
 import type { OperatorOption } from "./types";
 
-export const OPERATOR_OPTIONS: Record<string, OperatorOption> = {
+export const OPERATOR_OPTIONS: Record<
+  Lib.NumberFilterOperatorName,
+  OperatorOption
+> = {
   "=": {
     operator: "=",
     valueCount: 1,
