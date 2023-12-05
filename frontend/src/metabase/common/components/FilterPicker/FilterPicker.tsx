@@ -21,7 +21,9 @@ export interface FilterPickerProps {
 
   legacyQuery: LegacyQuery;
 
-  onSelect: (filter: Lib.CustomExpressionClause | Lib.SegmentMetadata) => void;
+  onSelect: (
+    filter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
+  ) => void;
   onClose?: () => void;
 }
 
@@ -52,7 +54,7 @@ export function FilterPicker({
   }, [initialFilter]);
 
   const handleChange = (
-    filter: Lib.CustomExpressionClause | Lib.SegmentMetadata,
+    filter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
   ) => {
     onSelect(filter);
     onClose?.();
@@ -73,8 +75,10 @@ export function FilterPicker({
   );
 
   const handleClauseChange = useCallback(
-    (clause: Lib.CustomExpressionClause) => {
-      onSelect(clause);
+    (_name: string, clause: Lib.CustomExpressionClause) => {
+      onSelect(
+        clause as Exclude<Lib.CustomExpressionClause, Lib.AggregationClause>,
+      );
       onClose?.();
     },
     [onSelect, onClose],
@@ -88,9 +92,7 @@ export function FilterPicker({
       clause={filter}
       startRule="boolean"
       header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
-      onChangeClause={(_name, clause) => {
-        handleClauseChange(clause);
-      }}
+      onChangeClause={handleClauseChange}
       onClose={closeExpressionEditor}
     />
   );
