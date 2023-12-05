@@ -1609,7 +1609,7 @@ const testChangingBackToDefaultBehavior = () => {
 
   editDashboard();
 
-  // (metabase#35354)
+  cy.log("doesn't throw when setting default behavior (metabase#35354)");
   cy.on("uncaught:exception", err => {
     expect(err.name.includes("TypeError")).to.be.false;
   });
