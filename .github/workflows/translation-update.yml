@@ -1,0 +1,65 @@
+name: Update Translations
+on:
+  workflow_dispatch:
+    inputs:
+      step:
+        type: choice
+        description: Upload untranslated strings | Download translated strings
+        options:
+          - upload
+          - download
+
+jobs:
+  manage-translations:
+    name: Manage Translations
+    permissions: write-all
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    env:
+      POEDITOR_API_TOKEN: ${{ secrets.POEDITOR_API_TOKEN }}
+    steps:
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: manage-translations
+
+    # - name: Check for untranslated strings TODO
+
+    - name: Upload strings to be translated
+      if: ${{ inputs.step }} == 'upload'
+      run: | # sh
+        ./bin/i18n/update-translation-template
+        ./bin/i18n/export-pot-to-poeditor
+        echo "Strings uploaded to POEditor. Don't forget to notify contributors"
+
+    - name: Download translated strings
+      if: ${{ inputs.step }} == 'download'
+      run: | # sh
+        ./bin/i18n/import-po-from-poeditor
+        ./bin/i18n/build-translation-resources
+    - name: Commit changes
+      if: ${{ inputs.step }} == 'download'
+      run: | # sh
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+
+        CURRENT_BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
+        MAJOR_VERSION=$(echo "${CURRENT_BRANCH_NAME}" | tr -d -c 0-9)
+        BRANCH_NAME="update-translations-v${MAJOR_VERSION}"
+
+        git checkout -b ${BRANCH_NAME}
+        git add locales/
+
+        git commit -m "Update translations"
+        git push -u origin ${BRANCH_NAME}
+
+        gh pr create \
+          --base "${CURRENT_BRANCH_NAME}" \
+          --head "${BACKPORT_BRANCH}" \
+          --assignee "${GITHUB_ACTOR}" \
+          --title "Import Translations for v${MAJOR_VERSION}" \
+          --body "Imported translations from POEditor for v${MAJOR_VERSION}"
+
+
