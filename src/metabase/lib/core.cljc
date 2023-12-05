@@ -115,7 +115,6 @@
   find-matching-column]
  [lib.expression
   expression
-  expression-name
   expressions
   expressions-metadata
   expressionable-columns
