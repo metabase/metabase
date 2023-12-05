@@ -33,7 +33,7 @@ import "ee-plugins"; // eslint-disable-line import/no-duplicates
 import { createHistory } from "history";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
-import ReactDOM from "react-dom";
+import { createRoot } from "react-dom/client";
 import { Provider } from "react-redux";
 import { Router, useRouterHistory } from "react-router";
 import { syncHistoryWithStore } from "react-router-redux";
@@ -67,14 +67,12 @@ function _init(reducers, getRoutes, callback) {
   const routes = getRoutes(store);
   const history = syncHistoryWithStore(browserHistory, store);
 
-  let root;
-
   createTracker(store);
-
   initializeEmbedding(store);
+  const root = createRoot(document.getElementById("root"));
 
-  ReactDOM.render(
-    <Provider store={store} ref={ref => (root = ref)}>
+  root.render(
+    <Provider store={store}>
       <EmotionCacheProvider>
         <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
           <ThemeProvider>
@@ -84,14 +82,13 @@ function _init(reducers, getRoutes, callback) {
         </DragDropContextProvider>
       </EmotionCacheProvider>
     </Provider>,
-    document.getElementById("root"),
   );
 
   registerVisualizations();
 
   store.dispatch(refreshSiteSettings());
 
-  PLUGIN_APP_INIT_FUCTIONS.forEach(init => init({ root }));
+  PLUGIN_APP_INIT_FUCTIONS.forEach(init => init());
 
   window.Metabase = window.Metabase || {};
   window.Metabase.store = store;

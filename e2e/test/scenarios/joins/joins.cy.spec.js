@@ -75,6 +75,7 @@ describe("scenarios > question > joined questions", () => {
 
     // Post-join aggregation (metabase#11452):
     summarize({ mode: "notebook" });
+    cy.realPress("Escape");
     addSummaryField({
       metric: "Average of ...",
       table: "Review",
@@ -245,6 +246,7 @@ describe("scenarios > question > joined questions", () => {
     joinTable("Products");
 
     summarize({ mode: "notebook" });
+    cy.realPress("Escape");
     addSummaryField({ metric: "Count of rows" });
     addSummaryGroupingField({ table: "Product", field: "ID" });
 
@@ -311,6 +313,7 @@ describe("scenarios > question > joined questions", () => {
     assertJoinColumnName("right", "Created At: Day");
 
     summarize({ mode: "notebook" });
+    cy.realPress("Escape");
     addSummaryField({ metric: "Count of rows" });
 
     visualize();
