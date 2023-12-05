@@ -79,7 +79,7 @@ export type Clause =
   | JoinCondition
   | OrderByClause;
 
-export type NamedClause = AggregationClause | ExpressionClause;
+export type CustomNameClause = AggregationClause | ExpressionClause;
 
 export type CustomExpressionClause =
   | AggregationClause

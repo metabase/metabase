@@ -201,7 +201,7 @@ export function AggregationPicker({
   );
 
   const handleClauseChange = useCallback(
-    (name: string, clause: Lib.NamedClause) => {
+    (name: string, clause: Lib.CustomNameClause) => {
       const updatedClause = Lib.withExpressionName(clause, name);
       onSelect(updatedClause);
       onClose?.();
@@ -221,7 +221,9 @@ export function AggregationPicker({
         startRule="aggregation"
         header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
         onChangeClause={(name, clause) => {
-          handleClauseChange(name, clause as Lib.NamedClause);
+          // cast to exclude Lib.FilterClause which cannot have a custom name
+          const namedClause = clause as Lib.CustomNameClause;
+          handleClauseChange(name, namedClause);
         }}
         onClose={closeExpressionEditor}
       />
