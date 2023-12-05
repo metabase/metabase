@@ -22,6 +22,8 @@ describe("issue 6239", () => {
     cy.findByPlaceholderText("Something nice and descriptive").type("CE");
     cy.button("Done").click();
 
+    cy.findByTestId("aggregate-step").contains("CE").should("exist");
+
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
     popover().contains("Created At").first().click();

@@ -71,13 +71,12 @@ export function AggregateStep({
       renderPopover={({ item: aggregation, index }) => (
         <AggregationPopover
           query={topLevelQuery}
+          legacyQuery={legacyQuery}
           stageIndex={stageIndex}
           clause={aggregation}
           clauseIndex={index}
-          legacyQuery={legacyQuery}
           onAddAggregation={handleAddAggregation}
           onUpdateAggregation={handleUpdateAggregation}
-          onLegacyQueryChange={updateQuery}
         />
       )}
       onRemove={handleRemoveAggregation}
@@ -99,7 +98,6 @@ interface AggregationPopoverProps {
 
   legacyQuery: StructuredQuery;
   clauseIndex?: number;
-  onLegacyQueryChange: (query: StructuredQuery) => void;
 
   // Implicitly passed by metabase/components/Triggerable
   onClose?: () => void;
@@ -113,7 +111,6 @@ function AggregationPopover({
   legacyQuery,
   onAddAggregation,
   onUpdateAggregation,
-  onLegacyQueryChange,
   onClose,
 }: AggregationPopoverProps) {
   const isUpdate = clause != null && clauseIndex != null;
@@ -125,15 +122,11 @@ function AggregationPopover({
       : baseOperators;
   }, [query, clause, stageIndex, isUpdate]);
 
-  const legacyClause = isUpdate
-    ? legacyQuery.aggregations()[clauseIndex]
-    : undefined;
-
   return (
     <AggregationPicker
       query={query}
       legacyQuery={legacyQuery}
-      legacyClause={legacyClause}
+      clause={clause}
       stageIndex={stageIndex}
       operators={operators}
       onSelect={aggregation => {
@@ -141,15 +134,6 @@ function AggregationPopover({
           onUpdateAggregation(clause, aggregation);
         } else {
           onAddAggregation(aggregation);
-        }
-      }}
-      onSelectLegacy={newLegacyAggregation => {
-        if (isUpdate) {
-          onLegacyQueryChange(
-            legacyQuery.updateAggregation(clauseIndex, newLegacyAggregation),
-          );
-        } else {
-          onLegacyQueryChange(legacyQuery.aggregate(newLegacyAggregation));
         }
       }}
       onClose={onClose}
