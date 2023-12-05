@@ -14,13 +14,13 @@ export function BooleanFilterEditor({
   filter,
   onChange,
 }: FilterPickerWidgetProps) {
-  const columnIcon = useMemo(() => {
-    return getColumnIcon(column);
-  }, [column]);
-
   const columnInfo = useMemo(() => {
     return Lib.displayInfo(query, stageIndex, column);
   }, [query, stageIndex, column]);
+
+  const columnIcon = useMemo(() => {
+    return getColumnIcon(column);
+  }, [column]);
 
   const {
     optionType,
