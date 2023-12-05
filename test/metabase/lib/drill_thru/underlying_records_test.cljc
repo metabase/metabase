@@ -96,7 +96,11 @@
                            :column-ref (lib/ref breakout)
                            :value      value})
           context       (merge agg-dim
-                               {:row        (cons agg-dim breakout-dims)
+                               ;; rows aren't supposed to use `:null`, so change them to `nil` instead.
+                               {:row        (for [value (cons agg-dim breakout-dims)]
+                                              (update value :value (fn [v]
+                                                                     (when-not (= v :null)
+                                                                       v))))
                                 :dimensions breakout-dims})]
       (is (=? {:lib/type :mbql/query
                :stages [{:filters     (exp-filters-fn agg-dim breakout-dims)
