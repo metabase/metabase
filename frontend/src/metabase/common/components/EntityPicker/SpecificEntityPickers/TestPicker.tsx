@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-import { EntityPicker } from "./EntityPicker";
+import { NestedItemPicker } from "../NestedItemPicker";
 
 interface TestThing {
   id: number;
@@ -36,7 +36,7 @@ const childrenOf2 = [
 export function TestPicker({ onItemSelect, initialFolderId }: TestPickerProps) {
   const [ initialState, setInitialState ] = useState<any>();
 
-  const onFolderSelect = (folder: TestThing) => {
+  const onFolderSelect = async (folder: TestThing): Promise<TestThing[]> => {
     if (folder.id === 1) {
       return childrenOf1;
     } else if (folder.id === 2) {
@@ -70,7 +70,7 @@ export function TestPicker({ onItemSelect, initialFolderId }: TestPickerProps) {
   }
 
   return (
-    <EntityPicker
+    <NestedItemPicker
       itemModel="item"
       folderModel="folder"
       onFolderSelect={onFolderSelect}

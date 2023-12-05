@@ -4,7 +4,7 @@ import { GET } from "metabase/lib/api";
 import type { Collection } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
 
-import { EntityPicker } from "./EntityPicker";
+import { NestedItemPicker } from "../NestedItemPicker";
 
 
 interface QuestionPickerProps {
@@ -58,7 +58,7 @@ export function QuestionPicker({ onItemSelect, initialCollectionId }: QuestionPi
   }
 
   return (
-    <EntityPicker
+    <NestedItemPicker
       itemModel="question"
       folderModel="collection"
       onFolderSelect={onFolderSelect}

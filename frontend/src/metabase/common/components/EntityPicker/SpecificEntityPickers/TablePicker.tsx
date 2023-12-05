@@ -4,7 +4,7 @@ import type { Table } from "metabase-types/api";
 import { databases, schemas, tables } from "metabase/entities";
 import type Question from "metabase-lib/Question";
 
-import { EntityPicker } from "./EntityPicker";
+import { NestedItemPicker } from "../NestedItemPicker";
 
 interface TablePickerProps {
   onItemSelect: (item: Question) => void;
@@ -76,7 +76,7 @@ export function TablePicker({
   }
 
   return (
-    <EntityPicker
+    <NestedItemPicker
       itemModel="table"
       folderModel="database | schema"
       onFolderSelect={onFolderSelect}

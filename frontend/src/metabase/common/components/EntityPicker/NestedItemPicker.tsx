@@ -4,38 +4,36 @@ import { NavLink } from "@mantine/core"; // TODO, get this into metabase-ui
 
 import { Flex, Text, Box } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
+
+import type { PickerState } from "./types";
 import { PickerColumn } from "./EntityPicker.styled";
 
-interface EntityPickerProps {
-  onFolderSelect: (folder?: any) => Promise<any[]>;
-  onItemSelect: (item: any) => void;
+interface NestedItemPickerProps<FolderType, ItemType> {
+  onFolderSelect: (folder?: FolderType) => Promise<any[]>;
+  onItemSelect: (item: ItemType) => void;
   folderModel: string;
   itemModel: string;
-  initialState?: any[];
+  initialState?: PickerState<(FolderType | ItemType)>;
 }
 
-export function EntityPicker({
+export function NestedItemPicker({
   onFolderSelect,
   onItemSelect,
   folderModel,
-  itemModel,
   initialState = [],
-}: EntityPickerProps) {
-  const [stack, setStack] = useState<
-    {
-      items: any[];
-      selectedId: any;
-    }[]
-  >(initialState);
+}: NestedItemPickerProps<any, any /* how to derive the generic? */>) {
+  const [stack, setStack] = useState<PickerState<any /* how to derive the generic? */>>(initialState);
+
+  console.log(stack);
 
   const handleFolderSelect = async (folder: any, levelIndex: number) => {
     const children = await onFolderSelect(folder);
 
     // FIXME do better
     const restOfStack = stack.slice(0, levelIndex + 1);
-    restOfStack[restOfStack.length - 1].selectedId = folder.id;
+    restOfStack[restOfStack.length - 1].selectedItem.id = folder?.id;
 
-    setStack([...restOfStack, { items: children, selectedId: null }]);
+    setStack([...restOfStack, { items: children, selectedItem: null }]);
   };
 
   const handleItemSelect = (item: any) => {
@@ -55,9 +53,9 @@ export function EntityPicker({
       {stack.map((level, levelIndex) => (
         <ItemList
           // key={levelIndex} // FIXME: bad
-          items={level.items}
+          items={level?.items}
           onClick={item => handleClick(item, levelIndex)}
-          selectedId={level.selectedId}
+          selectedId={level?.selectedItem?.id}
           folderModel={folderModel}
         />
       ))}
