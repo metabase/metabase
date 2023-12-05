@@ -14,7 +14,6 @@ import { checkNotNull } from "metabase/lib/types";
 import type { StructuredDatasetQuery } from "metabase-types/api";
 import {
   createAdHocCard,
-  ORDERS,
   PRODUCT_CATEGORY_VALUES,
   PRODUCT_VENDOR_VALUES,
 } from "metabase-types/api/mocks/presets";
@@ -150,7 +149,6 @@ function setup({ query = createQuery(), filter }: SetupOpts = {}) {
   const legacyQuery = question.query() as StructuredQuery;
 
   const onSelect = jest.fn();
-  const onSelectLegacy = jest.fn();
 
   setupFieldsValuesEndpoints([PRODUCT_CATEGORY_VALUES, PRODUCT_VENDOR_VALUES]);
 
@@ -162,7 +160,6 @@ function setup({ query = createQuery(), filter }: SetupOpts = {}) {
       filterIndex={0}
       legacyQuery={legacyQuery}
       onSelect={onSelect}
-      onSelectLegacy={onSelectLegacy}
     />,
     { storeInitialState },
   );
@@ -184,7 +181,6 @@ function setup({ query = createQuery(), filter }: SetupOpts = {}) {
     getNextFilter,
     getNextFilterColumnName,
     onSelect,
-    onSelectLegacy,
   };
 }
 
@@ -408,7 +404,10 @@ describe("FilterPicker", () => {
   });
 
   describe("custom expression", () => {
-    async function editExpressionAndSubmit(text: string) {
+    async function editExpressionAndSubmit(
+      text: string,
+      { delay }: { delay: number } = { delay: 0 },
+    ) {
       const input = screen.getByLabelText("Expression");
       const button = screen.getByRole("button", { name: "Done" });
 
@@ -416,7 +415,7 @@ describe("FilterPicker", () => {
       // but for some reason it doesn't work without `act`.
       // eslint-disable-next-line testing-library/no-unnecessary-act
       await act(async () => {
-        await userEvent.type(input, text);
+        await userEvent.type(input, text, { delay });
         await userEvent.tab();
       });
 
@@ -425,34 +424,89 @@ describe("FilterPicker", () => {
     }
 
     it("should create a filter with a custom expression", async () => {
-      const { onSelect, onSelectLegacy } = setup();
+      const { query, getNextFilter, onSelect } = setup();
 
       userEvent.click(screen.getByText(/Custom expression/i));
       await editExpressionAndSubmit("[[Total] > [[Discount]{enter}");
 
       await waitFor(() =>
-        expect(onSelectLegacy).toHaveBeenCalledWith([
-          ">",
-          ["field", ORDERS.TOTAL, null],
-          ["field", ORDERS.DISCOUNT, null],
-        ]),
+        expect(onSelect).toHaveBeenCalledWith(expect.anything()),
       );
-      expect(onSelect).not.toHaveBeenCalled();
+
+      const filter = getNextFilter();
+      const { args, operator, options } = Lib.expressionParts(query, 0, filter);
+      const [left, right] = args;
+
+      expect(args).toHaveLength(2);
+      expect(Lib.displayInfo(query, 0, checkNotNull(left))).toMatchObject({
+        name: "TOTAL",
+        displayName: "Total",
+        semanticType: null,
+        longDisplayName: "Total",
+        effectiveType: "type/Float",
+        table: {
+          name: "ORDERS",
+          displayName: "Orders",
+          longDisplayName: "Orders",
+          isSourceTable: true,
+        },
+      });
+      expect(Lib.displayInfo(query, 0, checkNotNull(right))).toMatchObject({
+        name: "DISCOUNT",
+        displayName: "Discount",
+        semanticType: "type/Discount",
+        longDisplayName: "Discount",
+        effectiveType: "type/Float",
+        table: {
+          name: "ORDERS",
+          displayName: "Orders",
+          longDisplayName: "Orders",
+          isSourceTable: true,
+        },
+      });
+      expect(operator).toBe(">");
+      expect(options).toEqual({});
     });
 
     it("should update a filter with a custom expression", async () => {
-      const { onSelect, onSelectLegacy } = setup(createQueryWithCustomFilter());
+      const { query, getNextFilter, onSelect } = setup(
+        createQueryWithCustomFilter(),
+      );
 
-      await editExpressionAndSubmit("{selectall}{backspace}[[Total] > 100");
+      await editExpressionAndSubmit("{selectall}{backspace}[[Total] > 100", {
+        delay: 50,
+      });
 
       await waitFor(() =>
-        expect(onSelectLegacy).toHaveBeenCalledWith([
-          ">",
-          ["field", ORDERS.TOTAL, null],
-          100,
-        ]),
+        expect(onSelect).toHaveBeenCalledWith(expect.anything()),
       );
-      expect(onSelect).not.toHaveBeenCalled();
+
+      const filter = getNextFilter();
+      const { args, operator, options } = Lib.expressionParts(query, 0, filter);
+      const [left, right] = args;
+
+      expect(args).toHaveLength(2);
+      expect(Lib.displayInfo(query, 0, checkNotNull(left))).toEqual({
+        displayName: "Total",
+        effectiveType: "type/Float",
+        longDisplayName: "Total",
+        name: "TOTAL",
+        semanticType: null,
+        table: {
+          displayName: "Orders",
+          isSourceTable: true,
+          longDisplayName: "Orders",
+          name: "ORDERS",
+        },
+      });
+      expect(Lib.displayInfo(query, 0, checkNotNull(right))).toEqual({
+        displayName: "100",
+        effectiveType: "type/Integer",
+        longDisplayName: "100",
+        name: "100",
+      });
+      expect(operator).toBe(">");
+      expect(options).toEqual({});
     });
   });
 });
