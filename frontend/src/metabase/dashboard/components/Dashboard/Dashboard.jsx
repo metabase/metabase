@@ -85,7 +85,7 @@ class DashboardInner extends Component {
 
   async loadDashboard(dashboardId) {
     const {
-      editingOnLoad,
+      editingOnLoad: editingOnLoadTest,
       addCardOnLoad,
       addCardToDashboard,
       fetchDashboard,
@@ -115,7 +115,7 @@ class DashboardInner extends Component {
     }
 
     try {
-      if (editingOnLoad) {
+      if (editingOnLoadTest) {
         this.setEditing(this.props.dashboard);
       }
       if (addCardOnLoad != null) {
