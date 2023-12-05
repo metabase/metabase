@@ -68,7 +68,6 @@ describe("personal collections", () => {
       });
       popover().findByText("Other users' personal collections").click();
       cy.location("pathname").should("eq", "/collection/users");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByTestId("browsercrumbs").findByText(/All personal collections/i);
       Object.values(USERS).forEach(user => {
         const FULL_NAME = `${user.first_name} ${user.last_name}`;
