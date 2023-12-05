@@ -38,7 +38,7 @@ export const ChartClickActionsView = ({
             contentDirection={contentDirection}
           >
             {withTopDivider && <Divider />}
-            {actions.map((action, index) => (
+            {actions.map(action => (
               <ChartClickActionControl
                 key={action.name}
                 action={action}

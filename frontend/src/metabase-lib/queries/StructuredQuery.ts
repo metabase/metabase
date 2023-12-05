@@ -609,7 +609,7 @@ class StructuredQuery extends AtomicQuery {
     return this._updateQuery(Q.updateJoin, [index, unwrapJoin(join)]);
   }
 
-  removeJoin(index) {
+  removeJoin(_index) {
     return this._updateQuery(Q.removeJoin, arguments);
   }
 
@@ -739,21 +739,24 @@ class StructuredQuery extends AtomicQuery {
   /**
    * @returns {StructuredQuery} new query with the provided MBQL @type {Aggregation} added.
    */
-  addAggregation(aggregation: Aggregation): StructuredQuery {
+  addAggregation(_aggregation: Aggregation): StructuredQuery {
     return this._updateQuery(Q.addAggregation, arguments);
   }
 
   /**
    * @returns {StructuredQuery} new query with the MBQL @type {Aggregation} updated at the provided index.
    */
-  updateAggregation(index: number, aggregation: Aggregation): StructuredQuery {
+  updateAggregation(
+    _index: number,
+    _aggregation: Aggregation,
+  ): StructuredQuery {
     return this._updateQuery(Q.updateAggregation, arguments);
   }
 
   /**
    * @returns {StructuredQuery} new query with the aggregation at the provided index removed.
    */
-  removeAggregation(index: number): StructuredQuery {
+  removeAggregation(_index: number): StructuredQuery {
     return this._updateQuery(Q.removeAggregation, arguments);
   }
 
@@ -830,21 +833,21 @@ class StructuredQuery extends AtomicQuery {
   /**
    * @returns {StructuredQuery} new query with the provided MBQL @type {Breakout} added.
    */
-  addBreakout(breakout: Breakout) {
+  addBreakout(_breakout: Breakout) {
     return this._updateQuery(Q.addBreakout, arguments);
   }
 
   /**
    * @returns {StructuredQuery} new query with the MBQL @type {Breakout} updated at the provided index.
    */
-  updateBreakout(index: number, breakout: Breakout) {
+  updateBreakout(_index: number, _breakout: Breakout) {
     return this._updateQuery(Q.updateBreakout, arguments);
   }
 
   /**
    * @returns {StructuredQuery} new query with the breakout at the provided index removed.
    */
-  removeBreakout(index: number) {
+  removeBreakout(_index: number) {
     return this._updateQuery(Q.removeBreakout, arguments);
   }
 
@@ -990,21 +993,21 @@ class StructuredQuery extends AtomicQuery {
   /**
    * @returns {StructuredQuery} new query with the provided MBQL @type {Filter} added.
    */
-  addFilter(filter: Filter | FilterWrapper) {
+  addFilter(_filter: Filter | FilterWrapper) {
     return this._updateQuery(Q.addFilter, arguments);
   }
 
   /**
    * @returns {StructuredQuery} new query with the MBQL @type {Filter} updated at the provided index.
    */
-  updateFilter(index: number, filter: Filter | FilterWrapper) {
+  updateFilter(_index: number, _filter: Filter | FilterWrapper) {
     return this._updateQuery(Q.updateFilter, arguments);
   }
 
   /**
    * @returns {StructuredQuery} new query with the filter at the provided index removed.
    */
-  removeFilter(index: number) {
+  removeFilter(_index: number) {
     return this._updateQuery(Q.removeFilter, arguments);
   }
 
@@ -1033,7 +1036,7 @@ class StructuredQuery extends AtomicQuery {
   /**
    * @deprecated use the orderBy function from metabase-lib v2
    */
-  addSort(orderBy: OrderBy) {
+  addSort(_orderBy: OrderBy) {
     return this._updateQuery(Q.addOrderBy, arguments);
   }
 
@@ -1168,15 +1171,15 @@ class StructuredQuery extends AtomicQuery {
     return this.query().fields || [];
   }
 
-  addField(name, expression) {
+  addField(_name, _expression) {
     return this._updateQuery(Q.addField, arguments);
   }
 
-  updateField(index, field) {
+  updateField(_index, _field) {
     return this._updateQuery(Q.updateField, arguments);
   }
 
-  removeField(name) {
+  removeField(_name) {
     return this._updateQuery(Q.removeField, arguments);
   }
 
@@ -1192,7 +1195,7 @@ class StructuredQuery extends AtomicQuery {
    * Returns dimension options that can appear in the `fields` clause
    */
   fieldsOptions(
-    dimensionFilter: DimensionFilterFn = dimension => true,
+    dimensionFilter: DimensionFilterFn = _dimension => true,
   ): DimensionOptions {
     if (this.isBareRows() && !this.hasBreakouts()) {
       return this.dimensionOptions(dimensionFilter);
@@ -1235,7 +1238,7 @@ class StructuredQuery extends AtomicQuery {
   }
 
   dimensionOptions(
-    dimensionFilter: DimensionFilterFn = dimension => true,
+    dimensionFilter: DimensionFilterFn = _dimension => true,
   ): DimensionOptions {
     const dimensionOptions = {
       count: 0,
@@ -1317,7 +1320,7 @@ class StructuredQuery extends AtomicQuery {
    * ⚠️ Should ONLY be used for clauses' `isValid` checks.
    */
   dimensionOptionsForValidation(
-    dimensionFilter: DimensionFilter = dimension => true,
+    dimensionFilter: DimensionFilter = _dimension => true,
   ): DimensionOptions {
     const baseOptions = this.dimensionOptions(dimensionFilter);
 
@@ -1353,7 +1356,7 @@ class StructuredQuery extends AtomicQuery {
   }
 
   // FIELD OPTIONS
-  fieldOptions(fieldFilter: FieldFilterFn = field => true): DimensionOptions {
+  fieldOptions(fieldFilter: FieldFilterFn = _field => true): DimensionOptions {
     const dimensionFilter = dimension => {
       const field = dimension.field && dimension.field();
       return !field || (field.isDimension() && fieldFilter(field));
@@ -1378,7 +1381,7 @@ class StructuredQuery extends AtomicQuery {
 
   expressionDimensions = _.once((): Dimension[] => {
     return Object.entries(this.expressions()).map(
-      ([expressionName, expression]) => {
+      ([expressionName, _expression]) => {
         return new ExpressionDimension(
           expressionName,
           null,
@@ -1404,7 +1407,7 @@ class StructuredQuery extends AtomicQuery {
   });
 
   fieldDimensions = _.once(() => {
-    return this.fields().map((fieldClause, index) =>
+    return this.fields().map((fieldClause, _index) =>
       this.parseFieldReference(fieldClause),
     );
   });

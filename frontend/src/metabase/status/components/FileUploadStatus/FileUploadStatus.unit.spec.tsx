@@ -140,7 +140,7 @@ describe("FileUploadStatus", () => {
       renderWithProviders(
         <Route
           path="/"
-          component={props => {
+          component={() => {
             return (
               <>
                 <CollectionHeader

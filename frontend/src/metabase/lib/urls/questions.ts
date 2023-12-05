@@ -38,7 +38,7 @@ export function question(
 
   if (query && typeof query === "object") {
     query = extractQueryParams(query)
-      .filter(([key, value]) => value !== undefined)
+      .filter(([_key, value]) => value !== undefined)
       .map(kv => kv.map(encodeURIComponent).join("="))
       .join("&");
   }

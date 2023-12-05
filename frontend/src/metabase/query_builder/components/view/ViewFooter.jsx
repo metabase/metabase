@@ -115,7 +115,7 @@ const ViewFooter = ({
               result={result}
             />
           ),
-          QueryDownloadWidget.shouldRender({ result, isResultDirty }) && (
+          QueryDownloadWidget.shouldRender({ result }) && (
             <QueryDownloadWidget
               key="download"
               className="mx1 hide sm-show"

@@ -1,7 +1,5 @@
 import { withRouter } from "react-router";
-import type { Location } from "history";
-
-import { Collection, CollectionId } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 
 import { CollectionMenu } from "../CollectionMenu";
 import CollectionCaption from "./CollectionCaption";
@@ -13,7 +11,6 @@ import { HeaderActions, HeaderRoot } from "./CollectionHeader.styled";
 
 export interface CollectionHeaderProps {
   collection: Collection;
-  location: Location;
   isAdmin: boolean;
   isBookmarked: boolean;
   isPersonalCollectionChild: boolean;
@@ -27,7 +24,6 @@ export interface CollectionHeaderProps {
 
 const CollectionHeader = ({
   collection,
-  location,
   isAdmin,
   isBookmarked,
   isPersonalCollectionChild,

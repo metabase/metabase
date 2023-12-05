@@ -120,7 +120,7 @@ export const extractRemappedColumns = data => {
     remapping: col.remapped_to && new Map(),
   }));
 
-  const rows = data.rows.map((row, rowIndex) =>
+  const rows = data.rows.map(row =>
     row.filter((value, colIndex) => {
       const col = cols[colIndex];
       if (col.remapped_from != null) {

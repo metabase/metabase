@@ -97,7 +97,7 @@ const Collections = createEntity({
 
   getAnalyticsMetadata(
     [object]: [Collection],
-    { action }: { action: ReduxAction },
+    { action: _action }: { action: ReduxAction },
     getState: GetState,
   ) {
     const type = object && getCollectionType(object.parent_id, getState());
