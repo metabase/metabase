@@ -5,7 +5,5 @@ export interface FilterPickerWidgetProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
-  isNew: boolean;
   onChange: (filter: Lib.ExpressionClause) => void;
-  onBack?: () => void;
 }
