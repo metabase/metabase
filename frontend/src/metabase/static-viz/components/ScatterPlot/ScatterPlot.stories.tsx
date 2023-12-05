@@ -35,6 +35,13 @@ Default.args = {
   renderingContext,
 };
 
+export const MultiMetricSeries = Template.bind({});
+MultiMetricSeries.args = {
+  rawSeries: data.multiMetricSeries as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const PowerXScale = Template.bind({});
 PowerXScale.args = {
   rawSeries: data.powerXScale as any,
