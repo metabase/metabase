@@ -1,25 +1,21 @@
-import { useCallback, useMemo, useState } from "react";
+import type { MouseEvent } from "react";
+import { useMemo, useState } from "react";
+import { t } from "ttag";
 import { Button, Flex, Grid, Popover, Text } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import type {
   DatePickerExtractionUnit,
   DatePickerOperator,
   DatePickerValue,
 } from "metabase/querying/components/DatePicker";
-import {
-  DatePicker,
-  getShortcutOptions,
-} from "metabase/querying/components/DatePicker";
+import { DatePicker } from "metabase/querying/components/DatePicker";
 import { useDateFilter } from "metabase/querying/hooks/use-date-filter";
 import * as Lib from "metabase-lib";
 import type { FilterPickerWidgetProps } from "../types";
-import {
-  MAIN_SHORTCUTS,
-  MODAL_Z_INDEX,
-  SECONDARY_SHORTCUTS,
-} from "./constants";
-import { getSelectedOption } from "./utils";
+import { MODAL_Z_INDEX, SECONDARY_SHORTCUTS } from "./constants";
+import { getOptionsInfo } from "./utils";
 import { ClearIcon } from "./DateFilterEditor.styled";
 
 export function DateFilterEditor({
@@ -52,10 +48,10 @@ export function DateFilterEditor({
       filter,
     });
 
-  const availableOptions = getShortcutOptions(MAIN_SHORTCUTS);
-  const selectedOption = getSelectedOption(availableOptions, value);
-  const visibleOptions =
-    value == null || selectedOption != null ? availableOptions : [];
+  const { visibleOptions, selectedOption } = useMemo(
+    () => getOptionsInfo(value),
+    [value],
+  );
 
   const handleChange = (value: DatePickerValue | undefined) => {
     onChange(value ? getFilterClause(value) : undefined);
@@ -119,39 +115,42 @@ function DateFilterPopover({
 }: DateFilterPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
 
-  const handleChange = useCallback(
-    (value: DatePickerValue) => {
-      onChange(value);
-      setIsOpened(false);
-    },
-    [onChange],
-  );
+  const handleOpen = () => {
+    setIsOpened(true);
+  };
+
+  const handleClose = () => {
+    setIsOpened(false);
+  };
+
+  const handleChange = (value: DatePickerValue) => {
+    onChange(value);
+    handleClose();
+  };
+
+  const handleClear = (event: MouseEvent) => {
+    event.stopPropagation();
+    onChange(undefined);
+    handleClose();
+  };
 
   return (
-    <Popover
-      opened={isOpened}
-      zIndex={MODAL_Z_INDEX + 1}
-      onClose={() => setIsOpened(false)}
-    >
+    <Popover opened={isOpened} zIndex={MODAL_Z_INDEX + 1} onClose={handleClose}>
       <Popover.Target>
         {isExpanded ? (
           <Button
             variant="outline"
             rightIcon={
-              <ClearIcon
-                name="close"
-                size={12}
-                onClick={() => setIsOpened(true)}
-              />
+              <IconButtonWrapper aria-label={t`Clear`} onClick={handleClear}>
+                <ClearIcon name="close" size={12} />
+              </IconButtonWrapper>
             }
+            onClick={handleOpen}
           >
             {title}
           </Button>
         ) : (
-          <Button
-            leftIcon={<Icon name="ellipsis" />}
-            onClick={() => setIsOpened(true)}
-          />
+          <Button leftIcon={<Icon name="ellipsis" />} onClick={handleOpen} />
         )}
       </Popover.Target>
       <Popover.Dropdown>
