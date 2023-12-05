@@ -116,51 +116,52 @@
             (t2/delete! :model/Database (u/the-id db))))))))
 
 (deftest check-can-connect-before-sync-test
-  (testing "Database sync should short-circuit and fail if the database at the connection has been deleted (metabase#7526)"
-    (mt/test-drivers (->> (mt/normal-drivers)
+  (dotimes [_ 20]
+    (testing "Database sync should short-circuit and fail if the database at the connection has been deleted (metabase#7526)"
+      (mt/test-drivers (->> (mt/normal-drivers)
                           ;; athena is a special case because connections aren't made with a single database,
                           ;; but to an S3 bucket that may contain many databases
-                          (remove #{:athena}))
-      (let [database-name (mt/random-name)
-            dbdef         (basic-db-definition database-name)]
-        (mt/dataset dbdef
-          (let [db (mt/db)
-                cant-sync-logged? (fn []
-                                    (some?
-                                     (some
-                                      (fn [[log-level throwable message]]
-                                        (and (= log-level :warn)
-                                             (instance? clojure.lang.ExceptionInfo throwable)
-                                             (re-matches #"^Cannot sync Database ([\s\S]+): ([\s\S]+)" message)))
-                                      (mt/with-log-messages-for-level :warn
-                                        (#'task.sync-databases/sync-and-analyze-database*! (u/the-id db))))))]
-            (testing "sense checks before deleting the database"
-              (testing "sense check 1: sync-and-analyze-database! should not log a warning"
-                (is (false? (cant-sync-logged?))))
-              (testing "sense check 2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should succeed"
-                (is (= {:status "ok"}
-                       (mt/user-http-request :crowberto :post 200 (str "/database/" (u/the-id db) "/sync_schema"))))))
+                            (remove #{:athena}))
+        (let [database-name (mt/random-name)
+              dbdef         (basic-db-definition database-name)]
+          (mt/dataset dbdef
+            (let [db (mt/db)
+                  cant-sync-logged? (fn []
+                                      (some?
+                                       (some
+                                        (fn [[log-level throwable message]]
+                                          (and (= log-level :warn)
+                                               (instance? clojure.lang.ExceptionInfo throwable)
+                                               (re-matches #"^Cannot sync Database ([\s\S]+): ([\s\S]+)" message)))
+                                        (mt/with-log-messages-for-level :warn
+                                          (#'task.sync-databases/sync-and-analyze-database*! (u/the-id db))))))]
+              (testing "sense checks before deleting the database"
+                (testing "sense check 1: sync-and-analyze-database! should not log a warning"
+                  (is (false? (cant-sync-logged?))))
+                (testing "sense check 2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should succeed"
+                  (is (= {:status "ok"}
+                         (mt/user-http-request :crowberto :post 200 (str "/database/" (u/the-id db) "/sync_schema"))))))
             ;; release db resources like connection pools so we don't have to wait to finish syncing before destroying the db
-            (driver/notify-database-updated driver/*driver* db)
+              (driver/notify-database-updated driver/*driver* db)
             ;; destroy the db
-            (if (contains? #{:redshift :snowflake :vertica :presto-jdbc :oracle} driver/*driver*)
+              (if (contains? #{:redshift :snowflake :vertica :presto-jdbc :oracle} driver/*driver*)
               ;; in the case of some cloud databases, the test database is never created, and can't or shouldn't be destroyed.
               ;; so fake it by changing the database details
-              (let [details     (:details (mt/db))
-                    new-details (case driver/*driver*
-                                  (:redshift :snowflake :vertica) (assoc details :db (mt/random-name))
-                                  :oracle                         (assoc details :service-name (mt/random-name))
-                                  :presto-jdbc                    (assoc details :catalog (mt/random-name)))]
-                (t2/update! :model/Database (u/the-id db) {:details new-details}))
+                (let [details     (:details (mt/db))
+                      new-details (case driver/*driver*
+                                    (:redshift :snowflake :vertica) (assoc details :db (mt/random-name))
+                                    :oracle                         (assoc details :service-name (mt/random-name))
+                                    :presto-jdbc                    (assoc details :catalog (mt/random-name)))]
+                  (t2/update! :model/Database (u/the-id db) {:details new-details}))
               ;; otherwise destroy the db and use the original details
-              (tx/destroy-db! driver/*driver* dbdef))
-            (testing "after deleting a database, sync should fail"
-              (testing "1: sync-and-analyze-database! should log a warning and fail early"
-                (is (true? (cant-sync-logged?))))
-              (testing "2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should fail"
-                (mt/user-http-request :crowberto :post 422 (str "/database/" (u/the-id db) "/sync_schema"))))
+                (tx/destroy-db! driver/*driver* dbdef))
+              (testing "after deleting a database, sync should fail"
+                (testing "1: sync-and-analyze-database! should log a warning and fail early"
+                  (is (true? (cant-sync-logged?))))
+                (testing "2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should fail"
+                  (mt/user-http-request :crowberto :post 422 (str "/database/" (u/the-id db) "/sync_schema"))))
             ;; clean up the database
-            (t2/delete! :model/Database (u/the-id db))))))))
+              (t2/delete! :model/Database (u/the-id db)))))))))
 
 (deftest supports-table-privileges-matches-implementations-test
   (mt/test-drivers (mt/normal-drivers-with-feature :table-privileges)

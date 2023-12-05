@@ -68,7 +68,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-bigquery-cloud-sdk-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: ":exclude-tags '[:mb/once]' :only metabase.driver-test/check-can-connect-before-sync-test"
 
   be-tests-druid-ee:
     needs: files-changed
