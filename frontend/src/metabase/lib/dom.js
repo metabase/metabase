@@ -366,17 +366,9 @@ const getOrigin = url => {
 const getLocation = url => {
   try {
     const { pathname, search, hash } = new URL(url, window.location.origin);
-    const sitePath = getSitePath().split("/")[1];
-    const [_empty, subPathOrPath, ...paths] = pathname.split("/");
-    const normalizedSubPathOrPath = subPathOrPath.toLowerCase();
-    const pathNameWithoutSubPath =
-      normalizedSubPathOrPath === sitePath
-        ? [_empty, ...paths].join("/")
-        : pathname;
-
     const query = querystring.parse(search.substring(1));
     return {
-      pathname: pathNameWithoutSubPath,
+      pathname: getPathnameWithoutSubPath(pathname),
       search,
       query,
       hash,
@@ -385,6 +377,28 @@ const getLocation = url => {
     return {};
   }
 };
+
+function getPathnameWithoutSubPath(pathname) {
+  const pathnameSections = pathname.split("/");
+  const sitePathSections = getSitePath().split("/");
+
+  return isPathnameContainSitePath(pathnameSections, sitePathSections)
+    ? "/" + pathnameSections.slice(sitePathSections.length).join("/")
+    : pathname;
+}
+
+function isPathnameContainSitePath(pathnameSections, sitePathSections) {
+  for (let index = 0; index < sitePathSections.length; index++) {
+    const sitePathSection = sitePathSections[index].toLowerCase();
+    const pathnameSection = pathnameSections[index].toLowerCase();
+
+    if (sitePathSection !== pathnameSection) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 export function isSameOrigin(url) {
   const origin = getOrigin(url);
