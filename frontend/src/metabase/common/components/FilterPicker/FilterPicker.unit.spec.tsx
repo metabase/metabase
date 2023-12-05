@@ -165,6 +165,7 @@ function setup({ query = createQuery(), filter }: SetupOpts = {}) {
   );
 
   function getNextFilter() {
+    expect(onSelect).toHaveBeenCalledWith(expect.anything());
     const [filter] = onSelect.mock.lastCall;
     return filter;
   }
@@ -424,77 +425,30 @@ describe("FilterPicker", () => {
     }
 
     it("should create a filter with a custom expression", async () => {
-      const { query, getNextFilter, onSelect } = setup();
+      const { query, getNextFilter } = setup();
 
       userEvent.click(screen.getByText(/Custom expression/i));
       await editExpressionAndSubmit("[[Total] > [[Discount]{enter}");
 
-      expect(onSelect).toHaveBeenCalledWith(expect.anything());
-
       const filter = getNextFilter();
-      const { args, operator, options } = Lib.expressionParts(query, 0, filter);
-      const [left, right] = args;
-      const leftMetadata = checkNotNull(left) as Lib.ColumnMetadata;
-      const rightMetadata = checkNotNull(right) as Lib.ColumnMetadata;
 
-      expect(args).toHaveLength(2);
-      expect(Lib.displayInfo(query, 0, leftMetadata)).toMatchObject({
-        name: "TOTAL",
-        displayName: "Total",
-        longDisplayName: "Total",
-        table: {
-          name: "ORDERS",
-          displayName: "Orders",
-          longDisplayName: "Orders",
-          isSourceTable: true,
-        },
-      });
-      expect(Lib.displayInfo(query, 0, rightMetadata)).toMatchObject({
-        name: "DISCOUNT",
-        displayName: "Discount",
-        longDisplayName: "Discount",
-        table: {
-          name: "ORDERS",
-          displayName: "Orders",
-          longDisplayName: "Orders",
-          isSourceTable: true,
-        },
-      });
-      expect(operator).toBe(">");
-      expect(options).toEqual({});
+      expect(Lib.displayInfo(query, 0, filter).displayName).toBe(
+        "Total is greater than Discount",
+      );
     });
 
     it("should update a filter with a custom expression", async () => {
-      const { query, getNextFilter, onSelect } = setup(
-        createQueryWithCustomFilter(),
-      );
+      const { query, getNextFilter } = setup(createQueryWithCustomFilter());
 
       await editExpressionAndSubmit("{selectall}{backspace}[[Total] > 100", {
         delay: 50,
       });
 
-      expect(onSelect).toHaveBeenCalledWith(expect.anything());
-
       const filter = getNextFilter();
-      const { args, operator, options } = Lib.expressionParts(query, 0, filter);
-      const [left, right] = args;
-      const leftMetadata = checkNotNull(left) as Lib.ColumnMetadata;
 
-      expect(args).toHaveLength(2);
-      expect(Lib.displayInfo(query, 0, leftMetadata)).toEqual({
-        displayName: "Total",
-        longDisplayName: "Total",
-        name: "TOTAL",
-        table: {
-          displayName: "Orders",
-          isSourceTable: true,
-          longDisplayName: "Orders",
-          name: "ORDERS",
-        },
-      });
-      expect(right).toBe(100);
-      expect(operator).toBe(">");
-      expect(options).toEqual({});
+      expect(Lib.displayInfo(query, 0, filter).displayName).toBe(
+        "Total is greater than 100",
+      );
     });
   });
 });
