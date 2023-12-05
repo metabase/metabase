@@ -266,11 +266,11 @@
                                    param-id))
         linked-field-ids (set (mapcat (params/get-linked-field-ids (:dashcards dashboard)) param-ids-to-remove))]
     (update dashboard :param_values #(->> %
-                                     (map (fn [[param-id param]]
-                                            {param-id (cond-> param
-                                                        (contains? linked-field-ids param-id) ;; is param linked?
-                                                        (assoc :values []))}))
-                                     (into {})))))
+                                          (map (fn [[param-id param]]
+                                                 {param-id (cond-> param
+                                                             (contains? linked-field-ids param-id) ;; is param linked?
+                                                             (assoc :values []))}))
+                                          (into {})))))
 
 (defn- remove-locked-parameters [dashboard embedding-params]
   (let [params-to-remove (get-params-to-remove dashboard embedding-params)
