@@ -1,7 +1,11 @@
 export * from "./config";
 
 import { FK_SYMBOL } from "metabase/lib/formatting";
+import { checkNotNull } from "metabase/lib/types";
 import Dimension, { ExpressionDimension } from "metabase-lib/Dimension";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type Metric from "metabase-lib/metadata/Metric";
+import type Segment from "metabase-lib/metadata/Segment";
 import {
   OPERATORS,
   FUNCTIONS,
@@ -11,7 +15,7 @@ import {
 } from "./config";
 
 // Return a copy with brackets (`[` and `]`) being escaped
-function escapeString(string) {
+function escapeString(string: string) {
   let str = "";
   for (let i = 0; i < string.length; ++i) {
     const ch = string[i];
@@ -24,7 +28,7 @@ function escapeString(string) {
 }
 
 // The opposite of escapeString
-export function unescapeString(string) {
+export function unescapeString(string: string) {
   let str = "";
   for (let i = 0; i < string.length; ++i) {
     const ch1 = string[i];
@@ -41,7 +45,10 @@ export function unescapeString(string) {
 // IDENTIFIERS
 
 // can be double-quoted, but are not by default unless they have non-word characters or are reserved
-export function formatIdentifier(name, { quotes = EDITOR_QUOTES } = {}) {
+export function formatIdentifier(
+  name: string,
+  { quotes = EDITOR_QUOTES } = {},
+) {
   if (
     !quotes.identifierAlwaysQuoted &&
     /^\w+$/.test(name) &&
@@ -52,47 +59,39 @@ export function formatIdentifier(name, { quotes = EDITOR_QUOTES } = {}) {
   return quoteString(name, quotes.identifierQuoteDefault);
 }
 
-function isReservedWord(word) {
+function isReservedWord(word: string) {
   return !!getMBQLName(word);
 }
 
 // METRICS
 
-/**
- *
- * @param {string} metricName
- * @param {object} param1
- * @param {StructuredQuery} param1.legacyQuery
- */
-export function parseMetric(metricName, { legacyQuery }) {
-  return legacyQuery
-    .table()
-    .metrics.find(
-      metric => metric.name.toLowerCase() === metricName.toLowerCase(),
-    );
+export function parseMetric(
+  metricName: string,
+  { legacyQuery }: { legacyQuery: StructuredQuery },
+) {
+  return checkNotNull(legacyQuery.table()).metrics?.find(
+    metric => metric.name.toLowerCase() === metricName.toLowerCase(),
+  );
 }
 
-export function formatMetricName(metric, options) {
+export function formatMetricName(metric: Metric, options: object) {
   return formatIdentifier(metric.name, options);
 }
 
 // SEGMENTS
-/**
- *
- * @param {string} segmentName
- * @param {object} param1
- * @param {StructuredQuery} param1.legacyQuery
- */
-export function parseSegment(segmentName, { legacyQuery }) {
-  const table = legacyQuery.table();
-  const segment = table.segments.find(
+export function parseSegment(
+  segmentName: string,
+  { legacyQuery }: { legacyQuery: StructuredQuery },
+) {
+  const table = checkNotNull(legacyQuery.table());
+  const segment = table.segments?.find(
     segment => segment.name.toLowerCase() === segmentName.toLowerCase(),
   );
   if (segment) {
     return segment;
   }
 
-  const field = table.fields.find(
+  const field = table.fields?.find(
     field => field.name.toLowerCase() === segmentName.toLowerCase(),
   );
   if (field?.isBoolean()) {
@@ -100,7 +99,7 @@ export function parseSegment(segmentName, { legacyQuery }) {
   }
 }
 
-export function formatSegmentName(segment, options) {
+export function formatSegmentName(segment: Segment, options: object) {
   return formatIdentifier(segment.name, options);
 }
 
@@ -109,15 +108,13 @@ export function formatSegmentName(segment, options) {
 /**
  * Find dimension with matching `name` in query. TODO - How is this "parsing" a dimension? Not sure about this name.
  */
-
-/**
- *
- * @param {string} name
- * @param {object} param1
- * @param {StructuredQuery} param1.legacyQuery
- * @param {string | null} param1.reference
- */
-export function parseDimension(name, { reference, legacyQuery }) {
+export function parseDimension(
+  name: string,
+  {
+    reference,
+    legacyQuery,
+  }: { reference: string; legacyQuery: StructuredQuery },
+) {
   // FIXME: this is pretty inefficient, create a lookup table?
   return legacyQuery
     .dimensionOptions()
@@ -134,7 +131,7 @@ export function parseDimension(name, { reference, legacyQuery }) {
     );
 }
 
-export function formatDimensionName(dimension, options) {
+export function formatDimensionName(dimension: Dimension, options: object) {
   return formatIdentifier(getDimensionName(dimension), options);
 }
 
@@ -143,14 +140,14 @@ export function formatDimensionName(dimension, options) {
  * with the FK symbol (→) replaced with a different character.
  */
 export function getDimensionName(
-  dimension,
+  dimension: Dimension,
   separator = EDITOR_FK_SYMBOLS.default,
 ) {
   return dimension.render().replace(` ${FK_SYMBOL} `, separator);
 }
 
 export function getDisplayNameWithSeparator(
-  displayName,
+  displayName: string,
   separator = EDITOR_FK_SYMBOLS.default,
 ) {
   return displayName.replace(` ${FK_SYMBOL} `, separator);
@@ -159,7 +156,7 @@ export function getDisplayNameWithSeparator(
 // STRING LITERALS
 
 export function formatStringLiteral(
-  mbqlString,
+  mbqlString: string,
   { quotes = EDITOR_QUOTES } = {},
 ) {
   return quoteString(mbqlString, quotes.literalQuoteDefault);
@@ -185,7 +182,7 @@ const STRING_UNESCAPE = {
   r: "\r",
 };
 
-export function quoteString(string, quote) {
+export function quoteString(string: string, quote: string) {
   if (quote === DOUBLE_QUOTE || quote === SINGLE_QUOTE) {
     let str = "";
     for (let i = 0; i < string.length; ++i) {
@@ -193,7 +190,7 @@ export function quoteString(string, quote) {
       if (ch === quote && string[i - 1] !== BACKSLASH) {
         str += BACKSLASH + ch;
       } else {
-        const sub = STRING_ESCAPE[ch];
+        const sub = STRING_ESCAPE[ch as keyof typeof STRING_ESCAPE];
         str += sub ? sub : ch;
       }
     }
@@ -208,7 +205,7 @@ export function quoteString(string, quote) {
   }
 }
 
-export function unquoteString(string) {
+export function unquoteString(string: string) {
   const quote = string.charAt(0);
   if (quote === DOUBLE_QUOTE || quote === SINGLE_QUOTE) {
     let str = "";
@@ -216,7 +213,7 @@ export function unquoteString(string) {
       const ch = string[i];
       if (ch === BACKSLASH) {
         const seq = string[i + 1];
-        const unescaped = STRING_UNESCAPE[seq];
+        const unescaped = STRING_UNESCAPE[seq as keyof typeof STRING_UNESCAPE];
         if (unescaped) {
           str += unescaped;
           ++i;
@@ -235,7 +232,7 @@ export function unquoteString(string) {
 
 // move to query lib
 
-export function isExpression(expr) {
+export function isExpression(expr: unknown) {
   return (
     isLiteral(expr) ||
     isOperator(expr) ||
@@ -248,23 +245,23 @@ export function isExpression(expr) {
   );
 }
 
-export function isLiteral(expr) {
+export function isLiteral(expr: unknown): boolean {
   return isStringLiteral(expr) || isNumberLiteral(expr);
 }
 
-export function isStringLiteral(expr) {
+export function isStringLiteral(expr: unknown): boolean {
   return typeof expr === "string";
 }
 
-export function isBooleanLiteral(expr) {
+export function isBooleanLiteral(expr: unknown): boolean {
   return typeof expr === "boolean";
 }
 
-export function isNumberLiteral(expr) {
+export function isNumberLiteral(expr: unknown): boolean {
   return typeof expr === "number";
 }
 
-export function isOperator(expr) {
+export function isOperator(expr: unknown): boolean {
   return (
     Array.isArray(expr) &&
     OPERATORS.has(expr[0]) &&
@@ -274,15 +271,15 @@ export function isOperator(expr) {
   );
 }
 
-function isPlainObject(obj) {
-  return obj && Object.getPrototypeOf(obj) === Object.prototype;
+function isPlainObject(obj: unknown): boolean {
+  return obj ? Object.getPrototypeOf(obj) === Object.prototype : false;
 }
 
-export function hasOptions(expr) {
-  return isPlainObject(expr[expr.length - 1]);
+export function hasOptions(expr: unknown): boolean {
+  return Array.isArray(expr) && isPlainObject(expr[expr.length - 1]);
 }
 
-export function isFunction(expr) {
+export function isFunction(expr: unknown): boolean {
   return (
     Array.isArray(expr) &&
     FUNCTIONS.has(expr[0]) &&
@@ -292,11 +289,12 @@ export function isFunction(expr) {
   );
 }
 
-export function isDimension(expr) {
+export function isDimension(expr: unknown): boolean {
+  // @ts-expect-error parseMBQL doesn't accept Expr
   return !!Dimension.parseMBQL(expr);
 }
 
-export function isMetric(expr) {
+export function isMetric(expr: unknown): boolean {
   return (
     Array.isArray(expr) &&
     expr[0] === "metric" &&
@@ -305,7 +303,7 @@ export function isMetric(expr) {
   );
 }
 
-export function isSegment(expr) {
+export function isSegment(expr: unknown): boolean {
   return (
     Array.isArray(expr) &&
     expr[0] === "segment" &&
@@ -314,6 +312,6 @@ export function isSegment(expr) {
   );
 }
 
-export function isCase(expr) {
+export function isCase(expr: unknown): boolean {
   return Array.isArray(expr) && expr[0] === "case"; // && _.all(expr.slice(1), isValidArg)
 }

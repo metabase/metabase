@@ -47,7 +47,7 @@ export function diagnose({
   source: string;
   startRule: string;
   legacyQuery: StructuredQuery;
-  name: string | null;
+  name?: string | null;
 }): ErrorWithMessage | null {
   if (!source || source.length === 0) {
     return null;
@@ -132,7 +132,7 @@ function prattCompiler(
       }
       return Array.isArray(segment.id) ? segment.id : ["segment", segment.id];
     } else {
-      const reference = options.name; // avoid circular reference
+      const reference = options.name ?? ""; // avoid circular reference
 
       // fallback
       const dimension = parseDimension(name, { reference, ...options });

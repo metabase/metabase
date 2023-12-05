@@ -165,10 +165,8 @@ export function FilterPopover({
   };
 
   if (editingFilter) {
-    const filterMBQL = filter?.raw();
-    const expression = isExpression(filterMBQL)
-      ? (filterMBQL as Expression)
-      : undefined;
+    const filterMBQL = filter?.raw() as Expression;
+    const expression = isExpression(filterMBQL) ? filterMBQL : undefined;
     return (
       <ExpressionWidget
         legacyQuery={query}
