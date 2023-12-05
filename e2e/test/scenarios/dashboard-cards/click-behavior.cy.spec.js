@@ -129,6 +129,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("/api/dataset").as("dataset");
     setTokenFeatures("all");
   });
 
@@ -638,7 +639,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       clickLineChartPoint();
       cy.findByTestId("qb-filters-panel").should(
         "have.text",
-        "Created At is August 1–31, 2022",
+        "Created At is Aug 1–31, 2022",
       );
       cy.location().should(({ hash, pathname }) => {
         expect(pathname).to.equal("/question");
@@ -675,8 +676,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       saveDashboard();
 
       clickLineChartPoint();
+      cy.wait("@dataset");
       cy.findByTestId("qb-filters-panel")
-        .should("contain.text", "Created At is August 1–31, 2022")
+        .should("contain.text", "Created At is Aug 1–31, 2022")
         .should("contain.text", "Quantity is equal to 79");
       cy.location().should(({ hash, pathname }) => {
         expect(pathname).to.equal("/question");
@@ -1090,8 +1092,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           getTableCell(COLUMN_INDEX.CREATED_AT)
             .should("have.text", `Created at: ${POINT_CREATED_AT_FORMATTED}`)
             .click();
+          cy.wait("@dataset");
           cy.findByTestId("qb-filters-panel")
-            .should("contain.text", "Created At is August 1–31, 2022")
+            .should("contain.text", "Created At is Aug 1–31, 2022")
             .should("contain.text", "Quantity is equal to 79");
           cy.location().should(({ hash, pathname }) => {
             expect(pathname).to.equal("/question");

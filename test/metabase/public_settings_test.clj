@@ -1,7 +1,5 @@
 (ns ^:mb/once metabase.public-settings-test
   (:require
-   [clj-http.fake :as http-fake]
-   [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
@@ -186,34 +184,16 @@
             (is (= false
                    (public-settings/redirect-all-requests-to-https)))))))))
 
+
 (deftest cloud-gateway-ips-test
-  (with-redefs [premium-features/is-hosted? (constantly true)]
-    (testing "Setting calls Store URL to fetch IP addresses"
-      (memoize/memo-clear! @#'public-settings/fetch-cloud-gateway-ips-fn)
-      (http-fake/with-fake-routes-in-isolation
-        {{:address (public-settings/cloud-gateway-ips-url)}
-         (constantly {:status 200 :body "{\"ip_addresses\": [\"127.0.0.1\"]}"})}
-        (is (= ["127.0.0.1"] (public-settings/cloud-gateway-ips))))
+  (mt/with-temp-env-var-value [mb-cloud-gateway-ips "1.2.3.4,5.6.7.8"]
+    (with-redefs [premium-features/is-hosted? (constantly true)]
+      (testing "Setting returns ips given comma delimited ips."
+        (is (= ["1.2.3.4" "5.6.7.8"]
+               (public-settings/cloud-gateway-ips)))))
 
-      (testing "Getter is memoized to avoid frequent HTTP calls"
-        (http-fake/with-fake-routes-in-isolation
-          {{:address (public-settings/cloud-gateway-ips-url)}
-           (constantly {:status 200 :body "{\"ip_addresses\": [\"0.0.0.0\"]}"})}
-          (is (= ["127.0.0.1"] (public-settings/cloud-gateway-ips))))))
-
-    (testing "Setting returns nil if URL is unreachable"
-      (memoize/memo-clear! @#'public-settings/fetch-cloud-gateway-ips-fn)
-      (http-fake/with-fake-routes-in-isolation
-        {{:address (public-settings/cloud-gateway-ips-url)}
-         (constantly {:status 500})}
-        (is (= nil (public-settings/cloud-gateway-ips))))))
-
-  (testing "Setting returns nil in self-hosted environments"
-    (with-redefs [premium-features/is-hosted? (constantly false)]
-      (memoize/memo-clear! @#'public-settings/fetch-cloud-gateway-ips-fn)
-      (http-fake/with-fake-routes-in-isolation
-        {{:address (public-settings/cloud-gateway-ips-url)}
-         (constantly {:status 200 :body "{\"ip_addresses\": [\"127.0.0.1\"]}"})}
+    (testing "Setting returns nil in self-hosted environments"
+      (with-redefs [premium-features/is-hosted? (constantly false)]
         (is (= nil (public-settings/cloud-gateway-ips)))))))
 
 (deftest start-of-week-test

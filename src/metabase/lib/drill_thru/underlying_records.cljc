@@ -41,9 +41,9 @@
      ;; TODO: This is a bit confused for non-COUNT aggregations. Perhaps it should just always be 10 or something?
      ;; Note that some languages have different plurals for exactly 2, or for 1, 2-5, and 6+.
      :row-count  (if (number? value) value 2)
-     :table-name (some->> (lib.util/source-table-id query)
-                          (lib.metadata/table query)
-                          (lib.metadata.calculation/display-name query stage-number))
+     :table-name (when-let [table-or-card (or (some->> query lib.util/source-table-id (lib.metadata/table query))
+                                              (some->> query lib.util/source-card-id  (lib.metadata/card  query)))]
+                   (lib.metadata.calculation/display-name query stage-number table-or-card))
      :dimensions dimensions
      :column-ref column-ref}))
 

@@ -160,14 +160,13 @@ describeEE("formatting > sandboxes", () => {
         filter({ mode: "notebook" });
         popover().within(() => {
           cy.findByText("Total").click({ force: true });
+          cy.findByDisplayValue("Equal to").click();
         });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Equal to").click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Greater than").click();
-        cy.findByPlaceholderText("Enter a number").type("100");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Add filter").click();
+        cy.findByRole("listbox").findByText("Greater than").click();
+        popover().within(() => {
+          cy.findByPlaceholderText("Enter a number").type("100");
+          cy.button("Add filter").click();
+        });
 
         visualize();
 
@@ -364,7 +363,7 @@ describeEE("formatting > sandboxes", () => {
           expect(xhr.response.body.error).not.to.exist;
         });
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Category is Doohickey");
+        cy.findByText("Product → Category is Doohickey");
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("97.44"); // Subtotal for order #10
       });
@@ -439,7 +438,7 @@ describeEE("formatting > sandboxes", () => {
       cy.wait("@dataset");
       cy.log("Reported failing on v1.36.4");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Category is Doohickey");
+      cy.findByText("Products → Category is Doohickey");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("97.44"); // Subtotal for order #10
     });
