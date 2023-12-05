@@ -268,3 +268,32 @@
                                       (meta/id :orders :quantity)]
                                      30.0]]}]}
               query')))))
+
+(deftest ^:parallel chart-legend-click-test
+  (testing "chart legend clicks have no `column` set, but should still work (#35343)"
+    (let [query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/aggregate (lib/count))
+                       (lib/breakout (meta/field-metadata :products :category))
+                       (lib/breakout (meta/field-metadata :orders :created-at)))
+          columns  (lib/returned-columns query)
+          category (m/find-first #(= (:name %) "CATEGORY") columns)
+          context  {:column     nil
+                    :column-ref nil
+                    :value      nil
+                    :dimensions [{:column     category
+                                  :column-ref (lib/ref category)
+                                  :value      "Gadget"}]}
+          drills   (lib.drill-thru/available-drill-thrus query context)
+          drill    (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                 drills)]
+      (is (=? {:type       :drill-thru/underlying-records
+               :row-count  2
+               :table-name "Orders"
+               :dimensions [{}]}
+              drill))
+      (is (=? {:lib/type :mbql/query
+               :stages [{:filters     [[:= {} [:field {} (meta/id :products :category)] "Gadget"]]
+                         :aggregation (symbol "nil #_\"key is not present.\"")
+                         :breakout    (symbol "nil #_\"key is not present.\"")
+                         :fields      (symbol "nil #_\"key is not present.\"")}]}
+              (lib.drill-thru/drill-thru query -1 drill))))))
