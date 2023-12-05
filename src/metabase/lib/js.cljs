@@ -696,13 +696,10 @@
   [a-query stage-number expression-name an-expression-clause]
   (lib.core/expression a-query stage-number expression-name an-expression-clause))
 
-(defn ^:export expression-name
-  "Return the name of `an-expression-clause`."
-  [an-expression-clause]
-  (lib.core/expression-name an-expression-clause))
-
 (defn ^:export with-expression-name
-  "Return an new expressions clause like `an-expression-clause` but with name `new-name`."
+  "Return a new expression clause like `an-expression-clause` but with name `new-name`.
+  For expressions from the :expressions clause of a pMBQL query this sets the :lib/expression-name option,
+  for other expressions (for example named aggregation expressions) the :display-name option is set."
   [an-expression-clause new-name]
   (lib.core/with-expression-name an-expression-clause new-name))
 
