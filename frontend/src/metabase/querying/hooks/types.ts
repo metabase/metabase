@@ -1,6 +1,6 @@
 import type * as Lib from "metabase-lib";
 
-export interface OperatorOption<T extends Lib.FilterOperatorName> {
+export interface FilterOperatorOption<T extends Lib.FilterOperatorName> {
   operator: T;
 
   // An operator's longDisplayName is going to be used by default,

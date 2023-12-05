@@ -38,9 +38,8 @@ export function useBooleanFilter({
         availableOptions.find(option => option.type === type),
       );
       setOptionType(option.type);
-      if (option.isAdvanced) {
-        setIsExpanded(true);
-      }
+      setIsExpanded(isExpanded => isExpanded || option.isAdvanced);
+
       if (onChange) {
         onChange(getFilterClause(column, option.type));
       }

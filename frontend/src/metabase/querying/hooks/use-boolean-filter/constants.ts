@@ -1,7 +1,7 @@
 import { t } from "ttag";
-import type { Option, OptionType } from "./types";
+import type { OperatorOption, OptionType } from "./types";
 
-export const OPTIONS: Record<OptionType, Option> = {
+export const OPTIONS: Record<OptionType, OperatorOption> = {
   true: {
     name: t`True`,
     operator: "=",

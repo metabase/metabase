@@ -2,9 +2,10 @@ import { useMemo, useState } from "react";
 import * as Lib from "metabase-lib";
 import { getAvailableOperatorOptions } from "../utils";
 import { OPERATOR_OPTIONS } from "./constants";
-import { getDefaultValues, getFilterClause } from "./utils";
+import { getDefaultValues, getFilterClause, hasValidValues } from "./utils";
+import type { NumberValue } from "./types";
 
-interface UseTimeFilterProps {
+interface UseNumberFilterProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
@@ -12,16 +13,17 @@ interface UseTimeFilterProps {
   onChange?: (filter: Lib.ExpressionClause) => void;
 }
 
-export function useTimeFilter({
+export function useNumberFilter({
   query,
   stageIndex,
   column,
   filter,
   onChange,
-}: UseTimeFilterProps) {
-  const filterParts = useMemo(() => {
-    return filter ? Lib.timeFilterParts(query, stageIndex, filter) : null;
-  }, [query, stageIndex, filter]);
+}: UseNumberFilterProps) {
+  const filterParts = useMemo(
+    () => (filter ? Lib.numberFilterParts(query, stageIndex, filter) : null),
+    [query, stageIndex, filter],
+  );
 
   const availableOperators = useMemo(
     () =>
@@ -30,39 +32,43 @@ export function useTimeFilter({
   );
 
   const [operator, setOperator] = useState(
-    filterParts ? filterParts.operator : "<",
+    filterParts ? filterParts.operator : "=",
   );
 
   const [values, setValues] = useState(() =>
     getDefaultValues(operator, filterParts?.values),
   );
 
-  const { valueCount } = OPERATOR_OPTIONS[operator];
+  const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
+  const isValid = hasValidValues(operator, values);
 
-  const handleOperatorChange = (newOperator: Lib.TimeFilterOperatorName) => {
+  const handleOperatorChange = (newOperator: Lib.NumberFilterOperatorName) => {
     const newValues = getDefaultValues(newOperator, values);
     setOperator(newOperator);
     setValues(newValues);
 
-    if (onChange) {
+    if (onChange && hasValidValues(newOperator, newValues)) {
       onChange(getFilterClause(newOperator, column, newValues));
     }
   };
 
-  const handleValuesChange = (newValues: Date[]) => {
+  const handleValuesChange = (newValues: NumberValue[]) => {
     setValues(newValues);
 
-    if (onChange) {
+    if (onChange && hasValidValues(operator, newValues)) {
       onChange(getFilterClause(operator, column, newValues));
     }
   };
 
   return {
     operator,
+    availableOperators,
     values,
     valueCount,
-    availableOperators,
-    getFilterClause: () => getFilterClause(operator, column, values),
+    hasMultipleValues,
+    isValid,
+    getFilterClause: () =>
+      isValid ? getFilterClause(operator, column, values) : null,
     handleOperatorChange,
     handleValuesChange,
   };
