@@ -78,6 +78,7 @@ export const HelpLinkSettings = ({
             // this makes it autofocus only when the value wasn't originally a custom destination
             // this prevents it to be focused on page load
             autoFocus={setting.originalValue !== "custom"}
+            onChange={() => setError(null)}
             aria-label={t`Help link custom destination`}
             placeholder={t`Enter a URL it should go to`}
             onBlurChange={e => handleChange(e.target.value)}
