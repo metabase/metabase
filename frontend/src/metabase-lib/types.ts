@@ -134,12 +134,9 @@ export type ColumnDisplayInfo = {
   displayName: string;
   longDisplayName: string;
 
-  semanticType: string | null;
-  effectiveType: string;
-
-  isCalculated?: boolean;
-  isFromJoin?: boolean;
-  isImplicitlyJoinable?: boolean;
+  isCalculated: boolean;
+  isFromJoin: boolean;
+  isImplicitlyJoinable: boolean;
   table?: TableInlineDisplayInfo;
 
   breakoutPosition?: number;

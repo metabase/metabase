@@ -441,9 +441,7 @@ describe("FilterPicker", () => {
       expect(Lib.displayInfo(query, 0, leftMetadata)).toMatchObject({
         name: "TOTAL",
         displayName: "Total",
-        semanticType: null,
         longDisplayName: "Total",
-        effectiveType: "type/Float",
         table: {
           name: "ORDERS",
           displayName: "Orders",
@@ -454,9 +452,7 @@ describe("FilterPicker", () => {
       expect(Lib.displayInfo(query, 0, rightMetadata)).toMatchObject({
         name: "DISCOUNT",
         displayName: "Discount",
-        semanticType: "type/Discount",
         longDisplayName: "Discount",
-        effectiveType: "type/Float",
         table: {
           name: "ORDERS",
           displayName: "Orders",
@@ -487,10 +483,8 @@ describe("FilterPicker", () => {
       expect(args).toHaveLength(2);
       expect(Lib.displayInfo(query, 0, leftMetadata)).toEqual({
         displayName: "Total",
-        effectiveType: "type/Float",
         longDisplayName: "Total",
         name: "TOTAL",
-        semanticType: null,
         table: {
           displayName: "Orders",
           isSourceTable: true,
