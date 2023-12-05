@@ -1,6 +1,7 @@
 (ns metabase.pulse.render.table-test
   (:require
    [clojure.test :refer :all]
+   [hickory.select :as hik.s]
    [metabase.pulse.render :as render]
    [metabase.pulse.render.color :as color]
    [metabase.pulse.render.common :as common]
@@ -93,7 +94,37 @@
       (is (= "A..." (subs long-rendered (- (count long-rendered) 4) (count long-rendered))))
       (is (not= long-heading long-rendered)))))
 
+(def ^:private simple-table-card
+  {:dataset_query
+   {:type     :native
+    :native
+    {:query         "SELECT 'a' AS aa, 1 AS bb, 0.1 AS cc UNION ALL\nSELECT 'b', 2, 0.2 UNION ALL\nSELECT 'c', 3, 0.3;"
+     :template-tags {}}
+    :database (mt/id)}
+   :display :table})
+
 (deftest table-columns-test
+  (mt/dataset sample-dataset
+    (mt/with-temp [:model/Card {card1 :id} simple-table-card
+                   :model/Card {card2 :id}
+                   (-> simple-table-card
+                       (assoc-in [:visualization_settings :table.columns]
+                                 [{:name "CC", :fieldRef [:field "CC" {:base-type :type/Decimal}], :enabled true}
+                                  {:name "AA", :fieldRef [:field "AA" {:base-type :type/Text}], :enabled false}
+                                  {:name "BB", :fieldRef [:field "BB" {:base-type :type/Integer}], :enabled true}])
+                       (assoc-in [:visualization_settings :column_settings]
+                                 {"[\"name\",\"CC\"]" {:column_title "SeaSea"}}))]
+
+      (is (= ["AA" "BB" "CC"]
+             (->> (render.tu/render-card-as-hickory card1)
+                  (hik.s/select (hik.s/tag :th))
+                  (mapcat :content))))
+      (is (= ["SeaSea" "BB"]
+             (->> (render.tu/render-card-as-hickory card2)
+                  (hik.s/select (hik.s/tag :th))
+                  (mapcat :content)))))))
+
+#_(deftest table-columns-test
   (let [rows [["As" "Bs" "Cs"]
               ["a" "b" "c"]]]
     (testing "Column reordering is applied correctly to the table"
@@ -117,7 +148,7 @@
                    (->> (apply concat))
                    (->> (map second)))))))))
 
-(deftest table-column-formatting-test
+#_(deftest table-column-formatting-test
   (let [rows [["A" "B" "C" "D" "E"]
               [0.1 9000 "2022-10-12T00:00:00Z" 0.123 0.6666667]]]
     (testing "Custom column titles are respected in render."

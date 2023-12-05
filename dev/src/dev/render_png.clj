@@ -51,9 +51,9 @@
   [card-id]
   (let [{:keys [dataset_query result_metadata dataset] :as card} (t2/select-one card/Card :id card-id)
         query-results (qp/process-query
-                        (cond-> dataset_query
-                          dataset
-                          (assoc-in [:info :metadata/dataset-metadata] result_metadata)))
+                       (cond-> (assoc-in dataset_query [:info :card_id] card-id)
+                         dataset
+                         (assoc-in [:info :metadata/dataset-metadata] result_metadata)))
         png-bytes     (render/render-pulse-card-to-png (pulse/defaulted-timezone card)
                                                        card
                                                        query-results
@@ -68,7 +68,7 @@
   "Render a pulse card as a data structure"
   [card-id]
   (let [{:keys [dataset_query] :as card} (t2/select-one card/Card :id card-id)
-        query-results (qp/process-query dataset_query)]
+        query-results (qp/process-query (assoc-in dataset_query [:info :card_id] card-id))]
     (render/render-pulse-card
      :inline (pulse/defaulted-timezone card)
      card

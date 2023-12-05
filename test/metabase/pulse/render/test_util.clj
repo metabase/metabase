@@ -203,7 +203,7 @@
 (defn render-card-as-hiccup
   [card-id]
   (let [{:keys [dataset_query] :as card} (t2/select-one :model/Card :id card-id)
-        {:keys [data]}                    (qp/process-query dataset_query)]
+        {:keys [data]}                    (qp/process-query (assoc-in dataset_query [:info :card_id] card-id))]
     (with-redefs [js-svg/svg-string->bytes       identity
                   image-bundle/make-image-bundle (fn [_ s]
                                                    {:image-src   s
@@ -218,7 +218,7 @@
 (defn render-card-as-hickory
   [card-id]
   (let [{:keys [dataset_query] :as card} (t2/select-one :model/Card :id card-id)
-        {:keys [data]}                    (qp/process-query dataset_query)]
+        {:keys [data]}                    (qp/process-query (assoc-in dataset_query [:info :card_id] card-id))]
     (with-redefs [js-svg/svg-string->bytes       identity
                   image-bundle/make-image-bundle (fn [_ s]
                                                    {:image-src   s
