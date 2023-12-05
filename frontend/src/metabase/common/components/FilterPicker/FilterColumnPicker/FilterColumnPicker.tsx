@@ -110,10 +110,12 @@ export function FilterColumnPicker({
       renderItemName={renderItemName}
       renderItemDescription={omitItemDescription}
       renderItemIcon={renderItemIcon}
+      // disable scrollbars inside the list
+      style={{ overflow: "visible" }}
+      maxHeight={Infinity}
       // Compat with E2E tests around MLv1-based components
       // Prefer using a11y role selectors
       itemTestId="dimension-list-item"
-      maxHeight={Infinity}
     />
   );
 }
