@@ -436,9 +436,11 @@ describe("FilterPicker", () => {
       const filter = getNextFilter();
       const { args, operator, options } = Lib.expressionParts(query, 0, filter);
       const [left, right] = args;
+      const leftMetadata = checkNotNull(left) as Lib.ColumnMetadata;
+      const rightMetadata = checkNotNull(right) as Lib.ColumnMetadata;
 
       expect(args).toHaveLength(2);
-      expect(Lib.displayInfo(query, 0, checkNotNull(left))).toMatchObject({
+      expect(Lib.displayInfo(query, 0, leftMetadata)).toMatchObject({
         name: "TOTAL",
         displayName: "Total",
         semanticType: null,
@@ -451,7 +453,7 @@ describe("FilterPicker", () => {
           isSourceTable: true,
         },
       });
-      expect(Lib.displayInfo(query, 0, checkNotNull(right))).toMatchObject({
+      expect(Lib.displayInfo(query, 0, rightMetadata)).toMatchObject({
         name: "DISCOUNT",
         displayName: "Discount",
         semanticType: "type/Discount",
@@ -484,9 +486,10 @@ describe("FilterPicker", () => {
       const filter = getNextFilter();
       const { args, operator, options } = Lib.expressionParts(query, 0, filter);
       const [left, right] = args;
+      const leftMetadata = checkNotNull(left) as Lib.ColumnMetadata;
 
       expect(args).toHaveLength(2);
-      expect(Lib.displayInfo(query, 0, checkNotNull(left))).toEqual({
+      expect(Lib.displayInfo(query, 0, leftMetadata)).toEqual({
         displayName: "Total",
         effectiveType: "type/Float",
         longDisplayName: "Total",
@@ -499,12 +502,7 @@ describe("FilterPicker", () => {
           name: "ORDERS",
         },
       });
-      expect(Lib.displayInfo(query, 0, checkNotNull(right))).toEqual({
-        displayName: "100",
-        effectiveType: "type/Integer",
-        longDisplayName: "100",
-        name: "100",
-      });
+      expect(right).toBe(100);
       expect(operator).toBe(">");
       expect(options).toEqual({});
     });
