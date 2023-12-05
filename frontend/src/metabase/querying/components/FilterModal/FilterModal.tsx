@@ -17,7 +17,7 @@ import {
   ScrollableTabPanel,
 } from "./FilterModal.styled";
 
-interface BulkFilterModalProps {
+interface FilterModalProps {
   query: Lib.Query;
   opened: boolean;
   onSubmit: (nextQuery: Lib.Query) => void;
@@ -46,12 +46,12 @@ function toGroupListItem(
   };
 }
 
-export function BulkFilterModal({
+export function FilterModal({
   query: initialQuery,
   opened,
   onSubmit,
   onClose,
-}: BulkFilterModalProps) {
+}: FilterModalProps) {
   const [query, setQuery] = useState(initialQuery);
 
   useEffect(() => {
@@ -163,7 +163,7 @@ export function BulkFilterModal({
             </Flex>
           </Tabs>
         </ModalBody>
-        <ModalFooter justify="space-between">
+        <ModalFooter p="md" direction="row" justify="space-between">
           <Button
             variant="subtle"
             color="text.1"
@@ -243,7 +243,12 @@ function FilterableColumnGroup({
           };
 
           return (
-            <ColumnFilterListItem key={`col-${i}`} px="2rem" py="1rem">
+            <ColumnFilterListItem
+              key={`col-${i}`}
+              component="li"
+              px="2rem"
+              py="1rem"
+            >
               <ColumnFilterSection
                 query={query}
                 stageIndex={stageIndex}
