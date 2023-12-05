@@ -140,7 +140,7 @@ describe("SmartScalar", () => {
     expect(screen.getByText("(empty)")).toBeInTheDocument();
   });
 
-  it("(compare to previous) should skip over rows with null values", () => {
+  it("(comparison: previous value) should skip over rows with null values", () => {
     const rows = [
       ["2019-09-01T00:00:00", 100],
       ["2019-10-01T00:00:00", null],

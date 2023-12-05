@@ -88,7 +88,7 @@ export const COMPARISON_OPTIONS = {
   },
   COMPARE_TO_PREVIOUS: {
     type: COMPARISON_TYPES.COMPARE_TO_PREVIOUS,
-    name: t`Compare to previous`,
+    name: t`Previous value`,
   },
 };
 
