@@ -32,9 +32,6 @@ import type {
   MetricDisplayInfo,
   OrderByClause,
   OrderByClauseDisplayInfo,
-  Query,
-  SegmentMetadata,
-  SegmentDisplayInfo,
   TableDisplayInfo,
   TableMetadata,
 } from "./types";
