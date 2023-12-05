@@ -20,11 +20,13 @@ export function NumberFilterEditor({
     return Lib.displayInfo(query, stageIndex, column);
   }, [query, stageIndex, column]);
 
-  const { columnIcon, isKey } = useMemo(() => {
-    const columnIcon = getColumnIcon(column);
-    const isKey = Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
-    return { columnIcon, isKey };
-  }, [column]);
+  const { columnIcon, isKey } = useMemo(
+    () => ({
+      columnIcon: getColumnIcon(column),
+      isKey: Lib.isPrimaryKey(column) || Lib.isForeignKey(column),
+    }),
+    [column],
+  );
 
   const {
     operator,
