@@ -29,7 +29,7 @@
              (pulse-params/dashboard-url 1 [{:value "contains?", :slug "&"}]))))))
 
 (deftest param-val-or-default-test
-  (let [param-val-or-default #'params/param-val-or-default]
+  (let [param-val-or-default #'pulse-params/param-val-or-default]
     (testing "When the parameter’s :value key is missing, fallback to the :default key"
       (is (= "my default value"
              (param-val-or-default {:default "my default value"}))))
