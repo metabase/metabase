@@ -114,14 +114,8 @@ function DateFilterPopover({
   onChange,
 }: DateFilterPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
-
-  const handleOpen = () => {
-    setIsOpened(true);
-  };
-
-  const handleClose = () => {
-    setIsOpened(false);
-  };
+  const handleOpen = () => setIsOpened(true);
+  const handleClose = () => setIsOpened(false);
 
   const handleChange = (value: DatePickerValue) => {
     onChange(value);
