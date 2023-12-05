@@ -1684,6 +1684,11 @@ const testChangingBackToDefaultBehavior = () => {
 
   editDashboard();
 
+  // (metabase#35354)
+  cy.on("uncaught:exception", err => {
+    expect(err.name.includes("TypeError")).to.be.false;
+  });
+
   getDashboardCard().realHover().icon("click").click();
   cy.get("aside").icon("close").first().click();
   cy.get("aside").findByText("Open the Metabase drill-through menu").click();
