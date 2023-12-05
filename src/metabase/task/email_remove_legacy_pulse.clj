@@ -13,7 +13,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- has-legacy-pulse? []
-  (pos? (t2/count :model/Pulse :dashboard_id nil :alert_condition nil)))
+  (pos? (t2/count :model/Pulse :dashboard_id nil :alert_condition nil :archived false)))
 
 (def ^:private template-path (str "metabase/email/warn_deprecate_pulse.mustache"))
 
@@ -21,7 +21,7 @@
   (when (and (email/email-configured?)
              (has-legacy-pulse?))
     (log/info "Sending email to admins about removal of legacy pulses")
-    (let [legacy-pulse (->> (t2/select :model/Pulse :dashboard_id nil :alert_condition nil)
+    (let [legacy-pulse (->> (t2/select :model/Pulse :dashboard_id nil :alert_condition nil :archived false)
                             (map #(assoc % :url (urls/legacy-pulse-url (:id %)))))]
       (doseq [admin (t2/select :model/User :is_superuser true)]
         (email/send-message-or-throw!
