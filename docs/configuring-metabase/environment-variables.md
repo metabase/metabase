@@ -191,7 +191,11 @@ Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Ente
 Type: integer<br>
 Default: 0 (Metabase keeps all rows)<br>
 
-Sets the maximum number of days Metabase preserves rows in the `query_execution` table in the application database.
+Sets the maximum number of days Metabase preserves rows in the following application database tables:
+
+- `query_execution`
+- `audit_log`
+- `view_log`
 
 Twice a day, Metabase will delete rows older than this threshold.
 
