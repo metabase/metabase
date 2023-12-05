@@ -10,10 +10,10 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-temporary-setting-values [uploads-enabled true]
       (met/with-gtaps-for-user :rasta {:gtaps {:venues {}}}
-        (is (thrown-with-msg? Exception #"Uploads are not permitted for sandboxed users\."
-                              (api.card/upload-csv!
-                               nil
-                               "star_wars.csv"
-                               (upload-test/csv-file-with ["id,ship,captain"
-                                                           "1,Serenity,Malcolm Reynolds"
-                                                           "2,Millennium Falcon,Han Solo"]))))))))
+        (is (= {:status 403, :body {:message "Uploads are not permitted for sandboxed users."}}
+               (@#'api.card/from-csv!
+                {:collection-id nil
+                 :filename      "star_wars.csv"
+                 :file          (upload-test/csv-file-with ["id,ship,captain"
+                                                            "1,Serenity,Malcolm Reynolds"
+                                                            "2,Millennium Falcon,Han Solo"])})))))))

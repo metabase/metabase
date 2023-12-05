@@ -843,7 +843,8 @@
   [db schema-name]
   (nil? (can-upload-error db schema-name)))
 
-(defn- upload-csv!
+(defn- from-csv!
+  "This helper function exists to make testing the POST /api/card/from-csv endpoint easier."
   [{:keys [collection-id filename file]}]
   (try
     (collection/check-write-perms-for-collection collection-id)
@@ -871,8 +872,8 @@
   "Create a table and model populated with the values from the attached CSV. Returns the model ID if successful."
   [:as {raw-params :params}]
   ;; parse-long returns nil with "root" as the collection ID, which is what we want anyway
-  (upload-csv! {:collection-id (parse-long (get raw-params "collection_id"))
-                :filename      (get-in raw-params ["file" :filename])
-                :file          (get-in raw-params ["file" :tempfile])}))
+  (from-csv! {:collection-id (parse-long (get raw-params "collection_id"))
+              :filename      (get-in raw-params ["file" :filename])
+              :file          (get-in raw-params ["file" :tempfile])}))
 
 (api/define-routes)
