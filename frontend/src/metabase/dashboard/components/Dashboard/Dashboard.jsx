@@ -107,7 +107,7 @@ class DashboardInner extends Component {
         p.addCardToDashboard({
           dashId: p.dashboardId,
           cardId: p.addCardOnLoad,
-          tabId: p.dashboard.tabs[0]?.id ?? null,
+          tabId: p.dashboard?.tabs[0]?.id ?? null,
         });
       }
     } catch (error) {
