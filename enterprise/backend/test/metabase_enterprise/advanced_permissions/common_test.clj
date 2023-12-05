@@ -721,13 +721,13 @@
               (with-all-users-data-perms {db-id {:data {:native :none, :schemas {"public"     :all
                                                                                  "not_public" schema-perms}}}}
                 (if can-upload?
-                  (is (some? (api.card-test/upload-example-csv! nil false)))
+                  (is (some? (api.card-test/upload-example-csv-via-api! :grant-permission? false)))
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
                        #"You don't have permissions to do that\."
-                       (api.card-test/upload-example-csv! nil false)))))
+                       (api.card-test/upload-example-csv-via-api! :grant-permission? false)))))
               (with-all-users-data-perms {db-id {:data {:native :write, :schemas ["not_public"]}}}
-                (is (some? (api.card-test/upload-example-csv! nil false)))))))))))
+                (is (some? (api.card-test/upload-example-csv-via-api! :grant-permission? false)))))))))))
 
 (deftest get-database-can-upload-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas

@@ -7,10 +7,18 @@
    [flatland.ordered.map :as ordered-map]
    [flatland.ordered.set :as ordered-set]
    [java-time.api :as t]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Database]]
+   [metabase.models.card :as card]
+   [metabase.models.humanization :as humanization]
    [metabase.public-settings :as public-settings]
+   [metabase.sync :as sync]
+   [metabase.sync.sync-metadata.fields :as sync-fields]
+   [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -265,11 +273,7 @@
 ;;;; |  Parsing values  |
 ;;;; +------------------+
 
-;;;; +------------------+
-;;;; | Public Functions |
-;;;; +------------------+
-
-(defn unique-table-name
+(defn- unique-table-name
   "Append the current datetime to the given name to create a unique table name. The resulting name will be short enough for the given driver (truncating the supplised `table-name` if necessary)."
   [driver table-name]
   (let [time-format                 "_yyyyMMddHHmmss"
@@ -295,7 +299,7 @@
   [driver col->upload-type]
   (update-vals col->upload-type (partial driver/upload-type->database-type driver)))
 
-(defn detect-schema
+(defn- detect-schema
   "Consumes a CSV file that *must* have headers as the first row.
 
   Returns a map with three keys:
@@ -317,7 +321,7 @@
   []
   (t2/select-one Database :id (public-settings/uploads-database-id)))
 
-(defn load-from-csv!
+(defn- load-from-csv!
   "Loads a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
   [driver db-id table-name ^File csv-file]
@@ -340,3 +344,71 @@
       (catch Throwable e
         (driver/drop-table! driver db-id table-name)
         (throw (ex-info (ex-message e) {:status-code 400}))))))
+
+(defn- scan-and-sync-table!
+  [database table]
+  (sync-fields/sync-fields-for-table! database table)
+  (future
+    (sync/sync-table! table)))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                 Public Interface                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn upload-csv!
+  "Main entry point for CSV uploading. Coordinates detecting the schema, inserting it into an appropriate database,
+  syncing and scanning the new data, and creating an appropriate model which is then returned. May throw validation or
+  DB errors. Requires that current-user dynamic vars are set as if by an API call. Returns the newly created card."
+  [{:keys [collection-id filename ^File file schema-name table-prefix database]}]
+  (try
+    (let [start-time        (System/currentTimeMillis)
+          driver            (driver.u/database->driver database)
+          filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
+                                filename)
+          table-name        (->> (str table-prefix filename-prefix)
+                                 (unique-table-name driver)
+                                 (u/lower-case-en))
+          schema+table-name (if (str/blank? schema-name)
+                              table-name
+                              (str schema-name "." table-name))
+          stats             (load-from-csv! driver (:id database) schema+table-name file)
+          ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
+          table             (sync-tables/create-or-reactivate-table! database {:name table-name :schema (not-empty schema-name)})
+          _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true})
+          _sync             (scan-and-sync-table! database table)
+          ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
+          ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
+          auto-pk-field     (t2/select-one :model/Field :table_id (:id table)
+                                           :%lower.name auto-pk-column-name)
+          _                 (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})
+          card              (card/create-card!
+                             {:collection_id          collection-id,
+                              :dataset                true
+                              :database_id            (:id database)
+                              :dataset_query          {:database (:id database)
+                                                       :query    {:source-table (:id table)}
+                                                       :type     :query}
+                              :display                :table
+                              :name                   (humanization/name->human-readable-name filename-prefix)
+                              :visualization_settings {}}
+                             @api/*current-user*)
+          upload-seconds    (/ (- (System/currentTimeMillis) start-time)
+                               1000.0)]
+      (snowplow/track-event! ::snowplow/csv-upload-successful
+                             api/*current-user-id*
+                             (merge
+                              {:model-id (:id card)
+                               :upload-seconds upload-seconds}
+                              stats))
+      (.delete file)
+      card)
+    (catch Throwable e
+      (let [fail-stats (with-open [reader (bom/bom-reader file)]
+                         (let [rows (csv/read-csv reader)]
+                           {:size-mb     (/ (.length file) 1048576.0)
+                            :num-columns (count (first rows))
+                            :num-rows    (count (rest rows))}))]
+        (snowplow/track-event! ::snowplow/csv-upload-failed api/*current-user-id* fail-stats))
+      (.delete file)
+      (throw e))))

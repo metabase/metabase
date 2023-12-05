@@ -2,13 +2,10 @@
   "/api/card endpoints."
   (:require
    [cheshire.core :as json]
-   [clj-bom.core :as bom]
    [clojure.core.async :as a]
-   [clojure.data.csv :as csv]
    [clojure.string :as str]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
-   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
@@ -25,7 +22,6 @@
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
-   [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.models.params.custom-values :as custom-values]
@@ -41,10 +37,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.related :as related]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
-   [metabase.sync :as sync]
    [metabase.sync.analyze.query-results :as qr]
-   [metabase.sync.sync-metadata.fields :as sync-fields]
-   [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
    [metabase.util :as u]
@@ -54,9 +47,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [steffan-westcott.clj-otel.api.trace.span :as span]
-   [toucan2.core :as t2])
-  (:import
-   (java.io File)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -811,18 +802,8 @@
    query     ms/NonBlankString}
   (param-values (api/read-check Card card-id) param-key query))
 
-(defn- scan-and-sync-table!
-  [database table]
-  (sync-fields/sync-fields-for-table! database table)
-  (future
-    (sync/sync-table! table)))
-
-(defn- csv-stats [^File csv-file]
-  (with-open [reader (bom/bom-reader csv-file)]
-    (let [rows (csv/read-csv reader)]
-      {:size-mb     (/ (.length csv-file) 1048576.0)
-       :num-columns (count (first rows))
-       :num-rows    (count (rest rows))})))
+;;
+;;
 
 (defn- can-upload-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
@@ -862,81 +843,36 @@
   [db schema-name]
   (nil? (can-upload-error db schema-name)))
 
-(defn upload-csv!
-  "Main entry point for CSV uploading. Coordinates detecting the schema, inserting it into an appropriate database,
-  syncing and scanning the new data, and creating an appropriate model which is then returned. May throw validation or
-  DB errors."
-  [collection-id filename ^File csv-file]
-  {collection-id ms/PositiveInt}
-  (collection/check-write-perms-for-collection collection-id)
+(defn- upload-csv!
+  [{:keys [collection-id filename file]}]
   (try
-    (let [start-time        (System/currentTimeMillis)
-          db-id             (public-settings/uploads-database-id)
-          database          (or (t2/select-one Database :id db-id)
-                                (throw (Exception. (tru "The uploads database does not exist."))))
-          driver            (driver.u/database->driver database)
-          schema-name       (public-settings/uploads-schema-name)
-          _                 (check-can-upload database schema-name)
-          filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
-                                filename)
-          table-name        (->> (str (public-settings/uploads-table-prefix) filename-prefix)
-                                 (upload/unique-table-name driver)
-                                 (u/lower-case-en))
-          schema+table-name (if (str/blank? schema-name)
-                              table-name
-                              (str schema-name "." table-name))
-          stats             (upload/load-from-csv! driver db-id schema+table-name csv-file)
-          ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
-          table             (sync-tables/create-or-reactivate-table! database {:name table-name :schema (not-empty schema-name)})
-          _set_is_upload    (t2/update! :model/Table (u/the-id table) {:is_upload true})
-          _sync             (scan-and-sync-table! database table)
-          ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
-          ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
-          auto-pk-field     (t2/select-one :model/Field :table_id (u/the-id table)
-                                           :%lower.name upload/auto-pk-column-name)
-          _                 (t2/update! :model/Field (u/the-id auto-pk-field) {:display_name (:name auto-pk-field)})
-          card              (card/create-card!
-                             {:collection_id          collection-id,
-                              :dataset                true
-                              :database_id            db-id
-                              :dataset_query          {:database db-id
-                                                       :query    {:source-table (u/the-id table)}
-                                                       :type     :query}
-                              :display                :table
-                              :name                   (humanization/name->human-readable-name filename-prefix)
-                              :visualization_settings {}}
-                             @api/*current-user*)
-          upload-seconds    (/ (- (System/currentTimeMillis) start-time)
-                               1000.0)]
-      (snowplow/track-event! ::snowplow/csv-upload-successful
-                             api/*current-user-id*
-                             (merge
-                              {:model-id (:id card)
-                               :upload-seconds upload-seconds}
-                              stats))
-      (.delete csv-file)
-      (hydrate-card-details card))
-    (catch Throwable e
-      (snowplow/track-event! ::snowplow/csv-upload-failed
-                             api/*current-user-id*
-                             (csv-stats csv-file))
-      (.delete csv-file)
-      (throw e))))
-
-(api/defendpoint ^:multipart POST "/from-csv"
-  "Create a table and model populated with the values from the attached CSV. Returns the model ID if successful."
-  [:as {raw-params :params}]
-  ;; parse-long returns nil with "root" as the collection ID, which is what we want anyway
-  (try
-    (let [model-id (:id (upload-csv! (parse-long (get raw-params "collection_id"))
-                                     (get-in raw-params ["file" :filename])
-                                     (get-in raw-params ["file" :tempfile])))]
+    (collection/check-write-perms-for-collection collection-id)
+    (let [db-id       (public-settings/uploads-database-id)
+          database    (or (t2/select-one Database :id db-id)
+                          (throw (Exception. (tru "The uploads database does not exist."))))
+          schema-name (public-settings/uploads-schema-name)
+          _           (check-can-upload database schema-name)
+          model       (upload/upload-csv! {:collection-id collection-id
+                                           :filename      filename
+                                           :file          file
+                                           :user-id       @api/*current-user*
+                                           :schema-name   schema-name
+                                           :table-prefix  (public-settings/uploads-table-prefix)
+                                           :database      database})]
       {:status 200
-       :body   model-id})
+       :body   (:id model)})
     (catch Throwable e
       {:status (or (-> e ex-data :status-code)
                    500)
        :body   {:message (or (ex-message e)
                              (tru "There was an error uploading the file"))}})))
+
+(api/defendpoint ^:multipart POST "/from-csv"
+  "Create a table and model populated with the values from the attached CSV. Returns the model ID if successful."
+  [:as {raw-params :params}]
+  ;; parse-long returns nil with "root" as the collection ID, which is what we want anyway
+  (upload-csv! {:collection-id (parse-long (get raw-params "collection_id"))
+                :filename      (get-in raw-params ["file" :filename])
+                :file          (get-in raw-params ["file" :tempfile])}))
 
 (api/define-routes)
