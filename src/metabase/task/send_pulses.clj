@@ -22,7 +22,7 @@
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
 (defn- log-pulse-exception [pulse-id exception]
-  (log/error exception (format "Error sending Pulse %d" pulse-id)))
+  (log/errorf exception "Error sending Pulse %d" pulse-id))
 
 (def ^:private Hour
   [:int {:min 0 :max 23}])

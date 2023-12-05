@@ -68,7 +68,7 @@
       (log/debug "Loading tasks namespace:" (u/format-color 'blue ns-symb))
       (classloader/require ns-symb)
       (catch Throwable e
-        (log/error e "Error loading tasks namespace {0}" ns-symb)))))
+        (log/errorf e "Error loading tasks namespace %s" ns-symb)))))
 
 (defn- init-tasks!
   "Call all implementations of `init!`"
@@ -291,9 +291,9 @@
                                                 (qs/get-triggers-of-job scheduler job-key))]
                            (trigger->info trigger)))
         (catch ClassNotFoundException _
-          (log/info "Class not found for Quartz Job %s. This probably means that this job was removed or renamed." (.getName job-key)))
+          (log/infof "Class not found for Quartz Job %s. This probably means that this job was removed or renamed." (.getName job-key)))
         (catch Throwable e
-          (log/warn e "Error fetching details for Quartz Job: %s" (.getName job-key)))))))
+          (log/warnf e "Error fetching details for Quartz Job: %s" (.getName job-key)))))))
 
 (defn- jobs-info []
   (->> (some-> (scheduler) (.getJobKeys nil))
