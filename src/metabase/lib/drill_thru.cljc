@@ -31,7 +31,8 @@
 
 (defmethod lib.metadata.calculation/display-info-method ::drill-thru
   [query stage-number drill-thru]
-  (lib.drill-thru.common/drill-thru-info-method query stage-number drill-thru))
+  (merge {:display-name (name (:type drill-thru))}
+         (lib.drill-thru.common/drill-thru-info-method query stage-number drill-thru)))
 
 ;; TODO: Different ways to apply drill-thru to a query.
 ;; So far:

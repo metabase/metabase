@@ -268,3 +268,41 @@
                                       (meta/id :orders :quantity)]
                                      30.0]]}]}
               query')))))
+
+(deftest ^:parallel negative-aggregation-values-display-info-test
+  (testing "should use the default row count for aggregations with negative values (#36143)"
+    (let [query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                        (lib/aggregate (lib/count))
+                        (lib/breakout (lib.metadata/field lib.tu/metadata-provider-with-mock-cards
+                                                          (meta/id :orders :created-at))))
+          count-col (m/find-first #(= (:name %) "count")
+                                  (lib/returned-columns query))
+          _         (is (some? count-col))
+          context   {:column     count-col
+                     :column-ref (lib/ref count-col)
+                     :value      -10,
+                     :row        [{:column     (meta/field-metadata :orders :created-at)
+                                   :column-ref (lib/ref (meta/field-metadata :orders :created-at))
+                                   :value      "2020-01-01"}
+                                  {:column     count-col
+                                   :column-ref (lib/ref count-col)
+                                   :value      -10}]
+                     :dimensions [{:column     (meta/field-metadata :orders :created-at)
+                                   :column-ref (lib/ref (meta/field-metadata :orders :created-at)),
+                                   :value      "2020-01-01"}]}
+          drill     (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                  (lib/available-drill-thrus query -1 context))]
+      (is (=? {:lib/type   :metabase.lib.drill-thru/drill-thru
+               :type       :drill-thru/underlying-records
+               :row-count  2
+               :table-name "Orders"
+               :dimensions [{:column     {:name "CREATED_AT"}
+                             :column-ref [:field {} (meta/id :orders :created-at)]
+                             :value      "2020-01-01"}]
+               :column-ref [:aggregation {} string?]}
+              drill))
+      (is (=? {:display-name "underlying-records"
+               :type         :drill-thru/underlying-records
+               :row-count    2
+               :table-name   "Orders"}
+              (lib/display-info query -1 drill))))))
