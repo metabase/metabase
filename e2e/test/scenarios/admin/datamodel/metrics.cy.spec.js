@@ -120,6 +120,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.findByPlaceholderText("Something nice and descriptive").type("Foo");
 
       cy.button("Done").click();
+
       cy.wait("@dataset");
 
       // The test should fail on this step first

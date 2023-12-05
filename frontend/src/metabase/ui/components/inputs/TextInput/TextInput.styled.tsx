@@ -9,7 +9,9 @@ export const getTextInputOverrides =
       },
       styles: (theme, _, { size = "md" }) => ({
         wrapper: {
-          marginTop: theme.spacing.xs,
+          "&:not(:only-child)": {
+            marginTop: theme.spacing.xs,
+          },
         },
         label: {
           color: theme.colors.text[1],

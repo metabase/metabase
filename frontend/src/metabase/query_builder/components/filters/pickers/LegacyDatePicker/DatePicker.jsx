@@ -177,7 +177,7 @@ function getDateTimeFieldAndValues(filter, count) {
 
 const ALL_TIME_OPERATOR = {
   name: "all",
-  displayName: t`All Time`,
+  displayName: t`All time`,
   init: () => null,
   test: op => op === null,
 };
@@ -314,7 +314,7 @@ export default class DatePicker extends Component {
       if (filter) {
         onFilterChange(operator.init(filter));
       } else {
-        // from All Time (null filter)
+        // from All time (null filter)
         const { dimension } = this.props;
         onFilterChange(operator.init(["time-interval", dimension?.mbql()]));
       }

@@ -1537,92 +1537,95 @@
                            :body    body-map}))
 
 (deftest alert-deletion-test
-  (doseq [{:keys [message card deleted? expected-email f]}
-          [{:message        "Archiving a Card should trigger Alert deletion"
-            :deleted?       true
-            :expected-email "the question was archived by Rasta Toucan"
-            :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))}
-           {:message        "Validate changing a display type triggers alert deletion"
-            :card           {:display :table}
-            :deleted?       true
-            :expected-email "the question was edited by Rasta Toucan"
-            :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :line}))}
-           {:message        "Changing the display type from line to table should force a delete"
-            :card           {:display :line}
-            :deleted?       true
-            :expected-email "the question was edited by Rasta Toucan"
-            :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :table}))}
-           {:message        "Removing the goal value will trigger the alert to be deleted"
-            :card           {:display                :line
-                             :visualization_settings {:graph.goal_value 10}}
-            :deleted?       true
-            :expected-email "the question was edited by Rasta Toucan"
-            :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:visualization_settings {:something "else"}}))}
-           {:message        "Adding an additional breakout does not cause the alert to be removed if no goal is set"
-            :card           {:display                :line
-                             :visualization_settings {}
-                             :dataset_query          (assoc-in
-                                                      (mbql-count-query (mt/id) (mt/id :checkins))
-                                                      [:query :breakout]
-                                                      [[:field
-                                                        (mt/id :checkins :date)
-                                                        {:temporal-unit :hour}]])}
-            :deleted?       false
-            :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
-                                                    {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
-                                                                              [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
-                                                                                                  [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}
-           {:message        "Adding an additional breakout will cause the alert to be removed if a goal is set"
-            :card           {:display                :line
-                             :visualization_settings {:graph.goal_value 10}
-                             :dataset_query          (assoc-in
-                                                      (mbql-count-query (mt/id) (mt/id :checkins))
-                                                      [:query :breakout]
-                                                      [[:field
-                                                        (mt/id :checkins :date)
-                                                        {:temporal-unit :hour}]])}
-            :deleted?       true
-            :expected-email "the question was edited by Crowberto Corv"
-            :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
-                                                    {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
-                                                                              [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
-                                                                                                  [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}]]
-    (testing message
-      (mt/with-temp [:model/Card           card  card
-                     Pulse                 pulse {:alert_condition  "rows"
-                                                  :alert_first_only false
-                                                  :creator_id       (mt/user->id :rasta)
-                                                  :name             "Original Alert Name"}
+  (doseq [{:keys [message card deleted? expected-email-re f]}
+          [{:message           "Archiving a Card should trigger Alert deletion"
+            :deleted?          true
+            :expected-email-re #"Alerts about [A-Za-z]+ \(#\d+\) have stopped because the question was archived by Rasta Toucan"
+            :f                 (fn [{:keys [card]}]
+                                 (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))}
+           {:message           "Validate changing a display type triggers alert deletion"
+            :card              {:display :table}
+            :deleted?          true
+            :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
+            :f                 (fn [{:keys [card]}]
+                                 (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :line}))}
+           {:message           "Changing the display type from line to table should force a delete"
+            :card              {:display :line}
+            :deleted?          true
+            :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
+            :f                 (fn [{:keys [card]}]
+                                 (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :table}))}
+           {:message           "Removing the goal value will trigger the alert to be deleted"
+            :card              {:display                :line
+                                :visualization_settings {:graph.goal_value 10}}
+            :deleted?          true
+            :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
+            :f                 (fn [{:keys [card]}]
+                                 (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:visualization_settings {:something "else"}}))}
+           {:message           "Adding an additional breakout does not cause the alert to be removed if no goal is set"
+            :card              {:display                :line
+                                :visualization_settings {}
+                                :dataset_query          (assoc-in
+                                                         (mbql-count-query (mt/id) (mt/id :checkins))
+                                                         [:query :breakout]
+                                                         [[:field
+                                                           (mt/id :checkins :date)
+                                                           {:temporal-unit :hour}]])}
+            :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Crowberto Corv"
+            :deleted?          false
+            :f                 (fn [{:keys [card]}]
+                                 (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
+                                                       {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
+                                                                                 [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
+                                                                                                     [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}
+           {:message           "Adding an additional breakout will cause the alert to be removed if a goal is set"
+            :card              {:display                :line
+                                :visualization_settings {:graph.goal_value 10}
+                                :dataset_query          (assoc-in
+                                                         (mbql-count-query (mt/id) (mt/id :checkins))
+                                                         [:query :breakout]
+                                                         [[:field
+                                                           (mt/id :checkins :date)
+                                                           {:temporal-unit :hour}]])}
+            :deleted?          true
+            :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Crowberto Corv"
+            :f                 (fn [{:keys [card]}]
+                                 (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
+                                                       {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
+                                                                                 [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
+                                                                                                     [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}]]
+   (testing message
+     (mt/with-temp!
+       [:model/Card           card  card
+        Pulse                 pulse {:alert_condition  "rows"
+                                     :alert_first_only false
+                                     :creator_id       (mt/user->id :rasta)
+                                     :name             "Original Alert Name"}
 
-                     PulseCard             _     {:pulse_id (u/the-id pulse)
-                                                  :card_id  (u/the-id card)
-                                                  :position 0}
-                     PulseChannel          pc    {:pulse_id (u/the-id pulse)}
-                     PulseChannelRecipient _     {:user_id          (mt/user->id :crowberto)
-                                                  :pulse_channel_id (u/the-id pc)}
-                     PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
-                                                  :pulse_channel_id (u/the-id pc)}]
-        (with-cards-in-writeable-collection card
-          (mt/with-fake-inbox
-            (when deleted?
-              (u/with-timeout 5000
-                (mt/with-expected-messages 2
-                  (f {:card card}))
-               (is (= (merge (crowberto-alert-not-working {expected-email true})
-                             (rasta-alert-not-working     {expected-email true}))
-                      (mt/regex-email-bodies (re-pattern expected-email)))
-                   (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email)))))
-            (if deleted?
-              (is (= nil (t2/select-one Pulse :id (u/the-id pulse)))
-                  "Alert should have been deleted")
-              (is (not= nil (t2/select-one Pulse :id (u/the-id pulse)))
-                  "Alert should not have been deleted"))))))))
+        PulseCard             _     {:pulse_id (u/the-id pulse)
+                                     :card_id  (u/the-id card)
+                                     :position 0}
+        PulseChannel          pc    {:pulse_id (u/the-id pulse)}
+        PulseChannelRecipient _     {:user_id          (mt/user->id :crowberto)
+                                     :pulse_channel_id (u/the-id pc)}
+        PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
+                                     :pulse_channel_id (u/the-id pc)}]
+       (mt/with-temporary-setting-values [site-url "https://metabase.com"]
+         (with-cards-in-writeable-collection card
+           (mt/with-fake-inbox
+             (when deleted?
+               (u/with-timeout 5000
+                 (mt/with-expected-messages 2
+                   (f {:card card}))
+                 (is (= (merge (crowberto-alert-not-working {(str expected-email-re) true})
+                               (rasta-alert-not-working     {(str expected-email-re) true}))
+                        (mt/regex-email-bodies expected-email-re))
+                     (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email-re)))))
+             (if deleted?
+               (is (= nil (t2/select-one Pulse :id (u/the-id pulse)))
+                   "Alert should have been deleted")
+               (is (not= nil (t2/select-one Pulse :id (u/the-id pulse)))
+                   "Alert should not have been deleted")))))))))
 
 (deftest changing-the-display-type-from-line-to-area-bar-is-fine-and-doesnt-delete-the-alert
   (is (= {:emails-1 {}
@@ -2837,6 +2840,10 @@
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                (:parameters card)))))))
 
+;; Cal TODO: move this to driver test multimethod
+(defn- supports-schemas? [driver]
+  (not= driver :mysql))
+
 (defn upload-example-csv!
   "Upload a small CSV file to the given collection ID"
   ([collection-id]
@@ -2861,7 +2868,7 @@
            (perms/revoke-data-perms! group-id (mt/id))))))))
 
 (deftest upload-csv!-schema-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
+  (mt/test-drivers (filter supports-schemas? (mt/normal-drivers-with-feature :uploads))
     (mt/with-empty-db
       (let [db                   (mt/db)
             db-id                (u/the-id db)
@@ -2924,21 +2931,40 @@
                                              uploads-database-id  db-id
                                              uploads-schema-name  nil
                                              uploads-table-prefix "uploaded_magic_"]
-            (if (= driver/*driver* :mysql)
+            (if (supports-schemas? driver/*driver*)
+              (is (thrown-with-msg?
+                    java.lang.Exception
+                    #"^A schema has not been set."
+                    (upload-example-csv! nil)))
               (let [new-model (upload-example-csv! nil)
                     new-table (t2/select-one Table :db_id db-id)]
                 (is (=? {:name #"(?i)example csv file(.*)"}
                         new-model))
                 (is (=? {:name #"(?i)uploaded_magic_example(.*)"}
                         new-table))
-                (if (= driver/*driver* :mysql)
-                  (is (nil? (:schema new-table)))
-                  (is (=? {:schema #"(?i)public"} new-table))))
-              ;; Else, for drivers that support schemas
-              (is (thrown-with-msg?
-                   java.lang.Exception
-                   #"^A schema has not been set."
-                   (upload-example-csv! nil))))))))))
+                (is (nil? (:schema new-table)))))))))))
+
+(deftest upload-csv!-auto-pk-column-display-name-test
+  (testing "The auto-generated column display_name should be the same as its name"
+   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+     (mt/with-empty-db
+       (let [db-id (u/the-id (mt/db))]
+         (when (supports-schemas? driver/*driver*)
+           (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
+             (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
+                            ["CREATE SCHEMA \"not_public\";"])))
+         (mt/with-temporary-setting-values [uploads-enabled      true
+                                            uploads-database-id  db-id
+                                            uploads-schema-name  (if (supports-schemas? driver/*driver*)
+                                                                   "not_public"
+                                                                   nil)
+                                            uploads-table-prefix "uploads_"]
+           (upload-example-csv! nil)
+           (let [new-table (t2/select-one Table :db_id db-id)
+                 new-field (t2/select-one Field :table_id (:id new-table) :name "_mb_row_id")]
+             (is (= "_mb_row_id"
+                    (:name new-field)
+                    (:display_name new-field))))))))))
 
 (deftest upload-csv!-failure-test
   ;; Just test with postgres because failure should be independent of the driver
@@ -3068,3 +3094,44 @@
               :model    "card"
               :model_id (u/id card)}
              (view-log-test/latest-view (mt/user->id :crowberto) (u/id card))))))))
+
+(deftest pivot-from-model-test
+  (testing "Pivot options should match fields through models (#35319)"
+    (mt/dataset sample-dataset
+      (testing "visualization_settings references field by id"
+        (t2.with-temp/with-temp [:model/Card model {:dataset_query (mt/mbql-query orders)
+                                                    :dataset true}
+                                 :model/Card card {:dataset_query
+                                                   {:database (mt/id)
+                                                    :type :query
+                                                    :query {:source-table (str "card__" (u/the-id model))
+                                                            :breakout [[:field "USER_ID" {:base-type :type/Integer}]]
+                                                            :aggregation [[:sum [:field "TOTAL" {:base-type :type/Float}]]]}}
+                                                   ;; The FE sometimes used a field id instead of field by name - we need
+                                                   ;; to handle this
+                                                   :visualization_settings {:pivot_table.column_split {:rows [[:field (mt/id :orders :user_id) nil]],
+                                                                                                       :columns [],
+                                                                                                       :values [[:aggregation 0]]},
+                                                                            :table.cell_column "sum"}}]
+          (with-cards-in-readable-collection [model card]
+            (is (=?
+                  {:data {:cols [{:name "USER_ID"} {:name "pivot-grouping"} {:name "sum"}]}}
+                  (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card))))))))
+
+      (testing "visualization_settings references field by name"
+        (t2.with-temp/with-temp [:model/Card model {:dataset_query (mt/mbql-query orders)
+                                                    :dataset true}
+                                 :model/Card card {:dataset_query
+                                                   {:database (mt/id)
+                                                    :type :query
+                                                    :query {:source-table (str "card__" (u/the-id model))
+                                                            :breakout [[:field "USER_ID" {:base-type :type/Integer}]]
+                                                            :aggregation [[:sum [:field "TOTAL" {:base-type :type/Float}]]]}}
+                                                   :visualization_settings {:pivot_table.column_split {:rows [[:field "USER_ID" nil]],
+                                                                                                       :columns [],
+                                                                                                       :values [[:aggregation 0]]},
+                                                                            :table.cell_column "sum"}}]
+          (with-cards-in-readable-collection [model card]
+            (is (=?
+                  {:data {:cols [{:name "USER_ID"} {:name "pivot-grouping"} {:name "sum"}]}}
+                  (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))))))))))

@@ -168,7 +168,7 @@ export const PLUGIN_COLLECTIONS = {
   ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
     AUTHORITY_LEVEL_REGULAR,
   getInstanceAnalyticsCustomCollection: (
-    collections: Collection[],
+    _collections: Collection[],
   ): Collection | null => null,
   CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: "",
   INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE: UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
@@ -220,29 +220,29 @@ export const PLUGIN_MODERATION = {
   QuestionModerationButton: PluginPlaceholder,
   ModerationReviewBanner: PluginPlaceholder,
   ModerationStatusIcon: PluginPlaceholder,
-  getStatusIcon: (moderated_status?: string): string | IconProps | undefined =>
+  getStatusIcon: (_moderated_status?: string): string | IconProps | undefined =>
     undefined,
   getModerationTimelineEvents: (
-    reviews: any,
-    usersById: Record<string, UserListResult>,
-    currentUser: User | null,
+    _reviews: any,
+    _usersById: Record<string, UserListResult>,
+    _currentUser: User | null,
   ) => [] as RevisionOrModerationEvent[],
   getMenuItems: (
-    question?: Question,
-    isModerator?: boolean,
-    reload?: () => void,
+    _question?: Question,
+    _isModerator?: boolean,
+    _reload?: () => void,
   ) => [],
 };
 
 export const PLUGIN_CACHING = {
   dashboardCacheTTLFormField: null,
   questionCacheTTLFormField: null,
-  getQuestionsImplicitCacheTTL: (question?: any) => null,
+  getQuestionsImplicitCacheTTL: (_question?: any) => null,
   QuestionCacheSection: PluginPlaceholder,
   DashboardCacheSection: PluginPlaceholder,
   DatabaseCacheTimeField: PluginPlaceholder,
   isEnabled: () => false,
-  hasQuestionCacheSection: (question: Question) => false,
+  hasQuestionCacheSection: (_question: Question) => false,
 };
 
 export const PLUGIN_REDUCERS: {
@@ -311,7 +311,7 @@ export const PLUGIN_GROUP_MANAGERS: PluginGroupManagersType = {
 export const PLUGIN_MODEL_PERSISTENCE = {
   isModelLevelPersistenceEnabled: () => false,
   ModelCacheControl: PluginPlaceholder as any,
-  getMenuItems: (question?: any, onChange?: any) => ({}),
+  getMenuItems: (_question?: any, _onChange?: any) => ({}),
 };
 
 export const PLUGIN_EMBEDDING = {

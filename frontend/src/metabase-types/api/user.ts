@@ -1,3 +1,4 @@
+import type { CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
 
 export type UserId = number;
@@ -40,6 +41,11 @@ export interface UserListResult {
   last_name: string | null;
   common_name: string;
   email: string;
+  personal_collection_id: CollectionId;
+}
+
+export interface UserListMetadata {
+  total: number;
 }
 
 // Used when hydrating `creator` property
@@ -57,5 +63,7 @@ export type UserInfo = Pick<
 >;
 
 export type UserListQuery = {
-  recipients: boolean;
+  recipients?: boolean;
+  limit?: number;
+  offset?: number;
 };

@@ -25,6 +25,7 @@
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.js :as mbql.js]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -695,13 +696,10 @@
   [a-query stage-number expression-name an-expression-clause]
   (lib.core/expression a-query stage-number expression-name an-expression-clause))
 
-(defn ^:export expression-name
-  "Return the name of `an-expression-clause`."
-  [an-expression-clause]
-  (lib.core/expression-name an-expression-clause))
-
 (defn ^:export with-expression-name
-  "Return an new expressions clause like `an-expression-clause` but with name `new-name`."
+  "Return a new expression clause like `an-expression-clause` but with name `new-name`.
+  For expressions from the :expressions clause of a pMBQL query this sets the :lib/expression-name option,
+  for other expressions (for example named aggregation expressions) the :display-name option is set."
   [an-expression-clause new-name]
   (lib.core/with-expression-name an-expression-clause new-name))
 
@@ -963,15 +961,19 @@
 
 (defn ^:export available-drill-thrus
   "Return an array (possibly empty) of drill-thrus given:
-  - Required column
+  - Nullable column
   - Nullable value
   - Nullable data row (the array of `{col, value}` pairs from `clicked.data`)
-  - Nullable dimensions list (`{column, value}` pairs from `clicked.dimensions`)"
+  - Nullable dimensions list (`{column, value}` pairs from `clicked.dimensions`)
+
+  Column can be nil for a \"chart legend\" click, eg. clicking a category in the legend explaining the colours in a
+  multiple bar or line chart. Underlying records drills apply in that case!"
   [a-query stage-number column value row dimensions]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (let [column-ref (when-let [a-ref (.-field_ref ^js column)]
+    (let [column-ref (when-let [a-ref (and column (.-field_ref ^js column))]
                        (legacy-ref->pMBQL a-ref))]
-      (->> (merge {:column     (fix-column-with-ref column-ref (js.metadata/parse-column column))
+      (->> (merge {:column     (when column
+                                 (fix-column-with-ref column-ref (js.metadata/parse-column column)))
                    :column-ref column-ref
                    :value      (cond
                                  (undefined? value) nil   ; Missing a value, ie. a column click
@@ -1073,10 +1075,17 @@
   "Create an expression clause from `legacy-expression` at stage `stage-number` of `a-query`."
   [a-query stage-number legacy-expression]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (lib.convert/->pMBQL (lib.core/normalize (js->clj legacy-expression :keywordize-keys true)))))
+    (let [expr (js->clj legacy-expression :keywordize-keys true)
+          expr (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))]
+      (lib.convert/->pMBQL expr))))
 
 (defn ^:export legacy-expression-for-expression-clause
-  "Create a legacy expression from `an-expression-clause` at stage `stage-number` of `a-query`."
+  "Create a legacy expression from `an-expression-clause` at stage `stage-number` of `a-query`.
+  When processing aggregation clauses, the aggregation-options wrapper (e.g., specifying the name
+  of the aggregation expression) (if any) is thrown away."
   [a-query stage-number an-expression-clause]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (-> an-expression-clause lib.convert/->legacy-MBQL clj->js)))
+    (let [legacy-expr (-> an-expression-clause lib.convert/->legacy-MBQL)]
+      (clj->js (cond-> legacy-expr
+                 (= (first legacy-expr) :aggregation-options)
+                 (get 1))))))

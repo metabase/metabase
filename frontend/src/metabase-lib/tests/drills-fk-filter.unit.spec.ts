@@ -27,6 +27,8 @@ describe("drill-thru/fk-filter", () => {
         columnName: "USER_ID",
         expectedParameters: {
           type: "drill-thru/fk-filter",
+          tableName: "Orders",
+          columnName: "User ID",
         },
       },
       {
@@ -35,6 +37,8 @@ describe("drill-thru/fk-filter", () => {
         columnName: "PRODUCT_ID",
         expectedParameters: {
           type: "drill-thru/fk-filter",
+          tableName: "Orders",
+          columnName: "Product ID",
         },
       },
       {
@@ -44,6 +48,8 @@ describe("drill-thru/fk-filter", () => {
         columnName: "PRODUCT_ID",
         expectedParameters: {
           type: "drill-thru/fk-filter",
+          tableName: "Orders",
+          columnName: "Product ID",
         },
       },
     ])(
