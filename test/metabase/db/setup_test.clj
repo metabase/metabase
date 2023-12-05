@@ -46,14 +46,25 @@
           (test* (mdb.data-source/raw-connection-string->DataSource
                   (str "jdbc:h2:" subname))))))))
 
+(deftest setup-fresh-db-test
+  (mt/test-drivers #{:h2 :mysql :postgres}
+    (testing "can setup a fresh db"
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (is (= :done
+               (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true)))
+        (testing "migrations are executed in the order they are defined"
+          (is (= (liquibase-test/liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*)
+                 (t2/select-pks-vec (liquibase/changelog-table-name conn) {:order-by [[:orderexecuted :asc]]}))))))))
+
 (deftest setup-db-no-auto-migrate-test
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [_conn driver/*driver*]
-      (is (= :done
-             (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true)))
+      (testing "Running setup with `auto-migrate?`=false should pass if no migrations exist which need to be run"
+        (is (= :done
+               (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true)))
 
-      (is (= :done
-             (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) false))))
+        (is (= :done
+               (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) false)))))
 
     (testing "Setting up DB with `auto-migrate?`=false should exit if any migrations exist which need to be run"
       ;; Use a migration file that intentionally errors with failOnError: false, so that a migration is still unrun
@@ -67,16 +78,6 @@
                Exception
                #"Database requires manual upgrade."
                (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) false))))))))
-
-(deftest setup-fresh-db-test
-  (mt/test-drivers #{:h2 :mysql :postgres}
-    (testing "can setup a fresh db"
-      (mt/with-temp-empty-app-db [conn driver/*driver*]
-        (is (= :done
-               (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true)))
-        (testing "migrations are executed in the order they are defined"
-          (is (= (liquibase-test/liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*)
-                 (t2/select-pks-vec (liquibase/changelog-table-name conn) {:order-by [[:orderexecuted :asc]]}))))))))
 
 (defn- update-to-changelog-id
   [change-log-id conn]
