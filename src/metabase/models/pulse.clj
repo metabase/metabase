@@ -203,15 +203,7 @@
 
 (def CoercibleToCardRef
   "Schema for functions accepting either a `HybridPulseCard` or `CardRef`."
-  [:or HybridPulseCard CardRef]
-  #_(s/conditional
-     (fn check-hybrid-pulse-card [maybe-map]
-       (and (map? maybe-map)
-            (some #(contains? maybe-map %) [:name :description :display :collection_id
-                                            :dashboard_id :parameter_mappings])))
-     HybridPulseCard
-     :else
-     CardRef))
+  [:or HybridPulseCard CardRef])
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -220,6 +212,11 @@
   "Return the PulseChannels associated with this `notification`."
   [notification-or-id]
   (t2/select PulseChannel, :pulse_id (u/the-id notification-or-id)))
+
+(def ^:dynamic *allow-hydrate-archived-cards*
+  "By default the :cards hydration method only return active cards,
+  but in cases we need to send email after a card is archived, we need to be able to hydrate archived card as well."
+  false)
 
 (mu/defn ^:private cards* :- [:sequential HybridPulseCard]
   [notification-or-id]
@@ -233,7 +230,8 @@
     :left-join [[:report_dashboardcard :dc] [:= :pc.dashboard_card_id :dc.id]]
     :where     [:and
                 [:= :p.id (u/the-id notification-or-id)]
-                [:= :c.archived false]]
+                (when-not *allow-hydrate-archived-cards*
+                  [:= :c.archived false])]
     :order-by [[:pc.position :asc]]}))
 
 (mi/define-simple-hydration-method cards

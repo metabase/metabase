@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: tibdex/github-app-token@v1.6.0
+      - uses: tibdex/github-app-token@v2.1.0
         id: generate-token
         with:
           app_id: ${{ secrets.METABASE_BOT_APP_ID }}

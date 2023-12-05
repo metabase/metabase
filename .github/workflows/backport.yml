@@ -11,19 +11,24 @@ jobs:
     if: contains(github.event.comment.body, '@metabase-bot backport')
     runs-on: ubuntu-22.04
     steps:
-      - uses: tibdex/github-app-token@v1.6.0
+      - uses: tibdex/github-app-token@v2.1.0
         id: generate-token
         with:
           app_id: ${{ secrets.METABASE_BOT_APP_ID }}
           private_key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
-      - id: is_organization_member
-        uses: JamesSingleton/is-organization-member@1.0.0
+      - uses: actions/checkout@v3
+        name: Cherry-pick commits and create PR
         with:
-          organization: metabase
-          username: ${{ github.event.issue.user.login }}
-          token: ${{ steps.generate-token.outputs.token }}
+          fetch-depth: 0
+      - name: Verify Membership
+        id: verify-membership
+        uses: ./.github/actions/verify-membership
+        with:
+          github_token: ${{ steps.generate-token.outputs.token }}
+          organization_name: metabase
+          username: ${{ github.event.comment.user.login }}
       - run: |
-          result=${{ steps.is_organization_member.outputs.result }}
+          result=${{ steps.verify-membership.outputs.is_member }}
           if [ $result == false ]; then
               echo User ${{ github.event.comment.user.login }} is not a member of Metabase organization
               exit 1
@@ -80,10 +85,6 @@ jobs:
               startSha: commits[0].sha,
               endSha: commits[commits.length - 1].sha
             }
-      - uses: actions/checkout@v3
-        name: Cherry-pick commits and create PR
-        with:
-          fetch-depth: 0
       - id: create_backport_pull_request
         name: Create backport pull request
         run: |

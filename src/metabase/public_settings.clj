@@ -1,8 +1,5 @@
 (ns metabase.public-settings
   (:require
-   [cheshire.core :as json]
-   [clj-http.client :as http]
-   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.api.common :as api]
@@ -661,33 +658,15 @@
                            (trs "Invalid day of week: {0}" (pr-str new-value))))
                  (setting/set-value-of-type! :keyword :start-of-week new-value)))
 
-(defsetting cloud-gateway-ips-url
-  "Store URL for fetching the list of Cloud gateway IP addresses"
-  :visibility :internal
-  :setter     :none
-  :default    (str premium-features/store-url "/static/cloud_gateways.json")
-  :doc        false)
-
-(def ^:private fetch-cloud-gateway-ips-fn
-  (memoize/ttl
-   (fn []
-     (try
-       (-> (http/get (cloud-gateway-ips-url))
-           :body
-           (json/parse-string keyword)
-           :ip_addresses)
-       (catch Exception e
-         (log/error e (trs "Error fetching Metabase Cloud gateway IP addresses:")))))
-   :ttl/threshold (* 1000 60 60 24)))
-
 (defsetting cloud-gateway-ips
   (deferred-tru "Metabase Cloud gateway IP addresses, to configure connections to DBs behind firewalls")
   :visibility :public
-  :type       :json
+  :type       :string
   :setter     :none
-  :getter     (fn []
-                (when (premium-features/is-hosted?)
-                  (fetch-cloud-gateway-ips-fn))))
+  :getter (fn []
+            (when (premium-features/is-hosted?)
+              (some-> (setting/get-value-of-type :string :cloud-gateway-ips)
+                      (str/split #",")))))
 
 (defsetting show-database-syncing-modal
   (deferred-tru
