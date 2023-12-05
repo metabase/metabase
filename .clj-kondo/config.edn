@@ -316,6 +316,7 @@
     metabase.models.interface                                       mi
     metabase.models.moderation-review                               moderation-review
     metabase.models.native-query-snippet                            native-query-snippet
+    metabase.models.params                                          params
     metabase.models.permissions                                     perms
     metabase.models.permissions-group                               perms-group
     metabase.models.permissions-group-membership                    perms-group-membership
@@ -338,7 +339,7 @@
     metabase.pulse.render.common                                    common
     metabase.pulse.render.style                                     style
     metabase.pulse.test-util                                        pulse.test-util
-    metabase.pulse.parameters                                       params
+    metabase.pulse.parameters                                       pulse-params
     metabase.query-processor-test                                   qp.test
     metabase.query-processor.context                                qp.context
     metabase.query-processor.error-type                             qp.error-type
