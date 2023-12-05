@@ -196,7 +196,6 @@ function setup({
     metadata,
     query,
     stageIndex,
-    getRecentClause,
     getRecentClauseInfo,
     onSelect,
   };
