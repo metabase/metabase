@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
+   [metabase.db.connection :as mdb.connection]
    [metabase.models :refer [Collection Dashboard]]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -69,15 +70,22 @@
                        (testing "but doesn't crash drop-entity-ids"
                          (is (= true
                                 (v2.entity-ids/drop-entity-ids!)))
-                         (is (nil? (t2/select-fn-set :entity-id Dashboard)))))))
-    (testing "entity_id field is nullable everywhere so that drop-entity-ids will work for"
-      (t2/with-connection [^java.sql.Connection conn]
-        (doseq [m     (v2.entity-ids/toucan-models)
-                :when (serdes.backfill/has-entity-id? m)
-                :let  [rs (-> (.getMetaData conn)
-                              (.getColumns nil nil (u/upper-case-en (name (t2/table-name m))) "ENTITY_ID"))]]
-          (testing m
-            (if (.next rs)
-              (is (= DatabaseMetaData/columnNullable
-                     ( .getInt rs "NULLABLE")))
-              (is false "cannot get column information"))))))))
+                         (is (nil? (t2/select-fn-set :entity-id Dashboard)))))))))
+
+(deftest entity-ids-are-nullable
+  (testing "entity_id field should be nullable for model so that drop-entity-ids work (#36365)"
+    (t2/with-connection [^java.sql.Connection conn]
+      (doseq [m     (v2.entity-ids/toucan-models)
+              :when (serdes.backfill/has-entity-id? m)
+              :let  [table-name  (cond-> (name (t2/table-name m))
+                                   (= :h2 (:db-type mdb.connection/*application-db*)) u/upper-case-en)
+                     column-name (if (= :h2 (:db-type mdb.connection/*application-db*))
+                                   "ENTITY_ID"
+                                   "entity_id")
+                     rs (-> (.getMetaData conn)
+                            (.getColumns nil nil table-name column-name))]]
+        (testing m
+          (if (.next rs)
+            (is (= DatabaseMetaData/columnNullable
+                   ( .getInt rs "NULLABLE")))
+            (is false "cannot get column information")))))))

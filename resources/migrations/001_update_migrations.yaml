@@ -3126,6 +3126,8 @@ databaseChangeLog:
         - dropNotNullConstraint:
             tableName: dashboard_tab
             columnName: entity_id
+            columnDataType: char(21)
+      rollback: # noop, and 'drop not null' is a noop if it's dropped already
 
   - changeSet:
       id: v48.00-001
