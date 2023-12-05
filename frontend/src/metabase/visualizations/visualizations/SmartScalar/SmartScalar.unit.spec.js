@@ -35,20 +35,8 @@ describe("SmartScalar", () => {
       ["2019-11-01T00:00:00", 120, 220],
     ];
     const insights = [
-      {
-        "last-value": 120,
-        "last-change": 0.2,
-        "previous-value": 100,
-        unit: "month",
-        col: "Count",
-      },
-      {
-        "last-value": 220,
-        "last-change": 0.1,
-        "previous-value": 200,
-        unit: "month",
-        col: "Sum",
-      },
+      { unit: "month", col: "Count" },
+      { unit: "month", col: "Sum" },
     ];
     it("should use first non-date column (Count) by default", () => {
       setup(series({ rows, insights }));
@@ -86,15 +74,7 @@ describe("SmartScalar", () => {
       ["2019-10-01T00:00:00", 100],
       ["2019-11-01T00:00:00", 120],
     ];
-    const insights = [
-      {
-        "last-value": 120,
-        "last-change": 0.2,
-        "previous-value": 100,
-        unit: "month",
-        col: "Count",
-      },
-    ];
+    const insights = [{ unit: "month", col: "Count" }];
 
     setup(series({ rows, insights }));
 
@@ -114,15 +94,7 @@ describe("SmartScalar", () => {
       ["2019-10-01T00:00:00", 100],
       ["2019-11-01T00:00:00", 80],
     ];
-    const insights = [
-      {
-        "last-value": 80,
-        "last-change": -0.2,
-        "previous-value": 100,
-        unit: "month",
-        col: "Count",
-      },
-    ];
+    const insights = [{ unit: "month", col: "Count" }];
 
     setup(series({ rows, insights }));
 
@@ -142,37 +114,94 @@ describe("SmartScalar", () => {
       ["2019-10-01T00:00:00", 100],
       ["2019-11-01T00:00:00", 100],
     ];
-    const insights = [
-      {
-        "last-value": 100,
-        "last-change": 0,
-        "previous-value": 100,
-        unit: "month",
-        col: "Count",
-      },
-    ];
+    const insights = [{ unit: "month", col: "Count" }];
 
-    setup(series({ rows, insights }));
+    setup(series({ rows, insights }), 400);
 
     expect(screen.getByText("100")).toBeInTheDocument();
     expect(screen.getByText("Nov 2019")).toBeInTheDocument();
-    expect(screen.getByText("No change from last month")).toBeInTheDocument();
+    expect(screen.getByText("No change")).toBeInTheDocument();
+    expect(screen.getByText("vs. previous month")).toBeInTheDocument();
+  });
+
+  it("should show when data is missing", () => {
+    const rows = [
+      ["2019-10-01T00:00:00", null],
+      ["2019-11-01T00:00:00", 100],
+    ];
+    const insights = [{ unit: "month", col: "Count" }];
+
+    setup(series({ rows, insights }), 400);
+
+    expect(screen.getByText("100")).toBeInTheDocument();
+    expect(screen.getByText("Nov 2019")).toBeInTheDocument();
+    expect(screen.getByText("N/A")).toBeInTheDocument();
+    expect(screen.getByText("vs. previous month:")).toBeInTheDocument();
+    expect(screen.getByText("(empty)")).toBeInTheDocument();
+  });
+
+  it("should skip over rows with null values", () => {
+    const rows = [
+      ["2019-09-01T00:00:00", 100],
+      ["2019-10-01T00:00:00", null],
+      ["2019-11-01T00:00:00", 100],
+    ];
+    const insights = [{ unit: "month", col: "Count" }];
+
+    setup(series({ rows, insights }), 400);
+
+    expect(screen.getByText("100")).toBeInTheDocument();
+    expect(screen.getByText("Nov 2019")).toBeInTheDocument();
+    expect(screen.getByText("No change")).toBeInTheDocument();
+    expect(screen.getByText("vs. Sep")).toBeInTheDocument();
+  });
+
+  it("should show ↑ ∞% change", () => {
+    const rows = [
+      ["2019-10-01T00:00:00", 0],
+      ["2019-11-01T00:00:00", 100],
+    ];
+    const insights = [{ unit: "month", col: "Count" }];
+
+    setup(series({ rows, insights }), 400);
+
+    expect(screen.getByText("100")).toBeInTheDocument();
+    expect(screen.getByText("Nov 2019")).toBeInTheDocument();
+    expect(screen.getByRole("img")).toHaveAttribute(
+      "aria-label",
+      "arrow_up icon",
+    );
+    expect(screen.getByText("∞%")).toBeInTheDocument();
+    expect(screen.getByText("vs. previous month:")).toBeInTheDocument();
+    expect(screen.getByText("0")).toBeInTheDocument();
+  });
+
+  it("should show ↓ ∞% change", () => {
+    const rows = [
+      ["2019-10-01T00:00:00", 0],
+      ["2019-11-01T00:00:00", -100],
+    ];
+    const insights = [{ unit: "month", col: "Count" }];
+
+    setup(series({ rows, insights }), 400);
+
+    expect(screen.getByText("-100")).toBeInTheDocument();
+    expect(screen.getByText("Nov 2019")).toBeInTheDocument();
+    expect(screen.getByRole("img")).toHaveAttribute(
+      "aria-label",
+      "arrow_down icon",
+    );
+    expect(screen.getByText("∞%")).toBeInTheDocument();
+    expect(screen.getByText("vs. previous month:")).toBeInTheDocument();
+    expect(screen.getByText("0")).toBeInTheDocument();
   });
 
   it("should show 8000% change", () => {
     const rows = [
       ["2019-10-01T00:00:00", 100],
-      [("2019-11-01T00:00:00", 8100)],
+      ["2019-11-01T00:00:00", 8100],
     ];
-    const insights = [
-      {
-        "last-value": 8100,
-        "last-change": 80,
-        "previous-value": 100,
-        unit: "month",
-        col: "Count",
-      },
-    ];
+    const insights = [{ unit: "month", col: "Count" }];
 
     setup(series({ rows, insights }));
 
@@ -191,15 +220,7 @@ describe("SmartScalar", () => {
       ["2019-10-01T00:00:00", 100],
       ["2019-11-01T00:00:00", 81005],
     ];
-    const insights = [
-      {
-        "last-value": 81005,
-        "last-change": 80,
-        "previous-value": 100,
-        unit: "month",
-        col: "Count",
-      },
-    ];
+    const insights = [{ unit: "month", col: "Count" }];
 
     setup(series({ rows, insights }), width);
 
@@ -212,15 +233,7 @@ describe("SmartScalar", () => {
       ["2019-10-01T00:00:00", 100],
       ["2019-11-01T00:00:00", 810750.54],
     ];
-    const insights = [
-      {
-        "last-value": 810750.54,
-        "last-change": 80,
-        "previous-value": 100,
-        unit: "month",
-        col: "Count",
-      },
-    ];
+    const insights = [{ unit: "month", col: "Count" }];
 
     setup(series({ rows, insights }), width);
 
