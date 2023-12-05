@@ -20,7 +20,7 @@ export function useBooleanFilter({
   filter,
   onChange,
 }: UseBooleanFilterOpts) {
-  const options = useMemo(
+  const availableOptions = useMemo(
     () => getAvailableOperatorOptions(query, stageIndex, column, OPTIONS),
     [query, stageIndex, column],
   );
@@ -34,7 +34,9 @@ export function useBooleanFilter({
 
   const handleOptionTypeChange = useCallback(
     (type: string) => {
-      const option = checkNotNull(options.find(option => option.type === type));
+      const option = checkNotNull(
+        availableOptions.find(option => option.type === type),
+      );
       setOptionType(option.type);
       if (option.isAdvanced) {
         setIsExpanded(true);
@@ -43,14 +45,14 @@ export function useBooleanFilter({
         onChange(getFilterClause(column, option.type));
       }
     },
-    [column, options, onChange],
+    [column, availableOptions, onChange],
   );
 
   return {
-    options,
     optionType,
     isAdvanced,
     isExpanded,
+    availableOptions,
     getFilterClause: () => getFilterClause(column, optionType),
     handleOptionTypeChange,
     handleIsExpandedChange: setIsExpanded,

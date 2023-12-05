@@ -25,9 +25,9 @@ export function BooleanFilterPicker({
   );
 
   const {
-    options,
     optionType,
     isExpanded,
+    availableOptions,
     getFilterClause,
     handleOptionTypeChange,
     handleIsExpandedChange,
@@ -39,8 +39,11 @@ export function BooleanFilterPicker({
   });
 
   const visibleOptions = useMemo(
-    () => (isExpanded ? options : options.filter(option => !option.isAdvanced)),
-    [options, isExpanded],
+    () =>
+      isExpanded
+        ? availableOptions
+        : availableOptions.filter(option => !option.isAdvanced),
+    [availableOptions, isExpanded],
   );
 
   const handleSubmit = (event: FormEvent) => {

@@ -23,10 +23,10 @@ export function BooleanFilterEditor({
   }, [query, stageIndex, column]);
 
   const {
-    options,
     optionType,
     isAdvanced,
     isExpanded,
+    availableOptions,
     handleOptionTypeChange,
   } = useBooleanFilter({
     query,
@@ -37,8 +37,8 @@ export function BooleanFilterEditor({
   });
 
   const visibleOptions = useMemo(
-    () => options.filter(option => !option.isAdvanced),
-    [options],
+    () => availableOptions.filter(option => !option.isAdvanced),
+    [availableOptions],
   );
 
   return (
@@ -52,7 +52,7 @@ export function BooleanFilterEditor({
           {isExpanded && (
             <FilterOperatorPicker
               value={optionType}
-              options={options}
+              options={availableOptions}
               onChange={handleOptionTypeChange}
             />
           )}
