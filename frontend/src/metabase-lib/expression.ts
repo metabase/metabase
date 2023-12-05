@@ -9,6 +9,7 @@ import type {
   ExpressionParts,
   FilterClause,
   JoinCondition,
+  NamedClause,
   Query,
 } from "./types";
 
@@ -21,9 +22,10 @@ export function expression(
   return ML.expression(query, stageIndex, expressionName, clause);
 }
 
-export function withExpressionName<
-  Clause extends AggregationClause | ExpressionClause,
->(clause: Clause, newName: string): Clause {
+export function withExpressionName<Clause extends NamedClause>(
+  clause: Clause,
+  newName: string,
+): Clause {
   return ML.with_expression_name(clause, newName);
 }
 

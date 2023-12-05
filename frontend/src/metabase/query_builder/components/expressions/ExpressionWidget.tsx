@@ -38,11 +38,6 @@ interface QueryProps {
   stageIndex: number;
 }
 
-type ExpressionWidgetClause =
-  | Lib.AggregationClause
-  | Lib.ExpressionClause
-  | Lib.FilterClause;
-
 export type ExpressionWidgetProps = {
   legacyQuery: StructuredQuery;
   query?: Lib.Query;
@@ -55,7 +50,7 @@ export type ExpressionWidgetProps = {
    * Presence of this prop is not enforced due to backwards-compatibility
    * with ExpressionWidget usages outside of GUI editor.
    */
-  clause?: ExpressionWidgetClause | undefined;
+  clause?: Lib.CustomExpressionClause | undefined;
   name?: string;
   withName?: boolean;
   startRule?: string;
@@ -63,7 +58,7 @@ export type ExpressionWidgetProps = {
   header?: ReactNode;
 
   onChangeExpression?: (name: string, expression: Expression) => void;
-  onChangeClause?: (name: string, clause: ExpressionWidgetClause) => void;
+  onChangeClause?: (name: string, clause: Lib.CustomExpressionClause) => void;
   onRemoveExpression?: (name: string) => void;
   onClose?: () => void;
 } & (QueryProps | LegacyQueryProps);
@@ -90,7 +85,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
   const [expression, setExpression] = useState<Expression | null>(
     initialExpression ?? null,
   );
-  const [clause, setClause] = useState<ExpressionWidgetClause | null>(
+  const [clause, setClause] = useState<Lib.CustomExpressionClause | null>(
     initialClause ?? null,
   );
   const [error, setError] = useState<string | null>(null);
@@ -105,7 +100,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
 
   const handleCommit = (
     expression: Expression | null,
-    clause: ExpressionWidgetClause | null,
+    clause: Lib.CustomExpressionClause | null,
   ) => {
     const isValidExpression = isNotNull(expression) && isExpression(expression);
     const isValidExpressionClause = isNotNull(clause);
@@ -129,7 +124,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
 
   const handleExpressionChange = (
     expression: Expression | null,
-    clause: ExpressionWidgetClause | null,
+    clause: Lib.CustomExpressionClause | null,
   ) => {
     setExpression(expression);
     setClause(clause);

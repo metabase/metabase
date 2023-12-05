@@ -36,11 +36,7 @@ export type MetricMetadata = unknown & { _opaque: typeof MetricMetadata };
 declare const AggregationClause: unique symbol;
 export type AggregationClause = unknown & { _opaque: typeof AggregationClause };
 
-export type Aggregable =
-  | AggregationClause
-  | MetricMetadata
-  | ExpressionClause
-  | FilterClause;
+export type Aggregable = AggregationClause | MetricMetadata | ExpressionClause;
 
 declare const AggregationOperator: unique symbol;
 export type AggregationOperator = unknown & {
@@ -82,6 +78,13 @@ export type Clause =
   | FilterClause
   | JoinCondition
   | OrderByClause;
+
+export type NamedClause = AggregationClause | ExpressionClause;
+
+export type CustomExpressionClause =
+  | AggregationClause
+  | ExpressionClause
+  | FilterClause;
 
 export type Limit = number | null;
 
