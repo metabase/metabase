@@ -11,7 +11,6 @@ import type { QueryBuilderMode } from "metabase-types/store";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import type LegacyQuery from "metabase-lib/queries/StructuredQuery";
-import type LegacyFilter from "metabase-lib/queries/structured/Filter";
 
 import ViewPill from "../ViewPill";
 import type { ViewPillProps } from "../ViewPill";
@@ -113,18 +112,14 @@ export function FilterHeader({
         {filters.map((filter, index) => {
           const isLastStage = index >= previousStageFilters.length;
           const stageIndex = isLastStage ? lastStageIndex : lastStageIndex - 1;
-          const legacyStagedQuery = legacyQuery.queries()[stageIndex];
-          const legacyFilter = legacyStagedQuery.filters()[index];
           return (
             <FilterHeaderPopover
               key={index}
               query={query}
               stageIndex={stageIndex}
               filter={filter}
-              legacyFilter={legacyFilter}
               legacyQuery={legacyQuery}
               onQueryChange={handleQueryChange}
-              onLegacyQueryChange={onQueryChange}
             />
           );
         })}
@@ -138,9 +133,7 @@ interface FilterHeaderPopoverProps {
   stageIndex: number;
   filter: Lib.FilterClause;
   legacyQuery: LegacyQuery;
-  legacyFilter: LegacyFilter;
   onQueryChange: (query: Lib.Query) => void;
-  onLegacyQueryChange: (query: LegacyQuery) => void;
 }
 
 function FilterHeaderPopover({
@@ -148,23 +141,16 @@ function FilterHeaderPopover({
   stageIndex,
   filter,
   legacyQuery,
-  legacyFilter,
   onQueryChange,
-  onLegacyQueryChange,
 }: FilterHeaderPopoverProps) {
   const [isOpen, { turnOff: handleClose, toggle: handleToggle }] =
     useToggle(false);
 
   const handleChange = (
-    newFilter: Lib.ExpressionClause | Lib.SegmentMetadata,
+    newFilter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
   ) => {
     const nextQuery = Lib.replaceClause(query, stageIndex, filter, newFilter);
     onQueryChange(nextQuery);
-  };
-
-  const handleChangeLegacy = (newFilter: LegacyFilter) => {
-    const nextLegacyQuery = newFilter.replace().rootQuery();
-    onLegacyQueryChange(nextLegacyQuery);
   };
 
   const handleRemove = () => {
@@ -195,9 +181,7 @@ function FilterHeaderPopover({
           stageIndex={stageIndex}
           filter={filter}
           legacyQuery={legacyQuery}
-          legacyFilter={legacyFilter}
           onSelect={handleChange}
-          onSelectLegacy={handleChangeLegacy}
           onClose={handleClose}
         />
       </Popover.Dropdown>
