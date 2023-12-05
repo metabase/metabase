@@ -141,7 +141,7 @@ When in dashboard edit mode, click on the **Visualization settings** for the car
 - If the card displays a table, the option is in the **Columns** tab.
 - If the card displays a chart, the option is in the **Display** tab.
 
-Toggle the option **Hide this card if there are no results**.
+Toggle the option **Hide this card if there are no results**. When you turn on this option, the query will still run in the background, but the dashboard won't display the card. If the query returns results, the dashboard will display the card, moving the other cards around to make room for it according to how you've arranged the cards in dashboard edit mode.
 
 ## Resetting a card's visualization settings
 
