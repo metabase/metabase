@@ -16,17 +16,17 @@ const SHORTCUTS: DatePickerShortcut[] = [
   "last-12-months",
 ];
 
-interface DatePickerPopoverProps {
+interface DateFilterPopoverProps {
   value?: DatePickerValue;
   availableOperators?: ReadonlyArray<DatePickerOperator>;
   availableUnits?: ReadonlyArray<DatePickerExtractionUnit>;
   onChange: (value: DatePickerValue) => void;
 }
 
-export function DatePickerPopover({
+export function DateFilterPopover({
   onChange,
   ...props
-}: DatePickerPopoverProps) {
+}: DateFilterPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
 
   const handleChange = useCallback(
