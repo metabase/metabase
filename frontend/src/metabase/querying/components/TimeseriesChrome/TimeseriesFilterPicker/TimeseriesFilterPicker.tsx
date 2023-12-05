@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { Button, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { Icon } from "metabase/core/components/Icon";
-import { SimpleDateFilterPicker } from "metabase/common/components/FilterPicker";
+import { SimpleDateFilterPicker } from "metabase/querying/components/FilterPicker";
 
 export interface TimeseriesFilterPickerProps {
   query: Lib.Query;
