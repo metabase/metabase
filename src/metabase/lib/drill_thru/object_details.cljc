@@ -19,14 +19,17 @@
     (cond
       (and (lib.types.isa/primary-key? column)
            many-pks?
-           mbql-stage?)
+           mbql-stage?
+           (not= value :null))
       (assoc base :type :drill-thru/pk)
 
       ;; TODO: Figure out clicked.extraData and the dashboard flow.
-      (lib.types.isa/primary-key? column)
+      (and (lib.types.isa/primary-key? column)
+           (not= value :null))
       (assoc base :type :drill-thru/zoom)
 
-      (lib.types.isa/foreign-key? column)
+      (and (lib.types.isa/foreign-key? column)
+           (not= value :null))
       (assoc base :type :drill-thru/fk-details)
 
       (and (not many-pks?)
