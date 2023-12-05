@@ -185,8 +185,8 @@
   [job :- (ms/InstanceOfClass JobDetail) new-trigger :- (ms/InstanceOfClass Trigger)]
   (try
     (when-let [scheduler (scheduler)]
-      (when-let [[^Trigger old-trigger] (seq (qs/get-triggers-of-job scheduler (.getKey job)))]
-        (log/debugf "Rescheduling job %s" (-> job .getKey .getName))
+      (when-let [[^Trigger old-trigger] (seq (qs/get-triggers-of-job scheduler (.getKey ^JobDetail job)))]
+        (log/debugf "Rescheduling job %s" (-> ^JobDetail job .getKey .getName))
         (.rescheduleJob scheduler (.getKey old-trigger) new-trigger)))
     (catch Throwable e
       (log/error e "Error rescheduling job"))))
@@ -198,7 +198,7 @@
     (try
       (qs/schedule scheduler job trigger)
       (catch org.quartz.ObjectAlreadyExistsException _
-        (log/debug "Job already exists:" (-> job .getKey .getName))
+        (log/debug "Job already exists:" (-> ^JobDetail job .getKey .getName))
         (reschedule-task! job trigger)))))
 
 (mu/defn delete-task!
