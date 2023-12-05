@@ -131,8 +131,6 @@ function computeComparisonPreviousValue({
   );
   // if no row exists with non-null date and non-null value
   if (isEmpty(previousRow)) {
-    const comparisonPeriodStr = t`previous value`;
-
     const { comparisonType, percentChangeStr, prevValueStr } =
       computeChangeTypeWithOptions({
         formatOptions,
@@ -140,7 +138,6 @@ function computeComparisonPreviousValue({
 
     return {
       comparisonType,
-      comparisonPeriodStr,
       display: {
         percentChange: percentChangeStr,
         prevValue: prevValueStr,
@@ -289,7 +286,7 @@ function computeComparisonPeriodsAgo({
 
   const comparisonPeriodStr =
     dateUnitsAgo === 1
-      ? t`previous ${dateUnitDisplay}`
+      ? t`vs. previous ${dateUnitDisplay}`
       : computeComparisonStrPreviousValue({
           dateUnit,
           nextDate,
@@ -408,11 +405,13 @@ function computeComparisonStrPreviousValue({ dateUnit, prevDate, nextDate }) {
   const isSameDay = dayjs(prevDate).isSame(nextDate, "day");
   const isSameYear = dayjs(prevDate).isSame(nextDate, "year");
 
-  return formatDateTimeRangeWithUnit([prevDate], dateUnit, {
+  const formattedDateStr = formatDateTimeRangeWithUnit([prevDate], dateUnit, {
     compact: true,
     removeDay: isSameDay,
     removeYear: isSameYear,
   });
+
+  return t`vs. ${formattedDateStr}`;
 }
 
 // compute the percent change between two values (prevVal → nextVal)
@@ -441,7 +440,7 @@ function computeChangeTypeWithOptions({
     return {
       comparisonType: PREVIOUS_VALUE_OPTIONS.MISSING,
       percentChangeStr: t`N/A`,
-      prevValueStr: t`(empty)`,
+      prevValueStr: t`(No data)`,
     };
   }
 

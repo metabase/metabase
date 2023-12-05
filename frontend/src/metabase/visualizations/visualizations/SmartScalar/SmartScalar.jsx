@@ -18,6 +18,7 @@ import {
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
 import { ScalarTitleContainer } from "metabase/visualizations/components/ScalarValue/ScalarValue.styled";
 
+import { isEmpty } from "metabase/lib/validate";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { formatValue } from "metabase/lib/formatting/value";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
@@ -120,11 +121,17 @@ function PreviousValueComparison({
     "",
   ];
   const detailCandidates = valueCandidates.map(valueStr => {
-    return valueStr === ""
-      ? jt`vs. ${comparisonPeriodStr}`
-      : jt`vs. ${comparisonPeriodStr}: ${(
-          <PreviousValueNumber>{valueStr}</PreviousValueNumber>
-        )}`;
+    if (isEmpty(valueStr)) {
+      return jt`${comparisonPeriodStr}`;
+    }
+
+    if (isEmpty(comparisonPeriodStr)) {
+      return jt`${(<PreviousValueNumber>{valueStr}</PreviousValueNumber>)}`;
+    }
+
+    return jt`${comparisonPeriodStr}: ${(
+      <PreviousValueNumber>{valueStr}</PreviousValueNumber>
+    )}`;
   });
   const fullDetailDisplay = detailCandidates[0];
   const fittedDetailDisplay = detailCandidates.find(
