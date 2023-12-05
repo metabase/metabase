@@ -757,7 +757,7 @@
 (defmethod ->honeysql [:sql :-]
   [driver [_ & [first-arg & other-args :as args]]]
   (cond (interval? first-arg)
-        (throw (ex-info (tru "Interval as first argrument to subtraction is not allowed.")
+        (throw (ex-info (tru "An interval as the first argument to subtraction is not allowed.")
                         {:type qp.error-type/invalid-query
                          :args args}))
         (and (some interval? other-args)
