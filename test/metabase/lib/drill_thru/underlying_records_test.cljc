@@ -270,7 +270,7 @@
               query')))))
 
 (deftest ^:parallel chart-legend-click-test
-  (testing "chart legend clicks have no `column` set, but shoudl still work (#35343)"
+  (testing "chart legend clicks have no `column` set, but should still work (#35343)"
     (let [query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                        (lib/aggregate (lib/count))
                        (lib/breakout (meta/field-metadata :products :category))
