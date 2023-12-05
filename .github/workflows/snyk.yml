@@ -5,6 +5,10 @@ on:
     branches:
       - 'master'
       - 'release-**'
+    paths:
+      - '**/deps.edn'
+      - '**/package.json'
+
 
 jobs:
   pom:
@@ -17,7 +21,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
-      - uses: snyk/actions/setup@master
+      - uses: snyk/actions/setup@0.4.0
       - name: Generate all pom.xml
         run: bin/write-poms.sh
       - name: Run snyk
