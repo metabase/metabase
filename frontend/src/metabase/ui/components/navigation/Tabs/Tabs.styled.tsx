@@ -8,6 +8,9 @@ const TAB_PADDING = {
 
 export const getTabsOverrides = (): MantineThemeOverride["components"] => ({
   Tabs: {
+    defaultProps: {
+      keepMounted: false,
+    },
     styles: (theme, { orientation }: TabsStylesParams) => ({
       tab: {
         color: theme.colors.text[2],

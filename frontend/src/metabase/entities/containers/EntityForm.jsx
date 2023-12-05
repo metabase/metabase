@@ -34,15 +34,18 @@ const EForm = ({
       ? entityObject.getPlainObject()
       : entityObject;
 
+  let isCustomCollectionLoaded = false;
   if (isInstanceAnalyticsCollection(entityObject?.collection)) {
     const customCollection = getInstanceAnalyticsCustomCollection(collections);
     if (customCollection) {
+      isCustomCollectionLoaded = true;
       initialValues.collection_id = customCollection.id;
     }
   }
 
   return (
     <FormikForm
+      key={isCustomCollectionLoaded}
       {...props}
       form={form}
       initialValues={{ ...initialValues, ...resumedValues }}
