@@ -58,7 +58,7 @@ jobs:
         gh pr create \
           --base "${CURRENT_BRANCH_NAME}" \
           --head "${BACKPORT_BRANCH}" \
-          --assignee "${GITHUB_ACTOR}" \
+          --reviewer "${GITHUB_ACTOR}" \
           --title "Import Translations for v${MAJOR_VERSION}" \
           --body "Imported translations from POEditor for v${MAJOR_VERSION}"
 
