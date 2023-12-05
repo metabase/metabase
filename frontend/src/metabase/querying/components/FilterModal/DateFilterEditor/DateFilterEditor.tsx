@@ -7,12 +7,19 @@ import type {
   DatePickerOperator,
   DatePickerValue,
 } from "metabase/querying/components/DatePicker";
-import { DatePicker } from "metabase/querying/components/DatePicker";
+import {
+  DatePicker,
+  getShortcutOptions,
+} from "metabase/querying/components/DatePicker";
 import { useDateFilter } from "metabase/querying/hooks/use-date-filter";
 import * as Lib from "metabase-lib";
 import type { FilterPickerWidgetProps } from "../types";
-import { SECONDARY_SHORTCUTS } from "./constants";
-import { getOptionsInfo } from "./utils";
+import {
+  MAIN_SHORTCUTS,
+  MODAL_Z_INDEX,
+  SECONDARY_SHORTCUTS,
+} from "./constants";
+import { getSelectedOption } from "./utils";
 import { ClearIcon } from "./DateFilterEditor.styled";
 
 export function DateFilterEditor({
@@ -31,6 +38,12 @@ export function DateFilterEditor({
     return getColumnIcon(column);
   }, [column]);
 
+  const filterName = useMemo(() => {
+    return filter
+      ? Lib.filterArgsDisplayName(query, stageIndex, filter)
+      : undefined;
+  }, [query, stageIndex, filter]);
+
   const { value, availableOperators, availableUnits, getFilterClause } =
     useDateFilter({
       query,
@@ -39,10 +52,10 @@ export function DateFilterEditor({
       filter,
     });
 
-  const { visibleOptions, selectedOption } = useMemo(
-    () => getOptionsInfo(value),
-    [value],
-  );
+  const availableOptions = getShortcutOptions(MAIN_SHORTCUTS);
+  const selectedOption = getSelectedOption(availableOptions, value);
+  const visibleOptions =
+    value == null || selectedOption != null ? availableOptions : [];
 
   const handleChange = (value: DatePickerValue | undefined) => {
     onChange(value ? getFilterClause(value) : undefined);
@@ -74,11 +87,11 @@ export function DateFilterEditor({
             );
           })}
           <DateFilterPopover
-            title=""
+            title={filterName}
             value={value}
             availableOperators={availableOperators}
             availableUnits={availableUnits}
-            isExpanded
+            isExpanded={visibleOptions.length === 0}
             onChange={handleChange}
           />
         </Flex>
@@ -115,7 +128,11 @@ function DateFilterPopover({
   );
 
   return (
-    <Popover opened={isOpened} onClose={() => setIsOpened(false)}>
+    <Popover
+      opened={isOpened}
+      zIndex={MODAL_Z_INDEX + 1}
+      onClose={() => setIsOpened(false)}
+    >
       <Popover.Target>
         {isExpanded ? (
           <Button

@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
 import * as Lib from "metabase-lib";
-import { getAvailableOperatorOptions, getDefaultOperator } from "../utils";
+import {
+  getAvailableOperatorOptions,
+  getDefaultOperator,
+} from "../use-filter-operator";
 import { OPERATOR_OPTIONS } from "./constants";
 import { getDefaultValues, getFilterClause, hasValidValues } from "./utils";
 import type { NumberValue } from "./types";

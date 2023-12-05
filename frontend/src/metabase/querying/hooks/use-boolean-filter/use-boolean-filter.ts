@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { checkNotNull } from "metabase/lib/types";
 import type * as Lib from "metabase-lib";
-import { getAvailableOperatorOptions } from "../utils";
+import { getAvailableOperatorOptions } from "../use-filter-operator";
 import { OPTIONS } from "./constants";
 import { getFilterClause, getOptionByType, getOptionType } from "./utils";
 

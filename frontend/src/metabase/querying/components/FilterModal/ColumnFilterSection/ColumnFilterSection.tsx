@@ -1,5 +1,6 @@
 import * as Lib from "metabase-lib";
 import { BooleanFilterEditor } from "../BooleanFilterEditor";
+import { DateFilterEditor } from "../DateFilterEditor";
 import { NumberFilterEditor } from "../NumberFilterEditor";
 import { TimeFilterEditor } from "../TimeFilterEditor";
 
@@ -40,6 +41,9 @@ function getFilterWidget(column: Lib.ColumnMetadata) {
   }
   if (Lib.isTime(column)) {
     return TimeFilterEditor;
+  }
+  if (Lib.isDate(column)) {
+    return DateFilterEditor;
   }
   if (Lib.isNumeric(column)) {
     return NumberFilterEditor;
