@@ -264,8 +264,7 @@
                                        filtering-parameter-id filtering-parameters
                                        :when (not (contains? param-ids filtering-parameter-id))]
                                    param-id))
-        linked-field-ids (set (mapcat (params/get-linked-field-ids (:dashcards dashboard)) param-ids-to-remove))
-        remove-linked-param-values (fn [param-values parameter] (assoc-in param-values [parameter :values] []))]
+        linked-field-ids (set (mapcat (params/get-linked-field-ids (:dashcards dashboard)) param-ids-to-remove))]
     (update dashboard :param_values #(->> %
                                      (map (fn [[param-id param]]
                                             {param-id (cond-> param
