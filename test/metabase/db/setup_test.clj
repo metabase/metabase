@@ -46,6 +46,28 @@
           (test* (mdb.data-source/raw-connection-string->DataSource
                   (str "jdbc:h2:" subname))))))))
 
+(deftest setup-db-no-auto-migrate-test
+  (mt/test-drivers #{:h2 :mysql :postgres}
+    (mt/with-temp-empty-app-db [_conn driver/*driver*]
+      (is (= :done
+             (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true)))
+
+      (is (= :done
+             (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) false))))
+
+    (testing "Setting up DB with `auto-migrate?`=false should exit if any migrations exist which need to be run"
+      ;; Use a migration file that intentionally errors with failOnError: false, so that a migration is still unrun
+      ;; when we re-run `setup-db!`
+      (with-redefs [liquibase/changelog-file "error-migration.yaml"]
+        (mt/with-temp-empty-app-db [_conn driver/*driver*]
+          (is (= :done
+                 (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true)))
+
+          (is (thrown-with-msg?
+               Exception
+               #"Database requires manual upgrade."
+               (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) false))))))))
+
 (deftest setup-fresh-db-test
   (mt/test-drivers #{:h2 :mysql :postgres}
     (testing "can setup a fresh db"
