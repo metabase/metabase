@@ -67,12 +67,12 @@
     semantic-type))
 
 (defmethod sql-jdbc.sync.interface/fallback-metadata-query :sql-jdbc
-  [driver schema table]
-  {:pre [(string? table)]}
+  [driver db-name-or-nil schema-name table-name]
+  {:pre [(string? table-name)]}
   ;; Using our SQL compiler here to get portable LIMIT (e.g. `SELECT TOP n ...` for SQL Server/Oracle)
   (sql.qp/with-driver-honey-sql-version driver
     (let [honeysql {:select [:*]
-                    :from   [(sql.qp/maybe-wrap-unaliased-expr (sql.qp/->honeysql driver (hx/identifier :table schema table)))]
+                    :from   [(sql.qp/maybe-wrap-unaliased-expr (sql.qp/->honeysql driver (hx/identifier :table db-name-or-nil schema-name table-name)))]
                     :where  [:not= (sql.qp/inline-num 1) (sql.qp/inline-num 1)]}
           honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
       (sql.qp/format-honeysql driver honeysql))))
@@ -80,9 +80,9 @@
 (defn fallback-fields-metadata-from-select-query
   "In some rare cases `:column_name` is blank (eg. SQLite's views with group by) fallback to sniffing the type from a
   SELECT * query."
-  [driver ^Connection conn table-schema table-name]
+  [driver ^Connection conn db-name-or-nil schema table]
   ;; some DBs (:sqlite) don't actually return the correct metadata for LIMIT 0 queries
-  (let [[sql & params] (sql-jdbc.sync.interface/fallback-metadata-query driver table-schema table-name)]
+  (let [[sql & params] (sql-jdbc.sync.interface/fallback-metadata-query driver db-name-or-nil schema table)]
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
         (with-open [stmt (sql-jdbc.sync.common/prepare-statement driver conn sql params)
@@ -90,8 +90,11 @@
           (let [metadata (.getMetaData rs)]
             (reduce
              ((map (fn [^Integer i]
-                     {:name          (.getColumnName metadata i)
-                      :database-type (.getColumnTypeName metadata i)})) rf)
+                     ;; TODO: missing :database-required column as ResultSetMetadata does not have information about
+                     ;; the default value of a column, so we can't make sure whether a column is required or not
+                     {:name                       (.getColumnName metadata i)
+                      :database-type              (.getColumnTypeName metadata i)
+                      :database-is-auto-increment (.isAutoIncrement metadata i)})) rf)
              init
              (range 1 (inc (.getColumnCount metadata))))))))))
 
@@ -117,10 +120,10 @@
              column-name        (.getString rs "COLUMN_NAME")
              required?          (and no-default? not-nullable? no-auto-increment?)]
          (merge
-           {:name                      column-name
-            :database-type             (.getString rs "TYPE_NAME")
+           {:name                       column-name
+            :database-type              (.getString rs "TYPE_NAME")
             :database-is-auto-increment auto-increment?
-            :database-required         required?}
+            :database-required          required?}
            (when-let [remarks (.getString rs "REMARKS")]
              (when-not (str/blank? remarks)
                {:field-comment remarks})))))))
@@ -137,8 +140,13 @@
       ;;
       ;; 3. Filter out any duplicates between the two methods using `m/distinct-by`.
       (let [has-fields-without-type-info? (volatile! false)
+            ;; intented to fix syncing dynamic tables for snowflake.
+            ;; currently there is a bug in snowflake jdbc (snowflake#1574) in which it doesn't return columns for dynamic tables
+            jdbc-returns-no-field?        (volatile! true)
             jdbc-metadata                 (eduction
                                            (remove (fn [{:keys [database-type]}]
+                                                     (when @jdbc-returns-no-field?
+                                                       (vreset! jdbc-returns-no-field? false))
                                                      (when (str/blank? database-type)
                                                        (vreset! has-fields-without-type-info? true)
                                                        true)))
@@ -148,8 +156,8 @@
                                               (reduce
                                                rf
                                                init
-                                               (when @has-fields-without-type-info?
-                                                 (fallback-fields-metadata-from-select-query driver conn schema table-name)))))]
+                                               (when (or @jdbc-returns-no-field? @has-fields-without-type-info?)
+                                                 (fallback-fields-metadata-from-select-query driver conn db-name-or-nil schema table-name)))))]
         ;; VERY IMPORTANT! DO NOT REWRITE THIS TO BE LAZY! IT ONLY WORKS BECAUSE AS NORMAL-FIELDS GETS REDUCED,
         ;; HAS-FIELDS-WITHOUT-TYPE-INFO? WILL GET SET TO TRUE IF APPLICABLE AND THEN FALLBACK-FIELDS WILL RUN WHEN
         ;; IT'S TIME TO START EVALUATING THAT.

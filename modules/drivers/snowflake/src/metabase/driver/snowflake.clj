@@ -18,8 +18,8 @@
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
-   [metabase.driver.sql-jdbc.sync.describe-table
-    :as sql-jdbc.describe-table]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
@@ -41,7 +41,8 @@
   (:import
    (java.io File)
    (java.sql Connection DatabaseMetaData ResultSet Types)
-   (java.time OffsetDateTime OffsetTime ZonedDateTime)))
+   (java.time OffsetDateTime OffsetTime ZonedDateTime)
+   (net.snowflake.client.jdbc SnowflakeSQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -408,31 +409,21 @@
   (let [db-name          (db-name database)
         excluded-schemas (set (sql-jdbc.sync/excluded-schemas driver))]
     (qp.store/with-metadata-provider (u/the-id database)
-      (let [sql             (format "SHOW OBJECTS IN DATABASE \"%s\"" db-name)
-            schema-patterns (driver.s/db-details->schema-filter-patterns "schema-filters" database)
+      (let [schema-patterns (driver.s/db-details->schema-filter-patterns "schema-filters" database)
             [inclusion-patterns exclusion-patterns] schema-patterns]
-        (log/tracef "[Snowflake] %s" sql)
         (sql-jdbc.execute/do-with-connection-with-options
          driver
          database
          nil
          (fn [^Connection conn]
-           {:tables (into
-                     #{}
-                     (comp (filter (fn [{schema :schema_name, table-name :name}]
-                                     (and (not (contains? excluded-schemas schema))
-                                          (driver.s/include-schema? inclusion-patterns
-                                                                    exclusion-patterns
-                                                                    schema)
-                                          (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))
-                           (map (fn [{schema :schema_name, table-name :name, remark :comment}]
-                                  {:name        table-name
-                                   :schema      schema
-                                   :description (not-empty remark)})))
-                     (try
-                       (jdbc/reducible-query {:connection conn} sql)
-                       (catch Throwable e
-                         (throw (ex-info (trs "Error executing query: {0}" (ex-message e)) {:sql sql} e)))))}))))))
+           {:tables (->> (sql-jdbc.describe-database/db-tables driver (.getMetaData conn) nil db-name)
+                         (filter (fn [{schema :schema table-name :name}]
+                                   (and (not (contains? excluded-schemas schema))
+                                        (driver.s/include-schema? inclusion-patterns
+                                                                  exclusion-patterns
+                                                                  schema)
+                                        (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))
+                         set)}))))))
 
 (defmethod driver/describe-table :snowflake
   [driver database table]
@@ -462,29 +453,48 @@
 ;; more context.
 (defmethod sql-jdbc.describe-table/get-table-pks :snowflake
   [_driver ^Connection conn db-name-or-nil table]
-  (let [^DatabaseMetaData metadata (.getMetaData conn)]
-    (into [] (sql-jdbc.sync.common/reducible-results
-              #(.getPrimaryKeys metadata db-name-or-nil
-                                (-> table :schema escape-name-for-metadata)
-                                (-> table :name escape-name-for-metadata))
-              (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))))
+  (let [^DatabaseMetaData metadata (.getMetaData conn)
+        schema-name                (-> table :schema escape-name-for-metadata)
+        table-name                 (-> table :name escape-name-for-metadata)]
+    (try
+     (into [] (sql-jdbc.sync.common/reducible-results
+               #(.getPrimaryKeys metadata db-name-or-nil
+                                 schema-name
+                                 table-name)
+               (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))
+     (catch SnowflakeSQLException e
+       ;; dynamic tables doesn't support pks so it's fine to suppress the exception
+       (if (= "DYNAMIC_TABLE"
+              (-> (.getTables metadata db-name-or-nil schema-name table-name nil)
+                  jdbc/result-set-seq first :table_type))
+         []
+         (throw e))))))
 
 (defn- describe-table-fks*
   "Stolen from [[sql-jdbc.describe-table]].
   The only change is that it escapes `schema` and `table-name`."
   [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
   ;; Snowflake bug: schema and table name are interpreted as patterns
-  (let [schema (escape-name-for-metadata schema)
-        table-name (escape-name-for-metadata table-name)]
-    (into
-     #{}
-     (sql-jdbc.sync.common/reducible-results #(.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)
-                                             (fn [^ResultSet rs]
-                                               (fn []
-                                                 {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
-                                                  :dest-table       {:name   (.getString rs "PKTABLE_NAME")
-                                                                     :schema (.getString rs "PKTABLE_SCHEM")}
-                                                  :dest-column-name (.getString rs "PKCOLUMN_NAME")}))))))
+  (let [metadata    (.getMetaData conn)
+        schema-name (escape-name-for-metadata schema)
+        table-name  (escape-name-for-metadata table-name)]
+    (try
+     (into
+      #{}
+      (sql-jdbc.sync.common/reducible-results #(.getImportedKeys metadata db-name-or-nil schema-name table-name)
+                                              (fn [^ResultSet rs]
+                                                (fn []
+                                                  {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
+                                                   :dest-table       {:name   (.getString rs "PKTABLE_NAME")
+                                                                      :schema (.getString rs "PKTABLE_SCHEM")}
+                                                   :dest-column-name (.getString rs "PKCOLUMN_NAME")}))))
+     (catch SnowflakeSQLException e
+       ;; dynamic tables doesn't support kks so it's fine to suppress the exception
+       (if (= "DYNAMIC_TABLE"
+              (-> (.getTables metadata db-name-or-nil schema-name table-name nil)
+                  jdbc/result-set-seq first :table_type))
+         #{}
+         (throw e))))))
 
 (defn- describe-table-fks
   "Stolen from [[sql-jdbc.describe-table]].
