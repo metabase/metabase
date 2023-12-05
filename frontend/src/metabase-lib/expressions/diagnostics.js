@@ -32,14 +32,14 @@ export function countMatchingParentheses(tokens) {
  */
 
 /**
- * @private
- * @param {string} source
- * @param {string} startRule
- * @param {object} legacyQuery
- * @param {string | null} name
+ * @param {Object} options
+ * @param {string} options.source
+ * @param {string} options.startRule
+ * @param {object} options.legacyQuery
+ * @param {string | null} [options.name = null]
  * @returns {ErrorWithMessage | null}
  */
-export function diagnose(source, startRule, legacyQuery, name = null) {
+export function diagnose({ source, startRule, legacyQuery, name = null }) {
   if (!source || source.length === 0) {
     return null;
   }

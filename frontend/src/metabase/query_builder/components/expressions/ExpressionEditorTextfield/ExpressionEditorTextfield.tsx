@@ -368,7 +368,7 @@ class ExpressionEditorTextfield extends React.Component<
     if (!source || source.length === 0) {
       return { message: t`Empty expression` };
     }
-    return diagnose(source, startRule, legacyQuery, name);
+    return diagnose({ source, startRule, legacyQuery, name });
   }
 
   commitExpression() {
@@ -377,11 +377,11 @@ class ExpressionEditorTextfield extends React.Component<
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
     } = this.props;
     const { source } = this.state;
-    const errorMessage = diagnose(
+    const errorMessage = diagnose({
       source,
       startRule,
       legacyQuery,
-    ) as ErrorWithMessage | null;
+    });
     this.setState({ errorMessage });
 
     if (errorMessage) {
