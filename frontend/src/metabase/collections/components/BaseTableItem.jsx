@@ -72,8 +72,6 @@ export function BaseTableItem({
       collection.can_write && typeof onToggleSelected === "function";
 
     const lastEditInfo = item["last-edit-info"];
-
-    // We don't keep last edit info for pulses
     const lastEditedBy = getLastEditedBy(lastEditInfo);
     const lastEditedAt = moment(lastEditInfo.timestamp).format("MMMM DD, YYYY");
 
