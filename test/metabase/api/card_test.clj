@@ -16,8 +16,17 @@
    [metabase.events.view-log-test :as view-log-test]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [CardBookmark Collection Dashboard Database ModerationReview
-            Pulse PulseCard PulseChannel PulseChannelRecipient Table Timeline
+    :refer [CardBookmark
+            Collection
+            Dashboard
+            Database
+            ModerationReview
+            Pulse
+            PulseCard
+            PulseChannel
+            PulseChannelRecipient
+            Table
+            Timeline
             TimelineEvent]]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]

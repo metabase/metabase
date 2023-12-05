@@ -806,7 +806,6 @@
     (let [model (upload/upload-csv! {:collection-id collection-id
                                      :filename      filename
                                      :file          file
-                                     :user-id       @api/*current-user*
                                      :schema-name   (public-settings/uploads-schema-name)
                                      :table-prefix  (public-settings/uploads-table-prefix)
                                      :db-id         (public-settings/uploads-database-id)})]
