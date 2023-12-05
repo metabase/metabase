@@ -75,10 +75,8 @@ export function FilterPicker({
   );
 
   const handleClauseChange = useCallback(
-    (_name: string, clause: Lib.CustomExpressionClause) => {
-      onSelect(
-        clause as Exclude<Lib.CustomExpressionClause, Lib.AggregationClause>,
-      );
+    (_name: string, clause: Lib.ExpressionClause | Lib.FilterClause) => {
+      onSelect(clause);
       onClose?.();
     },
     [onSelect, onClose],

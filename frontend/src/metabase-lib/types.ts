@@ -79,13 +79,6 @@ export type Clause =
   | JoinCondition
   | OrderByClause;
 
-export type CustomNameClause = AggregationClause | ExpressionClause;
-
-export type CustomExpressionClause =
-  | AggregationClause
-  | ExpressionClause
-  | FilterClause;
-
 export type Limit = number | null;
 
 declare const ColumnMetadata: unique symbol;

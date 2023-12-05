@@ -147,7 +147,7 @@ function FilterHeaderPopover({
     useToggle(false);
 
   const handleChange = (
-    newFilter: Lib.CustomExpressionClause | Lib.SegmentMetadata,
+    newFilter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
   ) => {
     const nextQuery = Lib.replaceClause(query, stageIndex, filter, newFilter);
     onQueryChange(nextQuery);

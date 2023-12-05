@@ -46,11 +46,7 @@ const ACE_OPTIONS = {
 
 interface ExpressionEditorTextfieldProps {
   expression: Expression | undefined;
-  clause:
-    | Lib.AggregationClause
-    | Lib.ExpressionClause
-    | Lib.FilterClause
-    | undefined;
+  clause: Lib.ExpressionClause | undefined;
   name: string;
   legacyQuery: StructuredQuery;
   query: Lib.Query;

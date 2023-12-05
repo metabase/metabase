@@ -38,7 +38,7 @@ interface QueryProps {
   stageIndex: number;
 }
 
-export type ExpressionWidgetProps = {
+export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
   legacyQuery: StructuredQuery;
   query?: Lib.Query;
   stageIndex?: number;
@@ -50,7 +50,7 @@ export type ExpressionWidgetProps = {
    * Presence of this prop is not enforced due to backwards-compatibility
    * with ExpressionWidget usages outside of GUI editor.
    */
-  clause?: Lib.CustomExpressionClause | undefined;
+  clause?: Clause | undefined;
   name?: string;
   withName?: boolean;
   startRule?: string;
@@ -58,12 +58,17 @@ export type ExpressionWidgetProps = {
   header?: ReactNode;
 
   onChangeExpression?: (name: string, expression: Expression) => void;
-  onChangeClause?: (name: string, clause: Lib.CustomExpressionClause) => void;
+  onChangeClause?: (
+    name: string,
+    clause: Clause | Lib.ExpressionClause,
+  ) => void;
   onRemoveExpression?: (name: string) => void;
   onClose?: () => void;
 } & (QueryProps | LegacyQueryProps);
 
-export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
+export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
+  props: ExpressionWidgetProps<Clause>,
+): JSX.Element => {
   const {
     legacyQuery,
     query,
@@ -85,7 +90,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
   const [expression, setExpression] = useState<Expression | null>(
     initialExpression ?? null,
   );
-  const [clause, setClause] = useState<Lib.CustomExpressionClause | null>(
+  const [clause, setClause] = useState<Clause | Lib.ExpressionClause | null>(
     initialClause ?? null,
   );
   const [error, setError] = useState<string | null>(null);
@@ -100,7 +105,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
 
   const handleCommit = (
     expression: Expression | null,
-    clause: Lib.CustomExpressionClause | null,
+    clause: Clause | Lib.ExpressionClause | null,
   ) => {
     const isValidExpression = isNotNull(expression) && isExpression(expression);
     const isValidExpressionClause = isNotNull(clause);
@@ -124,7 +129,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
 
   const handleExpressionChange = (
     expression: Expression | null,
-    clause: Lib.CustomExpressionClause | null,
+    clause: Lib.ExpressionClause | null,
   ) => {
     setExpression(expression);
     setClause(clause);
