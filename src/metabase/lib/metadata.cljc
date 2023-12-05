@@ -219,7 +219,8 @@
   - Similarly, the card specified by `:source-card` is missing from the metadata.
   If metadata for the `:source-table` or `:source-card` can be found, then the query is editable."
   [query :- ::lib.schema/query]
-  (let [{:keys [source-table source-card]} (lib.util/query-stage query 0)]
+  (let [{:keys [source-table source-card] :as stage0} (lib.util/query-stage query 0)]
     (boolean (and (database query)
                   (or (and source-table (table query source-table))
-                      (and source-card  (card  query source-card)))))))
+                      (and source-card  (card  query source-card))
+                      (= (:lib/type stage0) :mbql.stage/native))))))
