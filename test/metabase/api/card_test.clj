@@ -2932,18 +2932,17 @@
                                              uploads-schema-name  nil
                                              uploads-table-prefix "uploaded_magic_"]
             (if (supports-schemas? driver/*driver*)
+              (is (thrown-with-msg?
+                    java.lang.Exception
+                    #"^A schema has not been set."
+                    (upload-example-csv! nil)))
               (let [new-model (upload-example-csv! nil)
                     new-table (t2/select-one Table :db_id db-id)]
                 (is (=? {:name #"(?i)example csv file(.*)"}
                         new-model))
                 (is (=? {:name #"(?i)uploaded_magic_example(.*)"}
                         new-table))
-                (is (nil? (:schema new-table))))
-              ;; Else, for drivers that support schemas
-              (is (thrown-with-msg?
-                   java.lang.Exception
-                   #"^A schema has not been set."
-                   (upload-example-csv! nil))))))))))
+                (is (nil? (:schema new-table)))))))))))
 
 (deftest upload-csv!-auto-pk-column-display-name-test
   (testing "The auto-generated column display_name should be the same as its name"
