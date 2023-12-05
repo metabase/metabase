@@ -894,7 +894,7 @@
           ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
           auto-pk-field     (t2/select-one :model/Field :table_id (u/the-id table)
                                            :%lower.name upload/auto-pk-column-name)
-          _  (t2/update! :model/Field (u/the-id auto-pk-field) {:display_name (:name auto-pk-field)})
+          _                 (t2/update! :model/Field (u/the-id auto-pk-field) {:display_name (:name auto-pk-field)})
           card              (card/create-card!
                              {:collection_id          collection-id,
                               :dataset                true
