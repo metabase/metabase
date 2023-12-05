@@ -429,9 +429,7 @@ describe("FilterPicker", () => {
       userEvent.click(screen.getByText(/Custom expression/i));
       await editExpressionAndSubmit("[[Total] > [[Discount]{enter}");
 
-      await waitFor(() =>
-        expect(onSelect).toHaveBeenCalledWith(expect.anything()),
-      );
+      expect(onSelect).toHaveBeenCalledWith(expect.anything());
 
       const filter = getNextFilter();
       const { args, operator, options } = Lib.expressionParts(query, 0, filter);
@@ -479,9 +477,7 @@ describe("FilterPicker", () => {
         delay: 50,
       });
 
-      await waitFor(() =>
-        expect(onSelect).toHaveBeenCalledWith(expect.anything()),
-      );
+      expect(onSelect).toHaveBeenCalledWith(expect.anything());
 
       const filter = getNextFilter();
       const { args, operator, options } = Lib.expressionParts(query, 0, filter);
