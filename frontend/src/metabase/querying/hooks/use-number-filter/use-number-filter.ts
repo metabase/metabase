@@ -14,7 +14,7 @@ interface UseNumberFilterProps {
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
   defaultOperator?: Lib.NumberFilterOperatorName;
-  onChange?: (filter: Lib.ExpressionClause) => void;
+  onChange?: (filter: Lib.ExpressionClause | undefined) => void;
 }
 
 export function useNumberFilter({
@@ -55,8 +55,12 @@ export function useNumberFilter({
     setOperator(newOperator);
     setValues(newValues);
 
-    if (onChange && hasValidValues(newOperator, newValues)) {
-      onChange(getFilterClause(newOperator, column, newValues));
+    if (onChange) {
+      if (hasValidValues(newOperator, newValues)) {
+        onChange(getFilterClause(newOperator, column, newValues));
+      } else {
+        onChange(undefined);
+      }
     }
   };
 
