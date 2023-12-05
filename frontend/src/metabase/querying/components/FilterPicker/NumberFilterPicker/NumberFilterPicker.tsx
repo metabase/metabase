@@ -5,9 +5,9 @@ import { Box, Flex, NumberInput, Text } from "metabase/ui";
 import { useNumberFilter } from "metabase/querying/hooks/use-number-filter";
 import type { NumberValue } from "metabase/querying/hooks/use-number-filter";
 import * as Lib from "metabase-lib";
+import { FilterValuePicker } from "../../FilterValuePicker";
 import type { FilterPickerWidgetProps } from "../types";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
-import { FilterValuesWidget } from "../FilterValuesWidget";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
@@ -105,7 +105,7 @@ function NumberValueInput({
   if (hasMultipleValues) {
     return (
       <FlexWithScroll p="md" mah={300}>
-        <FilterValuesWidget
+        <FilterValuePicker
           value={values}
           column={column}
           hasMultipleValues

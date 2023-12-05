@@ -4,8 +4,8 @@ import { Flex, Grid, NumberInput, Text } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useNumberFilter } from "metabase/querying/hooks/use-number-filter";
-import { FilterValuesWidget } from "metabase/querying/components/FilterPicker/FilterValuesWidget";
 import * as Lib from "metabase-lib";
+import { FilterValuePicker } from "../../FilterValuePicker";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import type { FilterPickerWidgetProps } from "../types";
 
@@ -90,7 +90,7 @@ function NumberValueInput({
 }: NumberValueInputProps) {
   if (hasMultipleValues) {
     return (
-      <FilterValuesWidget
+      <FilterValuePicker
         value={values}
         column={column}
         hasMultipleValues

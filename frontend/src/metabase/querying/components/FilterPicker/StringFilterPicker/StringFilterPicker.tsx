@@ -3,10 +3,10 @@ import type { FormEvent } from "react";
 import { t } from "ttag";
 import { Box, Checkbox, Flex, TextInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import { FilterValuePicker } from "../../FilterValuePicker";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
-import { FilterValuesWidget } from "../FilterValuesWidget";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
@@ -126,7 +126,7 @@ function StringValueInput({
   if (hasMultipleValues) {
     return (
       <FlexWithScroll p="md" mah={MAX_HEIGHT}>
-        <FilterValuesWidget
+        <FilterValuePicker
           column={column}
           value={values}
           hasMultipleValues={hasMultipleValues}
