@@ -276,7 +276,7 @@
 
 (mr/register! ::display-info
               [:map
-               [:display-name :string]
+               [:display-name {:optional true} :string]
                [:long-display-name {:optional true} :string]
                ;; for things with user specified names
                [:named? {:optional true} :boolean]

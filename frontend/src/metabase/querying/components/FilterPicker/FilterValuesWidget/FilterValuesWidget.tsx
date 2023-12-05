@@ -1,5 +1,5 @@
-import type { ColumnValuesWidgetProps } from "../../ColumnValuesWidget";
-import { ColumnValuesWidget } from "../../ColumnValuesWidget";
+import type { ColumnValuesWidgetProps } from "metabase/common/components/ColumnValuesWidget";
+import { ColumnValuesWidget } from "metabase/common/components/ColumnValuesWidget";
 import { MIN_WIDTH, MAX_WIDTH } from "../constants";
 
 type FilterValuesWidgetProps<T> = Omit<

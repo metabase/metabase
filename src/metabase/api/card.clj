@@ -888,8 +888,13 @@
           stats             (upload/load-from-csv! driver db-id schema+table-name csv-file)
           ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
           table             (sync-tables/create-or-reactivate-table! database {:name table-name :schema (not-empty schema-name)})
-          _set_is_upload    (t2/update! Table (u/the-id table) {:is_upload true})
+          _set_is_upload    (t2/update! :model/Table (u/the-id table) {:is_upload true})
           _sync             (scan-and-sync-table! database table)
+          ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
+          ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
+          auto-pk-field     (t2/select-one :model/Field :table_id (u/the-id table)
+                                           :%lower.name upload/auto-pk-column-name)
+          _                 (t2/update! :model/Field (u/the-id auto-pk-field) {:display_name (:name auto-pk-field)})
           card              (card/create-card!
                              {:collection_id          collection-id,
                               :dataset                true
