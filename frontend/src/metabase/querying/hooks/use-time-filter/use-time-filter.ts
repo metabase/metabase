@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import * as Lib from "metabase-lib";
-import { getAvailableOperatorOptions } from "../utils";
+import { getAvailableOperatorOptions, getDefaultOperator } from "../utils";
 import { OPERATOR_OPTIONS } from "./constants";
 import { getDefaultValues, getFilterClause } from "./utils";
 
@@ -30,7 +30,7 @@ export function useTimeFilter({
   );
 
   const [operator, setOperator] = useState(
-    filterParts ? filterParts.operator : "<",
+    getDefaultOperator(availableOperators, filterParts?.operator ?? "<"),
   );
 
   const [values, setValues] = useState(() =>

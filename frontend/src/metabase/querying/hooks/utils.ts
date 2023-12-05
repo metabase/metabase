@@ -1,8 +1,8 @@
 import * as Lib from "metabase-lib";
-import type { OperatorOption } from "./types";
+import type { FilterOperatorOption } from "./types";
 
 export function getAvailableOperatorOptions<
-  T extends OperatorOption<Lib.FilterOperatorName>,
+  T extends FilterOperatorOption<Lib.FilterOperatorName>,
 >(
   query: Lib.Query,
   stageIndex: number,
@@ -21,4 +21,12 @@ export function getAvailableOperatorOptions<
       name: operatorInfoByName[option.operator].longDisplayName,
       ...option,
     }));
+}
+
+export function getDefaultOperator<
+  T extends FilterOperatorOption<Lib.FilterOperatorName>,
+>(options: T[], preferredOperator: T["operator"]): T["operator"] {
+  return options.some(option => option.operator === preferredOperator)
+    ? preferredOperator
+    : options[0].operator;
 }

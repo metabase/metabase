@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import * as Lib from "metabase-lib";
-import { getAvailableOperatorOptions } from "../utils";
+import { getAvailableOperatorOptions, getDefaultOperator } from "../utils";
 import { OPERATOR_OPTIONS } from "./constants";
 import { getDefaultValues, getFilterClause, hasValidValues } from "./utils";
 import type { NumberValue } from "./types";
@@ -10,6 +10,7 @@ interface UseNumberFilterProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
+  defaultOperator?: Lib.NumberFilterOperatorName;
   onChange?: (filter: Lib.ExpressionClause) => void;
 }
 
@@ -18,6 +19,7 @@ export function useNumberFilter({
   stageIndex,
   column,
   filter,
+  defaultOperator = "=",
   onChange,
 }: UseNumberFilterProps) {
   const filterParts = useMemo(
@@ -32,7 +34,10 @@ export function useNumberFilter({
   );
 
   const [operator, setOperator] = useState(
-    filterParts ? filterParts.operator : "=",
+    getDefaultOperator(
+      availableOperators,
+      filterParts?.operator ?? defaultOperator,
+    ),
   );
 
   const [values, setValues] = useState(() =>
