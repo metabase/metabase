@@ -361,15 +361,15 @@
 
   What it does:
   - detects the schema of the CSV file
-  - inserts the data it into the database
-  - syncs and scans the new table
-  - creates a model
+  - inserts the data into a new table with a unique name, along with an extra auto-generated primary key column
+  - syncs and scans the table
+  - creates a model which wraps the table
 
   Requires that current-user dynamic vars in [[metabase.api.common]] are bound as if by API middleware.
   Returns the newly created model. May throw validation or DB errors.
 
   Args:
-  - `collection-id`: the ID of the collection to upload to.
+  - `collection-id`: the ID of the collection to create the model in.
   - `filename`: the name of the file being uploaded.
   - `file`: the file being uploaded. This will be deleted after the upload is complete.
   - `database`: the database to upload to.
