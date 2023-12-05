@@ -32,7 +32,7 @@ export function useBooleanFilter({
   const isAdvanced = getOptionByType(optionType).isAdvanced;
   const [isExpanded, setIsExpanded] = useState(() => isAdvanced);
 
-  const handleOptionTypeChange = useCallback(
+  const handleOptionChange = useCallback(
     (type: string) => {
       const option = checkNotNull(
         availableOptions.find(option => option.type === type),
@@ -54,7 +54,7 @@ export function useBooleanFilter({
     isExpanded,
     availableOptions,
     getFilterClause: () => getFilterClause(column, optionType),
-    handleOptionTypeChange,
+    handleOptionChange,
     handleIsExpandedChange: setIsExpanded,
   };
 }

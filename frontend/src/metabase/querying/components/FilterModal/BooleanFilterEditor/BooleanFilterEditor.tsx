@@ -27,7 +27,7 @@ export function BooleanFilterEditor({
     isAdvanced,
     isExpanded,
     availableOptions,
-    handleOptionTypeChange,
+    handleOptionChange,
   } = useBooleanFilter({
     query,
     stageIndex,
@@ -53,7 +53,7 @@ export function BooleanFilterEditor({
             <FilterOperatorPicker
               value={optionType}
               options={availableOptions}
-              onChange={handleOptionTypeChange}
+              onChange={handleOptionChange}
             />
           )}
         </Flex>
@@ -67,7 +67,7 @@ export function BooleanFilterEditor({
               label={option.name}
               checked={option.type === optionType}
               indeterminate={isAdvanced}
-              onChange={() => handleOptionTypeChange(option.type)}
+              onChange={() => handleOptionChange(option.type)}
             />
           ))}
         </Group>

@@ -29,7 +29,7 @@ export function BooleanFilterPicker({
     isExpanded,
     availableOptions,
     getFilterClause,
-    handleOptionTypeChange,
+    handleOptionChange,
     handleIsExpandedChange,
   } = useBooleanFilter({
     query,
@@ -63,7 +63,7 @@ export function BooleanFilterPicker({
         onBack={onBack}
       />
       <div>
-        <Radio.Group value={optionType} onChange={handleOptionTypeChange}>
+        <Radio.Group value={optionType} onChange={handleOptionChange}>
           <Stack p="md" pb={isExpanded ? "md" : 0} spacing="sm">
             {visibleOptions.map(option => (
               <Radio
