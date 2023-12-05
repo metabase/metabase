@@ -108,7 +108,7 @@ type Value = null | boolean | StringLiteral | NumericLiteral | DatetimeLiteral;
 type OrderableValue = NumericLiteral | DatetimeLiteral;
 
 type RelativeDatetimePeriod = "current" | "last" | "next" | number;
-type RelativeDatetimeUnit =
+export type RelativeDatetimeUnit =
   | "minute"
   | "hour"
   | "day"

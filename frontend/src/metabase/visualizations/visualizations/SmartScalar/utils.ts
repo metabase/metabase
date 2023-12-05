@@ -1,6 +1,16 @@
 import dayjs from "dayjs";
 import { t } from "ttag";
-import { isEmpty } from "metabase/lib/validate";
+
+import type {
+  DatasetColumn,
+  RawSeries,
+  RowValues,
+} from "metabase-types/api/dataset";
+import type {
+  RelativeDatetimeUnit,
+  VisualizationSettings,
+} from "metabase-types/api";
+
 import { formatNumber } from "metabase/lib/formatting";
 import { measureText } from "metabase/lib/measure-text";
 import { isDate } from "metabase-lib/types/utils/isa";
@@ -92,7 +102,10 @@ export const COMPARISON_OPTIONS = {
   },
 };
 
-export function getDefaultComparison(series, settings) {
+export function getDefaultComparison(
+  series: RawSeries,
+  settings: VisualizationSettings,
+) {
   const [
     {
       data: { insights },
@@ -103,7 +116,7 @@ export function getDefaultComparison(series, settings) {
     insight => insight.col === settings["scalar.field"],
   )?.unit;
 
-  if (isEmpty(dateUnit)) {
+  if (dateUnit === undefined) {
     return COMPARISON_OPTIONS.COMPARE_TO_PREVIOUS;
   }
 
@@ -116,7 +129,10 @@ export function getDefaultComparison(series, settings) {
   };
 }
 
-export function getComparisonOptions(series, settings) {
+export function getComparisonOptions(
+  series: RawSeries,
+  settings: VisualizationSettings,
+) {
   const [
     {
       data: { cols, insights, rows },
@@ -125,9 +141,9 @@ export function getComparisonOptions(series, settings) {
 
   const dateUnit = insights?.find(
     insight => insight.col === settings["scalar.field"],
-  )?.unit;
+  )?.unit as RelativeDatetimeUnit | undefined;
 
-  if (isEmpty(dateUnit)) {
+  if (dateUnit === undefined) {
     return [COMPARISON_OPTIONS.COMPARE_TO_PREVIOUS];
   }
 
@@ -146,7 +162,7 @@ export function getComparisonOptions(series, settings) {
 
   // only add this option is # number of selectable periods ago is >= 2
   // since we already have an option for 1 period ago -> PREVIOUS_PERIOD
-  if (maxPeriodsAgo >= 2) {
+  if (maxPeriodsAgo && maxPeriodsAgo >= 2) {
     options.push({
       ...COMPARISON_OPTIONS.PERIODS_AGO,
       name: COMPARISON_OPTIONS.PERIODS_AGO.nameTemplate.replace(
@@ -160,7 +176,10 @@ export function getComparisonOptions(series, settings) {
   return options;
 }
 
-export function isComparisonValid(series, settings) {
+export function isComparisonValid(
+  series: RawSeries,
+  settings: VisualizationSettings,
+) {
   const [
     {
       data: { insights },
@@ -171,21 +190,40 @@ export function isComparisonValid(series, settings) {
     insight => insight.col === settings["scalar.field"],
   )?.unit;
 
-  if (isEmpty(dateUnit)) {
+  if (dateUnit === undefined) {
     return false;
   }
 
   return true;
 }
 
-function getMaxPeriodsAgo({ cols, rows, dateUnit }) {
+type getMaxPeriodsAgoParameters = {
+  cols: DatasetColumn[];
+  rows: RowValues[];
+  dateUnit: RelativeDatetimeUnit;
+};
+
+function getMaxPeriodsAgo({
+  cols,
+  rows,
+  dateUnit,
+}: getMaxPeriodsAgoParameters) {
   // column locations for date and metric
   const dimensionIndex = cols.findIndex(col => isDate(col));
 
-  const latestNonEmptyRow = rows.findLast(row => !isEmpty(row[dimensionIndex]));
-  const latestNonEmptyDate = latestNonEmptyRow[dimensionIndex];
-  const earliestNonEmptyRow = rows.find(row => !isEmpty(row[dimensionIndex]));
-  const earliestNonEmptyDate = earliestNonEmptyRow[dimensionIndex];
+  const latestNonEmptyRow = rows.findLast(row => !row[dimensionIndex]);
+  const earliestNonEmptyRow = rows.find(row => !row[dimensionIndex]);
+
+  if (latestNonEmptyRow === undefined || earliestNonEmptyRow === undefined) {
+    return null;
+  }
+
+  const latestNonEmptyDate = latestNonEmptyRow[dimensionIndex] as string;
+  const earliestNonEmptyDate = earliestNonEmptyRow[dimensionIndex] as string;
+
+  if (latestNonEmptyDate === null || earliestNonEmptyDate === null) {
+    return null;
+  }
 
   return dayjs(latestNonEmptyDate).diff(earliestNonEmptyDate, dateUnit);
 }

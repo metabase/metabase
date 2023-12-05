@@ -71,7 +71,7 @@ export const createMockEmbedDatasetData = ({
   rows: [],
   cols,
   rows_truncated: 0,
-  insights: null,
+  insights: undefined,
   ...opts,
 });
 

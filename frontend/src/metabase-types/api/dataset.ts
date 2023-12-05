@@ -43,14 +43,22 @@ export interface ResultsMetadata {
   columns: DatasetColumn[];
 }
 
+export type Insight = {
+  col: "string";
+  unit: DatetimeUnit;
+  [key: string]: any;
+};
+
 export interface DatasetData {
   rows: RowValues[];
   cols: DatasetColumn[];
+  insights?: Insight[];
+  results_metadata: ResultsMetadata;
   rows_truncated: number;
   requested_timezone?: string;
   results_timezone?: string;
   download_perms?: DownloadPermission;
-  results_metadata: ResultsMetadata;
+  native_form?: any;
 }
 
 export type JsonQuery = DatasetQuery & {
@@ -59,9 +67,9 @@ export type JsonQuery = DatasetQuery & {
 
 export interface Dataset {
   data: DatasetData;
-  database_id: DatabaseId;
+  database_id?: DatabaseId;
   row_count: number;
-  running_time: number;
+  running_time?: number;
   json_query?: JsonQuery;
   error_type?: string;
   error?: {
@@ -77,7 +85,7 @@ export interface EmbedDatasetData {
   cols: DatasetColumn[];
   rows_truncated: number;
   // TODO: Correct this type
-  insights: any;
+  insights?: Insight[];
   requested_timezone?: string;
   results_timezone?: string;
 }
