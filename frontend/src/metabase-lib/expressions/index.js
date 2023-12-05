@@ -58,6 +58,12 @@ function isReservedWord(word) {
 
 // METRICS
 
+/**
+ *
+ * @param {string} metricName
+ * @param {object} param1
+ * @param {StructuredQuery} param1.legacyQuery
+ */
 export function parseMetric(metricName, { legacyQuery }) {
   return legacyQuery
     .table()
@@ -71,7 +77,12 @@ export function formatMetricName(metric, options) {
 }
 
 // SEGMENTS
-
+/**
+ *
+ * @param {string} segmentName
+ * @param {object} param1
+ * @param {StructuredQuery} param1.legacyQuery
+ */
 export function parseSegment(segmentName, { legacyQuery }) {
   const table = legacyQuery.table();
   const segment = table.segments.find(
@@ -97,6 +108,14 @@ export function formatSegmentName(segment, options) {
 
 /**
  * Find dimension with matching `name` in query. TODO - How is this "parsing" a dimension? Not sure about this name.
+ */
+
+/**
+ *
+ * @param {string} name
+ * @param {object} param1
+ * @param {StructuredQuery} param1.legacyQuery
+ * @param {string | null} param1.reference
  */
 export function parseDimension(name, { reference, legacyQuery }) {
   // FIXME: this is pretty inefficient, create a lookup table?
