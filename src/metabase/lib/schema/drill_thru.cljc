@@ -158,7 +158,7 @@
    [:map
     [:type     [:= :drill-thru/automatic-insights]]
     [:lib/type [:= :metabase.lib.drill-thru/drill-thru]]
-    [:column-ref [:ref ::lib.schema.ref/ref]]
+    [:column-ref [:maybe [:ref ::lib.schema.ref/ref]]]
     [:dimensions [:ref ::context.row]]]])
 
 (mr/def ::drill-thru.zoom-in.timeseries.next-unit

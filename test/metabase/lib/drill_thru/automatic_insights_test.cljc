@@ -42,8 +42,6 @@
                   :column-ref [:aggregation {} u/uuid-regex]
                   :dimensions [{} {}]}}))
 
-;; START HERE - keep writing tests for automatic insights.
-;; It's similar to underlying-records but not identical. It doesn't convert the breakouts to top-level columns.
 (deftest ^:parallel do-not-return-fk-filter-for-non-fk-column-test
   (testing "underlying-records should only get shown once for aggregated query (#34439)"
     (let [test-case           {:click-type  :cell
