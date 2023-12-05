@@ -4,14 +4,17 @@ import { t } from "ttag";
 import { checkNotNull } from "metabase/lib/types";
 import { Icon } from "metabase/core/components/Icon";
 import { Box, Button, Radio, Stack } from "metabase/ui";
+import {
+  getAvailableOptions,
+  getFilterClause,
+  getOptionByType,
+  getOptionType,
+} from "metabase/querying/utils/boolean-filter";
 import * as Lib from "metabase-lib";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { MIN_WIDTH } from "../constants";
-import { getAvailableOperatorOptions } from "../utils";
 import type { FilterPickerWidgetProps } from "../types";
-import { OPTIONS } from "./constants";
-import { getFilterClause, getOptionType } from "./utils";
 
 export function BooleanFilterPicker({
   query,
@@ -22,10 +25,13 @@ export function BooleanFilterPicker({
   onBack,
   onChange,
 }: FilterPickerWidgetProps) {
-  const columnName = Lib.displayInfo(query, stageIndex, column).longDisplayName;
+  const columnInfo = useMemo(
+    () => Lib.displayInfo(query, stageIndex, column),
+    [query, stageIndex, column],
+  );
 
   const options = useMemo(
-    () => getAvailableOperatorOptions(query, stageIndex, column, OPTIONS),
+    () => getAvailableOptions(query, stageIndex, column),
     [query, stageIndex, column],
   );
 
@@ -34,7 +40,7 @@ export function BooleanFilterPicker({
   );
 
   const [isExpanded, setIsExpanded] = useState(
-    () => OPTIONS[optionType].isAdvanced,
+    () => getOptionByType(optionType).isAdvanced,
   );
 
   const visibleOptions = useMemo(() => {
@@ -58,7 +64,10 @@ export function BooleanFilterPicker({
       data-testid="boolean-filter-picker"
       onSubmit={handleSubmit}
     >
-      <FilterPickerHeader columnName={columnName} onBack={onBack} />
+      <FilterPickerHeader
+        columnName={columnInfo.longDisplayName}
+        onBack={onBack}
+      />
       <div>
         <Radio.Group value={optionType} onChange={handleOptionChange}>
           <Stack p="md" pb={isExpanded ? "md" : 0} spacing="sm">
