@@ -11,6 +11,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+import { isEmpty } from "metabase/lib/validate";
 import { formatNumber } from "metabase/lib/formatting";
 import { measureText } from "metabase/lib/measure-text";
 import { isDate } from "metabase-lib/types/utils/isa";
@@ -148,7 +149,6 @@ export function getComparisonOptions(
   }
 
   const options: ComparisonOption[] = [
-    COMPARISON_OPTIONS.COMPARE_TO_PREVIOUS,
     {
       ...COMPARISON_OPTIONS.PREVIOUS_PERIOD,
       name: COMPARISON_OPTIONS.PREVIOUS_PERIOD.nameTemplate.replace(
@@ -172,6 +172,8 @@ export function getComparisonOptions(
       maxValue: maxPeriodsAgo,
     });
   }
+
+  options.push(COMPARISON_OPTIONS.COMPARE_TO_PREVIOUS);
 
   return options;
 }
@@ -211,8 +213,12 @@ function getMaxPeriodsAgo({
   // column locations for date and metric
   const dimensionIndex = cols.findIndex(col => isDate(col));
 
-  const latestNonEmptyRow = rows.findLast(row => !row[dimensionIndex]);
-  const earliestNonEmptyRow = rows.find(row => !row[dimensionIndex]);
+  if (dimensionIndex === -1) {
+    return null;
+  }
+
+  const latestNonEmptyRow = rows.findLast(row => !isEmpty(row[dimensionIndex]));
+  const earliestNonEmptyRow = rows.find(row => !isEmpty(row[dimensionIndex]));
 
   if (latestNonEmptyRow === undefined || earliestNonEmptyRow === undefined) {
     return null;
