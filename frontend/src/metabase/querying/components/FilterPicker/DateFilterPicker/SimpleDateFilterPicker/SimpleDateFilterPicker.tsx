@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type * as Lib from "metabase-lib";
-import { SimpleDatePicker } from "metabase/querying/filters/components/DatePicker";
-import type { DatePickerValue } from "metabase/querying/filters/components/DatePicker";
+import { SimpleDatePicker } from "metabase/querying/components/DatePicker";
+import type { DatePickerValue } from "metabase/querying/components/DatePicker";
 import { getFilterClause, getPickerOperators, getPickerValue } from "../utils";
 
 interface SimpleDateFilterPickerProps {

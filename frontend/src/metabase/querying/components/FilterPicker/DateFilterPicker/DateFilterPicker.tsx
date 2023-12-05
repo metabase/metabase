@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { DatePicker } from "metabase/querying/filters/components/DatePicker";
-import type { DatePickerValue } from "metabase/querying/filters/components/DatePicker";
+import { DatePicker } from "metabase/querying/components/DatePicker";
+import type { DatePickerValue } from "metabase/querying/components/DatePicker";
 import * as Lib from "metabase-lib";
 import { BackButton } from "../BackButton";
 import type { FilterPickerWidgetProps } from "../types";
