@@ -128,12 +128,9 @@ export function PeriodsAgoInputWidget({
     },
     [],
   );
-  const handleParentMouseDown = useCallback(
-    (e: MouseEvent<HTMLInputElement>) => {
-      mouseDownInChild.current = false;
-    },
-    [],
-  );
+  const handleParentMouseDown = useCallback(() => {
+    mouseDownInChild.current = false;
+  }, []);
 
   const handleButtonClick = useCallback(
     (e: MouseEvent<HTMLDivElement>) => {
