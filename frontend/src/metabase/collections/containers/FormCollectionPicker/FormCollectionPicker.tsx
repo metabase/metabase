@@ -22,6 +22,7 @@ import type { CollectionId } from "metabase-types/api";
 
 import { useSelector } from "metabase/lib/redux";
 import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
+import { EntityPickerModal } from "metabase/common/components/EntityPicker";
 import {
   PopoverItemPicker,
   MIN_POPOVER_WIDTH,
@@ -113,49 +114,20 @@ function FormCollectionPicker({
 
   const renderContent = useCallback(
     ({ closePopover }) => {
-      // Search API doesn't support collection namespaces yet
-      const hasSearch = type === "collections";
-
-      const entity = type === "collections" ? Collections : SnippetCollections;
-
       return (
-        <PopoverItemPicker
-          value={{ id: value, model: "collection" }}
-          models={["collection"]}
-          entity={entity}
-          onChange={({ id }) => {
+        <EntityPickerModal
+          title={t`Select a collection`}
+          tabs={["collection"]}
+          onItemSelect={({ id }) => {
+            console.log('item selected', id)
             setValue(id);
             closePopover();
           }}
-          showSearch={hasSearch}
-          width={width}
-          initialOpenCollectionId={initialOpenCollectionId}
-          onOpenCollectionChange={(id: CollectionId) => {
-            onOpenCollectionChange?.(id);
-            setOpenCollectionId(id);
-          }}
-          filterPersonalCollections={filterPersonalCollections}
-        >
-          {showCreateNewCollectionOption && (
-            <CreateCollectionOnTheGoButton
-              filterPersonalCollections={filterPersonalCollections}
-              openCollectionId={openCollectionId}
-            />
-          )}
-        </PopoverItemPicker>
-      );
+          onClose={closePopover}
+        />
+      )
     },
-    [
-      type,
-      value,
-      width,
-      initialOpenCollectionId,
-      filterPersonalCollections,
-      showCreateNewCollectionOption,
-      openCollectionId,
-      setValue,
-      onOpenCollectionChange,
-    ],
+    [],
   );
 
   return (
