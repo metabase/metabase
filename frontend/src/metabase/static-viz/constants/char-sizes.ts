@@ -1,4 +1,5 @@
 export const CHAR_SIZES_FONT_SIZE = 10;
+export const CHAR_SIZES_FONT_WEIGHT = 400;
 
 // Generated with the mapping tool from here https://github.com/Evgenus/js-server-text-width
 export const CHAR_SIZES = {
