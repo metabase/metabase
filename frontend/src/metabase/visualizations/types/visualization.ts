@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type {
   Card,
   DatasetData,
@@ -8,10 +9,21 @@ import type {
 } from "metabase-types/api";
 import type { ClickObject } from "metabase/visualizations/types";
 import type { IconName, IconProps } from "metabase/core/components/Icon";
+import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
+import type { StaticFormattingOptions } from "metabase/static-viz/lib/format";
 import type Query from "metabase-lib/queries/Query";
 
 import type { HoveredObject } from "./hover";
 import type { RemappingHydratedDatasetColumn } from "./columns";
+
+export type ColorGetter = (colorName: string) => string;
+
+export interface RenderingContext {
+  getColor: ColorGetter;
+  formatValue: (value: unknown, options: StaticFormattingOptions) => string;
+  measureText: TextWidthMeasurer;
+  fontFamily: string;
+}
 
 type OnChangeCardAndRunOpts = {
   previousCard?: Card;
@@ -22,9 +34,7 @@ type OnChangeCardAndRunOpts = {
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
 export type ComputedVisualizationSettings = VisualizationSettings & {
-  column?: (
-    col: RemappingHydratedDatasetColumn,
-  ) => RemappingHydratedDatasetColumn;
+  column?: (col: RemappingHydratedDatasetColumn) => StaticFormattingOptions;
 };
 
 export interface VisualizationProps {
@@ -34,7 +44,7 @@ export interface VisualizationProps {
   rawSeries: RawSeries;
   settings: ComputedVisualizationSettings;
   headerIcon: IconProps;
-  actionButtons: React.ReactNode;
+  actionButtons: ReactNode;
   fontFamily: string;
   isPlaceholder?: boolean;
   isFullscreen: boolean;
