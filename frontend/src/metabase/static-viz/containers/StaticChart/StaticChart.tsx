@@ -1,4 +1,3 @@
-import { createColorGetter } from "metabase/static-viz/lib/colors";
 import RowChart from "metabase/static-viz/components/RowChart";
 import Gauge from "metabase/static-viz/components/Gauge";
 import CategoricalDonutChart from "metabase/static-viz/components/CategoricalDonutChart";
@@ -7,6 +6,9 @@ import ProgressBar from "metabase/static-viz/components/ProgressBar";
 import LineAreaBarChart from "metabase/static-viz/components/LineAreaBarChart";
 import Funnel from "metabase/static-viz/components/FunnelChart";
 import type { ColorPalette } from "metabase/lib/colors/types";
+import { createColorGetter } from "metabase/static-viz/lib/colors";
+import { formatStaticValue } from "metabase/static-viz/lib/format";
+import { measureTextWidth } from "metabase/lib/measure-text";
 
 export type StaticChartType =
   | "categorical/donut"
@@ -43,6 +45,21 @@ const StaticChart = ({ type, options }: StaticChartProps) => {
     case "funnel":
       return <Funnel {...chartProps} />;
   }
+
+  const renderingContext = {
+    getColor,
+    formatValue: formatStaticValue,
+    measureText: measureTextWidth,
+    fontFamily: "Lato", // TODO make this based on admin settings value
+  };
+
+  const { card, data } = options;
+  const isomorphicProps = {
+    rawSeries: [{ card, data }],
+    renderingContext,
+  };
+
+  return null;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
