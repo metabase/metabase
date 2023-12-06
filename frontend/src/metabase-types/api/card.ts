@@ -95,6 +95,16 @@ export type TableColumnOrderSetting = {
   field_ref?: FieldReference;
 };
 
+export type PieChartSettings = {
+  "pie.dimension": string;
+  "pie.metric": string;
+  "pie.show_legend": boolean;
+  "pie.show_total": boolean;
+  "pie.percent_visibility": "off" | "legend" | "inside";
+  "pie.slice_threshold": number;
+  "pie.colors": Record<string, string>;
+};
+
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: "stacked" | "normalized" | null;
@@ -133,7 +143,7 @@ export type VisualizationSettings = {
   "pivot_table.collapsed_rows"?: PivotTableCollapsedRowsSetting;
 
   [key: string]: any;
-};
+} & Partial<PieChartSettings>;
 
 export interface ModerationReview {
   moderator_id: number;
