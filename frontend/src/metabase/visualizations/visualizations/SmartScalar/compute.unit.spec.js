@@ -69,10 +69,10 @@ describe("SmartScalar > compute", () => {
     ];
     const series = ({ rows }) => [{ data: { rows, cols } }];
 
-    describe(`comparisonType: ${COMPARISON_TYPES.COMPARE_TO_PREVIOUS}`, () => {
+    describe(`comparisonType: ${COMPARISON_TYPES.PREVIOUS_VALUE}`, () => {
       const settings = {
         "scalar.field": "Count",
-        "scalar.comparisons": { type: COMPARISON_TYPES.COMPARE_TO_PREVIOUS },
+        "scalar.comparisons": { type: COMPARISON_TYPES.PREVIOUS_VALUE },
       };
 
       const testCases = [
@@ -400,7 +400,7 @@ describe("SmartScalar > compute", () => {
     describe("should remove higher-order time periods for previous rows date", () => {
       const settings = {
         "scalar.field": "Count",
-        "scalar.comparisons": { type: COMPARISON_TYPES.COMPARE_TO_PREVIOUS },
+        "scalar.comparisons": { type: COMPARISON_TYPES.PREVIOUS_VALUE },
       };
 
       const testCases = [

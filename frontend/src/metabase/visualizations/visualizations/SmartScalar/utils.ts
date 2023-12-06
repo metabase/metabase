@@ -81,7 +81,7 @@ export const getChangeWidth = (width: number): number => {
 };
 
 export const COMPARISON_TYPES = {
-  COMPARE_TO_PREVIOUS: "previousValue",
+  PREVIOUS_VALUE: "previousValue",
   PREVIOUS_PERIOD: "previousPeriod",
   PERIODS_AGO: "periodsAgo",
 } as const;
@@ -98,14 +98,14 @@ export const COMPARISON_SELECT_OPTIONS = {
     MenuItemComponent: PeriodsAgoInputWidget,
   },
   COMPARE_TO_PREVIOUS: {
-    type: COMPARISON_TYPES.COMPARE_TO_PREVIOUS,
+    type: COMPARISON_TYPES.PREVIOUS_VALUE,
     name: t`Previous value`,
   },
 };
 
 export type ComparisonOption = {
   type:
-    | typeof COMPARISON_TYPES.COMPARE_TO_PREVIOUS
+    | typeof COMPARISON_TYPES.PREVIOUS_VALUE
     | typeof COMPARISON_TYPES.PREVIOUS_PERIOD
     | typeof COMPARISON_TYPES.PERIODS_AGO;
   name: string;
@@ -121,7 +121,7 @@ export type SelectedComparisonPreviousPeriod = {
   type: typeof COMPARISON_TYPES.PREVIOUS_PERIOD;
 };
 export type SelectedComparisonCompareToPrevious = {
-  type: typeof COMPARISON_TYPES.COMPARE_TO_PREVIOUS;
+  type: typeof COMPARISON_TYPES.PREVIOUS_VALUE;
 };
 
 export type SelectedComparison =

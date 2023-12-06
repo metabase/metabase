@@ -16,7 +16,7 @@ export const FALLBACK_DATE_UNIT = "day";
 export function computeTrend(series, insights, settings) {
   const { type } = settings["scalar.comparisons"];
 
-  if (type === COMPARISON_TYPES.COMPARE_TO_PREVIOUS) {
+  if (type === COMPARISON_TYPES.PREVIOUS_VALUE) {
     return computeTrendPreviousValue(series, insights, settings);
   }
 
