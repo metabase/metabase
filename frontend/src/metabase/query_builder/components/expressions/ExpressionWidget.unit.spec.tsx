@@ -212,7 +212,7 @@ function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
     return Lib.displayInfo(query, stageIndex, getRecentExpressionClause());
   }
 
-  render(
+  renderWithProviders(
     <ExpressionWidget
       expression={undefined}
       clause={undefined}

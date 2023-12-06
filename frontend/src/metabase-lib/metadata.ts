@@ -37,9 +37,6 @@ import type {
   SegmentDisplayInfo,
   TableDisplayInfo,
   TableMetadata,
-  Query,
-  SegmentMetadata,
-  SegmentDisplayInfo,
 } from "./types";
 
 export function metadataProvider(
