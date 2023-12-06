@@ -45,10 +45,7 @@
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.util.malli :as mu]
-   [metabase.util.log :as log]
-   [metabase.util :as u]
-   [clojure.string :as str]))
+   [metabase.util.malli :as mu]))
 
 ;;;
 ;;; available-drill-thrus
@@ -60,15 +57,8 @@
   [query                                :- ::lib.schema/query
    stage-number                         :- :int
    {:keys [column value], :as _context} :- ::lib.schema.drill-thru/context]
-  #_(log/infof "QUERY %s" (pr-str query))
-  #_(log/infof "CONTEXT %s" (pr-str _context))
-  #_(log/info "(pr-str column):" (pr-str column)) ; NOCOMMIT
-  #_(log/info "(pr-str value):" (pr-str value)) ; NOCOMMIT
   (when (and column value)
-    #_(log/info "existing-breakout =>" (pr-str (first (lib.breakout/existing-breakouts query stage-number column)))) ; NOCOMMIT
     (when-let [existing-breakout (first (lib.breakout/existing-breakouts query stage-number column))]
-      #_(log/info "existing-breakout:" (pr-str existing-breakout)) ; NOCOMMIT
-      #_(log/info "(lib.binning/binning existing-breakout):" (pr-str (lib.binning/binning existing-breakout))) ; NOCOMMIT
       (when-let [binning (lib.binning/binning existing-breakout)]
         (when-let [{:keys [min-value max-value bin-width]} (lib.binning/resolve-bin-width query column value)]
           (case (:strategy binning)
