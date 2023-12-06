@@ -1,6 +1,5 @@
 import { Group } from "@visx/group";
 
-import type { ColorGetter } from "metabase/static-viz/lib/colors";
 import {
   getColumnValueStaticFormatter,
   getLabelsStaticFormatter,
@@ -20,7 +19,10 @@ import {
   trimData,
 } from "metabase/visualizations/shared/utils/data";
 import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
-import type { RemappingHydratedChartData } from "metabase/visualizations/types";
+import type {
+  ColorGetter,
+  RemappingHydratedChartData,
+} from "metabase/visualizations/types";
 import {
   getAxesVisibility,
   getLabelledSeries,

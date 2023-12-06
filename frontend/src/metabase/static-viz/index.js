@@ -7,6 +7,9 @@ import { measureTextWidth } from "metabase/static-viz/lib/text";
 
 import { LegacyStaticChart } from "./containers/LegacyStaticChart";
 
+// stub setTimeout because GraalVM does not provide it
+global.setTimeout = () => {};
+
 /**
  * @deprecated use RenderChart instead
  */
