@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import type { OptionsType } from "metabase/lib/formatting/types";
 import type { IconName, IconProps } from "metabase/ui";
+import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
 import type { ClickObject } from "metabase/visualizations/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Query from "metabase-lib/v1/queries/Query";
@@ -20,14 +21,15 @@ import type { HoveredObject } from "./hover";
 
 export type Formatter = (value: unknown, options: OptionsType) => string;
 
+export type ColorGetter = (colorName: string) => string;
+
 export interface RenderingContext {
   getColor: ColorGetter;
   formatValue: Formatter;
-  measureText: (text: string, fontSize: number, fontWeight?: number) => number;
+
+  measureText: TextWidthMeasurer;
   fontFamily: string;
 }
-
-export type ColorGetter = (colorName: string) => string;
 
 type OnChangeCardAndRunOpts = {
   previousCard?: Card;
@@ -38,7 +40,7 @@ type OnChangeCardAndRunOpts = {
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
 export type ComputedVisualizationSettings = VisualizationSettings & {
-  column?: (col: RemappingHydratedDatasetColumn) => OptionsType;
+  column?: (col: RemappingHydratedDatasetColumn) => Record<string, unknown>;
 };
 
 export interface StaticVisualizationProps {
