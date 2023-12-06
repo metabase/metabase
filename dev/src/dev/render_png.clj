@@ -6,7 +6,6 @@
     [clojure.java.shell :as sh]
     [clojure.string :as str]
     [hiccup.core :as hiccup]
-    #_[metabase.email.messages :as messages]
     [metabase.models :refer [Card]]
     [metabase.models.card :as card]
     [metabase.pulse :as pulse]
@@ -144,17 +143,6 @@
    :margin        "10px"
    :padding       "10px"})
 
-#_(defn- result-attachment
-  [{{{:keys [rows]} :data, :as result} :result}]
-  (when (seq rows)
-    [(let [^java.io.ByteArrayOutputStream baos (java.io.ByteArrayOutputStream.)]
-       (with-open [os baos]
-         (#'messages/stream-api-results-to-export-format :csv os result)
-         (let [output-string (.toString baos "UTF-8")]
-           {:type         :attachment
-            :content-type :csv
-            :content      output-string})))]))
-
 (def ^:private table-style
   (style/style
    {:border          "1px solid black"
@@ -184,7 +172,6 @@
                    :model/PulseChannel  {pc-id :id} {:pulse_id pulse-id}
                    :model/PulseChannelRecipient _ {:user_id          (mt/user->id :rasta)
                                                    :pulse_channel_id pc-id}]
-      #_(with-redefs [messages/result-attachment result-attachment])
       (pulse/send-pulse! pulse)
       (-> @mt/inbox
           (get (:email (mt/fetch-user :rasta)))
@@ -192,6 +179,7 @@
           :body
           last
           :content
+          slurp
           csv-to-html-table))))
 
 (defn- render-one-dashcard
