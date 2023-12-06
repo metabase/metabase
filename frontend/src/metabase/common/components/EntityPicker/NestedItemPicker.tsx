@@ -1,8 +1,8 @@
 import { useState } from "react";
 
-import { NavLink } from "@mantine/core"; // TODO, get this into metabase-ui
+import { ScrollArea } from "@mantine/core"; // TODO, get this into metabase-ui
 
-import { Flex, Text, Box } from "metabase/ui";
+import { Flex, Text, Box, NavLink } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 
 import type { PickerState } from "./types";
@@ -13,7 +13,7 @@ interface NestedItemPickerProps<FolderType, ItemType> {
   onItemSelect: (item: ItemType) => void;
   folderModel: string;
   itemModel: string;
-  initialState?: PickerState<(FolderType | ItemType)>;
+  initialState?: PickerState<FolderType | ItemType>;
 }
 
 export function NestedItemPicker({
@@ -22,9 +22,8 @@ export function NestedItemPicker({
   folderModel,
   initialState = [],
 }: NestedItemPickerProps<any, any /* how to derive the generic? */>) {
-  const [stack, setStack] = useState<PickerState<any /* how to derive the generic? */>>(initialState);
-
-  console.log(stack);
+  const [stack, setStack] =
+    useState<PickerState<any /* how to derive the generic? */>>(initialState);
 
   const handleFolderSelect = async (folder: any, levelIndex: number) => {
     const children = await onFolderSelect(folder);
@@ -43,23 +42,25 @@ export function NestedItemPicker({
   const handleClick = (item: any, levelIndex: number) => {
     if (folderModel.includes(item.model)) {
       handleFolderSelect(item, levelIndex);
-    } else  {
+    } else {
       handleItemSelect(item);
     }
   };
 
   return (
-    <Flex h="70vh" w="80vw">
-      {stack.map((level, levelIndex) => (
-        <ItemList
-          // key={levelIndex} // FIXME: bad
-          items={level?.items}
-          onClick={item => handleClick(item, levelIndex)}
-          selectedId={level?.selectedItem?.id}
-          folderModel={folderModel}
-        />
-      ))}
-    </Flex>
+    <ScrollArea>
+      <Flex>
+        {stack.map((level, levelIndex) => (
+          <ItemList
+            // key={levelIndex} // FIXME: bad
+            items={level?.items}
+            onClick={item => handleClick(item, levelIndex)}
+            selectedId={level?.selectedItem?.id}
+            folderModel={folderModel}
+          />
+        ))}
+      </Flex>
+    </ScrollArea>
   );
 }
 
@@ -78,35 +79,39 @@ function ItemList({
     return null;
   }
 
-  if(!items.length) {
+  if (!items.length) {
     return (
       <Box>
         <Text>No items</Text>
       </Box>
-    )
+    );
   }
 
   return (
-    <PickerColumn>
-      {items.map(item => {
-        const isFolder = folderModel.includes(item.model);
-        const isSelected = isFolder && item.id === selectedId;
-        return (
-          <div key={item.model + item.id}>
-            <NavLink
-              label={item.name}
-              active={isSelected}
-              icon={<Icon name={isFolder ? "folder" : "table"} />}
-              onClick={(e) => {
-                e.preventDefault(); // prevent form submission
-                e.stopPropagation(); // prevent parent onClick
-                onClick(item);
-              }}
-              variant="filled"
-            />
-          </div>
-        );
-      })}
-    </PickerColumn>
+    <ScrollArea miw={310}>
+      <PickerColumn activeList={!selectedId}>
+        {items.map(item => {
+          const isFolder = folderModel.includes(item.model);
+          const isSelected = isFolder && item.id === selectedId;
+          return (
+            <div key={item.model + item.id}>
+              <NavLink
+                label={item.name}
+                active={isSelected}
+                icon={
+                  <Icon name={isFolder ? "folder" : item.model || "table"} />
+                }
+                onClick={e => {
+                  e.preventDefault(); // prevent form submission
+                  e.stopPropagation(); // prevent parent onClick
+                  onClick(item);
+                }}
+                variant="light"
+              />
+            </div>
+          );
+        })}
+      </PickerColumn>
+    </ScrollArea>
   );
 }
