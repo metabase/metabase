@@ -42,8 +42,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]
-   [metabase.util.log :as log]))
+   [metabase.util.malli :as mu]))
 
 (def ^:private ContextWithLatLon
   [:merge
@@ -141,7 +140,6 @@
   [query                        :- ::lib.schema/query
    stage-number                 :- :int
    {:keys [value], :as context} :- ::lib.schema.drill-thru/context]
-  (log/infof "QUERY => %s" (pr-str query))
   (when value
     (when-let [context (context-with-lat-lon query stage-number context)]
       (some (fn [f]

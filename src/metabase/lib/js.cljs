@@ -969,7 +969,6 @@
   Column can be nil for a \"chart legend\" click, eg. clicking a category in the legend explaining the colours in a
   multiple bar or line chart. Underlying records drills apply in that case!"
   [a-query stage-number column value row dimensions]
-  (println "a-query:" a-query) ; NOCOMMIT
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
     (let [column-ref (when-let [a-ref (and column (.-field_ref ^js column))]
                        (legacy-ref->pMBQL a-ref))]
