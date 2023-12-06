@@ -210,7 +210,6 @@ function getMaxPeriodsAgo({
   rows,
   dateUnit,
 }: getMaxPeriodsAgoParameters) {
-  // column locations for date and metric
   const dimensionIndex = cols.findIndex(col => isDate(col));
 
   if (dimensionIndex === -1) {
