@@ -93,7 +93,11 @@ export function diagnose({
   try {
     return prattCompiler(source, startRule, legacyQuery, name);
   } catch (err) {
-    return err as ErrorWithMessage;
+    if (isErrorWithMessage(err)) {
+      return err;
+    }
+
+    return { message: t`Invalid expression` };
   }
 }
 
@@ -112,7 +116,7 @@ function prattCompiler(
     ...options,
   });
   if (errors.length > 0) {
-    return errors[0] as ErrorWithMessage;
+    return errors[0];
   }
 
   function resolveMBQLField(kind: string, name: string, node: Node) {
@@ -163,7 +167,12 @@ function prattCompiler(
     }
   } catch (err) {
     console.warn("compile error", err);
-    return err as ErrorWithMessage;
+
+    if (isErrorWithMessage(err)) {
+      return err;
+    }
+
+    return { message: t`Invalid expression` };
   }
 
   return null;
@@ -171,9 +180,13 @@ function prattCompiler(
 
 function isBooleanExpression(
   expr: unknown,
-): expr is [string, ...Expr[]] & { node: Node } {
+): expr is [string, ...Expr[]] & { node?: Node } {
   return (
     Array.isArray(expr) &&
     (LOGICAL_OPS.includes(expr[0]) || COMPARISON_OPS.includes(expr[0]))
   );
+}
+
+function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
+  return err instanceof Error && typeof err.message === "string";
 }

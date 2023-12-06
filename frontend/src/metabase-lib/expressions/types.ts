@@ -31,4 +31,8 @@ export type MBQLClauseFunctionConfig = {
 };
 export type MBQLClauseMap = Record<string, MBQLClauseFunctionConfig>;
 
-export type ErrorWithMessage = { message: string; pos?: number; len?: number };
+export type ErrorWithMessage = {
+  message: string;
+  pos?: number | null;
+  len?: number | null;
+};
