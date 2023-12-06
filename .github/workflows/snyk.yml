@@ -10,7 +10,7 @@ on:
       - '**/package.json'
   schedule:
     - cron: '0 5 * * *'
-  manual:
+  workflow_dispatch:
 
 
 jobs:
