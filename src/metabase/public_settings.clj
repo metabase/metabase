@@ -30,7 +30,7 @@
   :visibility :public
   :type       :string
   :audit      :getter
-  :feature    :whitelabeling
+  :feature    :whitelabel
   :default    "Metabase")
 
 (defn application-name-for-setting-descriptions
@@ -371,7 +371,7 @@
   (deferred-tru "By default \"Site Url\" is used in notification links, but can be overridden.")
   :visibility :internal
   :type       :string
-  :feature    :whitelabeling
+  :feature    :whitelabel
   :audit      :getter)
 
 (defsetting deprecation-notice-version
@@ -383,7 +383,7 @@
 (defsetting loading-message
   (deferred-tru "Message to show while a query is running.")
   :visibility :public
-  :feature    :whitelabeling
+  :feature    :whitelabel
   :type       :keyword
   :default    :doing-science
   :audit      :getter)
@@ -395,7 +395,7 @@
     (application-name-for-setting-descriptions))
   :visibility :public
   :type       :json
-  :feature    :whitelabeling
+  :feature    :whitelabel
   :default    {}
   :audit      :getter)
 
@@ -404,7 +404,7 @@
   :visibility :public
   :type       :string
   :default    "Lato"
-  :feature    :whitelabeling
+  :feature    :whitelabel
   :audit      :getter
   :setter     (fn [new-value]
                   (when new-value
@@ -417,7 +417,7 @@
   :visibility :public
   :type       :json
   :audit      :getter
-  :feature    :whitelabeling)
+  :feature    :whitelabel)
 
 (defn application-color
   "The primary color, a.k.a. brand color"
@@ -434,7 +434,7 @@
   :visibility :public
   :type       :string
   :audit      :getter
-  :feature    :whitelabeling
+  :feature    :whitelabel
   :default    "app/assets/img/logo.svg")
 
 (defsetting application-favicon-url
@@ -442,7 +442,7 @@
   :visibility :public
   :type       :string
   :audit      :getter
-  :feature    :whitelabeling
+  :feature    :whitelabel
   :default    "app/assets/img/favicon.ico")
 
 (defsetting show-metabot
@@ -450,7 +450,7 @@
   :visibility :public
   :type       :boolean
   :audit      :getter
-  :feature    :whitelabeling
+  :feature    :whitelabel
   :default    true)
 
 (defsetting show-lighthouse-illustration
@@ -458,7 +458,7 @@
   :visibility :public
   :type       :boolean
   :audit      :getter
-  :feature    :whitelabeling
+  :feature    :whitelabel
   :default    true)
 
 (def ^:private help-link-options
@@ -474,10 +474,10 @@
   :type       :keyword
   :audit      :getter
   :visibility :public
-  :feature    :whitelabeling
+  :feature    :whitelabel
   :default    :metabase
   :setter     (fn [value]
-                (when-not (help-link-options value)
+                (when-not (help-link-options (keyword value))
                   (throw (ex-info (tru "Invalid help link option")
                                   {:value value
                                    :valid-options help-link-options})))
@@ -500,7 +500,7 @@
   :visibility :public
   :type       :string
   :audit      :getter
-  :feature    :whitelabeling
+  :feature    :whitelabel
   :default    "https://www.metabase.com/help/premium"
   :setter      (fn [new-value]
                  (let [new-value-string (str new-value)]
