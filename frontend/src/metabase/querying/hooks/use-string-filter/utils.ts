@@ -37,5 +37,9 @@ export function getFilterClause(
   values: string[],
   options: Lib.StringFilterOptions,
 ) {
+  if (!hasValidValues(operator, values)) {
+    return null;
+  }
+
   return Lib.stringFilterClause({ operator, column, values, options });
 }
