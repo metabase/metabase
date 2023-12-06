@@ -186,5 +186,5 @@ function isBooleanExpression(
 }
 
 function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
-  return err instanceof Error && typeof err.message === "string";
+  return typeof err === "object" && typeof (err as any).message === "string";
 }

@@ -2,6 +2,7 @@ export * from "./config";
 
 import { FK_SYMBOL } from "metabase/lib/formatting";
 import { checkNotNull } from "metabase/lib/types";
+import type { Expression } from "metabase-types/api";
 import Dimension, { ExpressionDimension } from "metabase-lib/Dimension";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Metric from "metabase-lib/metadata/Metric";
@@ -74,7 +75,7 @@ export function parseMetric(
   );
 }
 
-export function formatMetricName(metric: Metric, options: object) {
+export function formatMetricName(metric: Metric, options: Record<string, any>) {
   return formatIdentifier(metric.name, options);
 }
 
@@ -99,7 +100,10 @@ export function parseSegment(
   }
 }
 
-export function formatSegmentName(segment: Segment, options: object) {
+export function formatSegmentName(
+  segment: Segment,
+  options: Record<string, any>,
+) {
   return formatIdentifier(segment.name, options);
 }
 
@@ -166,7 +170,7 @@ const DOUBLE_QUOTE = '"';
 const SINGLE_QUOTE = "'";
 const BACKSLASH = "\\";
 
-const STRING_ESCAPE = {
+const STRING_ESCAPE: Record<string, string> = {
   "\b": "\\b",
   "\t": "\\t",
   "\n": "\\n",
@@ -174,7 +178,7 @@ const STRING_ESCAPE = {
   "\r": "\\r",
 };
 
-const STRING_UNESCAPE = {
+const STRING_UNESCAPE: Record<string, string> = {
   b: "\b",
   t: "\t",
   n: "\n",
@@ -190,7 +194,7 @@ export function quoteString(string: string, quote: string) {
       if (ch === quote && string[i - 1] !== BACKSLASH) {
         str += BACKSLASH + ch;
       } else {
-        const sub = STRING_ESCAPE[ch as keyof typeof STRING_ESCAPE];
+        const sub = STRING_ESCAPE[ch];
         str += sub ? sub : ch;
       }
     }
@@ -213,7 +217,7 @@ export function unquoteString(string: string) {
       const ch = string[i];
       if (ch === BACKSLASH) {
         const seq = string[i + 1];
-        const unescaped = STRING_UNESCAPE[seq as keyof typeof STRING_UNESCAPE];
+        const unescaped = STRING_UNESCAPE[seq];
         if (unescaped) {
           str += unescaped;
           ++i;
@@ -232,7 +236,7 @@ export function unquoteString(string: string) {
 
 // move to query lib
 
-export function isExpression(expr: unknown) {
+export function isExpression(expr: unknown): expr is Expression {
   return (
     isLiteral(expr) ||
     isOperator(expr) ||
