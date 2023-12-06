@@ -8,7 +8,7 @@ import CS from "metabase/css/core/index.css";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { extractRemappedColumns } from "metabase/visualizations";
 import {
-  getChartColumns,
+  getCartesianChartColumns,
   hasValidColumnsSelected,
 } from "metabase/visualizations/lib/graph/columns";
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
@@ -367,7 +367,7 @@ RowChartVisualization.transformSeries = (originalMultipleSeries: any) => {
     return originalMultipleSeries;
   }
 
-  const chartColumns = getChartColumns(data, settings);
+  const chartColumns = getCartesianChartColumns(data.cols, settings);
 
   const computedSeries = getSeries(
     data,
