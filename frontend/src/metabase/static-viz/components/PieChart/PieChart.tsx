@@ -3,6 +3,7 @@ import type { IsomorphicStaticChartProps } from "metabase/static-viz/containers/
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 
 import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
+import { getPieChartOption } from "metabase/visualizations/echarts/pie/option";
 import { computeStaticPieChartSettings } from "./setttings";
 
 const WIDTH = 540;
@@ -17,13 +18,16 @@ export function PieChart({
     rawSeries,
     dashcardSettings,
   );
-  const model = getPieChartModel(
+  const chartModel = getPieChartModel(
     rawSeries,
     computedVizSettings,
     renderingContext,
   );
-  //eslint-disable-next-line no-console
-  console.log("model", JSON.stringify(model));
+  const option = getPieChartOption(
+    chartModel,
+    computedVizSettings,
+    renderingContext,
+  );
 
   const chart = init(null, null, {
     renderer: "svg",
@@ -32,16 +36,7 @@ export function PieChart({
     height: HEIGHT,
   });
 
-  chart.setOption({
-    // Mock data, will be replaced
-    series: {
-      type: "sunburst",
-      data: [
-        { name: "slice1", value: 20 },
-        { name: "slice2", value: 30 },
-      ],
-    },
-  });
+  chart.setOption(option);
 
   const svg = sanitizeSvgForBatik(chart.renderToSVGString());
 
