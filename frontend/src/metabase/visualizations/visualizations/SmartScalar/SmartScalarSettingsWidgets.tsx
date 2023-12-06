@@ -3,7 +3,7 @@ import type { MouseEvent } from "react";
 import { Icon } from "metabase/core/components/Icon";
 import { Button, Group, Menu, Stack, Text, Box } from "metabase/ui";
 import { isEmpty } from "metabase/lib/validate";
-import { COMPARISON_OPTIONS } from "./utils";
+import { COMPARISON_SELECT_OPTIONS } from "./utils";
 import {
   MenuItemStyled,
   MenuTargetStyled,
@@ -13,13 +13,13 @@ import {
 import type {
   ComparisonOption,
   ComparisonPeriodsAgoType,
-  SelectedComparisonOption,
+  SelectedComparison,
 } from "./utils";
 
 interface SmartScalarComparisonWidgetProps {
   onChange: (setting: { type: string; value?: number }) => void;
   options: ComparisonOption[];
-  value: SelectedComparisonOption;
+  value: SelectedComparison;
 }
 
 export function SmartScalarComparisonWidget({
@@ -34,7 +34,7 @@ export function SmartScalarComparisonWidget({
   );
 
   const selectedName =
-    selectedValue.type !== COMPARISON_OPTIONS.PERIODS_AGO.type
+    selectedValue.type !== COMPARISON_SELECT_OPTIONS.PERIODS_AGO.type
       ? selectedOption?.name
       : `${selectedValue.value ?? ""} ${selectedOption?.name}`;
 

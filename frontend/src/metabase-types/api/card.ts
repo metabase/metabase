@@ -1,4 +1,4 @@
-import type { SelectedComparisonOption } from "metabase/visualizations/visualizations/SmartScalar/utils";
+import type { SelectedComparison } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import type { DatabaseId } from "./database";
 import type { DashboardId, DashCardId } from "./dashboard";
 import type { Field } from "./field";
@@ -134,7 +134,7 @@ export type VisualizationSettings = {
   "pivot_table.collapsed_rows"?: PivotTableCollapsedRowsSetting;
 
   // Scalar Settings
-  "scalar.comparisons"?: SelectedComparisonOption;
+  "scalar.comparisons"?: SelectedComparison;
   "scalar.field"?: string;
   "scalar.switch_positive_negative"?: boolean;
 

@@ -87,7 +87,7 @@ export const COMPARISON_TYPES = {
 } as const;
 
 const PLACEHOLDER_STR = "[placeholder]";
-export const COMPARISON_OPTIONS = {
+export const COMPARISON_SELECT_OPTIONS = {
   PREVIOUS_PERIOD: {
     type: COMPARISON_TYPES.PREVIOUS_PERIOD,
     nameTemplate: t`Previous ${PLACEHOLDER_STR}`,
@@ -102,6 +102,32 @@ export const COMPARISON_OPTIONS = {
     name: t`Previous value`,
   },
 };
+
+export type ComparisonOption = {
+  type:
+    | typeof COMPARISON_TYPES.COMPARE_TO_PREVIOUS
+    | typeof COMPARISON_TYPES.PREVIOUS_PERIOD
+    | typeof COMPARISON_TYPES.PERIODS_AGO;
+  name: string;
+  MenuItemComponent?: React.ComponentType<any>;
+  maxValue?: number;
+};
+
+export type SelectedComparisonPeriodsAgo = {
+  type: typeof COMPARISON_TYPES.PERIODS_AGO;
+  value: number;
+};
+export type SelectedComparisonPreviousPeriod = {
+  type: typeof COMPARISON_TYPES.PREVIOUS_PERIOD;
+};
+export type SelectedComparisonCompareToPrevious = {
+  type: typeof COMPARISON_TYPES.COMPARE_TO_PREVIOUS;
+};
+
+export type SelectedComparison =
+  | SelectedComparisonCompareToPrevious
+  | SelectedComparisonPreviousPeriod
+  | SelectedComparisonPeriodsAgo;
 
 export function getDefaultComparison(
   series: RawSeries,
@@ -118,12 +144,12 @@ export function getDefaultComparison(
   )?.unit;
 
   if (!dateUnit) {
-    return COMPARISON_OPTIONS.COMPARE_TO_PREVIOUS;
+    return COMPARISON_SELECT_OPTIONS.COMPARE_TO_PREVIOUS;
   }
 
   return {
-    ...COMPARISON_OPTIONS.PREVIOUS_PERIOD,
-    name: COMPARISON_OPTIONS.PREVIOUS_PERIOD.nameTemplate.replace(
+    ...COMPARISON_SELECT_OPTIONS.PREVIOUS_PERIOD,
+    name: COMPARISON_SELECT_OPTIONS.PREVIOUS_PERIOD.nameTemplate.replace(
       PLACEHOLDER_STR,
       t`${dateUnit}`,
     ),
@@ -145,13 +171,13 @@ export function getComparisonOptions(
   )?.unit as RelativeDatetimeUnit | undefined;
 
   if (!dateUnit) {
-    return [COMPARISON_OPTIONS.COMPARE_TO_PREVIOUS];
+    return [COMPARISON_SELECT_OPTIONS.COMPARE_TO_PREVIOUS];
   }
 
   const options: ComparisonOption[] = [
     {
-      ...COMPARISON_OPTIONS.PREVIOUS_PERIOD,
-      name: COMPARISON_OPTIONS.PREVIOUS_PERIOD.nameTemplate.replace(
+      ...COMPARISON_SELECT_OPTIONS.PREVIOUS_PERIOD,
+      name: COMPARISON_SELECT_OPTIONS.PREVIOUS_PERIOD.nameTemplate.replace(
         PLACEHOLDER_STR,
         t`${dateUnit}`,
       ),
@@ -164,8 +190,8 @@ export function getComparisonOptions(
   // since we already have an option for 1 period ago -> PREVIOUS_PERIOD
   if (maxPeriodsAgo && maxPeriodsAgo >= 2) {
     options.push({
-      ...COMPARISON_OPTIONS.PERIODS_AGO,
-      name: COMPARISON_OPTIONS.PERIODS_AGO.nameTemplate.replace(
+      ...COMPARISON_SELECT_OPTIONS.PERIODS_AGO,
+      name: COMPARISON_SELECT_OPTIONS.PERIODS_AGO.nameTemplate.replace(
         PLACEHOLDER_STR,
         t`${dateUnit}s`,
       ),
@@ -173,7 +199,7 @@ export function getComparisonOptions(
     });
   }
 
-  options.push(COMPARISON_OPTIONS.COMPARE_TO_PREVIOUS);
+  options.push(COMPARISON_SELECT_OPTIONS.COMPARE_TO_PREVIOUS);
 
   return options;
 }
@@ -232,31 +258,3 @@ function getMaxPeriodsAgo({
 
   return dayjs(latestNonEmptyDate).diff(earliestNonEmptyDate, dateUnit);
 }
-
-export type ComparisonPeriodsAgoType = {
-  type: typeof COMPARISON_TYPES.PERIODS_AGO;
-  value: number;
-};
-
-export type ComparisonPreviousPeriodType = {
-  type: typeof COMPARISON_TYPES.PREVIOUS_PERIOD;
-};
-
-export type ComparisonCompareToPreviousType = {
-  type: typeof COMPARISON_TYPES.COMPARE_TO_PREVIOUS;
-};
-
-export type SelectedComparisonOption =
-  | ComparisonCompareToPreviousType
-  | ComparisonPreviousPeriodType
-  | ComparisonPeriodsAgoType;
-
-export type ComparisonOption = {
-  type:
-    | typeof COMPARISON_TYPES.COMPARE_TO_PREVIOUS
-    | typeof COMPARISON_TYPES.PREVIOUS_PERIOD
-    | typeof COMPARISON_TYPES.PERIODS_AGO;
-  name: string;
-  MenuItemComponent?: React.ComponentType<any>;
-  maxValue?: number;
-};
