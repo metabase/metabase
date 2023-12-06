@@ -4,7 +4,7 @@ import * as Lib from "metabase-lib";
 import type { NotebookStepUiComponentProps } from "../types";
 import { ClauseStep } from "./ClauseStep";
 
-const ExpressionStep = ({
+export const ExpressionStep = ({
   color,
   updateQuery,
   isLastOpened,
@@ -70,6 +70,3 @@ const ExpressionStep = ({
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ExpressionStep;

@@ -13,7 +13,7 @@ import {
 
 import type { NotebookStepUiComponentProps } from "../types";
 import { createMockNotebookStep } from "../test-utils";
-import ExpressionStep from "./ExpressionStep";
+import { ExpressionStep } from "./ExpressionStep";
 
 describe("Notebook Editor > Expression Step", () => {
   it("should handle updating existing expression", async () => {
