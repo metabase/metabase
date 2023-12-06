@@ -16,10 +16,8 @@ import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/colu
 import {
   getDatasetExtents,
   getJoinedCardsDataset,
-  getNormalizedDataset,
-  getNullReplacerFunction,
   getSortedSeriesModels,
-  replaceValues,
+  getTransformedDataset,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
   getYAxesExtents,
@@ -84,15 +82,12 @@ export const getCartesianChartModel = (
   const seriesModels = getSortedSeriesModels(unsortedSeriesModels, settings);
 
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
-  const dataset = replaceValues(
-    getJoinedCardsDataset(rawSeries, cardsColumns),
-    getNullReplacerFunction(settings, seriesModels),
-  );
-
-  const normalizedDataset = getNormalizedDataset(
+  const dataset = getJoinedCardsDataset(rawSeries, cardsColumns);
+  const transformedDataset = getTransformedDataset(
     dataset,
-    seriesDataKeys,
-    dimensionModel.dataKey,
+    seriesModels,
+    settings,
+    dimensionModel,
   );
 
   const extents = getDatasetExtents(seriesDataKeys, dataset);
@@ -118,7 +113,7 @@ export const getCartesianChartModel = (
 
   return {
     dataset,
-    normalizedDataset,
+    transformedDataset,
     seriesModels,
     dimensionModel,
     yAxisSplit,
