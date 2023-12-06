@@ -56,10 +56,13 @@ const buildEChartsBarSeries = (
 ): RegisteredSeriesOption["bar"] => {
   const stackName =
     settings["stackable.stack_type"] != null ? `bar_${yAxisIndex}` : undefined;
+  const datasetIndex =
+    settings["stackable.stack_type"] === "normalized" ? 1 : 0;
 
   return {
     type: "bar",
     yAxisIndex,
+    datasetIndex,
     stack: stackName,
     encode: {
       y: seriesModel.dataKey,
@@ -88,10 +91,13 @@ const buildEChartsLineAreaSeries = (
 
   const stackName =
     settings["stackable.stack_type"] != null ? `area_${yAxisIndex}` : undefined;
+  const datasetIndex =
+    settings["stackable.stack_type"] === "normalized" ? 1 : 0;
 
   return {
     type: "line",
     yAxisIndex,
+    datasetIndex,
     showSymbol: seriesSettings["line.marker_enabled"] !== false,
     symbolSize: 6,
     smooth: seriesSettings["line.interpolate"] === "cardinal",
