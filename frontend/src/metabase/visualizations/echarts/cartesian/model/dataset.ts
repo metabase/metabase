@@ -1,6 +1,8 @@
 import type { DatasetColumn, RawSeries, RowValue } from "metabase-types/api";
 import type {
   DataKey,
+  Extent,
+  GroupedDataset,
   SeriesModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
@@ -269,4 +271,45 @@ export const getNormalizedDataset = (
       return acc;
     }, normalizedDatum);
   });
+};
+
+/**
+ * Calculates the minimum and maximum values (extents) for each series in the dataset.
+ *
+ * @param {DataKey[]} keys - The keys of the series to calculate extents for.
+ * @param {GroupedDataset} dataset - The dataset containing the series data.
+ * @returns {Record<DataKey, Extent>} Series extent by a series data key.
+ */
+export const getDatasetExtents = (
+  keys: DataKey[],
+  dataset: GroupedDataset,
+): Record<DataKey, Extent> => {
+  const extents: Record<DataKey, Extent> = {};
+
+  dataset.forEach(item => {
+    keys.forEach(key => {
+      const value = item[key];
+
+      if (typeof value !== "number" || !Number.isFinite(value)) {
+        return;
+      }
+
+      const extent = extents[key];
+
+      if (!extent) {
+        extents[key] = [value, value];
+        return;
+      }
+
+      if (value < extent[0]) {
+        extent[0] = value;
+      }
+
+      if (value > extent[1]) {
+        extent[1] = value;
+      }
+    });
+  });
+
+  return extents;
 };
