@@ -39,11 +39,14 @@ const getXAxisFormatter = (
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ) => {
+  const isHistogram = settings["graph.x_axis.scale"] === "histogram";
+
   return (value: unknown) =>
     renderingContext.formatValue(value, {
       column,
       ...(settings.column?.(column) ?? {}),
       jsx: false,
+      noRange: isHistogram,
     });
 };
 
