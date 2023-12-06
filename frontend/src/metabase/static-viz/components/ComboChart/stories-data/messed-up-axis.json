@@ -1,0 +1,308 @@
+[
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 2,
+      "result_metadata": [
+        {
+          "description": "The total billed amount.",
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "name": "TOTAL",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            15,
+            {
+              "base-type": "type/Float",
+              "binning": {
+                "strategy": "num-bins",
+                "min-value": 0,
+                "max-value": 160,
+                "num-bins": 8,
+                "bin-width": 20
+              }
+            }
+          ],
+          "effective_type": "type/Float",
+          "id": 15,
+          "visibility_type": "normal",
+          "display_name": "Total",
+          "fingerprint": {
+            "global": { "distinct-count": 4426, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 8.93914247937167,
+                "q1": 51.34535490743823,
+                "q3": 110.29428389265787,
+                "max": 159.34900526552292,
+                "sd": 34.26469575709948,
+                "avg": 80.35871658771228
+              }
+            }
+          },
+          "base_type": "type/Float"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": { "distinct-count": 9, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 665.25,
+                "q3": 2988.5,
+                "max": 4107,
+                "sd": 1513.4439295123484,
+                "avg": 2084.4444444444443
+              }
+            }
+          }
+        }
+      ],
+      "include_xls": false,
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "query",
+      "name": "sv: ugly axis",
+      "creator_id": 1,
+      "updated_at": "2023-11-06T20:09:59.417123-03:00",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 2,
+          "aggregation": [["count"]],
+          "breakout": [
+            [
+              "field",
+              15,
+              {
+                "base-type": "type/Float",
+                "binning": { "strategy": "default" }
+              }
+            ]
+          ]
+        }
+      },
+      "id": 63,
+      "parameter_mappings": [],
+      "include_csv": false,
+      "display": "bar",
+      "entity_id": "hEsBfhQIjP_kAu8mDvP7W",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.x_axis.scale": "ordinal",
+        "graph.x_axis.axis_enabled": "rotate-45",
+        "series_settings": {
+          "count": {
+            "axis": "left",
+            "title": "CountCountCountCountCountCountCountCountCountCount",
+            "display": "area"
+          }
+        },
+        "graph.dimensions": ["TOTAL"],
+        "column_settings": {
+          "[\"ref\",[\"field\",15,{\"base-type\":\"type/Float\"}]]": {
+            "prefix": "2323________11111232323",
+            "suffix": "232323___________2222232323"
+          },
+          "[\"name\",\"count\"]": {
+            "prefix": "____________________________",
+            "suffix": "____________________________"
+          }
+        },
+        "graph.metrics": ["count"]
+      },
+      "metabase_version": "v0.47.1-SNAPSHOT (d46d14f)",
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2023-11-06T20:02:07.70439",
+      "public_uuid": null
+    },
+    "data": {
+      "cols": [
+        {
+          "description": "The total billed amount.",
+          "semantic_type": null,
+          "table_id": 2,
+          "coercion_strategy": null,
+          "binning_info": {
+            "min_value": 0,
+            "max_value": 160,
+            "num_bins": 8,
+            "bin_width": 20,
+            "binning_strategy": "num-bins"
+          },
+          "name": "TOTAL",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            15,
+            {
+              "base-type": "type/Float",
+              "binning": {
+                "strategy": "num-bins",
+                "min-value": 0,
+                "max-value": 160,
+                "num-bins": 8,
+                "bin-width": 20
+              }
+            }
+          ],
+          "effective_type": "type/Float",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 15,
+          "position": 5,
+          "visibility_type": "normal",
+          "display_name": "Total",
+          "fingerprint": {
+            "global": { "distinct-count": 4426, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 8.93914247937167,
+                "q1": 51.34535490743823,
+                "q3": 110.29428389265787,
+                "max": 159.34900526552292,
+                "sd": 34.26469575709948,
+                "avg": 80.35871658771228
+              }
+            }
+          },
+          "base_type": "type/Float"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT FLOOR((\"PUBLIC\".\"ORDERS\".\"TOTAL\" / 20)) * 20 AS \"TOTAL\", COUNT(*) AS \"count\" FROM \"PUBLIC\".\"ORDERS\" GROUP BY FLOOR((\"PUBLIC\".\"ORDERS\".\"TOTAL\" / 20)) * 20 ORDER BY FLOOR((\"PUBLIC\".\"ORDERS\".\"TOTAL\" / 20)) * 20 ASC",
+        "params": null
+      },
+      "viz-settings": {
+        "graph.x_axis.scale": "ordinal",
+        "graph.x_axis.axis_enabled": "rotate-45",
+        "series_settings": {
+          "count": {
+            "axis": "left",
+            "title": "CountCountCountCountCountCountCountCountCountCount",
+            "display": "area"
+          }
+        },
+        "graph.dimensions": ["TOTAL"],
+        "graph.metrics": ["count"],
+        "metabase.shared.models.visualization-settings/column-settings": {
+          "{:metabase.shared.models.visualization-settings/field-id 15, :metabase.shared.models.visualization-settings/field-metadata {\"base-type\" \"type/Float\"}}": {
+            "metabase.shared.models.visualization-settings/prefix": "2323________11111232323",
+            "metabase.shared.models.visualization-settings/suffix": "232323___________2222232323"
+          },
+          "{:metabase.shared.models.visualization-settings/column-name \"count\"}": {
+            "metabase.shared.models.visualization-settings/prefix": "____________________________",
+            "metabase.shared.models.visualization-settings/suffix": "____________________________"
+          }
+        },
+        "metabase.shared.models.visualization-settings/global-column-settings": {}
+      },
+      "results_timezone": "America/Montevideo",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The total billed amount.",
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "TOTAL",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              15,
+              {
+                "base-type": "type/Float",
+                "binning": {
+                  "strategy": "num-bins",
+                  "min-value": 0,
+                  "max-value": 160,
+                  "num-bins": 8,
+                  "bin-width": 20
+                }
+              }
+            ],
+            "effective_type": "type/Float",
+            "id": 15,
+            "visibility_type": "normal",
+            "display_name": "Total",
+            "fingerprint": {
+              "global": { "distinct-count": 4426, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 8.93914247937167,
+                  "q1": 51.34535490743823,
+                  "q3": 110.29428389265787,
+                  "max": 159.34900526552292,
+                  "sd": 34.26469575709948,
+                  "avg": 80.35871658771228
+                }
+              }
+            },
+            "base_type": "type/Float"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": { "distinct-count": 9, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 665.25,
+                  "q3": 2988.5,
+                  "max": 4107,
+                  "sd": 1513.4439295123484,
+                  "avg": 2084.4444444444443
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null,
+      "rows": [
+        [-60, 1],
+        [0, 51],
+        [20, 2190],
+        [40, 4107],
+        [60, 4007],
+        [80, 2649],
+        [100, 2429],
+        [120, 2456],
+        [140, 870]
+      ]
+    }
+  }
+]
