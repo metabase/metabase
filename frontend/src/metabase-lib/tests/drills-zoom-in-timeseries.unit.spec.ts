@@ -1,3 +1,4 @@
+import type { DatetimeUnit } from "metabase-types/api";
 import {
   createOrdersCreatedAtDatasetColumn,
   createOrdersQuantityDatasetColumn,
@@ -17,7 +18,6 @@ import {
   createNotEditableQuery,
 } from "./drills-common";
 
-// eslint-disable-next-line jest/no-disabled-tests
 describe("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
   const drillType = "drill-thru/zoom-in.timeseries";
   const stageIndex = 0;
@@ -68,7 +68,7 @@ describe("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
         breakouts: [
           {
             // QP results metadata will come back with the temporal unit like this
-            column: { ...breakoutColumn, unit: unit },
+            column: { ...breakoutColumn, unit: unit as DatetimeUnit },
             value: "2020-01-01",
           },
         ],
@@ -110,7 +110,7 @@ describe("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
         },
         breakouts: [
           {
-            column: { ...breakoutColumn, unit: unit },
+            column: { ...breakoutColumn, unit: unit as DatetimeUnit },
             value: "2020-01-01",
           },
           {
@@ -152,7 +152,7 @@ describe("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
         ],
       });
       const clickObject = createLegendItemClickObject({
-        column: { ...breakoutColumn, unit: unit },
+        column: { ...breakoutColumn, unit: unit as DatetimeUnit },
         value: "2020-01-01",
       });
       const { drill, drillInfo } = findDrillThru(
