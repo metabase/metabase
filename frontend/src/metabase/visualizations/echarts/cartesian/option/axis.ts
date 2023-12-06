@@ -7,11 +7,80 @@ import type {
   RemappingHydratedDatasetColumn,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
+import type {
+  CartesianChartModel,
+  Extent,
+} from "metabase/visualizations/echarts/cartesian/model/types";
 
 import { isNumeric } from "metabase-lib/types/utils/isa";
 
+type AxisRange = {
+  min?: number;
+  max?: number;
+};
+
 const NORMALIZED_RANGE = { min: 0, max: 1 };
+
+const getCustomAxisRange = (
+  extents: Extent[],
+  min: number | undefined,
+  max: number | undefined,
+) => {
+  if (extents.length === 0) {
+    return { min: undefined, max: undefined };
+  }
+
+  const [combinedMin, combinedMax] = extents.reduce(
+    (combinedExtent, extent) => {
+      if (!combinedExtent) {
+        return extent;
+      }
+
+      return [
+        Math.min(combinedExtent[0], extent[0]),
+        Math.max(combinedExtent[1], extent[1]),
+      ];
+    },
+  );
+
+  // if min/max are not specified or within series extents return `undefined`
+  // so that ECharts compute a rounded range automatically
+  const finalMin = min != null && min < combinedMin ? min : undefined;
+  const finalMax = max != null && max > combinedMax ? max : undefined;
+
+  return { min: finalMin, max: finalMax };
+};
+
+const getAxisRanges = (
+  chartModel: CartesianChartModel,
+  settings: ComputedVisualizationSettings,
+): [AxisRange, AxisRange] => {
+  const isNormalized = settings["stackable.stack_type"] === "normalized";
+  const isAutoRangeEnabled = settings["graph.y_axis.auto_range"];
+
+  if (isAutoRangeEnabled) {
+    const defaultRange = isNormalized ? NORMALIZED_RANGE : {};
+    return [defaultRange, defaultRange];
+  }
+
+  const customMin = settings["graph.y_axis.min"];
+  const customMax = settings["graph.y_axis.max"];
+
+  const [left, right] = chartModel.yAxisSplit;
+
+  return [
+    getCustomAxisRange(
+      left.map(dataKey => chartModel.extents[dataKey]),
+      customMin,
+      customMax,
+    ),
+    getCustomAxisRange(
+      right.map(dataKey => chartModel.extents[dataKey]),
+      customMin,
+      customMax,
+    ),
+  ];
+};
 
 const getAxisNameDefaultOption = (
   { getColor, fontFamily }: RenderingContext,
@@ -114,6 +183,7 @@ const buildMetricAxis = (
   settings: ComputedVisualizationSettings,
   column: RemappingHydratedDatasetColumn,
   position: "left" | "right",
+  range: AxisRange,
   renderingContext: RenderingContext,
   name?: string,
 ): CartesianAxisOption => {
@@ -125,7 +195,6 @@ const buildMetricAxis = (
   };
 
   const isNormalized = settings["stackable.stack_type"] === "normalized";
-  const range = isNormalized ? NORMALIZED_RANGE : {};
 
   const percentageFormatter = (value: unknown) =>
     renderingContext.formatValue(value, {
@@ -159,11 +228,13 @@ const buildMetricAxis = (
 };
 
 const buildMetricsAxes = (
+  chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
-  leftAxisColumn: RemappingHydratedDatasetColumn | undefined,
-  rightAxisColumn: RemappingHydratedDatasetColumn | undefined,
   renderingContext: RenderingContext,
 ): CartesianAxisOption[] => {
+  const [leftRange, rightRange] = getAxisRanges(chartModel, settings);
+  const { leftAxisColumn, rightAxisColumn } = chartModel;
+
   return [
     ...(leftAxisColumn != null
       ? [
@@ -171,13 +242,22 @@ const buildMetricsAxes = (
             settings,
             leftAxisColumn,
             "left",
+            leftRange,
             renderingContext,
             settings["graph.y_axis.title_text"],
           ),
         ]
       : []),
     ...(rightAxisColumn != null
-      ? [buildMetricAxis(settings, rightAxisColumn, "right", renderingContext)]
+      ? [
+          buildMetricAxis(
+            settings,
+            rightAxisColumn,
+            "right",
+            rightRange,
+            renderingContext,
+          ),
+        ]
       : []),
   ];
 };
@@ -193,11 +273,6 @@ export const buildAxes = (
       chartModel.dimensionModel.column,
       renderingContext,
     ),
-    yAxis: buildMetricsAxes(
-      settings,
-      chartModel.leftAxisColumn,
-      chartModel.rightAxisColumn,
-      renderingContext,
-    ),
+    yAxis: buildMetricsAxes(chartModel, settings, renderingContext),
   };
 };
