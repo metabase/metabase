@@ -114,7 +114,7 @@ function prattCompiler(
     ...options,
   });
   if (errors.length > 0) {
-    return errors[0] as ErrorWithMessage;
+    return errors[0];
   }
 
   function resolveMBQLField(kind: string, name: string, node: Node) {
