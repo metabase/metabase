@@ -1,6 +1,14 @@
 version: 2.1
 
 ########################################################################################################################
+#                                                      ORBS                                                            #
+########################################################################################################################
+orbs:
+  aws-cli: circleci/aws-cli@4.0
+  aws-ecr: circleci/aws-ecr@9.0
+
+
+########################################################################################################################
 #                                                      EXECUTORS                                                       #
 ########################################################################################################################
 
@@ -959,466 +967,485 @@ default_matrix: &Matrix
 
 workflows:
   version: 2
-  build:
+  # build:
+  #   jobs:
+  #     - checkout
+
+  #     - check-migrations:
+  #         requires:
+  #           - checkout
+
+  #     - be-deps:
+  #         requires:
+  #           - checkout
+
+  #     - clojure:
+  #         name: be-tests-<< matrix.edition >>
+  #         requires:
+  #           - be-deps
+  #         e: java-8
+  #         clojure-args: -X:dev:ci:test
+  #         skip-when-no-change: true
+  #         <<: *Matrix
+
+  #     - clojure:
+  #         name: be-tests-java-11-<< matrix.edition >>
+  #         requires:
+  #           - be-deps
+  #         e: java-11
+  #         clojure-args: -X:dev:ci:test
+  #         skip-when-no-change: true
+  #         <<: *Matrix
+
+  #     - clojure:
+  #         name: be-tests-java-16-<< matrix.edition >>
+  #         requires:
+  #           - be-deps
+  #         e: java-16
+  #         clojure-args: -X:dev:ci:test
+  #         skip-when-no-change: true
+  #         <<: *Matrix
+
+  #     - clojure:
+  #         name: be-linter-cloverage
+  #         requires:
+  #           - be-deps
+  #         # TODO FIXME
+  #         clojure-args: -X:dev:ee:ee-dev:test:cloverage
+  #         after-steps:
+  #           - run:
+  #               name: Upload code coverage to codecov.io
+  #               command: bash <(curl -s https://codecov.io/bash) -F back-end
+
+  #         skip-when-no-change: true
+
+  #     - test-driver:
+  #         name: be-tests-bigquery-ee
+  #         requires:
+  #           - be-tests-ee
+  #         driver: bigquery
+
+  #     - test-driver:
+  #         name: be-tests-bigquery-cloud-sdk-ee
+  #         requires:
+  #           - be-tests-ee
+  #         driver: bigquery-cloud-sdk
+
+  #     - test-driver:
+  #         name: be-tests-druid-ee
+  #         requires:
+  #           - be-tests-ee
+  #         e: druid
+  #         driver: druid
+
+  #     - test-driver:
+  #         name: be-tests-googleanalytics-ee
+  #         requires:
+  #           - be-tests-ee
+  #         driver: googleanalytics
+
+  #     - test-driver:
+  #         name: be-tests-mongo-ee
+  #         description: "(Mongo 4.0)"
+  #         requires:
+  #           - be-tests-ee
+  #         e: mongo-4-0
+  #         driver: mongo
+
+  #     - test-driver:
+  #         name: be-tests-mongo-latest-ee
+  #         description: "(Mongo latest)"
+  #         requires:
+  #           - be-tests-ee
+  #         e: mongo-latest
+  #         driver: mongo
+
+  #     - test-driver:
+  #         name: be-tests-mysql-ee
+  #         description: "(MySQL 5.7)"
+  #         requires:
+  #           - be-tests-ee
+  #         e:
+  #           name: mysql-5-7
+  #         driver: mysql
+
+  #     - test-driver:
+  #         name: be-tests-mysql-latest-ee
+  #         description: "(MySQL latest)"
+  #         requires:
+  #           - be-tests-ee
+  #         e:
+  #           name: mysql-latest
+  #         driver: mysql
+  #         # set up env vars for something named "MYSQL_SSL" to run MySQL SSL tests verifying connectivity with PEM cert
+  #         # they are deliberately given a different name to prevent them from affecting the regular test run against
+  #         # the configured MySQL instance, but there is one particular test (mysql-connect-with-ssl-and-pem-cert-test)
+  #         # that overrides the MB_MYSQL_TEST_* values with them
+  #         # the MYSQL_RDS_SSL_INSTANCE vars are secret and/or changeable, so they are defined in the CircleCI settings
+  #         extra-env: >-
+  #           MB_MYSQL_SSL_TEST_HOST=$MYSQL_RDS_SSL_INSTANCE_HOST
+  #           MB_MYSQL_SSL_TEST_SSL=true
+  #           MB_MYSQL_SSL_TEST_ADDITIONAL_OPTIONS='verifyServerCertificate=true'
+  #           MB_MYSQL_SSL_TEST_SSL_CERT="$(cat /home/circleci/metabase/metabase/resources/certificates/rds-combined-ca-bundle.pem)"
+  #           MB_MYSQL_SSL_TEST_USER=metabase
+  #           MB_MYSQL_SSL_TEST_PASSWORD=$MYSQL_RDS_SSL_INSTANCE_PASSWORD
+
+  #     - test-driver:
+  #         name: be-tests-mariadb-ee
+  #         description: "(MariaDB 10.2)"
+  #         requires:
+  #           - be-tests-ee
+  #         e:
+  #           name: mariadb-10-2
+  #         driver: mysql
+
+  #     - test-driver:
+  #         name: be-tests-mariadb-latest-ee
+  #         description: "(MariaDB latest)"
+  #         requires:
+  #           - be-tests-ee
+  #         e:
+  #           name: mariadb-latest
+  #         driver: mysql
+
+  #     - test-driver:
+  #         name: be-tests-oracle-ee
+  #         requires:
+  #           - be-tests-ee
+  #         before-steps:
+  #           - fetch-jdbc-driver:
+  #               source: ORACLE_JDBC_JAR
+  #               dest: ojdbc8.jar
+  #         driver: oracle
+  #         extra-env: >-
+  #           MB_ORACLE_SSL_TEST_SSL=true
+  #           MB_ORACLE_SSL_TEST_PORT=2484
+  #           JVM_OPTS="-Djavax.net.ssl.trustStore=/home/circleci/metabase/metabase/resources/certificates/cacerts_with_RDS_root_ca.jks
+  #                     -Djavax.net.ssl.trustStoreType=JKS
+  #                     -Djavax.net.ssl.trustStorePassword=metabase $JAVA_OPTS"
+
+  #     - test-driver:
+  #         name: be-tests-postgres-ee
+  #         description: "(9.6)"
+  #         requires:
+  #           - be-tests-ee
+  #         e: postgres-9-6
+  #         driver: postgres
+
+  #     - test-driver:
+  #         name: be-tests-postgres-latest-ee
+  #         description: "(Latest)"
+  #         requires:
+  #           - be-tests-ee
+  #         e: postgres-latest
+  #         driver: postgres
+
+  #     - test-driver:
+  #         name: be-tests-presto-ee
+  #         requires:
+  #           - be-tests-ee
+  #         e: presto-186
+  #         before-steps:
+  #           - wait-for-port:
+  #               port: 8080
+  #         driver: presto
+
+  #     - test-driver:
+  #         name: be-tests-presto-jdbc-ee
+  #         requires:
+  #           - be-tests-ee
+  #         e: presto-jdbc-env # specific env for running Presto JDBC tests (newer Presto version, SSL, etc.)
+  #         before-steps:
+  #           - wait-for-port:
+  #               port: 8443
+  #           - run:
+  #               name: Create temp cacerts file based on bundled JDK one
+  #               command: cp $JAVA_HOME/lib/security/cacerts /tmp/cacerts-with-presto-ssl.jks
+  #           - run:
+  #               name: Capture Presto server self signed CA
+  #               command: |
+  #                 while [[ ! -s /tmp/presto-ssl-ca.pem ]];
+  #                   do echo "Waiting to capture SSL CA" \
+  #                     && openssl s_client -connect localhost:8443 2>/dev/null </dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > /tmp/presto-ssl-ca.pem \
+  #                     && sleep 1; done
+  #           - run:
+  #               name: Convert Presto CA from PEM to DER
+  #               command: openssl x509 -outform der -in /tmp/presto-ssl-ca.pem -out /tmp/presto-ssl-ca.der
+  #           - run:
+  #               name: Import Presto CA into temp cacerts file
+  #               command: |
+  #                 sudo keytool -noprompt -import -alias presto -keystore /tmp/cacerts-with-presto-ssl.jks \
+  #                  -storepass changeit -file /tmp/presto-ssl-ca.der -trustcacerts
+  #         after-steps:
+  #           - run:
+  #               name: Capture max memory usage
+  #               command: cat /sys/fs/cgroup/memory/memory.max_usage_in_bytes
+  #               when: always
+  #         driver: presto-jdbc
+
+  #     - test-driver:
+  #         name: be-tests-redshift-ee
+  #         requires:
+  #           - be-tests-ee
+  #         driver: redshift
+  #         timeout: 15m
+
+  #     - test-driver:
+  #         name: be-tests-snowflake-ee
+  #         requires:
+  #           - be-tests-ee
+  #         driver: snowflake
+  #         timeout: 115m
+
+  #     - test-driver:
+  #         name: be-tests-sparksql-ee
+  #         requires:
+  #           - be-tests-ee
+  #         e: sparksql
+  #         before-steps:
+  #           - wait-for-port:
+  #               port: 10000
+  #         driver: sparksql
+
+  #     - test-driver:
+  #         name: be-tests-sqlite-ee
+  #         requires:
+  #           - be-tests-ee
+  #         driver: sqlite
+
+  #     - test-driver:
+  #         name: be-tests-sqlserver-ee
+  #         requires:
+  #           - be-tests-ee
+  #         e: sqlserver
+  #         driver: sqlserver
+
+  #     - test-driver:
+  #         name: be-tests-vertica-ee
+  #         requires:
+  #           - be-tests-ee
+  #         e: vertica
+  #         before-steps:
+  #           - fetch-jdbc-driver:
+  #               source: VERTICA_JDBC_JAR
+  #               dest: vertica-jdbc-7.1.2-0.jar
+  #         driver: vertica
+
+  #     - test-build-scripts:
+  #         requires:
+  #           - be-deps
+
+  #     - build-uberjar-drivers:
+  #         name: build-uberjar-drivers-<< matrix.edition >>
+  #         requires:
+  #           - be-deps
+  #         <<: *Matrix
+
+  #     - build-uberjar-frontend:
+  #         name: build-uberjar-frontend-<< matrix.edition >>
+  #         requires:
+  #           - fe-deps
+  #         <<: *Matrix
+
+  #     - build-uberjar:
+  #         name: build-uberjar-<< matrix.edition >>
+  #         requires:
+  #           - build-uberjar-drivers-<< matrix.edition >>
+  #           - build-uberjar-frontend-<< matrix.edition >>
+  #         <<: *Matrix
+
+  #     - fe-deps:
+  #         requires:
+  #           - checkout
+  #     - shared-tests-cljs:
+  #         requires:
+  #           - fe-deps
+
+  #     - fe-tests-cypress:
+  #         matrix:
+  #           parameters:
+  #             edition: ["ee", "oss"]
+  #             folder: ["admin", "binning", "collections", "dashboard", "dashboard-filters", "dashboard-filters-sql", "moderation", "native", "native-filters", "onboarding", "permissions", "question", "sharing", "smoketest", "visualizations"]
+  #         name: e2e-tests-<< matrix.folder >>-<< matrix.edition >>
+  #         requires:
+  #           - build-uberjar-<< matrix.edition >>
+  #         cypress-group: "smoketest-<< matrix.edition >>"
+  #         source-folder: frontend/test/metabase/scenarios/smoketest
+
+  #     - fe-tests-cypress:
+  #         matrix:
+  #           parameters:
+  #             edition: ["ee", "oss"]
+  #         name: e2e-tests-admin-<< matrix.edition >>
+  #         requires:
+  #           - build-uberjar-<< matrix.edition >>
+  #         cypress-group: "admin-<< matrix.edition >>"
+  #         source-folder: frontend/test/metabase/scenarios/admin
+
+  #     - fe-tests-cypress:
+  #         matrix:
+  #           parameters:
+  #             edition: ["ee", "oss"]
+  #         name: e2e-tests-collections-<< matrix.edition >>
+  #         requires:
+  #           - build-uberjar-<< matrix.edition >>
+  #         cypress-group: "collections-<< matrix.edition >>"
+  #         source-folder: frontend/test/metabase/scenarios/collections
+
+  #     - fe-tests-cypress:
+  #         matrix:
+  #           parameters:
+  #             edition: ["ee", "oss"]
+  #         name: e2e-tests-dashboard-<< matrix.edition >>
+  #         requires:
+  #           - build-uberjar-<< matrix.edition >>
+  #         cypress-group: "dashboard-<< matrix.edition >>"
+  #         source-folder: frontend/test/metabase/scenarios/dashboard
+
+  #     - fe-tests-cypress:
+  #         matrix:
+  #           parameters:
+  #             edition: ["ee", "oss"]
+  #         name: e2e-tests-dashboard-filters-<< matrix.edition >>
+  #         requires:
+  #           - build-uberjar-<< matrix.edition >>
+  #         cypress-group: "dashboard-filters-<< matrix.edition >>"
+  #         source-folder: frontend/test/metabase/scenarios/dashboard-filters
+
+  #     - fe-tests-cypress:
+  #         matrix:
+  #           parameters:
+  #             edition: ["ee", "oss"]
+  #         name: e2e-tests-onboarding-<< matrix.edition >>
+  #         requires:
+  #           - build-uberjar-<< matrix.edition >>
+  #         cypress-group: "onboarding-<< matrix.edition >>"
+  #         source-folder: frontend/test/metabase/scenarios/onboarding
+
+  #     - fe-tests-cypress:
+  #         matrix:
+  #           parameters:
+  #             edition: ["ee", "oss"]
+  #         name: e2e-tests-native-<< matrix.edition >>
+  #         requires:
+  #           - build-uberjar-<< matrix.edition >>
+  #         cypress-group: "native-<< matrix.edition >>"
+  #         source-folder: frontend/test/metabase/scenarios/native
+
+  #     - fe-tests-cypress:
+  #         matrix:
+  #           parameters:
+  #             edition: ["ee", "oss"]
+  #         name: e2e-tests-native-filters-<< matrix.edition >>
+  #         requires:
+  #           - build-uberjar-<< matrix.edition >>
+  #         cypress-group: "native-filters-<< matrix.edition >>"
+  #         source-folder: frontend/test/metabase/scenarios/native-filters
+
+  #     - fe-tests-cypress:
+  #         matrix:
+  #           parameters:
+  #             edition: ["ee", "oss"]
+  #         name: e2e-tests-question-<< matrix.edition >>
+  #         requires:
+  #           - build-uberjar-<< matrix.edition >>
+  #         cypress-group: "question-<< matrix.edition >>"
+  #         source-folder: frontend/test/metabase/scenarios/question
+
+  #     - fe-tests-cypress:
+  #         matrix:
+  #           parameters:
+  #             edition: ["ee", "oss"]
+  #         name: e2e-tests-binning-<< matrix.edition >>
+  #         requires:
+  #           - build-uberjar-<< matrix.edition >>
+  #         cypress-group: "binning-<< matrix.edition >>"
+  #         source-folder: frontend/test/metabase/scenarios/binning
+
+  #     - fe-tests-cypress:
+  #         matrix:
+  #           parameters:
+  #             edition: ["ee", "oss"]
+  #         name: e2e-tests-sharing-<< matrix.edition >>
+  #         requires:
+  #           - build-uberjar-<< matrix.edition >>
+  #         cypress-group: "sharing-<< matrix.edition >>"
+  #         source-folder: frontend/test/metabase/scenarios/sharing
+
+  #     - fe-tests-cypress:
+  #         matrix:
+  #           parameters:
+  #             edition: ["ee", "oss"]
+  #         name: e2e-tests-visualizations-<< matrix.edition >>
+  #         requires:
+  #           - build-uberjar-<< matrix.edition >>
+  #         cypress-group: "visualizations-<< matrix.edition >>"
+  #         source-folder: frontend/test/metabase/scenarios/visualizations
+
+  #     - fe-tests-cypress:
+  #         name: e2e-tests-mongo-4-<< matrix.edition >>
+  #         requires:
+  #           - build-uberjar-<< matrix.edition >>
+  #         e: fe-mongo-4
+  #         cypress-group: "mongo"
+  #         source-folder: frontend/test/metabase-db/mongo
+  #         before-steps:
+  #           - wait-for-port:
+  #               port: 27017
+  #         <<: *Matrix
+
+  #     - fe-tests-cypress:
+  #         name: e2e-tests-postgres-12-<< matrix.edition >>
+  #         requires:
+  #           - build-uberjar-<< matrix.edition >>
+  #         e: fe-postgres-12
+  #         cypress-group: "postgres"
+  #         source-folder: frontend/test/metabase-db/postgres
+  #         before-steps:
+  #           - wait-for-port:
+  #               port: 5432
+  #         <<: *Matrix
+
+  #     - fe-tests-cypress:
+  #         name: e2e-tests-mysql-8-<< matrix.edition >>
+  #         requires:
+  #           - build-uberjar-<< matrix.edition >>
+  #         e: fe-mysql-8
+  #         cypress-group: "mysql"
+  #         source-folder: frontend/test/metabase-db/mysql
+  #         before-steps:
+  #           - wait-for-port:
+  #               port: 3306
+  #           - wait-for-port:
+  #               port: 5432
+  #           - wait-for-port:
+  #               port: 27017
+
+  #     - fe-tests-cypress:
+  #         matrix:
+  #           parameters:
+  #             edition: ["ee", "oss"]
+  #         name: percy-visual-tests-<< matrix.edition >>
+  #         requires:
+  #           - build-uberjar-<< matrix.edition >>
+  #         cypress-group: "percy-visual-<< matrix.edition >>"
+  #         test-files: "./frontend/test/metabase-visual/**/*.cy.spec.js"
+  build_and_push_image:
     jobs:
-      - checkout
-
-      - check-migrations:
-          requires:
-            - checkout
-
-      - be-deps:
-          requires:
-            - checkout
-
-      - clojure:
-          name: be-tests-<< matrix.edition >>
-          requires:
-            - be-deps
-          e: java-8
-          clojure-args: -X:dev:ci:test
-          skip-when-no-change: true
-          <<: *Matrix
-
-      - clojure:
-          name: be-tests-java-11-<< matrix.edition >>
-          requires:
-            - be-deps
-          e: java-11
-          clojure-args: -X:dev:ci:test
-          skip-when-no-change: true
-          <<: *Matrix
-
-      - clojure:
-          name: be-tests-java-16-<< matrix.edition >>
-          requires:
-            - be-deps
-          e: java-16
-          clojure-args: -X:dev:ci:test
-          skip-when-no-change: true
-          <<: *Matrix
-
-      - clojure:
-          name: be-linter-cloverage
-          requires:
-            - be-deps
-          # TODO FIXME
-          clojure-args: -X:dev:ee:ee-dev:test:cloverage
-          after-steps:
-            - run:
-                name: Upload code coverage to codecov.io
-                command: bash <(curl -s https://codecov.io/bash) -F back-end
-
-          skip-when-no-change: true
-
-      - test-driver:
-          name: be-tests-bigquery-ee
-          requires:
-            - be-tests-ee
-          driver: bigquery
-
-      - test-driver:
-          name: be-tests-bigquery-cloud-sdk-ee
-          requires:
-            - be-tests-ee
-          driver: bigquery-cloud-sdk
-
-      - test-driver:
-          name: be-tests-druid-ee
-          requires:
-            - be-tests-ee
-          e: druid
-          driver: druid
-
-      - test-driver:
-          name: be-tests-googleanalytics-ee
-          requires:
-            - be-tests-ee
-          driver: googleanalytics
-
-      - test-driver:
-          name: be-tests-mongo-ee
-          description: "(Mongo 4.0)"
-          requires:
-            - be-tests-ee
-          e: mongo-4-0
-          driver: mongo
-
-      - test-driver:
-          name: be-tests-mongo-latest-ee
-          description: "(Mongo latest)"
-          requires:
-            - be-tests-ee
-          e: mongo-latest
-          driver: mongo
-
-      - test-driver:
-          name: be-tests-mysql-ee
-          description: "(MySQL 5.7)"
-          requires:
-            - be-tests-ee
-          e:
-            name: mysql-5-7
-          driver: mysql
-
-      - test-driver:
-          name: be-tests-mysql-latest-ee
-          description: "(MySQL latest)"
-          requires:
-            - be-tests-ee
-          e:
-            name: mysql-latest
-          driver: mysql
-          # set up env vars for something named "MYSQL_SSL" to run MySQL SSL tests verifying connectivity with PEM cert
-          # they are deliberately given a different name to prevent them from affecting the regular test run against
-          # the configured MySQL instance, but there is one particular test (mysql-connect-with-ssl-and-pem-cert-test)
-          # that overrides the MB_MYSQL_TEST_* values with them
-          # the MYSQL_RDS_SSL_INSTANCE vars are secret and/or changeable, so they are defined in the CircleCI settings
-          extra-env: >-
-            MB_MYSQL_SSL_TEST_HOST=$MYSQL_RDS_SSL_INSTANCE_HOST
-            MB_MYSQL_SSL_TEST_SSL=true
-            MB_MYSQL_SSL_TEST_ADDITIONAL_OPTIONS='verifyServerCertificate=true'
-            MB_MYSQL_SSL_TEST_SSL_CERT="$(cat /home/circleci/metabase/metabase/resources/certificates/rds-combined-ca-bundle.pem)"
-            MB_MYSQL_SSL_TEST_USER=metabase
-            MB_MYSQL_SSL_TEST_PASSWORD=$MYSQL_RDS_SSL_INSTANCE_PASSWORD
-
-      - test-driver:
-          name: be-tests-mariadb-ee
-          description: "(MariaDB 10.2)"
-          requires:
-            - be-tests-ee
-          e:
-            name: mariadb-10-2
-          driver: mysql
-
-      - test-driver:
-          name: be-tests-mariadb-latest-ee
-          description: "(MariaDB latest)"
-          requires:
-            - be-tests-ee
-          e:
-            name: mariadb-latest
-          driver: mysql
-
-      - test-driver:
-          name: be-tests-oracle-ee
-          requires:
-            - be-tests-ee
-          before-steps:
-            - fetch-jdbc-driver:
-                source: ORACLE_JDBC_JAR
-                dest: ojdbc8.jar
-          driver: oracle
-          extra-env: >-
-            MB_ORACLE_SSL_TEST_SSL=true
-            MB_ORACLE_SSL_TEST_PORT=2484
-            JVM_OPTS="-Djavax.net.ssl.trustStore=/home/circleci/metabase/metabase/resources/certificates/cacerts_with_RDS_root_ca.jks
-                      -Djavax.net.ssl.trustStoreType=JKS
-                      -Djavax.net.ssl.trustStorePassword=metabase $JAVA_OPTS"
-
-      - test-driver:
-          name: be-tests-postgres-ee
-          description: "(9.6)"
-          requires:
-            - be-tests-ee
-          e: postgres-9-6
-          driver: postgres
-
-      - test-driver:
-          name: be-tests-postgres-latest-ee
-          description: "(Latest)"
-          requires:
-            - be-tests-ee
-          e: postgres-latest
-          driver: postgres
-
-      - test-driver:
-          name: be-tests-presto-ee
-          requires:
-            - be-tests-ee
-          e: presto-186
-          before-steps:
-            - wait-for-port:
-                port: 8080
-          driver: presto
-
-      - test-driver:
-          name: be-tests-presto-jdbc-ee
-          requires:
-            - be-tests-ee
-          e: presto-jdbc-env # specific env for running Presto JDBC tests (newer Presto version, SSL, etc.)
-          before-steps:
-            - wait-for-port:
-                port: 8443
-            - run:
-                name: Create temp cacerts file based on bundled JDK one
-                command: cp $JAVA_HOME/lib/security/cacerts /tmp/cacerts-with-presto-ssl.jks
-            - run:
-                name: Capture Presto server self signed CA
-                command: |
-                  while [[ ! -s /tmp/presto-ssl-ca.pem ]];
-                    do echo "Waiting to capture SSL CA" \
-                      && openssl s_client -connect localhost:8443 2>/dev/null </dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > /tmp/presto-ssl-ca.pem \
-                      && sleep 1; done
-            - run:
-                name: Convert Presto CA from PEM to DER
-                command: openssl x509 -outform der -in /tmp/presto-ssl-ca.pem -out /tmp/presto-ssl-ca.der
-            - run:
-                name: Import Presto CA into temp cacerts file
-                command: |
-                  sudo keytool -noprompt -import -alias presto -keystore /tmp/cacerts-with-presto-ssl.jks \
-                   -storepass changeit -file /tmp/presto-ssl-ca.der -trustcacerts
-          after-steps:
-            - run:
-                name: Capture max memory usage
-                command: cat /sys/fs/cgroup/memory/memory.max_usage_in_bytes
-                when: always
-          driver: presto-jdbc
-
-      - test-driver:
-          name: be-tests-redshift-ee
-          requires:
-            - be-tests-ee
-          driver: redshift
-          timeout: 15m
-
-      - test-driver:
-          name: be-tests-snowflake-ee
-          requires:
-            - be-tests-ee
-          driver: snowflake
-          timeout: 115m
-
-      - test-driver:
-          name: be-tests-sparksql-ee
-          requires:
-            - be-tests-ee
-          e: sparksql
-          before-steps:
-            - wait-for-port:
-                port: 10000
-          driver: sparksql
-
-      - test-driver:
-          name: be-tests-sqlite-ee
-          requires:
-            - be-tests-ee
-          driver: sqlite
-
-      - test-driver:
-          name: be-tests-sqlserver-ee
-          requires:
-            - be-tests-ee
-          e: sqlserver
-          driver: sqlserver
-
-      - test-driver:
-          name: be-tests-vertica-ee
-          requires:
-            - be-tests-ee
-          e: vertica
-          before-steps:
-            - fetch-jdbc-driver:
-                source: VERTICA_JDBC_JAR
-                dest: vertica-jdbc-7.1.2-0.jar
-          driver: vertica
-
-      - test-build-scripts:
-          requires:
-            - be-deps
-
-      - build-uberjar-drivers:
-          name: build-uberjar-drivers-<< matrix.edition >>
-          requires:
-            - be-deps
-          <<: *Matrix
-
-      - build-uberjar-frontend:
-          name: build-uberjar-frontend-<< matrix.edition >>
-          requires:
-            - fe-deps
-          <<: *Matrix
-
-      - build-uberjar:
-          name: build-uberjar-<< matrix.edition >>
-          requires:
-            - build-uberjar-drivers-<< matrix.edition >>
-            - build-uberjar-frontend-<< matrix.edition >>
-          <<: *Matrix
-
-      - fe-deps:
-          requires:
-            - checkout
-      - shared-tests-cljs:
-          requires:
-            - fe-deps
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-              folder: ["admin", "binning", "collections", "dashboard", "dashboard-filters", "dashboard-filters-sql", "moderation", "native", "native-filters", "onboarding", "permissions", "question", "sharing", "smoketest", "visualizations"]
-          name: e2e-tests-<< matrix.folder >>-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "smoketest-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/smoketest
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-admin-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "admin-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/admin
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-collections-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "collections-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/collections
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-dashboard-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "dashboard-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/dashboard
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-dashboard-filters-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "dashboard-filters-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/dashboard-filters
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-onboarding-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "onboarding-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/onboarding
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-native-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "native-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/native
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-native-filters-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "native-filters-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/native-filters
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-question-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "question-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/question
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-binning-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "binning-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/binning
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-sharing-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "sharing-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/sharing
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-visualizations-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "visualizations-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/visualizations
-
-      - fe-tests-cypress:
-          name: e2e-tests-mongo-4-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          e: fe-mongo-4
-          cypress-group: "mongo"
-          source-folder: frontend/test/metabase-db/mongo
-          before-steps:
-            - wait-for-port:
-                port: 27017
-          <<: *Matrix
-
-      - fe-tests-cypress:
-          name: e2e-tests-postgres-12-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          e: fe-postgres-12
-          cypress-group: "postgres"
-          source-folder: frontend/test/metabase-db/postgres
-          before-steps:
-            - wait-for-port:
-                port: 5432
-          <<: *Matrix
-
-      - fe-tests-cypress:
-          name: e2e-tests-mysql-8-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          e: fe-mysql-8
-          cypress-group: "mysql"
-          source-folder: frontend/test/metabase-db/mysql
-          before-steps:
-            - wait-for-port:
-                port: 3306
-            - wait-for-port:
-                port: 5432
-            - wait-for-port:
-                port: 27017
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: percy-visual-tests-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "percy-visual-<< matrix.edition >>"
-          test-files: "./frontend/test/metabase-visual/**/*.cy.spec.js"
+      - aws-ecr/build_and_push_image:
+          account_id: ${AWS_ACCOUNT_ID}
+          auth:
+            - aws-cli/setup
+          context: 
+            - org-global
+          repo: metabase-k8s
+          extra_build_args: '--compress'
+          platform: linux/amd64
+          push_image: true
+          region: ${AWS_DEFAULT_REGION}
+          skip_when_tags_exist: true
+          tag: latest,${CIRCLKE_SHA1}
+          # tag: latest,${CIRCLKE_SHA1},${CIRCLE_TAG}
+          # filters:
+          #   tags:
+          #     only: /^v0.4*/
