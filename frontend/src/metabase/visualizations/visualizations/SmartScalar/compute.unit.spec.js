@@ -3,6 +3,7 @@ import {
   computeTrend,
 } from "metabase/visualizations/visualizations/SmartScalar/compute";
 import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
+import { COMPARISON_TYPES } from "./utils";
 
 describe("SmartScalar > compute", () => {
   describe("computeChange", () => {
@@ -54,7 +55,6 @@ describe("SmartScalar > compute", () => {
       [
         changeArrowIconMap[changeArrowIconName],
         percentChange,
-        "vs.",
         [comparisonPeriodStr, prevValue].filter(e => e).join(": "),
       ]
         .filter(e => e)
@@ -68,103 +68,285 @@ describe("SmartScalar > compute", () => {
       NumberColumn({ name: "Sum" }),
     ];
     const series = ({ rows }) => [{ data: { rows, cols } }];
-    const settings = { "scalar.field": "Count" };
 
-    const testCases = [
-      {
-        description: "should correctly display percent increase",
-        rows: [
-          ["2019-10-01", 100],
-          ["2019-11-01", 300],
-        ],
-        dateUnit: "month",
-        expected: "300; Nov 2019; ↑ 200% vs. previous month: 100",
-      },
-      {
-        description: "should correctly display percent decrease",
-        rows: [
-          ["2019-10-01", 300],
-          ["2019-11-01", 100],
-        ],
-        dateUnit: "month",
-        expected: "100; Nov 2019; ↓ 66.67% vs. previous month: 300",
-      },
-      {
-        description: "should correctly display no change",
-        rows: [
-          ["2019-10-01", 100],
-          ["2019-11-01", 100],
-        ],
-        dateUnit: "month",
-        expected: "100; Nov 2019; No change vs. previous month",
-      },
-      {
-        description: "should correctly display infinite increase",
-        rows: [
-          ["2019-10-01", 0],
-          ["2019-11-01", 300],
-        ],
-        dateUnit: "month",
-        expected: "300; Nov 2019; ↑ ∞% vs. previous month: 0",
-      },
-      {
-        description:
-          "should correctly display missing data if previous value is null",
-        rows: [
-          ["2019-09-01", null],
-          ["2019-11-01", 300],
-        ],
-        dateUnit: "month",
-        expected: "300; Nov 2019; N/A vs. previous month: (empty)",
-      },
-      {
-        description: "should correctly display missing data for single row",
-        rows: [["2019-11-01", 300]],
-        dateUnit: "month",
-        expected: "300; Nov 2019; N/A vs. previous month: (empty)",
-      },
-      {
-        description:
-          "should correctly display percent decrease over missing row",
-        rows: [
-          ["2019-09-01", 300],
-          ["2019-11-01", 100],
-        ],
-        dateUnit: "month",
-        expected: "100; Nov 2019; ↓ 66.67% vs. Sep: 300",
-      },
-      {
-        description: "should correctly display percent decrease over null data",
-        rows: [
-          ["2019-09-01", 300],
-          ["2019-10-01", null],
-          ["2019-11-01", 100],
-        ],
-        dateUnit: "month",
-        expected: "100; Nov 2019; ↓ 66.67% vs. Sep: 300",
-      },
-      {
-        description:
-          "should correctly fallback to day unit if backend doesn’t return valid unit",
-        rows: [
-          ["2018-09-01", 100],
-          ["2019-11-01", 300],
-        ],
-        dateUnit: null,
-        expected: "300; Nov 1, 2019; ↑ 200% vs. Sep 1, 2018: 100",
-      },
-    ];
+    describe(`comparisonType: ${COMPARISON_TYPES.COMPARE_TO_PREVIOUS}`, () => {
+      const settings = {
+        "scalar.field": "Count",
+        "scalar.comparisons": { type: COMPARISON_TYPES.COMPARE_TO_PREVIOUS },
+      };
 
-    it.each(testCases)("$description", ({ rows, expected, dateUnit }) => {
-      const insights = [
-        { unit: dateUnit, col: "Count" },
-        { unit: dateUnit, col: "Sum" },
+      const testCases = [
+        {
+          description: "should correctly display percent increase",
+          rows: [
+            ["2019-10-01", 100],
+            ["2019-11-01", 300],
+          ],
+          dateUnit: "month",
+          expected: "300; Nov 2019; ↑ 200% vs. previous month: 100",
+        },
+        {
+          description: "should correctly display percent decrease",
+          rows: [
+            ["2019-10-01", 300],
+            ["2019-11-01", 100],
+          ],
+          dateUnit: "month",
+          expected: "100; Nov 2019; ↓ 66.67% vs. previous month: 300",
+        },
+        {
+          description: "should correctly display no change",
+          rows: [
+            ["2019-10-01", 100],
+            ["2019-11-01", 100],
+          ],
+          dateUnit: "month",
+          expected: "100; Nov 2019; No change vs. previous month",
+        },
+        {
+          description: "should correctly display infinite increase",
+          rows: [
+            ["2019-10-01", 0],
+            ["2019-11-01", 300],
+          ],
+          dateUnit: "month",
+          expected: "300; Nov 2019; ↑ ∞% vs. previous month: 0",
+        },
+        {
+          description:
+            "should correctly display missing data if previous value is null",
+          rows: [
+            ["2019-09-01", null],
+            ["2019-11-01", 300],
+          ],
+          dateUnit: "month",
+          expected: "300; Nov 2019; N/A (No data)",
+        },
+        {
+          description: "should correctly display missing data for single row",
+          rows: [["2019-11-01", 300]],
+          dateUnit: "month",
+          expected: "300; Nov 2019; N/A (No data)",
+        },
+        {
+          description:
+            "should correctly display percent decrease over missing row",
+          rows: [
+            ["2019-09-01", 300],
+            ["2019-11-01", 100],
+          ],
+          dateUnit: "month",
+          expected: "100; Nov 2019; ↓ 66.67% vs. Sep: 300",
+        },
+        {
+          description:
+            "should correctly display percent decrease over null data",
+          rows: [
+            ["2019-09-01", 300],
+            ["2019-10-01", null],
+            ["2019-11-01", 100],
+          ],
+          dateUnit: "month",
+          expected: "100; Nov 2019; ↓ 66.67% vs. Sep: 300",
+        },
+        {
+          description:
+            "should correctly fallback to day unit if backend doesn’t return valid unit",
+          rows: [
+            ["2018-09-01", 100],
+            ["2019-11-01", 300],
+          ],
+          dateUnit: null,
+          expected: "300; Nov 1, 2019; ↑ 200% vs. Sep 1, 2018: 100",
+        },
       ];
-      const trend = computeTrend(series({ rows }), insights, settings);
-      expect(printTrend(trend)).toBe(expected);
+
+      it.each(testCases)("$description", ({ rows, expected, dateUnit }) => {
+        const insights = [
+          { unit: dateUnit, col: "Count" },
+          { unit: dateUnit, col: "Sum" },
+        ];
+        const trend = computeTrend(series({ rows }), insights, settings);
+        expect(printTrend(trend)).toBe(expected);
+      });
+    });
+
+    describe(`comparisonType: ${COMPARISON_TYPES.PREVIOUS_PERIOD}`, () => {
+      const settings = {
+        "scalar.field": "Count",
+        "scalar.comparisons": { type: COMPARISON_TYPES.PREVIOUS_PERIOD },
+      };
+
+      const testCases = [
+        {
+          description: "should correctly display previous year comparison",
+          rows: [
+            ["2018-01-01", 100],
+            ["2019-01-01", 300],
+          ],
+          dateUnit: "year",
+          expected: "300; 2019; ↑ 200% vs. previous year: 100",
+        },
+        {
+          description: "should correctly display previous month comparison",
+          rows: [
+            ["2018-12-01", 100],
+            ["2019-01-01", 300],
+          ],
+          dateUnit: "month",
+          expected: "300; Jan 2019; ↑ 200% vs. previous month: 100",
+        },
+        {
+          description: "should correctly display previous week comparison",
+          rows: [
+            ["2019-01-01", 100],
+            ["2019-01-08", 300],
+          ],
+          dateUnit: "week",
+          expected: "300; Jan 8–14, 2019; ↑ 200% vs. previous week: 100",
+        },
+        {
+          description: "should correctly display previous day comparison",
+          rows: [
+            ["2019-01-01", 100],
+            ["2019-01-02", 300],
+          ],
+          dateUnit: "day",
+          expected: "300; Jan 2, 2019; ↑ 200% vs. previous day: 100",
+        },
+        {
+          description: "should correctly display previous hour comparison",
+          rows: [
+            ["2019-01-02T09:00", 100],
+            ["2019-01-02T10:00", 300],
+          ],
+          dateUnit: "hour",
+          expected:
+            "300; Jan 2, 2019, 10:00–59 AM; ↑ 200% vs. previous hour: 100",
+        },
+        {
+          description: "should correctly display previous minute comparison",
+          rows: [
+            ["2019-01-02T09:59", 100],
+            ["2019-01-02T10:00", 300],
+          ],
+          dateUnit: "minute",
+          expected:
+            "300; Jan 2, 2019, 10:00 AM; ↑ 200% vs. previous minute: 100",
+        },
+        {
+          description:
+            "should correctly display N/A if missing previous period",
+          rows: [
+            ["2017-01-01", 100],
+            ["2019-01-01", 300],
+          ],
+          dateUnit: "year",
+          expected: "300; 2019; N/A vs. previous year: (No data)",
+        },
+      ];
+
+      it.each(testCases)("$description", ({ rows, expected, dateUnit }) => {
+        const insights = [
+          { unit: dateUnit, col: "Count" },
+          { unit: dateUnit, col: "Sum" },
+        ];
+        const trend = computeTrend(series({ rows }), insights, settings);
+        expect(printTrend(trend)).toBe(expected);
+      });
+    });
+
+    describe(`comparisonType: ${COMPARISON_TYPES.PERIODS_AGO}`, () => {
+      const settings = {
+        "scalar.field": "Count",
+        "scalar.comparisons": { type: COMPARISON_TYPES.PERIODS_AGO },
+      };
+
+      const testCases = [
+        {
+          description: "should correctly display previous year comparison",
+          rows: [
+            ["2018-01-01", 100],
+            ["2019-01-01", 300],
+          ],
+          dateUnit: "year",
+          expected: "300; 2019; ↑ 200% vs. previous year: 100",
+        },
+        {
+          description: "should correctly display previous month comparison",
+          rows: [
+            ["2018-12-01", 100],
+            ["2019-01-01", 300],
+          ],
+          dateUnit: "month",
+          expected: "300; Jan 2019; ↑ 200% vs. previous month: 100",
+        },
+        {
+          description: "should correctly display previous week comparison",
+          rows: [
+            ["2019-01-01", 100],
+            ["2019-01-08", 300],
+          ],
+          dateUnit: "week",
+          expected: "300; Jan 8–14, 2019; ↑ 200% vs. previous week: 100",
+        },
+        {
+          description: "should correctly display previous day comparison",
+          rows: [
+            ["2019-01-01", 100],
+            ["2019-01-02", 300],
+          ],
+          dateUnit: "day",
+          expected: "300; Jan 2, 2019; ↑ 200% vs. previous day: 100",
+        },
+        {
+          description: "should correctly display previous hour comparison",
+          rows: [
+            ["2019-01-02T09:00", 100],
+            ["2019-01-02T10:00", 300],
+          ],
+          dateUnit: "hour",
+          expected:
+            "300; Jan 2, 2019, 10:00–59 AM; ↑ 200% vs. previous hour: 100",
+        },
+        {
+          description: "should correctly display previous minute comparison",
+          rows: [
+            ["2019-01-02T09:59", 100],
+            ["2019-01-02T10:00", 300],
+          ],
+          dateUnit: "minute",
+          expected:
+            "300; Jan 2, 2019, 10:00 AM; ↑ 200% vs. previous minute: 100",
+        },
+        {
+          description:
+            "should correctly display N/A if missing previous period",
+          rows: [
+            ["2017-01-01", 100],
+            ["2019-01-01", 300],
+          ],
+          dateUnit: "year",
+          expected: "300; 2019; N/A vs. previous year: (No data)",
+        },
+      ];
+
+      it.each(testCases)("$description", ({ rows, expected, dateUnit }) => {
+        const insights = [
+          { unit: dateUnit, col: "Count" },
+          { unit: dateUnit, col: "Sum" },
+        ];
+        const trend = computeTrend(series({ rows }), insights, settings);
+        expect(printTrend(trend)).toBe(expected);
+      });
     });
 
     describe("should remove higher-order time periods for previous rows date", () => {
+      const settings = {
+        "scalar.field": "Count",
+        "scalar.comparisons": { type: COMPARISON_TYPES.COMPARE_TO_PREVIOUS },
+      };
+
       const testCases = [
         {
           description:
