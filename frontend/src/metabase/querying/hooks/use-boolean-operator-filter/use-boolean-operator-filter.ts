@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
-import * as Lib from "metabase-lib";
 import {
   getAvailableOperatorOptions,
   getDefaultOperator,
-} from "../use-filter-operator";
+} from "metabase/querying/utils/filters";
+import * as Lib from "metabase-lib";
 import { OPERATOR_OPTIONS } from "./constants";
 import { getFilterClause } from "./utils";
 

@@ -1,5 +1,5 @@
 import type * as Lib from "metabase-lib";
-import type { FilterOperatorOption } from "../use-filter-operator";
+import type { FilterOperatorOption } from "metabase/querying/utils/filters";
 
 export type OptionType = "true" | "false" | "is-null" | "not-null";
 
