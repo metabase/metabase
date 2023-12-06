@@ -33,7 +33,7 @@ import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 import MoveCollectionModal from "metabase/collections/containers/MoveCollectionModal";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
-import UserCollectionList from "metabase/containers/UserCollectionList";
+import { UserCollectionList } from "metabase/containers/UserCollectionList";
 
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
 import { Setup } from "metabase/setup/components/Setup";

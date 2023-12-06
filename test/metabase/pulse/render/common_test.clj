@@ -64,7 +64,11 @@
                    ::mb.viz/number-separators ",."})))
       (is (= "10%" (format 0.1 {::mb.viz/number-style "percent"})))
       (is (= "1%" (format 0.01 {::mb.viz/number-style "percent"})))
-      (is (= "0.00001%" (format 0.0000001 {::mb.viz/number-style "percent"}))))
+      (is (= "0%" (format 0.000000 {::mb.viz/number-style "percent"})))
+      ;; This is not zero, so should show decimal places
+      (is (= "0.00%" (format 0.0000001 {::mb.viz/number-style "percent"})))
+      (is (= "0.00001%" (format 0.0000001 {::mb.viz/number-style "percent"
+                                           ::mb.viz/decimals          5}))))
     (testing "Match UI 'natural formatting' behavior for decimal values with no column formatting present"
       ;; basically, for numbers greater than 1, round to 2 decimal places,
       ;; and do not display decimals if they end up as zeroes

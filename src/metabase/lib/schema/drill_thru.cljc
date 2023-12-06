@@ -39,18 +39,30 @@
    [:map
     [:column [:ref ::lib.schema.metadata/column]]]])
 
-(mr/def ::drill-thru.object-details
-  [:merge
-   ::drill-thru.common.with-column
-   [:map
-    [:object-id :any]
-    [:many-pks? :boolean]]])
+;;; there are three "object details" drills: `:pk`, `:fk-details`, and `:zoom`. Originally, all three had `:column`
+;;; and `:object-id` (value), but since we want `:pk` to handle multiple PKs (thus multiple columns and values) we
+;;; changed it to instead have a list of `:dimensions` (similar in shape to `::context.row`, but without requiring
+;;; `:column-ref`). I didn't change the other ones so as to avoid unintentionally breaking something in the middle of
+;;; the drills epic. We should revisit these shapes in the future. See
+;;; https://metaboat.slack.com/archives/C04CYTEL9N2/p1701803047600169 for more information. -- Cam
+
+(mr/def ::drill-thru.object-details.dimension
+  [:map
+   [:column [:ref ::lib.schema.metadata/column]]
+   ;; we should ignore NULL values for PKs and FKs -- do not add filters on them.
+   [:value  [:and
+             :some
+             [:fn {:error/message "Non-NULL value"} #(not= % :null)]]]])
+
+(mr/def ::drill-thru.object-details.dimensions
+  [:sequential {:min 1} [:ref ::drill-thru.object-details.dimension]])
 
 (mr/def ::drill-thru.pk
   [:merge
-   ::drill-thru.object-details
+   ::drill-thru.common
    [:map
-    [:type [:= :drill-thru/pk]]]])
+    [:type       [:= :drill-thru/pk]]
+    [:dimensions [:ref ::drill-thru.object-details.dimensions]]]])
 
 (mr/def ::drill-thru.fk-details.fk-column
   [:merge
@@ -60,16 +72,22 @@
 
 (mr/def ::drill-thru.fk-details
   [:merge
-   ::drill-thru.object-details
+   ::drill-thru.common.with-column
    [:map
-    [:type   [:= :drill-thru/fk-details]]
-    [:column [:ref ::drill-thru.fk-details.fk-column]]]])
+    [:type      [:= :drill-thru/fk-details]]
+    [:column    [:ref ::drill-thru.fk-details.fk-column]]
+    [:object-id :any]
+    [:many-pks? :boolean]]])
 
 (mr/def ::drill-thru.zoom
   [:merge
-   ::drill-thru.object-details
+   ::drill-thru.common.with-column
    [:map
-    [:type [:= :drill-thru/zoom]]]])
+    [:type      [:= :drill-thru/zoom]]
+    [:object-id :any]
+    ;; TODO -- I don't think we really need this because there is no situation in which this isn't `false`, if it were
+    ;; true we'd return a `::drill-thru.pk` drill instead. See if we can remove this key without breaking the FE.
+    [:many-pks? [:= false]]]])
 
 (mr/def ::drill-thru.quick-filter.operator
   [:map
@@ -144,6 +162,8 @@
     [:query        [:ref ::lib.schema/query]]
     [:stage-number number?]]])
 
+;;; TODO FIXME -- it seems like underlying records drills also include `:dimensions` and `:column-ref`...
+;;; see [[metabase.lib.drill-thru.underlying-records/underlying-records-drill]]... this should be part of the schema
 (mr/def ::drill-thru.underlying-records
   [:merge
    ::drill-thru.common
@@ -279,7 +299,9 @@
   [:map
    [:column     [:ref ::lib.schema.metadata/column]]
    [:column-ref [:ref ::lib.schema.ref/ref]]
-   [:value      :any]])
+   [:value      [:fn
+                 {:error/message ":null should not be used in context row values, only for top-level context value"}
+                 #(not= % :null)]]])
 
 ;;; Sequence of maps with keys `:column`, `:column-ref`, and `:value`
 ;;;
@@ -289,8 +311,8 @@
 
 (mr/def ::context
   [:map
-   [:column     [:ref ::lib.schema.metadata/column]]
-   [:column-ref [:ref ::lib.schema.ref/ref]]
+   [:column     [:maybe [:ref ::lib.schema.metadata/column]]]
+   [:column-ref [:maybe [:ref ::lib.schema.ref/ref]]]
    [:value      [:maybe :any]]
    [:row        {:optional true} [:ref ::context.row]]
    [:dimensions {:optional true} [:maybe [:ref ::context.row]]]])
