@@ -17,9 +17,12 @@
    [metabase.sync :as sync]
    [metabase.sync.concurrent :as sync.concurrent]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (defn- do-with-all-user-data-perms
   "Implementation for [[with-all-users-data-perms]]"
@@ -702,32 +705,33 @@
   (perms/revoke-application-permissions! (perms-group/all-users) :setting))
 
 (deftest upload-csv-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
-    (testing "Uploads should be blocked without data access"
-      (mt/with-empty-db
-        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+  (dotimes [_ 10]
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
+      (testing "Uploads should be blocked without data access"
+        (mt/with-empty-db
+          (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
           ;; Create not_public schema
-          (jdbc/execute! conn-spec "CREATE SCHEMA \"not_public\"; CREATE TABLE \"not_public\".\"table_name\" (id INTEGER)"))
-        (sync/sync-database! (mt/db))
-        (let [db-id    (u/the-id (mt/db))
-              table-id (t2/select-one-pk :model/Table :db_id db-id)]
-          (mt/with-temporary-setting-values [uploads-enabled      true
-                                             uploads-database-id  db-id
-                                             uploads-schema-name  "not_public"
-                                             uploads-table-prefix "uploaded_magic_"]
-            (doseq [[schema-perms can-upload?] {:all            true
-                                                :none           false
-                                                {table-id :all} false}]
-              (with-all-users-data-perms {db-id {:data {:native :none, :schemas {"public"     :all
-                                                                                 "not_public" schema-perms}}}}
-                (if can-upload?
-                  (is (some? (api.card-test/upload-example-csv! nil false)))
-                  (is (thrown-with-msg?
-                       clojure.lang.ExceptionInfo
-                       #"You don't have permissions to do that\."
-                       (api.card-test/upload-example-csv! nil false)))))
-              (with-all-users-data-perms {db-id {:data {:native :write, :schemas ["not_public"]}}}
-                (is (some? (api.card-test/upload-example-csv! nil false)))))))))))
+            (jdbc/execute! conn-spec "CREATE SCHEMA \"not_public\"; CREATE TABLE \"not_public\".\"table_name\" (id INTEGER)"))
+          (sync/sync-database! (mt/db))
+          (let [db-id    (u/the-id (mt/db))
+                table-id (t2/select-one-pk :model/Table :db_id db-id)]
+            (mt/with-temporary-setting-values [uploads-enabled      true
+                                               uploads-database-id  db-id
+                                               uploads-schema-name  "not_public"
+                                               uploads-table-prefix "uploaded_magic_"]
+              (doseq [[schema-perms can-upload?] {:all            true
+                                                  :none           false
+                                                  {table-id :all} false}]
+                (with-all-users-data-perms {db-id {:data {:native :none, :schemas {"public"     :all
+                                                                                   "not_public" schema-perms}}}}
+                  (if can-upload?
+                    (is (some? (api.card-test/upload-example-csv! nil false)))
+                    (is (thrown-with-msg?
+                          clojure.lang.ExceptionInfo
+                          #"You don't have permissions to do that\."
+                          (api.card-test/upload-example-csv! nil false)))))
+                (with-all-users-data-perms {db-id {:data {:native :write, :schemas ["not_public"]}}}
+                  (is (some? (api.card-test/upload-example-csv! nil false))))))))))))
 
 (deftest get-database-can-upload-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
