@@ -4,13 +4,13 @@ import _ from "underscore";
 
 import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
 import {
-  COLOR_SETTING_ID,
+  SERIES_COLORS_SETTING_KEY,
   getSeriesDefaultLinearInterpolate,
   getSeriesDefaultLineMarker,
   getSeriesDefaultLineMissing,
   getSeriesColors,
   getSeriesDefaultDisplay,
-  SETTING_ID,
+  SERIES_SETTING_KEY,
   getSeriesDefaultShowSeriesValues,
 } from "metabase/visualizations/shared/settings/series";
 
@@ -69,7 +69,10 @@ export function seriesSetting({
     color: {
       getDefault: (single, settings, { settings: vizSettings }) =>
         // get the color for series key, computed in the setting
-        getIn(vizSettings, [COLOR_SETTING_ID, keyForSingleSeries(single)]),
+        getIn(vizSettings, [
+          SERIES_COLORS_SETTING_KEY,
+          keyForSingleSeries(single),
+        ]),
     },
     "line.interpolate": {
       title: t`Line style`,
@@ -155,7 +158,7 @@ export function seriesSetting({
   }
 
   return {
-    ...nestedSettings(SETTING_ID, {
+    ...nestedSettings(SERIES_SETTING_KEY, {
       getHidden: ([{ card }], settings, { isDashboard }) =>
         !isDashboard || card?.display === "waterfall",
       getSection: (series, settings, { isDashboard }) =>
@@ -165,7 +168,7 @@ export function seriesSetting({
       getObjectKey: keyForSingleSeries,
       getSettingDefinitionsForObject: getSettingDefinitionsForSingleSeries,
       component: ChartNestedSettingSeries,
-      readDependencies: [COLOR_SETTING_ID, ...readDependencies],
+      readDependencies: [SERIES_COLORS_SETTING_KEY, ...readDependencies],
       noPadding: true,
       getExtraProps: series => ({
         seriesCardNames: series.reduce((memo, singleSeries) => {
@@ -178,7 +181,7 @@ export function seriesSetting({
       ...def,
     }),
     // colors must be computed as a whole rather than individually
-    [COLOR_SETTING_ID]: {
+    [SERIES_COLORS_SETTING_KEY]: {
       getValue(series, settings) {
         const keys = series.map(single => keyForSingleSeries(single));
         return getSeriesColors(keys, settings);
