@@ -219,6 +219,7 @@ export const DashboardApi = {
 
 export const CollectionsApi = {
   list: GET("/api/collection"),
+  listItems: GET("/api/collection/:id/items"),
   create: POST("/api/collection"),
   get: GET("/api/collection/:id"),
   // Temporary route for getting things not in a collection
