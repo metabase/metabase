@@ -1,0 +1,385 @@
+[
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 137,
+      "result_metadata": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "unit": "year",
+          "name": "set_release_date",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            1279,
+            { "base-type": "type/Date", "temporal-unit": "year" }
+          ],
+          "effective_type": "type/DateTimeWithLocalTZ",
+          "id": 1279,
+          "visibility_type": "normal",
+          "display_name": "Set Release Date",
+          "fingerprint": {
+            "global": { "distinct-count": 127, "nil%": 0 },
+            "type": {
+              "type/DateTime": {
+                "earliest": "1999-01-09",
+                "latest": "2023-09-22"
+              }
+            }
+          },
+          "base_type": "type/DateTimeWithLocalTZ"
+        },
+        {
+          "display_name": "Average of Hp",
+          "settings": null,
+          "field_ref": ["aggregation", 0],
+          "name": "avg",
+          "base_type": "type/Decimal",
+          "effective_type": "type/Decimal",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": { "distinct-count": 25, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 59.60919540229885,
+                "q1": 70.54863468769393,
+                "q3": 116.13171104503542,
+                "max": 143.0500582072177,
+                "sd": 26.946076622655706,
+                "avg": 94.18076866067233
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Average of Set Total",
+          "settings": null,
+          "field_ref": ["aggregation", 1],
+          "name": "avg_2",
+          "base_type": "type/Decimal",
+          "effective_type": "type/Decimal",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": { "distinct-count": 25, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 64.81132075471699,
+                "q1": 108.5369850187266,
+                "q3": 176.82033420056763,
+                "max": 230.9549795361528,
+                "sd": 44.0957183663446,
+                "avg": 136.56036281841952
+              }
+            }
+          }
+        }
+      ],
+      "include_xls": false,
+      "database_id": 2,
+      "enable_embedding": false,
+      "collection_id": 6,
+      "query_type": "query",
+      "name": "Bar Multi Trend Stacked - Pokemon Cards Avg Hp, Set Total",
+      "creator_id": 1,
+      "updated_at": "2023-11-22T18:11:08.240664Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "aggregation": [
+            ["avg", ["field", 1276, { "base-type": "type/BigInteger" }]],
+            ["avg", ["field", 1286, { "base-type": "type/BigInteger" }]]
+          ],
+          "breakout": [
+            [
+              "field",
+              1279,
+              { "base-type": "type/Date", "temporal-unit": "year" }
+            ]
+          ],
+          "source-table": "card__71"
+        }
+      },
+      "id": 80,
+      "parameter_mappings": [],
+      "include_csv": false,
+      "display": "bar",
+      "entity_id": "NWMIyzjNGrefJNtrilG7k",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.show_trendline": true,
+        "table.cell_column": "critics",
+        "table.pivot_column": "score",
+        "series_settings": {
+          "avg_2": { "color": "#98D9D9" },
+          "avg": { "color": "#7172AD" }
+        },
+        "graph.dimensions": ["set_release_date"],
+        "stackable.stack_type": "stacked",
+        "graph.metrics": ["avg", "avg_2"]
+      },
+      "metabase_version": "v1.47.1-SNAPSHOT (b37c32d)",
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2023-11-22T18:11:08.240664Z",
+      "public_uuid": null
+    },
+    "data": {
+      "results_timezone": "America/Los_Angeles",
+      "download_perms": "full",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "unit": "year",
+            "name": "set_release_date",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              1279,
+              { "base-type": "type/Date", "temporal-unit": "year" }
+            ],
+            "effective_type": "type/DateTimeWithLocalTZ",
+            "id": 1279,
+            "visibility_type": "normal",
+            "display_name": "Set Release Date",
+            "fingerprint": {
+              "global": { "distinct-count": 127, "nil%": 0 },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "1999-01-09",
+                  "latest": "2023-09-22"
+                }
+              }
+            },
+            "base_type": "type/DateTimeWithLocalTZ"
+          },
+          {
+            "display_name": "Average of Hp",
+            "settings": null,
+            "field_ref": ["aggregation", 0],
+            "name": "avg",
+            "base_type": "type/Decimal",
+            "effective_type": "type/Decimal",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": { "distinct-count": 25, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 59.60919540229885,
+                  "q1": 70.54863468769393,
+                  "q3": 116.13171104503542,
+                  "max": 143.0500582072177,
+                  "sd": 26.946076622655706,
+                  "avg": 94.18076866067233
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Average of Set Total",
+            "settings": null,
+            "field_ref": ["aggregation", 1],
+            "name": "avg_2",
+            "base_type": "type/Decimal",
+            "effective_type": "type/Decimal",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": { "distinct-count": 25, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 64.81132075471699,
+                  "q1": 108.5369850187266,
+                  "q3": 176.82033420056763,
+                  "max": 230.9549795361528,
+                  "sd": 44.0957183663446,
+                  "avg": 136.56036281841952
+                }
+              }
+            }
+          }
+        ]
+      },
+      "rows": [
+        ["1999-01-01T00:00:00-08:00", 62.333333333333336, 75.27758007117438],
+        ["2000-01-01T00:00:00-08:00", 59.60919540229885, 120.67687074829932],
+        ["2001-01-01T00:00:00-08:00", 61.266666666666666, 64.81132075471699],
+        ["2002-01-01T00:00:00-08:00", 65.46783625730994, 131.42317380352645],
+        ["2003-01-01T00:00:00-08:00", 68.75605815831987, 139.87237026647966],
+        ["2004-01-01T00:00:00-08:00", 70.75566750629723, 99.52267818574514],
+        ["2005-01-01T00:00:00-08:00", 69.92753623188406, 116.9511201629328],
+        ["2006-01-01T00:00:00-08:00", 70.80103359173127, 90.792656587473],
+        ["2007-01-01T00:00:00-08:00", 77.10317460317461, 111.43493150684931],
+        ["2008-01-01T00:00:00-08:00", 78.2247191011236, 110.5],
+        ["2009-01-01T00:00:00-08:00", 81.01593625498008, 124.29818181818182],
+        ["2010-01-01T00:00:00-08:00", 81.81102362204724, 100.47152619589977],
+        ["2011-01-01T00:00:00-08:00", 87.14893617021276, 102.64794007490637],
+        ["2012-01-01T00:00:00-08:00", 93.47916666666667, 119.90151515151516],
+        ["2013-01-01T00:00:00-08:00", 104.49704142011835, 148.32894736842104],
+        ["2014-01-01T00:00:00-08:00", 98.78281622911695, 122.39525691699605],
+        ["2015-01-01T00:00:00-08:00", 106.16977225672878, 132.76360544217687],
+        ["2016-01-01T00:00:00-08:00", 106.32860040567951, 118.3931484502447],
+        ["2017-01-01T00:00:00-08:00", 125.7327080890973, 178.989],
+        ["2018-01-01T00:00:00-08:00", 112.94642857142857, 180.98819362455725],
+        ["2019-01-01T00:00:00-08:00", 135.13899920571882, 230.9549795361528],
+        ["2020-01-01T00:00:00-08:00", 130.96, 195.15536105032822],
+        ["2021-01-01T00:00:00-08:00", 137.5249500998004, 204.38359569179784],
+        ["2022-01-01T00:00:00-08:00", 143.0500582072177, 176.09744560075686],
+        ["2023-01-01T00:00:00-08:00", 125.68755846585594, 216.97767145135566]
+      ],
+      "cols": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 137,
+          "coercion_strategy": null,
+          "unit": "year",
+          "name": "set_release_date",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            1279,
+            { "base-type": "type/Date", "temporal-unit": "year" }
+          ],
+          "effective_type": "type/DateTimeWithLocalTZ",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1279,
+          "position": 18,
+          "visibility_type": "normal",
+          "display_name": "Set Release Date",
+          "fingerprint": {
+            "global": { "distinct-count": 127, "nil%": 0 },
+            "type": {
+              "type/DateTime": {
+                "earliest": "1999-01-09",
+                "latest": "2023-09-22"
+              }
+            }
+          },
+          "base_type": "type/DateTimeWithLocalTZ"
+        },
+        {
+          "settings": null,
+          "base_type": "type/Decimal",
+          "name": "avg",
+          "display_name": "Average of Hp",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/Decimal"
+        },
+        {
+          "settings": null,
+          "base_type": "type/Decimal",
+          "name": "avg_2",
+          "display_name": "Average of Set Total",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 1],
+          "aggregation_index": 1,
+          "effective_type": "type/Decimal"
+        }
+      ],
+      "viz-settings": {
+        "graph.show_trendline": true,
+        "metabase.shared.models.visualization-settings/column-settings": {
+          "{:metabase.shared.models.visualization-settings/field-id 1291}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1283}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1296}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1292}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1272}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1302}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1306}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1295}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1284}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1297}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1274}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1281}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1303}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1282}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1293}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1279}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1278}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1298}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1304}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1300}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1275}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1299}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1290}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1305}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1277}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1276}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1307}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1286}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1280}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1285}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1289}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1288}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1287}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1273}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1294}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1301}": {}
+        },
+        "table.cell_column": "critics",
+        "graph.metrics": ["avg", "avg_2"],
+        "table.pivot_column": "score",
+        "metabase.shared.models.visualization-settings/global-column-settings": {},
+        "series_settings": {
+          "avg_2": { "color": "#98D9D9" },
+          "avg": { "color": "#7172AD" }
+        },
+        "graph.dimensions": ["set_release_date"],
+        "stackable.stack_type": "stacked"
+      },
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('year', \"source\".\"set_release_date\") AS \"set_release_date\", AVG(\"source\".\"hp\") AS \"avg\", AVG(\"source\".\"set_total\") AS \"avg_2\" FROM (SELECT \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"id\" AS \"id\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"image_small\" AS \"image_small\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"number\" AS \"number\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"name\" AS \"name\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"supertype\" AS \"supertype\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"subtype1\" AS \"subtype1\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"subtype2\" AS \"subtype2\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"type1\" AS \"type1\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"type2\" AS \"type2\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"hp\" AS \"hp\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"evolves_from\" AS \"evolves_from\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"evolves_to\" AS \"evolves_to\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"retreat_cost\" AS \"retreat_cost\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_id\" AS \"set_id\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_name\" AS \"set_name\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_series\" AS \"set_series\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_printed_total\" AS \"set_printed_total\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_total\" AS \"set_total\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_release_date\" AS \"set_release_date\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_unlimited_legal\" AS \"set_unlimited_legal\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_standard_legal\" AS \"set_standard_legal\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_expanded_legal\" AS \"set_expanded_legal\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_ptcgo_code\" AS \"set_ptcgo_code\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_symbol_image\" AS \"set_symbol_image\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_logo_image\" AS \"set_logo_image\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"artist\" AS \"artist\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"rarity\" AS \"rarity\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"image_large\" AS \"image_large\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"flavor_text\" AS \"flavor_text\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"pokedex_number\" AS \"pokedex_number\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"unlimited_legal\" AS \"unlimited_legal\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"standard_legal\" AS \"standard_legal\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"expanded_legal\" AS \"expanded_legal\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"regulation_mark\" AS \"regulation_mark\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"tcgplayer_url\" AS \"tcgplayer_url\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"average_price\" AS \"average_price\" FROM \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\") AS \"source\" GROUP BY DATE_TRUNC('year', \"source\".\"set_release_date\") ORDER BY DATE_TRUNC('year', \"source\".\"set_release_date\") ASC",
+        "params": null
+      },
+      "is_sandboxed": false,
+      "dataset": true,
+      "insights": [
+        {
+          "previous-value": 143.0500582072177,
+          "unit": "year",
+          "offset": -51.07273335892687,
+          "last-change": -0.12137359438338004,
+          "col": "avg",
+          "slope": 0.00969943939501882,
+          "last-value": 125.68755846585594,
+          "best-fit": [
+            "*",
+            19.180373228181978,
+            ["exp", ["*", 0.00010367074913897064, "x"]]
+          ]
+        },
+        {
+          "previous-value": 176.09744560075686,
+          "unit": "year",
+          "offset": -61.407762346394605,
+          "last-change": 0.2321454789485209,
+          "col": "avg_2",
+          "slope": 0.013219508001414812,
+          "last-value": 216.97767145135566,
+          "best-fit": [
+            "*",
+            30.932536991716802,
+            ["exp", ["*", 0.0000958670175274292, "x"]]
+          ]
+        }
+      ]
+    }
+  }
+]
