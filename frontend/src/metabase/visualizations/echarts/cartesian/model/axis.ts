@@ -1,8 +1,11 @@
 import d3 from "d3";
 import _ from "underscore";
 import type {
+  AxisExtent,
+  AxisExtents,
   DataKey,
   Extent,
+  GroupedDataset,
   SeriesExtents,
   SeriesModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
@@ -249,3 +252,98 @@ export const getYAxisSplit = (
     return [[...left, ...auto], right];
   }
 };
+
+const calculateStackedExtent = (
+  seriesKeys: DataKey[],
+  data: GroupedDataset,
+): AxisExtent => {
+  if (seriesKeys.length === 0) {
+    return null;
+  }
+
+  let min = 0;
+  let max = 0;
+
+  data.forEach(entry => {
+    let positiveStack = 0;
+    let negativeStack = 0;
+    seriesKeys.forEach(key => {
+      const value = entry[key];
+      if (typeof value === "number") {
+        if (value >= 0) {
+          positiveStack += value;
+        } else {
+          negativeStack += value;
+        }
+      }
+    });
+    min = Math.min(min, negativeStack);
+    max = Math.max(max, positiveStack);
+  });
+
+  return [min, max];
+};
+
+function calculateNonStackedExtent(
+  seriesKeys: DataKey[],
+  data: GroupedDataset,
+): AxisExtent {
+  if (seriesKeys.length === 0) {
+    return null;
+  }
+
+  let min = Infinity;
+  let max = -Infinity;
+
+  data.forEach(entry => {
+    seriesKeys.forEach(key => {
+      const value = entry[key];
+      if (typeof value === "number") {
+        min = Math.min(min, value);
+        max = Math.max(max, value);
+      }
+    });
+  });
+
+  if (min === Infinity || max === -Infinity) {
+    return null;
+  }
+
+  return [min, max];
+}
+
+const NORMALIZED_RANGE: Extent = [0, 1];
+
+export function getYAxesExtents(
+  axisSplit: [DataKey[], DataKey[]],
+  data: GroupedDataset,
+  settings: ComputedVisualizationSettings,
+): AxisExtents {
+  if (data.length === 0) {
+    return [null, null];
+  }
+
+  const [leftAxisKeys, rightAxisKeys] = axisSplit;
+
+  const isNormalizedStacking =
+    settings["stackable.stack_type"] === "normalized";
+
+  if (isNormalizedStacking) {
+    return [
+      leftAxisKeys.length > 0 ? NORMALIZED_RANGE : null,
+      rightAxisKeys.length > 0 ? NORMALIZED_RANGE : null,
+    ];
+  }
+
+  const isStacked = settings["stackable.stack_type"] === "stacked";
+
+  const leftAxisExtent = isStacked
+    ? calculateStackedExtent(leftAxisKeys, data)
+    : calculateNonStackedExtent(leftAxisKeys, data);
+
+  const rightAxisExtent = isStacked
+    ? calculateStackedExtent(rightAxisKeys, data)
+    : calculateNonStackedExtent(rightAxisKeys, data);
+
+  return [leftAxisExtent, rightAxisExtent];
+}

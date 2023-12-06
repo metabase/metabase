@@ -130,7 +130,12 @@ export type VisualizationSettings = {
   // X-axis
   "graph.x_axis.title_text"?: string;
   "graph.x_axis.scale"?: "ordinal" | "timeseries" | "linear" | "histogram";
-  "graph.x_axis.axis_enabled"?: "compact";
+  "graph.x_axis.axis_enabled"?:
+    | true
+    | false
+    | "compact"
+    | "rotate-45"
+    | "rotate-90";
 
   // Y-axis
   "graph.y_axis.title_text"?: string;
