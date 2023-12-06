@@ -28,14 +28,12 @@ import {
 
 interface FilterModalProps {
   query: Lib.Query;
-  opened: boolean;
   onSubmit: (newQuery: Lib.Query) => void;
   onClose: () => void;
 }
 
 export function FilterModal({
   query: initialQuery,
-  opened,
   onSubmit,
   onClose,
 }: FilterModalProps) {
@@ -53,11 +51,7 @@ export function FilterModal({
   };
 
   return (
-    <Modal.Root
-      opened={opened}
-      size={getModalWidth(groupItems)}
-      onClose={onClose}
-    >
+    <Modal.Root opened size={getModalWidth(groupItems)} onClose={onClose}>
       <Modal.Overlay />
       <Modal.Content>
         <ModalHeader p="lg">

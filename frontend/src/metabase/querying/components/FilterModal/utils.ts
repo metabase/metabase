@@ -4,7 +4,7 @@ import type { GroupItem } from "./types";
 
 function getStageIndexes(query: Lib.Query) {
   const stageCount = Lib.stageCount(query);
-  return stageCount > 1 ? [-1, -2] : [-1];
+  return stageCount > 1 ? [-2, -1] : [-1];
 }
 
 export function getColumnGroupItems(query: Lib.Query): GroupItem[] {
@@ -18,7 +18,7 @@ export function getColumnGroupItems(query: Lib.Query): GroupItem[] {
       const columns = Lib.getColumnsFromColumnGroup(group);
 
       return {
-        key: groupInfo.name ?? "",
+        key: groupInfo.name ?? "SUM",
         group,
         groupInfo,
         columns,

@@ -105,7 +105,7 @@ class QueryModals extends Component<QueryModalsProps> {
     updateQuestion(nextQuestion, { run: true });
   };
 
-  renderLegacyModal = () => {
+  render() {
     const {
       modal,
       modalContext,
@@ -235,7 +235,14 @@ class QueryModals extends Component<QueryModalsProps> {
             />
           </Modal>
         );
-
+      case MODAL_TYPES.FILTERS:
+        return (
+          <FilterModal
+            query={question._getMLv2Query()}
+            onSubmit={this.onQueryChange}
+            onClose={onCloseModal}
+          />
+        );
       case MODAL_TYPES.MOVE:
         return (
           <Modal onClose={onCloseModal}>
@@ -362,25 +369,6 @@ class QueryModals extends Component<QueryModalsProps> {
       default:
         return null;
     }
-  };
-
-  render() {
-    const { question, modal, onCloseModal } = this.props;
-    const query = question._getMLv2Query();
-
-    return (
-      <>
-        {this.renderLegacyModal()}
-        {question.isStructured() && (
-          <FilterModal
-            opened={modal === MODAL_TYPES.FILTERS}
-            query={query}
-            onSubmit={this.onQueryChange}
-            onClose={onCloseModal}
-          />
-        )}
-      </>
-    );
   }
 }
 
