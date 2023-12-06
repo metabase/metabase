@@ -15,6 +15,7 @@ import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/co
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import {
   getJoinedCardsDataset,
+  getNormalizedDataset,
   getNullReplacerFunction,
   getSortedSeriesModels,
   replaceValues,
@@ -76,6 +77,12 @@ export const getCartesianChartModel = (
     getNullReplacerFunction(settings, seriesModels),
   );
 
+  const normalizedDataset = getNormalizedDataset(
+    dataset,
+    seriesDataKeys,
+    dimensionModel.dataKey,
+  );
+
   const yAxisSplit: AxisSplit = [seriesDataKeys, []];
 
   const [leftSeriesDataKeys, rightSeriesDataKeys] = yAxisSplit;
@@ -88,6 +95,7 @@ export const getCartesianChartModel = (
 
   return {
     dataset,
+    normalizedDataset,
     seriesModels,
     dimensionModel,
     yAxisSplit,
