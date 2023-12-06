@@ -7,7 +7,7 @@ import { GRAPH_DATA_SETTINGS } from "metabase/visualizations/lib/settings/graph"
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
 import {
-  getChartColumns,
+  getCartesianChartColumns,
   hasValidColumnsSelected,
 } from "metabase/visualizations/lib/graph/columns";
 import { measureTextWidth } from "metabase/lib/measure-text";
@@ -359,7 +359,7 @@ RowChartVisualization.transformSeries = (originalMultipleSeries: any) => {
     return originalMultipleSeries;
   }
 
-  const chartColumns = getChartColumns(data, settings);
+  const chartColumns = getCartesianChartColumns(data.cols, settings);
 
   const computedSeries = getSeries(
     data,
