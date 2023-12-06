@@ -67,7 +67,7 @@
     style        :- DisplayNameStyle]
    (or
     ;; if this is an MBQL clause with `:display-name` in the options map, then use that rather than calculating a name.
-    (:display-name (lib.options/options x))
+    ((some-fn :display-name :lib/expression-name) (lib.options/options x))
     (try
       (display-name-method query stage-number x style)
       (catch #?(:clj Throwable :cljs js/Error) e
@@ -97,7 +97,6 @@
 
 (defmethod display-name-method :default
   [_query _stage-number x _stage]
-  ;; hopefully this is dev-facing only, so not i18n'ed.
   (log/warnf "Don't know how to calculate display name for %s. Add an impl for %s for %s"
              (pr-str x)
              `display-name-method
@@ -277,8 +276,10 @@
 
 (mr/register! ::display-info
               [:map
-               [:display-name :string]
+               [:display-name {:optional true} :string]
                [:long-display-name {:optional true} :string]
+               ;; for things with user specified names
+               [:named? {:optional true} :boolean]
    ;; for things that have a Table, e.g. a Field
                [:table {:optional true} [:maybe [:ref ::display-info]]]
    ;; these are derived from the `:lib/source`/`:metabase.lib.schema.metadata/column-source`, but instead of using
@@ -338,6 +339,24 @@
                            {:query query, :stage-number stage-number, :x x}
                            e))))))))
 
+(defmulti custom-name-method
+  "Implementation for [[custom-name]]."
+  {:arglists '([x])}
+  lib.dispatch/dispatch-value
+  :hierarchy lib.hierarchy/hierarchy)
+
+(defn custom-name
+  "Return the user supplied name of `x`, if any."
+  [x]
+  (custom-name-method x))
+
+(defmethod custom-name-method :default
+  [x]
+  ;; We assume that clauses only get a :display-name option if the user explicitly specifies it.
+  ;; Expressions from the :expressions clause of pMBQL queries have custom names by default.
+  (when (lib.util/clause? x)
+    ((some-fn :display-name :lib/expression-name) (lib.options/options x))))
+
 (defn default-display-info
   "Default implementation of [[display-info-method]], available in case you want to use this in a different
   implementation and add additional information to it."
@@ -347,6 +366,9 @@
      ;; TODO -- not 100% convinced the FE should actually have access to `:name`, can't it use `:display-name`
      ;; everywhere? Determine whether or not this is the case.
      (select-keys x-metadata [:name :display-name :semantic-type])
+     (when-let [custom (custom-name x)]
+       {:display-name custom
+        :named? true})
      (when-let [long-display-name (display-name query stage-number x :long)]
        {:long-display-name long-display-name})
      ;; don't return `:base-type`, FE should just use `:effective-type` everywhere and not even need to know

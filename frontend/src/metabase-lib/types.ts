@@ -36,7 +36,7 @@ export type MetricMetadata = unknown & { _opaque: typeof MetricMetadata };
 declare const AggregationClause: unique symbol;
 export type AggregationClause = unknown & { _opaque: typeof AggregationClause };
 
-export type Aggregable = AggregationClause | MetricMetadata;
+export type Aggregable = AggregationClause | MetricMetadata | ExpressionClause;
 
 declare const AggregationOperator: unique symbol;
 export type AggregationOperator = unknown & {
@@ -182,7 +182,9 @@ export type SegmentDisplayInfo = {
 export type ClauseDisplayInfo = Pick<
   ColumnDisplayInfo,
   "name" | "displayName" | "longDisplayName" | "table"
->;
+> & {
+  isNamed?: boolean;
+};
 
 export type AggregationClauseDisplayInfo = ClauseDisplayInfo;
 
@@ -402,7 +404,12 @@ export type FKDetailsDrillThruInfo =
 
 export type PivotDrillThruInfo = BaseDrillThruInfo<"drill-thru/pivot">;
 
-export type FKFilterDrillThruInfo = BaseDrillThruInfo<"drill-thru/fk-filter">;
+export type FKFilterDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/fk-filter"> & {
+    tableName: string;
+    columnName: string;
+  };
+
 export type DistributionDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/distribution">;
 

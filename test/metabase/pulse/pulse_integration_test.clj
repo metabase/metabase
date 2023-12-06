@@ -4,7 +4,6 @@
   These tests should build content then mock out distrubution by usual channels (e.g. email) and check the results of
   the distributed content for correctness."
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [hickory.core :as hik]
    [hickory.select :as hik.s]
@@ -77,6 +76,10 @@
                (map (comp first :content))))
         data-tables))))
 
+(def ^:private all-pct-2d?
+  "Is every element in the sequence percent formatted with 2 significant digits?"
+  (partial every? (partial re-matches #"\d+\.\d{2}%")))
+
 (deftest result-metadata-preservation-in-html-static-viz-for-dashboard-test
   (testing "In a dashboard, results metadata applied to a model or query based on a model should be used in the HTML rendering of the pulse email."
     #_{:clj-kondo/ignore [:unresolved-symbol]}
@@ -115,9 +118,9 @@
           (testing "The data from the first question is just numbers."
             (is (every? (partial re-matches #"\d+\.\d+") base-data-row)))
           (testing "The data from the second question (a model) is percent formatted"
-            (is (every? #(str/ends-with? % "%") model-data-row)))
+            (is (all-pct-2d? model-data-row)))
           (testing "The data from the last question (based on the above model) is percent formatted"
-            (is (every? #(str/ends-with? % "%") question-data-row))))))))
+            (is (all-pct-2d? question-data-row))))))))
 
 (deftest simple-model-with-metadata-no-dashboard-in-html-static-viz-test
   (testing "Cards with metadata sent as pulses should preserve metadata in html formatting (#36323)"
@@ -148,8 +151,7 @@
                                                             :enabled      true}
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
-          (is (every? #(str/ends-with? % "%")
-                      (first (run-pulse-and-return-last-data-columns pulse))))))
+          (is (all-pct-2d? (first (run-pulse-and-return-last-data-columns pulse))))))
       (testing "The data from the last question (based ona a model) is percent formatted"
         (mt/with-temp [Pulse {pulse-id :id
                               :as      pulse} {:name "Test Pulse"}
@@ -160,5 +162,4 @@
                                                             :enabled      true}
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
-          (is (every? #(str/ends-with? % "%")
-                      (first (run-pulse-and-return-last-data-columns pulse)))))))))
+          (is (all-pct-2d? (first (run-pulse-and-return-last-data-columns pulse)))))))))

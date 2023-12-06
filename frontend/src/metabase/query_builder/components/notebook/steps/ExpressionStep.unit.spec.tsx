@@ -19,8 +19,7 @@ describe("Notebook Editor > Expression Step", () => {
   it("should handle updating existing expression", async () => {
     const expression: Expression = ["abs", ["field", 17, null]];
     const {
-      props: { updateQuery },
-      mocks: { addExpression, updateExpression },
+      mocks: { addExpression, updateExpression, updateQuery },
     } = setup(undefined, {
       // add an existing custom column expression
       "old name": expression,
@@ -107,22 +106,21 @@ function setup(
     query,
   });
 
-  const props = {
-    step,
-    color: "#93A1AB",
-    query,
-    stageIndex: step.stageIndex,
-    topLevelQuery: step.topLevelQuery,
-    updateQuery,
-    isLastOpened: false,
-    reportTimezone: "UTC",
-    ...additionalProps,
-  };
-
-  renderWithProviders(<ExpressionStep {...props} />);
+  renderWithProviders(
+    <ExpressionStep
+      step={step}
+      color="#93A1AB"
+      query={query}
+      stageIndex={step.stageIndex}
+      topLevelQuery={step.topLevelQuery}
+      updateQuery={updateQuery}
+      isLastOpened={false}
+      reportTimezone="UTC"
+      {...additionalProps}
+    />,
+  );
 
   return {
-    props,
-    mocks: { addExpression, updateExpression, removeExpression },
+    mocks: { addExpression, updateExpression, removeExpression, updateQuery },
   };
 }
