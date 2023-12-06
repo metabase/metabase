@@ -1,5 +1,6 @@
+import type { ReactNode } from "react";
+
 import type { OptionsType } from "metabase/lib/formatting/types";
-import type { ColorGetter } from "metabase/static-viz/lib/colors";
 import type { IconName, IconProps } from "metabase/ui";
 import type { ClickObject } from "metabase/visualizations/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -25,6 +26,8 @@ export interface RenderingContext {
   measureText: (text: string, fontSize: number, fontWeight?: number) => number;
   fontFamily: string;
 }
+
+export type ColorGetter = (colorName: string) => string;
 
 type OnChangeCardAndRunOpts = {
   previousCard?: Card;
@@ -52,7 +55,7 @@ export interface VisualizationProps {
   rawSeries: RawSeries;
   settings: ComputedVisualizationSettings;
   headerIcon: IconProps;
-  actionButtons: React.ReactNode;
+  actionButtons: ReactNode;
   fontFamily: string;
   isPlaceholder?: boolean;
   isFullscreen: boolean;

@@ -2,7 +2,7 @@ import { Group } from "@visx/group";
 import { Pie } from "@visx/shape";
 import type { PieArcDatum } from "@visx/shape/lib/shapes/Pie";
 
-import type { ColorGetter } from "metabase/static-viz/lib/colors";
+import type { ColorGetter } from "metabase/visualizations/types";
 
 import GaugeLabel from "./GaugeLabel";
 import GaugeNeedle from "./GaugeNeedle";
