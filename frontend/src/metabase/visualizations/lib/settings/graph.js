@@ -24,6 +24,8 @@ import {
 import {
   getDefaultStackingValue,
   getSeriesOrderVisibilitySettings,
+  isStackingValueValid,
+  STACKABLE_DISPLAY_TYPES,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import {
   isDimension,
@@ -289,8 +291,6 @@ export const LINE_SETTINGS = {
   },
 };
 
-const STACKABLE_DISPLAY_TYPES = new Set(["area", "bar"]);
-
 export const STACKABLE_SETTINGS = {
   "stackable.stack_type": {
     section: t`Display`,
@@ -304,14 +304,11 @@ export const STACKABLE_SETTINGS = {
       ],
     },
     isValid: (series, settings) => {
-      if (settings["stackable.stack_type"] != null) {
-        const displays = series.map(single => settings.series(single).display);
-        const stackableDisplays = displays.filter(display =>
-          STACKABLE_DISPLAY_TYPES.has(display),
-        );
-        return stackableDisplays.length > 1;
-      }
-      return true;
+      const seriesDisplays = series.map(
+        single => settings.series(single).display,
+      );
+
+      return isStackingValueValid(settings, seriesDisplays);
     },
     getDefault: ([{ card, data }], settings) => {
       return getDefaultStackingValue(settings, card);
