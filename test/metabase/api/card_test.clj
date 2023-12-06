@@ -2853,16 +2853,17 @@
   (mt/test-driver :h2
     (mt/with-empty-db
       (testing "Happy path"
-        (mt/with-temporary-setting-values [uploads-database-id (mt/id)
+        (mt/with-temporary-setting-values [uploads-enabled true
+                                           uploads-database-id (mt/id)
                                            uploads-table-prefix nil
-                                           uploads-schema-name "PUBLIC"]
-          (let [{:keys [status body]} (upload-example-csv-via-api!)]
+                                           uploads-schema-name "PUBLIC"]          (let [{:keys [status body]} (upload-example-csv-via-api!)]
             (is (= 200
                    status))
             (is (= body
                    (t2/select-one-pk :model/Card :database_id (mt/id)))))))
       (testing "Failure paths return an appropriate status code and a message in the body"
-        (mt/with-temporary-setting-values [uploads-database-id Integer/MAX_VALUE
+        (mt/with-temporary-setting-values [uploads-enabled true
+                                           uploads-database-id Integer/MAX_VALUE
                                            uploads-table-prefix nil
                                            uploads-schema-name "PUBLIC"]
           (is (= {:body {:message "The uploads database does not exist."},
