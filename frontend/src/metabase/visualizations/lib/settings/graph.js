@@ -25,6 +25,10 @@ import {
 
 import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
 import {
+  getDefaultStackingValue,
+  getSeriesOrderVisibilitySettings,
+} from "metabase/visualizations/shared/settings/cartesian-chart";
+import {
   isDimension,
   isMetric,
   isNumeric,
@@ -178,54 +182,7 @@ export const GRAPH_DATA_SETTINGS = {
 
     getValue: (series, settings) => {
       const seriesKeys = series.map(s => keyForSingleSeries(s));
-      const seriesSettings = settings["series_settings"];
-      const seriesColors = settings["series_settings.colors"] || {};
-      const seriesOrder = settings["graph.series_order"];
-      // Because this setting is a read dependency of graph.series_order_dimension, this should
-      // Always be the stored setting, not calculated.
-      const seriesOrderDimension = settings["graph.series_order_dimension"];
-      const currentDimension = settings["graph.dimensions"][1];
-
-      if (currentDimension === undefined) {
-        return [];
-      }
-
-      const generateDefault = keys => {
-        return keys.map(key => ({
-          key,
-          color: seriesColors[key],
-          enabled: true,
-          name: seriesSettings[key]?.title || key,
-        }));
-      };
-
-      const removeMissingOrder = (keys, order) =>
-        order.filter(o => keys.includes(o.key));
-      const newKeys = (keys, order) =>
-        keys.filter(key => !order.find(o => o.key === key));
-
-      if (
-        !seriesOrder ||
-        !_.isArray(seriesOrder) ||
-        !seriesOrder.every(
-          order =>
-            order.key !== undefined &&
-            order.name !== undefined &&
-            order.color !== undefined,
-        ) ||
-        seriesOrderDimension !== currentDimension
-      ) {
-        return generateDefault(seriesKeys);
-      }
-
-      return [
-        ...removeMissingOrder(seriesKeys, seriesOrder),
-        ...generateDefault(newKeys(seriesKeys, seriesOrder)),
-      ].map(item => ({
-        ...item,
-        name: seriesSettings[item.key]?.title || item.key,
-        color: seriesColors[item.key],
-      }));
+      return getSeriesOrderVisibilitySettings(settings, seriesKeys);
     },
     getHidden: (series, settings) => {
       return (
@@ -360,23 +317,14 @@ export const STACKABLE_SETTINGS = {
       return true;
     },
     getDefault: ([{ card, data }], settings) => {
-      // legacy setting and default for D-M-M+ charts
-      if (settings["stackable.stacked"]) {
-        return settings["stackable.stacked"];
-      }
-
-      const shouldStack =
-        card.display === "area" &&
-        (settings["graph.metrics"].length > 1 ||
-          settings["graph.dimensions"].length > 1);
-
-      return shouldStack ? "stacked" : null;
+      return getDefaultStackingValue(settings, card);
     },
     getHidden: (series, settings) => {
       const displays = series.map(single => settings.series(single).display);
       const stackableDisplays = displays.filter(display =>
         STACKABLE_DISPLAY_TYPES.has(display),
       );
+
       return stackableDisplays.length <= 1;
     },
     readDependencies: ["graph.metrics", "graph.dimensions", "series"],
