@@ -16,13 +16,16 @@ import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils"
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import {
   columnsAreValid,
-  getFriendlyName,
   getDefaultDimensionsAndMetrics,
   preserveExistingColumnsOrder,
   MAX_SERIES,
 } from "metabase/visualizations/lib/utils";
 import {
   getDefaultStackingValue,
+  getDefaultXAxisTitle,
+  getDefaultYAxisTitle,
+  getIsXAxisLabelEnabledDefault,
+  getIsYAxisLabelEnabledDefault,
   getSeriesOrderVisibilitySettings,
   isStackingValueValid,
   STACKABLE_DISPLAY_TYPES,
@@ -44,9 +47,7 @@ const HISTOGRAM_DATE_EXTRACTS = new Set([
 ]);
 
 export function getDefaultDimensionLabel(multipleSeries) {
-  return multipleSeries.length > 0 && multipleSeries[0].data.cols[0]
-    ? getFriendlyName(multipleSeries[0].data.cols[0])
-    : null;
+  return getDefaultXAxisTitle(multipleSeries[0]?.data.cols[0]);
 }
 
 export function getDefaultColumns(series) {
@@ -584,7 +585,7 @@ export const GRAPH_AXIS_SETTINGS = {
     title: t`Show label`,
     inline: true,
     widget: "toggle",
-    default: true,
+    getDefault: getIsXAxisLabelEnabledDefault,
   },
   "graph.x_axis.title_text": {
     section: t`Axes`,
@@ -606,7 +607,7 @@ export const GRAPH_AXIS_SETTINGS = {
     group: t`Y-axis`,
     widget: "toggle",
     inline: true,
-    default: true,
+    getDefault: getIsYAxisLabelEnabledDefault,
   },
   "graph.y_axis.title_text": {
     section: t`Axes`,
@@ -620,15 +621,12 @@ export const GRAPH_AXIS_SETTINGS = {
       // If there are multiple series, we check if the metric names match.
       // If they do, we use that as the default y axis label.
       const [metric] = vizSettings["graph.metrics"];
-      const metricNames = Array.from(
-        new Set(
-          series.map(({ data: { cols } }) => {
-            const metricCol = cols.find(c => c.name === metric);
-            return metricCol && metricCol.display_name;
-          }),
-        ),
-      );
-      return metricNames.length === 1 ? metricNames[0] : null;
+      const metricNames = series.map(({ data: { cols } }) => {
+        const metricCol = cols.find(c => c.name === metric);
+        return metricCol && metricCol.display_name;
+      });
+
+      return getDefaultYAxisTitle(metricNames);
     },
     readDependencies: ["series", "graph.metrics"],
   },

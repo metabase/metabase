@@ -11,7 +11,7 @@ import { computeStaticComboChartSettings } from "./settings";
 
 const WIDTH = 540;
 const HEIGHT = 360;
-const LEGEND_PADDING = 24;
+const LEGEND_PADDING = 8;
 
 export const ComboChart = ({
   rawSeries,
@@ -41,7 +41,7 @@ export const ComboChart = ({
 
   const legendItems = getLegendItems(chartModel);
   const { height: legendHeight, items: legendLayoutItems } =
-    calculateLegendRows(legendItems, width, LEGEND_PADDING);
+    calculateLegendRows(legendItems, width, LEGEND_PADDING, LEGEND_PADDING);
 
   const option = getCartesianChartOption(
     chartModel,
@@ -56,7 +56,7 @@ export const ComboChart = ({
   return (
     <svg width={width} height={height + legendHeight}>
       <Legend items={legendLayoutItems} />
-      <Group y={height + legendHeight}>
+      <Group top={legendHeight}>
         <g dangerouslySetInnerHTML={{ __html: chartSvg }}></g>
       </Group>
     </svg>
