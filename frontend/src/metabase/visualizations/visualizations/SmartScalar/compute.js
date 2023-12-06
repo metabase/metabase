@@ -138,6 +138,7 @@ function computeComparisonPreviousValue({
 
     return {
       comparisonType,
+      dateUnit: insightDateUnit,
       display: {
         percentChange: percentChangeStr,
         prevValue: prevValueStr,
