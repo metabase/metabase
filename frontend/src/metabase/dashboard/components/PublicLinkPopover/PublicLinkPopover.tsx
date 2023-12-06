@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useAsync } from "react-use";
 import { t } from "ttag";
 import { PublicLinkCopyPanel } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel";
@@ -15,41 +14,34 @@ export type PublicLinkPopoverProps = {
   onClose: () => void;
   createPublicLink: () => Promise<void>;
   deletePublicLink: () => void;
-  uuid: string | null;
-  getPublicLink: ({
-    exportFormat,
-  }: {
-    exportFormat: ExportFormatType;
-  }) => string | null;
+  url: string | null;
   extensions?: ExportFormatType[];
+  selectedExtension?: ExportFormatType | null;
+  setSelectedExtension?: (extension: ExportFormatType) => void;
 };
 
 export const PublicLinkPopover = ({
   target,
   createPublicLink,
   deletePublicLink,
-  uuid,
-  getPublicLink,
+  url,
   isOpen,
   onClose,
   extensions = [],
+  selectedExtension,
+  setSelectedExtension,
 }: PublicLinkPopoverProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const [exportFormat, setExportFormat] = useState<ExportFormatType | null>(
-    null,
-  );
-
-  const url = getPublicLink({ exportFormat });
-
   const { loading } = useAsync(async () => {
-    if (isOpen && !uuid) {
-      await createPublicLink();
+    if (isOpen && !url) {
+      return createPublicLink();
     }
-    return uuid;
-  }, [uuid, isOpen]);
 
-  const onRemoveLink = async () => {
+    return null;
+  }, [url, isOpen]);
+
+  const onRemoveLink = () => {
     onClose();
     deletePublicLink();
   };
@@ -68,8 +60,8 @@ export const PublicLinkPopover = ({
             url={url}
             onRemoveLink={isAdmin ? onRemoveLink : undefined}
             extensions={extensions}
-            selectedExtension={exportFormat}
-            onChangeExtension={setExportFormat}
+            selectedExtension={selectedExtension}
+            onChangeExtension={setSelectedExtension}
             removeButtonLabel={t`Remove public link`}
             removeTooltipLabel={t`Affects both public link and embed URL for this dashboard`}
           />

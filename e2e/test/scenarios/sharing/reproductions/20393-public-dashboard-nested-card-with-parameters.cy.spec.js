@@ -2,7 +2,7 @@ import {
   restore,
   popover,
   visitDashboard,
-  createPublicLinkDropdown,
+  openNewPublicLinkDropdown,
 } from "e2e/support/helpers";
 
 describe("issue 20393", () => {
@@ -31,7 +31,7 @@ describe("issue 20393", () => {
     cy.findByText("Save").click();
 
     // open the sharing modal and enable sharing
-    createPublicLinkDropdown("dashboard");
+    openNewPublicLinkDropdown("dashboard");
 
     // navigate to the public dashboard link
     cy.wait("@publicLink").then(({ response: { body } }) => {

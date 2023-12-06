@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import type { Ref } from "react";
+import type { MouseEvent, Ref } from "react";
 import { forwardRef } from "react";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
@@ -39,6 +39,11 @@ export const DashboardEmbedHeaderButton = forwardRef(
       disabled,
     });
 
+    const onHeaderButtonClick = (event: MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      onClick?.();
+    };
+
     return (
       <Tooltip
         label={
@@ -50,10 +55,11 @@ export const DashboardEmbedHeaderButton = forwardRef(
       >
         <Box>
           <DashboardHeaderButton
+            data-disabled={disabled}
             data-testid="dashboard-embed-button"
             icon="share"
             disabled={disabled}
-            onClick={onClick}
+            onClick={onHeaderButtonClick}
             ref={ref}
           />
         </Box>

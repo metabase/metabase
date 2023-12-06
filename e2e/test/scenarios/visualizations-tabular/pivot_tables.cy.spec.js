@@ -681,7 +681,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         it("should display pivot table in a public link", () => {
           openPublicLinkDropdown();
           cy.findByTestId("public-link-popover-content")
-            .findByText(/^http/)
+            .findByTestId("public-link-text")
             .invoke("text")
             .then($value => {
               cy.visit($value);
