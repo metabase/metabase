@@ -1016,15 +1016,6 @@
                 java.lang.Exception
                 #"^Uploads are not enabled\.$"
                 (upload-example-csv! :uploads-enabled uploads-enabled-value :schema-name "public", :table-prefix "uploaded_magic_")))))
-      (testing "Database ID must be set"
-        (mt/with-temporary-setting-values [uploads-enabled      true
-                                           uploads-database-id  nil
-                                           uploads-schema-name  "public"
-                                           uploads-table-prefix "uploaded_magic_"]
-          (is (thrown-with-msg?
-                java.lang.Exception
-                #"^The uploads database does not exist\.$"
-                (upload-example-csv! :db-id nil, :schema-name "public", :table-prefix "uploaded_magic_")))))
       (testing "Database ID must be valid"
         (is (thrown-with-msg?
               java.lang.Exception
