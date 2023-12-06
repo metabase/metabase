@@ -98,7 +98,7 @@ function computeTrendPreviousValue(series, insights, settings) {
 
   // if insightDateUnit is not supplied and there is no previous value to compare
   // to, we have to set a fallback dateUnit to display for the current value
-  const { dateUnit = FALLBACK_DATE_UNIT } = comparison;
+  const { dateUnit } = comparison;
   const dateStr = formatDateTimeRangeWithUnit([date], dateUnit, {
     compact: true,
   });
@@ -140,7 +140,7 @@ function computeComparisonPreviousValue({
 
     return {
       comparisonType,
-      dateUnit: insightDateUnit,
+      dateUnit: insightDateUnit ?? FALLBACK_DATE_UNIT,
       display: {
         percentChange: percentChangeStr,
         prevValue: prevValueStr,
