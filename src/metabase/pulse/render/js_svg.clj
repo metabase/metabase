@@ -143,21 +143,6 @@
         (json/parse-string true)
         (update :type (fnil keyword "unknown")))))
 
-(defn combo-chart
-  "Clojure entrypoint to render a combo or multiple chart.
-  These are different conceptions in the BE but being smushed together
-  because they're supposed to display similarly.
-  Series should be list of dicts of {rows: rows, cols: cols, type: type}, where types is 'line' or 'bar' or 'area'.
-  Rows should be tuples of [datetime numeric-value]. Labels is a
-  map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
-  [series-seqs settings]
-  (svg-string->bytes
-   (.asString (js/execute-fn-name (context)
-                                  "combo_chart"
-                                  (json/generate-string series-seqs)
-                                  (json/generate-string settings)
-                                  (json/generate-string (public-settings/application-colors))))))
-
 (defn row-chart
   "Clojure entrypoint to render a row chart."
   [settings data]
