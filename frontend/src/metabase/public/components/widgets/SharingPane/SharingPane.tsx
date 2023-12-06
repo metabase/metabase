@@ -102,7 +102,10 @@ export default function SharingPane({
             <>
               <Text>
                 {t`Public embeds and links are disabled.`}{" "}
-                <Anchor onClick={onChangeLocation}>{t`Settings`}</Anchor>
+                <Anchor
+                  data-testid="sharing-pane-settings-link"
+                  onClick={onChangeLocation}
+                >{t`Settings`}</Anchor>
               </Text>
             </>
           )
