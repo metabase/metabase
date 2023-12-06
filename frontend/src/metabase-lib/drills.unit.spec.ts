@@ -73,6 +73,7 @@ describe("availableDrillThrus", () => {
         {
           type: "drill-thru/quick-filter",
           operators: ["<", ">", "=", "≠"],
+          value: 52.723521442619514,
         },
       ],
     },
@@ -89,6 +90,7 @@ describe("availableDrillThrus", () => {
         {
           type: "drill-thru/quick-filter",
           operators: ["<", ">", "=", "≠"],
+          value: "2025-12-06T22:22:48.544+02:00",
         },
       ],
     },
@@ -185,6 +187,7 @@ describe("availableDrillThrus", () => {
         {
           type: "drill-thru/quick-filter",
           operators: ["<", ">", "=", "≠"],
+          value: 77,
         },
         {
           type: "drill-thru/underlying-records",
@@ -206,6 +209,7 @@ describe("availableDrillThrus", () => {
         {
           type: "drill-thru/quick-filter",
           operators: ["=", "≠"],
+          value: "null",
         },
         {
           type: "drill-thru/underlying-records",
@@ -254,6 +258,7 @@ describe("availableDrillThrus", () => {
         {
           type: "drill-thru/quick-filter",
           operators: ["<", ">", "=", "≠"],
+          value: "2022-12-01T00:00:00+02:00",
         },
         {
           rowCount: 2, // FIXME: (metabase#32108) this should return real count of rows

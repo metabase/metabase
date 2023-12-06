@@ -31,6 +31,7 @@ describe("drill-thru/quick-filter", () => {
         expectedParameters: {
           type: "drill-thru/quick-filter",
           operators: ["<", ">", "=", "≠"],
+          value: 52.723521442619514,
         },
       },
       {
@@ -40,6 +41,7 @@ describe("drill-thru/quick-filter", () => {
         expectedParameters: {
           type: "drill-thru/quick-filter",
           operators: ["=", "≠"],
+          value: "null",
         },
       },
       {
@@ -49,6 +51,7 @@ describe("drill-thru/quick-filter", () => {
         expectedParameters: {
           type: "drill-thru/quick-filter",
           operators: ["<", ">", "=", "≠"],
+          value: "2025-12-06T22:22:48.544+02:00",
         },
       },
       {
@@ -58,6 +61,7 @@ describe("drill-thru/quick-filter", () => {
         expectedParameters: {
           type: "drill-thru/quick-filter",
           operators: ["<", ">", "=", "≠"],
+          value: 2,
         },
       },
 
@@ -69,6 +73,7 @@ describe("drill-thru/quick-filter", () => {
         expectedParameters: {
           type: "drill-thru/quick-filter",
           operators: ["<", ">", "=", "≠"],
+          value: "2022-12-01T00:00:00+02:00",
         },
       },
       {
@@ -78,6 +83,7 @@ describe("drill-thru/quick-filter", () => {
         expectedParameters: {
           type: "drill-thru/quick-filter",
           operators: ["<", ">", "=", "≠"],
+          value: 77,
         },
       },
       {
@@ -87,6 +93,7 @@ describe("drill-thru/quick-filter", () => {
         expectedParameters: {
           type: "drill-thru/quick-filter",
           operators: ["<", ">", "=", "≠"],
+          value: 1,
         },
       },
       {
@@ -97,6 +104,7 @@ describe("drill-thru/quick-filter", () => {
         expectedParameters: {
           type: "drill-thru/quick-filter",
           operators: ["=", "≠"],
+          value: "null",
         },
       },
     ])(
