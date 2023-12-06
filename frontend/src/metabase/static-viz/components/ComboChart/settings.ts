@@ -18,6 +18,7 @@ import { getCommonStaticVizSettings } from "metabase/static-viz/lib/settings";
 import {
   getDefaultStackingValue,
   getSeriesOrderVisibilitySettings,
+  isStackingValueValid,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import {
   getCardsColumns,
@@ -29,8 +30,9 @@ const fillWithDefaultValue = (
   settings: Record<string, unknown>,
   key: string,
   defaultValue: unknown,
+  isValid = true,
 ) => {
-  if (typeof settings[key] === "undefined") {
+  if (typeof settings[key] === "undefined" || !isValid) {
     settings[key] = defaultValue;
   }
 };
@@ -112,6 +114,12 @@ export const computeStaticComboChartSettings = (
     settings,
     "stackable.stack_type",
     getDefaultStackingValue(settings, mainCard),
+    isStackingValueValid(
+      settings,
+      seriesModels.map(seriesModel =>
+        settings.series(seriesModel.legacySeriesSettingsObjectKey),
+      ),
+    ),
   );
 
   fillWithDefaultValue(
