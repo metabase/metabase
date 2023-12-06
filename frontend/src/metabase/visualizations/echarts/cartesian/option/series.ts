@@ -134,12 +134,11 @@ function buildEChartsScatterSeries(
   return {
     type: "scatter",
     yAxisIndex,
-    symbolSize: 8, // TODO change this
+    symbolSize: 8, // TODO update this and other styles
     encode: {
       y: seriesModel.dataKey,
       x: dimensionDataKey,
     },
-    // TODO remove this?
     label: buildEChartsLabelOptions(seriesModel, settings, renderingContext),
     itemStyle: {
       color: seriesModel.color,
