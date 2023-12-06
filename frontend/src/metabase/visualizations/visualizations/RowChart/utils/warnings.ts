@@ -1,9 +1,9 @@
 import type { RowValues } from "metabase-types/api";
-import type { ChartColumns } from "metabase/visualizations/lib/graph/columns";
+import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { unaggregatedDataWarning } from "metabase/visualizations/lib/warnings";
 
 export const getChartWarnings = (
-  chartColumns: ChartColumns,
+  chartColumns: CartesianChartColumns,
   rows: RowValues[],
 ) => {
   const chartValuesKeys = new Set(
