@@ -112,8 +112,7 @@ describe.each<Lib.DrillThruType>([
     expect(drill).toBeNull();
   });
 
-  // eslint-disable-next-line jest/no-disabled-tests
-  it("should not drill thru a FK cell with null (metabase#36133)", () => {
+  it("should not drill thru a FK cell with null", () => {
     const clickObject = createRawCellClickObject({
       column: defaultColumn,
       value: null,

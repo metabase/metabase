@@ -46,8 +46,7 @@ describe("drill-thru/zoom", () => {
     expect(newQuery).not.toBeNull();
   });
 
-  // eslint-disable-next-line jest/no-disabled-tests
-  it("should drill thru a non-PK or non-FK cell when there is another PK and no other PK columns exist (metabase#36129)", () => {
+  it("should drill thru a non-PK or non-FK cell when there is another PK and no other PK columns exist", () => {
     const clickObject = createRawCellClickObject({
       column: createOrdersTotalDatasetColumn(),
       value: 10,
@@ -115,8 +114,7 @@ describe("drill-thru/zoom", () => {
     expect(drill).toBeNull();
   });
 
-  // eslint-disable-next-line jest/no-disabled-tests
-  it("should not drill thru a PK cell with null value (metabase#36130)", () => {
+  it("should not drill thru a PK cell with null value", () => {
     const clickObject = createRawCellClickObject({
       column: defaultColumn,
       value: null,
