@@ -487,13 +487,13 @@
   "Checks that the provided URL is either a valid HTTP/HTTPS URL or a `mailto:` link. Returns `nil` if the input is valid;
   throws an exception if it is not."
   [url]
-  (if-let [matches (re-matches #"^mailto:(.*)" url)]
-    (when-not (u/email? (second matches))
-      (throw (ex-info (tru "Please make sure this is a valid URL")
-                      {:url url})))
-    (when-not (u/url? url)
-      (throw (ex-info (tru "Please make sure this is a valid URL")
-                      {:url url})))))
+  (let [validation-exception (ex-info (tru "Please make sure this is a valid URL")
+                                      {:url url})]
+   (if-let [matches (re-matches #"^mailto:(.*)" url)]
+     (when-not (u/email? (second matches))
+       (throw validation-exception))
+     (when-not (u/url? url)
+       (throw validation-exception)))))
 
 (defsetting help-link-custom-destination
   (deferred-tru "Custom URL for the help link.")
@@ -501,11 +501,10 @@
   :type       :string
   :audit      :getter
   :feature    :whitelabel
-  :default    "https://www.metabase.com/help/premium"
-  :setter      (fn [new-value]
-                 (let [new-value-string (str new-value)]
-                  (validate-help-url new-value-string)
-                  (setting/set-value-of-type! :string :help-link-custom-destination new-value-string))))
+  :setter     (fn [new-value]
+                (let [new-value-string (str new-value)]
+                 (validate-help-url new-value-string)
+                 (setting/set-value-of-type! :string :help-link-custom-destination new-value-string))))
 
 (defsetting enable-password-login
   (deferred-tru "Allow logging in by email and password.")

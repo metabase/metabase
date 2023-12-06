@@ -240,7 +240,7 @@
                  (public-settings/start-of-week))))))))
 
 (deftest help-link-setting-test
-  (premium-features.test/with-premium-features #{:whitelabeling}
+  (premium-features.test/with-premium-features #{:whitelabel}
     (testing "When whitelabeling is enabled, help-link setting can be set to any valid value"
       (public-settings/help-link! :metabase)
       (is (= :metabase (public-settings/help-link)))
@@ -259,8 +259,8 @@
   (premium-features.test/with-premium-features #{}
     (testing "When whitelabeling is not enabled, help-link setting cannot be set, and always returns :metabase"
       (is (thrown-with-msg?
-           Exception
-           #"Setting help-link is not enabled because feature :whitelabeling is not available"
+           clojure.lang.ExceptionInfo
+           #"Setting help-link is not enabled because feature :whitelabel is not available"
            (public-settings/help-link! :hidden)))
 
       (is (= :metabase (public-settings/help-link))))))
@@ -277,22 +277,22 @@
     ;; Since validate-help-url calls `u/url?` to validate URLs, we don't need to test all possible malformed URLs here.
     (is (thrown-with-msg?
          Exception
-         #"Invalid URL"
+         #"Please make sure this is a valid URL"
          (#'public-settings/validate-help-url "asdf")))
 
     (is (thrown-with-msg?
          Exception
-         #"Invalid URL"
+         #"Please make sure this is a valid URL"
          (#'public-settings/validate-help-url "ftp://metabase.com"))))
 
   (testing "validate-help-url rejects mailto: links with invalid email addresses"
     (is (thrown-with-msg?
          Exception
-         #"Invalid email address in mailto: link"
+         #"Please make sure this is a valid URL"
          (#'public-settings/validate-help-url "mailto:help@metabase")))))
 
 (deftest help-link-custom-destination-setting-test
-  (premium-features.test/with-premium-features #{:whitelabeling}
+  (premium-features.test/with-premium-features #{:whitelabel}
     (testing "When whitelabeling is enabled, help-link-custom-destination can be set to valid URLs"
       (public-settings/help-link-custom-destination! "http://www.metabase.com")
       (is (= "http://www.metabase.com" (public-settings/help-link-custom-destination)))
@@ -303,24 +303,24 @@
     (testing "help-link-custom-destination cannot be set to invalid URLs"
       (is (thrown-with-msg?
            Exception
-           #"Invalid URL"
+           #"Please make sure this is a valid URL"
            (public-settings/help-link-custom-destination! "asdf")))
 
       (is (thrown-with-msg?
            Exception
-           #"Invalid URL"
+           #"Please make sure this is a valid URL"
            (public-settings/help-link-custom-destination! "ftp://metabase.com")))
 
       (is (thrown-with-msg?
            Exception
-           #"Invalid email address in mailto: link"
+           #"Please make sure this is a valid URL"
            (public-settings/help-link-custom-destination! "mailto:help@metabase")))))
 
   (premium-features.test/with-premium-features #{}
     (testing "When whitelabeling is not enabled, help-link-custom-destination cannot be set, and always returns its default"
       (is (thrown-with-msg?
-           Exception
-           #"Setting help-link-custom-destination is not enabled because feature :whitelabeling is not available"
+           clojure.lang.ExceptionInfo
+           #"Setting help-link-custom-destination is not enabled because feature :whitelabel is not available"
            (public-settings/help-link-custom-destination! "http://www.metabase.com")))
 
-      (is (= "https://www.metabase.com/help/premium" (public-settings/help-link-custom-destination))))))
+      (is (= nil (public-settings/help-link-custom-destination))))))
