@@ -654,7 +654,8 @@
             (and enabled? (not (enabled?))))
       default
       (binding [*disable-cache* disable-cache?]
-        (getter)))))
+        (try (getter)
+             (catch Exception _ default))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
