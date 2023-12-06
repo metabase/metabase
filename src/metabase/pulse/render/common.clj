@@ -96,6 +96,7 @@
                                                                  (:type/Number global-settings)
                                                                  column-settings)
         integral?       (isa? (or effective_type base_type) :type/Integer)
+        relation?       (isa? semantic_type :Relation/*)
         percent?        (or (isa? semantic_type :type/Percentage) (= number-style "percent"))
         scientific?     (= number-style "scientific")
         [decimal grouping] (or number-separators
@@ -104,7 +105,7 @@
         symbols            (doto (DecimalFormatSymbols.)
                              (cond-> decimal (.setDecimalSeparator decimal))
                              (cond-> grouping (.setGroupingSeparator grouping)))
-        base               (cond-> (if (= number-style "scientific") "0" "#,##0")
+        base               (cond-> (if (or scientific? relation?) "0" "#,##0")
                              (not grouping) (str/replace #"," ""))]
     (fn [value]
       (if (number? value)
