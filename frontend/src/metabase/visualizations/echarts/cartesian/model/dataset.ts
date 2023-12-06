@@ -1,6 +1,7 @@
 import type { DatasetColumn, RawSeries, RowValue } from "metabase-types/api";
 import type {
   DataKey,
+  DimensionModel,
   GroupedDataset,
   SeriesExtents,
   SeriesModel,
@@ -133,6 +134,58 @@ export const getJoinedCardsDataset = (
   });
 
   return Array.from(groupedData.values());
+};
+
+export const applySquareRootScaling = (value: RowValue): RowValue => {
+  if (typeof value === "number") {
+    return Math.sqrt(value);
+  }
+
+  return value;
+};
+
+export const getTransformedDataset = (
+  dataset: Record<DataKey, RowValue>[],
+  seriesModels: SeriesModel[],
+  settings: ComputedVisualizationSettings,
+  dimensionModel: DimensionModel,
+) => {
+  const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
+  const seriesDataKeysSet = new Set(seriesDataKeys);
+
+  let transformedDataset = replaceValues(
+    dataset,
+    getNullReplacerFunction(settings, seriesModels),
+  );
+
+  if (settings["stackable.stack_type"] === "normalized") {
+    transformedDataset = getNormalizedDataset(
+      transformedDataset,
+      seriesDataKeys,
+      dimensionModel.dataKey,
+    );
+  }
+
+  if (settings["graph.y_axis.scale"] === "pow") {
+    transformedDataset = replaceValues(
+      transformedDataset,
+      (dataKey: string, value: RowValue) =>
+        seriesDataKeysSet.has(dataKey) ? applySquareRootScaling(value) : value,
+    );
+  }
+
+  return transformedDataset;
+};
+
+export const getMetricDisplayValueGetter = (
+  settings: ComputedVisualizationSettings,
+) => {
+  const isPowerScale = settings["graph.y_axis.scale"] === "pow";
+
+  const powerScaleGetter = (value: RowValue) =>
+    typeof value === "number" ? Math.pow(value, 2) : value;
+
+  return isPowerScale ? powerScaleGetter : (value: RowValue) => value;
 };
 
 /**
