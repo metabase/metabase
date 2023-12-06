@@ -3,7 +3,6 @@
    [clojure.math :as math]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.binning :as lib.schema.binning]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util :as u]
