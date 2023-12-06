@@ -1,6 +1,11 @@
 import type { DatasetColumn, RawSeries, RowValue } from "metabase-types/api";
-import type { DataKey } from "metabase/visualizations/echarts/cartesian/model/types";
+import type {
+  DataKey,
+  SeriesModel,
+} from "metabase/visualizations/echarts/cartesian/model/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { isEmpty } from "metabase/lib/validate";
 import { isMetric } from "metabase-lib/types/utils/isa";
 
 /**
@@ -126,4 +131,44 @@ export const getJoinedCardsDataset = (
   });
 
   return Array.from(groupedData.values());
+};
+
+/**
+ * Sorts the series models based on the order specified in the "graph.series_order" property of visualization settings.
+ * It defines the breakout series order so that charts where all series are metrics without breakouts do not
+ * rely on this property, and the series are sorted based on the metrics order in the original MBQL query.
+ *
+ * @param {SeriesModel[]} seriesModels - The array of series models to be sorted.
+ * @param {ComputedVisualizationSettings} settings - The computed visualization settings.
+ * @returns {SeriesModel[]} The sorted array of series models.
+ */
+export const getSortedSeriesModels = (
+  seriesModels: SeriesModel[],
+  settings: ComputedVisualizationSettings,
+) => {
+  const breakoutSeriesOrder = settings["graph.series_order"];
+  if (breakoutSeriesOrder == null || breakoutSeriesOrder.length === 0) {
+    return seriesModels;
+  }
+
+  const orderedSeriesModels = breakoutSeriesOrder
+    .filter(orderSetting => orderSetting.enabled)
+    .map(orderSetting => {
+      const foundSeries = seriesModels.find(
+        seriesModel => seriesModel.vizSettingsKey === orderSetting.key,
+      );
+      if (foundSeries === undefined) {
+        throw new TypeError("Series not found");
+      }
+      return foundSeries;
+    });
+
+  // On stacked charts we reverse the order of series so that the series
+  // order in the sidebar matches series order on the chart
+  const isReversed = !isEmpty(settings["stackable.stack_type"]);
+  if (isReversed) {
+    orderedSeriesModels.reverse();
+  }
+
+  return orderedSeriesModels;
 };
