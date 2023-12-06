@@ -1,14 +1,16 @@
 (ns metabase.pulse.render.common
   (:require
-   [clojure.pprint :refer [cl-format]]
-   [clojure.string :as str]
-   [hiccup.util]
-   [metabase.public-settings :as public-settings]
-   [metabase.shared.models.visualization-settings :as mb.viz]
-   [metabase.shared.util.currency :as currency]
-   [metabase.util.ui-logic :as ui-logic]
-   [potemkin.types :as p.types]
-   [schema.core :as s])
+    [clojure.pprint :refer [cl-format]]
+    [clojure.string :as str]
+    [hiccup.util]
+    [metabase.public-settings :as public-settings]
+    [metabase.pulse.render.datetime :as datetime]
+    [metabase.shared.models.visualization-settings :as mb.viz]
+    [metabase.shared.util.currency :as currency]
+    [metabase.types :as types]
+    [metabase.util.ui-logic :as ui-logic]
+    [potemkin.types :as p.types]
+    [schema.core :as s])
   (:import
    (java.math RoundingMode)
    (java.net URL)
@@ -188,3 +190,20 @@
   (->> rows
        (filter (every-pred x-axis-fn y-axis-fn))
        (map coerce-bignum-to-int)))
+
+(s/defn get-format
+  "Get the format for a column based on its timezone, column metadata, and visualization-settings"
+  [timezone-id :- (s/maybe s/Str) col visualization-settings]
+  (cond
+    ;; for numbers, return a format function that has already computed the differences.
+    ;; todo: do the same for temporal strings
+    (types/temporal-field? col)
+    #(datetime/format-temporal-str timezone-id % col visualization-settings)
+
+    ;; todo integer columns with a unit
+    (or (isa? (:effective_type col) :type/Number)
+        (isa? (:base_type col) :type/Number))
+    (number-formatter col visualization-settings)
+
+    :else
+    str))
