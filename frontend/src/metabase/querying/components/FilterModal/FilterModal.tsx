@@ -229,7 +229,7 @@ function FilterableColumnGroup({
           const filter = findFilterClause(query, stageIndex, column);
 
           const handleFilterChange = (
-            newFilter: Lib.ExpressionClause | undefined,
+            newFilter: Lib.ExpressionClause | null,
           ) => {
             if (filter && newFilter) {
               onChangeQuery(

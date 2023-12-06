@@ -1,7 +1,9 @@
 import * as Lib from "metabase-lib";
 import { BooleanFilterEditor } from "../BooleanFilterEditor";
 import { DateFilterEditor } from "../DateFilterEditor";
+import { EmptyFilterEditor } from "../EmptyFilterEditor";
 import { NumberFilterEditor } from "../NumberFilterEditor";
+import { StringFilterEditor } from "../StringFilterEditor";
 import { TimeFilterEditor } from "../TimeFilterEditor";
 
 interface ColumnFilterSectionProps {
@@ -9,7 +11,7 @@ interface ColumnFilterSectionProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
-  onChange: (filter?: Lib.ExpressionClause) => void;
+  onChange: (filter: Lib.ExpressionClause | null) => void;
 }
 
 export function ColumnFilterSection({
@@ -48,5 +50,8 @@ function getFilterWidget(column: Lib.ColumnMetadata) {
   if (Lib.isNumeric(column)) {
     return NumberFilterEditor;
   }
-  return null;
+  if (Lib.isString(column)) {
+    return StringFilterEditor;
+  }
+  return EmptyFilterEditor;
 }
