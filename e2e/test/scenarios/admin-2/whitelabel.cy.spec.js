@@ -260,9 +260,7 @@ describeEE("formatting > whitelabel", () => {
         .should("exist");
 
       getHelpLinkCustomDestinationInput().clear().type("https://").blur();
-      main()
-        .findByText(/Invalid URL/i)
-        .should("exist");
+      main().findByText("Please make sure this is a valid URL").should("exist");
     });
 
     it("should not create a race condition - scenario 1: default ->  custom  -> non custom", () => {
