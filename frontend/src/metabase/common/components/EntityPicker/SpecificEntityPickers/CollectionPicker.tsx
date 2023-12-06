@@ -17,7 +17,9 @@ export function CollectionPicker({
   initialCollectionId,
 }: CollectionPickerProps) {
   const [ initialState, setInitialState ] = useState<PickerState<Collection>>();
+
   const onFolderSelect = async (folder?: Partial<Collection>): Promise<Collection[]> => {
+    onItemSelect(folder ?? { id: root });
     const items = await CollectionsApi.listItems(
       { id: folder?.id ?? "root", models: ["collection"] },
     );

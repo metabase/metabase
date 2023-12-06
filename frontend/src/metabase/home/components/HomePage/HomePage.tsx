@@ -18,6 +18,7 @@ import { getSettingsLoading } from "metabase/selectors/settings";
 
 // import { TabbedEntityPicker } from "metabase/components/EntityPicker";
 
+import { EntityPickerModal } from "metabase/common/components/EntityPicker";
 import type Database from "metabase-lib/metadata/Database";
 import {
   getCustomHomePageDashboardId,
@@ -41,9 +42,9 @@ export const HomePage = (): JSX.Element => {
 
   return (
     <HomeLayout hasMetabot={getHasMetabot(databases, models, isMetabotEnabled)}>
-      {/* <TabbedEntityPicker
+      {/* <EntityPickerModal
         onItemSelect={console.log}
-        tabs={["question", "table"]}
+        tabs={["question", "collection"]}
       /> */}
       <HomeContent />
     </HomeLayout>
