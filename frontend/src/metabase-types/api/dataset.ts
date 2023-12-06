@@ -62,7 +62,7 @@ export type Insight = {
 export interface DatasetData {
   rows: RowValues[];
   cols: DatasetColumn[];
-  insights?: Insight[];
+  insights?: Insight[] | null;
   results_metadata: ResultsMetadata;
   rows_truncated: number;
   requested_timezone?: string;

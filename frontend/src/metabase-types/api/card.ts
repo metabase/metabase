@@ -147,6 +147,9 @@ export type VisualizationSettings = {
   "graph.show_goal"?: boolean;
   "graph.goal_label"?: string;
 
+  // Trend
+  "graph.show_trendline"?: boolean;
+
   // Series
   "graph.dimensions"?: string[];
   "graph.metrics"?: string[];
