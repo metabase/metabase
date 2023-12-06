@@ -1,4 +1,4 @@
-import type { ColorGetter } from "metabase/static-viz/lib/colors";
+import type { ColorGetter } from "metabase/visualizations/types";
 
 type XYAccessor = (row: any[]) => any;
 
