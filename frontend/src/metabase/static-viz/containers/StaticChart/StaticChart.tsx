@@ -50,7 +50,8 @@ const StaticChart = ({ type, options }: StaticChartProps) => {
           renderingContext={{
             getColor,
             formatValue: formatStaticValue as any,
-            measureText: measureTextWidth as any,
+            measureText: (text, style) =>
+              measureTextWidth(text, style.size, style.weight),
             fontFamily: "Lato", // TODO make this based on admin settings value
           }}
         />

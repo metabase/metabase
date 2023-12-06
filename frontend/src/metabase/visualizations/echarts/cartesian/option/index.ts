@@ -6,6 +6,8 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import { buildAxes } from "metabase/visualizations/echarts/cartesian/option/axis";
+import { getAxesFormatters } from "metabase/visualizations/echarts/cartesian/option/format";
+import { getChartGrid } from "./grid";
 
 export const getCartesianChartOption = (
   chartModel: CartesianChartModel,
@@ -13,6 +15,12 @@ export const getCartesianChartOption = (
   renderingContext: RenderingContext,
 ): EChartsOption => {
   const echartsSeries = buildEChartsSeries(
+    chartModel,
+    settings,
+    renderingContext,
+  );
+
+  const axesFormatters = getAxesFormatters(
     chartModel,
     settings,
     renderingContext,
@@ -28,8 +36,9 @@ export const getCartesianChartOption = (
   ];
 
   return {
+    grid: getChartGrid(chartModel, settings),
     dataset: echartsDataset,
     series: echartsSeries,
-    ...buildAxes(chartModel, settings, renderingContext),
+    ...buildAxes(chartModel, settings, axesFormatters, renderingContext),
   } as EChartsOption;
 };
