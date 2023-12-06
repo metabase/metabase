@@ -2,6 +2,7 @@ import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 import type {
   BreakoutChartColumns,
@@ -17,8 +18,32 @@ import {
   getNullReplacerFunction,
   getNormalizedDataset,
   getDatasetExtents,
+  getTransformedDataset,
 } from "./dataset";
-import type { DataKey, SeriesModel } from "./types";
+import type { DataKey, DimensionModel, SeriesModel } from "./types";
+
+const createMockSeriesModel = (
+  dataKey: DataKey,
+  index: number,
+): SeriesModel => ({
+  dataKey,
+  name: `name for ${dataKey}`,
+  color: "red",
+  legacySeriesSettingsObjectKey: { card: { _seriesKey: dataKey } },
+  vizSettingsKey: dataKey,
+  column: createMockColumn({ name: dataKey }),
+  columnIndex: index,
+});
+
+
+const createMockDimensionModel = (
+  dataKey: DataKey,
+  index: number,
+): DimensionModel => ({
+  dataKey,
+  column: createMockColumn({ name: dataKey }),
+  columnIndex: index,
+});
 
 describe("dataset transform functions", () => {
   describe("sumMetric", () => {
@@ -213,19 +238,6 @@ describe("dataset transform functions", () => {
 
   describe("getNullReplacerFunction", () => {
     it("should create a replacer function that replaces null values with zeros for specified series only", () => {
-      const createMockSeriesModel = (
-        dataKey: DataKey,
-        index: number,
-      ): SeriesModel => ({
-        dataKey,
-        name: `name for ${dataKey}`,
-        color: "red",
-        legacySeriesSettingsObjectKey: { card: { _seriesKey: dataKey } },
-        vizSettingsKey: dataKey,
-        column: createMockColumn({ name: dataKey }),
-        columnIndex: index,
-      });
-
       const settings: ComputedVisualizationSettings = {
         series: (key: string) => ({
           "line.missing": key === "key1" ? "zero" : undefined,
@@ -345,6 +357,48 @@ describe("dataset transform functions", () => {
         series1: [1, 2],
         series2: [2, 2],
       });
+    });
+  });
+
+  describe("getTransformedDataset", () => {
+    const seriesKey = "value";
+    const dimensionKey = "date";
+    const seriesModels = [createMockSeriesModel("value", 0)];
+    const dimensionModel = createMockDimensionModel("date", 1);
+
+    it("should sort dataset based on date for time-series data", () => {
+      const dataset = [
+        { [dimensionKey]: "2022-03-01", [seriesKey]: 10 },
+        { [dimensionKey]: "2022-01-01", [seriesKey]: 5 },
+        { [dimensionKey]: "2022-02-01", [seriesKey]: 8 },
+      ];
+
+      const settings = createMockVisualizationSettings({
+        "graph.x_axis.scale": "timeseries",
+        series: () => ({}),
+      });
+
+      const result = getTransformedDataset(
+        dataset,
+        seriesModels,
+        settings,
+        dimensionModel,
+      );
+
+      expect(result[0].date).toBe("2022-01-01");
+      expect(result[1].date).toBe("2022-02-01");
+      expect(result[2].date).toBe("2022-03-01");
+    });
+
+    it("handles empty datasets without errors", () => {
+      expect(() =>
+        getTransformedDataset(
+          [],
+          seriesModels,
+          createMockVisualizationSettings({ series: () => ({}) }),
+          dimensionModel,
+        ),
+      ).not.toThrow();
     });
   });
 });
