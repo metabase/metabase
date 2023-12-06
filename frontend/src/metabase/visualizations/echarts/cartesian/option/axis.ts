@@ -388,34 +388,37 @@ const buildMetricsAxes = (
   const hasLeftAxis = leftFormatter != null && leftExtent != null;
   const hasRightAxis = rightFormatter != null && rightExtent != null;
 
-  return [
-    ...(hasLeftAxis
-      ? [
-          buildMetricAxis(
-            settings,
-            "left",
-            leftRange,
-            leftExtent,
-            leftFormatter,
-            getYAxisName(chartModel, settings, "left"),
-            renderingContext,
-          ),
-        ]
-      : []),
-    ...(hasRightAxis
-      ? [
-          buildMetricAxis(
-            settings,
-            "right",
-            rightRange,
-            rightExtent,
-            rightFormatter,
-            getYAxisName(chartModel, settings, "right"),
-            renderingContext,
-          ),
-        ]
-      : []),
-  ];
+  const axes: CartesianAxisOption[] = [];
+
+  if (hasLeftAxis) {
+    axes.push(
+      buildMetricAxis(
+        settings,
+        "left",
+        leftRange,
+        leftExtent,
+        leftFormatter,
+        getYAxisName(chartModel, settings, "left"),
+        renderingContext,
+      ),
+    );
+  }
+
+  if (hasRightAxis) {
+    axes.push(
+      buildMetricAxis(
+        settings,
+        "right",
+        rightRange,
+        rightExtent,
+        rightFormatter,
+        getYAxisName(chartModel, settings, "right"),
+        renderingContext,
+      ),
+    );
+  }
+
+  return axes;
 };
 
 export const buildAxes = (
