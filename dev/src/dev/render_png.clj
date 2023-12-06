@@ -4,12 +4,17 @@
   (:require
     [clojure.java.io :as io]
     [clojure.java.shell :as sh]
+    [clojure.string :as str]
     [hiccup.core :as hiccup]
+    #_[metabase.email.messages :as messages]
     [metabase.models :refer [Card]]
     [metabase.models.card :as card]
     [metabase.pulse :as pulse]
+    [metabase.pulse.markdown :as markdown]
     [metabase.pulse.render :as render]
-    [metabase.pulse.render.test-util :as render.tu]
+    [metabase.pulse.render.image-bundle :as img]
+    [metabase.pulse.render.png :as png]
+    [metabase.pulse.render.style :as style]
     [metabase.query-processor :as qp]
     [metabase.test :as mt]
     [toucan2.core :as t2])
@@ -85,29 +90,165 @@
     (.deleteOnExit tmp-file)
     (open tmp-file)))
 
-(comment
-  (render-card-to-png 1)
+(def ^:private execute-dashboard #'pulse/execute-dashboard)
 
-  (let [{:keys [content]} (render-pulse-card 1)]
-    (open-hiccup-as-html content))
+(defn render-dashboard-to-pngs
+  "Given a dashboard ID, renders each dashcard, including Markdown, to its own temporary png image, and opens each one."
+  [dashboard-id]
+  (let [user              (t2/select-one :model/User)
+        dashboard         (t2/select-one :model/Dashboard :id dashboard-id)
+        dashboard-results (execute-dashboard {:creator_id (:id user)} dashboard)]
+    (doseq [{:keys [card dashcard result] :as dashboard-result} dashboard-results]
+      (let [render    (if card
+                        (render/render-pulse-card :inline (pulse/defaulted-timezone card) card dashcard result)
+                        {:content     [:div {:style (style/style {:font-family             "Lato"
+                                                                  :font-size               "0.875em"
+                                                                  :font-weight             "400"
+                                                                  :font-style              "normal"
+                                                                  :color                   "#4c5773"
+                                                                  :-moz-osx-font-smoothing "grayscale"})}
+                                       (markdown/process-markdown (:text dashboard-result) :html)]
+                         :attachments nil})
+            png-bytes (-> render (png/render-html-to-png 1000))
+            tmp-file  (java.io.File/createTempFile "card-png" ".png")]
+        (with-open [w (java.io.FileOutputStream. tmp-file)]
+          (.write w ^bytes png-bytes))
+        (.deleteOnExit tmp-file)
+        (open tmp-file)))))
 
-  ;; open viz in your browser
-  (-> [["A" "B"]
-       [1 2]
-       [30 20]]
-      (render.tu/make-viz-data :line {:goal-line {:graph.goal_label "Target"
-                                                  :graph.goal_value 20}})
-      :viz-tree
-      open-hiccup-as-html)
+(def ^:private dashgrid-x 50)
+(def ^:private dashgrid-y 50)
 
-  (-> [["As" "Bs" "Cs" "Ds" "Es"]
-       ["aa" "bb" "cc" "dd" "ee"]
-       ["aaa" "bbb" "ccc" "ddd" "eee"]]
-      (render.tu/make-viz-data :table {:reordered-columns   {:order [2 3 1 0 4]}
-                                       :custom-column-names {:names ["-A-" "-B-" "-C-" "-D-"]}
-                                       :hidden-columns      {:hide [0 2]}})
-      :viz-tree
-      open-hiccup-as-html))
+(defn- dashboard-dims
+  [results]
+  (let [height (->> results
+                    (sort-by (comp :row :dashcard))
+                    last
+                    :dashcard
+                    ((juxt :row :size_y))
+                    (apply +)
+                    (* dashgrid-y))
+        width  (->> results
+                    (sort-by (comp :col :dashcard))
+                    last
+                    :dashcard
+                    ((juxt :col :size_x))
+                    (apply +)
+                    (* dashgrid-x))]
+    [width height]))
+
+(def ^:private dashcard-style
+  {:background    "white"
+   :border        "1px solid #ededf0"
+   :border-radius "8px"
+   :margin        "10px"
+   :padding       "10px"})
+
+#_(defn- result-attachment
+  [{{{:keys [rows]} :data, :as result} :result}]
+  (when (seq rows)
+    [(let [^java.io.ByteArrayOutputStream baos (java.io.ByteArrayOutputStream.)]
+       (with-open [os baos]
+         (#'messages/stream-api-results-to-export-format :csv os result)
+         (let [output-string (.toString baos "UTF-8")]
+           {:type         :attachment
+            :content-type :csv
+            :content      output-string})))]))
+
+(def ^:private table-style
+  (style/style
+   {:border          "1px solid black"
+    :border-collapse "collapse"}))
+
+(def ^:private csv-row-limit 10)
+
+(defn- csv-to-html-table [csv-string]
+  (let [rows (map #(str/split % #",")
+                  (str/split csv-string #"\n"))]
+    [:table {:style table-style}
+     (for [row (take csv-row-limit rows)]
+       [:tr {:style table-style}
+        (for [cell row]
+          [:td {:style table-style} cell])])]))
+
+(defn- render-csv-for-dashcard
+  [{:keys [card dashcard dashboard-id]}]
+  (mt/with-fake-inbox
+    (mt/with-temp [:model/Pulse         {pulse-id :id, :as pulse}  {:name         "temp pulse"
+                                                                    :dashboard_id dashboard-id}
+                   :model/PulseCard     _ {:pulse_id          pulse-id
+                                           :card_id           (:id card)
+                                           :position          0
+                                           :dashboard_card_id (:id dashcard)
+                                           :include_csv       true}
+                   :model/PulseChannel  {pc-id :id} {:pulse_id pulse-id}
+                   :model/PulseChannelRecipient _ {:user_id          (mt/user->id :rasta)
+                                                   :pulse_channel_id pc-id}]
+      #_(with-redefs [messages/result-attachment result-attachment])
+      (pulse/send-pulse! pulse)
+      (-> @mt/inbox
+          (get (:email (mt/fetch-user :rasta)))
+          last
+          :body
+          last
+          :content
+          csv-to-html-table))))
+
+(defn- render-one-dashcard
+  [{:keys [card dashcard result] :as dashboard-result}]
+  [:div {:style (style/style dashcard-style)}
+   (if card
+     (let [section-style {:border "1px solid black"
+                          :padding "10px"}
+           base-render (render/render-pulse-card :inline (pulse/defaulted-timezone card) card dashcard result)
+           html-src    (-> base-render
+                           :content)
+           img-src     (-> base-render
+                           (png/render-html-to-png 1200)
+                           img/render-img-data-uri)
+           csv-src (render-csv-for-dashcard dashboard-result)]
+       [:div {:style (style/style (merge section-style {:display "flex"}))}
+        [:div {:style (style/style section-style)}
+         [:h4 "PNG"]
+         [:img {:style (style/style {:max-width "400px"})
+                :src   img-src}]]
+        [:div {:style (style/style (merge section-style {:max-width "400px"}))}
+         [:h4 "HTML"]
+         html-src]
+        [:div {:style (style/style section-style)}
+         [:h4 "CSV"]
+         csv-src]])
+     [:div {:style (style/style {:font-family             "Lato"
+                                 :font-size               "13px" #_ "0.875em"
+                                 :font-weight             "400"
+                                 :font-style              "normal"
+                                 :color                   "#4c5773"
+                                 :-moz-osx-font-smoothing "grayscale"})}
+      (markdown/process-markdown (:text dashboard-result) :html)])])
+
+(defn render-dashboard-to-hiccup
+  "Given a dashboard ID, renders all of the dashcards to a single png, attempting to replicate (roughly) the grid layout of the dashboard."
+  [dashboard-id]
+  (let [user              (t2/select-one :model/User)
+        dashboard         (t2/select-one :model/Dashboard :id dashboard-id)
+        dashboard-results (execute-dashboard {:creator_id (:id user)} dashboard)
+        render            (->> (map render-one-dashcard (map #(assoc % :dashboard-id dashboard-id) dashboard-results))
+                               (into [:div]))]
+    render))
+
+(defn render-dashboard-to-html
+  "Given a dashboard ID, renders all of the dashcards to a single png, attempting to replicate (roughly) the grid layout of the dashboard."
+  [dashboard-id]
+  (let [user              (t2/select-one :model/User)
+        dashboard         (t2/select-one :model/Dashboard :id dashboard-id)
+        dashboard-results (execute-dashboard {:creator_id (:id user)} dashboard)
+        [width height]    (dashboard-dims dashboard-results)
+        render            (->> (map render-one-dashcard dashboard-results)
+                               (into [:div {:style (style/style {:width            (str (* 2 width) "px")
+                                                                 :height           (str (* 2 height) "px")
+                                                                 :background-color "#f9fbfc"})}]))]
+    (open-hiccup-as-html render)))
+
 
 (comment
   ;; This form has 3 cards:
