@@ -78,7 +78,7 @@ export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {
 }
 
 export type SeriesSettings = {
-  title: string;
+  title?: string;
   color?: string;
   show_series_values?: boolean;
   display?: string;

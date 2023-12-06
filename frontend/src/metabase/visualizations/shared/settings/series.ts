@@ -4,15 +4,15 @@ import type { VisualizationSettings } from "metabase-types/api";
 import { getColorsForValues } from "metabase/lib/colors/charts";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 
-export const SETTING_ID = "series_settings";
-export const COLOR_SETTING_ID = "series_settings.colors";
+export const SERIES_SETTING_KEY = "series_settings";
+export const SERIES_COLORS_SETTING_KEY = "series_settings.colors";
 
 export const getSeriesColors = (
   seriesVizSettingsKeys: string[],
   settings: VisualizationSettings,
 ) => {
   const assignments = _.chain(seriesVizSettingsKeys)
-    .map(key => [key, getIn(settings, [SETTING_ID, key, "color"])])
+    .map(key => [key, getIn(settings, [SERIES_SETTING_KEY, key, "color"])])
     .filter(([_key, color]) => color != null)
     .object()
     .value();
