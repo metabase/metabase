@@ -1,8 +1,5 @@
 import type { Drill } from "metabase/visualizations/types/click-actions";
 import type { DrillThruType } from "metabase-lib";
-import { FKFilterDrill } from "metabase/visualizations/click-actions/drills/mlv2/FKFilterDrill";
-import { SummarizeColumnByTimeDrill } from "metabase/visualizations/click-actions/drills/mlv2/SummarizeColumnByTimeDrill";
-import { SortDrill } from "metabase/visualizations/click-actions/drills/mlv2/SortDrill";
 
 export const MODE_TYPE_DEFAULT = "default";
 export const MODE_TYPE_NATIVE = "native";
@@ -26,17 +23,20 @@ export const DRILL_TYPE_TO_HANDLER_MAP: Record<
   DrillThruType,
   Drill<any> | null
 > = {
-  "drill-thru/column-filter": null, // ColumnFilterDrill,
-  "drill-thru/quick-filter": null, // QuickFilterDrill,
-  "drill-thru/pk": null, // PKDetailsDrill,
-  "drill-thru/zoom": null, // ZoomToRowDrill,
-  "drill-thru/fk-details": null, // FKDetailsDrill,
+  "drill-thru/automatic-insights": null,
+  "drill-thru/column-filter": null,
+  "drill-thru/distribution": null,
+  "drill-thru/fk-details": null,
+  "drill-thru/fk-filter": null,
   "drill-thru/pivot": null,
-  "drill-thru/fk-filter": FKFilterDrill,
-  "drill-thru/distribution": null, // DistributionDrill,
-  "drill-thru/sort": SortDrill,
-  "drill-thru/summarize-column": null, // SummarizeColumnDrill,
-  "drill-thru/summarize-column-by-time": SummarizeColumnByTimeDrill,
-  "drill-thru/underlying-records": null, // UnderlyingRecordsDrill,
+  "drill-thru/pk": null,
+  "drill-thru/quick-filter": null,
+  "drill-thru/sort": null,
+  "drill-thru/summarize-column-by-time": null,
+  "drill-thru/summarize-column": null,
+  "drill-thru/underlying-records": null,
+  "drill-thru/zoom": null,
+  "drill-thru/zoom-in.binning": null,
+  "drill-thru/zoom-in.geographic": null,
   "drill-thru/zoom-in.timeseries": null,
 };

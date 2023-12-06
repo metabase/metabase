@@ -9,11 +9,10 @@ import type * as Lib from "metabase-lib";
 import { isBoolean, isDate, isNumeric } from "metabase-lib/types/utils/isa";
 import { TextIcon } from "../QuickFilterDrill/QuickFilterDrill.styled";
 
-type FilterOperator = "=" | "≠" | "<" | ">";
-type DateQuickFilterOperatorType = "<" | ">" | "=" | "≠";
+type FilterOperator = "=" | "≠" | "<" | ">" | "contains" | "does-not-contain";
 type FilterValueType = "null" | "numeric" | "date" | "boolean" | "text";
 
-const DateButtonTitleMap: Record<DateQuickFilterOperatorType, string> = {
+const DateButtonTitleMap: Record<string, string> = {
   ["<"]: t`Before`,
   [">"]: t`After`,
   ["="]: t`On`,
