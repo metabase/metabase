@@ -1,10 +1,11 @@
 import { assocIn } from "icepick";
 
 import { isNotNull } from "metabase/lib/types";
+import { SETTING_ID } from "metabase/visualizations/shared/settings/series";
 import type { VisualizationSettings, Card } from "metabase-types/api/card";
 import type { Series, TransformedSeries } from "metabase-types/api/dataset";
 
-import { SETTING_ID, keyForSingleSeries } from "./settings/series";
+import { keyForSingleSeries } from "./settings/series";
 
 export const updateSeriesColor = (
   settings: VisualizationSettings,
