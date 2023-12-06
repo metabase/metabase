@@ -27,9 +27,9 @@ type ValidTab = (keyof typeof tabOptions);
 interface EntityPickerModalProps {
   title: string;
   onItemSelect: (item: any) => void;
-  onClose?: () => void;
+  onClose: () => void;
   tabs: ValidTab[];
-  confirmButtons: boolean;
+  hasConfirmButtons?: boolean;
 }
 
 export function EntityPickerModal({
@@ -37,13 +37,13 @@ export function EntityPickerModal({
   onItemSelect,
   onClose,
   tabs,
-  confirmButtons = true,
+  hasConfirmButtons = true,
 }: EntityPickerModalProps) {
   const validTabs = tabs.filter(tabName => tabName in tabOptions);
   const [selectedItem, setSelectedItem] = useState<any>(null);
 
   const handleItemSelect = (item: any) => {
-    if (confirmButtons) {
+    if (hasConfirmButtons) {
       setSelectedItem(item);
     } else {
       onItemSelect(item);
@@ -55,14 +55,14 @@ export function EntityPickerModal({
   };
 
   return (
-    <Modal title={title} opened onClose={() => null} size="auto">
+    <Modal title={title} opened onClose={onClose} size="auto">
       <ErrorBoundary>
         {validTabs.length > 1 ? (
           <TabsView tabs={validTabs} onItemSelect={handleItemSelect} />
         ) : (
           <SinglePickerView model={tabs[0]} onItemSelect={handleItemSelect} />
         )}
-        {confirmButtons && (
+        {hasConfirmButtons && (
           <ButtonBar
             onConfirm={handleConfirm}
             onCancel={onClose}
@@ -113,10 +113,15 @@ export const ButtonBar = ({
   onCancel,
 }: {
   onConfirm: (item: any) => void;
-  onCancel?: () => void;
+  onCancel: () => void;
 }) => (
-  <Flex justify="flex-end">
-    {!!onCancel && <Button onClick={onCancel}>{t`Cancel`}</Button>}
-    <Button ml={1} variant="filled" onClick={onConfirm}>{t`Select`}</Button>
+  <Flex justify="space-between">
+    <Flex gap="md">
+
+    </Flex>
+    <Flex gap="md">
+      <Button onClick={onCancel}>{t`Cancel`}</Button>
+      <Button ml={1} variant="filled" onClick={onConfirm}>{t`Select`}</Button>
+    </Flex>
   </Flex>
 );

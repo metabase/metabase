@@ -31,7 +31,7 @@ export function NestedItemPicker({
 
     // FIXME do better
     const restOfStack = stack.slice(0, levelIndex + 1);
-    restOfStack[restOfStack.length - 1].selectedItem.id = folder?.id;
+    restOfStack[restOfStack.length - 1].selectedItem = folder;
 
     setStack([...restOfStack, { items: children, selectedItem: null }]);
   };
@@ -92,12 +92,16 @@ function ItemList({
         const isFolder = folderModel.includes(item.model);
         const isSelected = isFolder && item.id === selectedId;
         return (
-          <div>
+          <div key={item.model + item.id}>
             <NavLink
               label={item.name}
               active={isSelected}
               icon={<Icon name={isFolder ? "folder" : "table"} />}
-              onClick={() => onClick(item)}
+              onClick={(e) => {
+                e.preventDefault(); // prevent form submission
+                e.stopPropagation(); // prevent parent onClick
+                onClick(item);
+              }}
               variant="filled"
             />
           </div>
