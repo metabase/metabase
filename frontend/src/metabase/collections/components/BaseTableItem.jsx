@@ -73,7 +73,9 @@ export function BaseTableItem({
 
     const lastEditInfo = item["last-edit-info"];
     const lastEditedBy = getLastEditedBy(lastEditInfo);
-    const lastEditedAt = moment(lastEditInfo.timestamp).format("MMMM DD, YYYY");
+    const lastEditedAt = lastEditInfo
+      ? moment(lastEditInfo.timestamp).format("MMMM DD, YYYY")
+      : "";
 
     const testId = isPinned ? "pinned-collection-entry" : "collection-entry";
 
@@ -194,6 +196,9 @@ export function BaseTableItem({
 }
 
 function getLastEditedBy(lastEditInfo) {
+  if (!lastEditInfo) {
+    return "";
+  }
   const name = getFullName(lastEditInfo);
   return name || lastEditInfo.email;
 }
