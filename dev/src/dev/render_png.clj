@@ -115,27 +115,6 @@
         (.deleteOnExit tmp-file)
         (open tmp-file)))))
 
-(def ^:private dashgrid-x 50)
-(def ^:private dashgrid-y 50)
-
-(defn- dashboard-dims
-  [results]
-  (let [height (->> results
-                    (sort-by (comp :row :dashcard))
-                    last
-                    :dashcard
-                    ((juxt :row :size_y))
-                    (apply +)
-                    (* dashgrid-y))
-        width  (->> results
-                    (sort-by (comp :col :dashcard))
-                    last
-                    :dashcard
-                    ((juxt :col :size_x))
-                    (apply +)
-                    (* dashgrid-x))]
-    [width height]))
-
 (def ^:private dashcard-style
   {:background    "white"
    :border        "1px solid #ededf0"
@@ -215,7 +194,7 @@
       (markdown/process-markdown (:text dashboard-result) :html)])])
 
 (defn render-dashboard-to-hiccup
-  "Given a dashboard ID, renders all of the dashcards to a single png, attempting to replicate (roughly) the grid layout of the dashboard."
+  "Given a dashboard ID, renders all of the dashcards to hiccup datastructure."
   [dashboard-id]
   (let [user              (t2/select-one :model/User)
         dashboard         (t2/select-one :model/Dashboard :id dashboard-id)
@@ -225,18 +204,19 @@
     render))
 
 (defn render-dashboard-to-html
-  "Given a dashboard ID, renders all of the dashcards to a single png, attempting to replicate (roughly) the grid layout of the dashboard."
+  "Given a dashboard ID, renders all of the dashcards into an html document."
   [dashboard-id]
-  (let [user              (t2/select-one :model/User)
-        dashboard         (t2/select-one :model/Dashboard :id dashboard-id)
-        dashboard-results (execute-dashboard {:creator_id (:id user)} dashboard)
-        [width height]    (dashboard-dims dashboard-results)
-        render            (->> (map render-one-dashcard dashboard-results)
-                               (into [:div {:style (style/style {:width            (str (* 2 width) "px")
-                                                                 :height           (str (* 2 height) "px")
-                                                                 :background-color "#f9fbfc"})}]))]
-    (open-hiccup-as-html render)))
+  (hiccup/html (render-dashboard-to-hiccup dashboard-id)))
 
+(defn render-dashboard-to-html-and-open
+  "Given a dashboard ID, renders all of the dashcards to an html file and opens it."
+  [dashboard-id]
+  (let [html-str (render-dashboard-to-html dashboard-id)
+        tmp-file (File/createTempFile "card-html" ".html")]
+    (with-open [w (io/writer tmp-file)]
+      (.write w ^String html-str))
+    (.deleteOnExit tmp-file)
+    (open tmp-file)))
 
 (comment
   ;; This form has 3 cards:
