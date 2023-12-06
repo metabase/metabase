@@ -54,7 +54,7 @@ export function DateFilterEditor({
   );
 
   const handleChange = (value: DatePickerValue | undefined) => {
-    onChange(value ? getFilterClause(value) : undefined);
+    onChange(value ? getFilterClause(value) : null);
   };
 
   return (
