@@ -10,6 +10,7 @@ import type {
 } from "metabase/visualizations/types";
 import type { SeriesSettings } from "metabase-types/api";
 import { isNotNull } from "metabase/lib/types";
+import { getMetricDisplayValueGetter } from "metabase/visualizations/echarts/cartesian/model/dataset";
 
 const buildEChartsLabelOptions = (
   seriesModel: SeriesModel,
@@ -22,6 +23,8 @@ const buildEChartsLabelOptions = (
       jsx: false,
       compact: settings["graph.label_value_formatting"] === "compact",
     });
+
+  const valueGetter = getMetricDisplayValueGetter(settings);
 
   return {
     show: settings["graph.show_values"],
@@ -39,7 +42,7 @@ const buildEChartsLabelOptions = (
       if (dimensionName == null) {
         return " ";
       }
-      const value = (datum?.value as any)?.[dimensionName];
+      const value = valueGetter((datum?.value as any)?.[dimensionName]);
       return valueFormatter(value);
     },
   };
@@ -55,13 +58,10 @@ const buildEChartsBarSeries = (
 ): RegisteredSeriesOption["bar"] => {
   const stackName =
     settings["stackable.stack_type"] != null ? `bar_${yAxisIndex}` : undefined;
-  const datasetIndex =
-    settings["stackable.stack_type"] === "normalized" ? 1 : 0;
 
   return {
     type: "bar",
     yAxisIndex,
-    datasetIndex,
     stack: stackName,
     encode: {
       y: seriesModel.dataKey,
@@ -89,13 +89,10 @@ const buildEChartsLineAreaSeries = (
 
   const stackName =
     settings["stackable.stack_type"] != null ? `area_${yAxisIndex}` : undefined;
-  const datasetIndex =
-    settings["stackable.stack_type"] === "normalized" ? 1 : 0;
 
   return {
     type: "line",
     yAxisIndex,
-    datasetIndex,
     showSymbol: seriesSettings["line.marker_enabled"] !== false,
     symbolSize: 6,
     smooth: seriesSettings["line.interpolate"] === "cardinal",
