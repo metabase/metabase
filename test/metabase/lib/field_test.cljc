@@ -17,8 +17,8 @@
    [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   #?@(:clj  ([metabase.util.malli.fn :as mu.fn])
+       :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -1531,7 +1531,7 @@
 
 (deftest ^:parallel resolve-field-metadata-test
   (testing "Make sure fallback name for a Field ref makes sense"
-    (mu/disable-enforcement
+    (binding #?(:clj [mu.fn/*enforce* false] :cljs [])
       (is (=? {:lib/type        :metadata/column
                :lib/source-uuid string?
                :name            "12345"

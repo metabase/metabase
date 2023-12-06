@@ -969,6 +969,7 @@
   Column can be nil for a \"chart legend\" click, eg. clicking a category in the legend explaining the colours in a
   multiple bar or line chart. Underlying records drills apply in that case!"
   [a-query stage-number column value row dimensions]
+  (println "a-query:" a-query) ; NOCOMMIT
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
     (let [column-ref (when-let [a-ref (and column (.-field_ref ^js column))]
                        (legacy-ref->pMBQL a-ref))]
@@ -998,10 +999,10 @@
   [{a-query :query
     :keys [column stage-number value]
     :as _filter-drill}]
-  #js {"column"      column
-       "query"       a-query
-       "stageNumber" stage-number
-       "value"       (if (= value :null) nil value)})
+  #js {"column"     column
+       "query"      a-query
+       "stageIndex" stage-number
+       "value"      (if (= value :null) nil value)})
 
 (defn ^:export pivot-types
   "Returns an array of pivot types that are available in this drill-thru, which must be a pivot drill-thru."
