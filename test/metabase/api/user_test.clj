@@ -94,11 +94,11 @@
            :model/PermissionsGroup           {group-id3 :id} {:name "Good Folks"}
            :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id1 :is_group_manager true}
            :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id1 :is_group_manager false}
-           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id2 :is_group_manager false}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id2 :is_group_manager true}
            :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id2 :is_group_manager true}
            :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id3 :is_group_manager false}
            :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id3 :is_group_manager true}]
-        (testing "admin can get users from any group"
+        (testing "admin can get users from any group, even when they are also marked as a group manager"
           (is (= #{"lucky@metabase.com"
                    "rasta@metabase.com"}
                  (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id group-id1) :data)
@@ -108,6 +108,13 @@
           (is (= #{"lucky@metabase.com"
                    "crowberto@metabase.com"}
                  (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id group-id2) :data)
+                      (filter mt/test-user?)
+                      (map :email)
+                      set)))
+          (is (= #{"crowberto@metabase.com"
+                   "rasta@metabase.com"
+                   "lucky@metabase.com"}
+                 (->> ((mt/user-http-request :crowberto :get 200 "user") :data)
                       (filter mt/test-user?)
                       (map :email)
                       set))))
