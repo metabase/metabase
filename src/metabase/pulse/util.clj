@@ -10,6 +10,7 @@
    [toucan2.core :as t2]))
 
 ;; TODO - this should be done async
+;; TODO - this and `execute-multi-card` should be made more efficient: eg. we query for the card several times
 (defn execute-card
   "Execute the query for a single Card. `options` are passed along to the Query Processor."
   [{pulse-creator-id :creator_id} card-or-id & {:as options}]
@@ -50,10 +51,16 @@
   This is as opposed to combo cards and cards with visualizations with multiple series,
   which are viz settings."
   [card-or-id dashcard-or-id]
-  (let [card-id      (u/the-id card-or-id)
-        dashcard-id  (u/the-id dashcard-or-id)
-        card         (t2/select-one :model/Card :id card-id, :archived false)
-        dashcard     (t2/select-one :model/DashboardCard :id dashcard-id)
-        multi-cards  (dashboard-card/dashcard->multi-cards dashcard)]
-    (for [multi-card multi-cards]
-      (execute-card {:creator_id (:creator_id card)} (:id multi-card)))))
+  (if dashcard-or-id
+    (let [card-id     (u/the-id card-or-id)
+          card        (t2/select-one :model/Card :id card-id, :archived false)
+          ;; NOTE/TODO - dashcard-or-id is nil with multiple time series
+          dashcard-id (u/the-id dashcard-or-id)
+          dashcard    (t2/select-one :model/DashboardCard :id dashcard-id)
+          multi-cards (dashboard-card/dashcard->multi-cards dashcard)]
+      (for [multi-card multi-cards]
+        (execute-card {:creator_id (:creator_id card)} (:id multi-card))))
+    (let [card-id     (u/the-id card-or-id)
+          ;; NOTE/TODO - dashcard-or-id is nil with multiple time series
+          card        (t2/select-one :model/Card :id card-id, :archived false)]
+      [(execute-card {:creator_id (:creator_id card)} (:id card))])))
