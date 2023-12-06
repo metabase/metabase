@@ -39,12 +39,12 @@ describeEE("issue 26988", () => {
 
     getIframeBody().should("have.css", "font-family", `Lato, sans-serif`);
 
-    cy.findByTestId("embedding-settings").findByText("Font").siblings().click();
+    cy.findByTestId("embedding-settings").findByLabelText("Font").click();
     popover().findByText("Oswald").click();
     cy.wait("@dashboard");
     getIframeBody().should("have.css", "font-family", `Oswald, sans-serif`);
 
-    cy.findByTestId("embedding-settings").findByText("Font").siblings().click();
+    cy.findByTestId("embedding-settings").findByLabelText("Font").click();
     popover().findByText("Slabo 27px").click();
     cy.wait("@dashboard");
     getIframeBody().should(
