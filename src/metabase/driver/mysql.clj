@@ -245,8 +245,29 @@
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal expr))
 
-(defn- date-format [format-str expr] [:date_format expr (h2x/literal format-str)])
-(defn- str-to-date [format-str expr] [:str_to_date expr (h2x/literal format-str)])
+(defn- date-format [format-str expr]
+  [:date_format expr (h2x/literal format-str)])
+
+(defn- str-to-date
+  "From the dox:
+
+  > STR_TO_DATE() returns a DATETIME value if the format string contains both date and time parts, or a DATE or TIME
+  > value if the string contains only date or time parts.
+
+  See https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_date-format for a list of format
+  specifiers."
+  [format-str expr]
+  (let [contains-date-parts? (some #(str/includes? format-str %)
+                                   ["%a" "%b" "%c" "%D" "%d" "%e" "%j" "%M" "%m" "%U"
+                                    "%u" "%V" "%v" "%W" "%w" "%X" "%x" "%Y" "%y"])
+        contains-time-parts? (some #(str/includes? format-str %)
+                                   ["%f" "%H" "%h" "%I" "%i" "%k" "%l" "%p" "%r" "%S" "%s" "%T"])
+        database-type        (cond
+                               (and contains-date-parts? (not contains-time-parts?)) "date"
+                               (and contains-time-parts? (not contains-date-parts?)) "time"
+                               :else                                                 "datetime")]
+    (-> [:str_to_date expr (h2x/literal format-str)]
+        (h2x/with-database-type-info database-type))))
 
 (defmethod sql.qp/->float :mysql
   [_ value]
@@ -337,10 +358,22 @@
   (-> [:makedate year-expr (sql.qp/inline-num number-of-days)]
       (h2x/with-database-type-info "date")))
 
+(defmethod sql.qp/date [:mysql :minute]
+  [_driver _unit expr]
+  (let [format-str (if (= (h2x/database-type expr) "time")
+                     "%H:%i"
+                     "%Y-%m-%d %H:%i")]
+    (trunc-with-format format-str expr)))
+
+(defmethod sql.qp/date [:mysql :hour]
+  [_driver _unit expr]
+  (let [format-str (if (= (h2x/database-type expr) "time")
+                     "%H"
+                     "%Y-%m-%d %H")]
+    (trunc-with-format format-str expr)))
+
 (defmethod sql.qp/date [:mysql :default]         [_ _ expr] expr)
-(defmethod sql.qp/date [:mysql :minute]          [_ _ expr] (trunc-with-format "%Y-%m-%d %H:%i" expr))
 (defmethod sql.qp/date [:mysql :minute-of-hour]  [_ _ expr] (h2x/minute expr))
-(defmethod sql.qp/date [:mysql :hour]            [_ _ expr] (trunc-with-format "%Y-%m-%d %H" expr))
 (defmethod sql.qp/date [:mysql :hour-of-day]     [_ _ expr] (h2x/hour expr))
 (defmethod sql.qp/date [:mysql :day]             [_ _ expr] (->date expr))
 (defmethod sql.qp/date [:mysql :day-of-month]    [_ _ expr] [:dayofmonth expr])
@@ -440,7 +473,7 @@
     :TINYTEXT   :type/Text
     :VARBINARY  :type/*
     :VARCHAR    :type/Text
-    :YEAR       :type/Date
+    :YEAR       :type/Integer
     :JSON       :type/JSON}
    ;; strip off " UNSIGNED" from end if present
    (keyword (str/replace (name database-type) #"\sUNSIGNED$" ""))))
@@ -571,12 +604,15 @@
         (catch Throwable _
           (.getString rs i))))))
 
+;; Mysql 8.1+ returns results of YEAR(..) function having a YEAR type. In Mysql 8.0.33, return value of that function
+;; has an integral type. Let's make the returned values consistent over mysql versions.
+;; Context: https://dev.mysql.com/doc/connector-j/en/connector-j-YEAR.html
 (defmethod sql-jdbc.execute/read-column-thunk [:mysql Types/DATE]
   [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (if (= "YEAR" (.getColumnTypeName rsmeta i))
     (fn read-time-thunk []
       (when-let [x (.getObject rs i)]
-        (.toLocalDate ^java.sql.Date x)))
+        (.getYear (.toLocalDate ^java.sql.Date x))))
     (let [parent-thunk ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/DATE]) driver rs rsmeta i)]
       parent-thunk)))
 
@@ -612,9 +648,7 @@
     ::upload/varchar-255              [[:varchar 255]]
     ::upload/text                     [:text]
     ::upload/int                      [:bigint]
-    ::upload/int-pk                   [:bigint :primary-key]
     ::upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment :primary-key]
-    ::upload/string-pk                [[:varchar 255] :primary-key]
     ::upload/float                    [:double]
     ::upload/boolean                  [:boolean]
     ::upload/date                     [:date]
@@ -649,6 +683,10 @@
   [_driver val]
   (str val))
 
+(defmethod value->string nil
+  [_driver _val]
+  nil)
+
 (defmethod value->string Boolean
   [_driver val]
   (if val
@@ -679,10 +717,12 @@
   ;; you must specify two backslashes for the value to be interpreted as a single backslash. The escape sequences
   ;; '\t' and '\n' specify tab and newline characters, respectively.
   [v]
-  (str/replace v #"\\|\n|\r|\t" {"\\" "\\\\"
-                                 "\n" "\\n"
-                                 "\r" "\\r"
-                                 "\t" "\\t"}))
+  (if (nil? v)
+    "\\N"
+    (str/replace v #"\\|\n|\r|\t" {"\\" "\\\\"
+                                   "\n" "\\n"
+                                   "\r" "\\r"
+                                   "\t" "\\t"})))
 
 (defn- row->tsv
   [driver column-count row]

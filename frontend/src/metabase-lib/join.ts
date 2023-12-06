@@ -14,7 +14,8 @@ import type {
   TableMetadata,
 } from "./types";
 import { expressionParts } from "./expression";
-import { displayInfo, isColumnMetadata } from "./metadata";
+import { isColumnMetadata } from "./internal";
+import { displayInfo } from "./metadata";
 
 /**
  * Something you can join against -- either a raw Table, or a Card, which can be either a plain Saved Question or a
@@ -196,12 +197,12 @@ export function joinConditionOperators(
   return ML.join_condition_operators(query, stageIndex, lhsColumn, rhsColumn);
 }
 
-export function suggestedJoinCondition(
+export function suggestedJoinConditions(
   query: Query,
   stageIndex: number,
   joinable: Joinable,
-): JoinCondition | null {
-  return ML.suggested_join_condition(query, stageIndex, joinable);
+): JoinCondition[] {
+  return ML.suggested_join_conditions(query, stageIndex, joinable);
 }
 
 export type JoinFields = ColumnMetadata[] | "all" | "none";

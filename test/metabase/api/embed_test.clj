@@ -151,7 +151,7 @@
 
 (def successful-dashboard-info
   {:auto_apply_filters true, :description nil, :parameters [], :dashcards [], :tabs [],
-   :param_values nil, :param_fields nil})
+   :param_values {}, :param_fields nil})
 
 (def ^:private yesterday (time/minus (time/now) (time/days 1)))
 
@@ -559,6 +559,81 @@
                    :visualization_settings
                    :text)))))))
 
+(deftest locked-params-removes-values-fields-and-mappings-test
+  (testing "check that locked params are removed in parameter mappings, param_values, and param_fields"
+    (with-embedding-enabled-and-new-secret-key
+      (t2.with-temp/with-temp [Dashboard     dashboard     {:enable_embedding true
+                                                            :embedding_params {:venue_name "locked"}
+                                                            :name             "Test Dashboard"
+                                                            :parameters       [{:name      "venue_name"
+                                                                                :slug      "venue_name"
+                                                                                :id        "foo"
+                                                                                :type      :string/=
+                                                                                :sectionId "string"}]}
+                               Card          {card-id :id} {:name "Dashboard Test Card"}
+                               DashboardCard {_ :id}       {:dashboard_id       (:id dashboard)
+                                                            :card_id            card-id
+                                                            :parameter_mappings [{:card_id      card-id
+                                                                                  :slug         "venue_name"
+                                                                                  :parameter_id "foo"
+                                                                                  :target       [:dimension
+                                                                                                 [:field (mt/id :venues :name) nil]]}
+                                                                                 {:card_id      card-id
+                                                                                  :parameter_id "bar"
+                                                                                  :target       [:dimension
+                                                                                                 [:field (mt/id :categories :name) nil]]}]}]
+        (let [embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}}))]
+          (is (= nil
+                 (-> embedding-dashboard
+                     :param_values
+                     (get (mt/id :venues :name)))))
+          (is (= nil
+                 (-> embedding-dashboard
+                     :param_fields
+                     (get (mt/id :venues :name)))))
+          (is (= 1
+                 (-> embedding-dashboard
+                     :dashcards
+                     first
+                     :parameter_mappings
+                     count))))))))
+
+(deftest linked-param-to-locked-removes-param-values-test
+  (testing "Check that a linked parameter to a locked params we remove the param_values."
+    (with-embedding-enabled-and-new-secret-key
+      (t2.with-temp/with-temp [Dashboard     dashboard     {:enable_embedding true
+                                                            :embedding_params {:venue_name "locked" :category_name "enabled"}
+                                                            :name             "Test Dashboard"
+                                                            :parameters       [{:name      "venue_name"
+                                                                                :slug      "venue_name"
+                                                                                :id        "foo"
+                                                                                :type      :string/=
+                                                                                :sectionId "string"}
+                                                                               {:name                "category_name"
+                                                                                :filteringParameters ["foo"]
+                                                                                :slug                "category_name"
+                                                                                :id                  "bar"
+                                                                                :type                :string/=
+                                                                                :sectionId           "string"}]}
+                               Card          {card-id :id} {:name "Dashboard Test Card"}
+                               DashboardCard {_ :id}       {:dashboard_id       (:id dashboard)
+                                                            :card_id            card-id
+                                                            :parameter_mappings [{:card_id      card-id
+                                                                                  :slug         "venue_name"
+                                                                                  :parameter_id "foo"
+                                                                                  :target       [:dimension
+                                                                                                 [:field (mt/id :venues :name) nil]]}
+                                                                                 {:card_id      card-id
+                                                                                  :slug         "category_name"
+                                                                                  :parameter_id "bar"
+                                                                                  :target       [:dimension
+                                                                                                 [:field (mt/id :categories :name) nil]]}]}]
+        (let [embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}}))]
+          (is (= []
+                 (-> embedding-dashboard
+                     :param_values
+                     (get (mt/id :categories :name))
+                     :values))))))))
 
 ;;; ---------------------- GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id -----------------------
 
@@ -587,6 +662,30 @@
           (let [results (client/client :get 200 (str (dashcard-url dashcard) "/csv"))]
             (is (= 101
                    (count (csv/read-csv results))))))))))
+
+(deftest downloading-csv-json-xlsx-results-from-the-dashcard-endpoint-respects-column-settings
+  (testing "Downloading CSV/JSON/XLSX results should respect the column settings of the dashcard, such as column order and hidden/shown setting. (#33727)"
+    (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+      (with-embedding-enabled-and-new-secret-key
+        (with-temp-dashcard [dashcard {:dash     {:enable_embedding true}
+                                       :card     {:dataset_query (assoc (mt/mbql-query venues)
+                                                                        :limit 1
+                                                                        :middleware
+                                                                        {:add-default-userland-constraints? true
+                                                                         :userland-query?                   true})}
+                                       ;; we set column settings on the Dashcard only to see that the settings are respected in the output
+                                       :dashcard {:visualization_settings
+                                                  {:column_settings {}
+                                                   :table.columns
+                                                   [{:name "NAME" :fieldRef [:field (mt/id :venues :name) nil] :enabled true}
+                                                    {:name "ID" :fieldRef [:field (mt/id :venues :id) nil] :enabled true}
+                                                    {:name "CATEGORY_ID" :fieldRef [:field (mt/id :venues :category_id) nil] :enabled true}
+                                                    {:name "LATITUDE" :fieldRef [:field (mt/id :venues :latitude) nil] :enabled false}
+                                                    {:name "LONGITUDE" :fieldRef [:field (mt/id :venues :longitude) nil] :enabled false}
+                                                    {:name "PRICE" :fieldRef [:field (mt/id :venues :price) nil] :enabled true}]}}}]
+          (let [results (client/client :get 200 (str (dashcard-url dashcard) "/csv"))]
+            (is (= ["Name" "ID" "Category ID" "Price"]
+                   (first (csv/read-csv results))))))))))
 
 (deftest generic-query-failed-exception-test
   (testing (str "...but if the card has an invalid query we should just get a generic \"query failed\" exception "

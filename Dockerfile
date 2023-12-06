@@ -5,6 +5,7 @@
 FROM node:18-bullseye as builder
 
 ARG MB_EDITION=oss
+ARG VERSION
 
 WORKDIR /home/node
 
@@ -18,7 +19,7 @@ COPY . .
 # version is pulled from git, but git doesn't trust the directory due to different owners
 RUN git config --global --add safe.directory /home/node
 
-RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh
+RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh :version ${VERSION}
 
 # ###################
 # # STAGE 2: runner
@@ -33,7 +34,7 @@ FROM --platform=linux/amd64 eclipse-temurin:11-jre-alpine as runner
 ENV FC_LANG en-US LC_CTYPE en_US.UTF-8
 
 # dependencies
-RUN apk add -U bash ttf-dejavu fontconfig curl java-cacerts && \
+RUN apk add -U bash fontconfig curl font-noto font-noto-arabic font-noto-hebrew font-noto-cjk java-cacerts && \
     apk upgrade && \
     rm -rf /var/cache/apk/* && \
     mkdir -p /app/certs && \

@@ -2,6 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
@@ -18,10 +19,13 @@
 (mu/defn underlying-records-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.underlying-records]
   "When clicking on a particular broken-out group, offer a look at the details of all the rows that went into this
   bucket. Eg. distribution of People by State, then click New York and see the table of all People filtered by
-  `STATE = 'New York'`."
-  [query                                        :- ::lib.schema/query
-   stage-number                                 :- :int
-   {:keys [column column-ref dimensions value]} :- ::lib.schema.drill-thru/context]
+  `STATE = 'New York'`.
+
+  There is another quite different case: clicking the legend of a chart with multiple bars or lines broken out by
+  category. Then `column` is nil!"
+  [query                                                      :- ::lib.schema/query
+   stage-number                                               :- :int
+   {:keys [column column-ref dimensions value], :as _context} :- ::lib.schema.drill-thru/context]
   ;; Clicking on breakouts is weird. Clicking on Count(People) by State: Minnesota yields a FE `clicked` with:
   ;; - column is COUNT
   ;; - row[0] has col: STATE, value: "Minnesota"
@@ -30,19 +34,29 @@
   ;; - value: the aggregated value (the count, the sum, etc.)
   ;; So dimensions is exactly what we want.
   ;; It returns the table name and row count, since that's used for pluralization of the name.
+
+  ;; Clicking on a chart legend for eg. COUNT(Orders) by Products.CATEGORY and Orders.CREATED_AT has a context like:
+  ;; - column is nil
+  ;; - value is nil
+  ;; - dimensions holds only the legend's column, eg. Products.CATEGORY.
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             column
-             (some? value)
              (not-empty dimensions)
-             (not (lib.types.isa/structured? column)))
+             ;; Either we need both column and value (cell/map/data point click) or neither (chart legend click).
+             (or (and column (some? value))
+                 (and (nil? column) (nil? value)))
+             ;; If the column exists, it must not be a structured column like JSON.
+             (not (and column (lib.types.isa/structured? column))))
     {:lib/type   :metabase.lib.drill-thru/drill-thru
      :type       :drill-thru/underlying-records
      ;; TODO: This is a bit confused for non-COUNT aggregations. Perhaps it should just always be 10 or something?
      ;; Note that some languages have different plurals for exactly 2, or for 1, 2-5, and 6+.
-     :row-count  (if (number? value) value 2)
-     :table-name (some->> (lib.util/source-table-id query)
-                          (lib.metadata/table query)
-                          (lib.metadata.calculation/display-name query stage-number))
+     :row-count  (if (and (number? value)
+                          (not (neg? value)))
+                   value
+                   2)
+     :table-name (when-let [table-or-card (or (some->> query lib.util/source-table-id (lib.metadata/table query))
+                                              (some->> query lib.util/source-card-id  (lib.metadata/card  query)))]
+                   (lib.metadata.calculation/display-name query stage-number table-or-card))
      :dimensions dimensions
      :column-ref column-ref}))
 
@@ -57,7 +71,17 @@
    stage-number :- :int
    column       :- lib.metadata/ColumnMetadata
    value        :- :any]
-  (lib.filter/filter query stage-number (lib.filter/= column value)))
+  (let [filter-clauses (or (when (lib.binning/binning column)
+                             (when-let [{:keys [min-value max-value]} (lib.binning/resolve-bin-width column value)]
+                               (let [unbinned-column (lib.binning/with-binning column nil)]
+                                 [(lib.filter/>= unbinned-column min-value)
+                                  (lib.filter/< unbinned-column max-value)])))
+                           [(lib.filter/= column value)])]
+    (reduce
+     (fn [query filter-clause]
+       (lib.filter/filter query stage-number filter-clause))
+     query
+     filter-clauses)))
 
 (defmethod lib.drill-thru.common/drill-thru-method :drill-thru/underlying-records
   [query _stage-number {:keys [column-ref dimensions]} & _]

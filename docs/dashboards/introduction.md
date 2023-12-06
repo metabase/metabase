@@ -46,9 +46,10 @@ In both cases, duplication only includes the dashboard, its card layout, filters
 
 There are two ways to add questions to a dashboard: from the dashboard, or from the question you want to add.
 
-**From a question**: you can add a newly saved question to a dashboard directly from the window that pops up after you save the question for the first time. You can also add a question to a dashboard by clicking on the **pencil** icon next to the name of the question, and selecting **Add to dashboard**.
+- **From a question**: You can add a newly saved question to a dashboard directly from the modal that pops up after you save the question for the first time. You can also add a question to a dashboard by clicking on the ellipsis (**...**) at the top right of a question and selecting **Add to dashboard**.
+- **From a dashboard**: Click on the **pencil** icon to **edit the dashboard**. Then click the **+** icon in the top right of the dashboard editing interface (not the **+** in the main navigation bar) to add any of your saved questions to the dashboard, regardless of which collection the questions are in.
 
-**From a dashboard**: Click on the **pencil** icon to **edit the dashboard**. Then click the **+** icon in the top right of the dashboard editing interface (not the **+** in the main navigation bar) to add any of your saved questions to the dashboard, regardless of which collection the questions are in.
+> If your question is saved to your personal collection, you'll only be able to add that question to dashboards in your personal collection. If you want to add the question to a dashboard in a public collection, you'll need to move your question to that collection (or any other public collection).
 
 Once you add a question to your dashboard, it’ll look something like this:
 
@@ -130,6 +131,17 @@ You can change a card's visualization settings (to add a goal line, for example,
 Click on the **pencil** icon to enter dashboard edit mode, hover over the question you want to edit, and click on the **palette** icon to edit a card's visualization's settings.
 
 ![Visualization settings](images/visualization-settings.png)
+
+### Hiding a card when it doesn't return results
+
+One neat thing to call out: if you have a question card that rarely returns results, but you still want to include it in your dashboard because you want to know when it _does_ return results, you can tell Metabase to hide the card unless it returns at least one row of data.
+
+When in dashboard edit mode, click on the **Visualization settings** for the card.
+
+- If the card displays a table, the option is in the **Columns** tab.
+- If the card displays a chart, the option is in the **Display** tab.
+
+Toggle the option **Hide this card if there are no results**. When you turn on this option, the query will still run in the background, but the dashboard won't display the card. If the query returns results, the dashboard will display the card, moving the other cards around to make room for it according to how you've arranged the cards in dashboard edit mode.
 
 ## Resetting a card's visualization settings
 

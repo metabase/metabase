@@ -2,14 +2,19 @@
   (:require
    [babashka.fs :as fs]
    [clojure.java.io :as io]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.string :as str]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.audit-db :as audit-db]
    [metabase.core :as mbc]
    [metabase.models.database :refer [Database]]
    [metabase.models.permissions :as perms]
    [metabase.task :as task]
+   [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db :plugins))
 
 (defmacro with-audit-db-restoration [& body]
   "Calls `ensure-audit-db-installed!` before and after `body` to ensure that the audit DB is installed and then
@@ -68,3 +73,20 @@
   (is (= #{"plugins/instance_analytics/collections"
            "plugins/instance_analytics/databases"}
          (set (map str (fs/list-dir "plugins/instance_analytics"))))))
+
+(defn- get-audit-db-trigger-keys []
+  (let [trigger-keys (->> (task/scheduler-info) :jobs (mapcat :triggers) (map :key))
+        audit-db? #(str/includes? % (str perms/audit-db-id))]
+    (filter audit-db? trigger-keys)))
+
+(deftest no-sync-tasks-for-audit-db
+  (with-audit-db-restoration
+    (audit-db/ensure-audit-db-installed!)
+    (is (= 0 (count (get-audit-db-trigger-keys))) "no sync scheduled after installation")
+
+    (with-redefs [task.sync-databases/job-context->database-id (constantly perms/audit-db-id)]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Cannot sync Database: It is the audit db."
+           (#'task.sync-databases/sync-and-analyze-database! "job-context"))))
+    (is (= 0 (count (get-audit-db-trigger-keys))) "no sync occured even when called directly for audit db.")))

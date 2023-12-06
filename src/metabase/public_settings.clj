@@ -1,8 +1,5 @@
 (ns metabase.public-settings
   (:require
-   [cheshire.core :as json]
-   [clj-http.client :as http]
-   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.api.common :as api]
@@ -113,6 +110,14 @@
   :visibility :public
   :audit      :getter)
 
+(defsetting dismissed-custom-dashboard-toast
+  (deferred-tru "Toggle which is true after a user has dismissed the custom dashboard toast.")
+  :user-local :only
+  :visibility :authenticated
+  :type       :boolean
+  :default    false
+  :audit      :never)
+
 ;; `::uuid-nonce` is a Setting that sets a site-wide random UUID value the first time it is fetched.
 (defmethod setting/get-value-of-type ::uuid-nonce
   [_ setting]
@@ -129,7 +134,6 @@
   [_]
   `String)
 
-;; TODO test
 (defsetting site-uuid
   ;; Don't i18n this docstring because it's not user-facing! :)
   "Unique identifier used for this instance of {0}. This is set once and only once the first time it is fetched via
@@ -654,33 +658,15 @@
                            (trs "Invalid day of week: {0}" (pr-str new-value))))
                  (setting/set-value-of-type! :keyword :start-of-week new-value)))
 
-(defsetting cloud-gateway-ips-url
-  "Store URL for fetching the list of Cloud gateway IP addresses"
-  :visibility :internal
-  :setter     :none
-  :default    (str premium-features/store-url "/static/cloud_gateways.json")
-  :doc        false)
-
-(def ^:private fetch-cloud-gateway-ips-fn
-  (memoize/ttl
-   (fn []
-     (try
-       (-> (http/get (cloud-gateway-ips-url))
-           :body
-           (json/parse-string keyword)
-           :ip_addresses)
-       (catch Exception e
-         (log/error e (trs "Error fetching Metabase Cloud gateway IP addresses:")))))
-   :ttl/threshold (* 1000 60 60 24)))
-
 (defsetting cloud-gateway-ips
   (deferred-tru "Metabase Cloud gateway IP addresses, to configure connections to DBs behind firewalls")
   :visibility :public
-  :type       :json
+  :type       :string
   :setter     :none
-  :getter     (fn []
-                (when (premium-features/is-hosted?)
-                  (fetch-cloud-gateway-ips-fn))))
+  :getter (fn []
+            (when (premium-features/is-hosted?)
+              (some-> (setting/get-value-of-type :string :cloud-gateway-ips)
+                      (str/split #",")))))
 
 (defsetting show-database-syncing-modal
   (deferred-tru

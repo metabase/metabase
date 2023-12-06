@@ -131,7 +131,11 @@ interface QueryDownloadWidgetOpts {
 }
 
 const canEditQuestion = (question: Question) => {
-  return question.query() != null && question.query().isEditable();
+  return (
+    question.canWrite() &&
+    question.query() != null &&
+    question.query().isEditable()
+  );
 };
 
 const canDownloadResults = (result?: Dataset) => {
@@ -163,5 +167,7 @@ DashCardMenu.shouldRender = ({
   );
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(null, mapDispatchToProps)(DashCardMenu);
+export const DashCardMenuConnected = connect(
+  null,
+  mapDispatchToProps,
+)(DashCardMenu);

@@ -43,5 +43,11 @@ describe("Collections plugin utils", () => {
       const collection = createMockCollection({ type: "instance-analytics" });
       expect(getCollectionType(collection).icon).toBe("audit");
     });
+
+    it("root collection", () => {
+      const collection = createMockCollection();
+      expect(getCollectionType(collection).type).toBe(null);
+      expect(getCollectionType({}).type).toBe(null);
+    });
   });
 });

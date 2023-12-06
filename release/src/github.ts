@@ -20,15 +20,24 @@ const findMilestone = async ({
     state: "open",
   });
 
-  // our milestones don't have the v prefix
-  const expectedMilestoneName = getOSSVersion(version).replace(/^v/, "");
+  // our milestones don't have the v prefix or a .0 suffix
+  const expectedMilestoneName = getOSSVersion(version)
+    .replace(/^v/, "")
+    .replace(/-rc\d+$/i, "") // RC versions use the major version milestone
+    .replace(/\.0$/, '');
 
   return milestones.data.find(
-    (milestone: { title: string, number: number } ) => milestone.title === expectedMilestoneName,
+    (milestone: { title: string; number: number }) =>
+      milestone.title === expectedMilestoneName,
   )?.number;
 };
 
-export const closeMilestone = async ({ github, owner, repo, version }: ReleaseProps) => {
+export const closeMilestone = async ({
+  github,
+  owner,
+  repo,
+  version,
+}: ReleaseProps) => {
   const milestoneId = await findMilestone({ version, github, owner, repo });
 
   if (!milestoneId) {
@@ -40,25 +49,30 @@ export const closeMilestone = async ({ github, owner, repo, version }: ReleasePr
     owner,
     repo,
     milestone_number: milestoneId,
-    state: 'closed',
+    state: "closed",
   });
 };
 
-export const openNextMilestones = async ({ github, owner, repo, version }: ReleaseProps) => {
-  const nextMilestones = getNextVersions(version)
-    .map(version => getOSSVersion(version).replace(/^v/, ''));
+export const openNextMilestones = async ({
+  github,
+  owner,
+  repo,
+  version,
+}: ReleaseProps) => {
+  const nextMilestones = getNextVersions(version).map(version =>
+    getOSSVersion(version).replace(/^v/, ""),
+  );
 
   await Promise.all(
-    nextMilestones.map((milestoneName) => (
+    nextMilestones.map(milestoneName =>
       github.rest.issues.createMilestone({
         owner,
         repo,
         title: milestoneName,
-      })
-    )
-  ));
+      }),
+    ),
+  );
 };
-
 
 export const getMilestoneIssues = async ({
   version,
@@ -72,14 +86,15 @@ export const getMilestoneIssues = async ({
     return [];
   }
 
-  const milestone = await github.rest.issues.listForRepo({
+  // we have to use paginate function or the issues will be truncated to 100
+  const issues = await github.paginate(github.rest.issues.listForRepo, {
     owner,
     repo,
     milestone: milestoneId.toString(),
     state: "closed",
   });
 
-  return (milestone?.data ?? []) as Issue[];
+  return (issues ?? []) as Issue[];
 };
 
 // latest for the purposes of github release notes

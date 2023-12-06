@@ -179,13 +179,15 @@ To set up model caching:
 1. [Enable model caching in Metabase](#enable-model-caching-in-metabase).
 2. [Create a schema to store cached models](#create-a-schema-to-store-cached-models).
 
+> Model caching doesn't work with [data sandboxing](../configuring-metabase/caching.md#caching-doesnt-work-with-data-sandboxing).
+
 ### Enable model caching in Metabase
 
 Go to **Admin settings** > **Settings** > **Caching** > **Models** to turn the feature on.
 
 ![Model caching](./images/model-caching-custom.png)
 
-You can set models to refresh based on one of the default frequencies, or select the **Custom** option to use [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html) to specify your own caching update frequency. We recommend scheduling the cache to refresh on a frequency that makes sense with how often your source tables update with new data.
+You can set models to refresh based on one of the default frequencies, or select the **Custom** option to use [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html) to specify your own caching update frequency. We recommend scheduling the cache to refresh on a frequency that makes sense with how often your source tables update with new data. The cron scheduler uses the [Report Timezone](../configuring-metabase/localization.md#report-timezone) if selected and otherwise uses the System Timezone (which defaults to GMT in Metabase Cloud).
 
 If someone [changes the query definition of a model](#edit-a-models-query), any question based on that model will skip the cache until the next cache refresh.
 

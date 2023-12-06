@@ -59,8 +59,12 @@
                                                              (catch Throwable e
                                                                (log/error e (trs "Error saving query execution info"))))))))
 
-(defn- save-successful-query-execution! [cached? query-execution result-rows]
-  (let [qe-map (assoc query-execution :cache_hit (boolean cached?) :result_rows result-rows)]
+(defn- save-successful-query-execution! [cache-details is_sandboxed? query-execution result-rows]
+  (let [qe-map (assoc query-execution
+                      :cache_hit    (boolean (:cached cache-details))
+                      :cache_hash   (:hash cache-details)
+                      :result_rows  result-rows
+                      :is_sandboxed (boolean is_sandboxed?))]
     (save-query-execution! qe-map)))
 
 (defn- save-failed-query-execution! [query-execution message]
@@ -71,14 +75,15 @@
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- success-response [{query-hash :hash, :as query-execution} {cached? :cached, :as result}]
+(defn- success-response [{query-hash :hash, :as query-execution} {cache :cache/details :as result}]
   (merge
    (-> query-execution
        add-running-time
-       (dissoc :error :hash :executor_id :action_id :card_id :dashboard_id :pulse_id :result_rows :native))
-   result
-   {:status                 :completed
-    :average_execution_time (when cached?
+       (dissoc :error :hash :executor_id :action_id :is_sandboxed :card_id :dashboard_id :pulse_id :result_rows :native))
+   (dissoc result :cache/details)
+   {:cached                 (boolean (:cached cache))
+    :status                 :completed
+    :average_execution_time (when (:cached cache)
                               (query/average-execution-time-ms query-hash))}))
 
 (defn- add-and-save-execution-info-xform! [execution-info rf]
@@ -94,11 +99,8 @@
        (when (integer? (:card_id execution-info))
          (events/publish-event! :event/card-query {:user-id      (:executor_id execution-info)
                                                    :card-id      (:card_id execution-info)
-                                                   :cached       (:cached acc)
-                                                   :context      (:context execution-info)
-                                                   :ignore_cache (get-in execution-info
-                                                                         [:json_query :middleware :ignore-cached-results?])}))
-       (save-successful-query-execution! (:cached acc) execution-info @row-count)
+                                                   :context      (:context execution-info)}))
+       (save-successful-query-execution! (:cache/details acc) (get-in acc [:data :is_sandboxed]) execution-info @row-count)
        (rf (if (map? acc)
              (success-response execution-info acc)
              acc)))

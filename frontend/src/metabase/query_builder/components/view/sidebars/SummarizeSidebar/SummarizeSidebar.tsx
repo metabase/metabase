@@ -41,6 +41,9 @@ export function SummarizeSidebar({
     [initialQuery, isDefaultAggregationRemoved],
   );
 
+  const aggregations = Lib.aggregations(query, STAGE_INDEX);
+  const hasAggregations = aggregations.length > 0;
+
   const legacyQuery = useMemo(() => {
     const question = initialLegacyQuery.question();
     return question
@@ -48,19 +51,8 @@ export function SummarizeSidebar({
       .query() as StructuredQuery;
   }, [query, initialLegacyQuery]);
 
-  const aggregations = Lib.aggregations(query, STAGE_INDEX);
-  const hasAggregations = aggregations.length > 0;
-
-  const handleLegacyQueryChange = useCallback(
-    (nextLegacyQuery: StructuredQuery) => {
-      const nextQuery = nextLegacyQuery.question()._getMLv2Query();
-      onQueryChange(nextQuery);
-    },
-    [onQueryChange],
-  );
-
   const handleAddAggregation = useCallback(
-    (aggregation: Lib.Aggregatable) => {
+    (aggregation: Lib.Aggregable) => {
       const nextQuery = Lib.aggregate(query, STAGE_INDEX, aggregation);
       onQueryChange(nextQuery);
     },
@@ -68,7 +60,7 @@ export function SummarizeSidebar({
   );
 
   const handleUpdateAggregation = useCallback(
-    (aggregation: Lib.AggregationClause, nextAggregation: Lib.Aggregatable) => {
+    (aggregation: Lib.AggregationClause, nextAggregation: Lib.Aggregable) => {
       const nextQuery = Lib.replaceClause(
         query,
         STAGE_INDEX,
@@ -142,27 +134,24 @@ export function SummarizeSidebar({
       onDone={handleDoneClick}
     >
       <AggregationsContainer>
-        {aggregations.map((aggregation, index) => (
+        {aggregations.map(aggregation => (
           <AggregationItem
             key={
               Lib.displayInfo(query, STAGE_INDEX, aggregation).longDisplayName
             }
             query={query}
             aggregation={aggregation}
-            aggregationIndex={index}
             legacyQuery={legacyQuery}
             onUpdate={nextAggregation =>
               handleUpdateAggregation(aggregation, nextAggregation)
             }
             onRemove={() => handleRemoveAggregation(aggregation)}
-            onLegacyQueryChange={handleLegacyQueryChange}
           />
         ))}
         <AddAggregationButton
           query={query}
           legacyQuery={legacyQuery}
           onAddAggregation={handleAddAggregation}
-          onLegacyQueryChange={handleLegacyQueryChange}
         />
       </AggregationsContainer>
       {hasAggregations && (

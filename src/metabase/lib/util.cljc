@@ -41,10 +41,10 @@
   "Returns true if this is a clause."
   [clause]
   (and (vector? clause)
-       (> (count clause) 1)
        (keyword? (first clause))
-       (map? (second clause))
-       (contains? (second clause) :lib/uuid)))
+       (let [opts (get clause 1)]
+         (and (map? opts)
+              (contains? opts :lib/uuid)))))
 
 (defn clause-of-type?
   "Returns true if this is a clause."
@@ -279,16 +279,17 @@
   [query stage-number]
   (not (previous-stage-number query stage-number)))
 
-(defn next-stage-number
+(mu/defn next-stage-number :- [:maybe :int]
   "The index of the next stage, if there is one. `nil` if there is no next stage."
-  [{:keys [stages], :as _query} stage-number]
+  [{:keys [stages], :as _query} :- :map
+   stage-number                 :- :int]
   (let [stage-number (if (neg? stage-number)
                        (+ (count stages) stage-number)
                        stage-number)]
     (when (< (inc stage-number) (count stages))
       (inc stage-number))))
 
-(mu/defn query-stage :- ::lib.schema/stage
+(mu/defn query-stage :- [:maybe ::lib.schema/stage]
   "Fetch a specific `stage` of a query. This handles negative indices as well, e.g. `-1` will return the last stage of
   the query."
   [query        :- LegacyOrPMBQLQuery

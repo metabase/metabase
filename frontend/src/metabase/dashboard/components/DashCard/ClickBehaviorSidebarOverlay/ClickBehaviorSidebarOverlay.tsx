@@ -22,7 +22,7 @@ interface Props {
 
 const MIN_WIDTH_FOR_ON_CLICK_LABEL = 330;
 
-function ClickBehaviorSidebarOverlay({
+export function ClickBehaviorSidebarOverlay({
   dashcard,
   dashcardWidth,
   showClickBehaviorSidebar,
@@ -52,6 +52,3 @@ function ClickBehaviorSidebarOverlay({
     </Root>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ClickBehaviorSidebarOverlay;

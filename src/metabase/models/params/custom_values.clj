@@ -52,13 +52,16 @@
 
 (defn- values-from-card-query
   [card value-field query]
-  (let [value-base-type (:base_type (qp.util/field->field-info value-field (:result_metadata card)))]
+  (let [value-base-type (:base_type (qp.util/field->field-info value-field (:result_metadata card)))
+        expressions (get-in card [:dataset_query :query :expressions])]
     {:database (:database_id card)
      :type     :query
      :query    (merge
-                 {:source-table (format "card__%d" (:id card))
-                  :breakout     [value-field]
-                  :limit        *max-rows*}
+                 (cond-> {:source-table (format "card__%d" (:id card))
+                          :breakout     [value-field]
+                          :limit        *max-rows*}
+                   expressions
+                   (assoc :expressions expressions))
                  {:filter [:and
                            [(if (isa? value-base-type :type/Text)
                               :not-empty

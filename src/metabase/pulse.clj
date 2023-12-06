@@ -8,11 +8,8 @@
    [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.integrations.slack :as slack]
-   [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
-   [metabase.models.dashboard-card
-    :as dashboard-card
-    :refer [DashboardCard]]
+   [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as pulse :refer [Pulse]]
@@ -20,7 +17,7 @@
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.markdown :as markdown]
-   [metabase.pulse.parameters :as params]
+   [metabase.pulse.parameters :as pulse-params]
    [metabase.pulse.render :as render]
    [metabase.pulse.util :as pu]
    [metabase.query-processor :as qp]
@@ -72,7 +69,7 @@
   (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (try
     (let [card-id (u/the-id card-or-id)
-          card    (t2/select-one Card :id card-id)
+          card    (t2/select-one :model/Card :id card-id)
           result  (qp.dashboard/run-query-for-dashcard-async
                    :dashboard-id  (u/the-id dashboard)
                    :card-id       card-id
@@ -158,7 +155,7 @@
   (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (cond
     (:card_id dashcard)
-    (let [parameters (merge-default-values (params/parameters pulse dashboard))]
+    (let [parameters (merge-default-values (pulse-params/parameters pulse dashboard))]
       (execute-dashboard-subscription-card dashboard dashcard (:card_id dashcard) parameters))
 
     ;; actions
@@ -172,9 +169,9 @@
     ;; text cards have existed for a while and I'm not sure if all existing text cards
     ;; will have virtual_card.display = "text", so assume everything else is a text card
     :else
-    (let [parameters (merge-default-values (params/parameters pulse dashboard))]
+    (let [parameters (merge-default-values (pulse-params/parameters pulse dashboard))]
       (-> dashcard
-          (params/process-virtual-dashcard parameters)
+          (pulse-params/process-virtual-dashcard parameters)
           escape-heading-markdown
           :visualization_settings
           (assoc :type :text)))))
@@ -183,8 +180,8 @@
   [dashcards pulse dashboard]
   (let [ordered-dashcards (sort dashboard-card/dashcard-comparator dashcards)]
     (doall (for [dashcard ordered-dashcards
-                 :let  [part (dashcard->part dashcard pulse dashboard)]
-                 :when (some? part)]
+                 :let     [part (dashcard->part dashcard pulse dashboard)]
+                 :when    (some? part)]
              part))))
 
 (defn- tab->part
@@ -203,7 +200,7 @@
         (let [tabs-with-cards (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)]
          (doall (flatten (for [{:keys [cards] :as tab} tabs-with-cards]
                            (concat [(tab->part tab)] (dashcards->part cards pulse dashboard))))))
-        (dashcards->part (t2/select DashboardCard :dashboard_id dashboard-id) pulse dashboard)))))
+        (dashcards->part (t2/select :model/DashboardCard :dashboard_id dashboard-id) pulse dashboard)))))
 
 (defn- database-id [card]
   (or (:database_id card)
@@ -211,7 +208,7 @@
 
 (mu/defn defaulted-timezone :- :string
   "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
-  [card :- (mi/InstanceOf Card)]
+  [card :- (mi/InstanceOf :model/Card)]
   (or (some->> card database-id (t2/select-one Database :id) qp.timezone/results-timezone-id)
       (qp.timezone/system-timezone-id)))
 
@@ -284,7 +281,7 @@
 (defn- filter-text
   [filter]
   (truncate-mrkdwn
-   (format "*%s*\n%s" (:name filter) (params/value-string filter))
+   (format "*%s*\n%s" (:name filter) (pulse-params/value-string filter))
    attachment-text-length-limit))
 
 (defn- slack-dashboard-header
@@ -298,7 +295,7 @@
         creator-section {:type   "section"
                          :fields [{:type "mrkdwn"
                                    :text (str "Sent by " (-> pulse :creator :common_name))}]}
-        filters         (params/parameters pulse dashboard)
+        filters         (pulse-params/parameters pulse dashboard)
         filter-fields   (for [filter filters]
                           {:type "mrkdwn"
                            :text (filter-text filter)})
@@ -316,7 +313,7 @@
    [{:type "divider"}
     {:type "context"
      :elements [{:type "mrkdwn"
-                 :text (str "<" (params/dashboard-url (u/the-id dashboard) (params/parameters pulse dashboard)) "|"
+                 :text (str "<" (pulse-params/dashboard-url (u/the-id dashboard) (pulse-params/parameters pulse dashboard)) "|"
                             "*Sent from " (public-settings/site-name) "*>")}]}]})
 
 (def slack-width
@@ -406,7 +403,7 @@
 ;; 'notification' used below means a map that has information needed to send a Pulse/Alert, including results of
 ;; running the underlying query
 (defmulti ^:private notification
-  "Polymorphoic function for creating notifications. This logic is different for pulse type (i.e. alert vs. pulse) and
+  "Polymorphic function for creating notifications. This logic is different for pulse type (i.e. alert vs. pulse) and
   channel_type (i.e. email vs. slack)"
   {:arglists '([alert-or-pulse parts channel])}
   (fn [pulse _ {:keys [channel_type]}]
@@ -506,16 +503,16 @@
   "Execute the underlying queries for a sequence of Pulses and return the parts as 'notification' maps."
   [{:keys [cards], pulse-id :id, :as pulse} dashboard]
   (parts->notifications pulse
-                          (if dashboard
-                            ;; send the dashboard
-                            (execute-dashboard pulse dashboard)
-                            ;; send the cards instead
-                            (for [card  cards
-                                  ;; Pulse ID may be `nil` if the Pulse isn't saved yet
-                                  :let  [part (assoc (pu/execute-card pulse (u/the-id card) :pulse-id pulse-id) :type :card)]
-                                  ;; some cards may return empty part, e.g. if the card has been archived
-                                  :when part]
-                              part))))
+                        (if dashboard
+                          ;; send the dashboard
+                          (execute-dashboard pulse dashboard)
+                          ;; send the cards instead
+                          (for [card cards
+                                ;; Pulse ID may be `nil` if the Pulse isn't saved yet
+                                :let [part (assoc (pu/execute-card pulse (u/the-id card) :pulse-id pulse-id) :type :card)]
+                                ;; some cards may return empty part, e.g. if the card has been archived
+                                :when part]
+                            part))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Sending Notifications                                              |

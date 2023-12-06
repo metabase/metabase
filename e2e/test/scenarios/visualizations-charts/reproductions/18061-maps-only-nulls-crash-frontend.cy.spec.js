@@ -3,6 +3,8 @@ import {
   visitAlias,
   popover,
   filterWidget,
+  queryBuilderHeader,
+  queryBuilderMain,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -101,20 +103,21 @@ describe("issue 18061", () => {
 
       cy.window().then(w => (w.beforeReload = true));
 
-      cy.icon("filter").parent().contains("1").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("ID is less than 3").click();
+      queryBuilderHeader().findByTestId("filters-visibility-control").click();
+      cy.findByTestId("qb-filters-panel")
+        .findByText("ID is less than 3")
+        .click();
+      popover().within(() => {
+        cy.findByDisplayValue("3").type("{backspace}2");
+        cy.button("Update filter").click();
+      });
 
-      popover().find("input").type("{backspace}2");
+      queryBuilderMain().findByText("Something went wrong").should("not.exist");
 
-      cy.button("Update filter").click();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Something went wrong").should("not.exist");
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("ID is less than 2");
-      cy.get(".PinMap");
+      cy.findByTestId("qb-filters-panel")
+        .findByText("ID is less than 2")
+        .should("be.visible");
+      cy.get(".PinMap").should("be.visible");
 
       cy.window().should("have.prop", "beforeReload", true);
     });

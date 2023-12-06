@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
@@ -242,7 +243,13 @@
               :display-name "expr"}]
             (-> lib.tu/venues-query
                 (lib/expression "expr" (lib/absolute-datetime "2020" :month))
-                lib/expressions-metadata))))
+                lib/expressions-metadata)))
+    (is (=? [{:display-name "expr"
+              :named? true}]
+            (-> lib.tu/venues-query
+                (lib/expression "expr" (lib/absolute-datetime "2020" :month))
+                lib/expressions
+                (->> (map (fn [expr] (lib/display-info lib.tu/venues-query expr))))))))
   (testing "collisions with other column names are detected and rejected"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :categories))
           ex    (try
@@ -350,3 +357,48 @@
       (let [dropped (lib/remove-join query join)]
         (is (empty? (lib/joins dropped)))
         (is (empty? (lib/expressions dropped)))))))
+
+(deftest ^:parallel with-expression-name-test
+  (let [query       (-> lib.tu/venues-query
+                        (lib/expression "expr" (lib/absolute-datetime "2020" :month))
+                        (lib/aggregate (lib/count)))
+        [orig-expr] (lib/expressions query)
+        expr        (lib/with-expression-name orig-expr "newly-named-expression")
+        [orig-agg]  (lib/aggregations query)
+        agg         (lib/with-expression-name orig-agg "my count")]
+    (testing "expressions should include the original expression name"
+      (is (=? [{:name         "expr"
+                :display-name "expr"}]
+              (lib/expressions-metadata query))))
+    (testing "expressions from the expressions query clause can be renamed"
+      (is (= "newly-named-expression"
+             (lib/display-name query expr)))
+      (is (nil? (:display-name (lib.options/options expr))))
+      (is (=? {:display-name "expr"
+               :named? true}
+              (lib/display-info query orig-expr)))
+      (is (= "expr"
+             (lib/display-name query orig-expr)))
+      (is (=? {:display-name "newly-named-expression"
+               :named? true}
+              (lib/display-info query expr)))
+      (is (= "newly-named-expression"
+             (lib/display-name query expr)))
+      (is (not= (lib.options/uuid orig-expr)
+                (lib.options/uuid expr))))
+    (testing "aggregation expressions can be renamed"
+      (is (= "my count"
+             (lib/display-name query agg)))
+      (is (nil? (:lib/expression-name (lib.options/options agg))))
+      (is (=? {:display-name "Count"
+               :named? (symbol "nil #_\"key is not present.\"")}
+              (lib/display-info query orig-agg)))
+      (is (= "Count"
+             (lib/display-name query orig-agg)))
+      (is (=? {:display-name "my count"
+               :named? true}
+              (lib/display-info query agg)))
+      (is (= "my count"
+             (lib/display-name query agg)))
+      (is (not= (lib.options/uuid orig-agg)
+                (lib.options/uuid agg))))))

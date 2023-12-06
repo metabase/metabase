@@ -39,9 +39,9 @@ const isBugIssue = (issue: Issue) =>
 const formatIssue = (issue: Issue) => `- ${issue.title} (#${issue.number})`;
 
 export const getDockerTag = (version: string) => {
-  const imagePath = `${process.env.DOCKERHUB_OWNER}/${process.env.DOCKERHUB_REPO}${
-    isEnterpriseVersion(version) ? "-enterprise" : ""
-  }`;
+  const imagePath = `${process.env.DOCKERHUB_OWNER}/${
+    process.env.DOCKERHUB_REPO
+  }${isEnterpriseVersion(version) ? "-enterprise" : ""}`;
 
   return `[\`${imagePath}:${version}\`](https://hub.docker.com/r/${imagePath}/tags)`;
 };
@@ -109,4 +109,30 @@ export async function publishRelease({
   };
 
   return github.rest.repos.createRelease(payload);
+}
+
+export async function getChangelog({
+  version,
+  owner,
+  repo,
+  github,
+}: ReleaseProps) {
+  if (!isValidVersionString(version)) {
+    throw new Error(`Invalid version string: ${version}`);
+  }
+  const issues = await getMilestoneIssues({ version, github, owner, repo });
+
+  const bugFixes = issues.filter(isBugIssue);
+  const enhancements = issues.filter(issue => !isBugIssue(issue));
+
+  const notes = `
+## Enhancements
+${enhancements?.map(formatIssue).join("\n") ?? ""}
+
+
+## Bug fixes
+${bugFixes?.map(formatIssue).join("\n") ?? ""}
+`;
+
+  return notes;
 }

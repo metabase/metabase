@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+
 import { parse, adjustBooleans } from "./recursive-parser";
 import { resolve } from "./resolver";
 
@@ -31,13 +33,23 @@ export function processSource(options) {
     }
   };
 
-  const { source, startRule } = options;
+  const { source, query, stageIndex, startRule } = options;
 
-  let expression;
+  let expression = null;
+  let expressionClause = null;
   let compileError;
   try {
     const parsed = parse(source);
     expression = adjustBooleans(resolve(parsed, startRule, resolveMBQLField));
+
+    // query and stageIndex are not available outside of notebook editor (e.g. in Metrics or Segments).
+    if (query && typeof stageIndex !== "undefined") {
+      expressionClause = Lib.expressionClauseForLegacyExpression(
+        query,
+        stageIndex,
+        expression,
+      );
+    }
   } catch (e) {
     console.warn("compile error", e);
     compileError = e;
@@ -46,6 +58,7 @@ export function processSource(options) {
   return {
     source,
     expression,
+    expressionClause,
     compileError,
   };
 }

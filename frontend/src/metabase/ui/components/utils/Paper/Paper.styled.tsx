@@ -6,7 +6,7 @@ export const getPaperOverrides = (): MantineThemeOverride["components"] => ({
       radius: "md",
       shadow: "md",
     },
-    styles: (theme, params: PaperStylesParams) => ({
+    styles: (theme, _params: PaperStylesParams) => ({
       root: {
         color: theme.colors.text[2],
         backgroundColor: theme.white,

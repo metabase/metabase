@@ -138,7 +138,8 @@
 
 ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/datepart-transact-sql?view=sql-server-ver15
 (defn- date-part [unit expr]
-  (hx/call :datepart (hx/raw (name unit)) expr))
+  (-> (hx/call :datepart (hx/raw (name unit)) expr)
+      (hx/with-database-type-info "integer")))
 
 (defn- date-add [unit & exprs]
   (apply hx/call :dateadd (hx/raw (name unit)) exprs))
@@ -157,17 +158,29 @@
   [_ _ expr]
   (date-part :second expr))
 
+(defn- time-from-parts [hour minute second fraction precision]
+  (-> (hx/call :TimeFromParts hour minute second fraction precision)
+      (hx/with-database-type-info "time")))
+
 (defmethod sql.qp/date [:sqlserver :minute]
-  [_ _ expr]
-  (hx/maybe-cast :smalldatetime expr))
+  [_driver _unit expr]
+  (if (= (hx/database-type expr) "time")
+    (time-from-parts (date-part :hour expr) (date-part :minute expr) 0 0 0)
+    (hx/maybe-cast :smalldatetime expr)))
 
 (defmethod sql.qp/date [:sqlserver :minute-of-hour]
   [_ _ expr]
   (date-part :minute expr))
 
+(defn- date-time-2-from-parts [year month day hour minute second fraction precision]
+  (-> (hx/call :datetime2fromparts year month day hour minute second fraction precision)
+      (hx/with-database-type-info "datetime2")))
+
 (defmethod sql.qp/date [:sqlserver :hour]
-  [_ _ expr]
-  (hx/call :datetime2fromparts (hx/year expr) (hx/month expr) (hx/day expr) (date-part :hour expr) 0 0 0 0))
+  [_driver _unit expr]
+  (if (= (hx/database-type expr) "time")
+    (time-from-parts (date-part :hour expr) 0 0 0 0)
+    (date-time-2-from-parts (hx/year expr) (hx/month expr) (hx/day expr) (date-part :hour expr) 0 0 0 0)))
 
 (defmethod sql.qp/date [:sqlserver :hour-of-day]
   [_ _ expr]
@@ -677,5 +690,5 @@
     ;; if the user has set the rowcount-override connection property, it ends up in the details map, but it actually
     ;; needs to be moved over to the settings map (which is where DB local settings go, as per #19399)
     (-> (update database :details #(dissoc % :rowcount-override))
-        (update :settings #(assoc % :max-results-bare-rows rowcount-override)))
+        (update :settings #(assoc % :max-unaggregated-query-row-limit rowcount-override)))
     database))

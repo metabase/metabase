@@ -8,14 +8,14 @@ import type {
   ClickBehavior,
 } from "metabase-types/api";
 
-import { Heading } from "../ClickBehaviorSidebar.styled";
+import { Label } from "./CustomLinkText.styled";
 
 interface Props {
   clickBehavior: ArbitraryCustomDestinationClickBehavior;
   updateSettings: (settings: ClickBehavior) => void;
 }
 
-const CustomLinkText = ({ clickBehavior, updateSettings }: Props) => {
+export const CustomLinkText = ({ clickBehavior, updateSettings }: Props) => {
   const handleChange = useCallback(
     (e: { target: HTMLInputElement }) => {
       updateSettings({
@@ -28,8 +28,9 @@ const CustomLinkText = ({ clickBehavior, updateSettings }: Props) => {
 
   return (
     <div className="mt2 mb1">
-      <Heading>{t`Customize link text (optional)`}</Heading>
+      <Label htmlFor="link-text-template">{t`Customize link text (optional)`}</Label>
       <InputBlurChange
+        id="link-text-template"
         className="block full"
         placeholder={t`E.x. Details for {{Column Name}}`}
         value={clickBehavior.linkTextTemplate}
@@ -38,6 +39,3 @@ const CustomLinkText = ({ clickBehavior, updateSettings }: Props) => {
     </div>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default CustomLinkText;

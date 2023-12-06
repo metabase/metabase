@@ -241,7 +241,8 @@ custom-geojson-enabled
 start-of-week
 custom-geojson
 available-timezones
-max-results-bare-rows
+max-unaggregated-query-row-limit
+max-aggregated-query-row-limit
 hide-embed-branding?
 search-typeahead-enabled
 enable-sandboxes?
@@ -290,6 +291,10 @@ If you've written scripts to automate serialization, you'll need to:
 - Reserialize your Metabase using the upgraded Metabase (which uses the new `export` and `import` commands). Note that serialization will only work if you export and import your Metabase using the same Metabase version.
 - Update those scripts with the new commands. See the new [export options](#export-options).
 - If your scripts do any post-processing of the exported YAML files, you may need to update your scripts to accommodate the slightly different directory and YAML file structures.
+
+## Drop entity IDs
+
+Before exporting, you can also run a Metabase command to [drop entity IDs](./commands.md#drop-entity-ids).
 
 ## Further reading
 

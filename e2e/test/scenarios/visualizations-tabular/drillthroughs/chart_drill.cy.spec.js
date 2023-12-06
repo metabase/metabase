@@ -1,9 +1,7 @@
 import {
   restore,
-  openProductsTable,
   openOrdersTable,
   popover,
-  sidebar,
   visitQuestionAdhoc,
   visualize,
   summarize,
@@ -12,6 +10,7 @@ import {
   startNewQuestion,
   addOrUpdateDashboardCard,
   addSummaryField,
+  queryBuilderMain,
 } from "e2e/support/helpers";
 
 import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -48,37 +47,39 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       { visitQuestion: true },
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Gadget");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("January 2023");
-    cy.wait(100); // wait longer to avoid grabbing the svg before a chart redraw
+    queryBuilderMain().within(() => {
+      cy.findByLabelText("Legend").findByText("Gadget").should("exist");
+      cy.get(".LineAreaBarChart").findByText("January 2023").should("exist");
+    });
 
-    // drag across to filter
-    cy.get(".Visualization")
+    cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
+    cy.get(".Visualization") // drag across to filter
       .trigger("mousedown", 120, 200)
       .trigger("mousemove", 230, 200)
       .trigger("mouseup", 230, 200);
 
-    // new filter applied
     // Note: Test was flaking because apparently mouseup doesn't always happen at the same position.
     //       It is enough that we assert that the filter exists and that it starts with May 2022.
     //       The date range formatter sometimes omits the year of the first month (e.g. May–July 2022),
     //       so checking that 2022 occurs after May ensures that May 2022 is in fact the first date.
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(/^Created At is May.*2022/);
-    // more granular axis labels
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("June 2022");
-    // confirm that product category is still broken out
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Gadget");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Doohickey");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Gizmo");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Widget");
+
+    cy.findByTestId("qb-filters-panel")
+      .findByText(
+        "Product → Created At is May 1, 12:00 AM – Jul 1, 2022, 12:00 AM",
+      )
+      .should("exist");
+
+    queryBuilderMain().within(() => {
+      cy.get(".LineAreaBarChart").findByText("June 2022"); // more granular axis labels
+
+      // confirm that product category is still broken out
+      cy.findByLabelText("Legend").within(() => {
+        cy.findByText("Gadget").should("exist");
+        cy.findByText("Doohickey").should("exist");
+        cy.findByText("Gizmo").should("exist");
+        cy.findByText("Widget").should("exist");
+      });
+    });
   });
 
   ["month", "month-of-year"].forEach(granularity => {
@@ -111,11 +112,14 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
       cy.wait("@dataset");
 
-      granularity === "month"
-        ? // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Created At is September 2022 – February 2023")
-        : // Once the issue gets fixed, figure out the positive assertion for the "month-of-year" granularity
-          null;
+      // Once the issue gets fixed, figure out the positive assertion for the "month-of-year" granularity
+      if (granularity === "month") {
+        cy.findByTestId("qb-filters-panel")
+          .findByText(
+            "Created At is Sep 1, 2022, 12:00 AM – Feb 1, 2023, 12:00 AM",
+          )
+          .should("exist");
+      }
 
       cy.get("circle");
     });
@@ -613,31 +617,49 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
   describe("for an unsaved question", () => {
     beforeEach(() => {
-      // Build a question without saving
-      openProductsTable();
-      summarize();
-      sidebar().within(() => {
-        cy.contains("Category").click();
-      });
+      const questionDetails = {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": PRODUCTS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                PRODUCTS.CATEGORY,
+                {
+                  "base-type": "type/Text",
+                },
+              ],
+            ],
+          },
+        },
+      };
+
+      visitQuestionAdhoc(questionDetails);
 
       // Drill-through the last bar (Widget)
       cy.get(".bar").last().click({ force: true });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("See these Products").click();
+      popover().findByTextEnsureVisible("See these Products").click();
     });
 
-    // [quarantine] flaky
-    it.skip("should result in a correct query result", () => {
+    it("should result in a correct query result", () => {
       cy.log("Assert that the URL is correct");
       cy.url().should("include", "/question#");
 
       cy.log("Assert on the correct product category: Widget");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Category is Widget");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Gizmo").should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Doohickey").should("not.exist");
+      cy.findByTestId("qb-filters-panel").findByText("Category is Widget");
+
+      cy.findByTestId("question-row-count").should(
+        "have.text",
+        "Showing 54 rows",
+      );
+
+      cy.findByTestId("visualization-root")
+        .should("contain", "Widget")
+        .and("not.contain", "Gizmo")
+        .and("not.contain", "Doohickey");
     });
   });
 
@@ -677,9 +699,9 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.findByText(`≠`).should("be.visible");
     });
 
-    cy.findByTestId("time-series-mode-footer").within(() => {
+    cy.findByTestId("timeseries-chrome").within(() => {
       cy.findByText(`View`).should("be.visible");
-      cy.findByText(`All Time`).should("be.visible");
+      cy.findByText(`All time`).should("be.visible");
       cy.findByText(`by`).should("be.visible");
       cy.findByText(`Month`).should("be.visible");
     });
@@ -728,9 +750,9 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.findByText(`≠`).should("be.visible");
     });
 
-    cy.findByTestId("time-series-mode-footer").within(() => {
+    cy.findByTestId("timeseries-chrome").within(() => {
       cy.findByText(`View`).should("be.visible");
-      cy.findByText(`All Time`).should("be.visible");
+      cy.findByText(`All time`).should("be.visible");
       cy.findByText(`by`).should("be.visible");
       cy.findByText(`Month`).should("be.visible");
     });

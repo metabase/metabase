@@ -109,6 +109,8 @@
    [metabase.sync.analyze.classify :as classify]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru trun]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [schema.core :as s]
    [toucan2.core :as t2]))
 
@@ -739,7 +741,7 @@
   [metric opts]
   (automagic-dashboard (merge (->root metric) opts)))
 
-(s/defn ^:private collect-metrics :- (s/maybe [#_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema Metric)])
+(mu/defn ^:private collect-metrics :- [:maybe [:sequential (ms/InstanceOf Metric)]]
   [root question]
   (map (fn [aggregation-clause]
          (if (-> aggregation-clause
@@ -754,7 +756,7 @@
                                   :table_id   table-id}))))
        (get-in question [:dataset_query :query :aggregation])))
 
-(s/defn ^:private collect-breakout-fields :- (s/maybe [#_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema Field)])
+(mu/defn ^:private collect-breakout-fields :- [:maybe [:sequential (ms/InstanceOf Field)]]
   [root question]
   (for [breakout     (get-in question [:dataset_query :query :breakout])
         field-clause (take 1 (magic.util/collect-field-references breakout))

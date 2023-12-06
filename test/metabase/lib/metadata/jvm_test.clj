@@ -12,10 +12,12 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.test :as mt]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest ^:parallel fetch-field-test
-  (let [field (#'lib.metadata.jvm/fetch-instance :metadata/column (mt/id) (mt/id :categories :id))]
+  (let [field (t2/select-one :metadata/column (mt/id :categories :id))]
     (is (not (me/humanize (mc/validate lib.metadata/ColumnMetadata field))))))
 
 (deftest ^:parallel fetch-database-test
@@ -193,7 +195,3 @@
             (lib.metadata/card
              (lib.metadata.jvm/application-database-metadata-provider (mt/id))
              card-id)))))
-
-(deftest ^:parallel equality-test
-  (is (= (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-         (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))

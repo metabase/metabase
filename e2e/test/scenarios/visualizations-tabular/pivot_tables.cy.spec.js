@@ -10,6 +10,7 @@ import {
   leftSidebar,
   main,
   modal,
+  getIframeBody,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -122,9 +123,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findByText("See these Orders").click();
     // filters are applied
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Source is Affiliate");
+    cy.findByText("User → Source is Affiliate");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Category is Doohickey");
+    cy.findByText("Product → Category is Doohickey");
     // data loads
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("45.04");
@@ -139,7 +140,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     popover().within(() => cy.findByText("=").click());
     // filter is applied
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Category is Doohickey");
+    cy.findByText("Product → Category is Doohickey");
     // filter out affiliate as a source
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Affiliate").click();
@@ -147,7 +148,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     popover().within(() => cy.findByText("≠").click());
     // filter is applied and value is gone from the left header
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Source is not Affiliate");
+    cy.findByText("User → Source is not Affiliate");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Affiliate").should("not.exist");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -487,21 +488,18 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     // open settings and expand Total column settings
     cy.findByTestId("viz-settings-button").click();
-    openColumnSettings(/Total/);
 
-    // sort descending
-    cy.icon("arrow_down").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("158 – 160");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("8 – 10").should("not.exist");
+    sortColumnResults("Total", "descending");
+    cy.findAllByTestId("pivot-table").within(() => {
+      cy.findByText("158 – 160").should("be.visible");
+      cy.findByText("8 – 10").should("not.exist");
+    });
 
-    // sort ascending
-    cy.icon("arrow_up").realClick();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("8 – 10");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("158 – 160").should("not.exist");
+    sortColumnResults("Total", "ascending");
+    cy.findAllByTestId("pivot-table").within(() => {
+      cy.findByText("8 – 10").should("be.visible");
+      cy.findByText("158 – 160").should("not.exist");
+    });
   });
 
   it("should display an error message for native queries", () => {
@@ -622,7 +620,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       popover().within(() => cy.findByText("=").click()); // drill with additional filter
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Source is Google"); // filter was added
+      cy.findByText("User → Source is Google"); // filter was added
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Row totals"); // it's still a pivot table
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -1103,73 +1101,85 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     main().findByText("User → Address").should("be.visible");
   });
 
-  it("should return the same number of rows when running as an ad-hoc query vs a saved card (metabase#34278)", () => {
-    const query = {
-      type: "query",
-      query: {
-        "source-table": ANALYTIC_EVENTS_ID,
-        aggregation: [["count"]],
-        breakout: [
-          ["field", ANALYTIC_EVENTS.BUTTON_LABEL, { "base-type": "type/Text" }],
-          ["field", ANALYTIC_EVENTS.PAGE_URL, { "base-type": "type/Text" }],
-          [
-            "field",
-            ANALYTIC_EVENTS.TIMESTAMP,
-            { "base-type": "type/DateTime", "temporal-unit": "day" },
-          ],
-          ["field", ANALYTIC_EVENTS.EVENT, { "base-type": "type/Text" }],
-          ["field", ANALYTIC_EVENTS.ACCOUNT_ID, { "base-type": "type/Text" }],
-          ["field", ANALYTIC_EVENTS.ID, { "base-type": "type/Text" }],
-        ],
-      },
-      database: SAMPLE_DB_ID,
-    };
-
-    visitQuestionAdhoc({
-      dataset_query: query,
-      display: "pivot",
-      visualization_settings: {
-        "pivot_table.column_split": {
-          rows: [
-            ["field", ANALYTIC_EVENTS.PAGE_URL, { "base-type": "type/Text" }],
+  it(
+    "should return the same number of rows when running as an ad-hoc query vs a saved card (metabase#34278)",
+    { tags: "@flaky" },
+    () => {
+      const query = {
+        type: "query",
+        query: {
+          "source-table": ANALYTIC_EVENTS_ID,
+          aggregation: [["count"]],
+          breakout: [
             [
               "field",
               ANALYTIC_EVENTS.BUTTON_LABEL,
               { "base-type": "type/Text" },
             ],
-            ["field", ANALYTIC_EVENTS.ACCOUNT_ID, { "base-type": "type/Text" }],
+            ["field", ANALYTIC_EVENTS.PAGE_URL, { "base-type": "type/Text" }],
             [
               "field",
               ANALYTIC_EVENTS.TIMESTAMP,
               { "base-type": "type/DateTime", "temporal-unit": "day" },
             ],
+            ["field", ANALYTIC_EVENTS.EVENT, { "base-type": "type/Text" }],
+            ["field", ANALYTIC_EVENTS.ACCOUNT_ID, { "base-type": "type/Text" }],
             ["field", ANALYTIC_EVENTS.ID, { "base-type": "type/Text" }],
           ],
-          columns: [
-            ["field", ANALYTIC_EVENTS.EVENT, { "base-type": "type/Text" }],
-          ],
-          values: [["aggregation", 0]],
         },
-      },
-    });
+        database: SAMPLE_DB_ID,
+      };
 
-    cy.findByTestId("question-row-count").should(
-      "have.text",
-      "Showing first 52,711 rows",
-    );
+      visitQuestionAdhoc({
+        dataset_query: query,
+        display: "pivot",
+        visualization_settings: {
+          "pivot_table.column_split": {
+            rows: [
+              ["field", ANALYTIC_EVENTS.PAGE_URL, { "base-type": "type/Text" }],
+              [
+                "field",
+                ANALYTIC_EVENTS.BUTTON_LABEL,
+                { "base-type": "type/Text" },
+              ],
+              [
+                "field",
+                ANALYTIC_EVENTS.ACCOUNT_ID,
+                { "base-type": "type/Text" },
+              ],
+              [
+                "field",
+                ANALYTIC_EVENTS.TIMESTAMP,
+                { "base-type": "type/DateTime", "temporal-unit": "day" },
+              ],
+              ["field", ANALYTIC_EVENTS.ID, { "base-type": "type/Text" }],
+            ],
+            columns: [
+              ["field", ANALYTIC_EVENTS.EVENT, { "base-type": "type/Text" }],
+            ],
+            values: [["aggregation", 0]],
+          },
+        },
+      });
 
-    cy.findByTestId("qb-header-action-panel").findByText("Save").click();
-    modal().button("Save").click();
-    cy.wait("@createCard");
-    cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
-    cy.reload();
-    cy.wait("@cardPivotQuery");
+      cy.findByTestId("question-row-count").should(
+        "have.text",
+        "Showing first 52,711 rows",
+      );
 
-    cy.findByTestId("question-row-count").should(
-      "have.text",
-      "Showing first 52,711 rows",
-    );
-  });
+      cy.findByTestId("qb-header-action-panel").findByText("Save").click();
+      modal().button("Save").click();
+      cy.wait("@createCard");
+      cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
+      cy.reload();
+      cy.wait("@cardPivotQuery");
+
+      cy.findByTestId("question-row-count").should(
+        "have.text",
+        "Showing first 52,711 rows",
+      );
+    },
+  );
 });
 
 const testQuery = {
@@ -1232,19 +1242,32 @@ function dragColumnHeader(el, xDistance = 50) {
   });
 }
 
-function getIframeBody(selector = "iframe") {
-  return cy
-    .get(selector)
-    .its("0.contentDocument")
-    .should("exist")
-    .its("body")
-    .should("not.be.null")
-    .then(cy.wrap);
-}
-
 function openColumnSettings(columnName) {
   sidebar()
     .findByText(columnName)
     .siblings("[data-testid$=settings-button]")
     .click();
+}
+
+/**
+ * @param {string} column
+ * @param {("ascending"|"descending")} direction
+ */
+function sortColumnResults(column, direction) {
+  const iconName = direction === "ascending" ? "arrow_up" : "arrow_down";
+
+  cy.findByTestId("sidebar-content")
+    .findByTestId(`${column}-settings-button`)
+    .click();
+
+  popover().icon(iconName).click();
+  // Click anywhere to dismiss the popover from UI
+  cy.get("body").click("topLeft");
+
+  cy.location("hash").then(hash => {
+    // Get rid of the leading `#`
+    const base64EncodedQuery = hash.slice(1);
+    const decodedQuery = atob(base64EncodedQuery);
+    expect(decodedQuery).to.include(direction);
+  });
 }

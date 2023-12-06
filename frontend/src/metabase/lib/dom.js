@@ -220,7 +220,25 @@ export function constrainToScreen(element, direction, padding) {
   return false;
 }
 
-const isAbsoluteUrl = url => url.startsWith("/");
+function getSitePath() {
+  return new URL(MetabaseSettings.get("site-url")).pathname.toLowerCase();
+}
+
+function isMetabaseUrl(url) {
+  const urlPath = new URL(url, window.location.origin).pathname.toLowerCase();
+
+  if (!isAbsoluteUrl(url)) {
+    return true;
+  }
+
+  return isSameOrSiteUrlOrigin(url) && urlPath.startsWith(getSitePath());
+}
+
+function isAbsoluteUrl(url) {
+  return ["/", "http:", "https:", "mailto:"].some(prefix =>
+    url.startsWith(prefix),
+  );
+}
 
 function getWithSiteUrl(url) {
   const siteUrl = MetabaseSettings.get("site-url");
@@ -272,21 +290,20 @@ export function open(
     // custom function for opening in new window
     openInBlankWindow = url => clickLink(url, true),
     // custom function for opening in same app instance
-    openInSameOrigin = openInSameWindow,
+    openInSameOrigin,
     ignoreSiteUrl = false,
     ...options
   } = {},
 ) {
-  const isOriginalUrlAbsolute = isAbsoluteUrl(url); // this does not check real "absolute" url, but if a url should be resolved from the root URL
   url = ignoreSiteUrl ? url : getWithSiteUrl(url);
 
   if (shouldOpenInBlankWindow(url, options)) {
     openInBlankWindow(url);
   } else if (isSameOrigin(url)) {
-    if (isOriginalUrlAbsolute) {
+    if (!isMetabaseUrl(url)) {
       clickLink(url, false);
     } else {
-      openInSameOrigin(url, getLocation(url));
+      openInSameOrigin(getLocation(url));
     }
   } else {
     openInSameWindow(url);
@@ -350,11 +367,38 @@ const getLocation = url => {
   try {
     const { pathname, search, hash } = new URL(url, window.location.origin);
     const query = querystring.parse(search.substring(1));
-    return { pathname, search, query, hash };
+    return {
+      pathname: getPathnameWithoutSubPath(pathname),
+      search,
+      query,
+      hash,
+    };
   } catch {
     return {};
   }
 };
+
+function getPathnameWithoutSubPath(pathname) {
+  const pathnameSections = pathname.split("/");
+  const sitePathSections = getSitePath().split("/");
+
+  return isPathnameContainSitePath(pathnameSections, sitePathSections)
+    ? "/" + pathnameSections.slice(sitePathSections.length).join("/")
+    : pathname;
+}
+
+function isPathnameContainSitePath(pathnameSections, sitePathSections) {
+  for (let index = 0; index < sitePathSections.length; index++) {
+    const sitePathSection = sitePathSections[index].toLowerCase();
+    const pathnameSection = pathnameSections[index].toLowerCase();
+
+    if (sitePathSection !== pathnameSection) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 export function isSameOrigin(url) {
   const origin = getOrigin(url);
@@ -412,7 +456,7 @@ export function clipPathReference(id) {
   return `url(${url})`;
 }
 
-export function initializeIframeResizer(readyCallback = () => {}) {
+export function initializeIframeResizer(onReady = () => {}) {
   if (!isWithinIframe()) {
     return;
   }
@@ -421,12 +465,12 @@ export function initializeIframeResizer(readyCallback = () => {}) {
   // have their embeds autosize to their content
   if (window.iFrameResizer) {
     console.error("iFrameResizer resizer already defined.");
-    readyCallback();
+    onReady();
   } else {
     window.iFrameResizer = {
       autoResize: true,
       heightCalculationMethod: "max",
-      readyCallback: readyCallback,
+      onReady,
     };
 
     // FIXME: Crimes

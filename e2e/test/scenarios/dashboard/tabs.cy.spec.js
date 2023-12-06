@@ -62,7 +62,7 @@ describe("scenarios > dashboard > tabs", () => {
       cy.findByText("Orders, Count").click();
     });
     saveDashboard();
-    cy.url().should("include", "2-tab-2");
+    cy.url().should("match", /\d+\-tab\-2/); // id is not stable
 
     // Go back to first tab
     goToTab("Tab 1");
@@ -305,7 +305,8 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     // Visit first tab and confirm only first card was queried
-    visitDashboard(ORDERS_DASHBOARD_ID, { params: { tab: 1 } });
+    visitDashboard(ORDERS_DASHBOARD_ID);
+
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("not.have.been.called");
 
@@ -373,12 +374,14 @@ describeWithSnowplow("scenarios > dashboard > tabs", () => {
     editDashboard();
     createNewTab();
     saveDashboard();
-    expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 1); // dashboard_tab_created
+    expectGoodSnowplowEvent({ event: "dashboard_saved" }, 1);
+    expectGoodSnowplowEvent({ event: "dashboard_tab_created" }, 1);
 
     editDashboard();
     deleteTab("Tab 2");
     saveDashboard();
-    expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 2); // dashboard_tab_deleted
+    expectGoodSnowplowEvent({ event: "dashboard_saved" }, 2);
+    expectGoodSnowplowEvent({ event: "dashboard_tab_deleted" }, 1);
   });
 
   it("should send snowplow events when cards are moved between tabs", () => {

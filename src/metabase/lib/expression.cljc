@@ -29,7 +29,7 @@
   (let [options {:lib/uuid       (str (random-uuid))
                  :base-type      (:base-type metadata)
                  :effective-type ((some-fn :effective-type :base-type) metadata)}]
-    [:expression options (:name metadata)]))
+    [:expression options ((some-fn :lib/expression-name :name) metadata)]))
 
 (mu/defn resolve-expression :- ::lib.schema.expression/expression
   "Find the expression with `expression-name` in a given stage of a `query`, or throw an Exception if it doesn't
@@ -346,3 +346,21 @@
         (resolve-expression query stage-number)
         (expression-metadata query stage-number)
         lib.ref/ref)))
+
+(mu/defn with-expression-name :- ::lib.schema.expression/expression
+  "Return a new expression clause like `an-expression-clause` but with name `new-name`.
+  For expressions from the :expressions clause of a pMBQL query this sets the :lib/expression-name option,
+  for other expressions (for example named aggregation expressions) the :display-name option is set.
+
+  Note that always setting :lib/expression-name would lead to confusion, because that option is used
+  to decide what kind of reference is to be created. For example, expression are referenced by name,
+  aggregations are referenced by position."
+  [an-expression-clause :- ::lib.schema.expression/expression
+   new-name :- :string]
+  (lib.options/update-options
+   an-expression-clause
+   (fn [opts]
+     (let [opts (assoc opts :lib/uuid (str (random-uuid)))]
+       (if (:lib/expression-name opts)
+         (assoc opts :lib/expression-name new-name)
+         (assoc opts :display-name new-name))))))
