@@ -2,8 +2,17 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getColorsForValues } from "metabase/lib/colors/charts";
 import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
+import {
+  COLOR_SETTING_ID,
+  getSeriesDefaultLinearInterpolate,
+  getSeriesDefaultLineMarker,
+  getSeriesDefaultLineMissing,
+  getSeriesColors,
+  getSeriesDefaultDisplay,
+  SETTING_ID,
+  getSeriesDefaultShowSeriesValues,
+} from "metabase/visualizations/shared/settings/series";
 
 import { getNameForCard } from "../series";
 
@@ -16,16 +25,13 @@ export function keyForSingleSeries(single) {
 
 const LINE_DISPLAY_TYPES = new Set(["line", "area"]);
 
-export const SETTING_ID = "series_settings";
-export const COLOR_SETTING_ID = "series_settings.colors";
-
 export function seriesSetting({
   readDependencies = [],
   noPadding,
   ...def
 } = {}) {
   const COMMON_SETTINGS = {
-    // title, and color don't need widgets because they're handled direclty in ChartNestedSettingSeries
+    // title, and color don't need widgets because they're handled directly in ChartNestedSettingSeries
     title: {
       getDefault: (single, settings, { series, settings: vizSettings }) => {
         const legacyTitles = vizSettings["graph.series_labels"];
@@ -56,16 +62,8 @@ export function seriesSetting({
       },
 
       getDefault: (single, settings, { series }) => {
-        if (single.card.display === "combo") {
-          const index = series.indexOf(single);
-          if (index === 0) {
-            return "line";
-          } else {
-            return "bar";
-          }
-        } else {
-          return single.card.display;
-        }
+        const cardDisplay = single.card.display;
+        return getSeriesDefaultDisplay(cardDisplay, series.indexOf(single));
       },
     },
     color: {
@@ -87,7 +85,7 @@ export function seriesSetting({
         !LINE_DISPLAY_TYPES.has(settings["display"]),
       getDefault: (single, settings, { settings: vizSettings }) =>
         // use legacy global line.interpolate setting if present
-        vizSettings["line.interpolate"] || "linear",
+        getSeriesDefaultLinearInterpolate(vizSettings),
       readDependencies: ["display"],
     },
     "line.marker_enabled": {
@@ -104,9 +102,7 @@ export function seriesSetting({
         !LINE_DISPLAY_TYPES.has(settings["display"]),
       getDefault: (single, settings, { settings: vizSettings }) =>
         // use legacy global line.marker_enabled setting if present
-        vizSettings["line.marker_enabled"] == null
-          ? null
-          : vizSettings["line.marker_enabled"],
+        getSeriesDefaultLineMarker(vizSettings),
       readDependencies: ["display"],
     },
     "line.missing": {
@@ -123,7 +119,7 @@ export function seriesSetting({
         !LINE_DISPLAY_TYPES.has(settings["display"]),
       getDefault: (single, settings, { settings: vizSettings }) =>
         // use legacy global line.missing setting if present
-        vizSettings["line.missing"] || "interpolate",
+        getSeriesDefaultLineMissing(vizSettings),
       readDependencies: ["display"],
     },
     axis: {
@@ -149,7 +145,7 @@ export function seriesSetting({
         !Object.prototype.hasOwnProperty.call(settings, "graph.show_values") || // don't show it unless this chart has a global setting
         settings["stackable.stack_type"], // hide series controls if the chart is stacked
       getDefault: (single, seriesSettings, { settings }) =>
-        settings["graph.show_values"],
+        getSeriesDefaultShowSeriesValues(settings),
       readDependencies: ["graph.show_values", "stackable.stack_type"],
     },
   };
@@ -185,23 +181,7 @@ export function seriesSetting({
     [COLOR_SETTING_ID]: {
       getValue(series, settings) {
         const keys = series.map(single => keyForSingleSeries(single));
-
-        const assignments = _.chain(keys)
-          .map(key => [key, getIn(settings, [SETTING_ID, key, "color"])])
-          .filter(([key, color]) => color != null)
-          .object()
-          .value();
-
-        const legacyColors = settings["graph.colors"];
-        if (legacyColors) {
-          for (const [index, key] of keys.entries()) {
-            if (!(key in assignments)) {
-              assignments[key] = legacyColors[index];
-            }
-          }
-        }
-
-        return getColorsForValues(keys, assignments);
+        return getSeriesColors(keys, settings);
       },
     },
   };

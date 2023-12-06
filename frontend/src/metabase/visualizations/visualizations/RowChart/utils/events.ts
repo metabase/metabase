@@ -3,6 +3,7 @@ import _ from "underscore";
 
 import { formatNullable } from "metabase/lib/formatting/nullable";
 import { isNotNull } from "metabase/lib/types";
+import { sumMetric } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
   CartesianChartColumns,
   ColumnDescriptor,
@@ -19,7 +20,6 @@ import type {
   MetricDatum,
   SeriesInfo,
 } from "metabase/visualizations/shared/types/data";
-import { sumMetric } from "metabase/visualizations/shared/utils/data";
 import type {
   DataPoint,
   StackedTooltipModel,
