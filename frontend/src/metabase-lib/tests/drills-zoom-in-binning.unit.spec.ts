@@ -15,8 +15,7 @@ import {
   createNotEditableQuery,
 } from "./drills-common";
 
-// eslint-disable-next-line jest/no-disabled-tests
-describe.skip("drill-thru/zoom-in.binning (metabase#36177)", () => {
+describe("drill-thru/zoom-in.binning (metabase#36177)", () => {
   const drillType = "drill-thru/zoom-in.binning";
   const stageIndex = 0;
   const aggregationColumn = createCountDatasetColumn();
