@@ -15,6 +15,7 @@ import {
   getJoinedCardsDataset,
   replaceValues,
   getNullReplacerFunction,
+  getNormalizedDataset,
 } from "./dataset";
 import type { DataKey, SeriesModel } from "./types";
 
@@ -239,6 +240,73 @@ describe("dataset transform functions", () => {
       expect(replacer("key1", 1)).toBe(1);
       expect(replacer("key2", null)).toBe(null);
       expect(replacer("key2", 2)).toBe(2);
+    });
+  });
+
+  describe("getNormalizedDataset", () => {
+    it("should return an array of normalized datasets", () => {
+      const groupedData = [
+        { dimensionKey: "A", series1: 100, series2: 200, unusedSeries: 100 },
+        { dimensionKey: "B", series1: 300, series2: 400, unusedSeries: 100 },
+      ];
+
+      const normalizedSeriesKeys = ["series1", "series2"];
+      const dimensionKey = "dimensionKey";
+
+      const result = getNormalizedDataset(
+        groupedData,
+        normalizedSeriesKeys,
+        dimensionKey,
+      );
+
+      expect(result).toEqual([
+        {
+          dimensionKey: "A",
+          series1: 1 / 3,
+          series2: 2 / 3,
+        },
+        {
+          dimensionKey: "B",
+          series1: 3 / 7,
+          series2: 4 / 7,
+        },
+      ]);
+    });
+
+    it("should handle rows with missing values", () => {
+      const groupedData = [{ dimensionKey: "A", series1: null, series2: 200 }];
+
+      const normalizedSeriesKeys = ["series1", "series2"];
+      const dimensionKey = "dimensionKey";
+
+      const result = getNormalizedDataset(
+        groupedData,
+        normalizedSeriesKeys,
+        dimensionKey,
+      );
+
+      expect(result).toEqual([
+        {
+          dimensionKey: "A",
+          series1: 0,
+          series2: 1,
+        },
+      ]);
+    });
+
+    it("should work on empty datasets", () => {
+      const groupedData: Record<DataKey, RowValue>[] = [];
+
+      const normalizedSeriesKeys = ["series1", "series2"];
+      const dimensionKey = "dimensionKey";
+
+      const result = getNormalizedDataset(
+        groupedData,
+        normalizedSeriesKeys,
+        dimensionKey,
+      );
+
+      expect(result).toEqual([]);
     });
   });
 });
