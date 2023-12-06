@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { Flex, Popover, Tooltip } from "metabase/ui";
-import { FilterPicker } from "metabase/common/components/FilterPicker";
+import { FilterPicker } from "metabase/querying";
 
 import { color } from "metabase/lib/colors";
 import { useToggle } from "metabase/hooks/use-toggle";

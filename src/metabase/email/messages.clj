@@ -20,7 +20,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.pulse.markdown :as markdown]
-   [metabase.pulse.parameters :as params]
+   [metabase.pulse.parameters :as pulse-params]
    [metabase.pulse.render :as render]
    [metabase.pulse.render.body :as body]
    [metabase.pulse.render.image-bundle :as image-bundle]
@@ -318,7 +318,7 @@
    (merge (common-context)
           {:emailType                 "pulse"
            :title                     (:name pulse)
-           :titleUrl                  (params/dashboard-url dashboard-id (params/parameters pulse dashboard))
+           :titleUrl                  (pulse-params/dashboard-url dashboard-id (pulse-params/parameters pulse dashboard))
            :dashboardDescription      (:description dashboard)
            ;; There are legacy pulses that exist without being tied to a dashboard
            :dashboardHasTabs          (when dashboard-id
@@ -449,7 +449,7 @@
 
 (defn- render-filters
   [notification dashboard]
-  (let [filters (params/parameters notification dashboard)
+  (let [filters (pulse-params/parameters notification dashboard)
         cells   (map
                  (fn [filter]
                    [:td {:class "filter-cell"
@@ -474,7 +474,7 @@
                                              :width "50%"
                                              :padding "4px 16px 4px 8px"
                                              :vertical-align "baseline"})}
-                       (params/value-string filter)]]]])
+                       (pulse-params/value-string filter)]]]])
                  filters)
         rows    (partition 2 2 nil cells)]
     (html
