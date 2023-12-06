@@ -2,12 +2,16 @@ import userEvent from "@testing-library/user-event";
 import { render, screen, within } from "__support__/ui";
 
 import * as Lib from "metabase-lib";
-import { createQueryWithClauses } from "metabase-lib/test-helpers";
+import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
 
 import { createMockNotebookStep } from "../test-utils";
 import { ExpressionStep } from "./ExpressionStep";
 
-function setup({ query }: { query: Lib.Query }) {
+interface SetupOpts {
+  query?: Lib.Query;
+}
+
+function setup({ query = createQuery() }: SetupOpts = {}) {
   const updateQuery = jest.fn();
 
   const step = createMockNotebookStep({
@@ -35,11 +39,26 @@ function setup({ query }: { query: Lib.Query }) {
 
   return {
     getRecentQuery,
-    mocks: { updateQuery },
   };
 }
 
 describe("Notebook Editor > Expression Step", () => {
+  it("should handle adding expression", async () => {
+    const { getRecentQuery } = setup();
+
+    userEvent.click(screen.getByRole("img", { name: "add icon" }));
+
+    userEvent.type(screen.getByLabelText("Expression"), "1 + 1");
+    userEvent.type(screen.getByLabelText("Name"), "new expression{enter}");
+
+    const recentQuery = getRecentQuery();
+    const expressions = Lib.expressions(recentQuery, 0);
+    expect(expressions).toHaveLength(1);
+    expect(Lib.displayInfo(recentQuery, 0, expressions[0]).displayName).toBe(
+      "new expression",
+    );
+  });
+
   it("should handle updating existing expression", async () => {
     const query = createQueryWithClauses({
       expressions: [{ name: "old name", operator: "+", args: [1, 1] }],
@@ -48,17 +67,14 @@ describe("Notebook Editor > Expression Step", () => {
 
     userEvent.click(screen.getByText("old name"));
 
-    const nameField = await screen.findByPlaceholderText(
-      "Something nice and descriptive",
-    );
-
+    const nameField = screen.getByLabelText("Name");
     userEvent.clear(nameField);
     userEvent.type(nameField, "new name{enter}");
 
     const recentQuery = getRecentQuery();
     const expressions = Lib.expressions(recentQuery, 0);
     expect(expressions).toHaveLength(1);
-    expect(Lib.displayInfo(query, 0, expressions[0]).displayName).toBe(
+    expect(Lib.displayInfo(recentQuery, 0, expressions[0]).displayName).toBe(
       "new name",
     );
   });
@@ -71,7 +87,7 @@ describe("Notebook Editor > Expression Step", () => {
 
     const expressionItem = screen.getByText("expression name");
     const closeIcon = within(expressionItem).getByRole("img", {
-      name: `close icon`,
+      name: "close icon",
     });
 
     userEvent.click(closeIcon);
