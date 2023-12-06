@@ -43,8 +43,17 @@
                    :limit    5})]
       (doseq [export-format (qp.streaming/export-formats)]
         (testing (u/colorize :yellow export-format)
-          (is (= (expected-results* export-format query)
-                 (basic-actual-results* export-format query))))))))
+          (if (= :csv export-format)
+            ;; CSVs round decimals to 2 digits without viz-settings so are not identical to results from expected-results*
+            (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
+                    ["1" "Red Medicine" "4" "10.06" "-165.37" "3"]
+                    ["2" "Stout Burgers & Beers" "11" "34.1" "-118.33" "2"]
+                    ["3" "The Apple Pan" "11" "34.04" "-118.43" "2"]
+                    ["4" "Wurstküche" "29" "34" "-118.47" "2"]
+                    ["5" "Brite Spot Family Restaurant" "20" "34.08" "-118.26" "2"]]
+                   (basic-actual-results* export-format query)))
+            (is (= (expected-results* export-format query)
+                   (basic-actual-results* export-format query)))))))))
 
 (defn- actual-results* [export-format query]
   (maybe-remove-checksum (streaming.test-util/process-query-api-response-streaming export-format query)))
@@ -56,13 +65,15 @@
 
 (deftest streaming-response-test
   (testing "Test that the actual results going thru the same steps as an API response are correct."
-    (doseq [export-format (qp.streaming/export-formats)]
+    ;; CSVs round decimals to 2 digits without viz-settings so are not identical to results from expected-results*
+    (doseq [export-format (disj (qp.streaming/export-formats) :csv)]
       (testing (u/colorize :yellow export-format)
         (compare-results export-format (mt/mbql-query venues {:limit 5}))))))
 
 (deftest utf8-test
   ;; UTF-8 isn't currently working for XLSX -- fix me
-  (doseq [export-format (disj (qp.streaming/export-formats) :xlsx)]
+  ;; CSVs round decimals to 2 digits without viz-settings so are not identical to results from expected-results*
+  (doseq [export-format (disj (qp.streaming/export-formats) :xlsx :csv)]
     (testing (u/colorize :yellow export-format)
       (testing "Make sure our various streaming formats properly write values as UTF-8."
         (testing "A query that will have a little → in its name"
@@ -305,9 +316,10 @@
                             :limit 2}}
 
     :assertions {:csv (fn [results]
+                        ;; CSVs round decimals to 2 digits without viz-settings
                         (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
-                                ["1" "Red Medicine" "4" "10.0646" "-165.374" "3"]
-                                ["2" "Stout Burgers & Beers" "11" "34.0996" "-118.329" "2"]]
+                                ["1" "Red Medicine" "4" "10.06" "-165.37" "3"]
+                                ["2" "Stout Burgers & Beers" "11" "34.1" "-118.33" "2"]]
                                (csv/read-csv results))))
 
                  :json (fn [results]
@@ -367,8 +379,9 @@
                                    :limit        1}}
 
                 :assertions {:csv (fn [results]
+                                    ;; CSVs round decimals to 2 digits without viz-settings
                                     (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
-                                            ["1" "Red Medicine" "Asian" "10.0646" "-165.374" "3"]]
+                                            ["1" "Red Medicine" "Asian" "10.06" "-165.37" "3"]]
                                            (csv/read-csv results))))
 
                              :json (fn [results]
