@@ -30,8 +30,8 @@
   [:tuple
    [:enum :bin-width :num-bins]
    [:map
-    [:bin-width number?]
-    [:num-bins ::lib.schema.common/positive-int]]])
+    [:bin-width ::lib.schema.binning/bin-width]
+    [:num-bins  ::lib.schema.binning/num-bins]]])
 
 (mu/defn ^:private resolve-default-strategy :- ResolvedStrategy
   "Determine the approprate strategy & options to use when `:default` strategy was specified."
