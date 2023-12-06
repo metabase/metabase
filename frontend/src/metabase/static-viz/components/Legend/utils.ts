@@ -28,7 +28,8 @@ const calculateItemWidth = (
  *
  * @param {LegendItem[]} items - The legend items to be positioned.
  * @param {number} width - The available width for the legend.
- * @param {number} [padding=0] - The padding to be applied on both sides of the legend.
+ * @param {number} [horizontalPadding=0] - The horizontal padding of the legend.
+ * @param {number} [verticalPadding=0] - The vertical padding of the legend.
  * @param {number} [lineHeight=DEFAULT_LEGEND_LINE_HEIGHT] - The line height for each row of legend items.
  * @param {number} [fontSize=DEFAULT_LEGEND_FONT_SIZE] - The font size to be used for the legend items.
  * @param {number} [fontWeight=DEFAULT_LEGEND_FONT_WEIGHT] - The font weight to be used for the legend items.
@@ -38,7 +39,8 @@ const calculateItemWidth = (
 export const calculateLegendRows = (
   items: LegendItem[],
   width: number,
-  padding = 0,
+  horizontalPadding = 0,
+  verticalPadding = 0,
   lineHeight: number = DEFAULT_LEGEND_LINE_HEIGHT,
   fontSize: number = DEFAULT_LEGEND_FONT_SIZE,
   fontWeight: number = DEFAULT_LEGEND_FONT_WEIGHT,
@@ -50,11 +52,11 @@ export const calculateLegendRows = (
     };
   }
 
-  const availableTotalWidth = width - 2 * padding;
+  const availableTotalWidth = width - 2 * horizontalPadding;
 
   const rows: PositionedLegendItem[][] = [[]];
 
-  let currentRowX = padding;
+  let currentRowX = horizontalPadding;
 
   for (const item of items) {
     const currentRowIndex = rows.length - 1;
@@ -68,7 +70,7 @@ export const calculateLegendRows = (
       currentRow.push({
         ...item,
         left: currentRowX,
-        top: currentRowIndex * lineHeight,
+        top: currentRowIndex * lineHeight + verticalPadding,
       });
 
       currentRowX += itemWidth + LEGEND_ITEM_MARGIN_RIGHT;
@@ -79,11 +81,11 @@ export const calculateLegendRows = (
       rows.push([
         {
           ...item,
-          left: padding,
-          top: (currentRowIndex + 1) * lineHeight,
+          left: horizontalPadding,
+          top: (currentRowIndex + 1) * lineHeight + verticalPadding,
         },
       ]);
-      currentRowX = padding + itemWidth + LEGEND_ITEM_MARGIN_RIGHT;
+      currentRowX = horizontalPadding + itemWidth + LEGEND_ITEM_MARGIN_RIGHT;
     } else {
       currentRow.push({
         color: item.color,
@@ -93,15 +95,15 @@ export const calculateLegendRows = (
           fontSize,
           fontWeight,
         ),
-        left: padding,
-        top: currentRowIndex * lineHeight,
+        left: horizontalPadding,
+        top: currentRowIndex * lineHeight + verticalPadding,
       });
 
       currentRowX = availableTotalWidth;
     }
   }
 
-  const height = rows.length * lineHeight;
+  const height = rows.length * lineHeight + verticalPadding * 2;
 
   return {
     height,
