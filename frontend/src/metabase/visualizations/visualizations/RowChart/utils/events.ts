@@ -24,7 +24,7 @@ import type {
   TooltipRowModel,
 } from "metabase/visualizations/types";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
-import { sumMetric } from "metabase/visualizations/shared/utils/data";
+import { sumMetric } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import { isMetric } from "metabase-lib/types/utils/isa";
 import type {
   ClickObject,
