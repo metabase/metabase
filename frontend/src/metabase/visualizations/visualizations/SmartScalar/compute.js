@@ -11,7 +11,7 @@ import {
 import { isEmpty } from "metabase/lib/validate";
 import { isDate } from "metabase-lib/types/utils/isa";
 
-export const FALLBACK_DATE_UNIT = "day";
+const FALLBACK_DATE_UNIT = "day";
 
 export function computeTrend(series, insights, settings) {
   const { type } = settings["scalar.comparisons"];
