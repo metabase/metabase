@@ -36,6 +36,6 @@
   ;; FE logic for this drill will grab the filters and build a URL with them.
   (-> query
       ;; Drop any existing filters so they aren't duplicated.
-      (lib.util/update-query-stage -1 dissoc :filter)
+      (lib.util/update-query-stage -1 dissoc :filters)
       ;; Then transform the aggregations and selected breakouts into filters.
       (lib.drill-thru.underlying-records/drill-underlying-records drill-thru)))
