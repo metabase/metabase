@@ -333,7 +333,7 @@
   "Check that embedding is enabled, that `object` exists, and embedding for `object` is enabled."
   ([entity id]
    (api/check (and (integer? id) (> id 0))
-              [400 (tru "id should be a positive integer")])
+              [400 (tru "Dashboard id should be a positive integer.")])
    (check-embedding-enabled-for-object (t2/select-one [entity :enable_embedding] :id id)))
 
   ([object]
@@ -418,12 +418,8 @@
      {:resource {:dashboard <dashboard-id>}}"
   [token]
   (let [unsigned (embed/unsign token)]
-    (def unsigned unsigned)
     (check-embedding-enabled-for-dashboard (embed/get-in-unsigned-token-or-throw unsigned [:resource :dashboard]))
     (dashboard-for-unsigned-token unsigned, :constraints [:enable_embedding true])))
-
-(embed/get-in-unsigned-token-or-throw unsigned [:resource :dashboard])
-(check-embedding-enabled-for-dashboard "8")
 
 (defn- dashcard-results-for-signed-token-async
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
