@@ -1,5 +1,6 @@
 (ns metabase.lib.field-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
@@ -16,8 +17,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util :as u]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -1527,3 +1527,23 @@
                               :lib/expression-name "Custom Venue Name"))]
       (is (=? [:expression {} "Custom Venue Name"]
               (lib/ref metadata))))))
+
+(deftest ^:parallel remove-field-implicit-breakout-test
+  (testing "Should be able to remove fields if they are references to implicit joins"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          source (m/find-first (comp #{"PEOPLE__via__USER_ID__SOURCE"} :lib/desired-column-alias) (lib/visible-columns query))
+          query (-> query
+                    (lib/breakout source)
+                    (lib/aggregate (lib/count))
+                    (lib/append-stage))
+          count-col (m/find-first (comp #{"count"} :lib/desired-column-alias) (lib/visible-columns query))
+          query (lib/expression query "double count" (lib/* count-col 2))
+          returned-cols (lib/returned-columns query)]
+      (doseq [col returned-cols]
+        (testing (str "Removing: " (:lib/desired-column-alias col))
+          (is (=? (->> returned-cols
+                       (remove #{col})
+                       (map #(update (lib/ref %) 1 dissoc :lib/uuid)))
+                  (-> query
+                      (lib/remove-field -1 col)
+                      lib/fields))))))))

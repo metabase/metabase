@@ -330,29 +330,6 @@
                         {:inner-query inner-query, :type qp.error-type/qp}
                         e))))))
 
-(mu/defn ^:private col-info-for-aggregation-clause
-  "Return appropriate column metadata for an `:aggregation` clause."
-  ;; `clause` is normally an aggregation clause but this function can call itself recursively; see comments by the
-  ;; `match` pattern for field clauses below
-  [inner-query :- :map
-   clause]
-  (let [mlv2-clause (lib.convert/->pMBQL clause)]
-    ;; for some mystery reason it seems like the annotate code uses `:long` style display names when something appears
-    ;; inside an aggregation clause, e.g.
-    ;;
-    ;;    Distinct values of Category → Name
-    ;;
-    ;; but `:default` style names when they appear on their own or in breakouts, e.g.
-    ;;
-    ;;    Name
-    ;;
-    ;; why is this the case? Who knows! But that's the old pre-MLv2 behavior. I think we should try to fix it, but it's
-    ;; probably going to involve updating a ton of tests that encode the old behavior.
-    (binding [lib.metadata.calculation/*display-name-style* :long]
-      (-> (lib/metadata (mlv2-query inner-query) -1 mlv2-clause)
-          (update-keys u/->snake_case_en)
-          (dissoc :lib/type)))))
-
 (mu/defn aggregation-name :- ::lib.schema.common/non-blank-string
   "Return an appropriate aggregation name/alias *used inside a query* for an `:aggregation` subclause (an aggregation
   or expression). Takes an options map as schema won't support passing keypairs directly as a varargs.
@@ -392,16 +369,38 @@
            :source :fields)))
 
 (mu/defn ^:private cols-for-ags-and-breakouts
-  [{aggregations :aggregation, breakouts :breakout, :as inner-query} :- :map]
-  (concat
-   (for [breakout breakouts]
-     (assoc (col-info-for-field-clause inner-query breakout)
-            :source :breakout))
-   (for [[i aggregation] (m/indexed aggregations)]
-     (assoc (col-info-for-aggregation-clause inner-query aggregation)
-            :source            :aggregation
-            :field_ref         [:aggregation i]
-            :aggregation_index i))))
+  [inner-query :- :map]
+
+  (let [query (mlv2-query inner-query)
+        columns (lib/returned-columns query)
+        parent-columns (lib/returned-columns (lib/append-stage query))]
+    (mapv (fn [parent-column column]
+            ;; Cols should reference field refs as parent-column aka by name rather than id
+            (let [field-ref (lib.convert/->legacy-MBQL (lib/ref parent-column))]
+              (-> column
+                  qp.store/->legacy-metadata
+                  ;; for some mystery reason it seems like the annotate code uses `:long` style display names when something appears
+                  ;; inside an aggregation clause, e.g.
+                  ;;
+                  ;;    Distinct values of Category → Name
+                  ;;
+                  ;; but `:default` style names when they appear on their own or in breakouts, e.g.
+                  ;;
+                  ;;    Name
+                  ;;
+                  ;; why is this the case? Who knows! But that's the old pre-MLv2 behavior. I think we should try to fix it, but it's
+                  ;; probably going to involve updating a ton of tests that encode the old behavior.
+                  (cond->
+                    (= :source/aggregations (:lib/source column))
+                    (assoc :display_name (lib/display-name query -1 column :long)))
+                  (assoc :source (case (:lib/source column)
+                                   :source/breakouts :breakout
+                                   :source/aggregations :aggregation
+                                   :fields)
+                         :source_alias (second field-ref)
+                         :field_ref field-ref))))
+          parent-columns
+          columns)))
 
 (mu/defn cols-for-mbql-query
   "Return results metadata about the expected columns in an 'inner' MBQL query."

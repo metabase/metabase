@@ -9,7 +9,9 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -1434,3 +1436,25 @@
                     {:expressions {"substring" [:substring [:field field-id nil] 1 10]}
                      :fields      [[:expression "substring"]
                                    [:field field-id nil]]}))))))))
+
+(deftest ^:parallel excluding-fields-in-nested-expression-test
+  (testing "Should properly nest expressions with excluded fields with source-columns coming from another nested query (#35067)"
+    (mt/test-drivers #{:postgres}
+      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            query (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+            implicit-col (m/find-first (comp #{"categories__via__category_id__name"} u/lower-case-en :lib/desired-column-alias)
+                                       (lib/visible-columns query))
+
+            query (-> query
+                      (lib/breakout implicit-col)
+                      (lib/expression "foobar" (lib/concat implicit-col "!!"))
+                      (as-> $q (lib/breakout $q (lib/expression-ref $q "foobar")))
+                      (lib/aggregate (lib/count))
+                      (lib/append-stage))
+            count-col (m/find-first (comp #{"count"} :lib/desired-column-alias) (lib/visible-columns query))
+            query (lib/expression query "double count" (lib/* count-col 2))
+            returned-cols (lib/returned-columns query)]
+        (doseq [col returned-cols]
+          (let [query (lib/remove-field query -1 col)]
+            (testing (str "Removing: " (:lib/desired-column-alias col))
+              (is (= (map :name (lib/returned-columns query)) (map :name (mt/cols (qp/process-query query))))))))))))

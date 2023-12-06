@@ -58,7 +58,7 @@
                    :query    (assoc-in source-query [:middleware :disable-remaps?] true)}))]
       (for [col cols]
         (select-keys col [:name :id :table_id :display_name :base_type :effective_type :coercion_strategy
-                          :semantic_type :unit :fingerprint :settings :source_alias :field_ref :nfc_path :parent_id])))
+                          :semantic_type :unit :fingerprint :settings :source_alias :field_ref :nfc_path :parent_id :options])))
     (catch Throwable e
       (log/error e (str (trs "Error determining expected columns for query: {0}" (ex-message e))))
       nil)))
