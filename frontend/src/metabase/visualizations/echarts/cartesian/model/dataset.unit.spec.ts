@@ -7,8 +7,16 @@ import type {
   BreakoutChartColumns,
   CartesianChartColumns,
 } from "metabase/visualizations/lib/graph/columns";
-import type { SingleSeries } from "metabase-types/api";
-import { sumMetric, getDatasetKey, getJoinedCardsDataset } from "./dataset";
+import type { RowValue, SingleSeries } from "metabase-types/api";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import {
+  sumMetric,
+  getDatasetKey,
+  getJoinedCardsDataset,
+  replaceValues,
+  getNullReplacerFunction,
+} from "./dataset";
+import type { DataKey, SeriesModel } from "./types";
 
 describe("dataset transform functions", () => {
   describe("sumMetric", () => {
@@ -176,6 +184,61 @@ describe("dataset transform functions", () => {
     it("should handle empty arrays", () => {
       const result = getJoinedCardsDataset([], []);
       expect(result).toEqual([]);
+    });
+  });
+
+  describe("replaceValues", () => {
+    it("should replace missing values with zeros according to the replacer function", () => {
+      const dataset: Record<DataKey, RowValue>[] = [
+        { key1: null, key2: 2 },
+        { key1: 3, key2: null },
+      ];
+      const replacer = (dataKey: string, value: RowValue) => {
+        if (dataKey === "key1") {
+          return value;
+        }
+        return value ?? 0;
+      };
+
+      const result = replaceValues(dataset, replacer);
+
+      expect(result).toEqual([
+        { key1: null, key2: 2 },
+        { key1: 3, key2: 0 },
+      ]);
+    });
+  });
+
+  describe("getNullReplacerFunction", () => {
+    it("should create a replacer function that replaces null values with zeros for specified series only", () => {
+      const createMockSeriesModel = (
+        dataKey: DataKey,
+        index: number,
+      ): SeriesModel => ({
+        dataKey: "key1",
+        legacySeriesSettingsObjectKey: "key1",
+        vizSettingsKey: "key1",
+        column: createMockColumn({ name: dataKey }),
+        columnIndex: index,
+      });
+
+      const settings: ComputedVisualizationSettings = {
+        series: (key: string) => ({
+          "line.missing": key === "key1" ? "zero" : undefined,
+        }),
+      };
+
+      const seriesModels = [
+        createMockSeriesModel("key1", 0),
+        createMockSeriesModel("key2", 1),
+      ];
+
+      const replacer = getNullReplacerFunction(settings, seriesModels);
+
+      expect(replacer("key1", null)).toBe(0);
+      expect(replacer("key1", 1)).toBe(1);
+      expect(replacer("key2", null)).toBe(null);
+      expect(replacer("key2", 2)).toBe(2);
     });
   });
 });
