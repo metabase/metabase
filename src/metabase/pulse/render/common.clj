@@ -1,16 +1,16 @@
 (ns metabase.pulse.render.common
   (:require
-   [clojure.pprint :refer [cl-format]]
-   [clojure.string :as str]
-   [hiccup.util]
-   [metabase.public-settings :as public-settings]
-   [metabase.pulse.render.datetime :as datetime]
-   [metabase.shared.models.visualization-settings :as mb.viz]
-   [metabase.shared.util.currency :as currency]
-   [metabase.types :as types]
-   [metabase.util.ui-logic :as ui-logic]
-   [potemkin.types :as p.types]
-   [schema.core :as s])
+    [clojure.pprint :refer [cl-format]]
+    [clojure.string :as str]
+    [hiccup.util]
+    [metabase.public-settings :as public-settings]
+    [metabase.pulse.render.datetime :as datetime]
+    [metabase.shared.models.visualization-settings :as mb.viz]
+    [metabase.shared.util.currency :as currency]
+    [metabase.types :as types]
+    [metabase.util.ui-logic :as ui-logic]
+    [potemkin.types :as p.types]
+    [schema.core :as s])
   (:import
    (java.math RoundingMode)
    (java.net URL)
