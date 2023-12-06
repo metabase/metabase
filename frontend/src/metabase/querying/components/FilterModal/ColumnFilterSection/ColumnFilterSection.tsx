@@ -11,7 +11,7 @@ interface ColumnFilterSectionProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
-  onChange: (filter: Lib.ExpressionClause | null) => void;
+  onChange: (filter: Lib.ExpressionClause | undefined) => void;
 }
 
 export function ColumnFilterSection({

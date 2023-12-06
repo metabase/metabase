@@ -9,6 +9,7 @@ import type {
   DatePickerExtractionUnit,
   DatePickerOperator,
   DatePickerValue,
+  ShortcutOption,
 } from "metabase/querying/components/DatePicker";
 import { DatePicker } from "metabase/querying/components/DatePicker";
 import { useDateFilter } from "metabase/querying/hooks/use-date-filter";
@@ -57,6 +58,14 @@ export function DateFilterEditor({
     onChange(value ? getFilterClause(value) : null);
   };
 
+  const handleToggle = (option: ShortcutOption) => {
+    if (option.shortcut !== selectedOption?.shortcut) {
+      handleChange(option.value);
+    } else {
+      handleChange(undefined);
+    }
+  };
+
   return (
     <Grid grow>
       <Grid.Col span="auto">
@@ -76,7 +85,7 @@ export function DateFilterEditor({
                 key={option.shortcut}
                 variant={isSelected ? "outline" : "default"}
                 aria-selected={isSelected}
-                onClick={() => handleChange(option.value)}
+                onClick={() => handleToggle(option)}
               >
                 {option.label}
               </Button>

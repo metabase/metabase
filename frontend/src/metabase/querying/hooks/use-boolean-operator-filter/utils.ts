@@ -15,7 +15,7 @@ export function getFilterClause(
   values: boolean[],
 ) {
   if (!hasValidValues(operator, values)) {
-    return null;
+    return undefined;
   }
 
   return Lib.booleanFilterClause({

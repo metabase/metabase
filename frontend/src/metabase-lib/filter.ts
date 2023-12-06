@@ -90,9 +90,9 @@ export function filters(query: Query, stageIndex: number): FilterClause[] {
   return ML.filters(query, stageIndex);
 }
 
-export function clearFilters(query: Query, stageIndex: number): Query {
+export function removeFilters(query: Query, stageIndex: number): Query {
   return filters(query, stageIndex).reduce(
-    (query, filter) => removeClause(query, stageIndex, filter),
+    (newQuery, filter) => removeClause(newQuery, stageIndex, filter),
     query,
   );
 }

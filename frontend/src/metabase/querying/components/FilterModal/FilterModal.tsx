@@ -8,7 +8,14 @@ import {
 } from "metabase/common/utils/column-groups";
 import * as Lib from "metabase-lib";
 import { ColumnFilterSection } from "./ColumnFilterSection";
-import { getColumnGroupItems, getModalTitle, getModalWidth } from "./utils";
+import {
+  findColumnFilters,
+  findVisibleFilters,
+  getColumnGroupItems,
+  getModalTitle,
+  getModalWidth,
+  getQueryWithoutFilters,
+} from "./utils";
 import type { GroupItem } from "./types";
 import {
   ColumnItemRoot,
@@ -21,17 +28,27 @@ import {
 interface FilterModalProps {
   query: Lib.Query;
   opened: boolean;
-  onSubmit: (nextQuery: Lib.Query) => void;
+  onSubmit: (newQuery: Lib.Query) => void;
   onClose: () => void;
 }
 
 export function FilterModal({
   query: initialQuery,
   opened,
+  onSubmit,
   onClose,
 }: FilterModalProps) {
   const [query, setQuery] = useState(initialQuery);
   const groupItems = useMemo(() => getColumnGroupItems(query), [query]);
+
+  const handleClearFilters = () => {
+    setQuery(getQueryWithoutFilters(query));
+  };
+
+  const handleSubmit = () => {
+    onSubmit(query);
+    onClose();
+  };
 
   return (
     <Modal.Root
@@ -65,11 +82,12 @@ export function FilterModal({
           </Tabs>
         </ModalBody>
         <ModalFooter p="md" direction="row" justify="space-between">
-          <Button
-            variant="subtle"
-            color="text.1"
-          >{t`Clear all filters`}</Button>
-          <Button variant="filled">{t`Apply filters`}</Button>
+          <Button variant="subtle" color="text.1" onClick={handleClearFilters}>
+            {t`Clear all filters`}
+          </Button>
+          <Button variant="filled" onClick={handleSubmit}>
+            {t`Apply filters`}
+          </Button>
         </ModalFooter>
       </Modal.Content>
     </Modal.Root>
@@ -113,7 +131,7 @@ function Tab({ groupItem }: TabProps) {
 interface TabPanelProps {
   query: Lib.Query;
   groupItem: GroupItem;
-  onChange: (nextQuery: Lib.Query) => void;
+  onChange: (newQuery: Lib.Query) => void;
 }
 
 function TabPanel({ query, groupItem, onChange }: TabPanelProps) {
@@ -122,7 +140,7 @@ function TabPanel({ query, groupItem, onChange }: TabPanelProps) {
       <ul>
         {groupItem.columns.map((column, index) => {
           return (
-            <TabPanelItem
+            <TabPanelItemList
               key={index}
               query={query}
               stageIndex={groupItem.stageIndex}
@@ -136,12 +154,45 @@ function TabPanel({ query, groupItem, onChange }: TabPanelProps) {
   );
 }
 
+interface TabPanelItemListProps {
+  query: Lib.Query;
+  stageIndex: number;
+  column: Lib.ColumnMetadata;
+  onChange: (newQuery: Lib.Query) => void;
+}
+
+function TabPanelItemList({
+  query,
+  stageIndex,
+  column,
+  onChange,
+}: TabPanelItemListProps) {
+  const currentFilters = findColumnFilters(query, stageIndex, column);
+  const [initialFilterCount] = useState(currentFilters.length);
+  const visibleFilters = findVisibleFilters(currentFilters, initialFilterCount);
+
+  return (
+    <div>
+      {visibleFilters.map((filter, filterIndex) => (
+        <TabPanelItem
+          key={filterIndex}
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
+          filter={filter}
+          onChange={onChange}
+        />
+      ))}
+    </div>
+  );
+}
+
 interface TabPanelItemProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
-  onChange: (nextQuery: Lib.Query) => void;
+  onChange: (newQuery: Lib.Query) => void;
 }
 
 function TabPanelItem({
@@ -151,7 +202,7 @@ function TabPanelItem({
   filter,
   onChange,
 }: TabPanelItemProps) {
-  const handleFilterChange = (newFilter: Lib.ExpressionClause | null) => {
+  const handleChange = (newFilter: Lib.ExpressionClause | undefined) => {
     if (filter && newFilter) {
       onChange(Lib.replaceClause(query, stageIndex, filter, newFilter));
     } else if (newFilter) {
@@ -168,7 +219,7 @@ function TabPanelItem({
         stageIndex={stageIndex}
         column={column}
         filter={filter}
-        onChange={handleFilterChange}
+        onChange={handleChange}
       />
     </ColumnItemRoot>
   );

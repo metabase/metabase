@@ -38,7 +38,7 @@ export function getFilterClause(
   values: NumberValue[],
 ) {
   if (!hasValidValues(operator, values)) {
-    return null;
+    return undefined;
   }
 
   return Lib.numberFilterClause({

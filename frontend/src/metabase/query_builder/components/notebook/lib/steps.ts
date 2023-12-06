@@ -106,7 +106,7 @@ const STEPS: NotebookStepDef[] = [
     active: (legacyQuery, itemIndex, query, stageIndex) =>
       Lib.orderBys(query, stageIndex).length > 0,
     revert: (legacyQuery, itemIndex, query, stageIndex) => {
-      const reverted = Lib.clearOrderBys(query, stageIndex);
+      const reverted = Lib.removeOrderBys(query, stageIndex);
       return convertStageQueryToLegacyStageQuery(
         reverted,
         legacyQuery,

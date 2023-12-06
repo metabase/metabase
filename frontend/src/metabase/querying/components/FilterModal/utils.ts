@@ -2,10 +2,13 @@ import { t } from "ttag";
 import * as Lib from "metabase-lib";
 import type { GroupItem } from "./types";
 
-export function getColumnGroupItems(query: Lib.Query): GroupItem[] {
+function getStageIndexes(query: Lib.Query) {
   const stageCount = Lib.stageCount(query);
-  const stageIndexes = stageCount > 1 ? [-1, -2] : [-1];
+  return stageCount > 1 ? [-1, -2] : [-1];
+}
 
+export function getColumnGroupItems(query: Lib.Query): GroupItem[] {
+  const stageIndexes = getStageIndexes(query);
   return stageIndexes.flatMap(stageIndex => {
     const columns = Lib.filterableColumns(query, stageIndex);
     const groups = Lib.groupColumns(columns);
@@ -25,16 +28,33 @@ export function getColumnGroupItems(query: Lib.Query): GroupItem[] {
   });
 }
 
-export function findFilterClause(
+export function getQueryWithoutFilters(query: Lib.Query) {
+  const stageIndexes = getStageIndexes(query);
+  return stageIndexes.reduce(
+    (query, stageIndex) => Lib.removeFilters(query, stageIndex),
+    query,
+  );
+}
+
+export function findColumnFilters(
   query: Lib.Query,
   stageIndex: number,
-  filterColumn: Lib.ColumnMetadata,
-): Lib.FilterClause | undefined {
+  column: Lib.ColumnMetadata,
+): Lib.FilterClause[] {
   const filters = Lib.filters(query, stageIndex);
-  const { filterPositions } = Lib.displayInfo(query, stageIndex, filterColumn);
-  return filterPositions != null && filterPositions.length > 0
-    ? filters[filterPositions[0]]
-    : undefined;
+  const { filterPositions } = Lib.displayInfo(query, stageIndex, column);
+  return filterPositions != null
+    ? filterPositions.map(index => filters[index])
+    : [];
+}
+
+export function findVisibleFilters(
+  filters: Lib.FilterClause[],
+  initialFilterCount: number,
+): (Lib.FilterClause | undefined)[] {
+  return Array(Math.max(filters.length, initialFilterCount, 1))
+    .fill(undefined)
+    .map((_, i) => filters[i]);
 }
 
 export function getModalTitle(groupItems: GroupItem[]) {

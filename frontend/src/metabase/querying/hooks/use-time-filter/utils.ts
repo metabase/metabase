@@ -29,7 +29,7 @@ export function getFilterClause(
   values: TimeValue[],
 ) {
   if (!hasValidValues(values)) {
-    return null;
+    return undefined;
   }
 
   return Lib.timeFilterClause({
