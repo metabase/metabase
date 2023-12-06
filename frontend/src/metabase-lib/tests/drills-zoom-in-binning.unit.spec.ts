@@ -25,24 +25,50 @@ describe("drill-thru/zoom-in.binning (metabase#36177)", () => {
       name: "numeric",
       tableName: "ORDERS",
       breakoutColumn: createOrdersQuantityDatasetColumn({ source: "breakout" }),
-      binningStrategies: ["Auto bin", "10 bins", "50 bins", "100 bins"],
+      binningStrategies: [
+        { name: "Auto bin", metadata: { binning_strategy: "default" } },
+        {
+          name: "10 bins",
+          metadata: { binning_strategy: "num-bins", num_bins: 10 },
+        },
+        {
+          name: "50 bins",
+          metadata: { binning_strategy: "num-bins", num_bins: 50 },
+        },
+        {
+          name: "100 bins",
+          metadata: { binning_strategy: "num-bins", num_bins: 100 },
+        },
+      ],
     },
     {
       name: "location",
       tableName: "PEOPLE",
       breakoutColumn: createPeopleLatitudeDatasetColumn({ source: "breakout" }),
       binningStrategies: [
-        "Auto bin",
-        "Bin every 0.1 degrees",
-        "Bin every 1 degree",
-        "Bin every 10 degrees",
-        "Bin every 20 degrees",
+        { name: "Auto bin", strategyMetadata: { binning_strategy: "default" } },
+        {
+          name: "Bin every 0.1 degrees",
+          metadata: { binning_strategy: "bin-width", bin_width: 0.1 },
+        },
+        {
+          name: "Bin every 1 degree",
+          metadata: { binning_strategy: "bin-width", bin_width: 1 },
+        },
+        {
+          name: "Bin every 10 degrees",
+          metadata: { binning_strategy: "bin-width", bin_width: 10 },
+        },
+        {
+          name: "Bin every 20 degrees",
+          metadata: { binning_strategy: "bin-width", bin_width: 20 },
+        },
       ],
     },
   ])("$name", ({ tableName, breakoutColumn, binningStrategies }) => {
     it.each(binningStrategies)(
       'should drill thru an aggregated cell with "%s" binning strategy',
-      binningStrategy => {
+      ({ binningStrategy: name, binningMetadata: metadata }) => {
         const query = createQueryWithClauses({
           aggregations: [{ operatorName: "count" }],
           breakouts: [
@@ -61,7 +87,7 @@ describe("drill-thru/zoom-in.binning (metabase#36177)", () => {
           },
           breakouts: [
             {
-              column: breakoutColumn,
+              column: { ...breakoutColumn, binning_info: metadata },
               value: 20,
             },
           ],
@@ -138,7 +164,10 @@ describe("drill-thru/zoom-in.binning (metabase#36177)", () => {
         },
         breakouts: [
           {
-            column: breakoutColumn,
+            column: {
+              ...breakoutColumn,
+              binning_info: { binning_strategy: "default" },
+            },
             value: 20,
           },
         ],
