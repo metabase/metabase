@@ -236,9 +236,6 @@ describe("metabase/lib/expression/suggest", () => {
           [
             { text: "True", type: "literal" },
             { text: "[Total] ", type: "fields" },
-            // TODO: uladzimir, it looks like segments should not be returned by BE
-            // https://github.com/metabase/metabase/issues/36196
-            { text: "[Expensive Things]", type: "segments" },
             { text: "timeSpan(", type: "functions" },
             { text: "trim(", type: "functions" },
           ].sort(suggestionSort),
