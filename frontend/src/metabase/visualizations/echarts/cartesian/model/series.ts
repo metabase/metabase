@@ -23,8 +23,18 @@ import {
 export const getSeriesVizSettingsKey = (
   columnNameOrFormattedBreakoutValue: string,
   isFirstCard: boolean,
+  hasMultipleCards: boolean,
+  metricsCount: number,
+  isBreakoutSeries: boolean,
   cardName?: string,
 ): VizSettingsKey => {
+  const isSingleMetricCard = metricsCount === 1 && !isBreakoutSeries;
+
+  // When multiple cards are combined and one of them is a single metric card without a breakout,
+  // the default series name is the card name.
+  if (hasMultipleCards && isSingleMetricCard) {
+    return cardName ?? columnNameOrFormattedBreakoutValue;
+  }
   // When multiple cards are combined on a dashboard, all cards
   // except the first include the card name in the viz settings key.
   const prefix = isFirstCard && cardName == null ? `${cardName}: ` : "";
@@ -116,6 +126,9 @@ export const getCardSeriesModels = (
       const vizSettingsKey = getSeriesVizSettingsKey(
         metric.column.name,
         isFirstCard,
+        hasMultipleCards,
+        columns.metrics.length,
+        false,
         card.name,
       );
       const legacySeriesSettingsObjectKey =
@@ -160,6 +173,9 @@ export const getCardSeriesModels = (
     const vizSettingsKey = getSeriesVizSettingsKey(
       formattedBreakoutValue,
       isFirstCard,
+      hasMultipleCards,
+      1,
+      true,
       card.name,
     );
     const legacySeriesSettingsObjectKey =

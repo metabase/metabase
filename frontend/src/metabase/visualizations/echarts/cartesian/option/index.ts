@@ -31,8 +31,7 @@ export const getCartesianChartOption = (
     ...chartModel.seriesModels.map(seriesModel => seriesModel.dataKey),
   ];
   const echartsDataset = [
-    { source: chartModel.dataset, dimensions },
-    { source: chartModel.normalizedDataset, dimensions },
+    { source: chartModel.transformedDataset, dimensions },
   ];
 
   return {
