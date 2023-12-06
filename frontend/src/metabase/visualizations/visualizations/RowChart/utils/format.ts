@@ -4,7 +4,7 @@ import type {
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { ChartColumns } from "metabase/visualizations/lib/graph/columns";
+import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type {
   ChartTicksFormatters,
   ValueFormatter,
@@ -16,7 +16,7 @@ import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { isEmpty } from "metabase/lib/validate";
 
 export const getFormatters = (
-  chartColumns: ChartColumns,
+  chartColumns: CartesianChartColumns,
   settings: VisualizationSettings,
 ): ChartTicksFormatters => {
   const yTickFormatter = (value: StringLike) => {
@@ -65,7 +65,7 @@ export const getFormatters = (
 };
 
 export const getLabelsFormatter = (
-  chartColumns: ChartColumns,
+  chartColumns: CartesianChartColumns,
   settings: VisualizationSettings,
 ): ValueFormatter => {
   const column = getLabelsMetricColumn(chartColumns).column;
