@@ -257,88 +257,144 @@ describe("SmartScalar > compute", () => {
     });
 
     describe(`comparisonType: ${COMPARISON_TYPES.PERIODS_AGO}`, () => {
-      const settings = {
+      const createSettings = value => ({
         "scalar.field": "Count",
-        "scalar.comparisons": { type: COMPARISON_TYPES.PERIODS_AGO },
-      };
+        "scalar.comparisons": { type: COMPARISON_TYPES.PERIODS_AGO, value },
+      });
 
       const testCases = [
         {
-          description: "should correctly display previous year comparison",
+          description: "should correctly display '2 years ago' comparison",
+          rows: [
+            ["2017-01-01", 10],
+            ["2018-01-01", 100],
+            ["2019-01-01", 300],
+          ],
+          dateUnit: "year",
+          periodsAgo: 2,
+          expected: "300; 2019; ↑ 2,900% vs. 2017: 10",
+        },
+        {
+          description: "should correctly display '1 years ago' comparison",
+          rows: [
+            ["2017-01-01", 10],
+            ["2018-01-01", 100],
+            ["2019-01-01", 300],
+          ],
+          dateUnit: "year",
+          periodsAgo: 1,
+          expected: "300; 2019; ↑ 200% vs. previous year: 100",
+        },
+        {
+          description:
+            "should correctly display missing '2 years ago' comparison",
+          rows: [
+            ["2016-01-01", 10],
+            ["2018-01-01", 100],
+            ["2019-01-01", 300],
+          ],
+          dateUnit: "year",
+          periodsAgo: 2,
+          expected: "300; 2019; N/A vs. 2017: (No data)",
+        },
+        {
+          description: "should handle out of range comparison",
+          rows: [
+            ["2016-01-01", 10],
+            ["2018-01-01", 100],
+            ["2019-01-01", 300],
+          ],
+          dateUnit: "year",
+          periodsAgo: 5,
+          expected: "300; 2019; N/A vs. 2014: (No data)",
+        },
+        {
+          description: "should handle negative period values",
           rows: [
             ["2018-01-01", 100],
             ["2019-01-01", 300],
           ],
           dateUnit: "year",
-          expected: "300; 2019; ↑ 200% vs. previous year: 100",
+          periodsAgo: -1,
+          expected: "300; 2019; N/A vs. 2020: (No data)",
         },
         {
-          description: "should correctly display previous month comparison",
+          description: "should not compare to itself",
           rows: [
-            ["2018-12-01", 100],
-            ["2019-01-01", 300],
-          ],
-          dateUnit: "month",
-          expected: "300; Jan 2019; ↑ 200% vs. previous month: 100",
-        },
-        {
-          description: "should correctly display previous week comparison",
-          rows: [
-            ["2019-01-01", 100],
-            ["2019-01-08", 300],
-          ],
-          dateUnit: "week",
-          expected: "300; Jan 8–14, 2019; ↑ 200% vs. previous week: 100",
-        },
-        {
-          description: "should correctly display previous day comparison",
-          rows: [
-            ["2019-01-01", 100],
-            ["2019-01-02", 300],
-          ],
-          dateUnit: "day",
-          expected: "300; Jan 2, 2019; ↑ 200% vs. previous day: 100",
-        },
-        {
-          description: "should correctly display previous hour comparison",
-          rows: [
-            ["2019-01-02T09:00", 100],
-            ["2019-01-02T10:00", 300],
-          ],
-          dateUnit: "hour",
-          expected:
-            "300; Jan 2, 2019, 10:00–59 AM; ↑ 200% vs. previous hour: 100",
-        },
-        {
-          description: "should correctly display previous minute comparison",
-          rows: [
-            ["2019-01-02T09:59", 100],
-            ["2019-01-02T10:00", 300],
-          ],
-          dateUnit: "minute",
-          expected:
-            "300; Jan 2, 2019, 10:00 AM; ↑ 200% vs. previous minute: 100",
-        },
-        {
-          description:
-            "should correctly display N/A if missing previous period",
-          rows: [
-            ["2017-01-01", 100],
+            ["2018-01-01", 100],
             ["2019-01-01", 300],
           ],
           dateUnit: "year",
-          expected: "300; 2019; N/A vs. previous year: (No data)",
+          periodsAgo: 0,
+          expected: "300; 2019; N/A vs. 2019: (No data)",
+        },
+        {
+          description: "should handle comparisons by months",
+          rows: [
+            ["2022-06-01", 100],
+            ["2022-12-01", 300],
+          ],
+          dateUnit: "month",
+          periodsAgo: 6,
+          expected: "300; Dec 2022; ↑ 200% vs. Jun: 100",
+        },
+        {
+          description: "should handle comparisons by weeks",
+          rows: [
+            ["2022-11-10", 100],
+            ["2022-12-01", 300],
+          ],
+          dateUnit: "week",
+          periodsAgo: 3,
+          expected: "300; Dec 1–7, 2022; ↑ 200% vs. Nov 10–16: 100",
+        },
+        {
+          description: "should handle comparisons by days",
+          rows: [
+            ["2022-08-31", 100],
+            ["2022-09-10", 300],
+          ],
+          dateUnit: "day",
+          periodsAgo: 10,
+          expected: "300; Sep 10, 2022; ↑ 200% vs. Aug 31: 100",
+        },
+        {
+          description: "should handle comparisons by hours",
+          rows: [
+            ["2022-12-01T07:00", 100],
+            ["2022-12-01T10:00", 300],
+          ],
+          dateUnit: "hour",
+          periodsAgo: 3,
+          expected: "300; Dec 1, 2022, 10:00–59 AM; ↑ 200% vs. 7:00–59 AM: 100",
+        },
+        {
+          description: "should handle comparisons by minutes",
+          rows: [
+            ["2022-12-01T10:15", 100],
+            ["2022-12-01T10:30", 300],
+          ],
+          dateUnit: "minute",
+          periodsAgo: 15,
+          expected: "300; Dec 1, 2022, 10:30 AM; ↑ 200% vs. 10:15 AM: 100",
         },
       ];
 
-      it.each(testCases)("$description", ({ rows, expected, dateUnit }) => {
-        const insights = [
-          { unit: dateUnit, col: "Count" },
-          { unit: dateUnit, col: "Sum" },
-        ];
-        const trend = computeTrend(series({ rows }), insights, settings);
-        expect(printTrend(trend)).toBe(expected);
-      });
+      it.each(testCases)(
+        "$description",
+        ({ rows, expected, dateUnit, periodsAgo }) => {
+          const insights = [
+            { unit: dateUnit, col: "Count" },
+            { unit: dateUnit, col: "Sum" },
+          ];
+          const trend = computeTrend(
+            series({ rows }),
+            insights,
+            createSettings(periodsAgo),
+          );
+          expect(printTrend(trend)).toBe(expected);
+        },
+      );
     });
 
     describe("should remove higher-order time periods for previous rows date", () => {
