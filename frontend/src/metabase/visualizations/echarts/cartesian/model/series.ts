@@ -77,27 +77,6 @@ const getDefaultSeriesName = (
   return `${cardName}: ${columnDisplayNameOrFormattedBreakoutValue}`;
 };
 
-const getDefaultSeriesName = (
-  columnDisplayNameOrFormattedBreakoutValue: string,
-  hasMultipleCards: boolean,
-  metricsCount: number,
-  isBreakoutSeries: boolean,
-  cardName?: string,
-) => {
-  // For a single card, including unsaved ones without names, return column name or breakout value
-  if (!hasMultipleCards || !cardName) {
-    return columnDisplayNameOrFormattedBreakoutValue;
-  }
-
-  // When multiple cards are combined and one card has no breakout and only one metric
-  // the default series name is the card name
-  if (hasMultipleCards && metricsCount === 1 && !isBreakoutSeries) {
-    return cardName;
-  }
-
-  return `${cardName}: ${columnDisplayNameOrFormattedBreakoutValue}`;
-};
-
 /**
  * Generates series models for a given card with a dataset.
  *
