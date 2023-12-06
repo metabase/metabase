@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import type { ColorGetter } from "metabase/static-viz/lib/colors";
+import type { ColorGetter } from "metabase/visualizations/types";
 
 import { XYChart } from "../XYChart";
 import type { CardSeries, ChartSettings, ChartStyle } from "../XYChart/types";
