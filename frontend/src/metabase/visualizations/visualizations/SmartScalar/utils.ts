@@ -113,14 +113,14 @@ export type ComparisonOption = {
   maxValue?: number;
 };
 
-export type SelectedComparisonPeriodsAgo = {
+type SelectedComparisonPeriodsAgo = {
   type: typeof COMPARISON_TYPES.PERIODS_AGO;
   value: number;
 };
-export type SelectedComparisonPreviousPeriod = {
+type SelectedComparisonPreviousPeriod = {
   type: typeof COMPARISON_TYPES.PREVIOUS_PERIOD;
 };
-export type SelectedComparisonCompareToPrevious = {
+type SelectedComparisonCompareToPrevious = {
   type: typeof COMPARISON_TYPES.PREVIOUS_VALUE;
 };
 
