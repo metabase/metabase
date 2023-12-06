@@ -8,6 +8,8 @@ on:
     paths:
       - '**/deps.edn'
       - '**/package.json'
+      - '.github/workflows/snyk.yml'
+      - '.github/scripts/write-poms.xml'
   schedule:
     - cron: '0 5 * * *'
   workflow_dispatch:
@@ -19,9 +21,13 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: 'snyk'
       - uses: snyk/actions/setup@0.4.0
       - name: Generate all pom.xml
-        run: bin/write-poms.sh
+        run: .github/scripts/write-poms.sh
       - name: Run snyk
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}

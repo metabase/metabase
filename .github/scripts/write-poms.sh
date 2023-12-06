@@ -5,7 +5,7 @@ set -euo pipefail
 function pom() {
     path=$1
     echo "Writing ${path}/pom.xml"
-    (cd "$path" && clj -X:deps mvn-pom)
+    (cd "$path" && clojure -X:deps mvn-pom)
 }
 
 pom .
