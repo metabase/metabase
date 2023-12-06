@@ -1,0 +1,887 @@
+[
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 2,
+      "result_metadata": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "coercion_strategy": null,
+          "unit": "month",
+          "name": "CREATED_AT",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            14,
+            { "base-type": "type/DateTime", "temporal-unit": "month" }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 14,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": { "distinct-count": 10001, "nil%": 0 },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": { "distinct-count": 46, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 251.5,
+                "q3": 533.5147186257615,
+                "max": 584,
+                "sd": 179.31850155519373,
+                "avg": 382.85714285714283
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Average of Discount",
+          "settings": null,
+          "field_ref": ["aggregation", 1],
+          "name": "avg",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": { "distinct-count": 48, "nil%": 0.04081632653061224 },
+            "type": {
+              "type/Number": {
+                "min": 3.7786116359518838,
+                "q1": 4.822895496795846,
+                "q3": 5.391172976697234,
+                "max": 8.03821678175384,
+                "sd": 0.6765150517330586,
+                "avg": 5.20041045528722
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Sum of Tax",
+          "settings": null,
+          "field_ref": ["aggregation", 2],
+          "name": "sum",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": { "distinct-count": 49, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 3.22,
+                "q1": 665.3625,
+                "q3": 2259.3225,
+                "max": 2520.24,
+                "sd": 850.6681019993541,
+                "avg": 1477.3130612244897
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Distinct values of Product ID",
+          "settings": null,
+          "field_ref": ["aggregation", 3],
+          "name": "count_2",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": { "distinct-count": 37, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 123.5,
+                "q3": 184.46446609406726,
+                "max": 191,
+                "sd": 52.56226466455443,
+                "avg": 148.14285714285714
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Average of Subtotal",
+          "settings": null,
+          "field_ref": ["aggregation", 4],
+          "name": "avg_2",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": { "distinct-count": 49, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 49.535942579421324,
+                "q1": 55.14355210883435,
+                "q3": 84.62602880367882,
+                "max": 86.89684641008752,
+                "sd": 14.80779081342533,
+                "avg": 71.46371751099079
+              }
+            }
+          }
+        }
+      ],
+      "include_xls": false,
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "query",
+      "name": "split-axis static",
+      "creator_id": 1,
+      "updated_at": "2023-10-26T21:06:31.388269-03:00",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 2,
+          "aggregation": [
+            ["count"],
+            ["avg", ["field", 9, { "base-type": "type/Float" }]],
+            ["sum", ["field", 11, { "base-type": "type/Float" }]],
+            ["distinct", ["field", 13, { "base-type": "type/Integer" }]],
+            ["avg", ["field", 17, { "base-type": "type/Float" }]]
+          ],
+          "breakout": [
+            [
+              "field",
+              14,
+              { "base-type": "type/DateTime", "temporal-unit": "month" }
+            ]
+          ]
+        }
+      },
+      "id": 34,
+      "parameter_mappings": [],
+      "include_csv": false,
+      "display": "line",
+      "entity_id": "MRdpgMlUlkhSDU8dgS7gu",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["count", "avg", "sum", "count_2", "avg_2"]
+      },
+      "metabase_version": "v0.47.1-SNAPSHOT (d46d14f)",
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2023-10-26T20:16:19.779869",
+      "public_uuid": null
+    },
+    "data": {
+      "cols": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 2,
+          "coercion_strategy": null,
+          "unit": "month",
+          "name": "CREATED_AT",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            14,
+            { "base-type": "type/DateTime", "temporal-unit": "month" }
+          ],
+          "effective_type": "type/DateTime",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 14,
+          "position": 7,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": { "distinct-count": 10001, "nil%": 0 },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        },
+        {
+          "settings": null,
+          "base_type": "type/Float",
+          "name": "avg",
+          "display_name": "Average of Discount",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 1],
+          "aggregation_index": 1,
+          "effective_type": "type/Float"
+        },
+        {
+          "settings": null,
+          "base_type": "type/Float",
+          "name": "sum",
+          "display_name": "Sum of Tax",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 2],
+          "aggregation_index": 2,
+          "effective_type": "type/Float"
+        },
+        {
+          "settings": null,
+          "base_type": "type/BigInteger",
+          "name": "count_2",
+          "display_name": "Distinct values of Product ID",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 3],
+          "aggregation_index": 3,
+          "effective_type": "type/BigInteger"
+        },
+        {
+          "settings": null,
+          "base_type": "type/Float",
+          "name": "avg_2",
+          "display_name": "Average of Subtotal",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 4],
+          "aggregation_index": 4,
+          "effective_type": "type/Float"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") AS \"CREATED_AT\", COUNT(*) AS \"count\", AVG(\"PUBLIC\".\"ORDERS\".\"DISCOUNT\") AS \"avg\", SUM(\"PUBLIC\".\"ORDERS\".\"TAX\") AS \"sum\", count(distinct \"PUBLIC\".\"ORDERS\".\"PRODUCT_ID\") AS \"count_2\", AVG(\"PUBLIC\".\"ORDERS\".\"SUBTOTAL\") AS \"avg_2\" FROM \"PUBLIC\".\"ORDERS\" GROUP BY DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ORDER BY DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ASC",
+        "params": null
+      },
+      "viz-settings": {
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["count", "avg", "sum", "count_2", "avg_2"],
+        "metabase.shared.models.visualization-settings/column-settings": {},
+        "metabase.shared.models.visualization-settings/global-column-settings": {}
+      },
+      "results_timezone": "America/Montevideo",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "month",
+            "name": "CREATED_AT",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              14,
+              { "base-type": "type/DateTime", "temporal-unit": "month" }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 14,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": { "distinct-count": 10001, "nil%": 0 },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": { "distinct-count": 46, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 251.5,
+                  "q3": 533.5147186257615,
+                  "max": 584,
+                  "sd": 179.31850155519373,
+                  "avg": 382.85714285714283
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Average of Discount",
+            "settings": null,
+            "field_ref": ["aggregation", 1],
+            "name": "avg",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": { "distinct-count": 48, "nil%": 0.04081632653061224 },
+              "type": {
+                "type/Number": {
+                  "min": 3.7786116359518838,
+                  "q1": 4.822895496795846,
+                  "q3": 5.391172976697234,
+                  "max": 8.03821678175384,
+                  "sd": 0.6765150517330586,
+                  "avg": 5.20041045528722
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Sum of Tax",
+            "settings": null,
+            "field_ref": ["aggregation", 2],
+            "name": "sum",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": { "distinct-count": 49, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 3.22,
+                  "q1": 665.3625,
+                  "q3": 2259.3225,
+                  "max": 2520.24,
+                  "sd": 850.6681019993541,
+                  "avg": 1477.3130612244897
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Distinct values of Product ID",
+            "settings": null,
+            "field_ref": ["aggregation", 3],
+            "name": "count_2",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": { "distinct-count": 37, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 123.5,
+                  "q3": 184.46446609406726,
+                  "max": 191,
+                  "sd": 52.56226466455443,
+                  "avg": 148.14285714285714
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Average of Subtotal",
+            "settings": null,
+            "field_ref": ["aggregation", 4],
+            "name": "avg_2",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": { "distinct-count": 49, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 49.535942579421324,
+                  "q1": 55.14355210883435,
+                  "q3": 84.62602880367882,
+                  "max": 86.89684641008752,
+                  "sd": 14.80779081342533,
+                  "avg": 71.46371751099079
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": 527,
+          "unit": "month",
+          "offset": -6953.698351313006,
+          "last-change": -0.34724857685009486,
+          "col": "count",
+          "slope": 0.3702693432431338,
+          "last-value": 344,
+          "best-fit": [
+            "+",
+            -72488.7009707958,
+            ["*", 7365.29197235162, ["log", "x"]]
+          ]
+        },
+        {
+          "previous-value": 5.2882254950946095,
+          "unit": "month",
+          "offset": 6.179467869621814,
+          "last-change": -0.07204408134704679,
+          "col": "avg",
+          "slope": -0.000049336283180204997,
+          "last-value": 4.907240147344487,
+          "best-fit": [
+            "*",
+            5.0170513599005755,
+            ["exp", ["*", 0.0000014260214728009155, "x"]]
+          ]
+        },
+        {
+          "previous-value": 2164.96,
+          "unit": "month",
+          "offset": -33741.06758791615,
+          "last-change": -0.34735514743921364,
+          "col": "sum",
+          "slope": 1.7774399285068052,
+          "last-value": 1412.95,
+          "best-fit": [
+            "+",
+            -347946.4472507882,
+            ["*", 35317.04389744346, ["log", "x"]]
+          ]
+        },
+        {
+          "previous-value": 184,
+          "unit": "month",
+          "offset": -1881.457471148226,
+          "last-change": -0.04891304347826087,
+          "col": "count_2",
+          "slope": 0.10243209925959831,
+          "last-value": 175,
+          "best-fit": [
+            "+",
+            -20040.97994707943,
+            ["*", 2040.5599656157176, ["log", "x"]]
+          ]
+        },
+        {
+          "previous-value": 83.25052923414114,
+          "unit": "month",
+          "offset": -504.6608246689086,
+          "last-change": 0.03073140330022919,
+          "col": "avg_2",
+          "slope": 0.02907648637411849,
+          "last-value": 85.80893482299305,
+          "best-fit": [
+            "+",
+            -5634.9845995025735,
+            ["*", 576.7635421543825, ["log", "x"]]
+          ]
+        }
+      ],
+      "rows": [
+        ["2022-04-01T00:00:00-03:00", 1, null, 3.22, 1, 49.535942579421324],
+        ["2022-05-01T00:00:00-03:00", 19, null, 53.73, 15, 63.788752442438565],
+        [
+          "2022-06-01T00:00:00-03:00",
+          37,
+          6.451558450556949,
+          102.66,
+          29,
+          53.77393591586337
+        ],
+        [
+          "2022-07-01T00:00:00-03:00",
+          64,
+          4.60149622976458,
+          176.97,
+          40,
+          56.02069815819084
+        ],
+        [
+          "2022-08-01T00:00:00-03:00",
+          79,
+          5.825649709396703,
+          221.99,
+          51,
+          60.720332194114526
+        ],
+        [
+          "2022-09-01T00:00:00-03:00",
+          92,
+          5.692742333243312,
+          264.79,
+          61,
+          56.00903487160416
+        ],
+        [
+          "2022-10-01T00:00:00-03:00",
+          137,
+          3.7786116359518838,
+          365.62,
+          87,
+          53.942609585519165
+        ],
+        [
+          "2022-11-01T00:00:00-03:00",
+          150,
+          5.742184741582179,
+          381.64,
+          87,
+          50.72177376221898
+        ],
+        [
+          "2022-12-01T00:00:00-03:00",
+          165,
+          4.70374043410008,
+          426.71,
+          96,
+          52.83031635058595
+        ],
+        [
+          "2023-01-01T00:00:00-03:00",
+          205,
+          5.3426398534364825,
+          537.35,
+          108,
+          52.28112651064062
+        ],
+        [
+          "2023-02-01T00:00:00-03:00",
+          206,
+          5.058077968577615,
+          569.3,
+          111,
+          52.40613312503035
+        ],
+        [
+          "2023-03-01T00:00:00-03:00",
+          256,
+          4.294050005789031,
+          687.4,
+          119,
+          52.90702067684269
+        ],
+        [
+          "2023-04-01T00:00:00-03:00",
+          238,
+          5.0962748507574664,
+          599.25,
+          130,
+          52.50467074196244
+        ],
+        [
+          "2023-05-01T00:00:00-03:00",
+          271,
+          4.394234708455212,
+          741.64,
+          137,
+          55.62933453885397
+        ],
+        [
+          "2023-06-01T00:00:00-03:00",
+          264,
+          4.903250619724577,
+          757.44,
+          125,
+          56.35587035979819
+        ],
+        [
+          "2023-07-01T00:00:00-03:00",
+          325,
+          4.843938524977035,
+          896.26,
+          161,
+          54.85940001373759
+        ],
+        [
+          "2023-08-01T00:00:00-03:00",
+          333,
+          8.03821678175384,
+          912.97,
+          149,
+          54.94624504311776
+        ],
+        [
+          "2023-09-01T00:00:00-03:00",
+          346,
+          5.111519507657902,
+          919.65,
+          155,
+          53.04154817005059
+        ],
+        [
+          "2023-10-01T00:00:00-03:00",
+          354,
+          5.224330557397964,
+          984.06,
+          150,
+          55.89131255381024
+        ],
+        [
+          "2023-11-01T00:00:00-03:00",
+          394,
+          5.343541551376437,
+          1076.25,
+          168,
+          55.20932113073988
+        ],
+        [
+          "2023-12-01T00:00:00-03:00",
+          418,
+          6.353802218628239,
+          1196.59,
+          168,
+          56.954681428458656
+        ],
+        [
+          "2024-01-01T00:00:00-03:00",
+          457,
+          5.387085168712627,
+          1873.28,
+          174,
+          81.00578277393085
+        ],
+        [
+          "2024-02-01T00:00:00-03:00",
+          404,
+          5.345615003887014,
+          1705.66,
+          165,
+          81.49474949106843
+        ],
+        [
+          "2024-03-01T00:00:00-03:00",
+          445,
+          4.392149040469398,
+          1802.17,
+          180,
+          82.23058354740498
+        ],
+        [
+          "2024-04-01T00:00:00-03:00",
+          439,
+          4.893366848956525,
+          1792.02,
+          167,
+          80.97546854036855
+        ],
+        [
+          "2024-05-01T00:00:00-03:00",
+          520,
+          4.6464001997486815,
+          2196.43,
+          184,
+          83.76278726064987
+        ],
+        [
+          "2024-06-01T00:00:00-03:00",
+          455,
+          5.031846863955183,
+          1965.09,
+          176,
+          86.89684641008752
+        ],
+        [
+          "2024-07-01T00:00:00-03:00",
+          523,
+          5.13183213686851,
+          2194.02,
+          189,
+          80.86468468226778
+        ],
+        [
+          "2024-08-01T00:00:00-03:00",
+          501,
+          4.502462247222474,
+          2120.41,
+          182,
+          84.7184171879287
+        ],
+        [
+          "2024-09-01T00:00:00-03:00",
+          498,
+          4.815881154068784,
+          2161.47,
+          179,
+          84.49296531118317
+        ],
+        [
+          "2024-10-01T00:00:00-03:00",
+          533,
+          4.813599806561816,
+          2279.75,
+          180,
+          85.75782724639198
+        ],
+        [
+          "2024-11-01T00:00:00-03:00",
+          520,
+          4.926793862065576,
+          2194.44,
+          183,
+          85.57428687020764
+        ],
+        [
+          "2024-12-01T00:00:00-03:00",
+          539,
+          5.751994814463188,
+          2301.44,
+          186,
+          85.79899424741811
+        ],
+        [
+          "2025-01-01T00:00:00-03:00",
+          584,
+          5.379118031022914,
+          2520.24,
+          190,
+          84.65182887133804
+        ],
+        [
+          "2025-02-01T00:00:00-03:00",
+          533,
+          5.4904029242232895,
+          2260.26,
+          185,
+          84.61742878112575
+        ],
+        [
+          "2025-03-01T00:00:00-03:00",
+          573,
+          5.800056078237297,
+          2389.68,
+          184,
+          86.02761113678133
+        ],
+        [
+          "2025-04-01T00:00:00-03:00",
+          533,
+          5.122987775923897,
+          2295.97,
+          187,
+          85.43300592098447
+        ],
+        [
+          "2025-05-01T00:00:00-03:00",
+          561,
+          4.6813950788733045,
+          2264.69,
+          188,
+          81.57501167551156
+        ],
+        [
+          "2025-06-01T00:00:00-03:00",
+          521,
+          6.097812791824056,
+          2207.74,
+          184,
+          85.77609882775954
+        ],
+        [
+          "2025-07-01T00:00:00-03:00",
+          556,
+          5.386570383653679,
+          2259.01,
+          186,
+          82.93509656024388
+        ],
+        [
+          "2025-08-01T00:00:00-03:00",
+          566,
+          4.860943637697898,
+          2445.9,
+          191,
+          85.54524660807883
+        ],
+        [
+          "2025-09-01T00:00:00-03:00",
+          519,
+          5.13920955022629,
+          2143.48,
+          185,
+          82.43741363451679
+        ],
+        [
+          "2025-10-01T00:00:00-03:00",
+          540,
+          4.597076343841538,
+          2239.69,
+          183,
+          81.96974638481903
+        ],
+        [
+          "2025-11-01T00:00:00-03:00",
+          542,
+          5.670432127299689,
+          2261.27,
+          185,
+          83.84514412300643
+        ],
+        [
+          "2025-12-01T00:00:00-03:00",
+          550,
+          4.975697739841772,
+          2303.49,
+          190,
+          84.00195361268182
+        ],
+        [
+          "2026-01-01T00:00:00-03:00",
+          580,
+          5.39253557935877,
+          2489.38,
+          191,
+          86.33272037766446
+        ],
+        [
+          "2026-02-01T00:00:00-03:00",
+          543,
+          5.190699883928596,
+          2267.96,
+          178,
+          83.61093374499535
+        ],
+        [
+          "2026-03-01T00:00:00-03:00",
+          527,
+          5.2882254950946095,
+          2164.96,
+          184,
+          83.25052923414114
+        ],
+        [
+          "2026-04-01T00:00:00-03:00",
+          344,
+          4.907240147344487,
+          1412.95,
+          175,
+          85.80893482299305
+        ]
+      ]
+    }
+  }
+]
