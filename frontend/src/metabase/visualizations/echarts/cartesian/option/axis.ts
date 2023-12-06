@@ -18,6 +18,7 @@ import type {
 } from "metabase/visualizations/echarts/cartesian/option/types";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/option/style";
 
+import { getMetricDisplayValueGetter } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import { isNumeric } from "metabase-lib/types/utils/isa";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
@@ -321,7 +322,11 @@ const buildMetricAxis = (
     renderingContext,
   );
 
+  const valueGetter = getMetricDisplayValueGetter(settings);
+  const axisType = settings["graph.y_axis.scale"] === "log" ? "log" : "value";
+
   return {
+    type: axisType,
     ...range,
     ...getAxisNameDefaultOption(
       renderingContext,
@@ -340,7 +345,7 @@ const buildMetricAxis = (
       show: !!settings["graph.y_axis.axis_enabled"],
       ...getTicksDefaultOption(renderingContext),
       // @ts-expect-error TODO: figure out EChart types
-      formatter,
+      formatter: value => formatter(valueGetter(value)),
     },
   };
 };
