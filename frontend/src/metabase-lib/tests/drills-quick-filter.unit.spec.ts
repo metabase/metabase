@@ -89,7 +89,6 @@ describe("drill-thru/quick-filter", () => {
       verifyDrillThru(query, drill, drillInfo, expectedStageCount);
     });
 
-    // eslint-disable-next-line jest/no-disabled-tests
     it("should drill a cell for description or comment columns (metabase#33560)", () => {
       const query = Lib.withDifferentTable(defaultQuery, REVIEWS_ID);
       const column = createReviewsBodyDatasetColumn();
