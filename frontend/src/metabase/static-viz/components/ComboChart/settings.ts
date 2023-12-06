@@ -130,8 +130,9 @@ export const computeStaticComboChartSettings = (
     getDefaultStackingValue(settings, mainCard),
     isStackingValueValid(
       settings,
-      seriesModels.map(seriesModel =>
-        settings.series(seriesModel.legacySeriesSettingsObjectKey),
+      seriesModels.map(
+        seriesModel =>
+          settings.series(seriesModel.legacySeriesSettingsObjectKey).display,
       ),
     ),
   );
