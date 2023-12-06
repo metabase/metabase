@@ -27,6 +27,8 @@ export function computeTrend(series, insights, settings) {
   ) {
     return computeTrendPeriodsAgo(series, insights, settings);
   }
+
+  return null;
 }
 
 function computeTrendPreviousValue(series, insights, settings) {
