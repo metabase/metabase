@@ -890,17 +890,16 @@
   "Upload a small CSV file to the given collection ID. Default args can be overridden"
   []
   (mt/with-current-user (mt/user->id :rasta)
-    (let [dbdef (basic-db-definition (mt/random-name))]
-      (mt/dataset dbdef
-       (let [file (upload-test/csv-file-with
-                   ["first_name,last_name"
-                    "Luke,Skywalker"
-                    "Darth,Vader"]
-                   (str "example csv file.csv"))
-             table (t2/select-one :model/Table :db_id (mt/id))]
-          (mt/with-current-user (mt/user->id :crowberto)
-            (@#'api.table/append-csv! {:id   (:id table)
-                                       :file file})))))))
+    (mt/dataset (basic-db-definition (mt/random-name))
+      (let [file (upload-test/csv-file-with
+                  ["first_name,last_name"
+                   "Luke,Skywalker"
+                   "Darth,Vader"]
+                  (str "example csv file.csv"))
+            table (t2/select-one :model/Table :db_id (mt/id))]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (@#'api.table/append-csv! {:id   (:id table)
+                                     :file file}))))))
 
 (deftest append-csv-test
   (mt/test-driver :h2
