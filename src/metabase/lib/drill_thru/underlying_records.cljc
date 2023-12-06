@@ -23,9 +23,9 @@
 
   There is another quite different case: clicking the legend of a chart with multiple bars or lines broken out by
   category. Then `column` is nil!"
-  [query                                        :- ::lib.schema/query
-   stage-number                                 :- :int
-   {:keys [column column-ref dimensions value]} :- ::lib.schema.drill-thru/context]
+  [query                                                      :- ::lib.schema/query
+   stage-number                                               :- :int
+   {:keys [column column-ref dimensions value], :as _context} :- ::lib.schema.drill-thru/context]
   ;; Clicking on breakouts is weird. Clicking on Count(People) by State: Minnesota yields a FE `clicked` with:
   ;; - column is COUNT
   ;; - row[0] has col: STATE, value: "Minnesota"
@@ -50,7 +50,10 @@
      :type       :drill-thru/underlying-records
      ;; TODO: This is a bit confused for non-COUNT aggregations. Perhaps it should just always be 10 or something?
      ;; Note that some languages have different plurals for exactly 2, or for 1, 2-5, and 6+.
-     :row-count  (if (number? value) value 2)
+     :row-count  (if (and (number? value)
+                          (not (neg? value)))
+                   value
+                   2)
      :table-name (when-let [table-or-card (or (some->> query lib.util/source-table-id (lib.metadata/table query))
                                               (some->> query lib.util/source-card-id  (lib.metadata/card  query)))]
                    (lib.metadata.calculation/display-name query stage-number table-or-card))
