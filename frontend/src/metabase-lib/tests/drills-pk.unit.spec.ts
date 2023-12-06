@@ -1,5 +1,6 @@
 import {
   createOrdersCreatedAtDatasetColumn,
+  createOrdersCreatedAtField,
   createOrdersIdDatasetColumn,
   createOrdersIdField,
   createOrdersProductIdDatasetColumn,
@@ -23,15 +24,31 @@ import {
 import {
   createCountDatasetColumn,
   createNotEditableQuery,
-} from "metabase-lib/tests/drills-common";
+} from "./drills-common";
 
-describe("drill-thru/zoom", () => {
-  const drillType = "drill-thru/zoom";
-  const defaultQuery = createQuery();
+describe("drill-thru/pk", () => {
+  const drillType = "drill-thru/pk";
+  const defaultMetadata = createMockMetadata({
+    databases: [
+      createSampleDatabase({
+        tables: [
+          createOrdersTable({
+            fields: [
+              createOrdersIdField(),
+              createOrdersProductIdField({ semantic_type: "type/PK" }),
+              createOrdersTotalField(),
+              createOrdersCreatedAtField(),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+  const defaultQuery = createQuery({ metadata: defaultMetadata });
   const stageIndex = 0;
   const defaultColumn = createOrdersIdDatasetColumn();
 
-  it("should drill thru a PK cell when there is only one PK column", () => {
+  it("should drill thru a PK cell when there are multiple PK columns", () => {
     const clickObject = createRawCellClickObject({
       column: defaultColumn,
       value: 10,
@@ -43,11 +60,10 @@ describe("drill-thru/zoom", () => {
       drillType,
     );
     const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
-    expect(newQuery).not.toBeNull();
+    expect(Lib.filters(newQuery, stageIndex)).toHaveLength(1);
   });
 
-  // eslint-disable-next-line jest/no-disabled-tests
-  it("should drill thru a non-PK or non-FK cell when there is another PK and no other PK columns exist (metabase#36129)", () => {
+  it("should drill thru a non-PK and non-FK cell when there are multiple PK columns", () => {
     const clickObject = createRawCellClickObject({
       column: createOrdersTotalDatasetColumn(),
       value: 10,
@@ -70,18 +86,17 @@ describe("drill-thru/zoom", () => {
         },
       ],
     });
-    const { drillInfo } = findDrillThru(
+    const { drill } = findDrillThru(
       defaultQuery,
       stageIndex,
       clickObject,
       drillType,
     );
-    expect(drillInfo).toMatchObject({
-      type: drillType,
-    });
+    const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
+    expect(Lib.filters(newQuery, stageIndex)).toHaveLength(2);
   });
 
-  it("should not drill thru a non-PK or non-FK cell when the query is aggregated", () => {
+  it("should not drill thru a non-PK and non-FK cell when the query is aggregated", () => {
     const query = createQueryWithClauses({
       aggregations: [{ operatorName: "count" }],
       breakouts: [{ columnName: "TOTAL", tableName: "ORDERS" }],
@@ -89,12 +104,12 @@ describe("drill-thru/zoom", () => {
     const clickObject = createAggregatedCellClickObject({
       aggregation: {
         column: createCountDatasetColumn(),
-        value: 10,
+        value: 20,
       },
       breakouts: [
         {
           column: createOrdersTotalDatasetColumn({ source: "breakout" }),
-          value: 20,
+          value: 10,
         },
       ],
     });
@@ -102,7 +117,27 @@ describe("drill-thru/zoom", () => {
     expect(drill).toBeNull();
   });
 
-  it("should not drill thru a column header", () => {
+  it("should not drill thru a FK cell", () => {
+    const query = createQuery();
+    const clickObject = createRawCellClickObject({
+      column: createOrdersProductIdDatasetColumn(),
+      value: 10,
+    });
+    const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
+    expect(drill).toBeNull();
+  });
+
+  it("should not drill thru the only PK cell", () => {
+    const query = createQuery();
+    const clickObject = createRawCellClickObject({
+      column: defaultColumn,
+      value: 10,
+    });
+    const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
+    expect(drill).toBeNull();
+  });
+
+  it("should not drill thru a FK column", () => {
     const clickObject = createColumnClickObject({
       column: defaultColumn,
     });
@@ -115,8 +150,7 @@ describe("drill-thru/zoom", () => {
     expect(drill).toBeNull();
   });
 
-  // eslint-disable-next-line jest/no-disabled-tests
-  it("should not drill thru a PK cell with null value (metabase#36130)", () => {
+  it("should not drill thru a PK cell with null value", () => {
     const clickObject = createRawCellClickObject({
       column: defaultColumn,
       value: null,
@@ -130,47 +164,7 @@ describe("drill-thru/zoom", () => {
     expect(drill).toBeNull();
   });
 
-  it("should not drill thru a FK cell", () => {
-    const clickObject = createRawCellClickObject({
-      column: createOrdersProductIdDatasetColumn(),
-      value: 10,
-    });
-    const drill = queryDrillThru(
-      defaultQuery,
-      stageIndex,
-      clickObject,
-      drillType,
-    );
-    expect(drill).toBeNull();
-  });
-
-  it("should not drill thru a PK cell when there are multiple PK columns", () => {
-    const metadata = createMockMetadata({
-      databases: [
-        createSampleDatabase({
-          tables: [
-            createOrdersTable({
-              fields: [
-                createOrdersIdField(),
-                createOrdersProductIdField({ semantic_type: "type/PK" }),
-                createOrdersTotalField(),
-              ],
-            }),
-          ],
-        }),
-      ],
-    });
-    const query = createQuery({ metadata });
-    const clickObject = createRawCellClickObject({
-      column: defaultColumn,
-      value: 10,
-    });
-    const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
-    expect(drill).toBeNull();
-  });
-
-  // eslint-disable-next-line jest/no-disabled-tests
-  it.skip("should not drill thru a non-editable query (metabase#36125)", () => {
+  it("should not drill thru a non-editable query", () => {
     const query = createNotEditableQuery(defaultQuery);
     const clickObject = createRawCellClickObject({
       column: defaultColumn,
