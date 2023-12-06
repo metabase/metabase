@@ -5,7 +5,6 @@ import type { PopoverBaseProps } from "metabase/ui";
 import { FilterPicker } from "metabase/querying";
 import * as Lib from "metabase-lib";
 import type LegacyQuery from "metabase-lib/queries/StructuredQuery";
-import type LegacyFilter from "metabase-lib/queries/structured/Filter";
 import type { NotebookStepUiComponentProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
 
@@ -31,7 +30,7 @@ export function FilterStep({
   );
 
   const handleAddFilter = (
-    filter: Lib.ExpressionClause | Lib.SegmentMetadata,
+    filter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
   ) => {
     const nextQuery = Lib.filter(topLevelQuery, stageIndex, filter);
     updateQuery(nextQuery);
@@ -39,7 +38,7 @@ export function FilterStep({
 
   const handleUpdateFilter = (
     targetFilter: Lib.FilterClause,
-    nextFilter: Lib.ExpressionClause | Lib.SegmentMetadata,
+    nextFilter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
   ) => {
     const nextQuery = Lib.replaceClause(
       topLevelQuery,
@@ -75,14 +74,8 @@ export function FilterStep({
             filter={filter}
             filterIndex={index}
             legacyQuery={legacyQuery}
-            legacyFilter={
-              typeof index === "number"
-                ? legacyQuery.filters()[index]
-                : undefined
-            }
             onAddFilter={handleAddFilter}
             onUpdateFilter={handleUpdateFilter}
-            onLegacyQueryChange={updateQuery}
             onClose={onClose}
           />
         )}
@@ -98,13 +91,13 @@ interface FilterPopoverProps {
   filter?: Lib.FilterClause;
   filterIndex?: number;
   legacyQuery: LegacyQuery;
-  legacyFilter?: LegacyFilter;
-  onAddFilter: (filter: Lib.ExpressionClause | Lib.SegmentMetadata) => void;
+  onAddFilter: (
+    filter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
+  ) => void;
   onUpdateFilter: (
     targetFilter: Lib.FilterClause,
-    nextFilter: Lib.ExpressionClause | Lib.SegmentMetadata,
+    nextFilter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
   ) => void;
-  onLegacyQueryChange: (query: LegacyQuery) => void;
   onClose?: () => void;
 }
 
@@ -114,10 +107,8 @@ function FilterPopover({
   filter,
   filterIndex,
   legacyQuery,
-  legacyFilter,
   onAddFilter,
   onUpdateFilter,
-  onLegacyQueryChange,
   onClose,
 }: FilterPopoverProps) {
   return (
@@ -127,19 +118,11 @@ function FilterPopover({
       filter={filter}
       filterIndex={filterIndex}
       legacyQuery={legacyQuery}
-      legacyFilter={legacyFilter}
       onSelect={newFilter => {
         if (filter) {
           onUpdateFilter(filter, newFilter);
         } else {
           onAddFilter(newFilter);
-        }
-      }}
-      onSelectLegacy={newFilter => {
-        if (legacyFilter) {
-          onLegacyQueryChange(legacyFilter.replace(newFilter));
-        } else {
-          onLegacyQueryChange(legacyQuery.filter(newFilter));
         }
       }}
       onClose={onClose}
