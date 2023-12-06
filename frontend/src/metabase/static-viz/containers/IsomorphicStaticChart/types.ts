@@ -5,4 +5,6 @@ export interface IsomorphicStaticChartProps {
   rawSeries: RawSeries;
   dashcardSettings: VisualizationSettings;
   renderingContext: RenderingContext;
+  width?: number;
+  height?: number;
 }
