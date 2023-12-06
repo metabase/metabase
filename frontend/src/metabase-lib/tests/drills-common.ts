@@ -106,7 +106,6 @@ export function createCountDatasetColumn() {
     name: "count",
     display_name: "Count",
     source: "aggregation",
-    aggregation_index: 0,
     field_ref: ["aggregation", 0],
     base_type: "type/BigInteger",
     effective_type: "type/BigInteger",

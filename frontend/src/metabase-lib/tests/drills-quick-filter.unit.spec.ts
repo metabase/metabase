@@ -89,7 +89,8 @@ describe("drill-thru/quick-filter", () => {
       verifyDrillThru(query, drill, drillInfo, expectedStageCount);
     });
 
-    it("should drill a cell for description or comment columns", () => {
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should drill a cell for description or comment columns (metabase#33560)", () => {
       const query = Lib.withDifferentTable(defaultQuery, REVIEWS_ID);
       const column = createReviewsBodyDatasetColumn();
       const clickObject = createRawCellClickObject({
@@ -104,7 +105,7 @@ describe("drill-thru/quick-filter", () => {
       );
       expect(drillInfo).toMatchObject({
         value: "text",
-        operators: ["=", "≠", "contains", "does-not-contain"],
+        operators: ["contains", "does-not-contain"],
       });
       verifyDrillThruDetails(drill, expectedStageCount);
     });

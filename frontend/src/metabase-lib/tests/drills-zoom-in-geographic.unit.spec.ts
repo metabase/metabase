@@ -2,7 +2,9 @@ import {
   createOrdersTable,
   createPeopleCityDatasetColumn,
   createPeopleIdField,
+  createPeopleLatitudeDatasetColumn,
   createPeopleLatitudeField,
+  createPeopleLongitudeDatasetColumn,
   createPeopleLongitudeField,
   createPeopleStateDatasetColumn,
   createPeopleStateField,
@@ -13,7 +15,6 @@ import {
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import {
-  columnFinder,
   createAggregatedCellClickObject,
   createPivotCellClickObject,
   createQuery,
@@ -178,25 +179,15 @@ describe.skip("drill-thru/zoom-in.geographic (metabase#36247)", () => {
         ],
       });
 
-      const returnedColumns = Lib.returnedColumns(query, -1);
-      const latitudeColumn = columnFinder(query, returnedColumns)(
-        "PEOPLE",
-        "LATITUDE",
-      );
-      const longitudeColumn = columnFinder(query, returnedColumns)(
-        "PEOPLE",
-        "LONGITUDE",
-      );
-
       const dimensions = {
         aggregation: { column: createCountDatasetColumn(), value: 5 },
         breakouts: [
           {
-            column: latitudeColumn,
+            column: createPeopleLatitudeDatasetColumn(),
             value: 10,
           },
           {
-            column: longitudeColumn,
+            column: createPeopleLongitudeDatasetColumn(),
             value: 20,
           },
         ],
