@@ -2,6 +2,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createPublicDashboardLink,
   createPublicQuestionLink,
+  openPublicLinkDropdown,
   restore,
   visitDashboard,
   visitQuestion,
@@ -77,6 +78,8 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
               visitResource(resource, id);
             });
 
+            openPublicLinkDropdown();
+
             cy.findByTestId("public-link-popover-content").within(() => {
               cy.findByText("Public link").should("be.visible");
               cy.findByTestId("public-link-text").should("be.visible");
@@ -102,7 +105,7 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
               visitResource(resource, id);
             });
 
-            cy.icon("share").click();
+            openPublicLinkDropdown();
 
             cy.findByTestId("public-link-popover-content").within(() => {
               cy.findByText("Public link").should("be.visible");

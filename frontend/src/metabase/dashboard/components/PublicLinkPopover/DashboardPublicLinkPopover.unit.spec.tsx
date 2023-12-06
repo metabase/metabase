@@ -2,14 +2,12 @@ import { useState } from "react";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
 import { setupDashboardPublicLinkEndpoints } from "__support__/server-mocks";
 import { DashboardPublicLinkPopover } from "metabase/dashboard/components/PublicLinkPopover/DashboardPublicLinkPopover";
 import type { Dashboard } from "metabase-types/api";
+import { mockSettings } from "__support__/settings";
 
 const SITE_URL = "http://metabase.test";
 const TEST_DASHBOARD_ID = 1;
@@ -52,7 +50,7 @@ const setup = ({
 
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: true }),
-    settings: createMockSettingsState({
+    settings: mockSettings({
       "site-url": SITE_URL,
     }),
   });
