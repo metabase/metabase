@@ -15,7 +15,7 @@ The **Metabase Analytics** collection is a special collection that contains view
 Some things to keep in mind with this special Metabase analytics collection:
 
 - Metabase analytics is a view-only collection. Even admins can't curate it. It is eternal.
-- By default, only admins and people in groups with [monitoring access](../usage-and-performance-tools/usage-analytics.md) can view the Metabase analytics collection (though they can grant other groups view access to it).
+- By default, only admins and people in groups with [monitoring access](../usage-and-performance-tools/usage-analytics.md) can view the Metabase analytics collection (though admins can grant other groups view access to it).
 - You can duplicate any item in the Metabase analytics collection, modify the item to your liking, and save the item to another collection.
 
 ## Permissions
