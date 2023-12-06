@@ -489,7 +489,7 @@
   [url]
   (if-let [matches (re-matches #"^mailto:(.*)" url)]
     (when-not (u/email? (second matches))
-      (throw (ex-info (tru "Invalid email address in mailto: link")
+      (throw (ex-info (tru "Please make sure this is a valid URL")
                       {:url url})))
     (when-not (u/url? url)
       (throw (ex-info (tru "Please make sure this is a valid URL")
