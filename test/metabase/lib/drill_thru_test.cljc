@@ -284,7 +284,9 @@
                  {:lib/type  :metabase.lib.drill-thru/drill-thru
                   :type      :drill-thru/quick-filter
                   :operators (for [[op label] [[:=  "="]
-                                               [:!= "≠"]]]
+                                               [:!= "≠"]
+                                               [:contains "contains"]
+                                               [:does-not-contain "does-not-contain"]]]
                                {:name   label
                                 :filter [op {:lib/uuid string?}
                                          [:field {:lib/uuid string?} (meta/id :products :category)]
@@ -305,7 +307,9 @@
                  {:lib/type  :metabase.lib.drill-thru/drill-thru
                   :type      :drill-thru/quick-filter
                   :operators (for [[op label] [[:=  "="]
-                                               [:!= "≠"]]]
+                                               [:!= "≠"]
+                                               [:contains "contains"]
+                                               [:does-not-contain "does-not-contain"]]]
                                {:name   label
                                 :filter [op {:lib/uuid string?}
                                          [:field {:lib/uuid string?} (meta/id :products :vendor)]
