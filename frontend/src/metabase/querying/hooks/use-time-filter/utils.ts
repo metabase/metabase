@@ -1,6 +1,8 @@
 import dayjs from "dayjs";
+import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import { OPERATOR_OPTIONS } from "./constants";
+import type { TimeValue } from "./types";
 
 function getDefaultValue() {
   return dayjs().startOf("day").toDate(); // 00:00:00
@@ -8,7 +10,7 @@ function getDefaultValue() {
 
 export function getDefaultValues(
   operator: Lib.TimeFilterOperatorName,
-  values: Date[] = [],
+  values: TimeValue[] = [],
 ): Date[] {
   const { valueCount } = OPERATOR_OPTIONS[operator];
 
@@ -17,11 +19,19 @@ export function getDefaultValues(
     .map((value, index) => values[index] ?? value);
 }
 
+export function hasValidValues(values: TimeValue[]): values is Date[] {
+  return values.every(isNotNull);
+}
+
 export function getFilterClause(
   operator: Lib.TimeFilterOperatorName,
   column: Lib.ColumnMetadata,
-  values: Date[],
+  values: TimeValue[],
 ) {
+  if (!hasValidValues(values)) {
+    return null;
+  }
+
   return Lib.timeFilterClause({
     operator,
     column,

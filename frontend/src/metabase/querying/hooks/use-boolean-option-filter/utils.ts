@@ -1,9 +1,9 @@
 import * as Lib from "metabase-lib";
-import { OPTIONS } from "./constants";
+import { OPERATOR_OPTIONS } from "./constants";
 import type { OptionType } from "./types";
 
 export function getOptionByType(optionType: OptionType) {
-  return OPTIONS[optionType];
+  return OPERATOR_OPTIONS[optionType];
 }
 
 export function getOptionType(

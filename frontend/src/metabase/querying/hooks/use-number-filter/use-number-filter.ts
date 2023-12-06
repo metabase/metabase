@@ -14,7 +14,6 @@ interface UseNumberFilterProps {
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
   defaultOperator?: Lib.NumberFilterOperatorName;
-  onChange?: (filter: Lib.ExpressionClause | undefined) => void;
 }
 
 export function useNumberFilter({
@@ -23,7 +22,6 @@ export function useNumberFilter({
   column,
   filter,
   defaultOperator = "=",
-  onChange,
 }: UseNumberFilterProps) {
   const filterParts = useMemo(
     () => (filter ? Lib.numberFilterParts(query, stageIndex, filter) : null),
@@ -50,26 +48,9 @@ export function useNumberFilter({
   const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
   const isValid = hasValidValues(operator, values);
 
-  const handleOperatorChange = (newOperator: Lib.NumberFilterOperatorName) => {
-    const newValues = getDefaultValues(newOperator, values);
+  const setOperatorAndValues = (newOperator: Lib.NumberFilterOperatorName) => {
     setOperator(newOperator);
-    setValues(newValues);
-
-    if (onChange) {
-      if (hasValidValues(newOperator, newValues)) {
-        onChange(getFilterClause(newOperator, column, newValues));
-      } else {
-        onChange(undefined);
-      }
-    }
-  };
-
-  const handleValuesChange = (newValues: NumberValue[]) => {
-    setValues(newValues);
-
-    if (onChange && hasValidValues(operator, newValues)) {
-      onChange(getFilterClause(operator, column, newValues));
-    }
+    setValues(getDefaultValues(newOperator, values));
   };
 
   return {
@@ -79,9 +60,11 @@ export function useNumberFilter({
     valueCount,
     hasMultipleValues,
     isValid,
-    getFilterClause: () =>
-      isValid ? getFilterClause(operator, column, values) : null,
-    handleOperatorChange,
-    handleValuesChange,
+    getFilterClause: (
+      operator: Lib.NumberFilterOperatorName,
+      values: NumberValue[],
+    ) => getFilterClause(operator, column, values),
+    setOperator: setOperatorAndValues,
+    setValues,
   };
 }

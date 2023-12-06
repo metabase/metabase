@@ -5,25 +5,25 @@ import {
   getDefaultOperator,
 } from "../use-filter-operator";
 import { OPERATOR_OPTIONS } from "./constants";
-import { getDefaultValues, getFilterClause, hasValidValues } from "./utils";
-import type { TimeValue } from "./types";
+import { getFilterClause } from "./utils";
 
-interface UseTimeFilterProps {
+interface UseBooleanOperatorFilterProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
 }
 
-export function useTimeFilter({
+export function useBooleanOperatorFilter({
   query,
   stageIndex,
   column,
   filter,
-}: UseTimeFilterProps) {
-  const filterParts = useMemo(() => {
-    return filter ? Lib.timeFilterParts(query, stageIndex, filter) : null;
-  }, [query, stageIndex, filter]);
+}: UseBooleanOperatorFilterProps) {
+  const filterParts = useMemo(
+    () => (filter ? Lib.booleanFilterParts(query, stageIndex, filter) : null),
+    [query, stageIndex, filter],
+  );
 
   const availableOperators = useMemo(
     () =>
@@ -32,30 +32,26 @@ export function useTimeFilter({
   );
 
   const [operator, setOperator] = useState(
-    getDefaultOperator(availableOperators, filterParts?.operator ?? "<"),
+    getDefaultOperator(availableOperators, filterParts?.operator ?? "="),
   );
 
-  const [values, setValues] = useState<TimeValue[]>(() =>
-    getDefaultValues(operator, filterParts?.values),
-  );
-
+  const [values, setValues] = useState(() => filterParts?.values ?? []);
   const { valueCount } = OPERATOR_OPTIONS[operator];
-  const isValid = hasValidValues(values);
+  const [isExpanded] = useState(valueCount === 0);
 
-  const setOperatorAndValues = (newOperator: Lib.TimeFilterOperatorName) => {
+  const setOperatorAndValues = (newOperator: Lib.BooleanFilterOperatorName) => {
     setOperator(newOperator);
-    setValues(getDefaultValues(newOperator, values));
+    setValues([]);
   };
 
   return {
     operator,
-    values,
-    valueCount,
     availableOperators,
-    isValid,
+    values,
+    isExpanded,
     getFilterClause: (
-      operator: Lib.TimeFilterOperatorName,
-      values: TimeValue[],
+      operator: Lib.BooleanFilterOperatorName,
+      values: boolean[],
     ) => getFilterClause(operator, column, values),
     setOperator: setOperatorAndValues,
     setValues,

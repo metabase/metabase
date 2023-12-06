@@ -5,7 +5,6 @@ import { Icon } from "metabase/core/components/Icon";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useNumberFilter } from "metabase/querying/hooks/use-number-filter";
 import * as Lib from "metabase-lib";
-import { FilterValuePicker } from "../../FilterValuePicker";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import type { FilterPickerWidgetProps } from "../types";
 
@@ -34,16 +33,25 @@ export function NumberFilterEditor({
     values,
     valueCount,
     hasMultipleValues,
-    handleOperatorChange,
-    handleValuesChange,
+    getFilterClause,
+    setOperator,
+    setValues,
   } = useNumberFilter({
     query,
     stageIndex,
     column,
     filter,
     defaultOperator: isKey ? "=" : "between",
-    onChange,
   });
+
+  const handleOperatorChange = (newOperator: Lib.NumberFilterOperatorName) => {
+    setOperator(newOperator);
+    onChange(getFilterClause(newOperator, values));
+  };
+
+  const handleInputBlur = () => {
+    onChange(getFilterClause(operator, values));
+  };
 
   return (
     <Grid grow>
@@ -62,11 +70,11 @@ export function NumberFilterEditor({
       </Grid.Col>
       <Grid.Col span={4}>
         <NumberValueInput
-          column={column}
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
-          onChange={handleValuesChange}
+          onChange={setValues}
+          onBlur={handleInputBlur}
         />
       </Grid.Col>
     </Grid>
@@ -76,27 +84,27 @@ export function NumberFilterEditor({
 type NumberValue = number | "";
 
 interface NumberValueInputProps {
-  column: Lib.ColumnMetadata;
   values: NumberValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
   onChange: (values: NumberValue[]) => void;
+  onBlur: () => void;
 }
 
 function NumberValueInput({
-  column,
   values,
   valueCount,
   hasMultipleValues,
   onChange,
+  onBlur,
 }: NumberValueInputProps) {
   if (hasMultipleValues) {
     return (
-      <FilterValuePicker
-        value={values}
-        column={column}
-        hasMultipleValues
-        onChange={onChange}
+      <NumberInput
+        value={values[0]}
+        placeholder={t`Enter a number`}
+        onChange={newValue => onChange([newValue])}
+        onBlur={onBlur}
       />
     );
   }
@@ -105,8 +113,9 @@ function NumberValueInput({
     return (
       <NumberInput
         value={values[0]}
-        onChange={newValue => onChange([newValue])}
         placeholder={t`Enter a number`}
+        onChange={newValue => onChange([newValue])}
+        onBlur={onBlur}
       />
     );
   }
@@ -116,14 +125,16 @@ function NumberValueInput({
       <Flex align="center">
         <NumberInput
           value={values[0]}
-          onChange={(newValue: number) => onChange([newValue, values[1]])}
           placeholder={t`Min`}
+          onChange={(newValue: number) => onChange([newValue, values[1]])}
+          onBlur={onBlur}
         />
         <Text mx="sm">{t`and`}</Text>
         <NumberInput
           value={values[1]}
-          onChange={(newValue: number) => onChange([values[0], newValue])}
           placeholder={t`Max`}
+          onChange={(newValue: number) => onChange([values[0], newValue])}
+          onBlur={onBlur}
         />
       </Flex>
     );

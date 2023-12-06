@@ -35,8 +35,8 @@ export function NumberFilterPicker({
     hasMultipleValues,
     isValid,
     getFilterClause,
-    handleOperatorChange,
-    handleValuesChange,
+    setOperator,
+    setValues,
   } = useNumberFilter({
     query,
     stageIndex,
@@ -47,7 +47,7 @@ export function NumberFilterPicker({
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
 
-    const filter = getFilterClause();
+    const filter = getFilterClause(operator, values);
     if (filter) {
       onChange(filter);
     }
@@ -68,7 +68,7 @@ export function NumberFilterPicker({
         <FilterOperatorPicker
           value={operator}
           options={availableOperators}
-          onChange={handleOperatorChange}
+          onChange={setOperator}
         />
       </FilterPickerHeader>
       <div>
@@ -77,7 +77,7 @@ export function NumberFilterPicker({
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
-          onChange={handleValuesChange}
+          onChange={setValues}
         />
         <FilterPickerFooter isNew={isNew} canSubmit={isValid} />
       </div>

@@ -4,6 +4,7 @@ import { Flex, Grid, Text, TimeInput } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useTimeFilter } from "metabase/querying/hooks/use-time-filter";
+import type { TimeValue } from "metabase/querying/hooks/use-time-filter";
 import * as Lib from "metabase-lib";
 import type { FilterPickerWidgetProps } from "../types";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
@@ -29,15 +30,24 @@ export function TimeFilterEditor({
     values,
     valueCount,
     availableOperators,
-    handleOperatorChange,
-    handleValuesChange,
+    getFilterClause,
+    setOperator,
+    setValues,
   } = useTimeFilter({
     query,
     stageIndex,
     column,
     filter,
-    onChange,
   });
+
+  const handleOperatorChange = (newOperator: Lib.TimeFilterOperatorName) => {
+    setOperator(newOperator);
+    onChange(getFilterClause(newOperator, values));
+  };
+
+  const handleInputBlur = () => {
+    onChange(getFilterClause(operator, values));
+  };
 
   return (
     <Grid grow>
@@ -58,7 +68,8 @@ export function TimeFilterEditor({
         <TimeValueInput
           values={values}
           valueCount={valueCount}
-          onChange={handleValuesChange}
+          onChange={setValues}
+          onBlur={handleInputBlur}
         />
       </Grid.Col>
     </Grid>
@@ -66,16 +77,26 @@ export function TimeFilterEditor({
 }
 
 interface TimeValueInputProps {
-  values: Date[];
+  values: TimeValue[];
   valueCount: number;
-  onChange: (values: Date[]) => void;
+  onChange: (values: TimeValue[]) => void;
+  onBlur: () => void;
 }
 
-function TimeValueInput({ values, valueCount, onChange }: TimeValueInputProps) {
+function TimeValueInput({
+  values,
+  valueCount,
+  onChange,
+  onBlur,
+}: TimeValueInputProps) {
   if (valueCount === 1) {
     const [value] = values;
     return (
-      <TimeInput value={value} onChange={newValue => onChange([newValue])} />
+      <TimeInput
+        value={value}
+        onChange={newValue => onChange([newValue])}
+        onBlur={onBlur}
+      />
     );
   }
 
@@ -86,11 +107,13 @@ function TimeValueInput({ values, valueCount, onChange }: TimeValueInputProps) {
         <TimeInput
           value={value1}
           onChange={newValue1 => onChange([newValue1, value2])}
+          onBlur={onBlur}
         />
         <Text mx="sm">{t`and`}</Text>
         <TimeInput
           value={value2}
           onChange={newValue2 => onChange([value1, newValue2])}
+          onBlur={onBlur}
         />
       </Flex>
     );

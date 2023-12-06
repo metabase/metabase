@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import { t } from "ttag";
 import { Icon } from "metabase/core/components/Icon";
 import { Box, Button, Radio, Stack } from "metabase/ui";
-import { useBooleanFilter } from "metabase/querying/hooks/use-boolean-filter";
+import { useBooleanOptionFilter } from "metabase/querying/hooks/use-boolean-option-filter";
 import * as Lib from "metabase-lib";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { FilterPickerFooter } from "../FilterPickerFooter";
@@ -27,24 +27,16 @@ export function BooleanFilterPicker({
   const {
     optionType,
     isExpanded,
-    availableOptions,
+    visibleOptions,
     getFilterClause,
-    handleOptionChange,
-    handleIsExpandedChange,
-  } = useBooleanFilter({
+    setOptionType,
+    setIsExpanded,
+  } = useBooleanOptionFilter({
     query,
     stageIndex,
     column,
     filter,
   });
-
-  const visibleOptions = useMemo(
-    () =>
-      isExpanded
-        ? availableOptions
-        : availableOptions.filter(option => !option.isAdvanced),
-    [availableOptions, isExpanded],
-  );
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -63,7 +55,7 @@ export function BooleanFilterPicker({
         onBack={onBack}
       />
       <div>
-        <Radio.Group value={optionType} onChange={handleOptionChange}>
+        <Radio.Group value={optionType}>
           <Stack p="md" pb={isExpanded ? "md" : 0} spacing="sm">
             {visibleOptions.map(option => (
               <Radio
@@ -72,6 +64,7 @@ export function BooleanFilterPicker({
                 label={option.name}
                 pb={6}
                 size="xs"
+                onChange={() => setOptionType(option.type)}
               />
             ))}
           </Stack>
@@ -82,7 +75,7 @@ export function BooleanFilterPicker({
             variant="subtle"
             aria-label={t`More options`}
             rightIcon={<Icon name="chevrondown" />}
-            onClick={() => handleIsExpandedChange(true)}
+            onClick={() => setIsExpanded(true)}
           >
             {t`More options`}
           </Button>

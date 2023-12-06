@@ -35,8 +35,12 @@ export function hasValidValues(
 export function getFilterClause(
   operator: Lib.NumberFilterOperatorName,
   column: Lib.ColumnMetadata,
-  values: number[],
+  values: NumberValue[],
 ) {
+  if (!hasValidValues(operator, values)) {
+    return null;
+  }
+
   return Lib.numberFilterClause({
     operator,
     column,

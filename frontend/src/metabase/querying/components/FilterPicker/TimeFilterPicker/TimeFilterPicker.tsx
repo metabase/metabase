@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { Box, Flex, Text, TimeInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { useTimeFilter } from "metabase/querying/hooks/use-time-filter";
+import type { TimeValue } from "metabase/querying/hooks/use-time-filter";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
@@ -30,8 +31,8 @@ export function TimeFilterPicker({
     valueCount,
     availableOperators,
     getFilterClause,
-    handleOperatorChange,
-    handleValuesChange,
+    setOperator,
+    setValues,
   } = useTimeFilter({
     query,
     stageIndex,
@@ -41,7 +42,11 @@ export function TimeFilterPicker({
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    onChange(getFilterClause());
+
+    const filter = getFilterClause(operator, values);
+    if (filter) {
+      onChange(filter);
+    }
   };
 
   return (
@@ -59,7 +64,7 @@ export function TimeFilterPicker({
         <FilterOperatorPicker
           value={operator}
           options={availableOperators}
-          onChange={handleOperatorChange}
+          onChange={setOperator}
         />
       </FilterPickerHeader>
       <Box>
@@ -68,7 +73,7 @@ export function TimeFilterPicker({
             <TimeValueInput
               values={values}
               valueCount={valueCount}
-              onChange={handleValuesChange}
+              onChange={setValues}
             />
           </Flex>
         )}
@@ -79,9 +84,9 @@ export function TimeFilterPicker({
 }
 
 interface TimeValueInputProps {
-  values: Date[];
+  values: TimeValue[];
   valueCount: number;
-  onChange: (values: Date[]) => void;
+  onChange: (values: TimeValue[]) => void;
 }
 
 function TimeValueInput({ values, valueCount, onChange }: TimeValueInputProps) {
