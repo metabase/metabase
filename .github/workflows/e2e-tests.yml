@@ -171,6 +171,8 @@ jobs:
           --env grepTags="-@slow+-@mongo+-@flaky --@quarantine",grepOmitFiltered=true \
           --folder ${{ matrix.name }} \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
+          --group ${{ matrix.name }} \
+          --ci-build-id ${{ github.sha }} \
           --record
         env:
           TERM: xterm
