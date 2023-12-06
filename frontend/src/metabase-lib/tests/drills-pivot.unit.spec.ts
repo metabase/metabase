@@ -19,7 +19,7 @@ import {
 } from "./drills-common";
 
 // eslint-disable-next-line
-describe.skip("drill-thru/pivot (metabase#33559)", () => {
+describe("drill-thru/pivot (metabase#33559)", () => {
   const drillType = "drill-thru/pivot";
   const stageIndex = 0;
 
