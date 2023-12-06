@@ -2,6 +2,21 @@ import _ from "underscore";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { Card, SeriesOrderSetting } from "metabase-types/api";
 
+export const STACKABLE_DISPLAY_TYPES = new Set(["area", "bar"]);
+
+export const isStackingValueValid = (
+  settings: ComputedVisualizationSettings,
+  seriesDisplays: string[],
+) => {
+  if (settings["stackable.stack_type"] != null) {
+    const stackableDisplays = seriesDisplays.filter(display =>
+      STACKABLE_DISPLAY_TYPES.has(display),
+    );
+    return stackableDisplays.length > 1;
+  }
+  return true;
+};
+
 export const getDefaultStackingValue = (
   settings: ComputedVisualizationSettings,
   card: Card,
