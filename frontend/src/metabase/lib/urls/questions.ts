@@ -126,18 +126,16 @@ export function publicQuestion({
   type = null,
   query,
   includeSiteUrl = true,
-  siteUrl = MetabaseSettings.get("site-url"),
 }: {
   uuid: string;
   type?: string | null;
   query?: string;
   includeSiteUrl?: boolean;
-  siteUrl?: string;
 }) {
-  const baseUrl = includeSiteUrl ? siteUrl : "";
+  const siteUrl = includeSiteUrl ? MetabaseSettings.get("site-url") : "";
   const searchQuery = query ? `?${query}` : "";
   return (
-    `${baseUrl}/public/question/${uuid}` +
+    `${siteUrl}/public/question/${uuid}` +
     (type ? `.${type}` : "") +
     searchQuery
   );

@@ -4,12 +4,12 @@ import {
   visitQuestion,
   downloadAndAssert,
   assertSheetRowsCount,
-  createPublicLinkDropdown,
-  openPublicLinkDropdown,
+  openNewPublicLinkDropdown,
+  createPublicQuestionLink,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { PEOPLE, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PEOPLE } = SAMPLE_DATABASE;
 
 const questionData = {
   name: "Parameterized Public Question",
@@ -58,25 +58,18 @@ describe("scenarios > public > question", () => {
     cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
 
     cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
-      cy.wrap(id).as("publicQuestionId");
-    });
-
-    cy.createQuestion({
-      name: "Products Table",
-      query: { "source-table": PRODUCTS_ID, limit: 1 },
-    }).then(({ body: { id } }) => {
-      cy.wrap(id).as("nonPublicQuestionId");
+      cy.wrap(id).as("questionId");
     });
   });
 
   it("adds filters to url as get params and renders the results correctly (metabase#7120, metabase#17033, metabase#21993)", () => {
-    cy.get("@publicQuestionId").then(id => {
+    cy.get("@questionId").then(id => {
       visitQuestion(id);
 
       // Make sure metadata fully loaded before we continue
       cy.get(".cellData").contains("Winner");
 
-      createPublicLinkDropdown("card");
+      openNewPublicLinkDropdown("card");
 
       // Although we already have API helper `visitPublicQuestion`,
       // it makes sense to use the UI here in order to check that the
@@ -105,22 +98,21 @@ describe("scenarios > public > question", () => {
   });
 
   it("should only allow non-admin users to see a public link if one has already been created", () => {
-    cy.get("@publicQuestionId").then(id => {
-      visitQuestion(id);
-      createPublicLinkDropdown("card");
+    cy.get("@questionId").then(id => {
+      createPublicQuestionLink(id);
       cy.signOut();
     });
 
     cy.signInAsNormalUser().then(() => {
-      cy.get("@publicQuestionId").then(id => {
+      cy.get("@questionId").then(id => {
         visitQuestion(id);
       });
 
-      openPublicLinkDropdown({ isAdmin: false });
+      cy.icon("share").click();
 
       cy.findByTestId("public-link-popover-content").within(() => {
         cy.findByText("Public link").should("be.visible");
-        cy.findByText(/^http/).should("be.visible");
+        cy.findByTestId("public-link-text").contains(PUBLIC_QUESTION_REGEX);
         cy.findByText("Remove public URL").should("not.exist");
       });
     });
@@ -128,7 +120,7 @@ describe("scenarios > public > question", () => {
 
   it("should not allow users to see the embed button or the public link dropdown if a link hasn't been created", () => {
     cy.signInAsNormalUser();
-    cy.get("@nonPublicQuestionId").then(id => {
+    cy.get("@questionId").then(id => {
       visitQuestion(id);
     });
 
@@ -138,7 +130,7 @@ describe("scenarios > public > question", () => {
   Object.entries(USERS).map(([userType, setUser]) =>
     describe(`${userType}`, () => {
       it(`should be able to view public questions`, () => {
-        cy.get("@publicQuestionId").then(id => {
+        cy.get("@questionId").then(id => {
           cy.request("POST", `/api/card/${id}/public_link`).then(
             ({ body: { uuid } }) => {
               setUser();
@@ -159,12 +151,7 @@ describe("scenarios > public > question", () => {
 });
 
 const visitPublicURL = () => {
-  // Ideally we would just find the first input
-  // but unless we filter by value
-  // Cypress finds an input before the copyable inputs are rendered
-  cy.findByRole("heading", { name: "Public link" })
-    .parent()
-    .findByText(/^http/)
+  cy.findByTestId("public-link-text")
     .invoke("text")
     .then(publicURL => {
       // Copied URL has no get params

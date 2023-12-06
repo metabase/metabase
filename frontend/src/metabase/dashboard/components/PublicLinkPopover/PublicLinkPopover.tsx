@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useAsync } from "react-use";
 import { t } from "ttag";
 import {
@@ -20,39 +19,32 @@ export type PublicLinkPopoverProps = {
   onClose: () => void;
   createPublicLink: () => Promise<void>;
   deletePublicLink: () => void;
-  uuid: string | null;
-  getPublicLink: ({
-    exportFormat,
-  }: {
-    exportFormat: ExportFormatType;
-  }) => string | null;
+  url: string | null;
   extensions?: ExportFormatType[];
+  selectedExtension?: ExportFormatType | null;
+  setSelectedExtension?: (extension: ExportFormatType) => void;
 };
 
 export const PublicLinkPopover = ({
   target,
   createPublicLink,
   deletePublicLink,
-  uuid,
-  getPublicLink,
+  url,
   isOpen,
   onClose,
   extensions = [],
+  selectedExtension,
+  setSelectedExtension,
 }: PublicLinkPopoverProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const [exportFormat, setExportFormat] = useState<ExportFormatType | null>(
-    null,
-  );
-
-  const url = getPublicLink({ exportFormat });
-
   const { loading } = useAsync(async () => {
-    if (isOpen && !uuid) {
-      await createPublicLink();
+    if (isOpen && !url) {
+      return createPublicLink();
     }
-    return uuid;
-  }, [uuid, isOpen]);
+
+    return null;
+  }, [url, isOpen]);
 
   const onRemoveLink = () => {
     onClose();
@@ -76,7 +68,9 @@ export const PublicLinkPopover = ({
             ) : (
               <>
                 <PublicLinkTextContainer>
-                  <Text truncate>{url}</Text>
+                  <Text truncate data-testid="public-link-text">
+                    {url}
+                  </Text>
                 </PublicLinkTextContainer>
                 <PublicLinkCopyButton value={url} />
               </>
@@ -88,10 +82,10 @@ export const PublicLinkPopover = ({
                 <ExtensionOption
                   data-testid="extension-option"
                   key={extension}
-                  isSelected={extension === exportFormat}
+                  isSelected={extension === selectedExtension}
                   onClick={() =>
-                    setExportFormat(extensionState =>
-                      extension === extensionState ? null : extension,
+                    setSelectedExtension?.(
+                      extension === selectedExtension ? null : extension,
                     )
                   }
                 >

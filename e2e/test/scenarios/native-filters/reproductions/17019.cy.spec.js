@@ -37,7 +37,7 @@ describe("issue 17019", () => {
     openPublicLinkDropdown();
 
     cy.findByTestId("public-link-popover-content")
-      .findByText(/^http/)
+      .findByTestId("public-link-text")
       .invoke("text")
       .then(publicURL => {
         cy.visit(publicURL);

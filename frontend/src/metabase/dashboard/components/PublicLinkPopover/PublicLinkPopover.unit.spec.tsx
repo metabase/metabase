@@ -16,10 +16,9 @@ const TestComponent = ({
   createPublicLink,
   deletePublicLink,
   extensions,
-  getPublicLink,
   isOpen: mockIsOpen,
   onClose: mockIsClosed,
-  uuid,
+  url,
 }: Omit<PublicLinkPopoverProps, "target">) => {
   const target = (
     <button data-testid="target" onClick={() => setIsOpen(true)}>
@@ -27,6 +26,10 @@ const TestComponent = ({
     </button>
   );
   const [isOpen, setIsOpen] = useState(mockIsOpen);
+  const [extension, setExtension] = useState<ExportFormatType | null>(null);
+
+  const linkExtension = extension ? `.${extension}` : "";
+  const publicUrl = url ? `sample-public-link${linkExtension}` : null;
 
   const onClose = () => {
     setIsOpen(false);
@@ -38,11 +41,12 @@ const TestComponent = ({
       target={target}
       createPublicLink={createPublicLink}
       deletePublicLink={deletePublicLink}
-      uuid={uuid}
-      getPublicLink={getPublicLink}
+      url={publicUrl}
       isOpen={isOpen}
       onClose={onClose}
       extensions={extensions}
+      selectedExtension={extension}
+      setSelectedExtension={setExtension}
     />
   );
 };
@@ -61,22 +65,15 @@ const setup = ({
   const createPublicLink = jest.fn();
   const deletePublicLink = jest.fn();
   const onClose = jest.fn();
-  const getPublicLink = jest.fn(
-    ({ exportFormat }: { exportFormat: ExportFormatType }) =>
-      exportFormat
-        ? `sample-public-link.${exportFormat}`
-        : "sample-public-link",
-  );
 
   renderWithProviders(
     <TestComponent
       createPublicLink={createPublicLink}
       deletePublicLink={deletePublicLink}
-      uuid={hasUUID ? "mock-uuid" : null}
-      getPublicLink={getPublicLink}
       isOpen={isOpen}
       onClose={onClose}
       extensions={extensions}
+      url={hasUUID ? "sample-public-link" : null}
     />,
     {
       storeInitialState: createMockState({
@@ -89,7 +86,6 @@ const setup = ({
   return {
     createPublicLink,
     deletePublicLink,
-    getPublicLink,
     onClose,
   };
 };
@@ -159,7 +155,10 @@ describe("PublicLinkPopover", () => {
 
       userEvent.click(screen.getByTestId("target"));
 
-      expect(await screen.findByText("sample-public-link")).toBeInTheDocument();
+      expect(
+        await screen.findByTestId("public-link-popover-content"),
+      ).toBeInTheDocument();
+
       expect(createPublicLink).toHaveBeenCalledTimes(1);
     });
 
@@ -214,25 +213,30 @@ describe("PublicLinkPopover", () => {
     it("should append the extension to the link when the extension is clicked on", async () => {
       setup({ hasUUID: true, isOpen: true, extensions: ["csv"] });
 
+      expect(
+        await screen.findByTestId("public-link-popover-content"),
+      ).toBeInTheDocument();
+
       expect(await screen.findByText("sample-public-link")).toBeInTheDocument();
 
       userEvent.click(screen.getByText("csv"));
-      expect(
-        await screen.findByText("sample-public-link.csv"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("sample-public-link.csv")).toBeInTheDocument();
     });
 
     it("should remove the extension when the extension is clicked on again", async () => {
       setup({ hasUUID: true, isOpen: true, extensions: ["csv"] });
 
+      expect(
+        await screen.findByTestId("public-link-popover-content"),
+      ).toBeInTheDocument();
+
       expect(await screen.findByText("sample-public-link")).toBeInTheDocument();
 
       userEvent.click(screen.getByText("csv"));
-      expect(
-        await screen.findByText("sample-public-link.csv"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("sample-public-link.csv")).toBeInTheDocument();
 
       userEvent.click(screen.getByText("csv"));
+
       expect(await screen.findByText("sample-public-link")).toBeInTheDocument();
     });
   });
