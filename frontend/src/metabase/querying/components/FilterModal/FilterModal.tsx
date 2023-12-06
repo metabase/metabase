@@ -14,7 +14,8 @@ import {
   getColumnGroupItems,
   getModalTitle,
   getModalWidth,
-  getQueryWithoutFilters,
+  hasFilters,
+  removeFilters,
 } from "./utils";
 import type { GroupItem } from "./types";
 import {
@@ -40,9 +41,10 @@ export function FilterModal({
 }: FilterModalProps) {
   const [query, setQuery] = useState(initialQuery);
   const groupItems = useMemo(() => getColumnGroupItems(query), [query]);
+  const canRemoveFilters = useMemo(() => hasFilters(query), [query]);
 
-  const handleClearFilters = () => {
-    setQuery(getQueryWithoutFilters(query));
+  const handleRemove = () => {
+    setQuery(removeFilters(query));
   };
 
   const handleSubmit = () => {
@@ -82,7 +84,12 @@ export function FilterModal({
           </Tabs>
         </ModalBody>
         <ModalFooter p="md" direction="row" justify="space-between">
-          <Button variant="subtle" color="text.1" onClick={handleClearFilters}>
+          <Button
+            variant="subtle"
+            color="text.1"
+            disabled={!canRemoveFilters}
+            onClick={handleRemove}
+          >
             {t`Clear all filters`}
           </Button>
           <Button variant="filled" onClick={handleSubmit}>

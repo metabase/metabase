@@ -28,10 +28,18 @@ export function getColumnGroupItems(query: Lib.Query): GroupItem[] {
   });
 }
 
-export function getQueryWithoutFilters(query: Lib.Query) {
+export function hasFilters(query: Lib.Query) {
+  const stageIndexes = getStageIndexes(query);
+  const filters = stageIndexes.flatMap(stageIndex =>
+    Lib.filters(query, stageIndex),
+  );
+  return filters.length > 0;
+}
+
+export function removeFilters(query: Lib.Query) {
   const stageIndexes = getStageIndexes(query);
   return stageIndexes.reduce(
-    (query, stageIndex) => Lib.removeFilters(query, stageIndex),
+    (newQuery, stageIndex) => Lib.removeFilters(newQuery, stageIndex),
     query,
   );
 }
