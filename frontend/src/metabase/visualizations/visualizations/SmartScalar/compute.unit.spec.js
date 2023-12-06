@@ -83,7 +83,7 @@ describe("SmartScalar > compute", () => {
             ["2019-11-01", 300],
           ],
           dateUnit: "month",
-          expected: "300; Nov 2019; ↑ 200% vs. previous month: 100",
+          expected: "300; Nov 2019; ↑ 200% vs. Oct: 100",
         },
         {
           description: "should correctly display percent decrease",
@@ -92,7 +92,7 @@ describe("SmartScalar > compute", () => {
             ["2019-11-01", 100],
           ],
           dateUnit: "month",
-          expected: "100; Nov 2019; ↓ 66.67% vs. previous month: 300",
+          expected: "100; Nov 2019; ↓ 66.67% vs. Oct: 300",
         },
         {
           description: "should correctly display no change",
@@ -101,7 +101,7 @@ describe("SmartScalar > compute", () => {
             ["2019-11-01", 100],
           ],
           dateUnit: "month",
-          expected: "100; Nov 2019; No change vs. previous month",
+          expected: "100; Nov 2019; No change vs. Oct",
         },
         {
           description: "should correctly display infinite increase",
@@ -110,7 +110,7 @@ describe("SmartScalar > compute", () => {
             ["2019-11-01", 300],
           ],
           dateUnit: "month",
-          expected: "300; Nov 2019; ↑ ∞% vs. previous month: 0",
+          expected: "300; Nov 2019; ↑ ∞% vs. Oct: 0",
         },
         {
           description:
