@@ -21,20 +21,35 @@
    value]
   (let [field-ref (lib.ref/ref column)]
     (cond
-      (lib.types.isa/structured? column)    []
-      (= value :null)                       [{:name "=" :filter (operator :is-null  field-ref)}
-                                             {:name "≠" :filter (operator :not-null field-ref)}]
+      (lib.types.isa/structured? column)
+      []
+
+      (= value :null)
+      [{:name "=" :filter (operator :is-null  field-ref)}
+       {:name "≠" :filter (operator :not-null field-ref)}]
+
       (or (lib.types.isa/numeric? column)
-          (lib.types.isa/temporal? column)) (for [[op label] [[:<  "<"]
-                                                              [:>  ">"]
-                                                              [:=  "="]
-                                                              [:!= "≠"]]]
-                                              {:name   label
-                                               :filter (operator op field-ref value)})
-      :else                                 (for [[op label] [[:=  "="]
-                                                              [:!= "≠"]]]
-                                              {:name   label
-                                               :filter (operator op field-ref value)}))))
+          (lib.types.isa/temporal? column))
+      (for [[op label] [[:<  "<"]
+                        [:>  ">"]
+                        [:=  "="]
+                        [:!= "≠"]]]
+        {:name   label
+         :filter (operator op field-ref value)})
+
+      (lib.types.isa/string? column)
+      (for [[op label] [[:=  "="]
+                        [:!= "≠"]
+                        [:contains "contains"]
+                        [:does-not-contain "does-not-contain"]]]
+        {:name   label
+         :filter (operator op field-ref value)})
+
+      :else
+      (for [[op label] [[:=  "="]
+                        [:!= "≠"]]]
+        {:name   label
+         :filter (operator op field-ref value)}))))
 
 (mu/defn quick-filter-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.quick-filter]
   "Filter the current query based on the value clicked.
@@ -46,9 +61,9 @@
 
   Note that this returns a single `::drill-thru` value with 1 or more `:operators`; these are rendered as a set of small
   buttons in a single row of the drop-down."
-  [query                  :- ::lib.schema/query
-   stage-number           :- :int
-   {:keys [column value]} :- ::lib.schema.drill-thru/context]
+  [query                                :- ::lib.schema/query
+   stage-number                         :- :int
+   {:keys [column value], :as _context} :- ::lib.schema.drill-thru/context]
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              ;; (editable? query stage-number)
              column
@@ -66,8 +81,9 @@
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/quick-filter
   [_query _stage-number drill-thru]
-  {:type      (:type drill-thru)
-   :operators (map :name (:operators drill-thru))})
+  (-> (select-keys drill-thru [:type :operators :value])
+      (update :operators (fn [operators]
+                           (mapv :name operators)))))
 
 (mu/defmethod lib.drill-thru.common/drill-thru-method :drill-thru/quick-filter :- ::lib.schema/query
   [_query                      :- ::lib.schema/query

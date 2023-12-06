@@ -7,6 +7,8 @@
    [metabase.lib.test-util :as lib.tu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
 (deftest ^:parallel do-not-return-pk-for-nil-test
   (testing "do not return pk drills for nil cell values (#36126)"
     ;; simulate a table with multiple PK columns: mark orders.product-id as a PK column
