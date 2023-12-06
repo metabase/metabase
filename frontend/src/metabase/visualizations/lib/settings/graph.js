@@ -21,7 +21,9 @@ import {
   MAX_SERIES,
 } from "metabase/visualizations/lib/utils";
 import {
+  getDefaultIsHistogram,
   getDefaultStackingValue,
+  getDefaultXAxisScale,
   getDefaultXAxisTitle,
   getDefaultYAxisTitle,
   getIsXAxisLabelEnabledDefault,
@@ -36,15 +38,6 @@ import {
   isNumeric,
   isAny,
 } from "metabase-lib/v1/types/utils/isa";
-
-// NOTE: currently we don't consider any date extracts to be histgrams
-const HISTOGRAM_DATE_EXTRACTS = new Set([
-  // "minute-of-hour",
-  // "hour-of-day",
-  // "day-of-month",
-  // "day-of-year",
-  // "week-of-year",
-]);
 
 export function getDefaultDimensionLabel(multipleSeries) {
   return getDefaultXAxisTitle(multipleSeries[0]?.data.cols[0]);
@@ -450,12 +443,7 @@ export const GRAPH_AXIS_SETTINGS = {
         },
       ],
       vizSettings,
-    ) =>
-      // matches binned numeric columns
-      cols[0].binning_info != null ||
-      // matches certain date extracts like day-of-week, etc
-      // NOTE: currently disabled
-      HISTOGRAM_DATE_EXTRACTS.has(cols[0].unit),
+    ) => getDefaultIsHistogram(cols[0]),
   },
   "graph.x_axis.scale": {
     section: t`Axes`,
@@ -468,14 +456,7 @@ export const GRAPH_AXIS_SETTINGS = {
       "graph.x_axis._is_numeric",
       "graph.x_axis._is_histogram",
     ],
-    getDefault: (series, vizSettings) =>
-      vizSettings["graph.x_axis._is_histogram"]
-        ? "histogram"
-        : vizSettings["graph.x_axis._is_timeseries"]
-        ? "timeseries"
-        : vizSettings["graph.x_axis._is_numeric"]
-        ? "linear"
-        : "ordinal",
+    getDefault: (series, vizSettings) => getDefaultXAxisScale(vizSettings),
     getProps: (series, vizSettings) => {
       const options = [];
       if (vizSettings["graph.x_axis._is_timeseries"]) {
