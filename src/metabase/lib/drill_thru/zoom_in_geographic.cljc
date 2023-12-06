@@ -38,6 +38,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -82,7 +83,7 @@
 
 (mu/defn ^:private country-state-city->binned-lat-lon-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom-in.geographic.country-state-city->binned-lat-lon]
   [{:keys [column value lat-column lon-column], :as _context} :- ContextWithLatLon
-   lat-lon-bin-width                                          :- number?]
+   lat-lon-bin-width                                          :- ::lib.schema.binning/bin-width]
   (when value
     {:lib/type  :metabase.lib.drill-thru/drill-thru
      :type      :drill-thru/zoom-in.geographic

@@ -35,7 +35,7 @@
         :custom-query   query
         :custom-row     {"count"   100
                          "COUNTRY" "United States"}
-        :column-name    "COUNTRY"
+        :column-name    "count"
         :drill-type     :drill-thru/zoom-in.geographic
         :expected       {:type      :drill-thru/zoom-in.geographic
                          :subtype   :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon
@@ -68,7 +68,7 @@
         :custom-query   query
         :custom-row     {"count" 100
                          "STATE" "California"}
-        :column-name    "STATE"
+        :column-name    "count"
         :drill-type     :drill-thru/zoom-in.geographic
         :expected       {:type      :drill-thru/zoom-in.geographic
                          :subtype   :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon
@@ -107,7 +107,7 @@
                          "NAME"     "Niblet Cockatiel"
                          "STATE"    "California"
                          "LATITUDE" 100}
-        :column-name    "STATE"
+        :column-name    "count"
         :drill-type     :drill-thru/zoom-in.geographic
         :expected       {:type      :drill-thru/zoom-in.geographic
                          :subtype   :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon
@@ -173,46 +173,45 @@
                                       (lib/with-binning {:strategy :bin-width, :bin-width 20})))
                     (lib/breakout (-> (meta/field-metadata :people :longitude)
                                       (lib/with-binning {:strategy :bin-width, :bin-width 25}))))]
-      (doseq [column ["LATITUDE" "LONGITUDE"]]
-        (lib.drill-thru.tu/test-drill-application
-         {:click-type     :cell
-          :query-type     :aggregated
-          :custom-query   query
-          :custom-row     {"count"     100
-                           "LATITUDE"  20
-                           "LONGITUDE" 50}
-          :column-name    column
-          :drill-type     :drill-thru/zoom-in.geographic
-          :expected       {:type      :drill-thru/zoom-in.geographic
-                           :subtype   :drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon
-                           :latitude  {:column    {:name "LATITUDE"}
-                                       :bin-width 10
-                                       :min       20
-                                       :max       40}
-                           :longitude {:column    {:name "LONGITUDE"}
-                                       :bin-width 10
-                                       :min       50
-                                       :max       75}}
-          :expected-query {:stages [{:source-table (meta/id :people)
-                                     :aggregation  [[:count {}]]
-                                     :breakout     [[:field
-                                                     {:binning {:strategy :bin-width, :bin-width 10}}
-                                                     (meta/id :people :latitude)]
-                                                    [:field
-                                                     {:binning {:strategy :bin-width, :bin-width 10}}
-                                                     (meta/id :people :longitude)]]
-                                     :filters      [[:>= {}
-                                                     [:field {} (meta/id :people :latitude)]
-                                                     20]
-                                                    [:< {}
-                                                     [:field {} (meta/id :people :latitude)]
-                                                     40]
-                                                    [:>= {}
-                                                     [:field {} (meta/id :people :longitude)]
-                                                     50]
-                                                    [:< {}
-                                                     [:field {} (meta/id :people :longitude)]
-                                                     75]]}]}})))))
+      (lib.drill-thru.tu/test-drill-application
+       {:click-type     :cell
+        :query-type     :aggregated
+        :custom-query   query
+        :custom-row     {"count"     100
+                         "LATITUDE"  20
+                         "LONGITUDE" 50}
+        :column-name    "count"
+        :drill-type     :drill-thru/zoom-in.geographic
+        :expected       {:type      :drill-thru/zoom-in.geographic
+                         :subtype   :drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon
+                         :latitude  {:column    {:name "LATITUDE"}
+                                     :bin-width 10
+                                     :min       20
+                                     :max       40}
+                         :longitude {:column    {:name "LONGITUDE"}
+                                     :bin-width 10
+                                     :min       50
+                                     :max       75}}
+        :expected-query {:stages [{:source-table (meta/id :people)
+                                   :aggregation  [[:count {}]]
+                                   :breakout     [[:field
+                                                   {:binning {:strategy :bin-width, :bin-width 10}}
+                                                   (meta/id :people :latitude)]
+                                                  [:field
+                                                   {:binning {:strategy :bin-width, :bin-width 10}}
+                                                   (meta/id :people :longitude)]]
+                                   :filters      [[:>= {}
+                                                   [:field {} (meta/id :people :latitude)]
+                                                   20]
+                                                  [:< {}
+                                                   [:field {} (meta/id :people :latitude)]
+                                                   40]
+                                                  [:>= {}
+                                                   [:field {} (meta/id :people :longitude)]
+                                                   50]
+                                                  [:< {}
+                                                   [:field {} (meta/id :people :longitude)]
+                                                   75]]}]}}))))
 
 (deftest ^:parallel binned-lat-lon-small-bin-size-test
   (testing "Binned LatLon (width < 20) => Binned LatLon (width ÷= 10)"
@@ -222,46 +221,45 @@
                                       (lib/with-binning {:strategy :bin-width, :bin-width 10})))
                     (lib/breakout (-> (meta/field-metadata :people :longitude)
                                       (lib/with-binning {:strategy :bin-width, :bin-width 5}))))]
-      (doseq [column ["LATITUDE" "LONGITUDE"]]
-        (lib.drill-thru.tu/test-drill-application
-         {:click-type     :cell
-          :query-type     :aggregated
-          :custom-query   query
-          :custom-row     {"count"     100
-                           "LATITUDE"  20
-                           "LONGITUDE" 50}
-          :column-name    column
-          :drill-type     :drill-thru/zoom-in.geographic
-          :expected       {:type      :drill-thru/zoom-in.geographic
-                           :subtype   :drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon
-                           :latitude  {:column    {:name "LATITUDE"}
-                                       :bin-width 1.0
-                                       :min       20
-                                       :max       30}
-                           :longitude {:column    {:name "LONGITUDE"}
-                                       :bin-width 0.5
-                                       :min       50
-                                       :max       55}}
-          :expected-query {:stages [{:source-table (meta/id :people)
-                                     :aggregation  [[:count {}]]
-                                     :breakout     [[:field
-                                                     {:binning {:strategy :bin-width, :bin-width 1.0}}
-                                                     (meta/id :people :latitude)]
-                                                    [:field
-                                                     {:binning {:strategy :bin-width, :bin-width 0.5}}
-                                                     (meta/id :people :longitude)]]
-                                     :filters      [[:>= {}
-                                                     [:field {} (meta/id :people :latitude)]
-                                                     20]
-                                                    [:< {}
-                                                     [:field {} (meta/id :people :latitude)]
-                                                     30]
-                                                    [:>= {}
-                                                     [:field {} (meta/id :people :longitude)]
-                                                     50]
-                                                    [:< {}
-                                                     [:field {} (meta/id :people :longitude)]
-                                                     55]]}]}})))))
+      (lib.drill-thru.tu/test-drill-application
+       {:click-type     :cell
+        :query-type     :aggregated
+        :custom-query   query
+        :custom-row     {"count"     100
+                         "LATITUDE"  20
+                         "LONGITUDE" 50}
+        :column-name    "count"
+        :drill-type     :drill-thru/zoom-in.geographic
+        :expected       {:type      :drill-thru/zoom-in.geographic
+                         :subtype   :drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon
+                         :latitude  {:column    {:name "LATITUDE"}
+                                     :bin-width 1.0
+                                     :min       20
+                                     :max       30}
+                         :longitude {:column    {:name "LONGITUDE"}
+                                     :bin-width 0.5
+                                     :min       50
+                                     :max       55}}
+        :expected-query {:stages [{:source-table (meta/id :people)
+                                   :aggregation  [[:count {}]]
+                                   :breakout     [[:field
+                                                   {:binning {:strategy :bin-width, :bin-width 1.0}}
+                                                   (meta/id :people :latitude)]
+                                                  [:field
+                                                   {:binning {:strategy :bin-width, :bin-width 0.5}}
+                                                   (meta/id :people :longitude)]]
+                                   :filters      [[:>= {}
+                                                   [:field {} (meta/id :people :latitude)]
+                                                   20]
+                                                  [:< {}
+                                                   [:field {} (meta/id :people :latitude)]
+                                                   30]
+                                                  [:>= {}
+                                                   [:field {} (meta/id :people :longitude)]
+                                                   50]
+                                                  [:< {}
+                                                   [:field {} (meta/id :people :longitude)]
+                                                   55]]}]}}))))
 
 (deftest ^:parallel binned-lat-lon-default-binning-test
   (testing "Binned LatLon (default 'Auto-Bin') => Binned LatLon. Should use :dimensions (#36247)"
@@ -360,43 +358,42 @@
                          (lib/breakout (-> (meta/field-metadata :people :longitude)
                                            (lib/with-binning {:strategy :bin-width, :bin-width 10})
                                            (lib/with-join-alias join-alias))))]
-      (doseq [column ["LATITUDE" "LONGITUDE"]]
-        (lib.drill-thru.tu/test-drill-application
-         {:click-type     :cell
-          :query-type     :aggregated
-          :custom-query   query
-          :custom-row     {"count"     100
-                           "LATITUDE"  20
-                           "LONGITUDE" 50}
-          :column-name    column
-          :drill-type     :drill-thru/zoom-in.geographic
-          :expected       {:type      :drill-thru/zoom-in.geographic
-                           :subtype   :drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon
-                           :latitude  {:column    {:name "LATITUDE"}
-                                       :bin-width 1.0
-                                       :min       20
-                                       :max       30}
-                           :longitude {:column    {:name "LONGITUDE"}
-                                       :bin-width 1.0
-                                       :min       50
-                                       :max       60}}
-          :expected-query {:stages [{:source-table (meta/id :orders)
-                                     :aggregation  [[:count {}]]
-                                     :breakout     [[:field
-                                                     {:binning {:strategy :bin-width, :bin-width 1.0}}
-                                                     (meta/id :people :latitude)]
-                                                    [:field
-                                                     {:binning {:strategy :bin-width, :bin-width 1.0}}
-                                                     (meta/id :people :longitude)]]
-                                     :filters      [[:>= {}
-                                                     [:field {} (meta/id :people :latitude)]
-                                                     20]
-                                                    [:< {}
-                                                     [:field {} (meta/id :people :latitude)]
-                                                     30]
-                                                    [:>= {}
-                                                     [:field {} (meta/id :people :longitude)]
-                                                     50]
-                                                    [:< {}
-                                                     [:field {} (meta/id :people :longitude)]
-                                                     60]]}]}})))))
+      (lib.drill-thru.tu/test-drill-application
+       {:click-type     :cell
+        :query-type     :aggregated
+        :custom-query   query
+        :custom-row     {"count"     100
+                         "LATITUDE"  20
+                         "LONGITUDE" 50}
+        :column-name    "count"
+        :drill-type     :drill-thru/zoom-in.geographic
+        :expected       {:type      :drill-thru/zoom-in.geographic
+                         :subtype   :drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon
+                         :latitude  {:column    {:name "LATITUDE"}
+                                     :bin-width 1.0
+                                     :min       20
+                                     :max       30}
+                         :longitude {:column    {:name "LONGITUDE"}
+                                     :bin-width 1.0
+                                     :min       50
+                                     :max       60}}
+        :expected-query {:stages [{:source-table (meta/id :orders)
+                                   :aggregation  [[:count {}]]
+                                   :breakout     [[:field
+                                                   {:binning {:strategy :bin-width, :bin-width 1.0}}
+                                                   (meta/id :people :latitude)]
+                                                  [:field
+                                                   {:binning {:strategy :bin-width, :bin-width 1.0}}
+                                                   (meta/id :people :longitude)]]
+                                   :filters      [[:>= {}
+                                                   [:field {} (meta/id :people :latitude)]
+                                                   20]
+                                                  [:< {}
+                                                   [:field {} (meta/id :people :latitude)]
+                                                   30]
+                                                  [:>= {}
+                                                   [:field {} (meta/id :people :longitude)]
+                                                   50]
+                                                  [:< {}
+                                                   [:field {} (meta/id :people :longitude)]
+                                                   60]]}]}}))))
