@@ -4,15 +4,15 @@ import { Box, Flex, Modal, Tabs } from "metabase/ui";
 import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
-export const ScrollableTabPanel = styled(Tabs.Panel)`
+export const TabPanelRoot = styled(Tabs.Panel)`
   overflow-y: auto;
 `;
 
-interface ColumnFilterListItemProps extends BoxProps {
+interface ColumnItemRootProps extends BoxProps {
   component?: string;
 }
 
-export const ColumnFilterListItem = styled(Box)<ColumnFilterListItemProps>`
+export const ColumnItemRoot = styled(Box)<ColumnItemRootProps>`
   border-bottom: 1px solid ${color("border")};
 
   &:last-of-type {
