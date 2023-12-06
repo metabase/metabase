@@ -16,6 +16,7 @@ import {
   replaceValues,
   getNullReplacerFunction,
   getNormalizedDataset,
+  getDatasetExtents,
 } from "./dataset";
 import type { DataKey, SeriesModel } from "./types";
 
@@ -307,6 +308,41 @@ describe("dataset transform functions", () => {
       );
 
       expect(result).toEqual([]);
+    });
+  });
+
+  describe("getDatasetExtents", () => {
+    const keys = ["series1", "series2"];
+
+    test("should return correct extents for each series", () => {
+      const dataset = [
+        { series1: -100, series2: 4 },
+        { series1: 3, series2: 2 },
+        { series1: 2, series2: 5 },
+      ];
+
+      const result = getDatasetExtents(keys, dataset);
+
+      expect(result).toEqual({
+        series1: [-100, 3],
+        series2: [2, 5],
+      });
+    });
+
+    test("should ignore non-numeric values", () => {
+      const keys = ["series1", "series2"];
+      const dataset = [
+        { series1: 1, series2: null },
+        { series1: null, series2: 2 },
+        { series1: 2, series2: null },
+      ];
+
+      const result = getDatasetExtents(keys, dataset);
+
+      expect(result).toEqual({
+        series1: [1, 2],
+        series2: [2, 2],
+      });
     });
   });
 });
