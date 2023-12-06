@@ -94,6 +94,10 @@ module.exports = env => {
       ],
     },
     plugins: [
+      new IgnorePlugin({
+        resourceRegExp: /\.css$/, // regular expression to ignore all CSS files
+        contextRegExp: /./,
+      }),
       new StatsWriterPlugin({
         stats: {
           modules: true,
