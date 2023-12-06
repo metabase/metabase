@@ -19,6 +19,8 @@ import {
   main,
 } from "e2e/support/helpers";
 
+const ORDERS_DASHBOARD_ID = 1;
+
 describe("scenarios > dashboard > tabs", () => {
   beforeEach(() => {
     restore();
@@ -68,7 +70,7 @@ describe("scenarios > dashboard > tabs", () => {
   });
 
   it("should leave dashboard if navigating back after initial load", () => {
-    visitDashboardAndCreateTab({ dashboardId: 1 });
+    visitDashboardAndCreateTab({ dashboardId: ORDERS_DASHBOARD_ID });
     visitCollection("root");
 
     main().within(() => {
@@ -81,7 +83,10 @@ describe("scenarios > dashboard > tabs", () => {
   });
 
   it("should only fetch cards on the current tab", () => {
-    visitDashboardAndCreateTab({ dashboardId: 1, save: false });
+    visitDashboardAndCreateTab({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      save: false,
+    });
 
     // Add card to second tab
     cy.icon("pencil").click();
@@ -90,6 +95,10 @@ describe("scenarios > dashboard > tabs", () => {
       cy.findByText("Orders, Count").click();
     });
     saveDashboard();
+
+    cy.wait("@saveDashboardCards").then(({ response }) => {
+      cy.wrap(response.body.dashcards[1].id).as("secondTabDashcardId");
+    });
 
     cy.intercept(
       "POST",
@@ -103,7 +112,8 @@ describe("scenarios > dashboard > tabs", () => {
     );
 
     // Visit first tab and confirm only first card was queried
-    visitDashboard(1, { params: { tab: 1 } });
+    visitDashboard(ORDERS_DASHBOARD_ID);
+
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("not.have.been.called");
 
@@ -162,7 +172,7 @@ describeWithSnowplow("scenarios > dashboard > tabs", () => {
   });
 
   it("should send snowplow events when dashboard tabs are created and deleted", () => {
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
     expectGoodSnowplowEvents(PAGE_VIEW_EVENT);
 
     editDashboard();
