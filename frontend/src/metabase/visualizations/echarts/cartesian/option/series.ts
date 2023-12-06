@@ -12,6 +12,7 @@ import type {
 import type { SeriesSettings } from "metabase-types/api";
 import { isNotNull } from "metabase/lib/types";
 import { getMetricDisplayValueGetter } from "metabase/visualizations/echarts/cartesian/model/dataset";
+import { getSeriesYAxisIndex } from "./utils";
 
 const buildEChartsLabelOptions = (
   seriesModel: SeriesModel,
@@ -120,23 +121,6 @@ const buildEChartsLineAreaSeries = (
       color: seriesModel.color,
     },
   };
-};
-
-const getSeriesYAxisIndex = (
-  seriesModel: SeriesModel,
-  chartModel: CartesianChartModel,
-): number => {
-  const hasSingleYAxis = chartModel.yAxisSplit.some(
-    yAxisKeys => yAxisKeys.length === 0,
-  );
-
-  if (hasSingleYAxis) {
-    return 0;
-  }
-
-  return chartModel.yAxisSplit.findIndex(yAxis =>
-    yAxis.includes(seriesModel.dataKey),
-  );
 };
 
 export const buildEChartsSeries = (
