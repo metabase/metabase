@@ -1,10 +1,10 @@
 import { t } from "ttag";
-import type { Ref } from "react";
+import type { MouseEvent, Ref } from "react";
 import { forwardRef } from "react";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
-import { Tooltip, Text, Box } from "metabase/ui";
+import { Tooltip, Text } from "metabase/ui";
 
 export type DashboardEmbedHeaderButtonProps = {
   onClick?: () => void;
@@ -39,6 +39,11 @@ export const DashboardEmbedHeaderButton = forwardRef(
       disabled,
     });
 
+    const onHeaderButtonClick = (event: MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      onClick?.();
+    };
+
     return (
       <Tooltip
         label={
@@ -48,15 +53,14 @@ export const DashboardEmbedHeaderButton = forwardRef(
         }
         offset={8}
       >
-        <Box>
-          <DashboardHeaderButton
-            data-testid="dashboard-embed-button"
-            icon="share"
-            disabled={disabled}
-            onClick={onClick}
-            ref={ref}
-          />
-        </Box>
+        <DashboardHeaderButton
+          data-disabled={disabled}
+          data-testid="dashboard-embed-button"
+          icon="share"
+          disabled={disabled}
+          onClick={onHeaderButtonClick}
+          ref={ref}
+        />
       </Tooltip>
     );
   },

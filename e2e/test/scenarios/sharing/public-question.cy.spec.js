@@ -9,7 +9,7 @@ import {
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { PEOPLE, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PEOPLE } = SAMPLE_DATABASE;
 
 const questionData = {
   name: "Parameterized Public Question",
@@ -58,19 +58,12 @@ describe("scenarios > public > question", () => {
     cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
 
     cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
-      cy.wrap(id).as("publicQuestionId");
-    });
-
-    cy.createQuestion({
-      name: "Products Table",
-      query: { "source-table": PRODUCTS_ID, limit: 1 },
-    }).then(({ body: { id } }) => {
-      cy.wrap(id).as("nonPublicQuestionId");
+      cy.wrap(id).as("questionId");
     });
   });
 
   it("adds filters to url as get params and renders the results correctly (metabase#7120, metabase#17033, metabase#21993)", () => {
-    cy.get("@publicQuestionId").then(id => {
+    cy.get("@questionId").then(id => {
       visitQuestion(id);
 
       // Make sure metadata fully loaded before we continue
@@ -105,14 +98,14 @@ describe("scenarios > public > question", () => {
   });
 
   it("should only allow non-admin users to see a public link if one has already been created", () => {
-    cy.get("@publicQuestionId").then(id => {
+    cy.get("@questionId").then(id => {
       visitQuestion(id);
       createPublicLinkDropdown("card");
       cy.signOut();
     });
 
     cy.signInAsNormalUser().then(() => {
-      cy.get("@publicQuestionId").then(id => {
+      cy.get("@questionId").then(id => {
         visitQuestion(id);
       });
 
@@ -128,7 +121,7 @@ describe("scenarios > public > question", () => {
 
   it("should not allow users to see the embed button or the public link dropdown if a link hasn't been created", () => {
     cy.signInAsNormalUser();
-    cy.get("@nonPublicQuestionId").then(id => {
+    cy.get("@questionId").then(id => {
       visitQuestion(id);
     });
 
@@ -138,7 +131,7 @@ describe("scenarios > public > question", () => {
   Object.entries(USERS).map(([userType, setUser]) =>
     describe(`${userType}`, () => {
       it(`should be able to view public questions`, () => {
-        cy.get("@publicQuestionId").then(id => {
+        cy.get("@questionId").then(id => {
           cy.request("POST", `/api/card/${id}/public_link`).then(
             ({ body: { uuid } }) => {
               setUser();

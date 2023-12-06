@@ -135,9 +135,7 @@ export const PublicLinksDashboardListing = () => (
     revoke={DashboardApi.deletePublicLink}
     type={t`Public Dashboard Listing`}
     getUrl={dashboard => Urls.dashboard(dashboard)}
-    getPublicUrl={({ public_uuid }) =>
-      Urls.publicDashboard({ uuid: public_uuid })
-    }
+    getPublicUrl={({ public_uuid }) => Urls.publicDashboard(public_uuid)}
     noLinksMessage={t`No dashboards have been publicly shared yet.`}
   />
 );

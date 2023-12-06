@@ -2,15 +2,13 @@ import { useState } from "react";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 import { createMockCard, createMockUser } from "metabase-types/api/mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/lib/types";
 import { setupCardPublicLinkEndpoints } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import type Question from "metabase-lib/Question";
 import { QuestionPublicLinkPopover } from "./QuestionPublicLinkPopover";
 
@@ -41,7 +39,11 @@ const TestComponent = ({
   );
 };
 
-const setup = ({ hasPublicLink = true }: { hasPublicLink?: boolean } = {}) => {
+const setup = ({
+  hasPublicLink = true,
+}: {
+  hasPublicLink?: boolean;
+} = {}) => {
   const TEST_CARD = createMockCard({
     id: TEST_CARD_ID,
     public_uuid: hasPublicLink ? "mock-uuid" : null,
@@ -54,7 +56,7 @@ const setup = ({ hasPublicLink = true }: { hasPublicLink?: boolean } = {}) => {
     entities: createMockEntitiesState({
       questions: [TEST_CARD],
     }),
-    settings: createMockSettingsState({
+    settings: mockSettings({
       "site-url": SITE_URL,
     }),
   });
@@ -94,7 +96,9 @@ describe("QuestionPublicLinkPopover", () => {
     setup({ hasPublicLink: false });
 
     expect(
-      fetchMock.calls(`path:/api/card/${TEST_CARD_ID}/public_link`),
+      fetchMock.calls(`path:/api/card/${TEST_CARD_ID}/public_link`, {
+        method: "POST",
+      }),
     ).toHaveLength(1);
   });
 
@@ -102,7 +106,9 @@ describe("QuestionPublicLinkPopover", () => {
     setup({ hasPublicLink: true });
     userEvent.click(screen.getByText("Remove this public link"));
     expect(
-      fetchMock.calls(`path:/api/card/${TEST_CARD_ID}/public_link`),
+      fetchMock.calls(`path:/api/card/${TEST_CARD_ID}/public_link`, {
+        method: "DELETE",
+      }),
     ).toHaveLength(1);
   });
 });

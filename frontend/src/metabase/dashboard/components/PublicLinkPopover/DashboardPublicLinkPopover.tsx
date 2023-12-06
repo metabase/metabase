@@ -1,8 +1,7 @@
 import type { Dashboard } from "metabase-types/api";
 import { createPublicLink, deletePublicLink } from "metabase/dashboard/actions";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import { publicDashboard as getPublicDashboardUrl } from "metabase/lib/urls";
-import { getSetting } from "metabase/selectors/settings";
 import { PublicLinkPopover } from "./PublicLinkPopover";
 
 export const DashboardPublicLinkPopover = ({
@@ -20,13 +19,7 @@ export const DashboardPublicLinkPopover = ({
 
   const uuid = dashboard.public_uuid;
 
-  const siteUrl = useSelector(state => getSetting(state, "site-url"));
-  const getPublicLink = () => {
-    if (!uuid) {
-      return null;
-    }
-    return getPublicDashboardUrl({ uuid, siteUrl });
-  };
+  const url = uuid ? getPublicDashboardUrl(uuid) : null;
 
   const createPublicDashboardLink = async () => {
     await dispatch(createPublicLink(dashboard));
@@ -42,8 +35,7 @@ export const DashboardPublicLinkPopover = ({
       onClose={onClose}
       createPublicLink={createPublicDashboardLink}
       deletePublicLink={deletePublicDashboardLink}
-      uuid={uuid}
-      getPublicLink={getPublicLink}
+      url={url}
     />
   );
 };

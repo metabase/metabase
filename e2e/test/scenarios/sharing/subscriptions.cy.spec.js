@@ -68,8 +68,8 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.findByLabelText("subscriptions").should("not.exist");
 
     cy.get(".Modal--full").within(() => {
-      cy.findByText(/Public embed/).should("be.visible");
-      cy.findByText(/Embed in your application/).should("be.visible");
+      cy.findByText("Public embed").should("be.visible");
+      cy.findByText("Embed in your application").should("be.visible");
     });
   });
 
