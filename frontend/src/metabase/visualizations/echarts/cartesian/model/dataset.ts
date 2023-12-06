@@ -1,8 +1,8 @@
 import type { DatasetColumn, RawSeries, RowValue } from "metabase-types/api";
 import type {
   DataKey,
-  Extent,
   GroupedDataset,
+  SeriesExtents,
   SeriesModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
@@ -278,13 +278,13 @@ export const getNormalizedDataset = (
  *
  * @param {DataKey[]} keys - The keys of the series to calculate extents for.
  * @param {GroupedDataset} dataset - The dataset containing the series data.
- * @returns {Record<DataKey, Extent>} Series extent by a series data key.
+ * @returns {SeriesExtents} Series extent by a series data key.
  */
 export const getDatasetExtents = (
   keys: DataKey[],
   dataset: GroupedDataset,
-): Record<DataKey, Extent> => {
-  const extents: Record<DataKey, Extent> = {};
+): SeriesExtents => {
+  const extents: SeriesExtents = {};
 
   dataset.forEach(item => {
     keys.forEach(key => {
