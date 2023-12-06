@@ -492,7 +492,7 @@
       (throw (ex-info (tru "Invalid email address in mailto: link")
                       {:url url})))
     (when-not (u/url? url)
-      (throw (ex-info (tru "Invalid URL")
+      (throw (ex-info (tru "Please make sure this is a valid URL")
                       {:url url})))))
 
 (defsetting help-link-custom-destination
