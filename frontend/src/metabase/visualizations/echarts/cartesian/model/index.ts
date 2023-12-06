@@ -15,7 +15,9 @@ import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/co
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import {
   getJoinedCardsDataset,
+  getNullReplacerFunction,
   getSortedSeriesModels,
+  replaceValues,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 
 export const getCardsColumns = (
@@ -69,7 +71,10 @@ export const getCartesianChartModel = (
   const seriesModels = getSortedSeriesModels(unsortedSeriesModels, settings);
 
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
-  const dataset = getJoinedCardsDataset(rawSeries, cardsColumns);
+  const dataset = replaceValues(
+    getJoinedCardsDataset(rawSeries, cardsColumns),
+    getNullReplacerFunction(settings, seriesModels),
+  );
 
   const yAxisSplit: AxisSplit = [seriesDataKeys, []];
 
