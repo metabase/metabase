@@ -224,7 +224,6 @@ const getXAxisType = (settings: ComputedVisualizationSettings) => {
     case "linear":
       return "value";
     default:
-      // TODO: implement histogram
       return "category";
   }
 };
@@ -251,6 +250,7 @@ export const buildDimensionAxis = (
 
   const boundaryGap =
     axisType === "value" ? undefined : ([0.02, 0.02] as [number, number]);
+  // const boundaryGap = false;
 
   const nameGap = getXAxisNameGap(
     chartModel,

@@ -16,7 +16,11 @@ import {
 } from "metabase/visualizations/shared/settings/series";
 import { getCommonStaticVizSettings } from "metabase/static-viz/lib/settings";
 import {
+  getDefaultIsHistogram,
+  getDefaultIsNumeric,
+  getDefaultIsTimeSeries,
   getDefaultStackingValue,
+  getDefaultXAxisScale,
   getDefaultXAxisTitle,
   getDefaultYAxisTitle,
   getIsXAxisLabelEnabledDefault,
@@ -94,7 +98,7 @@ export const computeStaticComboChartSettings = (
   dashcardSettings: VisualizationSettings,
   renderingContext: RenderingContext,
 ): ComputedVisualizationSettings => {
-  const mainCard = rawSeries[0].card;
+  const { card: mainCard, data: mainDataset } = rawSeries[0];
   const settings = getCommonStaticVizSettings(rawSeries, dashcardSettings);
 
   const cardsColumns = getCardsColumns(rawSeries, settings);
@@ -197,6 +201,28 @@ export const computeStaticComboChartSettings = (
   fillWithDefaultValue(settings, "graph.x_axis.axis_enabled", true);
 
   fillWithDefaultValue(settings, "graph.y_axis.axis_enabled", true);
+
+  fillWithDefaultValue(
+    settings,
+    "graph.x_axis._is_numeric",
+    getDefaultIsNumeric(mainDataset, dimensionModel.columnIndex),
+  );
+  fillWithDefaultValue(
+    settings,
+    "graph.x_axis._is_timeseries",
+    getDefaultIsTimeSeries(mainDataset, dimensionModel.columnIndex),
+  );
+  fillWithDefaultValue(
+    settings,
+    "graph.x_axis._is_histogram",
+    getDefaultIsHistogram(dimensionModel.column),
+  );
+
+  fillWithDefaultValue(
+    settings,
+    "graph.x_axis.scale",
+    getDefaultXAxisScale(settings),
+  );
 
   return settings;
 };
