@@ -274,11 +274,6 @@ Object.assign(SmartScalar, {
       section: "Data",
       title: t`Primary number`,
       fieldFilter: isNumeric,
-      getHidden: ([
-        {
-          data: { cols },
-        },
-      ]) => cols.filter(isNumeric).length < 2,
     }),
     "scalar.comparisons": {
       section: "Data",
