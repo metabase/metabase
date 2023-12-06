@@ -7,14 +7,21 @@ import type {
 } from "metabase/visualizations/types";
 import { buildAxes } from "metabase/visualizations/echarts/cartesian/option/axis";
 import { getAxesFormatters } from "metabase/visualizations/echarts/cartesian/option/format";
+
 import { getChartGrid } from "./grid";
+import { getGoalLineSeriesOption } from "./goal-line";
 
 export const getCartesianChartOption = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): EChartsOption => {
-  const echartsSeries = buildEChartsSeries(
+  const goalSeriesOption = getGoalLineSeriesOption(
+    chartModel,
+    settings,
+    renderingContext,
+  );
+  const dataSeriesOption = buildEChartsSeries(
     chartModel,
     settings,
     renderingContext,
@@ -37,7 +44,9 @@ export const getCartesianChartOption = (
   return {
     grid: getChartGrid(chartModel, settings),
     dataset: echartsDataset,
-    series: echartsSeries,
+    series: goalSeriesOption
+      ? [goalSeriesOption, ...dataSeriesOption]
+      : dataSeriesOption,
     ...buildAxes(chartModel, settings, axesFormatters, renderingContext),
   } as EChartsOption;
 };
