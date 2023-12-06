@@ -26,6 +26,8 @@
    [metabase.upload.parsing :as upload-parsing]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
@@ -397,7 +399,7 @@
   [db schema-name]
   (nil? (can-upload-error db schema-name)))
 
-(defn upload-csv!
+(mu/defn upload-csv!
   "Main entry point for CSV uploading.
 
   What it does:
@@ -413,13 +415,20 @@
   Returns the newly created model. May throw validation, permimissions, or DB errors.
 
   Args:
-  - `collection-id`: the ID of the collection to create the model in.
+  - `collection-id`: the ID of the collection to create the model in. `nil` means the root collection.
   - `filename`: the name of the file being uploaded.
   - `file`: the file being uploaded.
-  - `database`: the database to upload to.
+  - `db-id`: the ID of the database to upload to.
   - `schema-name`: the name of the schema to create the table in (optional).
   - `table-prefix`: the prefix to use for the table name (optional)."
-  [{:keys [collection-id filename ^File file db-id schema-name table-prefix]}]
+  [{:keys [collection-id filename ^File file db-id schema-name table-prefix]}
+   :- [:map
+       [:collection-id [:maybe ms/PositiveInt]]
+       [:filename :string]
+       [:file (ms/InstanceOfClass File)]
+       [:db-id ms/PositiveInt]
+       [:schema-name {:optional true} [:maybe :string]]
+       [:table-prefix {:optional true} [:maybe :string]]]]
   (let [database (or (t2/select-one Database :id db-id)
                      (throw (ex-info (tru "The uploads database does not exist.")
                                      {:status-code 422})))]
@@ -447,7 +456,7 @@
                                              :%lower.name auto-pk-column-name)
             _                 (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})
             card              (card/create-card!
-                               {:collection_id          collection-id,
+                               {:collection_id          collection-id
                                 :dataset                true
                                 :database_id            (:id database)
                                 :dataset_query          {:database (:id database)
@@ -473,5 +482,4 @@
                               :num-columns (count (first rows))
                               :num-rows    (count (rest rows))}))]
           (snowplow/track-event! ::snowplow/csv-upload-failed api/*current-user-id* fail-stats))
-
         (throw e)))))
