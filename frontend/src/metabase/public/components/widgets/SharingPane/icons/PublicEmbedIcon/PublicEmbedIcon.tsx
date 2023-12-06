@@ -1,16 +1,19 @@
 import { useMantineTheme } from "metabase/ui";
 import type { SharingPaneIconProps } from "metabase/public/components/widgets/SharingPane/icons/types";
 
-export const PublicEmbedIcon = ({ disabled }: SharingPaneIconProps) => {
+export const PublicEmbedIcon = ({
+  disabled,
+  hovered,
+}: SharingPaneIconProps) => {
   const theme = useMantineTheme();
 
   let outerFillColor, innerFillColor;
-  if (disabled) {
+  if (!disabled && hovered) {
+    outerFillColor = theme.colors.brand[0];
+    innerFillColor = theme.colors.brand[1];
+  } else {
     outerFillColor = theme.colors.bg[1];
     innerFillColor = theme.colors.text[2];
-  } else {
-    outerFillColor = theme.colors.bg[2];
-    innerFillColor = theme.colors.brand[1];
   }
 
   return (

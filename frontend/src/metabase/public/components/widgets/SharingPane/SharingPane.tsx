@@ -42,7 +42,6 @@ export default function SharingPane({
   const iframeSource = getPublicEmbedHTML(getPublicUrl(resource));
 
   const hasPublicLink = !!resource.public_uuid;
-  const shouldDisableIFrameLink = !hasPublicLink;
 
   const isPublicSharingEnabled = useSelector(state =>
     getSetting(state, "enable-public-sharing"),
@@ -78,7 +77,7 @@ export default function SharingPane({
       <SharingPaneButton
         header={t`Static embed`}
         description={t`Securely embed this dashboard in your own application’s server code.`}
-        illustration={<StaticEmbedIcon />}
+        illustration={StaticEmbedIcon}
       >
         <SharingPaneActionButton
           fullWidth
@@ -110,7 +109,7 @@ export default function SharingPane({
             </>
           )
         }
-        illustration={<PublicEmbedIcon disabled={shouldDisableIFrameLink} />}
+        illustration={PublicEmbedIcon}
       >
         {resource.public_uuid ? (
           <PublicLinkCopyPanel

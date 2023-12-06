@@ -46,6 +46,15 @@ class QuestionEmbedWidget extends Component {
     };
   }
 
+  setEmbedType = embedType => {
+    this.setState({ embedType });
+  };
+
+  onModalClose = () => {
+    this.setEmbedType(null);
+    this.props.onClose();
+  };
+
   render() {
     const {
       className,
@@ -59,11 +68,11 @@ class QuestionEmbedWidget extends Component {
       ...props
     } = this.props;
     return (
-      <EmbedModal onClose={onClose} embedType={this.state.embedType}>
+      <EmbedModal onClose={this.onModalClose} embedType={this.state.embedType}>
         <EmbedModalContent
           {...props}
           embedType={this.state.embedType}
-          setEmbedType={embedType => this.setState({ embedType })}
+          setEmbedType={this.setEmbedType}
           className={className}
           resource={card}
           resourceType="question"

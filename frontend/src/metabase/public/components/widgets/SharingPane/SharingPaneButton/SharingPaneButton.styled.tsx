@@ -4,14 +4,10 @@ import { css } from "@emotion/react";
 import type { PaperProps, ButtonProps } from "metabase/ui";
 import { Button, Paper, Title } from "metabase/ui";
 
-export const SharingPaneButtonTitle = styled(Title)`
-  transition: 200ms all;
-`;
+export const SharingPaneButtonTitle = styled(Title)``;
 export const SharingPaneActionButton = styled(Button)<
   ButtonProps & HTMLAttributes<HTMLButtonElement>
->`
-  transition: 200ms all;
-`;
+>``;
 
 export const SharingPaneButtonContent = styled(Paper)<
   PaperProps & { disabled?: boolean }

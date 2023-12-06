@@ -1,20 +1,27 @@
+import { useRef } from "react";
 import type { SharingPaneIconProps } from "metabase/public/components/widgets/SharingPane/icons/types";
 import { useMantineTheme } from "metabase/ui";
 
-export const StaticEmbedIcon = ({ disabled }: SharingPaneIconProps) => {
+export const StaticEmbedIcon = ({
+  disabled,
+  hovered,
+}: SharingPaneIconProps) => {
   const theme = useMantineTheme();
+  const ref = useRef(null);
 
   let outerFillColor, innerFillColor;
-  if (disabled) {
-    outerFillColor = theme.colors.bg[1];
-    innerFillColor = theme.colors.text[2];
-  } else {
+
+  if (!disabled && hovered) {
     outerFillColor = theme.colors.brand[0];
     innerFillColor = theme.colors.brand[1];
+  } else {
+    outerFillColor = theme.colors.bg[1];
+    innerFillColor = theme.colors.text[2];
   }
 
   return (
     <svg
+      ref={ref}
       width="40"
       height="32"
       viewBox="0 0 40 32"

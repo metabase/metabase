@@ -37,6 +37,16 @@ class DashboardSharingEmbeddingModal extends Component {
       embedType: null,
     };
   }
+
+  setEmbedType = embedType => {
+    this.setState({ embedType });
+  };
+
+  onModalClose = () => {
+    this.setEmbedType(null);
+    this.props.onClose();
+  };
+
   render() {
     const {
       className,
@@ -59,7 +69,7 @@ class DashboardSharingEmbeddingModal extends Component {
     return (
       <EmbedModal
         isOpen={enabled}
-        onClose={onClose}
+        onClose={this.onModalClose}
         embedType={this.state.embedType}
         fit
         formModal={false}
@@ -68,7 +78,7 @@ class DashboardSharingEmbeddingModal extends Component {
         <EmbedModalContent
           {...props}
           embedType={this.state.embedType}
-          setEmbedType={embedType => this.setState({ embedType })}
+          setEmbedType={this.setEmbedType}
           className={className}
           resource={dashboard}
           resourceParameters={parameters}
@@ -81,7 +91,7 @@ class DashboardSharingEmbeddingModal extends Component {
           onUpdateEmbeddingParams={embeddingParams =>
             updateEmbeddingParams(dashboard, embeddingParams)
           }
-          onClose={onClose}
+          onClose={this.onModalClose}
           getPublicUrl={({ public_uuid }) => Urls.publicDashboard(public_uuid)}
         />
       </EmbedModal>

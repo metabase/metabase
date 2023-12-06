@@ -15,10 +15,14 @@ export const EmbedModal = ({
   children: JSX.Element;
   embedType: string;
 } & WindowModalProps) => {
+  const onEmbedClose = () => {
+    onClose();
+  };
+
   return (
     <Modal
       isOpen={enabled}
-      onClose={onClose}
+      onClose={onEmbedClose}
       title={t`Embed Metabase`}
       fit={embedType !== "application"}
       full={embedType === "application"}
