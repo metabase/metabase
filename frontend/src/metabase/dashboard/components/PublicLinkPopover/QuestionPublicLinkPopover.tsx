@@ -50,7 +50,6 @@ export const QuestionPublicLinkPopover = ({
       onClose={onClose}
       createPublicLink={createPublicQuestionLink}
       deletePublicLink={deletePublicQuestionLink}
-      uuid={uuid}
       url={url}
       extensions={exportFormats}
       selectedExtension={extension}

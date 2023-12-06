@@ -18,8 +18,8 @@ const TestComponent = ({
   extensions,
   isOpen: mockIsOpen,
   onClose: mockIsClosed,
-  uuid,
-}: Omit<PublicLinkPopoverProps, "target" | "url">) => {
+  url,
+}: Omit<PublicLinkPopoverProps, "target">) => {
   const target = (
     <button data-testid="target" onClick={() => setIsOpen(true)}>
       Target
@@ -29,7 +29,7 @@ const TestComponent = ({
   const [extension, setExtension] = useState<ExportFormatType | null>(null);
 
   const linkExtension = extension ? `.${extension}` : "";
-  const url = uuid ? `sample-public-link${linkExtension}` : null;
+  const publicUrl = url ? `sample-public-link${linkExtension}` : null;
 
   const onClose = () => {
     setIsOpen(false);
@@ -41,8 +41,7 @@ const TestComponent = ({
       target={target}
       createPublicLink={createPublicLink}
       deletePublicLink={deletePublicLink}
-      uuid={uuid}
-      url={url}
+      url={publicUrl}
       isOpen={isOpen}
       onClose={onClose}
       extensions={extensions}
@@ -71,10 +70,10 @@ const setup = ({
     <TestComponent
       createPublicLink={createPublicLink}
       deletePublicLink={deletePublicLink}
-      uuid={hasUUID ? "mock-uuid" : null}
       isOpen={isOpen}
       onClose={onClose}
       extensions={extensions}
+      url={hasUUID ? "sample-public-link" : null}
     />,
     {
       storeInitialState: createMockState({
