@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { formatNullable } from "metabase/lib/formatting/nullable";
 import type {
-  ChartColumns,
+  CartesianChartColumns,
   ColumnDescriptor,
 } from "metabase/visualizations/lib/graph/columns";
 import type { Series } from "metabase/visualizations/shared/components/RowChart/types";
@@ -53,7 +53,7 @@ const sumMetrics = (left: MetricDatum, right: MetricDatum): MetricDatum => {
 
 export const getGroupedDataset = (
   rows: RowValues[],
-  chartColumns: ChartColumns,
+  chartColumns: CartesianChartColumns,
   columnFormatter: ColumnFormatter,
 ): GroupedDataset => {
   const { dimension } = chartColumns;
@@ -228,7 +228,7 @@ const getMultipleMetricSeries = (
 
 export const getSeries = (
   data: DatasetData,
-  chartColumns: ChartColumns,
+  chartColumns: CartesianChartColumns,
   columnFormatter: ColumnFormatter,
 ): Series<GroupedDatum, SeriesInfo>[] => {
   if ("breakout" in chartColumns) {
