@@ -500,7 +500,7 @@
   :visibility :public
   :type       :string
   :audit      :getter
-  :feature    :embedding
+  :feature    :whitelabeling
   :default    "https://www.metabase.com/help/premium"
   :setter      (fn [new-value]
                  (let [new-value-string (str new-value)]

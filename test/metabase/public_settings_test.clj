@@ -317,10 +317,10 @@
            (public-settings/help-link-custom-destination! "mailto:help@metabase")))))
 
   (premium-features.test/with-premium-features #{}
-    (testing "When whitelabeling is not enabled, help-link-custom-destination cannot be set, and always returns nil"
+    (testing "When whitelabeling is not enabled, help-link-custom-destination cannot be set, and always returns its default"
       (is (thrown-with-msg?
            Exception
            #"Setting help-link-custom-destination is not enabled because feature :whitelabeling is not available"
            (public-settings/help-link-custom-destination! "http://www.metabase.com")))
 
-      (is (nil? (public-settings/help-link-custom-destination))))))
+      (is (= "https://www.metabase.com/help/premium" (public-settings/help-link-custom-destination))))))
