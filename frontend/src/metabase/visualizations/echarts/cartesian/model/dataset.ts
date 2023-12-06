@@ -229,3 +229,44 @@ export const getNullReplacerFunction = (
     return value;
   };
 };
+
+const getNumericValue = (value: RowValue): number =>
+  typeof value === "number" ? value : 0;
+
+const computeTotal = (
+  row: Record<DataKey, RowValue>,
+  keys: DataKey[],
+): number => keys.reduce((total, key) => total + getNumericValue(row[key]), 0);
+
+/**
+ * Creates a new normalized dataset for the specified series keys, where the values of each series
+ * are represented as percentages of their total sum for a given dimension value.
+ * This normalized dataset is necessary for rendering normalized stacked bar and area charts,
+ * where each series value contributes to a percentage of the whole for that specific dimension value.
+ *
+ * @param {Record<DataKey, RowValue>[]} groupedData - The original non-normalized dataset.
+ * @param {DataKey[]} normalizedSeriesKeys - The keys of the series to normalize.
+ * @param {DataKey} dimensionKey - The key of the dimension value to include in the normalized dataset.
+ * @returns {Record<DataKey, RowValue>[]} The normalized dataset.
+ */
+export const getNormalizedDataset = (
+  groupedData: Record<DataKey, RowValue>[],
+  normalizedSeriesKeys: DataKey[],
+  dimensionKey: DataKey,
+): Record<DataKey, RowValue>[] => {
+  return groupedData.map(row => {
+    const total = computeTotal(row, normalizedSeriesKeys);
+
+    // Copy the dimension value
+    const normalizedDatum: Record<DataKey, RowValue> = {
+      [dimensionKey]: row[dimensionKey],
+    };
+
+    // Compute normalized values for metrics
+    return normalizedSeriesKeys.reduce((acc, key) => {
+      const numericValue = getNumericValue(row[key]);
+      acc[key] = numericValue / total;
+      return acc;
+    }, normalizedDatum);
+  });
+};
