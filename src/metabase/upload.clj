@@ -355,6 +355,10 @@
 ;;; |                                                 public interface                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;;;; +------------------+
+;;;; |  Create upload
+;;;; +------------------+
+
 (defn- scan-and-sync-table!
   [database table]
   (sync-fields/sync-fields-for-table! database table)
@@ -446,12 +450,12 @@
                                 table-name
                                 (str schema-name "." table-name))
             stats             (load-from-csv! driver (:id database) schema+table-name file)
-          ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
+            ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
             table             (sync-tables/create-or-reactivate-table! database {:name table-name :schema (not-empty schema-name)})
             _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true})
             _sync             (scan-and-sync-table! database table)
-          ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
-          ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
+            ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
+            ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
             auto-pk-field     (t2/select-one :model/Field :table_id (:id table)
                                              :%lower.name auto-pk-column-name)
             _                 (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})
@@ -483,3 +487,62 @@
                               :num-rows    (count (rest rows))}))]
           (snowplow/track-event! ::snowplow/csv-upload-failed api/*current-user-id* fail-stats))
         (throw e)))))
+
+;;;; +------------------+
+;;;; |  Appends
+;;;; +------------------+
+
+(defn- append-csv!*
+  [_database _table _file]
+  ;; TODO
+  true)
+
+
+;;;; +------------------+
+;;;; |  public interface
+;;;; +------------------+
+
+(defn- can-append-error
+  "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
+  [db table]
+  (let [driver (driver.u/database->driver db)]
+    (cond
+      (not (public-settings/uploads-enabled))
+      (ex-info (tru "Uploads are not enabled.")
+               {:status-code 422}) (premium-features/sandboxed-user?)
+      (ex-info (tru "Uploads are not permitted for sandboxed users.")
+               {:status-code 403})
+
+      (not (driver/database-supports? driver :uploads nil))
+      (ex-info (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver)))
+               {:status-code 422})
+
+      (not (perms/set-has-full-permissions? @api/*current-user-permissions-set*
+                                            (perms/data-perms-path (u/the-id db) (:schema table))))
+      (ex-info (tru "You don''t have permissions to do that.")
+               {:status-code 403}))))
+
+(defn- check-can-append
+  "Throws an error if the user cannot upload to the given database and schema."
+  [db table]
+  (when-let [error (can-append-error db table)]
+    (throw error)))
+
+;; This will be used in merge 2 of milestone 1 to populate a property on the table for the FE.
+(defn can-upload-to-table?
+  "Returns true if the user can upload to the given database and table, and false otherwise."
+  [db table]
+  (nil? (can-append-error db table)))
+
+(mu/defn append-csv!
+  "Main entry point for appending to uploaded tables with a CSV file."
+  [{:keys [^File file table-id]}
+   :- [:map
+       [:table-id ms/PositiveInt]
+       [:file (ms/InstanceOfClass File)]]]
+  (let [table (or (t2/select-one :model/Table :id table-id)
+                  (throw (ex-info (tru "The uploads database does not exist.")
+                                  {:status-code 422})))
+        database (t2/select-one :model/Database :id (:db_id table))]
+    (check-can-append database table)
+    (append-csv!* database table file)))

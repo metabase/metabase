@@ -15,7 +15,9 @@
    [metabase.models.table :as table]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.timeseries-query-processor-test.util :as tqpt]
+   [metabase.upload-test :as upload-test]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -870,3 +872,43 @@
                       (map u/the-id))))))
       (finally (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
                                      {:field_order original-field-order})))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          POST /api/table/:id/append-csv                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- basic-db-definition [database-name]
+  (tx/map->DatabaseDefinition
+   {:database-name     database-name
+    :table-definitions [{:table-name        "baz"
+                         :field-definitions [{:field-name "_mb_row_id", :base-type :type/BigInteger, :semantic-type :type/SerializedJSON}
+                                             {:field-name "first_name", :base-type :type/Text}
+                                             {:field-name "last_name", :base-type :type/Text}]
+                         :rows              [[1, "row_one"]]}]}))
+
+(defn append-csv-via-api!
+  "Upload a small CSV file to the given collection ID. Default args can be overridden"
+  []
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [dbdef (basic-db-definition (mt/random-name))]
+      (mt/dataset dbdef
+       (let [file (upload-test/csv-file-with
+                   ["first_name,last_name"
+                    "Luke,Skywalker"
+                    "Darth,Vader"]
+                   (str "example csv file.csv"))
+             table (t2/select-one :model/Table :db_id (mt/id))]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (@#'api.table/append-csv! {:id   (:id table)
+                                       :file file})))))))
+
+(deftest append-csv-test
+  (mt/test-driver :h2
+    (mt/with-empty-db
+      (testing "Happy path"
+        (mt/with-temporary-setting-values [uploads-enabled true]
+          (is (= {:status 200, :body nil}
+                 (append-csv-via-api!)))))
+      (testing "Failure paths return an appropriate status code and a message in the body"
+        nil ;; TODO
+        ))))
