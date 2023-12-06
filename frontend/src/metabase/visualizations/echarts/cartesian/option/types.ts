@@ -1,9 +1,11 @@
+import type { RowValue } from "metabase-types/api";
+
 export type AxisRange = {
   min?: number;
   max?: number;
 };
 
-export type AxisFormatter = (value: unknown) => string;
+export type AxisFormatter = (value: RowValue) => string;
 
 export type AxesFormatters = {
   left?: AxisFormatter;
