@@ -119,6 +119,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.findByPlaceholderText("Something nice and descriptive").type("Foo");
 
       cy.button("Done").click();
+
       cy.wait("@dataset");
 
       // verify popover is closed, otherwise its state will reset

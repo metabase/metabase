@@ -3119,6 +3119,17 @@ databaseChangeLog:
                     unique: true
 
   - changeSet:
+      id: v47.00-059
+      author: piranha
+      comment: 'Drops not null from dashboard_tab.entity_id since it breaks drop-entity-ids command'
+      changes:
+        - dropNotNullConstraint:
+            tableName: dashboard_tab
+            columnName: entity_id
+            columnDataType: char(21)
+      rollback: # noop, and 'drop not null' is a noop if it's dropped already
+
+  - changeSet:
       id: v48.00-001
       author: qnkhuat
       comment: Added 0.47.0 - Migrate database.options to database.settings

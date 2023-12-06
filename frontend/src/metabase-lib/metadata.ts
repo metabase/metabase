@@ -34,9 +34,6 @@ import type {
   OrderByClauseDisplayInfo,
   TableDisplayInfo,
   TableMetadata,
-  Query,
-  SegmentMetadata,
-  SegmentDisplayInfo,
 } from "./types";
 
 export function metadataProvider(
@@ -46,6 +43,9 @@ export function metadataProvider(
   return ML.metadataProvider(databaseId, metadata);
 }
 
+/**
+ * @deprecated use displayInfo instead
+ */
 export function displayName(query: Query, clause: Clause): string {
   return ML_MetadataCalculation.display_name(query, clause);
 }

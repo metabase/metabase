@@ -1058,12 +1058,15 @@ describe("scenarios > question > filter", () => {
       summarize({ mode: "notebook" });
       popover().contains("Custom Expression").click();
       popover().within(() => {
-        enterCustomColumnDetails({ formula: "CountIf(boolean)" });
-        cy.findByPlaceholderText("Something nice and descriptive").type(
-          "count if boolean is true",
-        );
+        enterCustomColumnDetails({
+          formula: "CountIf(boolean)",
+          name: "count if boolean is true",
+        });
         cy.findByText("Done").click();
       });
+      cy.findByTestId("aggregate-step")
+        .contains("count if boolean is true")
+        .should("exist");
       visualize(() => {
         cy.contains("2").should("exist");
       });

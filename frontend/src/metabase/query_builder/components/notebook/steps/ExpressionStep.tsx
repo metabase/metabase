@@ -46,7 +46,7 @@ const ExpressionStep = ({
         />
       )}
       isLastOpened={isLastOpened}
-      onRemove={({ name }) => updateQuery(query.removeExpression(name))}
+      onRemove={({ name }) => updateQuery(legacyQuery.removeExpression(name))}
       withLegacyPopover
     />
   );

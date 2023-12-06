@@ -2,12 +2,12 @@ import type { ReactNode } from "react";
 import { useRef, useState } from "react";
 import { t } from "ttag";
 import { isNotNull } from "metabase/lib/types";
-import type * as Lib from "metabase-lib";
 import Button from "metabase/core/components/Button";
 import Input from "metabase/core/components/Input/Input";
 import Tooltip from "metabase/core/components/Tooltip";
 import MetabaseSettings from "metabase/lib/settings";
 import type { Expression } from "metabase-types/api";
+import type * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/expressions";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
@@ -40,14 +40,28 @@ interface QueryProps {
 
 export type ExpressionWidgetProps = {
   legacyQuery: StructuredQuery;
-  expression: Expression | undefined;
+  query?: Lib.Query;
+  stageIndex?: number;
+  /**
+   * expression should not be present in components migrated to MLv2
+   */
+  expression?: Expression | undefined;
+  /**
+   * Presence of this prop is not enforced due to backwards-compatibility
+   * with ExpressionWidget usages outside of GUI editor.
+   */
+  clause?: Lib.AggregationClause | Lib.ExpressionClause | undefined;
   name?: string;
   withName?: boolean;
   startRule?: string;
   reportTimezone?: string;
   header?: ReactNode;
 
-  onChangeExpression: (name: string, expression: Expression) => void;
+  onChangeExpression?: (name: string, expression: Expression) => void;
+  onChangeClause?: (
+    name: string,
+    clause: Lib.AggregationClause | Lib.ExpressionClause,
+  ) => void;
   onRemoveExpression?: (name: string) => void;
   onClose?: () => void;
 } & (QueryProps | LegacyQueryProps);
@@ -59,37 +73,64 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
     stageIndex,
     name: initialName,
     expression: initialExpression,
+    clause: initialClause,
     withName = false,
     startRule,
     reportTimezone,
     header,
     onChangeExpression,
+    onChangeClause,
     onRemoveExpression,
     onClose,
   } = props;
 
   const [name, setName] = useState(initialName || "");
   const [expression, setExpression] = useState<Expression | null>(
-    initialExpression || null,
+    initialExpression ?? null,
   );
+  const [clause, setClause] = useState<
+    Lib.AggregationClause | Lib.ExpressionClause | null
+  >(initialClause ?? null);
   const [error, setError] = useState<string | null>(null);
 
   const helpTextTargetRef = useRef(null);
 
   const isValidName = withName ? name.trim().length > 0 : true;
-  const isValidExpression = !!expression && isExpression(expression);
+  const isValidExpression = isNotNull(expression) && isExpression(expression);
+  const isValidExpressionClause = isNotNull(clause);
+  const isValid =
+    !error && isValidName && (isValidExpression || isValidExpressionClause);
 
-  const isValid = !error && isValidName && isValidExpression;
+  const handleCommit = (
+    expression: Expression | null,
+    clause: Lib.AggregationClause | Lib.ExpressionClause | null,
+  ) => {
+    const isValidExpression = isNotNull(expression) && isExpression(expression);
+    const isValidExpressionClause = isNotNull(clause);
+    const isValid =
+      !error && isValidName && (isValidExpression || isValidExpressionClause);
 
-  const handleCommit = (expression: Expression | null) => {
-    if (isValid && isNotNull(expression)) {
-      onChangeExpression(name, expression);
-      onClose && onClose();
+    if (!isValid) {
+      return;
+    }
+
+    if (isValidExpression) {
+      onChangeExpression?.(name, expression);
+      onClose?.();
+    }
+
+    if (isValidExpressionClause) {
+      onChangeClause?.(name, clause);
+      onClose?.();
     }
   };
 
-  const handleExpressionChange = (parsedExpression: Expression | null) => {
-    setExpression(parsedExpression);
+  const handleExpressionChange = (
+    expression: Expression | null,
+    clause: Lib.AggregationClause | Lib.ExpressionClause | null,
+  ) => {
+    setExpression(expression);
+    setClause(clause);
     setError(null);
   };
 
@@ -117,11 +158,12 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
           <ExpressionEditorTextfield
             helpTextTarget={helpTextTargetRef.current}
             expression={expression}
+            clause={clause}
             startRule={startRule}
             name={name}
+            legacyQuery={legacyQuery}
             query={query}
             stageIndex={stageIndex}
-            legacyQuery={legacyQuery}
             reportTimezone={reportTimezone}
             textAreaId="expression-content"
             onChange={handleExpressionChange}
@@ -142,7 +184,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
             onChange={event => setName(event.target.value)}
             onKeyPress={e => {
               if (e.key === "Enter") {
-                handleCommit(expression);
+                handleCommit(expression, clause);
               }
             }}
           />
@@ -155,7 +197,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
           <Button
             primary={isValid}
             disabled={!isValid}
-            onClick={() => handleCommit(expression)}
+            onClick={() => handleCommit(expression, clause)}
           >
             {initialName ? t`Update` : t`Done`}
           </Button>
