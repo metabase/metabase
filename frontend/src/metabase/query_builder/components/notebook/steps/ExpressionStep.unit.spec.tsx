@@ -37,9 +37,7 @@ function setup({ query = createQuery() }: SetupOpts = {}) {
     />,
   );
 
-  return {
-    getRecentQuery,
-  };
+  return { getRecentQuery };
 }
 
 describe("Notebook Editor > Expression Step", () => {
