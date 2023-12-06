@@ -4,8 +4,8 @@ import {
   visitQuestion,
   downloadAndAssert,
   assertSheetRowsCount,
-  createPublicLinkDropdown,
-  openPublicLinkDropdown,
+  openNewPublicLinkDropdown,
+  createPublicQuestionLink,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -69,7 +69,7 @@ describe("scenarios > public > question", () => {
       // Make sure metadata fully loaded before we continue
       cy.get(".cellData").contains("Winner");
 
-      createPublicLinkDropdown("card");
+      openNewPublicLinkDropdown("card");
 
       // Although we already have API helper `visitPublicQuestion`,
       // it makes sense to use the UI here in order to check that the
@@ -99,8 +99,7 @@ describe("scenarios > public > question", () => {
 
   it("should only allow non-admin users to see a public link if one has already been created", () => {
     cy.get("@questionId").then(id => {
-      visitQuestion(id);
-      createPublicLinkDropdown("card");
+      createPublicQuestionLink(id);
       cy.signOut();
     });
 
@@ -109,11 +108,11 @@ describe("scenarios > public > question", () => {
         visitQuestion(id);
       });
 
-      openPublicLinkDropdown({ isAdmin: false });
+      cy.icon("share").click();
 
       cy.findByTestId("public-link-popover-content").within(() => {
         cy.findByText("Public link").should("be.visible");
-        cy.findByText(/^http/).should("be.visible");
+        cy.findByTestId("public-link-text").contains(PUBLIC_QUESTION_REGEX);
         cy.findByText("Remove public URL").should("not.exist");
       });
     });
@@ -152,12 +151,7 @@ describe("scenarios > public > question", () => {
 });
 
 const visitPublicURL = () => {
-  // Ideally we would just find the first input
-  // but unless we filter by value
-  // Cypress finds an input before the copyable inputs are rendered
-  cy.findByRole("heading", { name: "Public link" })
-    .parent()
-    .findByText(/^http/)
+  cy.findByTestId("public-link-text")
     .invoke("text")
     .then(publicURL => {
       // Copied URL has no get params

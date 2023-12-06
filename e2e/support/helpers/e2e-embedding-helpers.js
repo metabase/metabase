@@ -115,20 +115,27 @@ export function visitIframe() {
   });
 }
 
-export function openToEmbedModal({
-  isAdmin = true,
-  isPublicSharingEnabled = true,
-} = {}) {
+export function openPublicLinkDropdown() {
   cy.icon("share").click();
-  if (isAdmin && isPublicSharingEnabled) {
-    cy.findByTestId("embed-header-menu")
-      .findByTestId("embed-menu-embed-modal-item")
-      .click();
-  }
+  cy.findByTestId("embed-header-menu")
+    .findByTestId("embed-menu-public-link-item")
+    .click();
+}
+
+export function openStaticEmbeddingModal() {
+  cy.intercept("GET", "/api/session/properties").as("sessionProperties");
+
+  cy.icon("share").click();
+  cy.findByTestId("embed-header-menu")
+    .findByTestId("embed-menu-embed-modal-item")
+    .click();
+
+  cy.get(".Modal--full").findByText("Embed in your application").click();
+  cy.wait("@sessionProperties");
 }
 
 // @param {("card"|"dashboard")} resourceType - The type of resource we are sharing
-export function createPublicLinkDropdown(resourceType) {
+export function openNewPublicLinkDropdown(resourceType) {
   cy.intercept("POST", `/api/${resourceType}/*/public_link`).as(
     "sharingEnabled",
   );
@@ -149,22 +156,10 @@ export function createPublicLinkDropdown(resourceType) {
   );
 }
 
-export function openPublicLinkDropdown({ isAdmin = true } = {}) {
-  cy.icon("share").click();
-  if (isAdmin) {
-    cy.findByTestId("embed-header-menu")
-      .findByTestId("embed-menu-public-link-item")
-      .click();
-  }
+export function createPublicQuestionLink(questionId) {
+  cy.request("POST", `/api/card/${questionId}/public_link`, {});
 }
 
-export function openStaticEmbeddingModal({
-  isAdmin = true,
-  isPublicSharingEnabled = true,
-} = {}) {
-  cy.intercept("GET", "/api/session/properties").as("sessionProperties");
-
-  openToEmbedModal({ isAdmin, isPublicSharingEnabled });
-  cy.get(".Modal--full").findByText("Embed in your application").click();
-  cy.wait("@sessionProperties");
+export function createPublicDashboardLink(dashboardId) {
+  cy.request("POST", `/api/dashboard/${dashboardId}/public_link`, {});
 }

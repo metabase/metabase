@@ -4,8 +4,8 @@ import {
   visitPublicDashboard,
   filterWidget,
   popover,
-  createPublicLinkDropdown,
-  openPublicLinkDropdown,
+  openNewPublicLinkDropdown,
+  createPublicDashboardLink,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -97,7 +97,7 @@ describe("scenarios > public > dashboard", () => {
       visitDashboard(id);
     });
 
-    createPublicLinkDropdown("dashboard");
+    openNewPublicLinkDropdown("dashboard");
 
     cy.wait("@publicLink").then(({ response }) => {
       expect(response.body.uuid).not.to.be.null;
@@ -120,8 +120,7 @@ describe("scenarios > public > dashboard", () => {
 
   it("should only allow non-admin users to see a public link if one has already been created", () => {
     cy.get("@dashboardId").then(id => {
-      visitDashboard(id);
-      createPublicLinkDropdown("dashboard");
+      createPublicDashboardLink(id);
       cy.signOut();
     });
 
@@ -130,11 +129,11 @@ describe("scenarios > public > dashboard", () => {
         visitDashboard(id);
       });
 
-      openPublicLinkDropdown({ isAdmin: false });
+      cy.icon("share").click();
 
       cy.findByTestId("public-link-popover-content").within(() => {
         cy.findByText("Public link").should("be.visible");
-        cy.findByText(/^http/).should("be.visible");
+        cy.findByTestId("public-link-text").contains(PUBLIC_DASHBOARD_REGEX);
         cy.findByText("Remove public URL").should("not.exist");
       });
     });

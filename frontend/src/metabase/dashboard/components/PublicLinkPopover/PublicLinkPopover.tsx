@@ -68,7 +68,9 @@ export const PublicLinkPopover = ({
             ) : (
               <>
                 <PublicLinkTextContainer>
-                  <Text truncate>{url}</Text>
+                  <Text truncate data-testid="public-link-text">
+                    {url}
+                  </Text>
                 </PublicLinkTextContainer>
                 <PublicLinkCopyButton value={url} />
               </>

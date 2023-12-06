@@ -68,41 +68,33 @@ const setup = ({
 };
 
 describe("DashboardEmbedAction", () => {
-  describe("which label should be rendered", () => {
-    it("should have a `You must enable Embedding` tooltip if embedding is disabled", async () => {
-      setup({
-        isAdmin: true,
-        publicLinksEnabled: true,
-        embeddingEnabled: false,
+  describe("which button and tooltip should be rendered", () => {
+    describe("when user is admin", () => {
+      it("should have a `You must enable Embedding` tooltip if embedding is disabled", async () => {
+        setup({
+          isAdmin: true,
+          publicLinksEnabled: true,
+          embeddingEnabled: false,
+        });
+        userEvent.hover(screen.getByLabelText("share icon"));
+        expect(
+          await screen.findByText("You must enable Embedding in the settings"),
+        ).toBeInTheDocument();
       });
-      userEvent.hover(screen.getByLabelText("share icon"));
-      expect(
-        await screen.findByText("You must enable Embedding in the settings"),
-      ).toBeInTheDocument();
-    });
 
-    it("should have a `Sharing` tooltip if public sharing is enabled", async () => {
-      setup({ isAdmin: true, publicLinksEnabled: true });
-      userEvent.hover(screen.getByLabelText("share icon"));
-      expect(await screen.findByText("Sharing")).toBeInTheDocument();
-    });
+      it("should have a `Sharing` tooltip if public sharing is enabled", async () => {
+        setup({ isAdmin: true, publicLinksEnabled: true });
+        userEvent.hover(screen.getByLabelText("share icon"));
+        expect(await screen.findByText("Sharing")).toBeInTheDocument();
+      });
 
-    it("should have an `Embedding` tooltip if public sharing is disabled", () => {
-      setup({ isAdmin: true, publicLinksEnabled: false });
-      userEvent.hover(screen.getByLabelText("share icon"));
-      expect(screen.getByText("Embedding")).toBeInTheDocument();
-    });
-  });
-
-  describe("whether the button should be rendered", () => {
-    describe("when the user is admin", () => {
-      it("should render the button even if there is no public link", () => {
-        setup({ isAdmin: true, hasPublicLink: false });
-        expect(screen.getByLabelText("share icon")).toBeInTheDocument();
+      it("should have an `Embedding` tooltip if public sharing is disabled", () => {
+        setup({ isAdmin: true, publicLinksEnabled: false });
+        userEvent.hover(screen.getByLabelText("share icon"));
+        expect(screen.getByText("Embedding")).toBeInTheDocument();
       });
     });
-
-    describe("when the user is non-admin", () => {
+    describe("when user is non-admin", () => {
       it("should not render the button if there is no public link", () => {
         setup({
           hasPublicLink: false,
@@ -121,7 +113,14 @@ describe("DashboardEmbedAction", () => {
         expect(screen.queryByLabelText("share icon")).not.toBeInTheDocument();
       });
 
-      // TODO: Test for rendering button for non-admins when a public link is created
+      it("should render the button if public sharing is enabled and there is a public link", () => {
+        setup({
+          hasPublicLink: true,
+          isAdmin: false,
+          publicLinksEnabled: true,
+        });
+        expect(screen.getByLabelText("share icon")).toBeInTheDocument();
+      });
     });
   });
 

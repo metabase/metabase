@@ -1,8 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  createPublicLinkDropdown,
-  openPublicLinkDropdown,
-  openToEmbedModal,
+  createPublicDashboardLink,
+  createPublicQuestionLink,
   restore,
   visitDashboard,
   visitQuestion,
@@ -33,7 +32,7 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
           });
 
           cy.findByTestId("dashboard-embed-button").should("be.disabled");
-          cy.findByTestId("dashboard-embed-button").click({ force: true });
+          cy.findByTestId("dashboard-embed-button").realHover();
           cy.findByRole("tooltip", {
             name: "You must enable Embedding in the settings",
           }).should("be.visible");
@@ -74,14 +73,13 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
           it(`should let the user create a public link for ${resource}`, () => {
             cy.get("@resourceId").then(id => {
+              createPublicResourceLink(resource, id);
               visitResource(resource, id);
             });
 
-            createPublicLinkDropdown(resource);
-
             cy.findByTestId("public-link-popover-content").within(() => {
               cy.findByText("Public link").should("be.visible");
-              cy.findByText(/^http/).should("be.visible");
+              cy.findByTestId("public-link-text").should("be.visible");
               cy.findByText("Remove this public link").should("be.visible");
             });
           });
@@ -100,14 +98,15 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
           it(`should show the embed button if the ${resource} has a public link`, () => {
             cy.get("@resourceId").then(id => {
+              createPublicResourceLink(resource, id);
               visitResource(resource, id);
             });
 
-            createPublicLinkDropdown(resource);
+            cy.icon("share").click();
 
             cy.findByTestId("public-link-popover-content").within(() => {
               cy.findByText("Public link").should("be.visible");
-              cy.findByText(/^http/).should("be.visible");
+              cy.findByTestId("public-link-text").should("be.visible");
               cy.findByText("Remove this public link").should("be.visible");
             });
 
@@ -117,11 +116,11 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
               visitResource(resource, id);
             });
 
-            openPublicLinkDropdown({ isAdmin: false });
+            cy.icon("share").click();
 
             cy.findByTestId("public-link-popover-content").within(() => {
               cy.findByText("Public link").should("be.visible");
-              cy.findByText(/^http/).should("be.visible");
+              cy.findByTestId("public-link-text").should("be.visible");
               cy.findByText("Remove this public link").should("not.exist");
             });
           });
@@ -142,10 +141,7 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
               visitResource(resource, id);
             });
 
-            openToEmbedModal({
-              isAdmin: true,
-              isPublicSharingEnabled: false,
-            });
+            cy.icon("share").click();
 
             cy.get(".Modal--full")
               .findByText("Embed in your application")
@@ -179,6 +175,15 @@ function createResource(resource) {
 
   if (resource === "dashboard") {
     return cy.createDashboard({ name: "Dashboard" });
+  }
+}
+
+function createPublicResourceLink(resource, id) {
+  if (resource === "card") {
+    return createPublicQuestionLink(id);
+  }
+  if (resource === "dashboard") {
+    return createPublicDashboardLink(id);
   }
 }
 
