@@ -31,10 +31,10 @@ import type {
   MetricMetadata,
   MetricDisplayInfo,
   OrderByClause,
+  OrderByClauseDisplayInfo,
   Query,
   SegmentMetadata,
   SegmentDisplayInfo,
-  OrderByClauseDisplayInfo,
   TableDisplayInfo,
   TableMetadata,
 } from "./types";
