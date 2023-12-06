@@ -11,16 +11,14 @@ import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { LOGICAL_OPS, COMPARISON_OPS, resolve } from "./resolver";
 import { useShorthands, adjustCase, adjustOptions } from "./recursive-parser";
 import { tokenize, TOKEN, OPERATOR } from "./tokenizer";
-import type { ErrorWithMessage, MBQLClauseMap } from "./types";
+import type { ErrorWithMessage } from "./types";
 import {
-  MBQL_CLAUSES as MBQL_CLAUSES_CONFIG,
+  MBQL_CLAUSES,
   getMBQLName,
   parseDimension,
   parseMetric,
   parseSegment,
 } from "./index";
-
-const MBQL_CLAUSES = MBQL_CLAUSES_CONFIG as MBQLClauseMap;
 
 type Token = {
   type: number;

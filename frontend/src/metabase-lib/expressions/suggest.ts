@@ -11,7 +11,7 @@ import {
   EDITOR_FK_SYMBOLS,
   EXPRESSION_FUNCTIONS,
   getMBQLName,
-  MBQL_CLAUSES as MBQL_CLAUSES_CONFIG,
+  MBQL_CLAUSES,
 } from "metabase-lib/expressions/config";
 import {
   formatIdentifier,
@@ -20,11 +20,8 @@ import {
 import type {
   HelpText,
   MBQLClauseFunctionConfig,
-  MBQLClauseMap,
 } from "metabase-lib/expressions/types";
 import { getHelpText } from "metabase-lib/expressions/helper-text-strings";
-
-const MBQL_CLAUSES = MBQL_CLAUSES_CONFIG as MBQLClauseMap;
 
 export type Suggestion = {
   type: string;
