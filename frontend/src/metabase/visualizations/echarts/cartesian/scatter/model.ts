@@ -23,9 +23,14 @@ export function getScatterPlotDataset(
       const datum: Record<DataKey, RowValue> = {};
 
       cols.forEach((column, columnIndex) => {
-        datum[getDatasetKey(column, card.id)] = row[columnIndex];
+        const rowValue = row[columnIndex];
+        datum[getDatasetKey(column, card.id)] = rowValue;
 
-        // TODO handle breakouts
+        const breakoutIndex =
+          "breakout" in columnDescs ? columnDescs.breakout.index : undefined;
+        if (breakoutIndex != null) {
+          datum[getDatasetKey(column, card.id, row[breakoutIndex])] = rowValue;
+        }
       });
 
       dataset.push(datum);
