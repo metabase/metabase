@@ -6,10 +6,6 @@ import {
   getNativePermission,
   getSchemasPermission,
 } from "metabase/admin/permissions/utils/graph";
-import {
-  isSchemaEntityId,
-  isTableEntityId,
-} from "metabase/admin/permissions/utils/data-entity-id";
 import type {
   Group,
   GroupsPermissions,
@@ -107,13 +103,8 @@ export function getControlledDatabaseWarningModal(
     getSchemasPermission(permissions, groupId, entityId, "data") !==
     "controlled"
   ) {
-    const entityType = isTableEntityId(entityId)
-      ? t`table`
-      : isSchemaEntityId(entityId)
-      ? t`schema`
-      : t`database`;
     return {
-      title: t`Change access to this ${entityType} to limited?`,
+      title: t`Change access to this database to granular?`,
       confirmButtonText: t`Change`,
       cancelButtonText: t`Cancel`,
     };
