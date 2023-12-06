@@ -21,7 +21,10 @@ import {
   getSortedSeriesModels,
   replaceValues,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
-import { getYAxisSplit } from "metabase/visualizations/echarts/cartesian/model/axis";
+import {
+  getYAxesExtents,
+  getYAxisSplit,
+} from "metabase/visualizations/echarts/cartesian/model/axis";
 
 const SUPPORTED_AUTO_SPLIT_TYPES = ["line", "area", "bar", "combo"];
 
@@ -45,6 +48,7 @@ export const getCardsColumns = (
 export const getCardsSeriesModels = (
   rawSeries: RawSeries,
   cardsColumns: CartesianChartColumns[],
+  settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ) => {
   const hasMultipleCards = rawSeries.length > 1;
@@ -74,6 +78,7 @@ export const getCartesianChartModel = (
   const unsortedSeriesModels = getCardsSeriesModels(
     rawSeries,
     cardsColumns,
+    settings,
     renderingContext,
   );
   const seriesModels = getSortedSeriesModels(unsortedSeriesModels, settings);
@@ -101,6 +106,7 @@ export const getCartesianChartModel = (
     settings,
     isAutoSplitSupported,
   );
+  const yAxisExtents = getYAxesExtents(yAxisSplit, dataset, settings);
 
   const [leftSeriesDataKeys, rightSeriesDataKeys] = yAxisSplit;
   const leftAxisColumn = seriesModels.find(
@@ -118,6 +124,6 @@ export const getCartesianChartModel = (
     yAxisSplit,
     leftAxisColumn,
     rightAxisColumn,
-    extents,
+    yAxisExtents,
   };
 };

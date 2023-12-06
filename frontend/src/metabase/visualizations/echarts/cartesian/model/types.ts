@@ -50,6 +50,8 @@ export type Extent = [number, number];
 export type SeriesExtents = Record<DataKey, Extent>;
 
 export type AxisSplit = [DataKey[], DataKey[]];
+export type AxisExtent = Extent | null;
+export type AxisExtents = [AxisExtent, AxisExtent];
 
 export type CartesianChartModel = {
   dimensionModel: DimensionModel;
@@ -57,7 +59,7 @@ export type CartesianChartModel = {
   dataset: GroupedDataset;
   normalizedDataset: GroupedDataset;
   yAxisSplit: AxisSplit;
-  extents: SeriesExtents;
+  yAxisExtents: AxisExtents;
 
   leftAxisColumn?: DatasetColumn;
   rightAxisColumn?: DatasetColumn;
