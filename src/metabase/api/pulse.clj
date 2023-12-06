@@ -23,6 +23,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.pulse]
+   [metabase.pulse.preview :as preview]
    [metabase.pulse.render :as render]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -274,6 +275,19 @@
                 (binding [render/*include-title*   true
                           render/*include-buttons* true]
                   (render/render-pulse-card-for-display (metabase.pulse/defaulted-timezone card) card result))]])}))
+
+(api/defendpoint GET "/preview_dashboard/:id"
+  "Get HTML rendering of a Dashboard with `id`."
+  [id]
+  {id ms/PositiveInt}
+  (api/read-check :model/Dashboard id)
+  {:status  200
+   :headers {"Content-Type" "text/html"}
+   :body    (do (preview/render-dashboard-to-html-and-open id)
+                (html
+                  [:html
+                   [:body {:style "margin: 0;"}
+                    [:p "opened preview in another tab."]]]))})
 
 (api/defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a Card with `id` and other information."
