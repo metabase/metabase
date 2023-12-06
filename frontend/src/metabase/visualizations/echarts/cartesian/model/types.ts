@@ -1,4 +1,5 @@
 import type { DatasetColumn, RowValue } from "metabase-types/api";
+import type { Insight } from "metabase-types/api/insight";
 
 export type DataKey = string;
 export type VizSettingsKey = string;
@@ -63,4 +64,5 @@ export type CartesianChartModel = {
 
   leftAxisColumn?: DatasetColumn;
   rightAxisColumn?: DatasetColumn;
+  insights: Insight[];
 };

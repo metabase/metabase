@@ -10,22 +10,26 @@ import { getAxesFormatters } from "metabase/visualizations/echarts/cartesian/opt
 
 import { getChartGrid } from "./grid";
 import { getGoalLineSeriesOption } from "./goal-line";
+import { getTrendLineOptionsAndDatasets } from "./trend-line";
 
 export const getCartesianChartOption = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): EChartsOption => {
+  // series option
+  const dataSeriesOptions = buildEChartsSeries(
+    chartModel,
+    settings,
+    renderingContext,
+  );
   const goalSeriesOption = getGoalLineSeriesOption(
     chartModel,
     settings,
     renderingContext,
   );
-  const dataSeriesOption = buildEChartsSeries(
-    chartModel,
-    settings,
-    renderingContext,
-  );
+  const { options: trendSeriesOptions, datasets: trendDatasets } =
+    getTrendLineOptionsAndDatasets(chartModel, settings, renderingContext);
 
   const axesFormatters = getAxesFormatters(
     chartModel,
@@ -33,20 +37,26 @@ export const getCartesianChartOption = (
     renderingContext,
   );
 
+  const seriesOption = [
+    goalSeriesOption,
+    trendSeriesOptions,
+    dataSeriesOptions,
+  ].flatMap(option => option ?? []);
+
+  // dataset option
   const dimensions = [
     chartModel.dimensionModel.dataKey,
     ...chartModel.seriesModels.map(seriesModel => seriesModel.dataKey),
   ];
   const echartsDataset = [
     { source: chartModel.transformedDataset, dimensions },
+    ...(trendDatasets ?? []),
   ];
 
   return {
     grid: getChartGrid(chartModel, settings),
     dataset: echartsDataset,
-    series: goalSeriesOption
-      ? [goalSeriesOption, ...dataSeriesOption]
-      : dataSeriesOption,
+    series: seriesOption,
     ...buildAxes(chartModel, settings, axesFormatters, renderingContext),
   } as EChartsOption;
 };
