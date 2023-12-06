@@ -14,12 +14,16 @@ import {
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import {
+  getDatasetExtents,
   getJoinedCardsDataset,
   getNormalizedDataset,
   getNullReplacerFunction,
   getSortedSeriesModels,
   replaceValues,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
+import { getYAxisSplit } from "metabase/visualizations/echarts/cartesian/model/axis";
+
+const SUPPORTED_AUTO_SPLIT_TYPES = ["line", "area", "bar", "combo"];
 
 export const getCardsColumns = (
   rawSeries: RawSeries,
@@ -83,7 +87,17 @@ export const getCartesianChartModel = (
     dimensionModel.dataKey,
   );
 
-  const yAxisSplit: AxisSplit = [seriesDataKeys, []];
+  const extents = getDatasetExtents(seriesDataKeys, dataset);
+  const isAutoSplitSupported = SUPPORTED_AUTO_SPLIT_TYPES.includes(
+    rawSeries[0].card.display,
+  );
+
+  const yAxisSplit: AxisSplit = getYAxisSplit(
+    seriesModels,
+    extents,
+    settings,
+    isAutoSplitSupported,
+  );
 
   const [leftSeriesDataKeys, rightSeriesDataKeys] = yAxisSplit;
   const leftAxisColumn = seriesModels.find(
