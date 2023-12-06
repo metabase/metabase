@@ -9,7 +9,8 @@
                                                            org.clojure/clojurescript]}
   amalloy/ring-gzip-middleware              {:mvn/version "0.1.4"}              ; Ring middleware to GZIP responses if client can handle it
   babashka/fs                               {:mvn/version "0.4.19"}             ; Portable filesystem operations
-  bigml/histogram                           {:mvn/version "4.1.4"}              ; Histogram data structure
+  bigml/histogram                           {:mvn/version "4.1.4"               ; Histogram data structure
+                                             :exclusions  [junit/junit]}
   buddy/buddy-core                          {:mvn/version "1.11.423"            ; various cryptographic functions
                                              :exclusions  [commons-codec/commons-codec
                                                            org.bouncycastle/bcpkix-jdk15on
@@ -105,7 +106,8 @@
                                              :exclusions  [joda-time/joda-time  ; exclude joda time 2.3 which has outdated timezone information
                                                            org.slf4j/slf4j-api]}
   net.sf.cssbox/cssbox                      {:mvn/version "5.0.1"               ; HTML / CSS rendering
-                                             :exclusions  [org.slf4j/slf4j-api]}
+                                             :exclusions  [org.slf4j/slf4j-api
+                                                           junit/junit]}
   net.thisptr/jackson-jq                    {:mvn/version "1.0.0-preview.20230409"} ; Java implementation of the JQ json query language
   org.apache.commons/commons-compress       {:mvn/version "1.25.0"}             ; compression utils
   org.apache.commons/commons-lang3          {:mvn/version "3.14.0"}             ; helper methods for working with java.lang stuff
