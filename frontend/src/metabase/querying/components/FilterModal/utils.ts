@@ -18,7 +18,7 @@ export function getColumnGroupItems(query: Lib.Query): GroupItem[] {
       const columns = Lib.getColumnsFromColumnGroup(group);
 
       return {
-        key: groupInfo.name ?? "SUM",
+        key: groupInfo.name ?? String(stageIndex),
         group,
         groupInfo,
         columns,
