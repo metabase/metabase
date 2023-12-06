@@ -8,14 +8,12 @@ on:
     paths:
       - '**/deps.edn'
       - '**/package.json'
+  schedule:
+    - cron: '0 5 * * *'
+  manual:
 
 
 jobs:
-  pom:
-    name: Generate pom.xml for Snyk
-    runs-on: ubuntu-22.04
-    steps:
-
   monitor:
     name: Send information to Snyk
     runs-on: ubuntu-22.04
