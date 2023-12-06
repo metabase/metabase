@@ -30,7 +30,7 @@
   :visibility :public
   :type       :string
   :audit      :getter
-  :enabled?   premium-features/enable-whitelabeling?
+  :feature    :whitelabeling
   :default    "Metabase")
 
 (defn application-name-for-setting-descriptions
@@ -371,7 +371,7 @@
   (deferred-tru "By default \"Site Url\" is used in notification links, but can be overridden.")
   :visibility :internal
   :type       :string
-  :enabled?   premium-features/hide-embed-branding?
+  :feature    :whitelabeling
   :audit      :getter)
 
 (defsetting deprecation-notice-version
@@ -383,7 +383,7 @@
 (defsetting loading-message
   (deferred-tru "Message to show while a query is running.")
   :visibility :public
-  :enabled?   premium-features/enable-whitelabeling?
+  :feature    :whitelabeling
   :type       :keyword
   :default    :doing-science
   :audit      :getter)
@@ -395,7 +395,7 @@
     (application-name-for-setting-descriptions))
   :visibility :public
   :type       :json
-  :enabled?   premium-features/enable-whitelabeling?
+  :feature    :whitelabeling
   :default    {}
   :audit      :getter)
 
@@ -404,7 +404,7 @@
   :visibility :public
   :type       :string
   :default    "Lato"
-  :enabled?   premium-features/enable-whitelabeling?
+  :feature    :whitelabeling
   :audit      :getter
   :setter     (fn [new-value]
                   (when new-value
@@ -417,7 +417,7 @@
   :visibility :public
   :type       :json
   :audit      :getter
-  :enabled?   premium-features/enable-whitelabeling?)
+  :feature    :whitelabeling)
 
 (defn application-color
   "The primary color, a.k.a. brand color"
@@ -434,7 +434,7 @@
   :visibility :public
   :type       :string
   :audit      :getter
-  :enabled?   premium-features/enable-whitelabeling?
+  :feature    :whitelabeling
   :default    "app/assets/img/logo.svg")
 
 (defsetting application-favicon-url
@@ -442,7 +442,7 @@
   :visibility :public
   :type       :string
   :audit      :getter
-  :enabled?   premium-features/enable-whitelabeling?
+  :feature    :whitelabeling
   :default    "app/assets/img/favicon.ico")
 
 (defsetting show-metabot
@@ -450,7 +450,7 @@
   :visibility :public
   :type       :boolean
   :audit      :getter
-  :enabled?   premium-features/enable-whitelabeling?
+  :feature    :whitelabeling
   :default    true)
 
 (defsetting show-lighthouse-illustration
@@ -458,7 +458,7 @@
   :visibility :public
   :type       :boolean
   :audit      :getter
-  :enabled?   premium-features/enable-whitelabeling?
+  :feature    :whitelabeling
   :default    true)
 
 (def ^:private help-link-options
