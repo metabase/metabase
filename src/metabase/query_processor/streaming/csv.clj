@@ -26,30 +26,25 @@
 
 (defmethod qp.si/streaming-results-writer :csv
   [_ ^OutputStream os]
-  (let [writer     (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
-        formatters (atom {})]
+  (let [writer             (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
+        ordered-formatters (atom {})]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols results_timezone]} :data} viz-settings]
-        (swap! formatters (constantly (zipmap
-                                        ordered-cols
-                                        (map (fn [col]
-                                               (p.common/get-format results_timezone col viz-settings))
-                                             ordered-cols))))
+        (swap! ordered-formatters (constantly
+                                    (mapv (fn [col]
+                                            (p.common/get-format results_timezone col viz-settings))
+                                          ordered-cols)))
         (csv/write-csv writer [(map (some-fn :display_name :name) ordered-cols)])
         (.flush writer))
 
-      (write-row! [_ row _row-num cols {:keys [output-order]}]
-        (let [[ordered-row
-               ordered-cols] (if output-order
-                               (let [row-v  (into [] row)
-                                     cols-v (into [] cols)]
-                                 [(for [i output-order] (row-v i))
-                                  (for [i output-order] (cols-v i))])
-                               [row cols])]
-          (csv/write-csv writer [(map (fn [c r]
-                                        (let [formatter (@formatters c)]
-                                          (formatter (common/format-value r))))
-                                      ordered-cols ordered-row)])
+      (write-row! [_ row _row-num _ {:keys [output-order]}]
+        (let [ordered-row (if output-order
+                            (let [row-v (into [] row)]
+                              (for [i output-order] (row-v i)))
+                            row)]
+          (csv/write-csv writer [(map (fn [formatter r]
+                                        (formatter (common/format-value r)))
+                                      @ordered-formatters ordered-row)])
           (.flush writer)))
 
       (finish! [_ _]
