@@ -43,7 +43,7 @@ export const ParameterContainer = styled.div<ParameterContainerProps>`
   border-radius: 0.5rem;
   cursor: pointer;
   font-weight: bold;
-  width: 170px;
+  min-width: 170px;
   margin-right: 0.5rem;
   margin-bottom: 0.5rem;
   padding: 0.5rem;
