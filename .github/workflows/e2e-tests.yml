@@ -141,7 +141,9 @@ jobs:
           --env grepTags=@OSS,grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
-          --record
+          --record \
+          --group ${{ matrix.name }} \
+          --ci-build-id ${{ github.sha }}
         env:
           TERM: xterm
 
@@ -152,7 +154,9 @@ jobs:
           --env grepTags="@slow",grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
-          --record
+          --record \
+          --group ${{ matrix.name }} \
+          --ci-build-id ${{ github.sha }}
         env:
           TERM: xterm
 
@@ -162,7 +166,10 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags="@flaky",grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
-          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
+          --record \
+          --group ${{ matrix.name }} \
+          --ci-build-id ${{ github.sha }}
 
       - name: Run EE Cypress tests on ${{ matrix.name }}
         if: matrix.context == 'folder' && github.event_name != 'schedule'
@@ -171,9 +178,9 @@ jobs:
           --env grepTags="-@slow+-@mongo+-@flaky --@quarantine",grepOmitFiltered=true \
           --folder ${{ matrix.name }} \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
+          --record \
           --group ${{ matrix.name }} \
-          --ci-build-id ${{ github.sha }} \
-          --record
+          --ci-build-id ${{ github.sha }}
         env:
           TERM: xterm
 
@@ -184,7 +191,9 @@ jobs:
           --env grepTags="@mongo --@quarantine",grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
-          --record
+          --record \
+          --group ${{ matrix.name }} \
+          --ci-build-id ${{ github.sha }}
         env:
           CYPRESS_QA_DB_MONGO: true
 
