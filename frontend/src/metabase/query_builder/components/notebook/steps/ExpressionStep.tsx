@@ -5,12 +5,13 @@ import { ClauseStep } from "./ClauseStep";
 
 const ExpressionStep = ({
   color,
-  query: legacyQuery,
   updateQuery,
   isLastOpened,
   reportTimezone,
   readOnly,
+  step,
 }: NotebookStepUiComponentProps): JSX.Element => {
+  const { query: legacyQuery } = step;
   const items = Object.entries(legacyQuery.expressions()).map(
     ([name, expression]) => ({ name, expression }),
   );
