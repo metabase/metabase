@@ -37,6 +37,13 @@ jobs:
         id: branch_info
         with:
           script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'eyes',
+            });
+
             // Example: @metabase-bot backport release-x.40.x
             const [_botName, _command, targetBranch] = context.payload.comment.body.split(" ");
             console.log(`Target branch is ${targetBranch}`);
