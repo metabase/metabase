@@ -92,21 +92,22 @@
         (chart-type nil "display-type is %s" display-type)
 
         (and (some? maybe-dashcard)
-             (pos? (count (dashboard-card/dashcard->multi-cards maybe-dashcard)))
-             (not (#{:combo} display-type)))
-        (chart-type :multiple "result has multiple card semantics, a multiple chart")
+             (pos? (count (dashboard-card/dashcard->multi-cards maybe-dashcard))))
+        (chart-type :isomorphic "result has multiple card semantics, a multiple chart")
 
         ;; for scalar/smartscalar, the display-type might actually be :line, so we can't have line above
         (and (not (contains? #{:progress :gauge} display-type))
              (= @col-sample-count @row-sample-count 1))
         (chart-type :scalar "result has one row and one column")
 
-        (#{:scalar
-           :smartscalar
-           :line
+        (#{:line
            :area
            :bar
-           :combo
+           :combo} display-type)
+        (chart-type :isomorphic "display-type is %s" display-type)
+
+        (#{:scalar
+           :smartscalar
            :row
            :funnel
            :progress
