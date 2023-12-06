@@ -107,7 +107,7 @@ export interface NativeQueryForm {
 
 export type SingleSeries = {
   card: Card;
-} & Dataset;
+} & Pick<Dataset, "data" | "error">;
 
 export type RawSeries = SingleSeries[];
 export type TransformedSeries = RawSeries & { _raw: Series };

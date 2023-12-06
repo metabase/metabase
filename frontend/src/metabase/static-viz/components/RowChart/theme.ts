@@ -1,4 +1,4 @@
-import type { ColorGetter } from "metabase/static-viz/lib/colors";
+import type { ColorGetter } from "metabase/visualizations/types";
 import type { RowChartTheme } from "metabase/visualizations/shared/components/RowChart/types";
 
 export const getStaticChartTheme = (
