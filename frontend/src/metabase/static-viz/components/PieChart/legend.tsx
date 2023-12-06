@@ -5,6 +5,12 @@ import type { PieChartModel } from "metabase/visualizations/echarts/pie/model/ty
 import { calculateLegendRows } from "../Legend/utils";
 import { Legend } from "../Legend";
 
+const FONT = {
+  lineHeight: 20,
+  size: 14,
+  weight: 700,
+};
+
 export function getPieChartLegend(
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
@@ -25,9 +31,9 @@ export function getPieChartLegend(
       color: s.color,
     })),
     width,
-    24,
-    18,
-    400,
+    FONT.lineHeight,
+    FONT.size,
+    FONT.weight,
   );
   if (!legendRows) {
     throw Error("Error calculating legend rows");
@@ -38,7 +44,12 @@ export function getPieChartLegend(
   return {
     legendHeight,
     Legend: () => (
-      <Legend items={items} top={top} fontSize={18} fontWeight={400} />
+      <Legend
+        items={items}
+        top={top}
+        fontSize={FONT.size}
+        fontWeight={FONT.weight}
+      />
     ),
   };
 }

@@ -7,6 +7,7 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 
+import { getTextColorForBackground } from "metabase/static-viz/lib/colors";
 import type { PieChartModel, PieSlice } from "../model/types";
 import type { PieChartFormatters } from "../format";
 import { SUNBURST_SERIES_OPTION, TOTAL_GRAPHIC_OPTION } from "./constants";
@@ -85,6 +86,9 @@ export function getPieChartOption(
         value: s.value,
         name: s.key,
         itemStyle: { color: s.color },
+        label: {
+          color: getTextColorForBackground(s.color, renderingContext.getColor),
+        },
       })),
     },
   };

@@ -3,7 +3,9 @@ import { t } from "ttag";
 import { Group } from "@visx/group";
 import { Pie } from "@visx/shape";
 import { Text } from "@visx/text";
-import { getTextColorForBackground } from "metabase/lib/colors";
+
+import { getTextColorForBackground } from "metabase/static-viz/lib/colors";
+
 import { formatNumber, formatPercent } from "../../lib/numbers";
 import { DIMENSION_ACCESSORS } from "../../constants/accessors";
 

@@ -6,13 +6,10 @@ import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
 import { getPieChartOption } from "metabase/visualizations/echarts/pie/option";
 import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/format";
+import { DIMENSIONS } from "metabase/visualizations/echarts/pie/constants";
 
 import { computeStaticPieChartSettings } from "./setttings";
 import { getPieChartLegend } from "./legend";
-
-const PADDING_TOP = 16; // TODO confirm with design
-const WIDTH = 540;
-const HEIGHT = 360;
 
 export function PieChart({
   rawSeries,
@@ -43,15 +40,15 @@ export function PieChart({
     chartModel,
     formatters,
     computedVizSettings,
-    WIDTH,
-    PADDING_TOP,
+    DIMENSIONS.sideLen,
+    DIMENSIONS.paddingTop,
   );
 
   const chart = init(null, null, {
     renderer: "svg",
     ssr: true,
-    width: WIDTH,
-    height: HEIGHT,
+    width: DIMENSIONS.sideLen,
+    height: DIMENSIONS.sideLen,
   });
 
   chart.setOption(option);
@@ -59,10 +56,13 @@ export function PieChart({
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString());
 
   return (
-    <svg width={WIDTH} height={PADDING_TOP + HEIGHT + legendHeight}>
+    <svg
+      width={DIMENSIONS.sideLen}
+      height={DIMENSIONS.sideLen + DIMENSIONS.paddingTop + legendHeight}
+    >
       <Legend />
       <Group
-        top={PADDING_TOP + legendHeight}
+        top={DIMENSIONS.paddingTop + legendHeight}
         dangerouslySetInnerHTML={{ __html: chartSvg }}
       ></Group>
     </svg>
