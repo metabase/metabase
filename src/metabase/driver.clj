@@ -316,6 +316,12 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti describe-table-indexes
+  "Returns a set of field names that are either indexed or the 1st column in a composite index."
+  {:added "0.49.0" :arglists '([driver database table])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti escape-entity-name-for-metadata
   "escaping for when calling `.getColumns` or `.getTables` on table names or schema names. Useful for when a database
   driver has difference escaping rules for table or schema names when used from metadata.
@@ -532,7 +538,10 @@
     :connection-impersonation-requires-role
 
     ;; Does the driver require specifying a collection (table) for native queries? (mongo)
-    :native-requires-specified-collection})
+    :native-requires-specified-collection
+
+    ;; Does the driver support column(s) indexing
+    :indexing})
 
 
 (defmulti supports?
@@ -583,7 +592,8 @@
                               :date-arithmetics                       true
                               :temporal-extract                       true
                               :convert-timezone                       false
-                              :test/jvm-timezone-setting              true}]
+                              :test/jvm-timezone-setting              true
+                              :indexing                               true}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 (defmulti ^String escape-alias
