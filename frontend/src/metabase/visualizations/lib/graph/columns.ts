@@ -1,18 +1,19 @@
 import { isNotNull } from "metabase/lib/types";
+import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
 import type {
-  RemappingHydratedChartData,
-  RemappingHydratedDatasetColumn,
-} from "metabase/visualizations/types";
-import type { DatasetData, VisualizationSettings } from "metabase-types/api";
+  DatasetData,
+  VisualizationSettings,
+  DatasetColumn,
+} from "metabase-types/api";
 
 export type ColumnDescriptor = {
   index: number;
   column: RemappingHydratedDatasetColumn;
 };
 
-export const getColumnDescriptors = (
+export const getColumnDescriptors = <TColumn extends DatasetColumn>(
   columnNames: string[],
-  columns: RemappingHydratedDatasetColumn[],
+  columns: TColumn[],
 ): ColumnDescriptor[] => {
   return columnNames.map(columnName => {
     const index = columns.findIndex(column => column.name === columnName);
@@ -54,20 +55,22 @@ export type MultipleMetricsChartColumns = {
   metrics: ColumnDescriptor[];
 };
 
-export type ChartColumns = BreakoutChartColumns | MultipleMetricsChartColumns;
+export type CartesianChartColumns =
+  | BreakoutChartColumns
+  | MultipleMetricsChartColumns;
 
-export const getChartColumns = (
-  data: RemappingHydratedChartData,
-  visualizationSettings: VisualizationSettings,
-): ChartColumns => {
+export const getCartesianChartColumns = (
+  columns: RemappingHydratedDatasetColumn[],
+  settings: Pick<VisualizationSettings, "graph.dimensions" | "graph.metrics">,
+): CartesianChartColumns => {
   const [dimension, breakout] = getColumnDescriptors(
-    (visualizationSettings["graph.dimensions"] ?? []).filter(isNotNull),
-    data.cols,
+    (settings["graph.dimensions"] ?? []).filter(isNotNull),
+    columns,
   );
 
   const metrics = getColumnDescriptors(
-    (visualizationSettings["graph.metrics"] ?? []).filter(isNotNull),
-    data.cols,
+    (settings["graph.metrics"] ?? []).filter(isNotNull),
+    columns,
   );
 
   if (breakout) {
