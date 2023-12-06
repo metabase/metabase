@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import type { DatasetColumn, RawSeries, RowValue } from "metabase-types/api";
 import type {
   DataKey,
@@ -99,7 +100,18 @@ export const getJoinedCardsDataset = (
   rawSeries: RawSeries,
   cardsColumns: CartesianChartColumns[],
 ): Record<DataKey, RowValue>[] => {
+  if (rawSeries.length === 0 || cardsColumns.length === 0) {
+    return [];
+  }
+
   const groupedData = new Map<RowValue, Record<DataKey, RowValue>>();
+  const [mainCardColumns] = cardsColumns;
+  const [mainSeries] = rawSeries;
+
+  const dimensionDataKey = getDatasetKey(
+    mainCardColumns.dimension.column,
+    mainSeries.card.id,
+  );
 
   rawSeries.forEach((cardSeries, index) => {
     const {
@@ -111,8 +123,6 @@ export const getJoinedCardsDataset = (
     const cardId = card.id;
 
     const dimensionIndex = columns.dimension.index;
-    const dimensionColumn = cols[dimensionIndex];
-    const dimensionDataKey = getDatasetKey(dimensionColumn, cardId);
 
     const breakoutIndex =
       "breakout" in columns ? columns.breakout.index : undefined;
@@ -144,6 +154,15 @@ export const applySquareRootScaling = (value: RowValue): RowValue => {
   return value;
 };
 
+/**
+ * Modifies the dataset for visualization according to the specified visualization settings.
+ *
+ * @param {Record<DataKey, RowValue>[]} dataset The dataset to be transformed.
+ * @param {SeriesModel[]} seriesModels Array of series models.
+ * @param {ComputedVisualizationSettings} settings Computed visualization settings.
+ * @param {DimensionModel} dimensionModel The dimension model.
+ * @returns {Record<DataKey, RowValue>[]} A transformed dataset.
+ */
 export const getTransformedDataset = (
   dataset: Record<DataKey, RowValue>[],
   seriesModels: SeriesModel[],
@@ -174,7 +193,35 @@ export const getTransformedDataset = (
     );
   }
 
+  if (settings["graph.x_axis.scale"] === "timeseries") {
+    transformedDataset = sortTimeSeriesDataset(
+      transformedDataset,
+      dimensionModel.dataKey,
+    );
+  }
   return transformedDataset;
+};
+
+/**
+ * Sorts a dataset by the specified time-series dimension.
+ * @param {Record<DataKey, RowValue>[]} dataset The dataset to be sorted.
+ * @param {DataKey} dimensionKey The time-series dimension key.
+ * @returns A sorted dataset.
+ */
+const sortTimeSeriesDataset = (
+  dataset: Record<DataKey, RowValue>[],
+  dimensionKey: DataKey,
+): Record<DataKey, RowValue>[] => {
+  return dataset.sort((left, right) => {
+    const leftValue = left[dimensionKey];
+    const rightValue = right[dimensionKey];
+
+    if (typeof leftValue === "string" && typeof rightValue === "string") {
+      return dayjs(leftValue).valueOf() - dayjs(rightValue).valueOf();
+    }
+
+    return 0;
+  });
 };
 
 export const getMetricDisplayValueGetter = (
