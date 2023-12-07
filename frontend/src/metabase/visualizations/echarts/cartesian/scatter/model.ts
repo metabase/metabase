@@ -1,7 +1,8 @@
 import type { RawSeries, RowValue } from "metabase-types/api";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
-import type { DataKey } from "../cartesian/model/types";
-import { getDatasetKey } from "../cartesian/model/dataset";
+
+import type { DataKey } from "../model/types";
+import { getDatasetKey } from "../model/dataset";
 
 export function getScatterPlotDataset(
   rawSeries: RawSeries,
@@ -14,6 +15,8 @@ export function getScatterPlotDataset(
       card,
       data: { rows, cols },
     } = cardSeries;
+    // will be used for breakouts later
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const columnDescs = cardsColumns[index];
 
     rows.forEach(row => {

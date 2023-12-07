@@ -23,7 +23,7 @@ import {
   getYAxesExtents,
   getYAxisSplit,
 } from "metabase/visualizations/echarts/cartesian/model/axis";
-import { getScatterPlotDataset } from "metabase/visualizations/echarts/scatter/model";
+import { getScatterPlotDataset } from "metabase/visualizations/echarts/cartesian/scatter/model";
 
 const SUPPORTED_AUTO_SPLIT_TYPES = ["line", "area", "bar", "combo"];
 

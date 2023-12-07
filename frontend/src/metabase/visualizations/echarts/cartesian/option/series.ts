@@ -12,9 +12,11 @@ import type {
 import type { SeriesSettings } from "metabase-types/api";
 import { isNotNull } from "metabase/lib/types";
 import { getMetricDisplayValueGetter } from "metabase/visualizations/echarts/cartesian/model/dataset";
+
+import { buildEChartsScatterSeries } from "../scatter/series";
 import { getSeriesYAxisIndex } from "./utils";
 
-const buildEChartsLabelOptions = (
+export const buildEChartsLabelOptions = (
   seriesModel: SeriesModel,
   settings: ComputedVisualizationSettings,
   { getColor, fontFamily, formatValue }: RenderingContext,
@@ -122,29 +124,6 @@ const buildEChartsLineAreaSeries = (
     },
   };
 };
-
-function buildEChartsScatterSeries(
-  seriesModel: SeriesModel,
-  seriesSettings: SeriesSettings,
-  settings: ComputedVisualizationSettings,
-  dimensionDataKey: string,
-  yAxisIndex: number,
-  renderingContext: RenderingContext,
-): RegisteredSeriesOption["scatter"] {
-  return {
-    type: "scatter",
-    yAxisIndex,
-    symbolSize: 8, // TODO update this and other styles
-    encode: {
-      y: seriesModel.dataKey,
-      x: dimensionDataKey,
-    },
-    label: buildEChartsLabelOptions(seriesModel, settings, renderingContext),
-    itemStyle: {
-      color: seriesModel.color,
-    },
-  };
-}
 
 export const buildEChartsSeries = (
   chartModel: CartesianChartModel,
