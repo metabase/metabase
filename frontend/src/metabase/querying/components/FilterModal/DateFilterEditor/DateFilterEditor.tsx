@@ -1,6 +1,7 @@
 import type { MouseEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
+import * as Lib from "metabase-lib";
 import { Button, Flex, Grid, Popover, Text } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
@@ -13,10 +14,9 @@ import type {
 } from "metabase/querying/components/DatePicker";
 import { DatePicker } from "metabase/querying/components/DatePicker";
 import { useDateFilter } from "metabase/querying/hooks/use-date-filter";
-import * as Lib from "metabase-lib";
 import type { FilterPickerWidgetProps } from "../types";
 import { MODAL_Z_INDEX, SECONDARY_SHORTCUTS } from "./constants";
-import { getOptionsInfo } from "./utils";
+import { getFilterName, getSelectedOption, getVisibleOptions } from "./utils";
 import { ClearIcon } from "./DateFilterEditor.styled";
 
 export function DateFilterEditor({
@@ -35,12 +35,6 @@ export function DateFilterEditor({
     return getColumnIcon(column);
   }, [column]);
 
-  const filterName = useMemo(() => {
-    return filter
-      ? Lib.filterArgsDisplayName(query, stageIndex, filter)
-      : undefined;
-  }, [query, stageIndex, filter]);
-
   const { value, availableOperators, availableUnits, getFilterClause } =
     useDateFilter({
       query,
@@ -49,16 +43,15 @@ export function DateFilterEditor({
       filter,
     });
 
-  const { visibleOptions, selectedOption } = useMemo(
-    () => getOptionsInfo(value),
-    [value],
-  );
+  const filterName = getFilterName(query, stageIndex, filter);
+  const visibleOptions = getVisibleOptions(value);
+  const selectedOption = getSelectedOption(value);
 
   const handleChange = (value: DatePickerValue | undefined) => {
     onChange(value ? getFilterClause(value) : undefined);
   };
 
-  const handleToggle = (option: ShortcutOption) => {
+  const handleOptionToggle = (option: ShortcutOption) => {
     if (option.shortcut !== selectedOption?.shortcut) {
       handleChange(option.value);
     } else {
@@ -85,7 +78,7 @@ export function DateFilterEditor({
                 key={option.shortcut}
                 variant={isSelected ? "outline" : "default"}
                 aria-selected={isSelected}
-                onClick={() => handleToggle(option)}
+                onClick={() => handleOptionToggle(option)}
               >
                 {option.label}
               </Button>

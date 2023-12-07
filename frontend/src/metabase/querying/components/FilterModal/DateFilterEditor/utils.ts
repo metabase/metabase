@@ -1,15 +1,24 @@
+import * as Lib from "metabase-lib";
 import { getShortcutOptions } from "metabase/querying/components/DatePicker";
-import type {
-  DatePickerValue,
-  ShortcutOption,
-} from "metabase/querying/components/DatePicker";
+import type { DatePickerValue } from "metabase/querying/components/DatePicker";
 import { MAIN_SHORTCUTS } from "./constants";
 
-export function getSelectedOption(
-  options: ShortcutOption[],
-  value: DatePickerValue | undefined,
+export function getFilterName(
+  query: Lib.Query,
+  stageIndex: number,
+  filter: Lib.FilterClause | undefined,
 ) {
-  return options.find(
+  return filter
+    ? Lib.filterArgsDisplayName(query, stageIndex, filter)
+    : undefined;
+}
+
+function getAvailableOptions() {
+  return getShortcutOptions(MAIN_SHORTCUTS);
+}
+
+export function getSelectedOption(value: DatePickerValue | undefined) {
+  return getAvailableOptions().find(
     option =>
       value?.type === "relative" &&
       option.value.value === value.value &&
@@ -17,10 +26,8 @@ export function getSelectedOption(
   );
 }
 
-export function getOptionsInfo(value: DatePickerValue | undefined) {
-  const availableOptions = getShortcutOptions(MAIN_SHORTCUTS);
-  const selectedOption = getSelectedOption(availableOptions, value);
-  const visibleOptions =
-    value == null || selectedOption != null ? availableOptions : [];
-  return { visibleOptions, selectedOption };
+export function getVisibleOptions(value: DatePickerValue | undefined) {
+  return value == null || getSelectedOption(value) != null
+    ? getAvailableOptions()
+    : [];
 }
