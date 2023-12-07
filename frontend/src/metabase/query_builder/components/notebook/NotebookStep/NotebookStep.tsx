@@ -3,7 +3,9 @@ import { t } from "ttag";
 import cx from "classnames";
 
 import { color as c } from "metabase/lib/colors";
+import { useSelector } from "metabase/lib/redux";
 import { useToggle } from "metabase/hooks/use-toggle";
+import { getMetadata } from "metabase/selectors/metadata";
 
 import { Icon } from "metabase/core/components/Icon";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
@@ -55,6 +57,7 @@ function NotebookStep({
   updateQuery,
   readOnly = false,
 }: NotebookStepProps) {
+  const metadata = useSelector(getMetadata);
   const [isPreviewOpen, { turnOn: openPreview, turnOff: closePreview }] =
     useToggle(false);
 
@@ -94,11 +97,12 @@ function NotebookStep({
       step.itemIndex,
       step.topLevelQuery,
       step.stageIndex,
+      metadata,
     );
     if (reverted) {
       updateQuery(reverted); // TODO: this will work when step.revert returns Query
     }
-  }, [step, updateQuery]);
+  }, [metadata, step, updateQuery]);
 
   const {
     title,

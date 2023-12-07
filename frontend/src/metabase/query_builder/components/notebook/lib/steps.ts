@@ -2,6 +2,7 @@ import _ from "underscore";
 
 import * as Lib from "metabase-lib";
 import type { Query } from "metabase-lib/types";
+import type Metadata from "metabase-lib/metadata/Metadata";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
@@ -142,7 +143,11 @@ const STEPS: NotebookStepDef[] = [
 /**
  * Returns an array of "steps" to be displayed in the notebook for one "stage" (nesting) of a query
  */
-export function getQuestionSteps(question: Question, openSteps: OpenSteps) {
+export function getQuestionSteps(
+  question: Question,
+  metadata: Metadata,
+  openSteps: OpenSteps,
+) {
   const allSteps: NotebookStep[] = [];
 
   if (question.isStructured()) {
@@ -168,6 +173,7 @@ export function getQuestionSteps(question: Question, openSteps: OpenSteps) {
         topLevelQuery,
         stageQuery,
         stageIndex,
+        metadata,
         openSteps,
       );
       // append actions to last step of previous stage
@@ -194,6 +200,7 @@ function getStageSteps(
   topLevelQuery: Query,
   stageQuery: StructuredQuery,
   stageIndex: number,
+  metadata: Metadata,
   openSteps: OpenSteps,
 ) {
   const getId = (step: NotebookStepDef, itemIndex: number | null) => {
@@ -218,22 +225,52 @@ function getStageSteps(
       itemIndex: itemIndex,
       topLevelQuery,
       query: stageQuery,
-      valid: STEP.valid(stageQuery, itemIndex, topLevelQuery, stageIndex),
-      active: STEP.active(stageQuery, itemIndex, topLevelQuery, stageIndex),
+      valid: STEP.valid(
+        stageQuery,
+        itemIndex,
+        topLevelQuery,
+        stageIndex,
+        metadata,
+      ),
+      active: STEP.active(
+        stageQuery,
+        itemIndex,
+        topLevelQuery,
+        stageIndex,
+        metadata,
+      ),
       visible:
-        STEP.valid(stageQuery, itemIndex, topLevelQuery, stageIndex) &&
+        STEP.valid(
+          stageQuery,
+          itemIndex,
+          topLevelQuery,
+          stageIndex,
+          metadata,
+        ) &&
         !!(
-          STEP.active(stageQuery, itemIndex, topLevelQuery, stageIndex) ||
-          openSteps[id]
+          STEP.active(
+            stageQuery,
+            itemIndex,
+            topLevelQuery,
+            stageIndex,
+            metadata,
+          ) || openSteps[id]
         ),
       testID: getTestId(STEP, itemIndex),
       revert: STEP.revert
         ? (query: StructuredQuery) =>
             STEP.revert
-              ? STEP.revert(query, itemIndex, topLevelQuery, stageIndex)
+              ? STEP.revert(
+                  query,
+                  itemIndex,
+                  topLevelQuery,
+                  stageIndex,
+                  metadata,
+                )
               : null
         : null,
-      clean: query => STEP.clean(query, itemIndex, topLevelQuery, stageIndex),
+      clean: query =>
+        STEP.clean(query, itemIndex, topLevelQuery, stageIndex, metadata),
       // `actions`, `previewQuery`, `next` and `previous` will be set later
       actions: [],
       previewQuery: null,
@@ -292,6 +329,7 @@ function getStageSteps(
         step.itemIndex,
         topLevelQuery,
         step.stageIndex,
+        metadata,
       );
     }
   }

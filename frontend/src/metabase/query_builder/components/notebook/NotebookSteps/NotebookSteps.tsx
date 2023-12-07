@@ -1,8 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
 
+import { useSelector } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
+
 import * as Lib from "metabase-lib";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-
 import type { Query } from "metabase-lib/types";
 import type Question from "metabase-lib/Question";
 
@@ -41,6 +43,7 @@ function NotebookSteps({
   updateQuestion,
   readOnly = false,
 }: NotebookStepsProps) {
+  const metadata = useSelector(getMetadata);
   const [openSteps, setOpenSteps] = useState<OpenSteps>(
     getInitialOpenSteps(question, readOnly),
   );
@@ -50,8 +53,8 @@ function NotebookSteps({
     if (!question) {
       return [];
     }
-    return getQuestionSteps(question, openSteps);
-  }, [question, openSteps]);
+    return getQuestionSteps(question, metadata, openSteps);
+  }, [metadata, question, openSteps]);
 
   const handleStepOpen = useCallback((id: string) => {
     setOpenSteps(openSteps => ({ ...openSteps, [id]: true }));
