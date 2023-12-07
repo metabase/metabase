@@ -364,7 +364,7 @@
   [query]
   (if (= 1 (count (:stages query)))
     query
-    (update query :stages (comp vec butlast))))
+    (update query :stages pop)))
 
 (mu/defn drop-stage-if-empty :- ::lib.schema/query
   "Drops the final stage in the pipeline IF the stage is empty of clauses, otherwise no-op"
