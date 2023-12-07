@@ -259,13 +259,17 @@
   (let [result (get m k ::not-found)]
     (if-not (= result ::not-found)
       result
-      (throw (ex-info (str "Unable to find " (pr-str k) " in map.")
+      (throw (ex-info (str "Unable to find key " (pr-str k) " in map.")
                       {:m m
                        :k k})))))
 
 (defmethod ->pMBQL :aggregation
-  [[tag value opts]]
-  (lib.options/ensure-uuid [tag opts (get-or-throw! *legacy-index->pMBQL-uuid* value)]))
+  [[tag aggregation-index opts, :as clause]]
+  (lib.options/ensure-uuid
+   [tag opts (or (get *legacy-index->pMBQL-uuid* aggregation-index)
+                 (throw (ex-info (str "Error converting :aggregation reference: no aggregation at index "
+                                      aggregation-index)
+                                 {:clause clause})))]))
 
 (defmethod ->pMBQL :aggregation-options
   [[_tag aggregation options]]

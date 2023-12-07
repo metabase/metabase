@@ -127,6 +127,7 @@ function MainNavbarView({
             onSelect={onItemSelect}
             TreeNode={SidebarCollectionLink}
             role="tree"
+            aria-label="collection-tree"
           />
         </SidebarSection>
 
