@@ -1,15 +1,11 @@
 import type { RegisteredSeriesOption } from "echarts/types/dist/shared";
 
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/visualizations/types";
+import type { RenderingContext } from "metabase/visualizations/types";
 
 import type { SeriesModel } from "../model/types";
 
 export function buildEChartsScatterSeries(
   seriesModel: SeriesModel,
-  settings: ComputedVisualizationSettings,
   dimensionDataKey: string,
   yAxisIndex: number,
   renderingContext: RenderingContext,
