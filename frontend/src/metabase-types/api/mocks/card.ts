@@ -32,6 +32,7 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   last_query_start: null,
   average_query_time: null,
   archived: false,
+  enable_embedding: false,
   ...opts,
 });
 
