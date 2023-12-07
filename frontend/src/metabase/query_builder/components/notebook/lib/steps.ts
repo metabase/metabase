@@ -283,7 +283,7 @@ function getStageSteps(
     }),
   );
 
-  let previewQuery: StructuredQuery | null = stageQuery;
+  let previewQuery: Query | null = topLevelQuery;
 
   let actions = [];
   // iterate over steps in reverse so we can revert query for previewing and accumulate valid actions
@@ -312,9 +312,9 @@ function getStageSteps(
     // revert the previewQuery for this step
     if (step.revert && previewQuery) {
       previewQuery = step.revert(
-        previewQuery,
+        stageQuery,
         step.itemIndex,
-        topLevelQuery,
+        previewQuery,
         step.stageIndex,
         metadata,
       );
