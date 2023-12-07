@@ -556,15 +556,16 @@
                               (:name table)
                               (str (:schema table) "." (:name table)))]
       (try
-        (driver/insert-into! (driver.u/database->driver database)
-                             (:id database)
-                             schema+table-name
-                             table-col-names
-                             (parse-rows rows))
+        (let [parsed-rows (parse-rows rows)]
+          (driver/insert-into! (driver.u/database->driver database)
+                               (:id database)
+                               schema+table-name
+                               table-col-names
+                               parsed-rows)
+          {:row-count (count parsed-rows)})
         (catch Throwable e
           ;; TODO: insert rows failure handling
-          (throw (ex-info (ex-message e) {:status-code 400}))))))
-  true)
+          (throw (ex-info (ex-message e) {:status-code 400})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 public interface                                               |

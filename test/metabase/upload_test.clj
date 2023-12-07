@@ -1089,16 +1089,18 @@
                                "3,Darth Vader"]
                               (str (mt/random-name) ".csv"))
            is-upload          true}}]
-  (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
-    (mt/with-current-user user-id
-      (mt/dataset (basic-db-definition (mt/random-name))
-        (let [tables (t2/select :model/Table :db_id (mt/id))
-              table (first tables)]
-          (assert (= (count tables) 1))
-          (t2/update! :model/Table (:id table) {:is_upload is-upload})
-          (@#'upload/append-csv! {:table-id (or table-id (:id table))
-                                  :file     file})))))
-  (io/delete-file file))
+  (try
+    (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
+      (mt/with-current-user user-id
+        (mt/dataset (basic-db-definition (mt/random-name))
+          (let [tables (t2/select :model/Table :db_id (mt/id))
+                table (first tables)]
+            (assert (= (count tables) 1))
+            (t2/update! :model/Table (:id table) {:is_upload is-upload})
+            (@#'upload/append-csv! {:table-id (or table-id (:id table))
+                                    :file     file})))))
+    (finally
+      (io/delete-file file))))
 
 (defn catch-ex-info* [f]
   (try
@@ -1113,7 +1115,8 @@
 (deftest can-append-test
   (mt/test-driver :h2
     (testing "Happy path"
-      (is (some? (append-csv-with-defaults!))))
+      (is (= {:row-count 2}
+             (append-csv-with-defaults!))))
     (testing "Even if the uploads database, schema and table prefix is not set, appends succeed"
       (mt/with-temporary-setting-values [uploads-database-id nil
                                          uploads-schema-name nil
@@ -1162,7 +1165,7 @@
             (let [table (t2/select-one :model/Table :db_id (mt/id))
                   _     (t2/update! :model/Table (:id table) {:is_upload true})
                   file  (csv-file-with csv-rows (mt/random-name))]
-              (is (true? (upload/append-csv! {:file     file
+              (is (some? (upload/append-csv! {:file     file
                                               :table-id (:id table)})))
               (testing "Check the data was uploaded into the table correctly"
                 (is (= [[1 "Obi-Wan Kenobi"]
@@ -1218,7 +1221,7 @@
             (let [table (t2/select-one :model/Table :db_id (mt/id))
                   _     (t2/update! :model/Table (:id table) {:is_upload true})
                   file  (csv-file-with csv-rows (mt/random-name))]
-              (is (true? (upload/append-csv! {:file     file
+              (is (some? (upload/append-csv! {:file     file
                                               :table-id (:id table)})))
               (testing "Check the data was uploaded into the table correctly"
                 (is (= [[1 1000000 1.0 "some_text" false "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z"]
@@ -1236,8 +1239,9 @@
             (let [table (t2/select-one :model/Table :db_id (mt/id))
                   _     (t2/update! :model/Table (:id table) {:is_upload true})
                   file  (csv-file-with csv-rows (mt/random-name))]
-              (is (true? (upload/append-csv! {:file     file
-                                              :table-id (:id table)})))
+              (is (= {:row-count 0}
+                     (upload/append-csv! {:file     file
+                                          :table-id (:id table)})))
               (testing "Check the data was not uploaded into the table"
                 (is (= [[1 "Obi-Wan Kenobi"]]
                        (rows-for-table table))))
