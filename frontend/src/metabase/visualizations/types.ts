@@ -1,4 +1,4 @@
-import {
+import type {
   Card,
   DatasetColumn,
   DatasetData,
@@ -69,3 +69,44 @@ export interface VisualizationProps {
 
   onUpdateWarnings?: any;
 }
+
+type ClickActionButtonType =
+  | "formatting"
+  | "horizontal"
+  | "info"
+  | "sort"
+  | "token"
+  | "token-filter";
+
+type ClickActionSection =
+  | "auto"
+  | "auto-popover"
+  | "breakout"
+  | "breakout-popover"
+  | "details"
+  | "filter"
+  | "info"
+  | "records"
+  | "sort"
+  | "standalone_filter"
+  | "sum"
+  | "summarize"
+  | "zoom";
+
+type ClickActionBase = {
+  name: string;
+  title?: React.ReactNode;
+  section: ClickActionSection;
+  icon?: React.ReactNode;
+  buttonType: ClickActionButtonType;
+  default?: boolean;
+  tooltip?: string;
+  extra?: () => Record<string, unknown>;
+};
+
+type UrlClickActionBase = {
+  ignoreSiteUrl?: boolean;
+  url: () => string;
+};
+
+export type UrlClickAction = ClickActionBase & UrlClickActionBase;

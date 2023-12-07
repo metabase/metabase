@@ -1,18 +1,47 @@
 import {
   addOrUpdateDashboardCard,
+  dashboardHeader,
+  editDashboard,
+  getDashboardCard,
+  modal,
+  popover,
   restore,
+  saveDashboard,
   resetTestTable,
   resyncDatabase,
-  visitDashboard,
-  editDashboard,
   showDashboardCardActions,
   sidebar,
+  visitDashboard,
+  visitEmbeddedPage,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { b64hash_to_utf8 } from "metabase/lib/encoding";
+
+const POINT_INDEX = 4;
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
   SAMPLE_DATABASE;
+
+const TARGET_DASHBOARD = {
+  name: "Target dashboard",
+};
+
+const QUESTION_LINE_CHART = {
+  name: "Line chart",
+  display: "line",
+  query: {
+    aggregation: [["count"]],
+    breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+    "source-table": ORDERS_ID,
+    limit: 5,
+  },
+};
+
+const TARGET_QUESTION = {
+  ...QUESTION_LINE_CHART,
+  name: "Target question",
+};
 
 describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
@@ -243,6 +272,152 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
     },
   );
+
+  describe("line chart", () => {
+    const questionDetails = QUESTION_LINE_CHART;
+
+    it("allows setting dashboard without filters as custom destination and changing it back to default click behavior", () => {
+      cy.createDashboard(TARGET_DASHBOARD, {
+        wrapId: true,
+        idAlias: "targetDashboardId",
+      });
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+        },
+      );
+
+      editDashboard();
+
+      getDashboardCard().realHover().icon("click").click();
+      addDashboardDestination();
+      cy.get("aside").findByText("Select a dashboard tab").should("not.exist");
+      cy.get("aside").findByText("No available targets").should("exist");
+      cy.get("aside").button("Done").click();
+
+      saveDashboard();
+
+      cy.intercept(
+        "GET",
+        "/api/collection/root",
+        cy.spy().as("rootCollection"),
+      );
+      cy.intercept("GET", "/api/collection", cy.spy().as("collections"));
+
+      clickLineChartPoint();
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        cy.location().should(({ pathname, search }) => {
+          expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+          expect(search).to.equal("");
+        });
+      });
+
+      cy.log("Should navigate to question using router (metabase#33379)");
+      dashboardHeader().findByText(TARGET_DASHBOARD.name).should("be.visible");
+      // If the page was reloaded, many API request would have been made and theses
+      // calls are 2 of those.
+      cy.get("@rootCollection").should("not.have.been.called");
+      cy.get("@collections").should("not.have.been.called");
+    });
+
+    it("allows setting saved question as custom destination and changing it back to default click behavior", () => {
+      cy.createQuestion(TARGET_QUESTION);
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+        },
+      );
+
+      editDashboard();
+
+      getDashboardCard().realHover().icon("click").click();
+      addSavedQuestionDestination();
+      cy.get("aside").button("Done").click();
+
+      saveDashboard();
+
+      cy.intercept(
+        "GET",
+        "/api/collection/root",
+        cy.spy().as("rootCollection"),
+      );
+      cy.intercept("GET", "/api/collection", cy.spy().as("collections"));
+
+      clickLineChartPoint();
+      cy.location().should(({ hash, pathname }) => {
+        expect(pathname).to.equal("/question");
+        const card = deserializeCardFromUrl(hash);
+        expect(card.name).to.deep.equal(TARGET_QUESTION.name);
+        expect(card.display).to.deep.equal(TARGET_QUESTION.display);
+        expect(card.dataset_query.query).to.deep.equal(TARGET_QUESTION.query);
+      });
+
+      cy.log("Should navigate to question using router (metabase#33379)");
+      cy.findByTestId("view-footer").should("contain", "Showing 5 rows");
+      // If the page was reloaded, many API request would have been made and theses
+      // calls are 2 of those.
+      cy.get("@rootCollection").should("not.have.been.called");
+      cy.get("@collections").should("not.have.been.called");
+
+      cy.go("back");
+      testChangingBackToDefaultBehavior();
+    });
+  });
+
+  describe("full app embedding", () => {
+    const questionDetails = QUESTION_LINE_CHART;
+
+    beforeEach(() => {
+      cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
+      cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
+    });
+
+    it("allows opening custom URL destination that is not a Metabase instance URL using link (metabase#33379)", () => {
+      cy.request("PUT", "/api/setting/site-url", {
+        value: "https://localhost:4000/subpath",
+      });
+      const dashboardDetails = {
+        enable_embedding: true,
+      };
+
+      const metabaseInstanceUrl = "http://localhost:4000";
+      cy.createQuestionAndDashboard({
+        questionDetails,
+        dashboardDetails,
+      }).then(({ body: card }) => {
+        addOrUpdateDashboardCard({
+          dashboard_id: card.dashboard_id,
+          card_id: card.card_id,
+          card: {
+            id: card.id,
+            visualization_settings: {
+              click_behavior: {
+                type: "link",
+                linkType: "url",
+                linkTemplate: `${metabaseInstanceUrl}/404`,
+              },
+            },
+          },
+        });
+
+        visitEmbeddedPage({
+          resource: { dashboard: card.dashboard_id },
+          params: {},
+        });
+        cy.wait("@dashboard");
+        cy.wait("@cardQuery");
+      });
+
+      clickLineChartPoint();
+
+      cy.log(
+        "This is app 404 page, the embed 404 page will have different copy",
+      );
+      cy.findByRole("main")
+        .findByText("The page you asked for couldn't be found.")
+        .should("be.visible");
+    });
+  });
 });
 
 const getQuestionDetails = ({ display }) => ({
@@ -269,3 +444,72 @@ const getDashcardDetails = ({ id, card_id, target_id }) => ({
     },
   },
 });
+
+/**
+ * Duplicated from metabase/lib/card because Cypress can't handle import from there.
+ *
+ * @param {string} value
+ * @returns object
+ */
+const deserializeCardFromUrl = serialized =>
+  JSON.parse(b64hash_to_utf8(serialized));
+
+const clickLineChartPoint = () => {
+  cy.findByTestId("dashcard")
+    .get("circle.dot")
+    .eq(POINT_INDEX)
+    /**
+     * calling .click() here will result in clicking both
+     *     g.voronoi > path[POINT_INDEX]
+     * and
+     *     circle.dot[POINT_INDEX]
+     * To make it worse, clicks count won't be deterministic.
+     * Sometimes we'll get an error that one element covers the other.
+     * This problem prevails when updating dashboard filter,
+     * where the 2 clicks will cancel each other out.
+     **/
+    .then(([circle]) => {
+      const { left, top } = circle.getBoundingClientRect();
+      cy.get("body").click(left, top);
+    });
+};
+
+const addDashboardDestination = () => {
+  cy.get("aside").findByText("Go to a custom destination").click();
+  cy.get("aside").findByText("Dashboard").click();
+  modal().findByText(TARGET_DASHBOARD.name).click();
+};
+
+const addSavedQuestionDestination = () => {
+  cy.get("aside").findByText("Go to a custom destination").click();
+  cy.get("aside").findByText("Saved question").click();
+  modal().findByText(TARGET_QUESTION.name).click();
+};
+
+const assertDrillThroughMenuOpen = () => {
+  popover()
+    .should("contain", "See these Orders")
+    .and("contain", "See this month by week")
+    .and("contain", "Break out by…")
+    .and("contain", "Automatic insights…")
+    .and("contain", "Filter by this value");
+};
+
+const testChangingBackToDefaultBehavior = () => {
+  cy.log("allows to change click behavior back to the default");
+
+  editDashboard();
+
+  getDashboardCard().realHover().icon("click").click();
+  cy.get("aside").icon("close").first().click();
+  cy.get("aside").findByText("Open the Metabase drill-through menu").click();
+  cy.get("aside").button("Done").click();
+
+  saveDashboard();
+  // this is necessary due to query params being reset after saving dashboard
+  // with filter applied, which causes dashcard to be refetched
+  cy.wait(1);
+
+  clickLineChartPoint();
+  assertDrillThroughMenuOpen();
+};
