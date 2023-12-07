@@ -100,6 +100,7 @@ function TimeValueInput({
     return (
       <TimeInput
         value={value}
+        clearable
         onChange={newValue => onChange([newValue])}
         onBlur={onBlur}
       />
@@ -112,12 +113,14 @@ function TimeValueInput({
       <Flex align="center">
         <TimeInput
           value={value1}
+          clearable
           onChange={newValue1 => onChange([newValue1, value2])}
           onBlur={onBlur}
         />
         <Text mx="sm">{t`and`}</Text>
         <TimeInput
           value={value2}
+          clearable
           onChange={newValue2 => onChange([value1, newValue2])}
           onBlur={onBlur}
         />
