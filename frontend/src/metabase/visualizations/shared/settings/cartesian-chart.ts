@@ -170,6 +170,7 @@ export function getDefaultBubbleSizeCol(
   vizSettings: ComputedVisualizationSettings,
   data: DatasetData,
 ) {
+  // TODO remove this it's uncessary
   if (vizSettings["scatter.bubble"]) {
     return vizSettings["scatter.bubble"];
   }
