@@ -308,27 +308,28 @@
 (deftest ^:parallel binning-with-source-card-with-explicit-joins-test
   (testing "Make sure binning works with a source card that contains explicit joins"
     (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries :left-join)
-      (let [source-card-query (mt/mbql-query orders
-                                {:joins  [{:source-table $$people
-                                           :alias        "People"
-                                           :condition    [:= $user_id [:field %people.id {:join-alias "People"}]]
-                                           :fields       [[:field %people.longitude {:join-alias "People"}]
-                                                          [:field %people.birth_date {:temporal-unit :default, :join-alias "People"}]]}
-                                          {:source-table $$products
-                                           :alias        "Products"
-                                           :condition    [:= $product_id &Products.products.id]
-                                           :fields       [&Products.products.price]}]
-                                 :fields [[:field %id {:base-type :type/BigInteger}]]})]
-        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
-                                          [source-card-query])
-          (let [query            (-> (lib/query (qp.store/metadata-provider) (lib.metadata/card (qp.store/metadata-provider) 1))
-                                     (lib/aggregate (lib/count)))
-                people-longitude (m/find-first #(= (:id %) (mt/id :people :longitude))
-                                               (lib/breakoutable-columns query))
-                _                (is (some? people-longitude))
-                binning-strategy (m/find-first #(= (:display-name %) "Bin every 20 degrees")
-                                               (lib/available-binning-strategies query people-longitude))
-                _                (is (some? binning-strategy))
-                query            (-> query
-                                     (lib/breakout (lib/with-binning people-longitude binning-strategy)))]
-            (mt/rows (qp/process-query query))))))))
+      (mt/dataset test-data
+        (let [source-card-query (mt/mbql-query orders
+                                  {:joins  [{:source-table $$people
+                                             :alias        "People"
+                                             :condition    [:= $user_id [:field %people.id {:join-alias "People"}]]
+                                             :fields       [[:field %people.longitude {:join-alias "People"}]
+                                                            [:field %people.birth_date {:temporal-unit :default, :join-alias "People"}]]}
+                                            {:source-table $$products
+                                             :alias        "Products"
+                                             :condition    [:= $product_id &Products.products.id]
+                                             :fields       [&Products.products.price]}]
+                                   :fields [[:field %id {:base-type :type/BigInteger}]]})]
+          (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                                            [source-card-query])
+            (let [query            (-> (lib/query (qp.store/metadata-provider) (lib.metadata/card (qp.store/metadata-provider) 1))
+                                       (lib/aggregate (lib/count)))
+                  people-longitude (m/find-first #(= (:id %) (mt/id :people :longitude))
+                                                 (lib/breakoutable-columns query))
+                  _                (is (some? people-longitude))
+                  binning-strategy (m/find-first #(= (:display-name %) "Bin every 20 degrees")
+                                                 (lib/available-binning-strategies query people-longitude))
+                  _                (is (some? binning-strategy))
+                  query            (-> query
+                                       (lib/breakout (lib/with-binning people-longitude binning-strategy)))]
+              (mt/rows (qp/process-query query)))))))))

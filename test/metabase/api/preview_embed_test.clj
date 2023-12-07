@@ -197,18 +197,20 @@
     (testing "Only 2000 results returned when there are many more"
       (let [orders-row-count (count
                               (mt/rows
-                               (mt/process-query
-                                (mt/query orders))))
+                               (mt/dataset test-data
+                                 (mt/process-query
+                                  (mt/query orders)))))
             expected-row-count 1]
         (with-redefs [api.preview-embed/max-results expected-row-count]
-          (embed-test/with-embedding-enabled-and-new-secret-key
-            (let [sample-db-orders-question (mt/query orders)]
-              (embed-test/with-temp-card [card {:dataset_query sample-db-orders-question}]
-                (let [limited (count
-                               (mt/rows
-                                (mt/user-http-request :crowberto :get 202 (card-query-url card))))]
-                  (is (= expected-row-count limited))
-                  (is (not= expected-row-count orders-row-count)))))))))))
+          (mt/dataset test-data
+            (embed-test/with-embedding-enabled-and-new-secret-key
+              (let [sample-db-orders-question (mt/query orders)]
+                (embed-test/with-temp-card [card {:dataset_query sample-db-orders-question}]
+                  (let [limited (count
+                                 (mt/rows
+                                  (mt/user-http-request :crowberto :get 202 (card-query-url card))))]
+                    (is (= expected-row-count limited))
+                    (is (not= expected-row-count orders-row-count))))))))))))
 
 ;;; ------------------------------------ GET /api/preview_embed/dashboard/:token -------------------------------------
 
@@ -421,35 +423,36 @@
 
 (deftest pivot-query-test
   (mt/test-drivers (api.pivots/applicable-drivers)
-    (testing "GET /api/preview_embed/pivot/card/:token/query"
-      (testing "successful preview"
-        (let [result (embed-test/with-embedding-enabled-and-new-secret-key
-                       (embed-test/with-temp-card [card (api.pivots/pivot-card)]
-                         (mt/user-http-request :crowberto :get 202 (pivot-card-query-url card))))
-              rows   (mt/rows result)]
-          (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
-          (is (= "completed" (:status result)))
-          (is (= 6 (count (get-in result [:data :cols]))))
-          (is (= 1144 (count rows)))))
+    (mt/dataset test-data
+      (testing "GET /api/preview_embed/pivot/card/:token/query"
+        (testing "successful preview"
+          (let [result (embed-test/with-embedding-enabled-and-new-secret-key
+                         (embed-test/with-temp-card [card (api.pivots/pivot-card)]
+                           (mt/user-http-request :crowberto :get 202 (pivot-card-query-url card))))
+                rows   (mt/rows result)]
+            (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+            (is (= "completed" (:status result)))
+            (is (= 6 (count (get-in result [:data :cols]))))
+            (is (= 1144 (count rows)))))
 
-      (testing "should fail if user is not an admin"
-        (is (= "You don't have permissions to do that."
-               (embed-test/with-embedding-enabled-and-new-secret-key
-                 (embed-test/with-temp-card [card (api.pivots/pivot-card)]
-                   (mt/user-http-request :rasta :get 403 (pivot-card-query-url card)))))))
-
-      (testing "should fail if embedding is disabled"
-        (is (= "Embedding is not enabled."
-               (mt/with-temporary-setting-values [enable-embedding false]
-                 (embed-test/with-new-secret-key
+        (testing "should fail if user is not an admin"
+          (is (= "You don't have permissions to do that."
+                 (embed-test/with-embedding-enabled-and-new-secret-key
                    (embed-test/with-temp-card [card (api.pivots/pivot-card)]
-                     (mt/user-http-request :crowberto :get 400 (pivot-card-query-url card))))))))
+                     (mt/user-http-request :rasta :get 403 (pivot-card-query-url card)))))))
 
-      (testing "should fail if embedding is enabled and the wrong key is used"
-        (is (= "Message seems corrupt or manipulated"
-               (embed-test/with-embedding-enabled-and-new-secret-key
-                 (embed-test/with-temp-card [card (api.pivots/pivot-card)]
-                   (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (pivot-card-query-url card)))))))))))
+        (testing "should fail if embedding is disabled"
+          (is (= "Embedding is not enabled."
+                 (mt/with-temporary-setting-values [enable-embedding false]
+                   (embed-test/with-new-secret-key
+                     (embed-test/with-temp-card [card (api.pivots/pivot-card)]
+                       (mt/user-http-request :crowberto :get 400 (pivot-card-query-url card))))))))
+
+        (testing "should fail if embedding is enabled and the wrong key is used"
+          (is (= "Message seems corrupt or manipulated"
+                 (embed-test/with-embedding-enabled-and-new-secret-key
+                   (embed-test/with-temp-card [card (api.pivots/pivot-card)]
+                     (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (pivot-card-query-url card))))))))))))
 
 (defn- pivot-dashcard-url {:style/indent 1} [dashcard & [additional-token-params]]
   (str "preview_embed/pivot/dashboard/"
@@ -460,68 +463,70 @@
 
 (deftest pivot-card-id-test
   (mt/test-drivers (api.pivots/applicable-drivers)
-    (testing "GET /api/preview_embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
-      (embed-test/with-embedding-enabled-and-new-secret-key
-        (embed-test/with-temp-dashcard [dashcard {:dash     {:parameters []}
-                                                  :card     (api.pivots/pivot-card)
-                                                  :dashcard {:parameter_mappings []}}]
-          (testing "successful preview"
-            (let [result (mt/user-http-request :crowberto :get 202 (pivot-dashcard-url dashcard))
-                  rows   (mt/rows result)]
-              (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
-              (is (= "completed" (:status result)))
-              (is (= 6 (count (get-in result [:data :cols]))))
-              (is (= 1144 (count rows)))))
+    (mt/dataset test-data
+      (testing "GET /api/preview_embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+        (embed-test/with-embedding-enabled-and-new-secret-key
+          (embed-test/with-temp-dashcard [dashcard {:dash     {:parameters []}
+                                                    :card     (api.pivots/pivot-card)
+                                                    :dashcard {:parameter_mappings []}}]
+            (testing "successful preview"
+              (let [result (mt/user-http-request :crowberto :get 202 (pivot-dashcard-url dashcard))
+                    rows   (mt/rows result)]
+                (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+                (is (= "completed" (:status result)))
+                (is (= 6 (count (get-in result [:data :cols]))))
+                (is (= 1144 (count rows)))))
 
-          (testing "should fail if user is not an admin"
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 (pivot-dashcard-url dashcard)))))
+            (testing "should fail if user is not an admin"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :get 403 (pivot-dashcard-url dashcard)))))
 
-          (testing "should fail if embedding is disabled"
-            (is (= "Embedding is not enabled."
-                   (mt/with-temporary-setting-values [enable-embedding false]
-                     (embed-test/with-new-secret-key
-                       (mt/user-http-request :crowberto :get 400 (pivot-dashcard-url dashcard)))))))
+            (testing "should fail if embedding is disabled"
+              (is (= "Embedding is not enabled."
+                     (mt/with-temporary-setting-values [enable-embedding false]
+                       (embed-test/with-new-secret-key
+                         (mt/user-http-request :crowberto :get 400 (pivot-dashcard-url dashcard)))))))
 
-          (testing "should fail if embedding is enabled and the wrong key is used"
-            (is (= "Message seems corrupt or manipulated"
-                   (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (pivot-dashcard-url dashcard)))))))))))
+            (testing "should fail if embedding is enabled and the wrong key is used"
+              (is (= "Message seems corrupt or manipulated"
+                     (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (pivot-dashcard-url dashcard))))))))))))
 
 (deftest handle-single-params-for-operator-filters-test
   (testing "Query endpoints should work with a single URL parameter for an operator filter (#20438)"
-    (embed-test/with-embedding-enabled-and-new-secret-key
-      (t2.with-temp/with-temp [Card {card-id :id, :as card} {:dataset_query    (mt/native-query
-                                                                                 {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
-                                                                                  :template-tags {"NAME"
-                                                                                                  {:name         "NAME"
-                                                                                                   :display-name "Name"
-                                                                                                   :type         :dimension
-                                                                                                   :dimension    [:field (mt/id :people :name) nil]
-                                                                                                   :widget-type  :string/=
-                                                                                                   :default      nil}}})
-                                                             :enable_embedding true
-                                                             :embedding_params {"NAME" "enabled"}}]
-        (testing "Card"
-          (let [url (card-query-url card {:_embedding_params {:NAME "enabled"}})]
-            (is (= [[1]]
-                   (mt/rows (mt/user-http-request :crowberto :get 202 url :NAME "Hudson Borer"))
-                   (mt/rows (mt/user-http-request :crowberto :get 202 url :NAME "Hudson Borer" :NAME "x"))))))
-        (testing "Dashcard"
-          (mt/with-temp [Dashboard {dashboard-id :id} {:enable_embedding true
-                                                       :embedding_params {:name "enabled"}
-                                                       :parameters       [{:name      "Name"
-                                                                           :slug      "name"
-                                                                           :id        "_name_"
-                                                                           :type      "string/="
-                                                                           :sectionId "string"}]}
-
-                         DashboardCard dashcard {:card_id            card-id
-                                                 :dashboard_id       dashboard-id
-                                                 :parameter_mappings [{:parameter_id "_name_"
-                                                                       :card_id      card-id
-                                                                       :type         "string/="
-                                                                       :target       [:dimension [:template-tag "NAME"]]}]}]
-            (let [url (dashcard-url dashcard {:_embedding_params {:name "enabled"}})]
+    (mt/dataset test-data
+      (embed-test/with-embedding-enabled-and-new-secret-key
+        (t2.with-temp/with-temp [Card {card-id :id, :as card} {:dataset_query    (mt/native-query
+                                                                                   {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
+                                                                                    :template-tags {"NAME"
+                                                                                                    {:name         "NAME"
+                                                                                                     :display-name "Name"
+                                                                                                     :type         :dimension
+                                                                                                     :dimension    [:field (mt/id :people :name) nil]
+                                                                                                     :widget-type  :string/=
+                                                                                                     :default      nil}}})
+                                                               :enable_embedding true
+                                                               :embedding_params {"NAME" "enabled"}}]
+          (testing "Card"
+            (let [url (card-query-url card {:_embedding_params {:NAME "enabled"}})]
               (is (= [[1]]
-                     (mt/rows (mt/user-http-request :crowberto :get 202 url :name "Hudson Borer"))
-                     (mt/rows (mt/user-http-request :crowberto :get 202 url :name "Hudson Borer" :name "x")))))))))))
+                     (mt/rows (mt/user-http-request :crowberto :get 202 url :NAME "Hudson Borer"))
+                     (mt/rows (mt/user-http-request :crowberto :get 202 url :NAME "Hudson Borer" :NAME "x"))))))
+          (testing "Dashcard"
+            (mt/with-temp [Dashboard {dashboard-id :id} {:enable_embedding true
+                                                         :embedding_params {:name "enabled"}
+                                                         :parameters       [{:name      "Name"
+                                                                             :slug      "name"
+                                                                             :id        "_name_"
+                                                                             :type      "string/="
+                                                                             :sectionId "string"}]}
+
+                           DashboardCard dashcard {:card_id            card-id
+                                                   :dashboard_id       dashboard-id
+                                                   :parameter_mappings [{:parameter_id "_name_"
+                                                                         :card_id      card-id
+                                                                         :type         "string/="
+                                                                         :target       [:dimension [:template-tag "NAME"]]}]}]
+              (let [url (dashcard-url dashcard {:_embedding_params {:name "enabled"}})]
+                (is (= [[1]]
+                       (mt/rows (mt/user-http-request :crowberto :get 202 url :name "Hudson Borer"))
+                       (mt/rows (mt/user-http-request :crowberto :get 202 url :name "Hudson Borer" :name "x"))))))))))))

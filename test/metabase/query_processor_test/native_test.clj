@@ -40,17 +40,18 @@
 (deftest ^:parallel native-referring-question-referring-question-test
   (testing "Should be able to run native query referring a question referring a question (#25988)"
     (mt/with-driver :h2
-      (t2.with-temp/with-temp [Card card1 {:dataset_query (mt/mbql-query products)}
-                               Card card2 {:dataset_query {:query {:source-table (str "card__" (u/the-id card1))}
-                                                           :database (u/the-id (mt/db))
-                                                           :type :query}}]
-        (let [card-tag (str "#" (u/the-id card2))
-              query    {:query         (format "SELECT CATEGORY, VENDOR FROM {{%s}} ORDER BY ID LIMIT 1" card-tag)
-                        :template-tags {card-tag
-                                        {:id           "afd1bf85-61d0-258c-99a7-a5b448728308"
-                                         :name         card-tag
-                                         :display-name card-tag
-                                         :type         :card
-                                         :card-id      (u/the-id card2)}}}]
-          (is (= [["Gizmo" "Swaniawski, Casper and Hilll"]]
-                 (mt/rows (qp/process-query (mt/native-query query))))))))))
+      (mt/dataset test-data
+        (t2.with-temp/with-temp [Card card1 {:dataset_query (mt/mbql-query products)}
+                                 Card card2 {:dataset_query {:query {:source-table (str "card__" (u/the-id card1))}
+                                                             :database (u/the-id (mt/db))
+                                                             :type :query}}]
+          (let [card-tag (str "#" (u/the-id card2))
+                query    {:query         (format "SELECT CATEGORY, VENDOR FROM {{%s}} ORDER BY ID LIMIT 1" card-tag)
+                          :template-tags {card-tag
+                                          {:id           "afd1bf85-61d0-258c-99a7-a5b448728308"
+                                           :name         card-tag
+                                           :display-name card-tag
+                                           :type         :card
+                                           :card-id      (u/the-id card2)}}}]
+            (is (= [["Gizmo" "Swaniawski, Casper and Hilll"]]
+                   (mt/rows (qp/process-query (mt/native-query query)))))))))))

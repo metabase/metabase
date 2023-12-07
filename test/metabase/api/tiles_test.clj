@@ -85,23 +85,24 @@
 
 (deftest breakout-query-test
   (testing "the appropriate lat/lon fields are selected from the results, if the query contains a :breakout clause (#20182)"
-    (with-redefs [api.tiles/create-tile (fn [_ points] points)
-                  api.tiles/tile->byte-array identity]
-      (let [result (mt/user-http-request
-                    :rasta :get 200 (format "tiles/7/30/49/%d/%d"
-                                            (mt/id :people :latitude)
-                                            (mt/id :people :longitude))
-                    :query (json/generate-string
-                            {:database (mt/id)
-                             :type :query
-                             :query {:source-table (mt/id :people)
-                                     :breakout [[:field (mt/id :people :latitude)]
-                                                [:field (mt/id :people :longitude)]]
-                                     :aggregation [[:count]]}}))]
-        (is (= [[36.6163612 -94.5197949]
-                [36.8177783 -93.8447328]
-                [36.8311004 -95.0253779]]
-               (take 3 result)))))))
+    (mt/dataset test-data
+      (with-redefs [api.tiles/create-tile (fn [_ points] points)
+                    api.tiles/tile->byte-array identity]
+        (let [result (mt/user-http-request
+                      :rasta :get 200 (format "tiles/7/30/49/%d/%d"
+                                              (mt/id :people :latitude)
+                                              (mt/id :people :longitude))
+                      :query (json/generate-string
+                              {:database (mt/id)
+                               :type :query
+                               :query {:source-table (mt/id :people)
+                                       :breakout [[:field (mt/id :people :latitude)]
+                                                  [:field (mt/id :people :longitude)]]
+                                       :aggregation [[:count]]}}))]
+          (is (= [[36.6163612 -94.5197949]
+                  [36.8177783 -93.8447328]
+                  [36.8311004 -95.0253779]]
+                 (take 3 result))))))))
 
 (deftest failure-test
   (testing "if the query fails, don't attempt to generate a map without any points -- the endpoint should return a 400"

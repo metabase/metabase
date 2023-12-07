@@ -193,31 +193,31 @@
     (testing "when action's database and model's database disagree"
       (testing "Both dbs are checked for actions enabled at creation"
         (mt/dataset test-data-with-time
-          (let [data-with-time-id (mt/id)]
+          (let [test-data-id (mt/id)]
             (mt/dataset test-data
               (mt/with-actions-enabled
-                (is (not= (mt/id) data-with-time-id))
+                (is (not= (mt/id) test-data-id))
                 (mt/with-temp [Card model {:dataset true
                                            :dataset_query
                                            (mt/native-query
                                             {:query "select * from checkins limit 1"})}]
-                  (let [action (cross-db-action (:id model) data-with-time-id)
+                  (let [action (cross-db-action (:id model) test-data-id)
                         response (mt/user-http-request :rasta :post 400 "action"
                                                        action)]
                     (testing "Checks both databases for actions enabled"
                       (is (partial= {:message "Actions are not enabled."
-                                     :data {:database-id data-with-time-id}}
+                                     :data {:database-id test-data-id}}
                                     response))))))))))
       (testing "When executing, both dbs are checked for enabled"
         (mt/dataset test-data-with-time
-          (let [data-with-time-id (mt/id)]
+          (let [test-data-id (mt/id)]
             (mt/with-actions-test-data-and-actions-enabled
               (mt/with-actions [{model-id :id} {:dataset true
                                                 :dataset_query (mt/mbql-query categories)}
                                 {action-on-other-id :action-id} (cross-db-action model-id
-                                                                                 data-with-time-id)]
+                                                                                 test-data-id)]
                 (is (partial= {:message "Actions are not enabled."
-                               :data {:database-id data-with-time-id}}
+                               :data {:database-id test-data-id}}
                               (mt/user-http-request :crowberto
                                                     :post 400
                                                     (format "action/%s/execute" action-on-other-id)

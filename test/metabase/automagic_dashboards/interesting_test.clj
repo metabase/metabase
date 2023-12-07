@@ -37,59 +37,64 @@
     (let [fa-fieldspec "ga:name"]
       (is (= fa-fieldspec ((#'interesting/fieldspec-matcher fa-fieldspec) {:name fa-fieldspec})))))
   (testing "The fieldspec-matcher does not match on ID columns."
-    (let [id-field (field! :products :id)]
-      ;; the id-field does have a type...
-      (is (true? (magic.util/field-isa? id-field :type/*)))
-      ;; ...but it isn't a candidate dimension because it is an id column...
-      (is (false? ((#'interesting/fieldspec-matcher :type/*) id-field)))
-      ;; ...unless you're looking explicitly for a primary key
-      (is (true? ((#'interesting/fieldspec-matcher :type/PK) id-field)))))
+    (mt/dataset test-data
+      (let [id-field (field! :products :id)]
+        ;; the id-field does have a type...
+        (is (true? (magic.util/field-isa? id-field :type/*)))
+        ;; ...but it isn't a candidate dimension because it is an id column...
+        (is (false? ((#'interesting/fieldspec-matcher :type/*) id-field)))
+        ;; ...unless you're looking explicitly for a primary key
+        (is (true? ((#'interesting/fieldspec-matcher :type/PK) id-field))))))
   (testing "The fieldspec-matcher should match fields by their fieldspec"
-    (let [price-field (field! :products :price)
-          latitude-field (field! :people :latitude)
-          created-at-field (field! :people :created_at)
-          pred (#'interesting/fieldspec-matcher :type/Latitude)]
-      (is (false? (pred price-field)))
-      (is (true? (pred latitude-field)))
-      (is (true? ((#'interesting/fieldspec-matcher :type/CreationTimestamp) created-at-field)))
-      (is (true? ((#'interesting/fieldspec-matcher :type/*) created-at-field)))))
+    (mt/dataset test-data
+      (let [price-field (field! :products :price)
+            latitude-field (field! :people :latitude)
+            created-at-field (field! :people :created_at)
+            pred (#'interesting/fieldspec-matcher :type/Latitude)]
+        (is (false? (pred price-field)))
+        (is (true? (pred latitude-field)))
+        (is (true? ((#'interesting/fieldspec-matcher :type/CreationTimestamp) created-at-field)))
+        (is (true? ((#'interesting/fieldspec-matcher :type/*) created-at-field))))))
   (testing "The name-regex-matcher should return fields with string/regex matches"
-    (let [price-field (field! :products :price)
-          category-field (field! :products :category)
-          ice-pred (#'interesting/name-regex-matcher "ice")]
-      (is (some? (ice-pred price-field)))
-      (is (nil? (ice-pred category-field)))))
+    (mt/dataset test-data
+      (let [price-field (field! :products :price)
+            category-field (field! :products :category)
+            ice-pred (#'interesting/name-regex-matcher "ice")]
+        (is (some? (ice-pred price-field)))
+        (is (nil? (ice-pred category-field))))))
   (testing "The max-cardinality-matcher should return fields with cardinality <= the specified cardinality"
-    (let [category-field (field! :products :category)]
-      (is (false? ((#'interesting/max-cardinality-matcher 3) category-field)))
-      (is (true? ((#'interesting/max-cardinality-matcher 4) category-field)))
-      (is (true? ((#'interesting/max-cardinality-matcher 100) category-field)))))
+    (mt/dataset test-data
+      (let [category-field (field! :products :category)]
+        (is (false? ((#'interesting/max-cardinality-matcher 3) category-field)))
+        (is (true? ((#'interesting/max-cardinality-matcher 4) category-field)))
+        (is (true? ((#'interesting/max-cardinality-matcher 100) category-field))))))
   (testing "Roll the above together and test filter-fields"
-    (let [category-field (field! :products :category)
-          price-field (field! :products :price)
-          latitude-field (field! :people :latitude)
-          created-at-field (field! :people :created_at)
-          source-field (field! :people :source)
-          fields [category-field price-field latitude-field created-at-field source-field]]
-      ;; Get the lone field that is both a CreationTimestamp and has "at" in the name
-      (is (= #{(mt/id :people :created_at)}
-             (set (map :id (#'interesting/filter-fields
-                            {:fieldspec :type/CreationTimestamp
-                             :named "at"}
-                            fields)))))
-      ;; Get all fields with "at" in their names
-      (is (= #{(mt/id :products :category)
-               (mt/id :people :created_at)
-               (mt/id :people :latitude)}
-             (set (map :id (#'interesting/filter-fields {:named "at"} fields)))))
-      ;; Products.Category has cardinality 4 and People.Source has cardinality 5
-      ;; Both are picked up here
-      (is (= #{(mt/id :products :category)
-               (mt/id :people :source)}
-             (set (map :id (#'interesting/filter-fields {:max-cardinality 5} fields)))))
-      ;; People.Source is rejected here
-      (is (= #{(mt/id :products :category)}
-             (set (map :id (#'interesting/filter-fields {:max-cardinality 4} fields))))))))
+    (mt/dataset test-data
+      (let [category-field (field! :products :category)
+            price-field (field! :products :price)
+            latitude-field (field! :people :latitude)
+            created-at-field (field! :people :created_at)
+            source-field (field! :people :source)
+            fields [category-field price-field latitude-field created-at-field source-field]]
+        ;; Get the lone field that is both a CreationTimestamp and has "at" in the name
+        (is (= #{(mt/id :people :created_at)}
+               (set (map :id (#'interesting/filter-fields
+                              {:fieldspec :type/CreationTimestamp
+                               :named "at"}
+                              fields)))))
+        ;; Get all fields with "at" in their names
+        (is (= #{(mt/id :products :category)
+                 (mt/id :people :created_at)
+                 (mt/id :people :latitude)}
+               (set (map :id (#'interesting/filter-fields {:named "at"} fields)))))
+        ;; Products.Category has cardinality 4 and People.Source has cardinality 5
+        ;; Both are picked up here
+        (is (= #{(mt/id :products :category)
+                 (mt/id :people :source)}
+               (set (map :id (#'interesting/filter-fields {:max-cardinality 5} fields)))))
+        ;; People.Source is rejected here
+        (is (= #{(mt/id :products :category)}
+               (set (map :id (#'interesting/filter-fields {:max-cardinality 4} fields)))))))))
 
 (deftest field-candidates-with-tablespec-specialization
   (testing "Test for when both a tablespec and fieldspec are provided in the dimension definition"
@@ -398,46 +403,47 @@
 
 (deftest candidate-binding-inner-shape-test
   (testing "Ensure we have examples to understand the shape returned from candidate-bindings"
-    (testing "A model with a single field that matches all potential bindings"
-      (let [source-query {:database (mt/id)
-                          :query    {:source-table (mt/id :people)
-                                     :fields       [(mt/id :people :latitude)]}
-                          :type     :query}]
-        (mt/with-temp
-          [Card card {:table_id        (mt/id :products)
-                      :dataset_query   source-query
-                      :result_metadata (mt/with-test-user
-                                         :rasta
-                                         (result-metadata-for-query
-                                          source-query))
-                      :dataset         true}]
-          (let [{{:keys [entity_type]} :source :as root} (#'magic/->root card)
-                base-context       (#'magic/make-base-context root)
-                dimensions         [{"GenericNumber" {:field_type [:type/Number], :score 70}}
-                                    {"GenericNumber" {:field_type [:entity/GenericTable :type/Number], :score 80}}
-                                    {"Lat" {:field_type [:type/Latitude], :score 90}}
-                                    {"Lat" {:field_type [:entity/GenericTable :type/Latitude], :score 100}}]
-                candidate-bindings (#'interesting/candidate-bindings base-context dimensions)]
-            (testing "For a model, the entity_type is :entity/GenericTable"
-              (is (= :entity/GenericTable entity_type)))
-            (is (= (count dimensions)
-                   (-> (mt/id :people :latitude)
-                       candidate-bindings
-                       count)))
-            (testing "The return shape of candidate bindings is a map of bound field id to sequence of dimension
+    (mt/dataset test-data
+      (testing "A model with a single field that matches all potential bindings"
+        (let [source-query {:database (mt/id)
+                            :query    {:source-table (mt/id :people)
+                                       :fields       [(mt/id :people :latitude)]}
+                            :type     :query}]
+          (mt/with-temp
+            [Card card {:table_id        (mt/id :products)
+                        :dataset_query   source-query
+                        :result_metadata (mt/with-test-user
+                                           :rasta
+                                           (result-metadata-for-query
+                                            source-query))
+                        :dataset         true}]
+            (let [{{:keys [entity_type]} :source :as root} (#'magic/->root card)
+                  base-context       (#'magic/make-base-context root)
+                  dimensions         [{"GenericNumber" {:field_type [:type/Number], :score 70}}
+                                      {"GenericNumber" {:field_type [:entity/GenericTable :type/Number], :score 80}}
+                                      {"Lat" {:field_type [:type/Latitude], :score 90}}
+                                      {"Lat" {:field_type [:entity/GenericTable :type/Latitude], :score 100}}]
+                  candidate-bindings (#'interesting/candidate-bindings base-context dimensions)]
+              (testing "For a model, the entity_type is :entity/GenericTable"
+                (is (= :entity/GenericTable entity_type)))
+              (is (= (count dimensions)
+                     (-> (mt/id :people :latitude)
+                         candidate-bindings
+                         count)))
+              (testing "The return shape of candidate bindings is a map of bound field id to sequence of dimension
                       definitions, each of which has been associated a matches vector containing a single element --
                       the field whose id is the id of the key in this map entry. E.g. if your field id is 1, the result
                       will look like {1 [(assoc matched-dimension-definition-1 :matches [field 1])
                                          (assoc matched-dimension-definition-2 :matches [field 1])
                                          (assoc matched-dimension-definition-3 :matches [field 1])]}"
-              (is (=?
-                   {(mt/id :people :latitude)
-                    (map
-                     (fn [m]
-                       (update-vals m (fn [v]
-                                        (assoc v :matches [{:id (mt/id :people :latitude)}]))))
-                     dimensions)}
-                   candidate-bindings))))))
+                (is (=?
+                     {(mt/id :people :latitude)
+                      (map
+                       (fn [m]
+                         (update-vals m (fn [v]
+                                          (assoc v :matches [{:id (mt/id :people :latitude)}]))))
+                       dimensions)}
+                     candidate-bindings)))))))
       (testing "A model with two fields that each have a high degree of matching."
         (let [source-query {:database (mt/id)
                             :query    {:source-table (mt/id :people)
@@ -531,57 +537,58 @@
                    (select-keys candidate-bindings [(mt/id :people :latitude)]))))))))))
 
 (deftest grounded-metrics-test
-  (let [test-metrics [{:metric ["count"], :score 100, :metric-name "Count"}
-                      {:metric ["distinct" ["dimension" "FK"]], :score 100, :metric-name "CountDistinctFKs"}
-                      {:metric ["/"
-                                ["dimension" "Discount"]
-                                ["dimension" "Income"]], :score 100, :metric-name "AvgDiscount"}
-                      {:metric ["sum" ["dimension" "GenericNumber"]], :score 100, :metric-name "Sum"}
-                      {:metric ["avg" ["dimension" "GenericNumber"]], :score 100, :metric-name "Avg"}]
-        {total-id :id :as total-field} {:id 1 :name "TOTAL"}
-        {discount-id :id :as discount-field} {:id 2 :name "DISCOUNT"}
-        {income-id :id :as income-field} {:id 3 :name "INCOME"}]
-    (testing "When no dimensions are provided, we produce grounded dimensionless metrics"
-      (is (= [{:metric-name       "Count"
-               :metric-title      "Count"
-               :metric-score      100
-               :metric-definition {:aggregation [["count"]]}
-               :dimension-name->field {}}]
-             (interesting/grounded-metrics
-               test-metrics
-               {"Count" {:matches []}}))))
-    (testing "When we can match on a dimension, we produce every matching metric (2 for GenericNumber)"
-      (is (=? [{:metric-name       "Sum"
-                :metric-definition {:aggregation [["sum" [:field total-id nil]]]}}
-               {:metric-name       "Avg"
-                :metric-definition {:aggregation [["avg" [:field total-id nil]]]}}]
-              (interesting/grounded-metrics
-                ;; Drop Count
-                (rest test-metrics)
-                {"Count"         {:matches []}
-                 "GenericNumber" {:matches [total-field]}}))))
-    (testing "The addition of Discount doesn't add more matches as we need
+  (mt/dataset test-data
+    (let [test-metrics [{:metric ["count"], :score 100, :metric-name "Count"}
+                        {:metric ["distinct" ["dimension" "FK"]], :score 100, :metric-name "CountDistinctFKs"}
+                        {:metric ["/"
+                                  ["dimension" "Discount"]
+                                  ["dimension" "Income"]], :score 100, :metric-name "AvgDiscount"}
+                        {:metric ["sum" ["dimension" "GenericNumber"]], :score 100, :metric-name "Sum"}
+                        {:metric ["avg" ["dimension" "GenericNumber"]], :score 100, :metric-name "Avg"}]
+          {total-id :id :as total-field} {:id 1 :name "TOTAL"}
+          {discount-id :id :as discount-field} {:id 2 :name "DISCOUNT"}
+          {income-id :id :as income-field} {:id 3 :name "INCOME"}]
+      (testing "When no dimensions are provided, we produce grounded dimensionless metrics"
+        (is (= [{:metric-name       "Count"
+                 :metric-title      "Count"
+                 :metric-score      100
+                 :metric-definition {:aggregation [["count"]]}
+                 :dimension-name->field {}}]
+               (interesting/grounded-metrics
+                 test-metrics
+                 {"Count" {:matches []}}))))
+      (testing "When we can match on a dimension, we produce every matching metric (2 for GenericNumber)"
+        (is (=? [{:metric-name       "Sum"
+                  :metric-definition {:aggregation [["sum" [:field total-id nil]]]}}
+                 {:metric-name       "Avg"
+                  :metric-definition {:aggregation [["avg" [:field total-id nil]]]}}]
+                (interesting/grounded-metrics
+                  ;; Drop Count
+                  (rest test-metrics)
+                  {"Count"         {:matches []}
+                   "GenericNumber" {:matches [total-field]}}))))
+      (testing "The addition of Discount doesn't add more matches as we need
                  Income as well to add the metric that uses Discount"
-      (is (=? [{:metric-name       "Sum"
-                :metric-definition {:aggregation [["sum" [:field total-id nil]]]}}
-               {:metric-name       "Avg"
-                :metric-definition {:aggregation [["avg" [:field total-id nil]]]}}]
-              (interesting/grounded-metrics
-                (rest test-metrics)
-                {"Count"         {:matches []}
-                 "GenericNumber" {:matches [total-field]}
-                 "Discount"      {:matches [discount-field]}}))))
-    (testing "Discount and Income will add the satisfied AvgDiscount grounded metric"
-      (is (=? [{:metric-name "AvgDiscount",
-                :metric-definition {:aggregation [["/" [:field discount-id nil] [:field income-id nil]]]}}
-               {:metric-name "Sum"}
-               {:metric-name "Avg"}]
-              (interesting/grounded-metrics
-                (rest test-metrics)
-                {"Count"         {:matches []}
-                 "GenericNumber" {:matches [total-field]}
-                 "Discount"      {:matches [discount-field]}
-                 "Income"        {:matches [income-field]}}))))))
+        (is (=? [{:metric-name       "Sum"
+                  :metric-definition {:aggregation [["sum" [:field total-id nil]]]}}
+                 {:metric-name       "Avg"
+                  :metric-definition {:aggregation [["avg" [:field total-id nil]]]}}]
+                (interesting/grounded-metrics
+                  (rest test-metrics)
+                  {"Count"         {:matches []}
+                   "GenericNumber" {:matches [total-field]}
+                   "Discount"      {:matches [discount-field]}}))))
+      (testing "Discount and Income will add the satisfied AvgDiscount grounded metric"
+        (is (=? [{:metric-name "AvgDiscount",
+                  :metric-definition {:aggregation [["/" [:field discount-id nil] [:field income-id nil]]]}}
+                 {:metric-name "Sum"}
+                 {:metric-name "Avg"}]
+                (interesting/grounded-metrics
+                  (rest test-metrics)
+                  {"Count"         {:matches []}
+                   "GenericNumber" {:matches [total-field]}
+                   "Discount"      {:matches [discount-field]}
+                   "Income"        {:matches [income-field]}})))))))
 
 (deftest normalize-seq-of-maps-test
   (testing "Convert a seq of size-1 nested maps to a seq of maps."

@@ -460,50 +460,53 @@
 (deftest ^:parallel expression-with-duplicate-column-name
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we use expression with same column name as table (#14267)"
-      (let [query (mt/mbql-query products
-                    {:expressions {:CATEGORY [:concat $category "2"]}
-                     :breakout    [:expression :CATEGORY]
-                     :aggregation [:count]
-                     :order-by    [[:asc [:expression :CATEGORY]]]
-                     :limit       1})]
-        (mt/with-native-query-testing-context query
-          (is (= [["Doohickey2" 42]]
-                 (mt/formatted-rows [str int]
-                   (qp/process-query query)))))))))
+      (mt/dataset test-data
+        (let [query (mt/mbql-query products
+                      {:expressions {:CATEGORY [:concat $category "2"]}
+                       :breakout    [:expression :CATEGORY]
+                       :aggregation [:count]
+                       :order-by    [[:asc [:expression :CATEGORY]]]
+                       :limit       1})]
+          (mt/with-native-query-testing-context query
+            (is (= [["Doohickey2" 42]]
+                   (mt/formatted-rows [str int]
+                     (qp/process-query query))))))))))
 
 (deftest ^:parallel fk-field-and-duplicate-names-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :foreign-keys)
     (testing "Expressions with `fk->` fields and duplicate names should work correctly (#14854)"
-      (let [results (mt/run-mbql-query orders
-                      {:expressions {"CE" [:case
-                                           [[[:> $discount 0] $created_at]]
-                                           {:default $product_id->products.created_at}]}
-                       :order-by    [[:asc $id]]
-                       :limit       2})]
-        (is (= ["ID" "User ID" "Product ID" "Subtotal" "Tax" "Total" "Discount" "Created At" "Quantity" "CE"]
-               (map :display_name (mt/cols results))))
-        (is (= [[1 1  14  37.7  2.1  39.7 nil "2019-02-11T21:40:27.892Z" 2 "2017-12-31T14:41:56.87Z"]
-                [2 1 123 110.9  6.1 117.0 nil "2018-05-15T08:04:04.58Z"  3 "2017-11-16T13:53:14.232Z"]]
-               (mt/formatted-rows [int int int 1.0 1.0 1.0 identity str int str]
-                 results)))))))
+      (mt/dataset test-data
+        (let [results (mt/run-mbql-query orders
+                        {:expressions {"CE" [:case
+                                             [[[:> $discount 0] $created_at]]
+                                             {:default $product_id->products.created_at}]}
+                         :order-by    [[:asc $id]]
+                         :limit       2})]
+          (is (= ["ID" "User ID" "Product ID" "Subtotal" "Tax" "Total" "Discount" "Created At" "Quantity" "CE"]
+                 (map :display_name (mt/cols results))))
+          (is (= [[1 1  14  37.7  2.1  39.7 nil "2019-02-11T21:40:27.892Z" 2 "2017-12-31T14:41:56.87Z"]
+                  [2 1 123 110.9  6.1 117.0 nil "2018-05-15T08:04:04.58Z"  3 "2017-11-16T13:53:14.232Z"]]
+                 (mt/formatted-rows [int int int 1.0 1.0 1.0 identity str int str]
+                   results))))))))
 
 (deftest ^:parallel string-operations-from-subquery
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)
     (testing "regex-match-first and replace work when evaluated against a subquery (#14873)"
-      (let [r-word  "r_word"
-            no-sp   "no_spaces"
-            results (mt/run-mbql-query venues
-                      {:expressions  {r-word [:regex-match-first $name "^R[^ ]+"]
-                                      no-sp  [:replace $name " " ""]}
-                       :source-query {:source-table $$venues}
-                       :fields       [$name [:expression r-word] [:expression no-sp]]
-                       :filter       [:= $id 1 95]
-                       :order-by     [[:asc $id]]})]
-        (is (= ["Name" r-word no-sp]
-               (map :display_name (mt/cols results))))
-        (is (= [["Red Medicine" "Red" "RedMedicine"]
-                ["Rush Street" "Rush" "RushStreet"]]
-               (mt/formatted-rows [str str str] results)))))))
+      (mt/dataset test-data
+        (let [r-word  "r_word"
+              no-sp   "no_spaces"
+              results (mt/run-mbql-query venues
+                        {:expressions  {r-word [:regex-match-first $name "^R[^ ]+"]
+                                        no-sp  [:replace $name " " ""]}
+                         :source-query {:source-table $$venues}
+                         :fields       [$name [:expression r-word] [:expression no-sp]]
+                         :filter       [:= $id 1 95]
+                         :order-by     [[:asc $id]]})]
+          (is (= ["Name" r-word no-sp]
+                 (map :display_name (mt/cols results))))
+          (is (= [["Red Medicine" "Red" "RedMedicine"]
+                  ["Rush Street" "Rush" "RushStreet"]]
+                 (mt/formatted-rows [str str str] results))))))))
 
 (deftest ^:parallel expression-name-weird-characters-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -520,42 +523,44 @@
 (deftest ^:parallel join-table-on-itself-with-custom-column-test
   (testing "Should be able to join a source query against itself using an expression (#17770)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions :left-join)
-      (let [query (mt/mbql-query nil
-                    {:source-query {:source-query {:source-table $$products
-                                                   :aggregation  [[:count]]
-                                                   :breakout     [$products.category]}
-                                    :expressions  {:CC [:+ 1 1]}}
-                     :joins        [{:source-query {:source-query {:source-table $$products
-                                                                   :aggregation  [[:count]]
-                                                                   :breakout     [$products.category]}
-                                                    :expressions  {:CC [:+ 1 1]}}
-                                     :alias        "Q1"
-                                     :condition    [:=
-                                                    [:field "CC" {:base-type :type/Integer}]
-                                                    [:field "CC" {:base-type :type/Integer, :join-alias "Q1"}]]
-                                     :fields       :all}]
-                     :order-by     [[:asc $products.category]
-                                    [:desc [:field "count" {:base-type :type/Integer}]]
-                                    [:asc &Q1.products.category]]
-                     :limit        1})]
-        (mt/with-native-query-testing-context query
-          ;; source.category, source.count, source.CC, Q1.category, Q1.count, Q1.CC
-          (is (= [["Doohickey" 42 2 "Doohickey" 42 2]]
-                 (mt/formatted-rows [str int int str int int]
-                   (qp/process-query query)))))))))
+      (mt/dataset test-data
+        (let [query (mt/mbql-query nil
+                      {:source-query {:source-query {:source-table $$products
+                                                     :aggregation  [[:count]]
+                                                     :breakout     [$products.category]}
+                                      :expressions  {:CC [:+ 1 1]}}
+                       :joins        [{:source-query {:source-query {:source-table $$products
+                                                                     :aggregation  [[:count]]
+                                                                     :breakout     [$products.category]}
+                                                      :expressions  {:CC [:+ 1 1]}}
+                                       :alias        "Q1"
+                                       :condition    [:=
+                                                      [:field "CC" {:base-type :type/Integer}]
+                                                      [:field "CC" {:base-type :type/Integer, :join-alias "Q1"}]]
+                                       :fields       :all}]
+                       :order-by     [[:asc $products.category]
+                                      [:desc [:field "count" {:base-type :type/Integer}]]
+                                      [:asc &Q1.products.category]]
+                       :limit        1})]
+          (mt/with-native-query-testing-context query
+            ;; source.category, source.count, source.CC, Q1.category, Q1.count, Q1.CC
+            (is (= [["Doohickey" 42 2 "Doohickey" 42 2]]
+                   (mt/formatted-rows [str int int str int int]
+                     (qp/process-query query))))))))))
 
 (deftest ^:parallel nested-expressions-with-existing-names-test
   (testing "Expressions with the same name as existing columns should work correctly in nested queries (#21131)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions)
-      (doseq [expression-name ["PRICE" "price"]]
-        (testing (format "Expression name = %s" (pr-str expression-name))
-          (let [query (mt/mbql-query products
-                        {:source-query {:source-table $$products
-                                        :expressions  {expression-name [:+ $price 2]}
-                                        :fields       [$id $price [:expression expression-name]]
-                                        :order-by     [[:asc $id]]
-                                        :limit        2}})]
-            (mt/with-native-query-testing-context query
-              (is (= [[1 29.46 31.46] [2 70.08 72.08]]
-                     (mt/formatted-rows [int 2.0 2.0]
-                       (qp/process-query query)))))))))))
+      (mt/dataset test-data
+        (doseq [expression-name ["PRICE" "price"]]
+          (testing (format "Expression name = %s" (pr-str expression-name))
+            (let [query (mt/mbql-query products
+                          {:source-query {:source-table $$products
+                                          :expressions  {expression-name [:+ $price 2]}
+                                          :fields       [$id $price [:expression expression-name]]
+                                          :order-by     [[:asc $id]]
+                                          :limit        2}})]
+              (mt/with-native-query-testing-context query
+                (is (= [[1 29.46 31.46] [2 70.08 72.08]]
+                       (mt/formatted-rows [int 2.0 2.0]
+                         (qp/process-query query))))))))))))

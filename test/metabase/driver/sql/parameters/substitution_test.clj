@@ -47,14 +47,15 @@
                :value {:type  :string/=
                        :value ["Doohickey"]}})))))
   (testing "Compound filters should be wrapped in parens"
-    (mt/with-metadata-provider meta/metadata-provider
-      (is (= {:replacement-snippet     "((\"PUBLIC\".\"PEOPLE\".\"STATE\" <> ?) OR (\"PUBLIC\".\"PEOPLE\".\"STATE\" IS NULL))"
-              :prepared-statement-args ["OR"]}
-             (#'sql.params.substitution/field-filter->replacement-snippet-info
-              :h2
-              (params/map->FieldFilter
-               {:field (lib.metadata/field (qp.store/metadata-provider) (meta/id :people :state))
-                :value {:type :string/!=, :slug "state", :value ["OR"]}})))))))
+    (mt/dataset test-data
+      (mt/with-metadata-provider meta/metadata-provider
+        (is (= {:replacement-snippet     "((\"PUBLIC\".\"PEOPLE\".\"STATE\" <> ?) OR (\"PUBLIC\".\"PEOPLE\".\"STATE\" IS NULL))"
+                :prepared-statement-args ["OR"]}
+               (#'sql.params.substitution/field-filter->replacement-snippet-info
+                :h2
+                (params/map->FieldFilter
+                 {:field (lib.metadata/field (qp.store/metadata-provider) (meta/id :people :state))
+                  :value {:type :string/!=, :slug "state", :value ["OR"]}}))))))))
 
 (deftest ^:parallel card-with-params->replacement-snippet-test
   (testing "Make sure Card params are preserved when expanding a Card reference (#12236)"

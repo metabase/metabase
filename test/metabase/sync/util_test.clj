@@ -202,7 +202,7 @@
 
 (deftest ^:parallel error-handling-test
   (testing "A ConnectException will cause sync to stop"
-    (mt/dataset test-data-with-time
+    (mt/dataset test-data
       (let [expected           (java.io.IOException.
                                 "outer"
                                 (java.net.ConnectException.
@@ -258,79 +258,81 @@
           (is (= {:log-summary-fn nil} (dissoc result :start-time :end-time))))))))
 
 (deftest initial-sync-status-test
-  (testing "If `initial-sync-status` on a DB is `incomplete`, it is marked as `complete` when sync-metadata has finished"
-    (let [_  (t2/update! Database (:id (mt/db)) {:initial_sync_status "incomplete"})
-          db (t2/select-one Database :id (:id (mt/db)))]
-      (sync/sync-database! db)
-      (is (= "complete" (t2/select-one-fn :initial_sync_status Database :id (:id db))))))
-
-  (testing "If `initial-sync-status` on a DB is `complete`, it remains `complete` when sync is run again"
-    (let [_  (t2/update! Database (:id (mt/db)) {:initial_sync_status "complete"})
-          db (t2/select-one Database :id (:id (mt/db)))]
-      (sync/sync-database! db)
-      (is (= "complete" (t2/select-one-fn :initial_sync_status Database :id (:id db))))))
-
-  (testing "If `initial-sync-status` on a table is `incomplete`, it is marked as `complete` after the sync-fks step
-                       has finished"
-    (let [table-id (t2/select-one-fn :id Table :db_id (:id (mt/db)))
-          _        (t2/update! Table table-id {:initial_sync_status "incomplete"})
-          _table   (t2/select-one Table :id table-id)]
-      (sync/sync-database! (mt/db))
-      (is (= "complete" (t2/select-one-fn :initial_sync_status Table :id table-id)))))
-
-  (testing "Database and table syncs are marked as complete even if the initial scan is :schema only"
-    (let [_        (t2/update! Database (:id (mt/db)) {:initial_sync_status "incomplete"})
-          db       (t2/select-one Database :id (:id (mt/db)))
-          table-id (t2/select-one-fn :id Table :db_id (:id (mt/db)))
-          _        (t2/update! Table table-id {:initial_sync_status "incomplete"})
-          _table   (t2/select-one Table :id table-id)]
-      (sync/sync-database! db {:scan :schema})
-      (is (= "complete" (t2/select-one-fn :initial_sync_status Database :id (:id db))))
-      (is (= "complete" (t2/select-one-fn :initial_sync_status Table :id table-id)))))
-
-  (testing "If a non-recoverable error occurs during sync, `initial-sync-status` on the database is set to `aborted`"
-    (let [_  (t2/update! Database (:id (mt/db)) {:initial_sync_status "incomplete"})
-          db (t2/select-one Database :id (:id (mt/db)))]
-      (with-redefs [sync-metadata/make-sync-steps (fn [_]
-                                                    [(sync-util/create-sync-step
-                                                      "fake-step"
-                                                      (fn [_] (throw (java.net.ConnectException.))))])]
+  (mt/dataset test-data
+    (testing "If `initial-sync-status` on a DB is `incomplete`, it is marked as `complete` when sync-metadata has finished"
+      (let [_  (t2/update! Database (:id (mt/db)) {:initial_sync_status "incomplete"})
+            db (t2/select-one Database :id (:id (mt/db)))]
         (sync/sync-database! db)
-        (is (= "aborted" (t2/select-one-fn :initial_sync_status Database :id (:id db)))))))
+        (is (= "complete" (t2/select-one-fn :initial_sync_status Database :id (:id db))))))
 
-  (testing "If `initial-sync-status` is `aborted` for a database, it is set to `complete` the next time sync finishes
+    (testing "If `initial-sync-status` on a DB is `complete`, it remains `complete` when sync is run again"
+      (let [_  (t2/update! Database (:id (mt/db)) {:initial_sync_status "complete"})
+            db (t2/select-one Database :id (:id (mt/db)))]
+        (sync/sync-database! db)
+        (is (= "complete" (t2/select-one-fn :initial_sync_status Database :id (:id db))))))
+
+    (testing "If `initial-sync-status` on a table is `incomplete`, it is marked as `complete` after the sync-fks step
+                       has finished"
+      (let [table-id (t2/select-one-fn :id Table :db_id (:id (mt/db)))
+            _        (t2/update! Table table-id {:initial_sync_status "incomplete"})
+            _table   (t2/select-one Table :id table-id)]
+        (sync/sync-database! (mt/db))
+        (is (= "complete" (t2/select-one-fn :initial_sync_status Table :id table-id)))))
+
+    (testing "Database and table syncs are marked as complete even if the initial scan is :schema only"
+      (let [_        (t2/update! Database (:id (mt/db)) {:initial_sync_status "incomplete"})
+            db       (t2/select-one Database :id (:id (mt/db)))
+            table-id (t2/select-one-fn :id Table :db_id (:id (mt/db)))
+            _        (t2/update! Table table-id {:initial_sync_status "incomplete"})
+            _table   (t2/select-one Table :id table-id)]
+        (sync/sync-database! db {:scan :schema})
+        (is (= "complete" (t2/select-one-fn :initial_sync_status Database :id (:id db))))
+        (is (= "complete" (t2/select-one-fn :initial_sync_status Table :id table-id)))))
+
+    (testing "If a non-recoverable error occurs during sync, `initial-sync-status` on the database is set to `aborted`"
+      (let [_  (t2/update! Database (:id (mt/db)) {:initial_sync_status "incomplete"})
+            db (t2/select-one Database :id (:id (mt/db)))]
+        (with-redefs [sync-metadata/make-sync-steps (fn [_]
+                                                      [(sync-util/create-sync-step
+                                                         "fake-step"
+                                                         (fn [_] (throw (java.net.ConnectException.))))])]
+          (sync/sync-database! db)
+          (is (= "aborted" (t2/select-one-fn :initial_sync_status Database :id (:id db)))))))
+
+    (testing "If `initial-sync-status` is `aborted` for a database, it is set to `complete` the next time sync finishes
                        without error"
-    (let [_  (t2/update! Database (:id (mt/db)) {:initial_sync_status "complete"})
-          db (t2/select-one Database :id (:id (mt/db)))]
-      (sync/sync-database! db)
-      (is (= "complete" (t2/select-one-fn :initial_sync_status Database :id (:id db)))))))
+      (let [_  (t2/update! Database (:id (mt/db)) {:initial_sync_status "complete"})
+            db (t2/select-one Database :id (:id (mt/db)))]
+        (sync/sync-database! db)
+        (is (= "complete" (t2/select-one-fn :initial_sync_status Database :id (:id db))))))))
 
 (deftest initial-sync-status-table-only-test
   ;; Test that if a database is already completed sync'ing, then the sync is started again, it should initially be marked as
   ;; incomplete, but then marked as complete after the sync is finished.
-  (testing "If `initial-sync-status` on a DB is already `complete`"
-    (let [[active-table inactive-table] (t2/select Table :db_id (mt/id))
-          get-active-table #(t2/select-one Table :id (:id active-table))
-          get-inactive-table #(t2/select-one Table :id (:id inactive-table))]
-      (t2/update! Table (:id active-table) {:initial_sync_status "complete" :active true})
-      (t2/update! Table (:id inactive-table) {:initial_sync_status "complete" :active false})
-      (let [syncing-chan   (a/chan)
-            completed-chan (a/chan)]
-        (let [sync-fields! sync-fields/sync-fields!]
-          (with-redefs [sync-fields/sync-fields! (fn [database]
-                                                   (a/>!! syncing-chan ::syncing)
-                                                   (sync-fields! database))]
-            (future
-              (sync/sync-database! (mt/db))
-              (a/>!! completed-chan ::sync-completed))
-            (a/<!! syncing-chan)
-            (testing "for existing tables initial_sync_status is complete while sync is running"
-              (is (= "complete"   (:initial_sync_status (get-active-table)))))
-            (testing "for new or previously inactive tables, initial_sync_status is incomplete while sync is running"
-              (is (= "incomplete" (:initial_sync_status (get-inactive-table)))))
-            (a/<!! completed-chan)
-            (testing "initial_sync_status is complete after the sync is finished"
-              (is (= "complete"   (:initial_sync_status (get-active-table))))
-              (is (= "complete"   (:initial_sync_status (get-inactive-table)))))))
-        (a/close! syncing-chan)
-        (a/close! completed-chan)))))
+  (mt/dataset test-data
+    (testing "If `initial-sync-status` on a DB is already `complete`"
+      (let [[active-table inactive-table] (t2/select Table :db_id (mt/id))
+            get-active-table #(t2/select-one Table :id (:id active-table))
+            get-inactive-table #(t2/select-one Table :id (:id inactive-table))]
+        (t2/update! Table (:id active-table) {:initial_sync_status "complete" :active true})
+        (t2/update! Table (:id inactive-table) {:initial_sync_status "complete" :active false})
+        (let [syncing-chan   (a/chan)
+              completed-chan (a/chan)]
+          (let [sync-fields! sync-fields/sync-fields!]
+            (with-redefs [sync-fields/sync-fields! (fn [database]
+                                                     (a/>!! syncing-chan ::syncing)
+                                                     (sync-fields! database))]
+              (future
+                (sync/sync-database! (mt/db))
+                (a/>!! completed-chan ::sync-completed))
+              (a/<!! syncing-chan)
+              (testing "for existing tables initial_sync_status is complete while sync is running"
+                (is (= "complete"   (:initial_sync_status (get-active-table)))))
+              (testing "for new or previously inactive tables, initial_sync_status is incomplete while sync is running"
+                (is (= "incomplete" (:initial_sync_status (get-inactive-table)))))
+              (a/<!! completed-chan)
+              (testing "initial_sync_status is complete after the sync is finished"
+                (is (= "complete"   (:initial_sync_status (get-active-table))))
+                (is (= "complete"   (:initial_sync_status (get-inactive-table)))))))
+          (a/close! syncing-chan)
+          (a/close! completed-chan))))))

@@ -234,22 +234,23 @@
 
 (deftest rescanned-human-readable-values-test
   (testing "Make sure FieldValues are calculated and saved correctly when remapping is in place (#13235)"
-    (mt/with-temp-copy-of-db
-      (letfn [(field-values []
-                (t2/select-one FieldValues :field_id (mt/id :orders :product_id)))]
-        (testing "Should have no FieldValues initially"
-          (is (= nil
-                 (field-values))))
-        (t2.with-temp/with-temp [Dimension _ {:field_id                (mt/id :orders :product_id)
-                                              :human_readable_field_id (mt/id :products :title)
-                                              :type                    "external"}]
-          (mt/with-temp-vals-in-db Field (mt/id :orders :product_id) {:has_field_values "list"}
-            (is (= ::field-values/fv-created
-                   (field-values/create-or-update-full-field-values! (t2/select-one Field :id (mt/id :orders :product_id)))))
-            (is (partial= {:field_id              (mt/id :orders :product_id)
-                           :values                [1 2 3 4]
-                           :human_readable_values []}
-                          (field-values)))))))))
+    (mt/dataset test-data
+      (mt/with-temp-copy-of-db
+        (letfn [(field-values []
+                  (t2/select-one FieldValues :field_id (mt/id :orders :product_id)))]
+          (testing "Should have no FieldValues initially"
+            (is (= nil
+                   (field-values))))
+          (t2.with-temp/with-temp [Dimension _ {:field_id                (mt/id :orders :product_id)
+                                                :human_readable_field_id (mt/id :products :title)
+                                                :type                    "external"}]
+            (mt/with-temp-vals-in-db Field (mt/id :orders :product_id) {:has_field_values "list"}
+              (is (= ::field-values/fv-created
+                     (field-values/create-or-update-full-field-values! (t2/select-one Field :id (mt/id :orders :product_id)))))
+              (is (partial= {:field_id              (mt/id :orders :product_id)
+                             :values                [1 2 3 4]
+                             :human_readable_values []}
+                            (field-values))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Life Cycle                                                     |

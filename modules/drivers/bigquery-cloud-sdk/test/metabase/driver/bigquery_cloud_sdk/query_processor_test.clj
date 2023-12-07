@@ -420,25 +420,26 @@
 (deftest ^:parallel reconcile-unix-timestamps-test
   (testing "temporal type reconciliation should work for UNIX timestamps (#15376)"
     (mt/test-driver :bigquery-cloud-sdk
-      (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
-                                        (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                                        {:fields [{:id                (mt/id :reviews :rating)
-                                                   :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime
-                                                   :effective-type    :type/Instant}]})
-        (let [query         (mt/mbql-query reviews
-                              {:filter   [:=
-                                          [:field %rating {::add/source-table $$reviews}]
-                                          [:relative-datetime -30 :day]]
-                               :order-by [[:asc
-                                           [:field %id {:add/source-table $$reviews}]]]
-                               :limit    1})
-              filter-clause (get-in query [:query :filter])]
-          (is (= [(str (format "timestamp_millis(%s.reviews.rating)" test-db-name)
-                       " = "
-                       "timestamp_trunc(timestamp_add(current_timestamp(), INTERVAL -30 day), day)")]
-                 (hsql/format-predicate (sql.qp/->honeysql :bigquery-cloud-sdk filter-clause))))
-          (is (= :completed
-                 (:status (qp/process-query query)))))))))
+      (mt/dataset test-data
+        (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
+                                          (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                          {:fields [{:id                (mt/id :reviews :rating)
+                                                     :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime
+                                                     :effective-type    :type/Instant}]})
+          (let [query         (mt/mbql-query reviews
+                                {:filter   [:=
+                                            [:field %rating {::add/source-table $$reviews}]
+                                            [:relative-datetime -30 :day]]
+                                 :order-by [[:asc
+                                             [:field %id {:add/source-table $$reviews}]]]
+                                 :limit    1})
+                filter-clause (get-in query [:query :filter])]
+            (is (= [(str (format "timestamp_millis(%s.reviews.rating)" test-db-name)
+                         " = "
+                         "timestamp_trunc(timestamp_add(current_timestamp(), INTERVAL -30 day), day)")]
+                   (hsql/format-predicate (sql.qp/->honeysql :bigquery-cloud-sdk filter-clause))))
+            (is (= :completed
+                   (:status (qp/process-query query))))))))))
 
 (deftest temporal-type-conversion-test
   (mt/with-driver :bigquery-cloud-sdk
@@ -1001,19 +1002,20 @@
 
 (deftest ^:parallel custom-expression-args-quoted
   (mt/test-driver :bigquery-cloud-sdk
-    (testing "Arguments to custom aggregation expression functions have backticks applied properly"
-      (is (= {:mbql?      true
-              :params     nil
-              :table-name "orders"
-              :query      (format
-                           (str "SELECT APPROX_QUANTILES(`%s.orders`.`quantity`, 10)[OFFSET(5)] AS `CE`"
-                                " FROM `%s.orders` LIMIT 10")
-                           test-db-name test-db-name)}
-             (qp/compile (mt/mbql-query orders
-                           {:aggregation [[:aggregation-options
-                                           [:percentile $orders.quantity 0.5]
-                                           {:name "CE", :display-name "CE"}]]
-                            :limit       10})))))))
+    (mt/dataset test-data
+      (testing "Arguments to custom aggregation expression functions have backticks applied properly"
+        (is (= {:mbql?      true
+                :params     nil
+                :table-name "orders"
+                :query      (format
+                             (str "SELECT APPROX_QUANTILES(`%s.orders`.`quantity`, 10)[OFFSET(5)] AS `CE`"
+                                  " FROM `%s.orders` LIMIT 10")
+                             test-db-name test-db-name)}
+               (qp/compile (mt/mbql-query orders
+                             {:aggregation [[:aggregation-options
+                                             [:percentile $orders.quantity 0.5]
+                                             {:name "CE", :display-name "CE"}]]
+                              :limit       10}))))))))
 
 (deftest ^:parallel no-qualify-breakout-field-name-with-subquery-test
   (mt/test-driver :bigquery-cloud-sdk

@@ -20,12 +20,13 @@
 
 (deftest remapped-fks-test
   (testing "Sanity check: query->expected-cols should not include MLv2 dimension remapping keys"
-    ;; Add column remapping from Orders Product ID -> Products.Title
-    (t2.with-temp/with-temp [:model/Dimension _ (mt/$ids orders
-                                                  {:field_id                %product_id
-                                                   :name                    "Product ID"
-                                                   :type                    :external
-                                                   :human_readable_field_id %products.title})]
-      (let [expected-cols (qp/query->expected-cols (mt/mbql-query orders))]
-        (is (not (some (some-fn :lib/external_remap :lib/internal_remap)
-                       expected-cols)))))))
+    (mt/dataset test-data
+      ;; Add column remapping from Orders Product ID -> Products.Title
+      (t2.with-temp/with-temp [:model/Dimension _ (mt/$ids orders
+                                                    {:field_id                %product_id
+                                                     :name                    "Product ID"
+                                                     :type                    :external
+                                                     :human_readable_field_id %products.title})]
+        (let [expected-cols (qp/query->expected-cols (mt/mbql-query orders))]
+          (is (not (some (some-fn :lib/external_remap :lib/internal_remap)
+                         expected-cols))))))))

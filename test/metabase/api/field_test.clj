@@ -792,26 +792,27 @@
 (deftest field-values-remapped-fields-test
   (testing "GET /api/field/:id/values"
     (testing "Should return tuples of [original remapped] for a remapped Field (#13235)"
-      (mt/with-temp-copy-of-db
-        ;; create a human-readable-values remapping. Do this via the API because the crazy things may or may not be
-        ;; happening
-        (is (partial= {:field_id                (mt/id :orders :product_id)
-                       :human_readable_field_id (mt/id :products :title)
-                       :type                    "external"}
-                      (mt/user-http-request :crowberto :post 200
-                                            (format "field/%d/dimension" (mt/id :orders :product_id))
-                                            {:human_readable_field_id (mt/id :products :title)
-                                             :name                    "Product ID"
-                                             :type                    :external})))
-        ;; trigger a field values rescan (this API endpoint is synchronous)
-        (is (= {:status "success"}
-               (mt/user-http-request :crowberto :post 200 (format "field/%d/rescan_values" (mt/id :orders :product_id)))))
-        ;; mark the Field as has_field_values = list
-        (mt/with-temp-vals-in-db Field (mt/id :orders :product_id) {:has_field_values "list"}
-          (is (partial= {:values [[1 "Rustic Paper Wallet"]
-                                  [2 "Small Marble Shoes"]
-                                  [3 "Synergistic Granite Chair"]]}
-                        (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :orders :product_id))))))))))
+      (mt/dataset test-data
+        (mt/with-temp-copy-of-db
+          ;; create a human-readable-values remapping. Do this via the API because the crazy things may or may not be
+          ;; happening
+          (is (partial= {:field_id                (mt/id :orders :product_id)
+                         :human_readable_field_id (mt/id :products :title)
+                         :type                    "external"}
+                        (mt/user-http-request :crowberto :post 200
+                                              (format "field/%d/dimension" (mt/id :orders :product_id))
+                                              {:human_readable_field_id (mt/id :products :title)
+                                               :name                    "Product ID"
+                                               :type                    :external})))
+          ;; trigger a field values rescan (this API endpoint is synchronous)
+          (is (= {:status "success"}
+                 (mt/user-http-request :crowberto :post 200 (format "field/%d/rescan_values" (mt/id :orders :product_id)))))
+          ;; mark the Field as has_field_values = list
+          (mt/with-temp-vals-in-db Field (mt/id :orders :product_id) {:has_field_values "list"}
+            (is (partial= {:values [[1 "Rustic Paper Wallet"]
+                                    [2 "Small Marble Shoes"]
+                                    [3 "Synergistic Granite Chair"]]}
+                          (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :orders :product_id)))))))))))
 
 (deftest json-unfolding-initially-true-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)

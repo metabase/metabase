@@ -338,125 +338,129 @@
 
 (deftest ^:parallel legacy-parameters-with-no-widget-type-test
   (testing "Legacy queries with parameters that don't specify `:widget-type` should still work (#20643)"
-    (let [query (mt/native-query
-                  {:query         "SELECT count(*) FROM products WHERE {{cat}};"
-                   :template-tags {"cat" {:id           "__MY_CAT__"
-                                          :name         "cat"
-                                          :display-name "Cat"
-                                          :type         :dimension
-                                          :dimension    [:field (mt/id :products :category) nil]}}})]
-      (is (= [200]
-             (mt/first-row (qp/process-query query)))))))
+    (mt/dataset test-data
+      (let [query (mt/native-query
+                    {:query         "SELECT count(*) FROM products WHERE {{cat}};"
+                     :template-tags {"cat" {:id           "__MY_CAT__"
+                                            :name         "cat"
+                                            :display-name "Cat"
+                                            :type         :dimension
+                                            :dimension    [:field (mt/id :products :category) nil]}}})]
+        (is (= [200]
+               (mt/first-row (qp/process-query query))))))))
 
 (deftest date-parameter-for-native-query-with-nested-mbql-query-test
   (testing "Should be able to have a native query with a nested MBQL query and a date parameter (#21246)"
-    (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (mt/mbql-query products)}]
-      (let [param-name (format "#%d" card-id)
-            query      (mt/native-query
-                         {:query         (str/join \newline
-                                                   [(format "WITH exclude_products AS {{%s}}" param-name)
-                                                    "SELECT count(*)"
-                                                    "FROM orders"
-                                                    "[[WHERE {{created_at}}]]"])
-                          :template-tags {param-name   {:type         :card
-                                                        :card-id      card-id
-                                                        :display-name param-name
-                                                        :id           "__source__"
-                                                        :name         param-name}
-                                          "created_at" {:type         :dimension
-                                                        :default      nil
-                                                        :dimension    [:field (mt/id :orders :created_at) nil]
-                                                        :display-name "Created At"
-                                                        :id           "__created_at__"
-                                                        :name         "created_at"
-                                                        :widget-type  :date/all-options}}})]
-        (testing "With no parameters"
-          (mt/with-native-query-testing-context query
-            (is (= [[18760]]
-                   (mt/rows (qp/process-query query))))))
-        (testing "With parameters (#21246)"
-          (let [query (assoc query :parameters [{:type   :date/all-options
-                                                 :value  "2022-04-20"
-                                                 :target [:dimension [:template-tag "created_at"]]}])]
+    (mt/dataset test-data
+      (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (mt/mbql-query products)}]
+        (let [param-name (format "#%d" card-id)
+              query      (mt/native-query
+                           {:query         (str/join \newline
+                                                     [(format "WITH exclude_products AS {{%s}}" param-name)
+                                                      "SELECT count(*)"
+                                                      "FROM orders"
+                                                      "[[WHERE {{created_at}}]]"])
+                            :template-tags {param-name   {:type         :card
+                                                          :card-id      card-id
+                                                          :display-name param-name
+                                                          :id           "__source__"
+                                                          :name         param-name}
+                                            "created_at" {:type         :dimension
+                                                          :default      nil
+                                                          :dimension    [:field (mt/id :orders :created_at) nil]
+                                                          :display-name "Created At"
+                                                          :id           "__created_at__"
+                                                          :name         "created_at"
+                                                          :widget-type  :date/all-options}}})]
+          (testing "With no parameters"
             (mt/with-native-query-testing-context query
-              (is (= [[0]]
-                     (mt/rows (qp/process-query query)))))))))))
+              (is (= [[18760]]
+                     (mt/rows (qp/process-query query))))))
+          (testing "With parameters (#21246)"
+            (let [query (assoc query :parameters [{:type   :date/all-options
+                                                   :value  "2022-04-20"
+                                                   :target [:dimension [:template-tag "created_at"]]}])]
+              (mt/with-native-query-testing-context query
+                (is (= [[0]]
+                       (mt/rows (qp/process-query query))))))))))))
 
 (deftest ^:parallel multiple-native-query-parameters-test
-  (let [sql   (str/join
-               \newline
-               ["SELECT orders.id, orders.created_at, people.state, people.name, people.source"
-                "FROM orders LEFT JOIN people ON orders.user_id = people.id"
-                "WHERE true"
-                "  [[AND {{created_at}}]]"
-                "  [[AND {{state}}]]"
-                "  AND [[people.source = {{source}}]]"
-                "  ORDER BY orders.id ASC"
-                "  LIMIT 15;"])
-        query {:database (mt/id)
-               :type     :native
-               :native   {:query         sql
-                          :type          :native
-                          :template-tags {"created_at" {:id           "a21ca6d2-f742-a94a-da71-75adf379069c"
-                                                        :name         "created_at"
-                                                        :display-name "Created At"
-                                                        :type         :dimension
-                                                        :dimension    [:field (mt/id :orders :created_at) nil]
-                                                        :widget-type  :date/quarter-year
-                                                        :default      nil}
-                                          "source"     {:id           "44038e73-f909-1bed-0974-2a42ce8979e8"
-                                                        :name         "source"
-                                                        :display-name "Source"
-                                                        :type         :text}
-                                          "state"      {:id           "88057a9e-91bd-4b2e-9327-afd92c259dc8"
-                                                        :name         "state"
-                                                        :display-name "State"
-                                                        :type         :dimension
-                                                        :dimension    [:field (mt/id :people :state) nil]
-                                                        :widget-type  :string/!=
-                                                        :default      nil}}
-                          :parameters    [{:type   :date/quarter-year
-                                           :target [:dimension [:template-tag "created_at"]]
-                                           :slug   "created_at"
-                                           :value  "Q2-2019"}
-                                          {:type   :category
-                                           :target [:variable [:template-tag "source"]]
-                                           :slug   "source"
-                                           :value  "Organic"}
-                                          {:type   :string/!=
-                                           :target [:dimension [:template-tag "state"]]
-                                           :slug   "state"
-                                           :value  ["OR"]}]}}]
-    (mt/with-native-query-testing-context query
-      (let [rows (mt/rows (qp/process-query query))]
-        (testing (format "Results =\n%s" (u/pprint-to-str rows))
-          (doseq [[_orders-id orders-created-at people-state _people-name people-source :as row] rows]
-            (testing (format "Row =\n%s" (u/pprint-to-str row))
-              (testing "created_at = Q2-2019"
-                (is (t/after?  (u.date/parse orders-created-at) #t "2019-04-01T00:00:00-00:00"))
-                (is (t/before? (u.date/parse orders-created-at) #t "2019-07-01T00:00:00-00:00")))
-              (testing "source = Organic"
-                (is (= people-source "Organic")))
-              (testing "state != OR"
-                (is (not= people-state "OR")))))
-          (testing "Should contain row with 'Emilie Goyette'"
-            (is (some (fn [[_orders-id _orders-created-at _people-state people-name _people-source :as _row]]
-                        (= people-name "Emilie Goyette"))
-                      rows))))))))
+  (mt/dataset test-data
+    (let [sql   (str/join
+                 \newline
+                 ["SELECT orders.id, orders.created_at, people.state, people.name, people.source"
+                  "FROM orders LEFT JOIN people ON orders.user_id = people.id"
+                  "WHERE true"
+                  "  [[AND {{created_at}}]]"
+                  "  [[AND {{state}}]]"
+                  "  AND [[people.source = {{source}}]]"
+                  "  ORDER BY orders.id ASC"
+                  "  LIMIT 15;"])
+          query {:database (mt/id)
+                 :type     :native
+                 :native   {:query         sql
+                            :type          :native
+                            :template-tags {"created_at" {:id           "a21ca6d2-f742-a94a-da71-75adf379069c"
+                                                          :name         "created_at"
+                                                          :display-name "Created At"
+                                                          :type         :dimension
+                                                          :dimension    [:field (mt/id :orders :created_at) nil]
+                                                          :widget-type  :date/quarter-year
+                                                          :default      nil}
+                                            "source"     {:id           "44038e73-f909-1bed-0974-2a42ce8979e8"
+                                                          :name         "source"
+                                                          :display-name "Source"
+                                                          :type         :text}
+                                            "state"      {:id           "88057a9e-91bd-4b2e-9327-afd92c259dc8"
+                                                          :name         "state"
+                                                          :display-name "State"
+                                                          :type         :dimension
+                                                          :dimension    [:field (mt/id :people :state) nil]
+                                                          :widget-type  :string/!=
+                                                          :default      nil}}
+                            :parameters    [{:type   :date/quarter-year
+                                             :target [:dimension [:template-tag "created_at"]]
+                                             :slug   "created_at"
+                                             :value  "Q2-2019"}
+                                            {:type   :category
+                                             :target [:variable [:template-tag "source"]]
+                                             :slug   "source"
+                                             :value  "Organic"}
+                                            {:type   :string/!=
+                                             :target [:dimension [:template-tag "state"]]
+                                             :slug   "state"
+                                             :value  ["OR"]}]}}]
+      (mt/with-native-query-testing-context query
+        (let [rows (mt/rows (qp/process-query query))]
+          (testing (format "Results =\n%s" (u/pprint-to-str rows))
+            (doseq [[_orders-id orders-created-at people-state _people-name people-source :as row] rows]
+              (testing (format "Row =\n%s" (u/pprint-to-str row))
+                (testing "created_at = Q2-2019"
+                  (is (t/after?  (u.date/parse orders-created-at) #t "2019-04-01T00:00:00-00:00"))
+                  (is (t/before? (u.date/parse orders-created-at) #t "2019-07-01T00:00:00-00:00")))
+                (testing "source = Organic"
+                  (is (= people-source "Organic")))
+                (testing "state != OR"
+                  (is (not= people-state "OR")))))
+            (testing "Should contain row with 'Emilie Goyette'"
+              (is (some (fn [[_orders-id _orders-created-at _people-state people-name _people-source :as _row]]
+                          (= people-name "Emilie Goyette"))
+                        rows)))))))))
 
 (deftest ^:parallel inlined-number-test
   (testing "Number parameters are inlined into the SQL query and not parameterized (#29690)"
-    (is (= {:query  "SELECT NOW() - INTERVAL '30 DAYS'"
-            :params []}
-           (qp/compile-and-splice-parameters
-            {:type       :native
-             :native     {:query         "SELECT NOW() - INTERVAL '{{n}} DAYS'"
-                          :template-tags {"n"
-                                          {:name         "n"
-                                           :display-name "n"
-                                           :type         :number}}}
-             :database   (mt/id)
-             :parameters [{:type :number
-                           :target [:variable [:template-tag "n"]]
-                           :slug "n"
-                           :value "30"}]})))))
+    (mt/dataset test-data
+      (is (= {:query  "SELECT NOW() - INTERVAL '30 DAYS'"
+              :params []}
+             (qp/compile-and-splice-parameters
+              {:type       :native
+               :native     {:query         "SELECT NOW() - INTERVAL '{{n}} DAYS'"
+                            :template-tags {"n"
+                                            {:name         "n"
+                                             :display-name "n"
+                                             :type         :number}}}
+               :database   (mt/id)
+               :parameters [{:type :number
+                             :target [:variable [:template-tag "n"]]
+                             :slug "n"
+                             :value "30"}]}))))))

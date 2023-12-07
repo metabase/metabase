@@ -326,17 +326,18 @@
 (deftest first-day-of-week-test
   (mt/test-driver :snowflake
     (testing "Day-of-week should work correctly regardless of what the `start-of-week` Setting is set to (#20999)"
-      (doseq [[start-of-week friday-int] [[:friday 1]
-                                          [:monday 5]
-                                          [:sunday 6]]]
-        (mt/with-temporary-setting-values [start-of-week start-of-week]
-          (let [query (mt/mbql-query people
-                        {:breakout    [!day-of-week.birth_date]
-                         :aggregation [[:count]]
-                         :filter      [:= $birth_date "1986-12-12"]})]
-            (mt/with-native-query-testing-context query
-              (is (= [[friday-int 1]]
-                     (mt/rows (qp/process-query query)))))))))))
+      (mt/dataset test-data
+        (doseq [[start-of-week friday-int] [[:friday 1]
+                                            [:monday 5]
+                                            [:sunday 6]]]
+          (mt/with-temporary-setting-values [start-of-week start-of-week]
+            (let [query (mt/mbql-query people
+                          {:breakout    [!day-of-week.birth_date]
+                           :aggregation [[:count]]
+                           :filter      [:= $birth_date "1986-12-12"]})]
+              (mt/with-native-query-testing-context query
+                (is (= [[friday-int 1]]
+                       (mt/rows (qp/process-query query))))))))))))
 
 (deftest normalize-test
   (mt/test-driver :snowflake

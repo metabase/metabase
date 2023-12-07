@@ -180,38 +180,39 @@
 
 (deftest ^:parallel nested-with-aggregations-at-both-levels-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
-    (doseq [dataset? [true false]]
-      (testing (format "Aggregations in both nested and outer query for %s have correct metadata (#19403) and (#23248)"
-                       (if dataset? "questions" "models"))
-        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
-                                          [(mt/mbql-query products
-                                             {:aggregation [[:aggregation-options
-                                                             [:sum $price]
-                                                             {:name "sum"}]
-                                                            [:aggregation-options
-                                                             [:max $rating]
-                                                             {:name "max"}]]
-                                              :breakout    [$category]
-                                              :order-by    [[:asc $category]]})])
-          (is (partial= {:data {:cols [{:name "sum" :display_name "Sum of Sum of Price"}
-                                       {:name "count" :display_name "Count"}]
-                                :rows [[11149 4]]}}
-                        (mt/format-rows-by [int int]
-                          (qp/process-query (merge {:type     :query
-                                                    :database (mt/id)
-                                                    :query    {:source-table "card__1"
-                                                               :aggregation  [[:aggregation-options
-                                                                               [:sum
-                                                                                [:field
-                                                                                 "sum"
-                                                                                 {:base-type :type/Float}]]
-                                                                               {:name "sum"}]
-                                                                              [:aggregation-options
-                                                                               [:count]
-                                                                               {:name "count"}]]}}
-                                                   (when dataset?
-                                                     {:info {:metadata/dataset-metadata
-                                                             (:result-metadata (lib.metadata/card (qp.store/metadata-provider) 1))}})))))))))))
+    (mt/dataset test-data
+      (doseq [dataset? [true false]]
+        (testing (format "Aggregations in both nested and outer query for %s have correct metadata (#19403) and (#23248)"
+                         (if dataset? "questions" "models"))
+          (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                                            [(mt/mbql-query products
+                                               {:aggregation [[:aggregation-options
+                                                               [:sum $price]
+                                                               {:name "sum"}]
+                                                              [:aggregation-options
+                                                               [:max $rating]
+                                                               {:name "max"}]]
+                                                :breakout    [$category]
+                                                :order-by    [[:asc $category]]})])
+            (is (partial= {:data {:cols [{:name "sum" :display_name "Sum of Sum of Price"}
+                                         {:name "count" :display_name "Count"}]
+                                  :rows [[11149 4]]}}
+                          (mt/format-rows-by [int int]
+                            (qp/process-query (merge {:type     :query
+                                                      :database (mt/id)
+                                                      :query    {:source-table "card__1"
+                                                                 :aggregation  [[:aggregation-options
+                                                                                 [:sum
+                                                                                  [:field
+                                                                                   "sum"
+                                                                                   {:base-type :type/Float}]]
+                                                                                 {:name "sum"}]
+                                                                                [:aggregation-options
+                                                                                 [:count]
+                                                                                 {:name "count"}]]}}
+                                                     (when dataset?
+                                                       {:info {:metadata/dataset-metadata
+                                                               (:result-metadata (lib.metadata/card (qp.store/metadata-provider) 1))}}))))))))))))
 
 (deftest ^:parallel sql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -239,23 +240,24 @@
 (deftest ^:parallel multilevel-nested-questions-with-joins
   (testing "Multilevel nested questions with joins work (#22859)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
-      (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
-                                        [(mt/mbql-query reviews
-                                           {:fields [$id]
-                                            :joins  [{:source-table $$products
-                                                      :alias        "P"
-                                                      :fields       [&P.products.id &P.products.ean]
-                                                      :condition    [:= $product_id &P.products.id]}]})
-                                         (mt/mbql-query orders
-                                           {:fields [$id]
-                                            :joins  [{:source-table "card__1"
-                                                      :alias        "RP"
-                                                      :fields       [&RP.reviews.id &RP.products.id &RP.products.ean]
-                                                      :condition    [:= $product_id &RP.products.id]}]})])
-        (is (= :completed
-               (-> (query-with-source-card 2 :limit 1)
-                   qp/process-query
-                   :status)))))))
+      (mt/dataset test-data
+        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
+                                          [(mt/mbql-query reviews
+                                             {:fields [$id]
+                                              :joins  [{:source-table $$products
+                                                        :alias        "P"
+                                                        :fields       [&P.products.id &P.products.ean]
+                                                        :condition    [:= $product_id &P.products.id]}]})
+                                           (mt/mbql-query orders
+                                             {:fields [$id]
+                                              :joins  [{:source-table "card__1"
+                                                        :alias        "RP"
+                                                        :fields       [&RP.reviews.id &RP.products.id &RP.products.ean]
+                                                        :condition    [:= $product_id &RP.products.id]}]})])
+          (is (= :completed
+                 (-> (query-with-source-card 2 :limit 1)
+                     qp/process-query
+                     :status))))))))
 
 (deftest ^:parallel source-card-id-test
   (testing "Make sure we can run queries using source table `card__id` format."
@@ -884,101 +886,104 @@
 
 (deftest ^:parallel remapped-fks-test
   (testing "Should be able to use a question with remapped FK columns as a Saved Question (#10474)"
-    ;; Add column remapping from Orders Product ID -> Products.Title
-    (let [provider              (lib.tu/remap-metadata-provider
-                                 (mt/application-database-metadata-provider (mt/id))
-                                 (mt/id :orders :product_id)
-                                 (mt/id :products :title))
-          card-results-metadata (qp.store/with-metadata-provider provider
-                                  (let [result (mt/run-mbql-query orders {:limit 10})]
-                                    (testing "Sanity check: should be able to query Orders"
-                                      (is (=? {:status :completed}
-                                              result)))
-                                    (get-in result [:data :results_metadata :columns])))
-          expected-cols         (qp.store/with-metadata-provider provider
-                                  (qp/query->expected-cols (mt/mbql-query orders)))]
-      (is (not (some (some-fn :lib/external_remap :lib/internal_remap)
-                     expected-cols))
-          "Sanity check: query->expected-cols should not include MLv2 dimension remapping keys")
-      ;; Save a question with a query against orders. Should work regardless of whether Card has result_metadata
-      (doseq [[description result-metadata] {"NONE"                   nil
-                                             "from running the query" card-results-metadata
-                                             "with QP expected cols"  expected-cols}]
-        (testing (format "with Card with result metadata %s cols => %s"
-                         description
-                         (pr-str (mapv :display_name result-metadata)))
-          (qp.store/with-metadata-provider (-> provider
-                                               (lib.tu/metadata-provider-with-cards-for-queries [(mt/mbql-query orders)])
-                                               (lib.tu/merged-mock-metadata-provider
-                                                {:cards [{:id 1, :result-metadata result-metadata}]}))
-            ;; now try using this Card as a saved question,  should work
-            (is (= {:rows    [[1 1  14  37.65 2.07  39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]
-                              [2 1 123 110.93  6.1 117.03 nil "2018-05-15T08:04:04.58Z"  3 "Mediocre Wooden Bench"]]
-                    :columns ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TAX" "TOTAL" "DISCOUNT" "CREATED_AT" "QUANTITY" "TITLE"]}
-                   (mt/rows+column-names
-                    (mt/run-mbql-query orders
-                      {:source-table "card__1", :limit 2, :order-by [[:asc $id]]}))))))))))
+    (mt/dataset test-data
+      ;; Add column remapping from Orders Product ID -> Products.Title
+      (let [provider              (lib.tu/remap-metadata-provider
+                                   (mt/application-database-metadata-provider (mt/id))
+                                   (mt/id :orders :product_id)
+                                   (mt/id :products :title))
+            card-results-metadata (qp.store/with-metadata-provider provider
+                                    (let [result (mt/run-mbql-query orders {:limit 10})]
+                                      (testing "Sanity check: should be able to query Orders"
+                                        (is (=? {:status :completed}
+                                                result)))
+                                      (get-in result [:data :results_metadata :columns])))
+            expected-cols         (qp.store/with-metadata-provider provider
+                                    (qp/query->expected-cols (mt/mbql-query orders)))]
+        (is (not (some (some-fn :lib/external_remap :lib/internal_remap)
+                       expected-cols))
+            "Sanity check: query->expected-cols should not include MLv2 dimension remapping keys")
+        ;; Save a question with a query against orders. Should work regardless of whether Card has result_metadata
+        (doseq [[description result-metadata] {"NONE"                   nil
+                                               "from running the query" card-results-metadata
+                                               "with QP expected cols"  expected-cols}]
+          (testing (format "with Card with result metadata %s cols => %s"
+                           description
+                           (pr-str (mapv :display_name result-metadata)))
+            (qp.store/with-metadata-provider (-> provider
+                                                 (lib.tu/metadata-provider-with-cards-for-queries [(mt/mbql-query orders)])
+                                                 (lib.tu/merged-mock-metadata-provider
+                                                  {:cards [{:id 1, :result-metadata result-metadata}]}))
+              ;; now try using this Card as a saved question,  should work
+              (is (= {:rows    [[1 1  14  37.65 2.07  39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]
+                                [2 1 123 110.93  6.1 117.03 nil "2018-05-15T08:04:04.58Z"  3 "Mediocre Wooden Bench"]]
+                      :columns ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TAX" "TOTAL" "DISCOUNT" "CREATED_AT" "QUANTITY" "TITLE"]}
+                     (mt/rows+column-names
+                      (mt/run-mbql-query orders
+                        {:source-table "card__1", :limit 2, :order-by [[:asc $id]]})))))))))))
 
 (deftest ^:parallel nested-query-with-joins-test-2
   (testing "Should be able to use a query that contains joins as a source query (#14724)"
-    (letfn [(do-test [f]
-              (let [results (mt/run-mbql-query orders
-                              {:source-query {:source-table $$orders
-                                              :joins        [{:fields       :all
-                                                              :source-table $$products
-                                                              :condition    [:= $product_id &Products.products.id]
-                                                              :alias        "Products"}]}
-                               :limit        10})]
-                (is (=? {:status    :completed
-                         :row_count 10}
-                        results))
-                (f results)))]
-      (do-test
-       (fn [results]
-         (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
-                 14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1
-                 4.0 "2017-12-31T14:41:56.87Z"]
-                (first (mt/rows results))))))
-      (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                        (mt/application-database-metadata-provider (mt/id))
-                                        (mt/id :orders :product_id)
-                                        (mt/id :products :title))
+    (mt/dataset test-data
+      (letfn [(do-test [f]
+                (let [results (mt/run-mbql-query orders
+                                {:source-query {:source-table $$orders
+                                                :joins        [{:fields       :all
+                                                                :source-table $$products
+                                                                :condition    [:= $product_id &Products.products.id]
+                                                                :alias        "Products"}]}
+                                 :limit        10})]
+                  (is (=? {:status    :completed
+                           :row_count 10}
+                          results))
+                  (f results)))]
         (do-test
          (fn [results]
-           (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes" ; <- Extra remapped col
+           (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
                    14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1
                    4.0 "2017-12-31T14:41:56.87Z"]
-                  (first (mt/rows results))))))))))
+                  (first (mt/rows results))))))
+        (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                          (mt/application-database-metadata-provider (mt/id))
+                                          (mt/id :orders :product_id)
+                                          (mt/id :products :title))
+          (do-test
+           (fn [results]
+             (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes" ; <- Extra remapped col
+                     14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1
+                     4.0 "2017-12-31T14:41:56.87Z"]
+                    (first (mt/rows results)))))))))))
 
 (deftest ^:parallel inception-metadata-test
   (testing "Should be able to do an 'inception-style' nesting of source > source > source with a join (#14724)"
-    ;; these tests look at the metadata for just one column so it's easier to spot the differences.
-    (letfn [(ean-metadata [result]
-              (as-> result result
-                (get-in result [:data :results_metadata :columns])
-                (m/index-by :name result)
-                (get result "EAN")
-                (select-keys result [:name :display_name :base_type :id :field_ref])))]
-      (testing "Make sure metadata is correct for the 'EAN' column with"
-        (let [base-query (mt/mbql-query orders
-                           {:source-table $$orders
-                            :fields       [$id &Products.products.ean]
-                            :joins        [{:fields       [&Products.products.ean]
-                                            :source-table $$products
-                                            :condition    [:= $product_id &Products.products.id]
-                                            :alias        "Products"}]
-                            :limit        10})]
-          (doseq [level (range 4)]
-            (testing (format "%d level(s) of nesting" level)
-              (let [query (mt/nest-query base-query level)]
-                (testing (format "\nQuery = %s" (u/pprint-to-str query))
-                  (is (= (mt/$ids products
-                           {:name         "EAN"
-                            :display_name "Products → Ean"
-                            :base_type    :type/Text
-                            :id           %ean
-                            :field_ref    &Products.ean})
-                         (ean-metadata (qp/process-query query)))))))))))))
+    (mt/dataset test-data
+      ;; these tests look at the metadata for just one column so it's easier to spot the differences.
+      (letfn [(ean-metadata [result]
+                (as-> result result
+                  (get-in result [:data :results_metadata :columns])
+                  (m/index-by :name result)
+                  (get result "EAN")
+                  (select-keys result [:name :display_name :base_type :id :field_ref])))]
+        (testing "Make sure metadata is correct for the 'EAN' column with"
+          (let [base-query (mt/mbql-query orders
+                             {:source-table $$orders
+                              :fields       [$id &Products.products.ean]
+                              :joins        [{:fields       [&Products.products.ean]
+                                              :source-table $$products
+                                              :condition    [:= $product_id &Products.products.id]
+                                              :alias        "Products"}]
+                              :limit        10})]
+            (doseq [level (range 4)]
+              (testing (format "%d level(s) of nesting" level)
+                (let [query (mt/nest-query base-query level)]
+                  (testing (format "\nQuery = %s" (u/pprint-to-str query))
+                    (is (= (mt/$ids products
+                             {:name         "EAN"
+                              :display_name "Products → Ean"
+                              :base_type    :type/Text
+                              :id           %ean
+                              :field_ref    &Products.ean})
+                           (ean-metadata (qp/process-query query))))))))))))))
 
 (defn- field-id->name [field-id]
   (let [{field-name :name, table-id :table_id} (t2/select-one [Field :name :table_id] :id field-id)
@@ -987,175 +992,180 @@
 
 (deftest ^:parallel inception-test
   (testing "Should be able to do an 'inception-style' nesting of source > source > source with a join (#14724)"
-    (doseq [level (range 0 4)]
-      (testing (format "with %d level(s) of nesting" level)
-        (letfn [(run-query []
-                  (let [query (-> (mt/mbql-query orders
-                                    {:source-table $$orders
-                                     :joins        [{:fields       :all
-                                                     :source-table $$products
-                                                     :condition    [:= $product_id &Products.products.id]
-                                                     :alias        "Products"}]
-                                     :order-by     [[:asc $id]]
-                                     :limit        2})
-                                  (mt/nest-query level))]
-                    (qp/process-query query)))]
-          (testing "with no FK remappings"
-            (let [result (run-query)]
-              (is (=? {:status    :completed
-                       :row_count 2}
-                      result))
-              (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
-                      14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1 4.0
-                      "2017-12-31T14:41:56.87Z"]
-                     (mt/first-row result)))))
-          (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                            (mt/application-database-metadata-provider (mt/id))
-                                            (mt/id :orders :product_id)
-                                            (mt/id :products :title))
-            (let [result (run-query)]
-              (is (=? {:status    :completed
-                       :row_count 2}
-                      result))
-              (is (=  ["ORDERS.ID"
-                       "ORDERS.USER_ID"
-                       "ORDERS.PRODUCT_ID"
-                       "ORDERS.SUBTOTAL"
-                       "ORDERS.TAX"
-                       "ORDERS.TOTAL"
-                       "ORDERS.DISCOUNT"
-                       "ORDERS.CREATED_AT"
-                       "ORDERS.QUANTITY"
-                       "PRODUCTS.TITLE"
-                       "PRODUCTS.ID"
-                       "PRODUCTS.EAN"
-                       "PRODUCTS.TITLE"
-                       "PRODUCTS.CATEGORY"
-                       "PRODUCTS.VENDOR"
-                       "PRODUCTS.PRICE"
-                       "PRODUCTS.RATING"
-                       "PRODUCTS.CREATED_AT"]
-                      (mapv (comp field-id->name :id) (get-in result [:data :cols]))))
-              (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes" ; <- extra remapped col
-                      14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman"
-                      25.1 4.0 "2017-12-31T14:41:56.87Z"]
-                     (mt/first-row result))))))))))
+    (mt/dataset test-data
+      (doseq [level (range 0 4)]
+        (testing (format "with %d level(s) of nesting" level)
+          (letfn [(run-query []
+                    (let [query (-> (mt/mbql-query orders
+                                      {:source-table $$orders
+                                       :joins        [{:fields       :all
+                                                       :source-table $$products
+                                                       :condition    [:= $product_id &Products.products.id]
+                                                       :alias        "Products"}]
+                                       :order-by     [[:asc $id]]
+                                       :limit        2})
+                                    (mt/nest-query level))]
+                      (qp/process-query query)))]
+            (testing "with no FK remappings"
+              (let [result (run-query)]
+                (is (=? {:status    :completed
+                         :row_count 2}
+                        result))
+                (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
+                        14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1 4.0
+                        "2017-12-31T14:41:56.87Z"]
+                       (mt/first-row result)))))
+            (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                              (mt/application-database-metadata-provider (mt/id))
+                                              (mt/id :orders :product_id)
+                                              (mt/id :products :title))
+              (let [result (run-query)]
+                (is (=? {:status    :completed
+                         :row_count 2}
+                        result))
+                (is (=  ["ORDERS.ID"
+                         "ORDERS.USER_ID"
+                         "ORDERS.PRODUCT_ID"
+                         "ORDERS.SUBTOTAL"
+                         "ORDERS.TAX"
+                         "ORDERS.TOTAL"
+                         "ORDERS.DISCOUNT"
+                         "ORDERS.CREATED_AT"
+                         "ORDERS.QUANTITY"
+                         "PRODUCTS.TITLE"
+                         "PRODUCTS.ID"
+                         "PRODUCTS.EAN"
+                         "PRODUCTS.TITLE"
+                         "PRODUCTS.CATEGORY"
+                         "PRODUCTS.VENDOR"
+                         "PRODUCTS.PRICE"
+                         "PRODUCTS.RATING"
+                         "PRODUCTS.CREATED_AT"]
+                        (mapv (comp field-id->name :id) (get-in result [:data :cols]))))
+                (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes" ; <- extra remapped col
+                        14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman"
+                        25.1 4.0 "2017-12-31T14:41:56.87Z"]
+                       (mt/first-row result)))))))))))
 
 (deftest ^:parallel handle-unwrapped-joined-fields-correctly-test
-  (testing "References to joined fields should be handled correctly (#14766)"
-    ;; using `$products.id` should give you the same results as properly referring to it with `&Products.products.id`
-    (let [expected-result (mt/run-mbql-query orders
-                                             {:source-query {:source-table $$orders
-                                                             :joins        [{:fields       :all
-                                                                             :source-table $$products
-                                                                             :condition    [:= $product_id &Products.products.id]
-                                                                             :alias        "Products"}]}
-                                              :aggregation  [[:count]]
-                                              :breakout     [$products.id]
-                                              :limit        5})
-          actual-result   (mt/run-mbql-query orders
-                                             {:source-query {:source-table $$orders
-                                                             :joins        [{:fields       :all
-                                                                             :source-table $$products
-                                                                             :condition    [:= $product_id &Products.products.id]
-                                                                             :alias        "Products"}]}
-                                              :aggregation  [[:count]]
-                                              :breakout     [&Products.products.id]
-                                              :limit        5})]
-      (is (=? {:status :completed}
-              expected-result))
-      (is (=? {:status :completed}
-              actual-result))
-      (is (= (mt/rows expected-result)
-             (mt/rows actual-result))))))
+  (mt/dataset test-data
+    (testing "References to joined fields should be handled correctly (#14766)"
+      ;; using `$products.id` should give you the same results as properly referring to it with `&Products.products.id`
+      (let [expected-result (mt/run-mbql-query orders
+                              {:source-query {:source-table $$orders
+                                              :joins        [{:fields       :all
+                                                              :source-table $$products
+                                                              :condition    [:= $product_id &Products.products.id]
+                                                              :alias        "Products"}]}
+                               :aggregation  [[:count]]
+                               :breakout     [$products.id]
+                               :limit        5})
+            actual-result   (mt/run-mbql-query orders
+                              {:source-query {:source-table $$orders
+                                              :joins        [{:fields       :all
+                                                              :source-table $$products
+                                                              :condition    [:= $product_id &Products.products.id]
+                                                              :alias        "Products"}]}
+                               :aggregation  [[:count]]
+                               :breakout     [&Products.products.id]
+                               :limit        5})]
+        (is (=? {:status :completed}
+                expected-result))
+        (is (=? {:status :completed}
+                actual-result))
+        (is (= (mt/rows expected-result)
+               (mt/rows actual-result)))))))
 
 (deftest ^:parallel duplicate-column-names-in-nested-queries-test
   (testing "duplicate column names in nested queries (#10511)"
-    (let [query (mt/mbql-query orders
-                  {:filter       [:> *count/Integer 5]
-                   :source-query {:source-table $$orders
-                                  :aggregation  [[:count]]
-                                  :breakout     [!month.created_at !month.product_id->products.created_at]}
-                   :limit        5})]
-      (mt/with-native-query-testing-context query
-        (is (= [["2016-06-01T00:00:00Z" "2016-05-01T00:00:00Z" 13]
-                ["2016-07-01T00:00:00Z" "2016-05-01T00:00:00Z" 16]
-                ["2016-07-01T00:00:00Z" "2016-06-01T00:00:00Z" 10]
-                ["2016-07-01T00:00:00Z" "2016-07-01T00:00:00Z" 7]
-                ["2016-08-01T00:00:00Z" "2016-05-01T00:00:00Z" 12]]
-               (mt/rows (qp/process-query query))))))))
+    (mt/dataset test-data
+      (let [query (mt/mbql-query orders
+                    {:filter       [:> *count/Integer 5]
+                     :source-query {:source-table $$orders
+                                    :aggregation  [[:count]]
+                                    :breakout     [!month.created_at !month.product_id->products.created_at]}
+                     :limit        5})]
+        (mt/with-native-query-testing-context query
+          (is (= [["2016-06-01T00:00:00Z" "2016-05-01T00:00:00Z" 13]
+                  ["2016-07-01T00:00:00Z" "2016-05-01T00:00:00Z" 16]
+                  ["2016-07-01T00:00:00Z" "2016-06-01T00:00:00Z" 10]
+                  ["2016-07-01T00:00:00Z" "2016-07-01T00:00:00Z" 7]
+                  ["2016-08-01T00:00:00Z" "2016-05-01T00:00:00Z" 12]]
+                 (mt/rows (qp/process-query query)))))))))
 
 (deftest ^:parallel nested-queries-with-joins-with-old-metadata-test
   (testing "Nested queries with joins using old pre-38 result metadata still work (#14788)"
-    ;; create the query we'll use as a source query
-    (let [query    (mt/mbql-query orders
-                     {:joins    [{:source-table $$products
-                                  :alias        "ℙ"
-                                  :fields       :all
-                                  :condition    [:= $product_id &ℙ.products.id]}]
-                      :order-by [[:asc $id]]
-                      :limit    2})
-          metadata (qp/query->expected-cols query)]
-      (testing "x.38.0+: metadata should include `:field_ref`"
-        (is (= (mt/$ids orders
-                 [$id
-                  $user_id
-                  $product_id
-                  $subtotal
-                  $tax
-                  $total
-                  $discount
-                  !default.created_at
-                  $quantity
-                  &ℙ.products.id
-                  &ℙ.products.ean
-                  &ℙ.products.title
-                  &ℙ.products.category
-                  &ℙ.products.vendor
-                  &ℙ.products.price
-                  &ℙ.products.rating
-                  !default.&ℙ.products.created_at])
-               (map :field_ref metadata))))
-      (testing "\nShould be able to use the query as a source query"
-        (letfn [(test-query [query]
-                  (is (=? {:status    :completed
-                           :row_count 2}
-                          (qp/process-query query))))
-                (test-source-query [metadata]
-                  (test-query
-                   (cond-> (mt/mbql-query nil
-                             {:source-query (:query query)})
-                     metadata (assoc-in [:query :source-metadata] metadata))))
-                (test-card-source-query [metadata]
-                  (qp.store/with-metadata-provider (-> (mt/application-database-metadata-provider (mt/id))
-                                                       (lib.tu/metadata-provider-with-cards-for-queries [query])
-                                                       (lib.tu/merged-mock-metadata-provider
-                                                        {:cards [{:id 1, :result-metadata metadata}]}))
+    (mt/dataset test-data
+      ;; create the query we'll use as a source query
+      (let [query    (mt/mbql-query orders
+                       {:joins    [{:source-table $$products
+                                    :alias        "ℙ"
+                                    :fields       :all
+                                    :condition    [:= $product_id &ℙ.products.id]}]
+                        :order-by [[:asc $id]]
+                        :limit    2})
+            metadata (qp/query->expected-cols query)]
+        (testing "x.38.0+: metadata should include `:field_ref`"
+          (is (= (mt/$ids orders
+                   [$id
+                    $user_id
+                    $product_id
+                    $subtotal
+                    $tax
+                    $total
+                    $discount
+                    !default.created_at
+                    $quantity
+                    &ℙ.products.id
+                    &ℙ.products.ean
+                    &ℙ.products.title
+                    &ℙ.products.category
+                    &ℙ.products.vendor
+                    &ℙ.products.price
+                    &ℙ.products.rating
+                    !default.&ℙ.products.created_at])
+                 (map :field_ref metadata))))
+        (testing "\nShould be able to use the query as a source query"
+          (letfn [(test-query [query]
+                    (is (=? {:status    :completed
+                             :row_count 2}
+                            (qp/process-query query))))
+                  (test-source-query [metadata]
                     (test-query
-                     (mt/mbql-query nil
-                       {:source-table "card__1"}))))]
-          (doseq [[msg test-query] {"directly"   test-source-query
-                                    "via a Card" test-card-source-query}]
-            (testing msg
-              (testing "with NO source metadata"
-                (test-query nil))
-              (testing "with 0.38.0+ source metadata that includes `:field_ref`"
-                (test-query metadata))
-              (testing "with < 0.38.0 source metadata that DOES NOT include  `:field_ref` or `:id`"
-                (test-query (for [col metadata]
-                              (dissoc col :field_ref :id)))))))))))
+                     (cond-> (mt/mbql-query nil
+                               {:source-query (:query query)})
+                       metadata (assoc-in [:query :source-metadata] metadata))))
+                  (test-card-source-query [metadata]
+                    (qp.store/with-metadata-provider (-> (mt/application-database-metadata-provider (mt/id))
+                                                         (lib.tu/metadata-provider-with-cards-for-queries [query])
+                                                         (lib.tu/merged-mock-metadata-provider
+                                                          {:cards [{:id 1, :result-metadata metadata}]}))
+                      (test-query
+                       (mt/mbql-query nil
+                         {:source-table "card__1"}))))]
+            (doseq [[msg test-query] {"directly"   test-source-query
+                                      "via a Card" test-card-source-query}]
+              (testing msg
+                (testing "with NO source metadata"
+                  (test-query nil))
+                (testing "with 0.38.0+ source metadata that includes `:field_ref`"
+                  (test-query metadata))
+                (testing "with < 0.38.0 source metadata that DOES NOT include  `:field_ref` or `:id`"
+                  (test-query (for [col metadata]
+                                (dissoc col :field_ref :id))))))))))))
 
 (deftest ^:parallel support-legacy-filter-clauses-test
   (testing "We should handle legacy usage of field-literal inside filter clauses"
-    (testing "against joins (#14809)"
-      (is (=? {:status :completed}
-              (mt/run-mbql-query orders
-                {:source-query {:source-table $$orders
-                                :joins        [{:fields       :all
-                                                :source-table $$products
-                                                :condition    [:= $product_id &Products.products.id]
-                                                :alias        "Products"}]}
-                 :filter       [:= *CATEGORY/Text "Widget"]})))
+    (mt/dataset test-data
+      (testing "against joins (#14809)"
+        (is (=? {:status :completed}
+                (mt/run-mbql-query orders
+                  {:source-query {:source-table $$orders
+                                  :joins        [{:fields       :all
+                                                  :source-table $$products
+                                                  :condition    [:= $product_id &Products.products.id]
+                                                  :alias        "Products"}]}
+                   :filter       [:= *CATEGORY/Text "Widget"]}))))
       (testing "(#14811)"
         (is (=? {:status :completed}
                 (mt/run-mbql-query orders
@@ -1167,119 +1177,123 @@
 
 (deftest ^:parallel support-legacy-dashboard-parameters-test
   (testing "We should handle legacy usage of field-literal inside (Dashboard) parameters (#14810)"
-    (is (=? {:status :completed}
-            (qp/process-query
-             (mt/query orders
-               {:type       :query
-                :query      {:source-query {:source-table $$orders
-                                            :joins        [{:fields       :all
-                                                            :source-table $$products
-                                                            :condition    [:= $product_id &Products.products.id]
-                                                            :alias        "Products"}]}
-                             :limit        2}
-                :parameters [{:type   :category
-                              :target [:dimension [:field "CATEGORY" {:base-type :type/Text}]]
-                              :value  "Widget"}]}))))))
+    (mt/dataset test-data
+      (is (=? {:status :completed}
+              (qp/process-query
+               (mt/query orders
+                 {:type       :query
+                  :query      {:source-query {:source-table $$orders
+                                              :joins        [{:fields       :all
+                                                              :source-table $$products
+                                                              :condition    [:= $product_id &Products.products.id]
+                                                              :alias        "Products"}]}
+                               :limit        2}
+                  :parameters [{:type   :category
+                                :target [:dimension [:field "CATEGORY" {:base-type :type/Text}]]
+                                :value  "Widget"}]})))))))
 
 (deftest ^:parallel nested-queries-with-expressions-and-joins-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join)
-    (testing "Do nested queries in combination with joins and expressions still work correctly? (#14969)"
-      (is (= (cond-> [["Twitter" "Widget" 0 498.59]
-                      ["Twitter" nil      0 401.51]]
-               (mt/sorts-nil-first? driver/*driver* :type/Text) reverse)
-             (mt/formatted-rows [str str int 2.0]
-               (mt/run-mbql-query orders
-                 {:source-query {:source-table $$orders
-                                 :filter       [:= $user_id 1]
-                                 :fields       [$id
-                                                $user_id
-                                                $product_id
-                                                $subtotal
-                                                $tax
-                                                $total
-                                                $discount
-                                                !default.created_at
-                                                $quantity]}
-                  :aggregation  [[:sum $total]]
-                  :breakout     [&P.people.source
-                                 &PRODUCTS__via__PRODUCT_ID.products.category
-                                 [:expression "pivot-grouping"]]
-                  :limit        5
-                  :expressions  {:pivot-grouping [:abs 0]}
-                  :order-by     [[:asc &P.people.source]
-                                 [:asc &PRODUCTS__via__PRODUCT_ID.products.category]
-                                 [:asc [:expression "pivot-grouping"]]]
-                  :joins        [{:strategy     :left-join
-                                  :source-table $$people
-                                  :condition    [:= $user_id &P.people.id]
-                                  :alias        "P"}
-                                 {:source-query {:source-table $$products
-                                                 :filter       [:= $products.category "Widget"]
-                                                 :fields       [$products.id
-                                                                $products.ean
-                                                                $products.title
-                                                                $products.category
-                                                                $products.vendor
-                                                                $products.price
-                                                                $products.rating
-                                                                !default.products.created_at]}
-                                  :strategy     :left-join
-                                  :alias        "PRODUCTS__via__PRODUCT_ID"
-                                  :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]
-                                  :fk-field-id  %product_id}]})))))))
+    (mt/dataset test-data
+      (testing "Do nested queries in combination with joins and expressions still work correctly? (#14969)"
+        (is (= (cond-> [["Twitter" "Widget" 0 498.59]
+                        ["Twitter" nil      0 401.51]]
+                 (mt/sorts-nil-first? driver/*driver* :type/Text) reverse)
+               (mt/formatted-rows [str str int 2.0]
+                 (mt/run-mbql-query orders
+                   {:source-query {:source-table $$orders
+                                   :filter       [:= $user_id 1]
+                                   :fields       [$id
+                                                  $user_id
+                                                  $product_id
+                                                  $subtotal
+                                                  $tax
+                                                  $total
+                                                  $discount
+                                                  !default.created_at
+                                                  $quantity]}
+                    :aggregation  [[:sum $total]]
+                    :breakout     [&P.people.source
+                                   &PRODUCTS__via__PRODUCT_ID.products.category
+                                   [:expression "pivot-grouping"]]
+                    :limit        5
+                    :expressions  {:pivot-grouping [:abs 0]}
+                    :order-by     [[:asc &P.people.source]
+                                   [:asc &PRODUCTS__via__PRODUCT_ID.products.category]
+                                   [:asc [:expression "pivot-grouping"]]]
+                    :joins        [{:strategy     :left-join
+                                    :source-table $$people
+                                    :condition    [:= $user_id &P.people.id]
+                                    :alias        "P"}
+                                   {:source-query {:source-table $$products
+                                                   :filter       [:= $products.category "Widget"]
+                                                   :fields       [$products.id
+                                                                  $products.ean
+                                                                  $products.title
+                                                                  $products.category
+                                                                  $products.vendor
+                                                                  $products.price
+                                                                  $products.rating
+                                                                  !default.products.created_at]}
+                                    :strategy     :left-join
+                                    :alias        "PRODUCTS__via__PRODUCT_ID"
+                                    :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]
+                                    :fk-field-id  %product_id}]}))))))))
 
 (deftest ^:parallel multi-level-aggregations-with-post-aggregation-filtering-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
     (testing "Multi-level aggregations with filter is the last section (#14872)"
-      (let [query (mt/mbql-query orders
-                    {:source-query {:source-query {:source-table $$orders
-                                                   :filter       [:= $user_id 1]
-                                                   :aggregation  [[:sum $total]]
-                                                   :breakout     [!day.created_at
-                                                                  $product_id->products.title
-                                                                  $product_id->products.category]}
-                                    :filter       [:> *sum/Float 100]
-                                    :aggregation  [[:sum *sum/Float]]
-                                    :breakout     [*products.title]}
-                     :filter       [:> *sum/Float 100]})]
-        (mt/with-native-query-testing-context query
-          (is (= [["Awesome Bronze Plate" 115.23]
-                  ["Mediocre Rubber Shoes" 101.04]
-                  ["Mediocre Wooden Bench" 117.03]
-                  ["Sleek Steel Table" 134.91]
-                  ["Small Marble Hat" 102.8]]
-                 (mt/formatted-rows [str 2.0]
-                   (qp/process-query query)))))))))
+      (mt/dataset test-data
+        (let [query (mt/mbql-query orders
+                      {:source-query {:source-query {:source-table $$orders
+                                                     :filter       [:= $user_id 1]
+                                                     :aggregation  [[:sum $total]]
+                                                     :breakout     [!day.created_at
+                                                                    $product_id->products.title
+                                                                    $product_id->products.category]}
+                                      :filter       [:> *sum/Float 100]
+                                      :aggregation  [[:sum *sum/Float]]
+                                      :breakout     [*products.title]}
+                       :filter       [:> *sum/Float 100]})]
+          (mt/with-native-query-testing-context query
+            (is (= [["Awesome Bronze Plate" 115.23]
+                    ["Mediocre Rubber Shoes" 101.04]
+                    ["Mediocre Wooden Bench" 117.03]
+                    ["Sleek Steel Table" 134.91]
+                    ["Small Marble Hat" 102.8]]
+                   (mt/formatted-rows [str 2.0]
+                     (qp/process-query query))))))))))
 
 (deftest ^:parallel date-range-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
     (testing "Date ranges should work the same in nested queries as is regular queries (#15352)"
-      (let [q1        (mt/mbql-query orders
-                        {:aggregation [[:count]]
-                         :filter      [:between $created_at "2020-02-01" "2020-02-29"]})
-            q1-native {:query  (str "SELECT COUNT(*) AS \"count\" "
-                                    "FROM \"PUBLIC\".\"ORDERS\" "
-                                    "WHERE (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ?)"
-                                    " AND (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?)")
-                       :params [#t "2020-02-01T00:00Z[UTC]" #t "2020-03-01T00:00Z[UTC]"]}]
-        (testing "original query"
-          (when (= driver/*driver* :h2)
-            (is (= q1-native
-                   (qp/compile q1))))
-          (is (= [[543]]
-                 (mt/formatted-rows [int] (qp/process-query q1)))))
-        (testing "nested query"
-          (let [q2 (mt/mbql-query nil
-                     {:source-query (:query q1)})]
+      (mt/dataset test-data
+        (let [q1        (mt/mbql-query orders
+                          {:aggregation [[:count]]
+                           :filter      [:between $created_at "2020-02-01" "2020-02-29"]})
+              q1-native {:query  (str "SELECT COUNT(*) AS \"count\" "
+                                      "FROM \"PUBLIC\".\"ORDERS\" "
+                                      "WHERE (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ?)"
+                                      " AND (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?)")
+                         :params [#t "2020-02-01T00:00Z[UTC]" #t "2020-03-01T00:00Z[UTC]"]}]
+          (testing "original query"
             (when (= driver/*driver* :h2)
-              (is (= (update q1-native :query (fn [s]
-                                                (format (str "SELECT \"source\".\"count\" AS \"count\" "
-                                                             "FROM (%s) AS \"source\" "
-                                                             "LIMIT 1048575")
-                                                        s)))
-                     (qp/compile q2))))
+              (is (= q1-native
+                     (qp/compile q1))))
             (is (= [[543]]
-                   (mt/formatted-rows [int] (qp/process-query q2))))))))))
+                   (mt/formatted-rows [int] (qp/process-query q1)))))
+          (testing "nested query"
+            (let [q2 (mt/mbql-query nil
+                       {:source-query (:query q1)})]
+              (when (= driver/*driver* :h2)
+                (is (= (update q1-native :query (fn [s]
+                                                  (format (str "SELECT \"source\".\"count\" AS \"count\" "
+                                                               "FROM (%s) AS \"source\" "
+                                                               "LIMIT 1048575")
+                                                          s)))
+                       (qp/compile q2))))
+              (is (= [[543]]
+                     (mt/formatted-rows [int] (qp/process-query q2)))))))))))
 
 (deftest ^:parallel nested-query-with-metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -1308,26 +1322,27 @@
                       :basic-aggregations
                       :expression-aggregations
                       :foreign-keys)
-      (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
-                                        [(mt/mbql-query orders
-                                           {:filter      [:between $total 30 60]
-                                            :aggregation [[:aggregation-options
-                                                           [:count-where [:starts-with $product_id->products.category "G"]]
-                                                           {:name "G Monies", :display-name "G Monies"}]]
-                                            :breakout    [!month.created_at]
-                                            :limit       2})])
-        (let [query (mt/native-query
-                      {:query         "SELECT * FROM {{#1}} x"
-                       :template-tags {"#1"
-                                       {:id           "5aa37572-058f-14f6-179d-a158ad6c029d"
-                                        :name         "#1"
-                                        :display-name "#1"
-                                        :type         :card
-                                        :card-id      1}}})]
-          (is (= [["2016-04-01T00:00:00Z" 1]
-                  ["2016-05-01T00:00:00Z" 5]]
-                 (mt/formatted-rows [str int]
-                   (qp/process-query query)))))))))
+      (mt/dataset test-data
+        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
+                                          [(mt/mbql-query orders
+                                             {:filter      [:between $total 30 60]
+                                              :aggregation [[:aggregation-options
+                                                             [:count-where [:starts-with $product_id->products.category "G"]]
+                                                             {:name "G Monies", :display-name "G Monies"}]]
+                                              :breakout    [!month.created_at]
+                                              :limit       2})])
+          (let [query (mt/native-query
+                        {:query         "SELECT * FROM {{#1}} x"
+                         :template-tags {"#1"
+                                         {:id           "5aa37572-058f-14f6-179d-a158ad6c029d"
+                                          :name         "#1"
+                                          :display-name "#1"
+                                          :type         :card
+                                          :card-id      1}}})]
+            (is (= [["2016-04-01T00:00:00Z" 1]
+                    ["2016-05-01T00:00:00Z" 5]]
+                   (mt/formatted-rows [str int]
+                     (qp/process-query query))))))))))
 
 (deftest ^:parallel join-against-query-with-implicit-joins-test
   (testing "Should be able to do subsequent joins against a query with implicit joins (#17767)"
@@ -1336,31 +1351,32 @@
                       :basic-aggregations
                       :foreign-keys
                       :left-join)
-      (let [query (mt/mbql-query orders
-                    {:source-query {:source-table $$orders
-                                    :aggregation  [[:count]]
-                                    :breakout     [$product_id->products.id]}
-                     :joins        [{:fields       :all
-                                     :source-table $$reviews
-                                     ;; It's wack that the FE is using a FIELD LITERAL here but it should still work
-                                     ;; anyway.
-                                     :condition    [:= *products.id &Reviews.reviews.product_id]
-                                     :alias        "Reviews"}]
-                     :order-by     [[:asc $product_id->products.id]
-                                    [:asc &Reviews.products.id]]
-                     :limit        1})]
-        (sql.qp-test-util/with-native-query-testing-context query
-          (testing "results"
-            (is (= [[1
-                     93
-                     1
-                     1
-                     "christ"
-                     5
-                     "Ad perspiciatis quis et consectetur. Laboriosam fuga voluptas ut et modi ipsum. Odio et eum numquam eos nisi. Assumenda aut magnam libero maiores nobis vel beatae officia."
-                     "2018-05-15T20:25:48.517Z"]]
-                   (mt/formatted-rows [int int int int str int str str]
-                     (qp/process-query query))))))))))
+      (mt/dataset test-data
+        (let [query (mt/mbql-query orders
+                      {:source-query {:source-table $$orders
+                                      :aggregation  [[:count]]
+                                      :breakout     [$product_id->products.id]}
+                       :joins        [{:fields       :all
+                                       :source-table $$reviews
+                                       ;; It's wack that the FE is using a FIELD LITERAL here but it should still work
+                                       ;; anyway.
+                                       :condition    [:= *products.id &Reviews.reviews.product_id]
+                                       :alias        "Reviews"}]
+                       :order-by     [[:asc $product_id->products.id]
+                                      [:asc &Reviews.products.id]]
+                       :limit        1})]
+          (sql.qp-test-util/with-native-query-testing-context query
+            (testing "results"
+              (is (= [[1
+                       93
+                       1
+                       1
+                       "christ"
+                       5
+                       "Ad perspiciatis quis et consectetur. Laboriosam fuga voluptas ut et modi ipsum. Odio et eum numquam eos nisi. Assumenda aut magnam libero maiores nobis vel beatae officia."
+                       "2018-05-15T20:25:48.517Z"]]
+                     (mt/formatted-rows [int int int int str int str str]
+                       (qp/process-query query)))))))))))
 
 (deftest ^:parallel breakout-on-temporally-bucketed-implicitly-joined-column-inside-source-query-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :left-join)
@@ -1369,42 +1385,44 @@
     (testing (str "Should be able to breakout on a temporally-bucketed, implicitly-joined column from the source query "
                   "incorrectly using `:field` literals to refer to the Field (#16389)")
       ;; See #19757 for more details on why this query is broken
-      (mt/with-mock-fks-for-drivers-without-fk-constraints
-        (let [query (mt/mbql-query orders
-                      {:source-query {:source-table $$orders
-                                      :breakout     [!month.product_id->products.created_at]
-                                      :aggregation  [[:count]]}
-                       :filter       [:time-interval *created_at/DateTimeWithLocalTZ -30 :year]
-                       :aggregation  [[:sum *count/Integer]]
-                       :breakout     [*created_at/DateTimeWithLocalTZ]
-                       :limit        1})]
-          (mt/with-native-query-testing-context query
-            (is (= [["2016-04-01T00:00:00Z" 175]]
-                   (mt/formatted-rows [str int]
-                     (qp/process-query query))))))))))
+      (mt/dataset test-data
+        (mt/with-mock-fks-for-drivers-without-fk-constraints
+          (let [query (mt/mbql-query orders
+                        {:source-query {:source-table $$orders
+                                        :breakout     [!month.product_id->products.created_at]
+                                        :aggregation  [[:count]]}
+                         :filter       [:time-interval *created_at/DateTimeWithLocalTZ -30 :year]
+                         :aggregation  [[:sum *count/Integer]]
+                         :breakout     [*created_at/DateTimeWithLocalTZ]
+                         :limit        1})]
+            (mt/with-native-query-testing-context query
+              (is (= [["2016-04-01T00:00:00Z" 175]]
+                     (mt/formatted-rows [str int]
+                       (qp/process-query query)))))))))))
 
 (deftest ^:parallel really-really-long-identifiers-test
   (testing "Should correctly handle really really long table and column names (#20627)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :left-join)
-      (let [table-alias "Products with a very long name - Product ID with a very long name"
-            query       (mt/mbql-query orders
-                          {:source-query {:source-table $$orders
-                                          :joins        [{:source-table $$products
-                                                          :alias        table-alias
-                                                          :condition    [:=
-                                                                         $product_id
-                                                                         [:field %products.id {:join-alias table-alias}]]
-                                                          :fields       :all}]
-                                          :breakout     [[:field %products.category {:join-alias table-alias}]]
-                                          :aggregation  [[:count]]}
-                           :filter       [:> *count/Integer 0]})]
-        (mt/with-native-query-testing-context query
-          (is (= [["Doohickey" 3976]
-                  ["Gadget"    4939]
-                  ["Gizmo"     4784]
-                  ["Widget"    5061]]
-                 (mt/formatted-rows [str int]
-                   (qp/process-query query)))))))))
+      (mt/dataset test-data
+        (let [table-alias "Products with a very long name - Product ID with a very long name"
+              query       (mt/mbql-query orders
+                            {:source-query {:source-table $$orders
+                                            :joins        [{:source-table $$products
+                                                            :alias        table-alias
+                                                            :condition    [:=
+                                                                           $product_id
+                                                                           [:field %products.id {:join-alias table-alias}]]
+                                                            :fields       :all}]
+                                            :breakout     [[:field %products.category {:join-alias table-alias}]]
+                                            :aggregation  [[:count]]}
+                             :filter       [:> *count/Integer 0]})]
+          (mt/with-native-query-testing-context query
+            (is (= [["Doohickey" 3976]
+                    ["Gadget"    4939]
+                    ["Gizmo"     4784]
+                    ["Widget"    5061]]
+                   (mt/formatted-rows [str int]
+                     (qp/process-query query))))))))))
 
 (deftest ^:parallel unfolded-json-with-custom-expression-test
   (testing "Should keep roots of unfolded JSON fields in the nested query (#29184)"

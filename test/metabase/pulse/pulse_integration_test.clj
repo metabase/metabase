@@ -19,17 +19,18 @@
   - A model with curated metadata (override on the Tax Rate type)
   - A question based on the above model"
   [[base-card-id model-card-id question-card-id] & body]
-  `(mt/with-temp [Card {~base-card-id :id} {:name          "Base question - no special metadata"
-                                            :dataset_query {:database (mt/id)
-                                                            :type     :query
-                                                            :query    {:source-table (mt/id :orders)
-                                                                       :expressions  {"Tax Rate" [:/
-                                                                                                  [:field (mt/id :orders :tax) {:base-type :type/Float}]
-                                                                                                  [:field (mt/id :orders :total) {:base-type :type/Float}]]},
-                                                                       :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
-                                                                                      [:field (mt/id :orders :total) {:base-type :type/Float}]
-                                                                                      [:expression "Tax Rate"]]
-                                                                       :limit        10}}}
+  `(mt/dataset ~'test-data
+     (mt/with-temp [Card {~base-card-id :id} {:name          "Base question - no special metadata"
+                                              :dataset_query {:database (mt/id)
+                                                              :type     :query
+                                                              :query    {:source-table (mt/id :orders)
+                                                                         :expressions  {"Tax Rate" [:/
+                                                                                                    [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                                                                    [:field (mt/id :orders :total) {:base-type :type/Float}]]},
+                                                                         :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                                                        [:field (mt/id :orders :total) {:base-type :type/Float}]
+                                                                                        [:expression "Tax Rate"]]
+                                                                         :limit        10}}}
                     Card {~model-card-id :id} {:name            "Model with percent semantic type"
                                                :dataset         true
                                                :dataset_query   {:type     :query
@@ -50,7 +51,7 @@
                                                   :dataset_query {:type     :query
                                                                   :database (mt/id)
                                                                   :query    {:source-table (format "card__%s" ~'model-card-id)}}}]
-       ~@body))
+       ~@body)))
 
 (defn- run-pulse-and-return-last-data-columns
   "Simulate sending the pulse email, get the html body of the response, then return the last columns of each pulse body

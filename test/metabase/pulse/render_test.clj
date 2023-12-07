@@ -162,66 +162,67 @@
 
 (deftest table-rendering-of-percent-types-test
   (testing "If a column is marked as a :type/Percentage semantic type it should render as a percent"
-    (mt/with-temp [Card {base-card-id :id} {:dataset_query {:database (mt/id)
-                                                            :type     :query
-                                                            :query    {:source-table (mt/id :orders)
-                                                                       :expressions  {"Tax Rate" [:/
-                                                                                                  [:field (mt/id :orders :tax) {:base-type :type/Float}]
-                                                                                                  [:field (mt/id :orders :total) {:base-type :type/Float}]]},
-                                                                       :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
-                                                                                      [:field (mt/id :orders :total) {:base-type :type/Float}]
-                                                                                      [:expression "Tax Rate"]]
-                                                                       :limit        10}}}
-                   Card {model-card-id  :id
-                         model-query    :dataset_query
-                         model-metadata :result_metadata
-                         :as            model-card} {:dataset         true
-                                                     :dataset_query   {:type     :query
-                                                                       :database (mt/id)
-                                                                       :query    {:source-table (format "card__%s" base-card-id)}}
-                                                     :result_metadata [{:name         "TAX"
-                                                                        :display_name "Tax"
-                                                                        :base_type    :type/Float}
-                                                                       {:name         "TOTAL"
-                                                                        :display_name "Total"
-                                                                        :base_type    :type/Float}
-                                                                       {:name          "Tax Rate"
-                                                                        :display_name  "Tax Rate"
-                                                                        :base_type     :type/Float
-                                                                        :semantic_type :type/Percentage
-                                                                        :field_ref     [:field "Tax Rate" {:base-type :type/Float}]}]}
-                   Card {question-query :dataset_query
-                         :as            question-card} {:dataset_query {:type     :query
-                                                                        :database (mt/id)
-                                                                        :query    {:source-table (format "card__%s" model-card-id)}}}]
-      ;; NOTE -- The logic in metabase.pulse.render.common/number-formatter renders values between 1 and 100 as an
-      ;; integer value. IDK if this is what we want long term, but this captures the current logic. If we do extend
-      ;; the significant digits in the formatter, we'll need to modify this test as well.
-      (letfn [(create-comparison-results [query-results card]
-                (let [expected      (mapv (fn [row]
-                                            (format "%.2f%%" (* 100 (peek row))))
-                                          (get-in query-results [:data :rows]))
-                      rendered-card (render/render-pulse-card :inline (pulse/defaulted-timezone card) card nil query-results)
-                      table         (-> rendered-card
-                                        (get-in [:content 1 2 4 2])
-                                        first
-                                        second)
-                      tax-col       (->>
-                                     (rest (get-in table [2 1]))
-                                     (map-indexed (fn [i v] [i (last v)]))
-                                     (some (fn [[i v]] (when (= v "Tax Rate") i))))]
-                  {:expected expected
-                   :actual   (->> (get-in table [3 1])
-                                  (map #(peek (get (vec (get % 2)) tax-col))))}))]
-        (testing "To apply the custom metadata to a model, you must explicitly pass the result metadata"
-          (let [query-results (qp/process-query
-                               (assoc-in model-query [:info :metadata/dataset-metadata] model-metadata))
-                {:keys [expected actual]} (create-comparison-results query-results model-card)]
-            (is (= expected actual))))
-        (testing "A question based on a model will use the underlying model's metadata"
-          (let [query-results (qp/process-query question-query)
-                {:keys [expected actual]} (create-comparison-results query-results question-card)]
-            (is (= expected actual))))))))
+    (mt/dataset test-data
+      (mt/with-temp [Card {base-card-id :id} {:dataset_query {:database (mt/id)
+                                                              :type     :query
+                                                              :query    {:source-table (mt/id :orders)
+                                                                         :expressions  {"Tax Rate" [:/
+                                                                                                    [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                                                                    [:field (mt/id :orders :total) {:base-type :type/Float}]]},
+                                                                         :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                                                        [:field (mt/id :orders :total) {:base-type :type/Float}]
+                                                                                        [:expression "Tax Rate"]]
+                                                                         :limit        10}}}
+                     Card {model-card-id  :id
+                           model-query    :dataset_query
+                           model-metadata :result_metadata
+                           :as            model-card} {:dataset         true
+                                                       :dataset_query   {:type     :query
+                                                                         :database (mt/id)
+                                                                         :query    {:source-table (format "card__%s" base-card-id)}}
+                                                       :result_metadata [{:name         "TAX"
+                                                                          :display_name "Tax"
+                                                                          :base_type    :type/Float}
+                                                                         {:name         "TOTAL"
+                                                                          :display_name "Total"
+                                                                          :base_type    :type/Float}
+                                                                         {:name          "Tax Rate"
+                                                                          :display_name  "Tax Rate"
+                                                                          :base_type     :type/Float
+                                                                          :semantic_type :type/Percentage
+                                                                          :field_ref     [:field "Tax Rate" {:base-type :type/Float}]}]}
+                     Card {question-query :dataset_query
+                           :as            question-card} {:dataset_query {:type     :query
+                                                                          :database (mt/id)
+                                                                          :query    {:source-table (format "card__%s" model-card-id)}}}]
+        ;; NOTE -- The logic in metabase.pulse.render.common/number-formatter renders values between 1 and 100 as an
+        ;; integer value. IDK if this is what we want long term, but this captures the current logic. If we do extend
+        ;; the significant digits in the formatter, we'll need to modify this test as well.
+        (letfn [(create-comparison-results [query-results card]
+                  (let [expected      (mapv (fn [row]
+                                              (format "%.2f%%" (* 100 (peek row))))
+                                            (get-in query-results [:data :rows]))
+                        rendered-card (render/render-pulse-card :inline (pulse/defaulted-timezone card) card nil query-results)
+                        table         (-> rendered-card
+                                          (get-in [:content 1 2 4 2])
+                                          first
+                                          second)
+                        tax-col       (->>
+                                        (rest (get-in table [2 1]))
+                                        (map-indexed (fn [i v] [i (last v)]))
+                                        (some (fn [[i v]] (when (= v "Tax Rate") i))))]
+                    {:expected expected
+                     :actual   (->> (get-in table [3 1])
+                                    (map #(peek (get (vec (get % 2)) tax-col))))}))]
+          (testing "To apply the custom metadata to a model, you must explicitly pass the result metadata"
+            (let [query-results (qp/process-query
+                                  (assoc-in model-query [:info :metadata/dataset-metadata] model-metadata))
+                  {:keys [expected actual]} (create-comparison-results query-results model-card)]
+              (is (= expected actual))))
+          (testing "A question based on a model will use the underlying model's metadata"
+            (let [query-results (qp/process-query question-query)
+                  {:keys [expected actual]} (create-comparison-results query-results question-card)]
+              (is (= expected actual)))))))))
 
 (deftest title-should-be-an-a-tag-test
   (testing "the title of the card should be an <a> tag so you can click on title using old outlook clients (#12901)"

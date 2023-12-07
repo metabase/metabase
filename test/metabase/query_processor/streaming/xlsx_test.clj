@@ -680,15 +680,16 @@
 
 (deftest dont-format-non-temporal-columns-as-temporal-columns-test
   (testing "Don't format columns with temporal semantic type as datetime unless they're actually datetimes (#18729)"
-    (is (= [["CREATED_AT"]
-            [1.0]
-            [2.0]]
-           (xlsx-export [{:id             0
-                          :semantic_type  :type/CreationTimestamp
-                          :unit           :month-of-year
-                          :name           "CREATED_AT"
-                          :effective_type :type/Integer
-                          :base_type      :type/Integer}]
-                        {}
-                        [[1]
-                         [2]])))))
+    (mt/dataset test-data
+      (is (= [["CREATED_AT"]
+              [1.0]
+              [2.0]]
+             (xlsx-export [{:id             0
+                            :semantic_type  :type/CreationTimestamp
+                            :unit           :month-of-year
+                            :name           "CREATED_AT"
+                            :effective_type :type/Integer
+                            :base_type      :type/Integer}]
+                          {}
+                          [[1]
+                           [2]]))))))

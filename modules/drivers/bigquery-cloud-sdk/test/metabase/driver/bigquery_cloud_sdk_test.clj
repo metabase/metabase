@@ -381,11 +381,12 @@
                                              (a/>!! canceled-chan ::cancel))]
           (try
             ;; there's a race. Some data might be processed, and if so we get the partial result
-            (let [rows      (mt/rows (mt/process-query (mt/query orders) {:canceled-chan canceled-chan}))
-                  row-count (count rows)]
-              (log/debugf "Loaded %d rows before BigQuery query was canceled" row-count)
-              (testing "Somewhere between 0 and the size of the orders table rows were loaded before cancellation"
-                (is (< 0 row-count 10000))))
+            (mt/dataset test-data
+              (let [rows      (mt/rows (mt/process-query (mt/query orders) {:canceled-chan canceled-chan}))
+                    row-count (count rows)]
+                (log/debugf "Loaded %d rows before BigQuery query was canceled" row-count)
+                (testing "Somewhere between 0 and the size of the orders table rows were loaded before cancellation"
+                  (is (< 0 row-count 10000)))))
             (catch clojure.lang.ExceptionInfo e
               (is (= (ex-message e) "Query cancelled")))))))))
 
@@ -400,9 +401,10 @@
         (binding [bigquery/*page-size*     page-size
                   bigquery/*page-callback* (fn []
                                              (swap! num-page-callbacks inc))]
-          (let [rows (mt/rows (mt/process-query (mt/query orders {:query {:limit max-rows}})))]
-            (is (= max-rows (count rows)))
-            (is (= (/ max-rows page-size) @num-page-callbacks))))))))
+          (mt/dataset test-data
+            (let [rows (mt/rows (mt/process-query (mt/query orders {:query {:limit max-rows}})))]
+              (is (= max-rows (count rows)))
+              (is (= (/ max-rows page-size) @num-page-callbacks)))))))))
 
 (defn- sync-and-assert-filtered-tables [database assert-table-fn]
   (t2.with-temp/with-temp [Database db-filtered database]

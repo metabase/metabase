@@ -602,24 +602,25 @@
 
 (deftest ^:parallel no-value-template-tag-defaults-test
   (testing "should throw an Exception if no :value is specified for a required parameter, even if defaults are provided"
-    (testing "Field filters"
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"You'll need to pick a value for 'Filter' before this query can run."
-           (query->params-map
-            {:template-tags {"filter"
-                             {:id           "xyz456"
-                              :name         "filter"
-                              :display-name "Filter"
-                              :type         :dimension
-                              :dimension    [:field (mt/id :products :category) nil]
-                              :widget-type  :category
-                              :default      ["Gizmo" "Gadget"]
-                              :required     true}}
-             :parameters    [{:type    :string/=
-                              :id      "abc123"
-                              :default ["Widget"]
-                              :target  [:dimension [:template-tag "filter"]]}]}))))))
+    (mt/dataset test-data
+      (testing "Field filters"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"You'll need to pick a value for 'Filter' before this query can run."
+             (query->params-map
+              {:template-tags {"filter"
+                               {:id           "xyz456"
+                                :name         "filter"
+                                :display-name "Filter"
+                                :type         :dimension
+                                :dimension    [:field (mt/id :products :category) nil]
+                                :widget-type  :category
+                                :default      ["Gizmo" "Gadget"]
+                                :required     true}}
+               :parameters    [{:type    :string/=
+                                :id      "abc123"
+                                :default ["Widget"]
+                                :target  [:dimension [:template-tag "filter"]]}]})))))))
 
 (deftest ^:parallel no-value-template-tag-defaults-raw-value-test
   (testing "should throw an Exception if no :value is specified for a required parameter, even if defaults are provided"
@@ -642,22 +643,23 @@
 
 (deftest ^:parallel nil-value-parameter-template-tag-default-test
   (testing "Default values passed in as part of the request should not apply when the value is nil"
-    (testing "Field filters"
-      (is (=? {"filter" {:value ::params/no-value}}
-              (query->params-map
-               {:template-tags {"filter"
-                                {:id           "xyz456"
-                                 :name         "filter"
-                                 :display-name "Filter"
-                                 :type         :dimension
-                                 :dimension    [:field (mt/id :products :category) nil]
-                                 :widget-type  :category
-                                 :default      ["Gizmo" "Gadget"]}}
-                :parameters    [{:type    :string/=
-                                 :id      "abc123"
-                                 :default ["Widget"]
-                                 :value   nil
-                                 :target  [:dimension [:template-tag "filter"]]}]}))))))
+    (mt/dataset test-data
+      (testing "Field filters"
+        (is (=? {"filter" {:value ::params/no-value}}
+                (query->params-map
+                 {:template-tags {"filter"
+                                  {:id           "xyz456"
+                                   :name         "filter"
+                                   :display-name "Filter"
+                                   :type         :dimension
+                                   :dimension    [:field (mt/id :products :category) nil]
+                                   :widget-type  :category
+                                   :default      ["Gizmo" "Gadget"]}}
+                  :parameters    [{:type    :string/=
+                                   :id      "abc123"
+                                   :default ["Widget"]
+                                   :value   nil
+                                   :target  [:dimension [:template-tag "filter"]]}]})))))))
 
 (deftest ^:parallel nil-value-parameter-template-tag-default-raw-value-test
   (testing "Raw value template tags"
@@ -693,21 +695,22 @@
 
 (deftest ^:parallel use-parameter-defaults-test
   (testing "If parameter specifies a default value (but tag does not), don't use the default when the value is nil"
-    (testing "Field filters"
-      (is (=? {"filter" {:value ::params/no-value}}
-              (query->params-map
-               {:template-tags {"filter"
-                                {:id           "xyz456"
-                                 :name         "filter"
-                                 :display-name "Filter"
-                                 :type         :dimension
-                                 :dimension    [:field (mt/id :products :category) nil]
-                                 :widget-type  :category}}
-                :parameters    [{:type    :string/=
-                                 :id      "abc123"
-                                 :default ["Widget"]
-                                 :value   nil
-                                 :target  [:dimension [:template-tag "filter"]]}]}))))))
+    (mt/dataset test-data
+      (testing "Field filters"
+        (is (=? {"filter" {:value ::params/no-value}}
+                (query->params-map
+                 {:template-tags {"filter"
+                                  {:id           "xyz456"
+                                   :name         "filter"
+                                   :display-name "Filter"
+                                   :type         :dimension
+                                   :dimension    [:field (mt/id :products :category) nil]
+                                   :widget-type  :category}}
+                  :parameters    [{:type    :string/=
+                                   :id      "abc123"
+                                   :default ["Widget"]
+                                   :value   nil
+                                   :target  [:dimension [:template-tag "filter"]]}]})))))))
 
 (deftest ^:parallel use-parameter-defaults-raw-value-template-tags-test
   (testing "If parameter specifies a default value (but tag does not), don't use the default when the value is nil"
@@ -737,22 +740,23 @@
 
 (deftest ^:parallel handle-referenced-card-parameter-mixed-with-other-parameters-test
   (testing "Should be able to handle for Card ref params regardless of whether other params are passed in (#21246)\n"
-    (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
-                                      meta/metadata-provider
-                                      [(lib.tu.macros/mbql-query products)])
-      (let [param-name    "#1"
-            template-tags {param-name {:type         :card
-                                       :card-id      1
-                                       :display-name param-name
-                                       :id           "__source__"
-                                       :name         param-name}}]
-        (testing "With no parameters passed in"
-          (is (=? {param-name ReferencedCardQuery}
-                  (query->params-map {:template-tags template-tags}))))
-        (testing "WITH parameters passed in"
-          (let [parameters [{:type   :date/all-options
-                             :value  "2022-04-20"
-                             :target [:dimension [:template-tag "created_at"]]}]]
+    (mt/dataset test-data
+      (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                                        meta/metadata-provider
+                                        [(lib.tu.macros/mbql-query products)])
+        (let [param-name    "#1"
+              template-tags {param-name {:type         :card
+                                         :card-id      1
+                                         :display-name param-name
+                                         :id           "__source__"
+                                         :name         param-name}}]
+          (testing "With no parameters passed in"
             (is (=? {param-name ReferencedCardQuery}
-                    (query->params-map {:template-tags template-tags
-                                        :parameters    parameters})))))))))
+                    (query->params-map {:template-tags template-tags}))))
+          (testing "WITH parameters passed in"
+            (let [parameters [{:type   :date/all-options
+                               :value  "2022-04-20"
+                               :target [:dimension [:template-tag "created_at"]]}]]
+              (is (=? {param-name ReferencedCardQuery}
+                      (query->params-map {:template-tags template-tags
+                                          :parameters    parameters}))))))))))

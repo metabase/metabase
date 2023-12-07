@@ -288,29 +288,30 @@
 
 (deftest nest-expressions-ignore-source-queries-from-joins-test-e2e-test
   (testing "Ignores source-query from joins (#20809)"
-    (t2.with-temp/with-temp [:model/Card base {:dataset_query
-                                               (mt/mbql-query
-                                                 reviews
-                                                 {:breakout [$product_id]
-                                                  :aggregation [[:count]]
-                                                  ;; filter on an implicit join
-                                                  :filter [:= $product_id->products.category "Doohickey"]})}]
-      ;; the result returned is not important, just important that the query is valid and completes
-      (is (vector?
-           (mt/rows
-            (qp/process-query
-             (mt/mbql-query
-               orders
-               {:joins [{:source-table (str "card__" (:id base))
-                         :alias (str "Question " (:id base))
-                         :condition [:=
-                                     $product_id
-                                     [:field
-                                      %reviews.product_id
-                                      {:join-alias (str "Question " (:id base))}]]
-                         :fields :all}]
-                :expressions {"CC" [:+ 1 1]}
-                :limit 2}))))))))
+    (mt/dataset test-data
+      (t2.with-temp/with-temp [:model/Card base {:dataset_query
+                                                 (mt/mbql-query
+                                                   reviews
+                                                   {:breakout [$product_id]
+                                                    :aggregation [[:count]]
+                                                    ;; filter on an implicit join
+                                                    :filter [:= $product_id->products.category "Doohickey"]})}]
+        ;; the result returned is not important, just important that the query is valid and completes
+        (is (vector?
+             (mt/rows
+              (qp/process-query
+               (mt/mbql-query
+                 orders
+                 {:joins [{:source-table (str "card__" (:id base))
+                           :alias (str "Question " (:id base))
+                           :condition [:=
+                                       $product_id
+                                       [:field
+                                        %reviews.product_id
+                                        {:join-alias (str "Question " (:id base))}]]
+                           :fields :all}]
+                  :expressions {"CC" [:+ 1 1]}
+                  :limit 2})))))))))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:parallel nest-expressions-with-joins-test
@@ -565,120 +566,122 @@
 (deftest ^:parallel multiple-joins-with-expressions-test
   (testing "We should be able to compile a complicated query with multiple joins and expressions correctly"
     (driver/with-driver :h2
-      (qp.store/with-metadata-provider meta/metadata-provider
-        (is (partial= (lib.tu.macros/$ids orders
-                        (merge {:source-query (let [product-id        [:field %product-id {::add/source-table  $$orders
-                                                                                           ::add/source-alias  "PRODUCT_ID"
-                                                                                           ::add/desired-alias "PRODUCT_ID"
-                                                                                           ::add/position      0}]
-                                                    created-at        [:field %created-at {:temporal-unit      :default
-                                                                                           ::add/source-table  $$orders
-                                                                                           ::add/source-alias  "CREATED_AT"
-                                                                                           ::add/desired-alias "CREATED_AT"
-                                                                                           ::add/position      1}]
-                                                    pivot-grouping    [:expression "pivot-grouping" {::add/desired-alias "pivot-grouping"
-                                                                                                     ::add/position      2}]
-                                                    products-category [:field %products.category {:join-alias         "PRODUCTS__via__PRODUCT_ID"
-                                                                                                  ::add/source-table  "PRODUCTS__via__PRODUCT_ID"
-                                                                                                  ::add/source-alias  "CATEGORY"
-                                                                                                  ::add/desired-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
-                                                                                                  ::add/position      3}]
-                                                    products-id       [:field %products.id {:join-alias         "PRODUCTS__via__PRODUCT_ID"
-                                                                                            ::add/source-table  "PRODUCTS__via__PRODUCT_ID"
-                                                                                            ::add/source-alias  "ID"
-                                                                                            ::add/desired-alias "PRODUCTS__via__PRODUCT_ID__ID"
-                                                                                            ::add/position      4}]]
-                                                {:source-table $$orders
-                                                 :joins        [{:source-table $$products
-                                                                 :alias        "PRODUCTS__via__PRODUCT_ID"
-                                                                 :condition    [:= product-id products-id]
-                                                                 :strategy     :left-join
-                                                                 :fk-field-id  %product-id}]
-                                                 :expressions  {"pivot-grouping" [:abs 0]}
-                                                 :fields       [product-id
-                                                                created-at
-                                                                pivot-grouping
-                                                                products-category
-                                                                products-id]})}
-                               (let [products-category [:field %products.category {:join-alias         "PRODUCTS__via__PRODUCT_ID"
+      (mt/dataset test-data
+        (qp.store/with-metadata-provider meta/metadata-provider
+          (is (partial= (lib.tu.macros/$ids orders
+                          (merge {:source-query (let [product-id        [:field %product-id {::add/source-table  $$orders
+                                                                                             ::add/source-alias  "PRODUCT_ID"
+                                                                                             ::add/desired-alias "PRODUCT_ID"
+                                                                                             ::add/position      0}]
+                                                      created-at        [:field %created-at {:temporal-unit      :default
+                                                                                             ::add/source-table  $$orders
+                                                                                             ::add/source-alias  "CREATED_AT"
+                                                                                             ::add/desired-alias "CREATED_AT"
+                                                                                             ::add/position      1}]
+                                                      pivot-grouping    [:expression "pivot-grouping" {::add/desired-alias "pivot-grouping"
+                                                                                                       ::add/position      2}]
+                                                      products-category [:field %products.category {:join-alias         "PRODUCTS__via__PRODUCT_ID"
+                                                                                                    ::add/source-table  "PRODUCTS__via__PRODUCT_ID"
+                                                                                                    ::add/source-alias  "CATEGORY"
+                                                                                                    ::add/desired-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
+                                                                                                    ::add/position      3}]
+                                                      products-id       [:field %products.id {:join-alias         "PRODUCTS__via__PRODUCT_ID"
+                                                                                              ::add/source-table  "PRODUCTS__via__PRODUCT_ID"
+                                                                                              ::add/source-alias  "ID"
+                                                                                              ::add/desired-alias "PRODUCTS__via__PRODUCT_ID__ID"
+                                                                                              ::add/position      4}]]
+                                                  {:source-table $$orders
+                                                   :joins        [{:source-table $$products
+                                                                   :alias        "PRODUCTS__via__PRODUCT_ID"
+                                                                   :condition    [:= product-id products-id]
+                                                                   :strategy     :left-join
+                                                                   :fk-field-id  %product-id}]
+                                                   :expressions  {"pivot-grouping" [:abs 0]}
+                                                   :fields       [product-id
+                                                                  created-at
+                                                                  pivot-grouping
+                                                                  products-category
+                                                                  products-id]})}
+                                 (let [products-category [:field %products.category {:join-alias         "PRODUCTS__via__PRODUCT_ID"
+                                                                                     ::add/source-table  ::add/source
+                                                                                     ::add/source-alias  "PRODUCTS__via__PRODUCT_ID__CATEGORY"
+                                                                                     ::add/desired-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
+                                                                                     ::add/position      0}]
+                                       created-at        [:field %created-at {:temporal-unit            :year
+                                                                              ::nest-query/outer-select true
+                                                                              ::add/source-table        ::add/source
+                                                                              ::add/source-alias        "CREATED_AT"
+                                                                              ::add/desired-alias       "CREATED_AT"
+                                                                              ::add/position            1}]
+                                       pivot-grouping    [:field "pivot-grouping" {:base-type          :type/Float
                                                                                    ::add/source-table  ::add/source
-                                                                                   ::add/source-alias  "PRODUCTS__via__PRODUCT_ID__CATEGORY"
-                                                                                   ::add/desired-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
-                                                                                   ::add/position      0}]
-                                     created-at        [:field %created-at {:temporal-unit            :year
-                                                                            ::nest-query/outer-select true
-                                                                            ::add/source-table        ::add/source
-                                                                            ::add/source-alias        "CREATED_AT"
-                                                                            ::add/desired-alias       "CREATED_AT"
-                                                                            ::add/position            1}]
-                                     pivot-grouping    [:field "pivot-grouping" {:base-type          :type/Float
-                                                                                 ::add/source-table  ::add/source
-                                                                                 ::add/source-alias  "pivot-grouping"
-                                                                                 ::add/desired-alias "pivot-grouping"
-                                                                                 ::add/position      2}]]
-                                 {:breakout    [products-category created-at pivot-grouping]
-                                  :aggregation [[:aggregation-options [:count] {:name               "count"
-                                                                                ::add/desired-alias "count"
-                                                                                ::add/position      3}]]
-                                  :order-by    [[:asc products-category]
-                                                [:asc created-at]
-                                                [:asc pivot-grouping]]})))
-                      (-> (lib.tu.macros/mbql-query orders
-                            {:aggregation [[:aggregation-options [:count] {:name "count"}]]
-                             :breakout    [&PRODUCTS__via__PRODUCT_ID.products.category
-                                           !year.created-at
-                                           [:expression "pivot-grouping"]]
-                             :expressions {"pivot-grouping" [:abs 0]}
-                             :order-by    [[:asc &PRODUCTS__via__PRODUCT_ID.products.category]
-                                           [:asc !year.created-at]
-                                           [:asc [:expression "pivot-grouping"]]]
-                             :joins       [{:source-table $$products
-                                            :strategy     :left-join
-                                            :alias        "PRODUCTS__via__PRODUCT_ID"
-                                            :fk-field-id  %product-id
-                                            :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]}]})
-                          qp/preprocess
-                          add/add-alias-info
-                          nest-expressions)))))))
+                                                                                   ::add/source-alias  "pivot-grouping"
+                                                                                   ::add/desired-alias "pivot-grouping"
+                                                                                   ::add/position      2}]]
+                                   {:breakout    [products-category created-at pivot-grouping]
+                                    :aggregation [[:aggregation-options [:count] {:name               "count"
+                                                                                  ::add/desired-alias "count"
+                                                                                  ::add/position      3}]]
+                                    :order-by    [[:asc products-category]
+                                                  [:asc created-at]
+                                                  [:asc pivot-grouping]]})))
+                        (-> (lib.tu.macros/mbql-query orders
+                              {:aggregation [[:aggregation-options [:count] {:name "count"}]]
+                               :breakout    [&PRODUCTS__via__PRODUCT_ID.products.category
+                                             !year.created-at
+                                             [:expression "pivot-grouping"]]
+                               :expressions {"pivot-grouping" [:abs 0]}
+                               :order-by    [[:asc &PRODUCTS__via__PRODUCT_ID.products.category]
+                                             [:asc !year.created-at]
+                                             [:asc [:expression "pivot-grouping"]]]
+                               :joins       [{:source-table $$products
+                                              :strategy     :left-join
+                                              :alias        "PRODUCTS__via__PRODUCT_ID"
+                                              :fk-field-id  %product-id
+                                              :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]}]})
+                            qp/preprocess
+                            add/add-alias-info
+                            nest-expressions))))))))
 
 (deftest ^:parallel uniquify-aliases-test
   (driver/with-driver :h2
-    (qp.store/with-metadata-provider meta/metadata-provider
-      (is (partial= (lib.tu.macros/$ids products
-                      {:source-query       {:source-table $$products
-                                            :expressions  {"CATEGORY" [:concat
-                                                                       [:field %category {::add/source-table  $$products
-                                                                                          ::add/source-alias  "CATEGORY"
-                                                                                          ::add/desired-alias "CATEGORY"
-                                                                                          ::add/position      0}]
-                                                                       "2"]}
-                                            :fields       [[:field %category {::add/source-table  $$products
-                                                                              ::add/source-alias  "CATEGORY"
-                                                                              ::add/desired-alias "CATEGORY"
-                                                                              ::add/position      0}]
-                                                           [:expression "CATEGORY" {::add/desired-alias "CATEGORY_2"
-                                                                                    ::add/position      1}]]}
-                       :breakout           [[:field "CATEGORY_2" {:base-type          :type/Text
-                                                                  ::add/source-table  ::add/source
-                                                                  ::add/source-alias  "CATEGORY_2"
-                                                                  ::add/desired-alias "CATEGORY_2"
-                                                                  ::add/position      0}]]
-                       :aggregation        [[:aggregation-options [:count] {:name               "count"
-                                                                            ::add/desired-alias "count"
-                                                                            ::add/position      1}]]
-                       :order-by           [[:asc [:field "CATEGORY_2" {:base-type          :type/Text
-                                                                        ::add/source-table  ::add/source
-                                                                        ::add/source-alias  "CATEGORY_2"
-                                                                        ::add/desired-alias "CATEGORY_2"
-                                                                        ::add/position      0}]]]
-                       :limit              1})
-                    (-> (lib.tu.macros/mbql-query products
-                          {:expressions {"CATEGORY" [:concat $category "2"]}
-                           :breakout    [:expression"CATEGORY"]
-                           :aggregation [[:count]]
-                           :order-by    [[:asc [:expression"CATEGORY"]]]
-                           :limit       1})
-                        qp/preprocess
-                        add/add-alias-info
-                        :query
-                        nest-query/nest-expressions))))))
+    (mt/dataset test-data
+      (qp.store/with-metadata-provider meta/metadata-provider
+        (is (partial= (lib.tu.macros/$ids products
+                        {:source-query       {:source-table $$products
+                                              :expressions  {"CATEGORY" [:concat
+                                                                         [:field %category {::add/source-table  $$products
+                                                                                            ::add/source-alias  "CATEGORY"
+                                                                                            ::add/desired-alias "CATEGORY"
+                                                                                            ::add/position      0}]
+                                                                         "2"]}
+                                              :fields       [[:field %category {::add/source-table  $$products
+                                                                                ::add/source-alias  "CATEGORY"
+                                                                                ::add/desired-alias "CATEGORY"
+                                                                                ::add/position      0}]
+                                                             [:expression "CATEGORY" {::add/desired-alias "CATEGORY_2"
+                                                                                      ::add/position      1}]]}
+                         :breakout           [[:field "CATEGORY_2" {:base-type          :type/Text
+                                                                    ::add/source-table  ::add/source
+                                                                    ::add/source-alias  "CATEGORY_2"
+                                                                    ::add/desired-alias "CATEGORY_2"
+                                                                    ::add/position      0}]]
+                         :aggregation        [[:aggregation-options [:count] {:name               "count"
+                                                                              ::add/desired-alias "count"
+                                                                              ::add/position      1}]]
+                         :order-by           [[:asc [:field "CATEGORY_2" {:base-type          :type/Text
+                                                                          ::add/source-table  ::add/source
+                                                                          ::add/source-alias  "CATEGORY_2"
+                                                                          ::add/desired-alias "CATEGORY_2"
+                                                                          ::add/position      0}]]]
+                         :limit              1})
+                      (-> (lib.tu.macros/mbql-query products
+                            {:expressions {"CATEGORY" [:concat $category "2"]}
+                             :breakout    [:expression"CATEGORY"]
+                             :aggregation [[:count]]
+                             :order-by    [[:asc [:expression"CATEGORY"]]]
+                             :limit       1})
+                          qp/preprocess
+                          add/add-alias-info
+                          :query
+                          nest-query/nest-expressions)))))))

@@ -56,22 +56,23 @@
 
 (deftest support-legacy-filter-clauses-test
   (testing "We should handle legacy usage of `:field` w/ name inside filter clauses"
-    (testing "against explicit joins (#14809)"
-      (let [source-query    (mt/mbql-query orders
-                              {:joins [{:fields       :all
-                                        :source-table $$products
-                                        :condition    [:= $product_id &Products.products.id]
-                                        :alias        "Products"}]})
-            source-metadata (qp/query->expected-cols source-query)]
-        (is (= (mt/mbql-query orders
-                 {:source-query    (:query source-query)
-                  :source-metadata source-metadata
-                  :filter          [:= &Products.products.category "Widget"]})
-               (upgrade-field-literals
-                (mt/mbql-query orders
-                  {:source-query    (:query source-query)
-                   :source-metadata source-metadata
-                   :filter          [:= *CATEGORY/Text "Widget"]})))))
+    (mt/dataset test-data
+      (testing "against explicit joins (#14809)"
+        (let [source-query    (mt/mbql-query orders
+                                {:joins [{:fields       :all
+                                          :source-table $$products
+                                          :condition    [:= $product_id &Products.products.id]
+                                          :alias        "Products"}]})
+              source-metadata (qp/query->expected-cols source-query)]
+          (is (= (mt/mbql-query orders
+                   {:source-query    (:query source-query)
+                    :source-metadata source-metadata
+                    :filter          [:= &Products.products.category "Widget"]})
+                 (upgrade-field-literals
+                  (mt/mbql-query orders
+                    {:source-query    (:query source-query)
+                     :source-metadata source-metadata
+                     :filter          [:= *CATEGORY/Text "Widget"]}))))))
 
       (testing "against implicit joins (#14811)"
         (let [source-query    (mt/mbql-query orders
@@ -91,23 +92,24 @@
 
 (deftest attempt-case-insensitive-match-test
   (testing "Attempt to fix things even if the name used is the wrong case (#16389)"
-    (mt/with-metadata-provider (mt/id)
-      (is (query= (mt/mbql-query orders
-                    {:source-query {:source-table $$orders
-                                    :aggregation  [[:count]]
-                                    :breakout     [!month.product_id->products.created_at]}
-                     :aggregation  [[:sum *count/Integer]]
-                     :breakout     [[:field %products.created_at {:source-field  %product_id
-                                                                  :temporal-unit :month}]]
-                     :limit        1})
-                  ;; This query is actually broken -- see #19757 -- but since we're nice we'll try to fix it anyway.
-                  (-> (mt/mbql-query orders
-                        {:source-query {:source-table $$orders
-                                        :aggregation  [[:count]]
-                                        :breakout     [!month.product_id->products.created_at]}
-                         :aggregation  [[:sum *count/Integer]]
-                         :breakout     [[:field "created_at" {:base-type :type/DateTimeWithLocalTZ}]]
-                         :limit        1})
-                      add-source-metadata/add-source-metadata-for-source-queries
-                      upgrade-field-literals
-                      (m/dissoc-in [:query :source-metadata])))))))
+    (mt/dataset test-data
+      (mt/with-metadata-provider (mt/id)
+        (is (query= (mt/mbql-query orders
+                      {:source-query {:source-table $$orders
+                                      :aggregation  [[:count]]
+                                      :breakout     [!month.product_id->products.created_at]}
+                       :aggregation  [[:sum *count/Integer]]
+                       :breakout     [[:field %products.created_at {:source-field  %product_id
+                                                                    :temporal-unit :month}]]
+                       :limit        1})
+                    ;; This query is actually broken -- see #19757 -- but since we're nice we'll try to fix it anyway.
+                    (-> (mt/mbql-query orders
+                          {:source-query {:source-table $$orders
+                                          :aggregation  [[:count]]
+                                          :breakout     [!month.product_id->products.created_at]}
+                           :aggregation  [[:sum *count/Integer]]
+                           :breakout     [[:field "created_at" {:base-type :type/DateTimeWithLocalTZ}]]
+                           :limit        1})
+                        add-source-metadata/add-source-metadata-for-source-queries
+                        upgrade-field-literals
+                        (m/dissoc-in [:query :source-metadata]))))))))

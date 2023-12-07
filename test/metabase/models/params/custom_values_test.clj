@@ -127,44 +127,45 @@
                     "medicine")))))))))
 
 (deftest deduplicate-and-remove-non-empty-values-empty
-  (testing "the values list should not contains duplicated and empty values"
-    (testing "with native query"
-      (mt/with-temp [Card {card-id :id} (mt/card-with-source-metadata-for-query
-                                         (mt/native-query {:query "select * from people"}))]
-        (testing "get values from breakout columns"
-          (is (= {:has_more_values false,
-                  :values          [["Affiliate"] ["Facebook"] ["Google"] ["Organic"] ["Twitter"]]}
-                 (custom-values/values-from-card
-                  (t2/select-one Card :id card-id)
-                  [:field "SOURCE" {:base-type :type/Text}]))))
+  (mt/dataset test-data
+    (testing "the values list should not contains duplicated and empty values"
+      (testing "with native query"
+        (mt/with-temp [Card {card-id :id} (mt/card-with-source-metadata-for-query
+                                           (mt/native-query {:query "select * from people"}))]
+          (testing "get values from breakout columns"
+            (is (= {:has_more_values false,
+                    :values          [["Affiliate"] ["Facebook"] ["Google"] ["Organic"] ["Twitter"]]}
+                   (custom-values/values-from-card
+                    (t2/select-one Card :id card-id)
+                    [:field "SOURCE" {:base-type :type/Text}]))))
 
 
-        (testing "doing case in-sensitve search on breakout columns"
-          (is (= {:has_more_values false
-                  :values          [["Facebook"] ["Google"]]}
-                 (custom-values/values-from-card
-                  (t2/select-one Card :id card-id)
-                  [:field "SOURCE" {:base-type :type/Text}]
-                  "oo"))))))
+          (testing "doing case in-sensitve search on breakout columns"
+            (is (= {:has_more_values false
+                    :values          [["Facebook"] ["Google"]]}
+                   (custom-values/values-from-card
+                    (t2/select-one Card :id card-id)
+                    [:field "SOURCE" {:base-type :type/Text}]
+                    "oo"))))))
 
-    (testing "with mbql query"
-      (mt/with-temp [Card {card-id :id} (mt/card-with-source-metadata-for-query
-                                         (mt/mbql-query people))]
-        (testing "get values from breakout columns"
-          (is (= {:has_more_values false,
-                  :values          [["Affiliate"] ["Facebook"] ["Google"] ["Organic"] ["Twitter"]]}
-                 (custom-values/values-from-card
-                  (t2/select-one Card :id card-id)
-                  (mt/$ids $people.source)))))
+      (testing "with mbql query"
+        (mt/with-temp [Card {card-id :id} (mt/card-with-source-metadata-for-query
+                                           (mt/mbql-query people))]
+          (testing "get values from breakout columns"
+            (is (= {:has_more_values false,
+                    :values          [["Affiliate"] ["Facebook"] ["Google"] ["Organic"] ["Twitter"]]}
+                   (custom-values/values-from-card
+                    (t2/select-one Card :id card-id)
+                    (mt/$ids $people.source)))))
 
 
-        (testing "doing case in-sensitve search on breakout columns"
-          (is (= {:has_more_values false
-                  :values          [["Facebook"] ["Google"]]}
-                 (custom-values/values-from-card
-                  (t2/select-one Card :id card-id)
-                  (mt/$ids $people.source)
-                  "oo"))))))))
+          (testing "doing case in-sensitve search on breakout columns"
+            (is (= {:has_more_values false
+                    :values          [["Facebook"] ["Google"]]}
+                   (custom-values/values-from-card
+                    (t2/select-one Card :id card-id)
+                    (mt/$ids $people.source)
+                    "oo")))))))))
 
 (deftest errors-test
   (testing "error if doesn't have permissions"

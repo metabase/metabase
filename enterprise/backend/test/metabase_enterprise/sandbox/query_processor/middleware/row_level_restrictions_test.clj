@@ -759,34 +759,21 @@
 
 (deftest remapped-fks-test
   (testing "Sandboxing should work with remapped FK columns (#14629)"
-    ;; set up GTAP against reviews
-    (met/with-gtaps (mt/$ids reviews
-                             {:gtaps      {:reviews {:remappings {"user_id" [:dimension $product_id]}}}
-                              :attributes {"user_id" 1}})
+    (mt/dataset test-data
+      ;; set up GTAP against reviews
+      (met/with-gtaps (mt/$ids reviews
+                        {:gtaps      {:reviews {:remappings {"user_id" [:dimension $product_id]}}}
+                         :attributes {"user_id" 1}})
         ;; grant full data perms for products
-      (perms/grant-permissions! (perms-group/all-users) (perms/data-perms-path
-                                                         (mt/id)
-                                                         (t2/select-one-fn :schema Table :id (mt/id :products))
-                                                         (mt/id :products)))
-      (mt/with-test-user :rasta
-        (testing "Sanity check: should be able to query products"
-          (is (=? {:status :completed}
-                  (mt/run-mbql-query products {:limit 10}))))
-        (testing "Try the sandbox without remapping in place"
-          (let [result (mt/run-mbql-query reviews {:order-by [[:asc $id]]})]
-            (is (=? {:status    :completed
-                     :row_count 8}
-                    result))
-            (is (= [1
-                    1
-                    "christ"
-                    5
-                    (str "Ad perspiciatis quis et consectetur. Laboriosam fuga voluptas ut et modi ipsum. Odio et "
-                         "eum numquam eos nisi. Assumenda aut magnam libero maiores nobis vel beatae officia.")
-                    "2018-05-15T20:25:48.517Z"]
-                   (first (mt/rows result))))))
-        (testing "Ok, add remapping and it should still work"
-          (mt/with-column-remappings [reviews.product_id products.title]
+        (perms/grant-permissions! (perms-group/all-users) (perms/data-perms-path
+                                                           (mt/id)
+                                                           (t2/select-one-fn :schema Table :id (mt/id :products))
+                                                           (mt/id :products)))
+        (mt/with-test-user :rasta
+          (testing "Sanity check: should be able to query products"
+            (is (=? {:status :completed}
+                    (mt/run-mbql-query products {:limit 10}))))
+          (testing "Try the sandbox without remapping in place"
             (let [result (mt/run-mbql-query reviews {:order-by [[:asc $id]]})]
               (is (=? {:status    :completed
                        :row_count 8}
@@ -797,135 +784,152 @@
                       5
                       (str "Ad perspiciatis quis et consectetur. Laboriosam fuga voluptas ut et modi ipsum. Odio et "
                            "eum numquam eos nisi. Assumenda aut magnam libero maiores nobis vel beatae officia.")
-                      "2018-05-15T20:25:48.517Z"
-                      "Rustic Paper Wallet"] ; <- Includes the remapped column
-                     (first (mt/rows result)))))))))))
+                      "2018-05-15T20:25:48.517Z"]
+                     (first (mt/rows result))))))
+          (testing "Ok, add remapping and it should still work"
+            (mt/with-column-remappings [reviews.product_id products.title]
+              (let [result (mt/run-mbql-query reviews {:order-by [[:asc $id]]})]
+                (is (=? {:status    :completed
+                         :row_count 8}
+                        result))
+                (is (= [1
+                        1
+                        "christ"
+                        5
+                        (str "Ad perspiciatis quis et consectetur. Laboriosam fuga voluptas ut et modi ipsum. Odio et "
+                             "eum numquam eos nisi. Assumenda aut magnam libero maiores nobis vel beatae officia.")
+                        "2018-05-15T20:25:48.517Z"
+                        "Rustic Paper Wallet"] ; <- Includes the remapped column
+                       (first (mt/rows result))))))))))))
 
 (deftest sandboxing-linked-table-perms
   (testing "Sandboxing based on a column in a linked table should work even if the user doesn't have self-service query
            permissions for the linked table (#15105)"
-    (met/with-gtaps (mt/$ids orders
-                      {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}}
-                       :attributes {"user_id" 1}})
-      (mt/with-test-user :rasta
-        (is (= [11]
-               (-> (mt/run-mbql-query orders {:aggregation [[:count]]})
-                   mt/rows
-                   first)))))))
+    (mt/dataset test-data
+      (met/with-gtaps (mt/$ids orders
+                        {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}}
+                         :attributes {"user_id" 1}})
+        (mt/with-test-user :rasta
+          (is (= [11]
+                 (-> (mt/run-mbql-query orders {:aggregation [[:count]]})
+                     mt/rows
+                     first))))))))
 
 (deftest drill-thru-on-joins-test
   (testing "should work on questions with joins, with sandboxed target table, where target fields cannot be filtered (#13642)"
     ;; Sandbox ORDERS and PRODUCTS
-    (met/with-gtaps (mt/$ids nil
-                      {:gtaps      {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
-                                    :products {:remappings {:user_cat [:dimension $products.category]}}}
-                       :attributes {:user_id  "1"
-                                    :user_cat "Widget"}})
-      ;; create query with joins
-      (let [query (mt/mbql-query orders
-                    {:aggregation [[:count]]
-                     :breakout    [&products.products.category]
-                     :joins       [{:fields       :all
-                                    :source-table $$products
-                                    :condition    [:= $product_id &products.products.id]
-                                    :alias        "products"}]
-                     :limit       10})]
-        (testing "Should be able to run the query"
-          (is (=? {:data      {:rows     [[nil 5] ["Widget" 6]]}
-                   :status    :completed
-                   :row_count 2}
-                  (qp/process-query query))))
-        (testing "should be able to save the query as a Card and run it"
-          (mt/with-temp [Collection {collection-id :id} {}
-                         Card       {card-id :id} {:dataset_query query, :collection_id collection-id}]
-            (perms/grant-collection-read-permissions! &group collection-id)
+    (mt/dataset test-data
+      (met/with-gtaps (mt/$ids nil
+                        {:gtaps      {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
+                                      :products {:remappings {:user_cat [:dimension $products.category]}}}
+                         :attributes {:user_id  "1"
+                                      :user_cat "Widget"}})
+        ;; create query with joins
+        (let [query (mt/mbql-query orders
+                      {:aggregation [[:count]]
+                       :breakout    [&products.products.category]
+                       :joins       [{:fields       :all
+                                      :source-table $$products
+                                      :condition    [:= $product_id &products.products.id]
+                                      :alias        "products"}]
+                       :limit       10})]
+          (testing "Should be able to run the query"
             (is (=? {:data      {:rows     [[nil 5] ["Widget" 6]]}
-                     :status    "completed"
+                     :status    :completed
                      :row_count 2}
-                    (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))))))
-        (letfn [(test-drill-thru []
-                  (testing "Drill-thru question should work"
-                    (let [drill-thru-query
-                          (mt/mbql-query orders
-                            {:filter [:= $products.category "Widget"]
-                             :joins  [{:fields       :all
-                                       :source-table $$products
-                                       :condition    [:= $product_id &products.products.id]
-                                       :alias        "products"}]
-                             :limit  10})
+                    (qp/process-query query))))
+          (testing "should be able to save the query as a Card and run it"
+            (mt/with-temp [Collection {collection-id :id} {}
+                           Card       {card-id :id} {:dataset_query query, :collection_id collection-id}]
+              (perms/grant-collection-read-permissions! &group collection-id)
+              (is (=? {:data      {:rows     [[nil 5] ["Widget" 6]]}
+                       :status    "completed"
+                       :row_count 2}
+                      (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))))))
+          (letfn [(test-drill-thru []
+                    (testing "Drill-thru question should work"
+                      (let [drill-thru-query
+                            (mt/mbql-query orders
+                              {:filter [:= $products.category "Widget"]
+                               :joins  [{:fields       :all
+                                         :source-table $$products
+                                         :condition    [:= $product_id &products.products.id]
+                                         :alias        "products"}]
+                               :limit  10})
 
-                          test-preprocessing
-                          (fn []
-                            (testing "`resolve-joined-fields` middleware should infer `:field` `:join-alias` correctly"
-                              (is (= [:=
-                                      [:field (mt/id :products :category) {:join-alias "products"}]
-                                      [:value "Widget" {:base_type     :type/Text
-                                                        :effective_type :type/Text
-                                                        :coercion_strategy nil
-                                                        :semantic_type  (t2/select-one-fn :semantic_type Field
-                                                                                          :id (mt/id :products :category))
-                                                        :database_type "CHARACTER VARYING"
-                                                        :name          "CATEGORY"}]]
-                                     (get-in (qp/preprocess drill-thru-query) [:query :filter])))))]
-                      (testing "As an admin"
-                        (mt/with-test-user :crowberto
+                            test-preprocessing
+                            (fn []
+                              (testing "`resolve-joined-fields` middleware should infer `:field` `:join-alias` correctly"
+                                (is (= [:=
+                                        [:field (mt/id :products :category) {:join-alias "products"}]
+                                        [:value "Widget" {:base_type     :type/Text
+                                                          :effective_type :type/Text
+                                                          :coercion_strategy nil
+                                                          :semantic_type  (t2/select-one-fn :semantic_type Field
+                                                                                            :id (mt/id :products :category))
+                                                          :database_type "CHARACTER VARYING"
+                                                          :name          "CATEGORY"}]]
+                                       (get-in (qp/preprocess drill-thru-query) [:query :filter])))))]
+                        (testing "As an admin"
+                          (mt/with-test-user :crowberto
+                            (test-preprocessing)
+                            (is (=? {:status    :completed
+                                     :row_count 10}
+                                    (qp/process-query drill-thru-query)))))
+                        (testing "As a sandboxed user"
                           (test-preprocessing)
                           (is (=? {:status    :completed
-                                   :row_count 10}
-                                  (qp/process-query drill-thru-query)))))
-                      (testing "As a sandboxed user"
-                        (test-preprocessing)
-                        (is (=? {:status    :completed
-                                 :row_count 6}
-                                (qp/process-query drill-thru-query)))))))]
-          (test-drill-thru)
-          (mt/with-column-remappings [orders.product_id products.title]
-            (test-drill-thru)))))))
+                                   :row_count 6}
+                                  (qp/process-query drill-thru-query)))))))]
+            (test-drill-thru)
+            (mt/with-column-remappings [orders.product_id products.title]
+              (test-drill-thru))))))))
 
 (deftest drill-thru-on-implicit-joins-test
   (testing "drill-through should work on implicit joined tables with sandboxes should have correct metadata (#13641)"
-    ;; create Sandbox on ORDERS
-    (met/with-gtaps (mt/$ids nil
-                      {:gtaps      {:orders {:remappings {:user_id [:dimension $orders.user_id]}}}
-                       :attributes {:user_id "1"}})
-      ;; make sure the sandboxed group can still access the Products table, which is referenced below.
-      (perms/grant-permissions! &group (perms/data-perms-path (mt/id) "PUBLIC" (mt/id :products)))
-      (letfn [(do-tests []
-                ;; create a query based on the sandboxed Table
-                (testing "should be able to run the query. Results should come back with correct metadata"
-                  (let [query (mt/mbql-query orders
-                                {:aggregation [[:count]]
-                                 :breakout    [$product_id->products.category]
-                                 :order-by    [[:asc $product_id->products.category]]
-                                 :limit       5})]
-                    (letfn [(test-metadata []
-                              (is (=? {:status :completed
-                                       :data   {:results_metadata
-                                                {:columns [{:name      "CATEGORY"
-                                                            :field_ref (mt/$ids $orders.product_id->products.category)}
-                                                           {:name      "count"
-                                                            :field_ref [:aggregation 0]}]}}}
-                                      (qp/process-query query))))]
-                      (testing "as an admin"
+    (mt/dataset test-data
+      ;; create Sandbox on ORDERS
+      (met/with-gtaps (mt/$ids nil
+                        {:gtaps      {:orders {:remappings {:user_id [:dimension $orders.user_id]}}}
+                         :attributes {:user_id "1"}})
+        ;; make sure the sandboxed group can still access the Products table, which is referenced below.
+        (perms/grant-permissions! &group (perms/data-perms-path (mt/id) "PUBLIC" (mt/id :products)))
+        (letfn [(do-tests []
+                  ;; create a query based on the sandboxed Table
+                  (testing "should be able to run the query. Results should come back with correct metadata"
+                    (let [query (mt/mbql-query orders
+                                  {:aggregation [[:count]]
+                                   :breakout    [$product_id->products.category]
+                                   :order-by    [[:asc $product_id->products.category]]
+                                   :limit       5})]
+                      (letfn [(test-metadata []
+                                (is (=? {:status :completed
+                                         :data   {:results_metadata
+                                                  {:columns [{:name      "CATEGORY"
+                                                              :field_ref (mt/$ids $orders.product_id->products.category)}
+                                                             {:name      "count"
+                                                              :field_ref [:aggregation 0]}]}}}
+                                        (qp/process-query query))))]
+                        (testing "as an admin"
+                          (mt/with-test-user :crowberto
+                            (test-metadata)))
+                        (testing "as a sandboxed user"
+                          (test-metadata)))))
+                  (testing "Drill-thru question should work"
+                    (letfn [(test-drill-thru-query []
+                              (is (=? {:status :completed}
+                                      (mt/run-mbql-query orders
+                                        {:filter   [:= $product_id->products.category "Doohickey"]
+                                         :order-by [[:asc $product_id->products.category]]
+                                         :limit    5}))))]
+                      (testing "as admin"
                         (mt/with-test-user :crowberto
-                          (test-metadata)))
-                      (testing "as a sandboxed user"
-                        (test-metadata)))))
-                (testing "Drill-thru question should work"
-                  (letfn [(test-drill-thru-query []
-                            (is (=? {:status :completed}
-                                    (mt/run-mbql-query orders
-                                      {:filter   [:= $product_id->products.category "Doohickey"]
-                                       :order-by [[:asc $product_id->products.category]]
-                                       :limit    5}))))]
-                    (testing "as admin"
-                      (mt/with-test-user :crowberto
-                        (test-drill-thru-query)))
-                    (testing "as sandboxed user"
-                      (test-drill-thru-query)))))]
-        (do-tests)
-        (mt/with-column-remappings [orders.product_id products.title]
-          (do-tests))))))
+                          (test-drill-thru-query)))
+                      (testing "as sandboxed user"
+                        (test-drill-thru-query)))))]
+          (do-tests)
+          (mt/with-column-remappings [orders.product_id products.title]
+            (do-tests)))))))
 
 (defn- set-query-metadata-for-gtap-card!
   "Find the GTAP Card associated with Group and table-name and add `:result_metadata` to it. Because we (probably) need
@@ -944,51 +948,52 @@
 
 (deftest native-fk-remapping-test
   (testing "FK remapping should still work for questions with native sandboxes (EE #520)"
-    (let [mbql-sandbox-results (met/with-gtaps {:gtaps      (mt/$ids
-                                                             {:orders   {:remappings {"user_id" [:dimension $orders.user_id]}}
-                                                              :products {:remappings {"user_cat" [:dimension $products.category]}}})
-                                                :attributes {"user_id" 1, "user_cat" "Widget"}}
-                                 (mt/with-column-remappings [orders.product_id products.title]
-                                   (mt/run-mbql-query orders)))]
-      (doseq [orders-gtap-card-has-metadata?   [true false]
-              products-gtap-card-has-metadata? [true false]]
-        (testing (format "\nwith GTAP metadata for Orders? %s Products? %s"
-                         (pr-str orders-gtap-card-has-metadata?)
-                         (pr-str products-gtap-card-has-metadata?))
-          (met/with-gtaps {:gtaps      {:orders   {:query      (mt/native-query
-                                                                {:query         "SELECT * FROM ORDERS WHERE USER_ID={{uid}} AND TOTAL > 10"
-                                                                 :template-tags {"uid" {:display-name "User ID"
-                                                                                        :id           "1"
-                                                                                        :name         "uid"
-                                                                                        :type         :number}}})
-                                                   :remappings {"user_id" [:variable [:template-tag "uid"]]}}
-                                        :products {:query      (mt/native-query
-                                                                {:query         "SELECT * FROM PRODUCTS WHERE CATEGORY={{cat}} AND PRICE > 10"
-                                                                 :template-tags {"cat" {:display-name "Category"
-                                                                                        :id           "2"
-                                                                                        :name         "cat"
-                                                                                        :type         :text}}})
-                                                   :remappings {"user_cat" [:variable [:template-tag "cat"]]}}}
-                           :attributes {"user_id" "1", "user_cat" "Widget"}}
-            (when orders-gtap-card-has-metadata?
-              (set-query-metadata-for-gtap-card! &group :orders "uid" 1))
-            (when products-gtap-card-has-metadata?
-              (set-query-metadata-for-gtap-card! &group :products "cat" "Widget"))
-            (mt/with-column-remappings [orders.product_id products.title]
-              (testing "Sandboxed results should be the same as they would be if the sandbox was MBQL"
-                (letfn [(format-col [col]
-                          (dissoc col :field_ref :id :table_id :fk_field_id :options :position :lib/external_remap :lib/internal_remap :fk_target_field_id))
-                        (format-results [results]
-                          (-> results
-                              (update-in [:data :cols] (partial map format-col))
-                              (m/dissoc-in [:data :native_form])
-                              (m/dissoc-in [:data :results_metadata :checksum])
-                              (update-in [:data :results_metadata :columns] (partial map format-col))))]
-                  (is (= (format-results mbql-sandbox-results)
-                         (format-results (mt/run-mbql-query orders))))))
-              (testing "Should be able to run a query against Orders"
-                (is (= [[1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]]
-                       (mt/rows (mt/run-mbql-query orders {:limit 1}))))))))))))
+    (mt/dataset test-data
+      (let [mbql-sandbox-results (met/with-gtaps {:gtaps      (mt/$ids
+                                                                {:orders   {:remappings {"user_id" [:dimension $orders.user_id]}}
+                                                                 :products {:remappings {"user_cat" [:dimension $products.category]}}})
+                                                  :attributes {"user_id" 1, "user_cat" "Widget"}}
+                                   (mt/with-column-remappings [orders.product_id products.title]
+                                     (mt/run-mbql-query orders)))]
+        (doseq [orders-gtap-card-has-metadata?   [true false]
+                products-gtap-card-has-metadata? [true false]]
+          (testing (format "\nwith GTAP metadata for Orders? %s Products? %s"
+                           (pr-str orders-gtap-card-has-metadata?)
+                           (pr-str products-gtap-card-has-metadata?))
+            (met/with-gtaps {:gtaps      {:orders   {:query      (mt/native-query
+                                                                   {:query         "SELECT * FROM ORDERS WHERE USER_ID={{uid}} AND TOTAL > 10"
+                                                                    :template-tags {"uid" {:display-name "User ID"
+                                                                                           :id           "1"
+                                                                                           :name         "uid"
+                                                                                           :type         :number}}})
+                                                     :remappings {"user_id" [:variable [:template-tag "uid"]]}}
+                                          :products {:query      (mt/native-query
+                                                                   {:query         "SELECT * FROM PRODUCTS WHERE CATEGORY={{cat}} AND PRICE > 10"
+                                                                    :template-tags {"cat" {:display-name "Category"
+                                                                                           :id           "2"
+                                                                                           :name         "cat"
+                                                                                           :type         :text}}})
+                                                     :remappings {"user_cat" [:variable [:template-tag "cat"]]}}}
+                             :attributes {"user_id" "1", "user_cat" "Widget"}}
+              (when orders-gtap-card-has-metadata?
+                (set-query-metadata-for-gtap-card! &group :orders "uid" 1))
+              (when products-gtap-card-has-metadata?
+                (set-query-metadata-for-gtap-card! &group :products "cat" "Widget"))
+              (mt/with-column-remappings [orders.product_id products.title]
+                (testing "Sandboxed results should be the same as they would be if the sandbox was MBQL"
+                  (letfn [(format-col [col]
+                            (dissoc col :field_ref :id :table_id :fk_field_id :options :position :lib/external_remap :lib/internal_remap :fk_target_field_id))
+                          (format-results [results]
+                            (-> results
+                                (update-in [:data :cols] (partial map format-col))
+                                (m/dissoc-in [:data :native_form])
+                                (m/dissoc-in [:data :results_metadata :checksum])
+                                (update-in [:data :results_metadata :columns] (partial map format-col))))]
+                    (is (= (format-results mbql-sandbox-results)
+                           (format-results (mt/run-mbql-query orders))))))
+                (testing "Should be able to run a query against Orders"
+                  (is (= [[1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]]
+                         (mt/rows (mt/run-mbql-query orders {:limit 1})))))))))))))
 
 (deftest pivot-query-test
   (mt/test-drivers (disj
@@ -997,36 +1002,37 @@
                     ;; JDBC, because that driver doesn't support resolving FKs from the JDBC metadata
                     :presto-jdbc)
     (testing "Pivot table queries should work with sandboxed users (#14969)"
-      (met/with-gtaps {:gtaps      (mt/$ids
-                                     {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
-                                      :products {:remappings {:user_cat [:dimension $products.category]}}})
-                       :attributes {:user_id 1, :user_cat "Widget"}}
-        (perms/grant-permissions! &group (perms/table-query-path (t2/select-one Table :id (mt/id :people))))
-        (is (= (->> [["Twitter" nil      0 401.51]
-                     ["Twitter" "Widget" 0 498.59]
-                     [nil       nil      1 401.51]
-                     [nil       "Widget" 1 498.59]
-                     ["Twitter" nil      2 900.1]
-                     [nil       nil      3 900.1]]
-                    (sort-by (let [nil-first? (mt/sorts-nil-first? driver/*driver* :type/Text)
-                                   sort-str   (fn [s]
-                                                (cond
-                                                  (some? s)  s
-                                                  nil-first? "A"
-                                                  :else      "Z"))]
-                               (fn [[x y group]]
-                                 [group (sort-str x) (sort-str y)]))))
-               (mt/formatted-rows [str str int 2.0]
-                 (qp.pivot/run-pivot-query
-                  (mt/mbql-query orders
-                    {:joins       [{:source-table $$people
-                                    :fields       :all
-                                    :condition    [:= $user_id &P.people.id]
-                                    :alias        "P"}]
-                     :aggregation [[:sum $total]]
-                     :breakout    [&P.people.source
-                                   $product_id->products.category]
-                     :limit       5})))))))))
+      (mt/dataset test-data
+        (met/with-gtaps {:gtaps      (mt/$ids
+                                       {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
+                                        :products {:remappings {:user_cat [:dimension $products.category]}}})
+                         :attributes {:user_id 1, :user_cat "Widget"}}
+          (perms/grant-permissions! &group (perms/table-query-path (t2/select-one Table :id (mt/id :people))))
+          (is (= (->> [["Twitter" nil      0 401.51]
+                       ["Twitter" "Widget" 0 498.59]
+                       [nil       nil      1 401.51]
+                       [nil       "Widget" 1 498.59]
+                       ["Twitter" nil      2 900.1]
+                       [nil       nil      3 900.1]]
+                      (sort-by (let [nil-first? (mt/sorts-nil-first? driver/*driver* :type/Text)
+                                     sort-str   (fn [s]
+                                                  (cond
+                                                    (some? s)  s
+                                                    nil-first? "A"
+                                                    :else      "Z"))]
+                                 (fn [[x y group]]
+                                   [group (sort-str x) (sort-str y)]))))
+                 (mt/formatted-rows [str str int 2.0]
+                   (qp.pivot/run-pivot-query
+                    (mt/mbql-query orders
+                      {:joins       [{:source-table $$people
+                                      :fields       :all
+                                      :condition    [:= $user_id &P.people.id]
+                                      :alias        "P"}]
+                       :aggregation [[:sum $total]]
+                       :breakout    [&P.people.source
+                                     $product_id->products.category]
+                       :limit       5}))))))))))
 
 (deftest caching-test
   (testing "Make sure Sandboxing works in combination with caching (#18579)"
@@ -1058,55 +1064,56 @@
 
 (deftest persistence-disabled-when-sandboxed
   (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
-    ;; with-gtaps creates a new copy of the database. So make sure to do that before anything else. Gets really
-    ;; confusing when `(mt/id)` and friends change value halfway through the test
-    (met/with-gtaps {:gtaps {:products
-                             {:remappings {:category
-                                           ["dimension"
-                                            [:field (mt/id :products :category)
-                                             nil]]}}}}
-      (mt/with-persistence-enabled [persist-models!]
-        (mt/with-temp [Card model {:dataset       true
-                                   :dataset_query (mt/mbql-query
-                                                    products
-                                                    ;; note does not include the field we have to filter on. No way
-                                                    ;; to use the sandbox filter on the cached table
-                                                    {:fields [$id $price]})}]
-          ;; persist model (as admin, so sandboxing is not applied to the persisted query)
-          (mt/with-test-user :crowberto
-            (persist-models!))
-          (let [persisted-info (t2/select-one 'PersistedInfo
-                                              :database_id (mt/id)
-                                              :card_id (:id model))]
-            (is (= "persisted" (:state persisted-info))
-                "Model failed to persist")
-            (is (string? (:table_name persisted-info)))
-            (let [query         {:type     :query
-                                 ;; just generate a select count(*) from card__<id>
-                                 :query    {:aggregation  [:count]
-                                            :source-table (str "card__" (:id model))}
-                                 :database (mt/id)}
-                  regular-result (mt/with-test-user :crowberto
-                                   (qp/process-query query))
-                  sandboxed-result (met/with-user-attributes :rasta {"category" "Gizmo"}
-                                     (mt/with-test-user :rasta
-                                       (qp/process-query query)))]
-              (testing "Unsandboxed"
-                (testing "Sees full result set"
-                  (is (= 200 (-> regular-result mt/rows ffirst))
-                      "Expected 200 product results from cached, non-sandboxed results"))
-                (testing "Uses the cache table"
-                  (is (str/includes? (-> regular-result :data :native_form :query)
-                                     (:table_name persisted-info))
-                      "Did not use the persisted model cache")))
-              (testing "Sandboxed"
-                (testing "sees partial result"
-                  (is (= 51 (-> sandboxed-result mt/rows ffirst))
-                      "Sandboxed user got whole results instead of filtered"))
-                (testing "Does not use the cache table"
-                  (is (not (str/includes? (-> sandboxed-result :data :native_form :query)
-                                          (:table_name persisted-info)))
-                      "Erroneously used the persisted model cache"))))))))))
+    (mt/dataset test-data
+      ;; with-gtaps creates a new copy of the database. So make sure to do that before anything else. Gets really
+      ;; confusing when `(mt/id)` and friends change value halfway through the test
+      (met/with-gtaps {:gtaps {:products
+                               {:remappings {:category
+                                             ["dimension"
+                                              [:field (mt/id :products :category)
+                                               nil]]}}}}
+        (mt/with-persistence-enabled [persist-models!]
+          (mt/with-temp [Card model {:dataset       true
+                                     :dataset_query (mt/mbql-query
+                                                      products
+                                                      ;; note does not include the field we have to filter on. No way
+                                                      ;; to use the sandbox filter on the cached table
+                                                      {:fields [$id $price]})}]
+            ;; persist model (as admin, so sandboxing is not applied to the persisted query)
+            (mt/with-test-user :crowberto
+              (persist-models!))
+            (let [persisted-info (t2/select-one 'PersistedInfo
+                                                :database_id (mt/id)
+                                                :card_id (:id model))]
+              (is (= "persisted" (:state persisted-info))
+                  "Model failed to persist")
+              (is (string? (:table_name persisted-info)))
+              (let [query         {:type     :query
+                                   ;; just generate a select count(*) from card__<id>
+                                   :query    {:aggregation  [:count]
+                                              :source-table (str "card__" (:id model))}
+                                   :database (mt/id)}
+                    regular-result (mt/with-test-user :crowberto
+                                     (qp/process-query query))
+                    sandboxed-result (met/with-user-attributes :rasta {"category" "Gizmo"}
+                                       (mt/with-test-user :rasta
+                                         (qp/process-query query)))]
+                (testing "Unsandboxed"
+                  (testing "Sees full result set"
+                    (is (= 200 (-> regular-result mt/rows ffirst))
+                        "Expected 200 product results from cached, non-sandboxed results"))
+                  (testing "Uses the cache table"
+                    (is (str/includes? (-> regular-result :data :native_form :query)
+                                       (:table_name persisted-info))
+                        "Did not use the persisted model cache")))
+                (testing "Sandboxed"
+                  (testing "sees partial result"
+                    (is (= 51 (-> sandboxed-result mt/rows ffirst))
+                        "Sandboxed user got whole results instead of filtered"))
+                  (testing "Does not use the cache table"
+                    (is (not (str/includes? (-> sandboxed-result :data :native_form :query)
+                                            (:table_name persisted-info)))
+                        "Erroneously used the persisted model cache")))))))))))
 
 (deftest is-sandboxed-success-test
   (testing "Integration test that checks that is_sandboxed is recorded in query_execution correctly for a sandboxed query"

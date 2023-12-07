@@ -37,44 +37,45 @@
 
 (deftest quick-run-through
   (with-scheduler-setup
-    (let [query     (mt/mbql-query products)
-          pk_ref    (mt/$ids $products.id)
-          value_ref (mt/$ids $products.title)]
-      (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
-                                                 :dataset         true
-                                                 :name            "model index test")]
-        (let [model-index (mt/user-http-request :rasta :post 200 "/model-index"
-                                                {:model_id  (:id model)
-                                                 :pk_ref    pk_ref
-                                                 :value_ref value_ref})
-              by-key      (fn [k xs]
-                            (some (fn [x] (when (= (:key x) k) x)) xs))]
-          (testing "We can get the model index"
-            (is (=? {:state      "indexed"
-                     :model_id   (:id model)
-                     :error      nil}
-                    (mt/user-http-request :rasta :get 200 (str "/model-index/" (:id model-index))))))
-          (testing "We can invoke the task ourself manually"
-            (model-index/add-values! model-index)
-            (is (= 200 (count (t2/select ModelIndexValue :model_index_id (:id model-index)))))
-            (is (= (into #{} cat (mt/rows (qp/process-query
-                                           (mt/mbql-query products {:fields [$title]}))))
-                   (t2/select-fn-set :name ModelIndexValue :model_index_id (:id model-index)))))
-          (let [index-trigger! #(->> (task/scheduler-info)
-                                     :jobs
-                                     (by-key "metabase.task.IndexValues.job")
-                                     :triggers
-                                     (by-key (format "metabase.task.IndexValues.trigger.%d"
-                                                     (:id model-index))))]
-            (testing "There's a task to sync the values"
-              (let [trigger (index-trigger!)]
-                (is (some? trigger) "Index trigger not found")
-                (is (= (:schedule model-index) (:schedule trigger)))
-                (is (= {"model-index-id" (:id model-index)}
-                       (qc/from-job-data (:data trigger))))))
-            (testing "Deleting the model index removes the indexing task"
-              (t2/delete! ModelIndex :id (:id model-index))
-              (is (nil? (index-trigger!)) "Index trigger not removed"))))))))
+    (mt/dataset test-data
+      (let [query     (mt/mbql-query products)
+            pk_ref    (mt/$ids $products.id)
+            value_ref (mt/$ids $products.title)]
+        (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
+                                                   :dataset         true
+                                                   :name            "model index test")]
+          (let [model-index (mt/user-http-request :rasta :post 200 "/model-index"
+                                                  {:model_id  (:id model)
+                                                   :pk_ref    pk_ref
+                                                   :value_ref value_ref})
+                by-key      (fn [k xs]
+                              (some (fn [x] (when (= (:key x) k) x)) xs))]
+            (testing "We can get the model index"
+              (is (=? {:state      "indexed"
+                       :model_id   (:id model)
+                       :error      nil}
+                      (mt/user-http-request :rasta :get 200 (str "/model-index/" (:id model-index))))))
+            (testing "We can invoke the task ourself manually"
+              (model-index/add-values! model-index)
+              (is (= 200 (count (t2/select ModelIndexValue :model_index_id (:id model-index)))))
+              (is (= (into #{} cat (mt/rows (qp/process-query
+                                             (mt/mbql-query products {:fields [$title]}))))
+                     (t2/select-fn-set :name ModelIndexValue :model_index_id (:id model-index)))))
+            (let [index-trigger! #(->> (task/scheduler-info)
+                                       :jobs
+                                       (by-key "metabase.task.IndexValues.job")
+                                       :triggers
+                                       (by-key (format "metabase.task.IndexValues.trigger.%d"
+                                                       (:id model-index))))]
+              (testing "There's a task to sync the values"
+                (let [trigger (index-trigger!)]
+                  (is (some? trigger) "Index trigger not found")
+                  (is (= (:schedule model-index) (:schedule trigger)))
+                  (is (= {"model-index-id" (:id model-index)}
+                         (qc/from-job-data (:data trigger))))))
+              (testing "Deleting the model index removes the indexing task"
+                (t2/delete! ModelIndex :id (:id model-index))
+                (is (nil? (index-trigger!)) "Index trigger not removed")))))))))
 
 (def empty-changes "empty state map for find changes"
   {:additions #{}, :deletions #{}})
@@ -139,47 +140,48 @@
 
 (deftest fetch-values-test
   (mt/test-drivers (disj (mt/normal-drivers) :mongo)
-    (doseq [[scenario query [field-refs]]
-            (remove nil?
-                    [[:mbql (mt/mbql-query products {:fields [$id $title]})]
-                     [:mbql-custom-column (mt/mbql-query products {:expressions
-                                                                   {"full-name"
-                                                                    [:concat $title "custom"]}})
-                      [(mt/$ids [$products.id [:expression "full-name"]])]]
-                     [:native (mt/native-query
-                               (qp/compile
-                                (mt/mbql-query products {:fields [$id $title]})))]
-                     (when (driver/database-supports? (:engine (mt/db)) :left-join (mt/db))
-                       [:join (mt/$ids
-                               {:type     :query,
-                                :query    {:source-table $$people,
-                                           :joins        [{:fields       :all,
-                                                           :source-table $$orders,
-                                                           :condition    [:=
-                                                                          $people.id
-                                                                          &Orders.orders.user_id],
-                                                           :alias        "Orders"}
-                                                          {:fields       :all,
-                                                           :source-table $$products,
-                                                           :condition    [:=
-                                                                          &Orders.orders.product_id
-                                                                          &Products.products.id],
-                                                           :alias        "Products"}]},
-                                :database (mt/id)})
-                        [(mt/$ids [&Products.products.id &Products.products.title])]])])]
-      (t2.with-temp/with-temp [Card model (mt/card-with-source-metadata-for-query
-                                           query)]
-        (testing (str "scenario: " scenario)
-          (let [[pk-ref value-ref] (or field-refs
-                                       (->> model :result_metadata (map :field_ref)))
-                [error values]  (#'model-index/fetch-values {:model_id  (:id model)
-                                                             :pk_ref    pk-ref
-                                                             :value_ref value-ref})]
-            (is (nil? error))
-            ;; oracle returns BigDecimal ids so need `number?` rather than `int?`
-            (is (mc/validate [:sequential [:tuple number? string?]] values)
-                (-> (mc/validate [:sequential [:tuple int? string?]] values)
-                    (me/humanize)))))))))
+    (mt/dataset test-data
+      (doseq [[scenario query [field-refs]]
+              (remove nil?
+                      [[:mbql (mt/mbql-query products {:fields [$id $title]})]
+                       [:mbql-custom-column (mt/mbql-query products {:expressions
+                                                                     {"full-name"
+                                                                      [:concat $title "custom"]}})
+                        [(mt/$ids [$products.id [:expression "full-name"]])]]
+                       [:native (mt/native-query
+                                 (qp/compile
+                                  (mt/mbql-query products {:fields [$id $title]})))]
+                       (when (driver/database-supports? (:engine (mt/db)) :left-join (mt/db))
+                         [:join (mt/$ids
+                                 {:type     :query,
+                                  :query    {:source-table $$people,
+                                             :joins        [{:fields       :all,
+                                                             :source-table $$orders,
+                                                             :condition    [:=
+                                                                            $people.id
+                                                                            &Orders.orders.user_id],
+                                                             :alias        "Orders"}
+                                                            {:fields       :all,
+                                                             :source-table $$products,
+                                                             :condition    [:=
+                                                                            &Orders.orders.product_id
+                                                                            &Products.products.id],
+                                                             :alias        "Products"}]},
+                                  :database (mt/id)})
+                          [(mt/$ids [&Products.products.id &Products.products.title])]])])]
+        (t2.with-temp/with-temp [Card model (mt/card-with-source-metadata-for-query
+                                             query)]
+          (testing (str "scenario: " scenario)
+            (let [[pk-ref value-ref] (or field-refs
+                                         (->> model :result_metadata (map :field_ref)))
+                  [error values]  (#'model-index/fetch-values {:model_id  (:id model)
+                                                               :pk_ref    pk-ref
+                                                               :value_ref value-ref})]
+              (is (nil? error))
+              ;; oracle returns BigDecimal ids so need `number?` rather than `int?`
+              (is (mc/validate [:sequential [:tuple number? string?]] values)
+                  (-> (mc/validate [:sequential [:tuple int? string?]] values)
+                      (me/humanize))))))))))
 
 (defn- test-index
   "Takes a query, pk and value names so it can look up the exact field ref from the metadata. This is what the UI would
@@ -211,13 +213,14 @@
         (mt/user-http-request :rasta :delete 200 (str "/model-index/" (:id model-index)))))))
 
 (deftest model-index-test
-  (testing "Simple queries"
-    (test-index {:query      (mt/mbql-query products)
-                 :pk-name    "id"
-                 :value-name "title"
-                 :quantity   200
-                 :subset     #{"Awesome Concrete Shoes" "Mediocre Wooden Bench"}
-                 :scenario   :simple-table}))
+  (mt/dataset test-data
+    (testing "Simple queries"
+      (test-index {:query      (mt/mbql-query products)
+                   :pk-name    "id"
+                   :value-name "title"
+                   :quantity   200
+                   :subset     #{"Awesome Concrete Shoes" "Mediocre Wooden Bench"}
+                   :scenario   :simple-table}))
     (testing "With joins"
       (test-index {:query      (mt/$ids
                                 {:type     :query,
@@ -264,4 +267,4 @@
           (let [bad-attempt (t2/select-one ModelIndex :id (:id mi))]
             (is (=? {:state "error"
                      :error #"(?s)Error executing query.*"}
-                    bad-attempt)))))))
+                    bad-attempt))))))))

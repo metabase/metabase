@@ -20,15 +20,16 @@
     (testing (str "This tests populating the dbms_version field for a given database."
                   " The sync happens automatically, so this test removes it first"
                   " to ensure that it gets set when missing.")
-      (let [db                   (mt/db)
-            version-on-load      (db-dbms-version db)
-            _                    (t2/update! Database (u/the-id db) {:dbms_version nil})
-            db                   (t2/select-one Database :id (u/the-id db))
-            version-after-update (db-dbms-version db)
-            _                    (sync-dbms-ver/sync-dbms-version! db)]
-        (testing "On startup is the dbms-version specified?"
-          (is (nil? (check-dbms-version version-on-load))))
-        (testing "Check to make sure the test removed the timezone"
-          (is (nil? version-after-update)))
-        (testing "Check that the value was set again after sync"
-          (is (nil? (check-dbms-version (db-dbms-version db)))))))))
+      (mt/dataset test-data
+        (let [db                   (mt/db)
+              version-on-load      (db-dbms-version db)
+              _                    (t2/update! Database (u/the-id db) {:dbms_version nil})
+              db                   (t2/select-one Database :id (u/the-id db))
+              version-after-update (db-dbms-version db)
+              _                    (sync-dbms-ver/sync-dbms-version! db)]
+          (testing "On startup is the dbms-version specified?"
+            (is (nil? (check-dbms-version version-on-load))))
+          (testing "Check to make sure the test removed the timezone"
+            (is (nil? version-after-update)))
+          (testing "Check that the value was set again after sync"
+            (is (nil? (check-dbms-version (db-dbms-version db))))))))))

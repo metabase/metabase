@@ -363,105 +363,109 @@
 
 (deftest pivot-dataset-test
   (mt/test-drivers (api.pivots/applicable-drivers)
-    (testing "POST /api/dataset/pivot"
-      (testing "Run a pivot table"
-        (let [result (mt/user-http-request :rasta :post 202 "dataset/pivot" (api.pivots/pivot-query))
-              rows   (mt/rows result)]
-          (is (= 1144 (:row_count result)))
-          (is (= "completed" (:status result)))
-          (is (= 6 (count (get-in result [:data :cols]))))
-          (is (= 1144 (count rows)))
-
-          (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
-          (is (= ["WV" "Facebook" nil 4 45 292] (nth rows 1000)))
-          (is (= [nil nil nil 7 18760 69540] (last rows)))))
-
-      ;; this only works on a handful of databases -- most of them don't allow you to ask for a Field that isn't in
-      ;; the GROUP BY expression
-      (when (#{:mongo :h2 :sqlite} driver/*driver*)
-        (testing "with an added expression"
-          ;; the added expression is coming back in this query because it is explicitly included in `:fields` -- see
-          ;; comments on [[metabase.query-processor.pivot-test/pivots-should-not-return-expressions-test]].
-          (let [query  (-> (api.pivots/pivot-query)
-                           (assoc-in [:query :fields] [[:expression "test-expr"]])
-                           (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]}))
-                result (mt/user-http-request :rasta :post 202 "dataset/pivot" query)
+    (mt/dataset test-data
+      (testing "POST /api/dataset/pivot"
+        (testing "Run a pivot table"
+          (let [result (mt/user-http-request :rasta :post 202 "dataset/pivot" (api.pivots/pivot-query))
                 rows   (mt/rows result)]
             (is (= 1144 (:row_count result)))
+            (is (= "completed" (:status result)))
+            (is (= 6 (count (get-in result [:data :cols]))))
             (is (= 1144 (count rows)))
 
-            (let [cols (mt/cols result)]
-              (is (= ["User → State"
-                      "User → Source"
-                      "Product → Category"
-                      "pivot-grouping"
-                      "Count"
-                      "Sum of Quantity"
-                      "test-expr"]
-                     (map :display_name cols)))
-              (is (= {:base_type       "type/Integer"
-                      :effective_type  "type/Integer"
-                      :name            "pivot-grouping"
-                      :display_name    "pivot-grouping"
-                      :expression_name "pivot-grouping"
-                      :field_ref       ["expression" "pivot-grouping"]
-                      :source          "breakout"}
-                     (nth cols 3))))
+            (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
+            (is (= ["WV" "Facebook" nil 4 45 292] (nth rows 1000)))
+            (is (= [nil nil nil 7 18760 69540] (last rows)))))
 
-            (is (= [nil nil nil 7 18760 69540 "wheeee"] (last rows)))))))))
+        ;; this only works on a handful of databases -- most of them don't allow you to ask for a Field that isn't in
+        ;; the GROUP BY expression
+        (when (#{:mongo :h2 :sqlite} driver/*driver*)
+          (testing "with an added expression"
+            ;; the added expression is coming back in this query because it is explicitly included in `:fields` -- see
+            ;; comments on [[metabase.query-processor.pivot-test/pivots-should-not-return-expressions-test]].
+            (let [query  (-> (api.pivots/pivot-query)
+                             (assoc-in [:query :fields] [[:expression "test-expr"]])
+                             (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]}))
+                  result (mt/user-http-request :rasta :post 202 "dataset/pivot" query)
+                  rows   (mt/rows result)]
+              (is (= 1144 (:row_count result)))
+              (is (= 1144 (count rows)))
+
+              (let [cols (mt/cols result)]
+                (is (= ["User → State"
+                        "User → Source"
+                        "Product → Category"
+                        "pivot-grouping"
+                        "Count"
+                        "Sum of Quantity"
+                        "test-expr"]
+                       (map :display_name cols)))
+                (is (= {:base_type       "type/Integer"
+                        :effective_type  "type/Integer"
+                        :name            "pivot-grouping"
+                        :display_name    "pivot-grouping"
+                        :expression_name "pivot-grouping"
+                        :field_ref       ["expression" "pivot-grouping"]
+                        :source          "breakout"}
+                       (nth cols 3))))
+
+              (is (= [nil nil nil 7 18760 69540 "wheeee"] (last rows))))))))))
 
 (deftest pivot-filter-dataset-test
   (mt/test-drivers (api.pivots/applicable-drivers)
-    (testing "POST /api/dataset/pivot"
-      (testing "Run a pivot table"
-        (let [result (mt/user-http-request :rasta :post 202 "dataset/pivot" (api.pivots/filters-query))
-              rows   (mt/rows result)]
-          (is (= 140 (:row_count result)))
-          (is (= "completed" (:status result)))
-          (is (= 4 (count (get-in result [:data :cols]))))
-          (is (= 140 (count rows)))
+    (mt/dataset test-data
+      (testing "POST /api/dataset/pivot"
+        (testing "Run a pivot table"
+          (let [result (mt/user-http-request :rasta :post 202 "dataset/pivot" (api.pivots/filters-query))
+                rows   (mt/rows result)]
+            (is (= 140 (:row_count result)))
+            (is (= "completed" (:status result)))
+            (is (= 4 (count (get-in result [:data :cols]))))
+            (is (= 140 (count rows)))
 
-          (is (= ["AK" "Google" 0 119] (first rows)))
-          (is (= ["AK" "Organic" 0 89] (second rows)))
-          (is (= ["WA" nil 2 148] (nth rows 135)))
-          (is (= [nil nil 3 7562] (last rows))))))))
+            (is (= ["AK" "Google" 0 119] (first rows)))
+            (is (= ["AK" "Organic" 0 89] (second rows)))
+            (is (= ["WA" nil 2 148] (nth rows 135)))
+            (is (= [nil nil 3 7562] (last rows)))))))))
 
 (deftest pivot-parameter-dataset-test
   (mt/test-drivers (api.pivots/applicable-drivers)
-    (testing "POST /api/dataset/pivot"
-      (testing "Run a pivot table"
-        (let [result (mt/user-http-request :rasta :post 202 "dataset/pivot" (api.pivots/parameters-query))
-              rows   (mt/rows result)]
-          (is (= 137 (:row_count result)))
-          (is (= "completed" (:status result)))
-          (is (= 4 (count (get-in result [:data :cols]))))
-          (is (= 137 (count rows)))
+    (mt/dataset test-data
+      (testing "POST /api/dataset/pivot"
+        (testing "Run a pivot table"
+          (let [result (mt/user-http-request :rasta :post 202 "dataset/pivot" (api.pivots/parameters-query))
+                rows   (mt/rows result)]
+            (is (= 137 (:row_count result)))
+            (is (= "completed" (:status result)))
+            (is (= 4 (count (get-in result [:data :cols]))))
+            (is (= 137 (count rows)))
 
-          (is (= ["AK" "Google" 0 27] (first rows)))
-          (is (= ["AK" "Organic" 0 25] (second rows)))
-          (is (= ["VA" nil 2 29] (nth rows 130)))
-          (is (= [nil nil 3 2009] (last rows))))))))
+            (is (= ["AK" "Google" 0 27] (first rows)))
+            (is (= ["AK" "Organic" 0 25] (second rows)))
+            (is (= ["VA" nil 2 29] (nth rows 130)))
+            (is (= [nil nil 3 2009] (last rows)))))))))
 
 (deftest parameter-values-test
-  (testing "static-list"
-    (let [parameter {:values_query_type "list",
-                     :values_source_type "static-list",
-                     :values_source_config {:values ["foo1" "foo2" "bar"]},
-                     :name "Text",
-                     :slug "text",
-                     :id "89e8bb5f",
-                     :type :string/=,
-                     :sectionId "string"}]
-      (testing "values"
-        (is (partial= {:values [["foo1"] ["foo2"] ["bar"]]}
-                      (mt/user-http-request :rasta :post 200
-                                            "dataset/parameter/values"
-                                            {:parameter parameter}))))
-      (testing "search"
-        (is (partial= {:values [["foo1"] ["foo2"]]}
-                      (mt/user-http-request :rasta :post 200
-                                            "dataset/parameter/search/fo"
-                                            {:parameter parameter}))))))
+  (mt/dataset test-data
+    (testing "static-list"
+      (let [parameter {:values_query_type "list",
+                       :values_source_type "static-list",
+                       :values_source_config {:values ["foo1" "foo2" "bar"]},
+                       :name "Text",
+                       :slug "text",
+                       :id "89e8bb5f",
+                       :type :string/=,
+                       :sectionId "string"}]
+        (testing "values"
+          (is (partial= {:values [["foo1"] ["foo2"] ["bar"]]}
+                        (mt/user-http-request :rasta :post 200
+                                              "dataset/parameter/values"
+                                              {:parameter parameter}))))
+        (testing "search"
+          (is (partial= {:values [["foo1"] ["foo2"]]}
+                        (mt/user-http-request :rasta :post 200
+                                              "dataset/parameter/search/fo"
+                                              {:parameter parameter}))))))
     (mt/with-temp [Card {card-id :id} {:database_id (mt/id)
                                        :dataset_query (mt/mbql-query products)}]
       (let [parameter {:values_query_type "list",
@@ -550,4 +554,4 @@
                                                                                 :value_field (mt/$ids $people.source)}
                                                          :type                 :string/=,
                                                          :name                 "Text"
-                                                         :id                   "abc"}})))))))))
+                                                         :id                   "abc"}}))))))))))

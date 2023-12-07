@@ -214,28 +214,30 @@
 (deftest duplicate-identifiers-test
   (testing "Make sure duplicate identifiers (even with different cases) get unique aliases"
     (mt/test-driver :sqlite
-      (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
-                          COUNT (*)         AS count]
-               :from     [{:select [products.category       AS category
-                                    products.category || ?  AS CATEGORY_2]
-                           :from   [products]}
-                          AS source]
-               :group-by [source.CATEGORY_2]
-               :order-by [source.CATEGORY_2 ASC]
-               :limit    [1]}
-             (sql.qp-test-util/query->sql-map
-              (mt/mbql-query products
-                {:expressions {:CATEGORY [:concat $category "2"]}
-                 :breakout    [:expression :CATEGORY]
-                 :aggregation [:count]
-                 :order-by    [[:asc [:expression :CATEGORY]]]
-                 :limit       1})))))))
+      (mt/dataset test-data
+        (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
+                            COUNT (*)         AS count]
+                 :from     [{:select [products.category       AS category
+                                      products.category || ?  AS CATEGORY_2]
+                             :from   [products]}
+                            AS source]
+                 :group-by [source.CATEGORY_2]
+                 :order-by [source.CATEGORY_2 ASC]
+                 :limit    [1]}
+               (sql.qp-test-util/query->sql-map
+                (mt/mbql-query products
+                  {:expressions {:CATEGORY [:concat $category "2"]}
+                   :breakout    [:expression :CATEGORY]
+                   :aggregation [:count]
+                   :order-by    [[:asc [:expression :CATEGORY]]]
+                   :limit       1}))))))))
 
 (deftest disallow-fdw-to-other-databases-test
   (testing "Don't allow connections to other SQLite databases with ATTACH DATABASE (https://github.com/metabase/metaboat/issues/152)"
     (mt/test-driver :sqlite
       ;; force creation of the sample dataset file
-      (mt/id)
+      (mt/dataset test-data
+        (mt/id))
       (let [file (io/file "test-data.sqlite")
             path (.getAbsolutePath file)]
         (is (.exists file))

@@ -231,32 +231,34 @@
 
 (deftest ^:parallel native-query-remapping-test
   (testing "Remapping should work for native queries"
-    (testing "With the metadata from an MBQL query"
-      (let [metadata (get-in (qp/process-query (mt/mbql-query orders))
-                             [:data :results_metadata :columns])]
-        (is (seq metadata))
-        (is (= [[1 1  14 37.65  2.07  39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]
-                [2 1 123 110.93  6.1 117.03 nil  "2018-05-15T08:04:04.58Z" 3 "Mediocre Wooden Bench"]]
-               (remappings-with-metadata metadata)))))))
-      ;; doesn't currently work with any other metadata.
+    (mt/dataset test-data
+      (testing "With the metadata from an MBQL query"
+        (let [metadata (get-in (qp/process-query (mt/mbql-query orders))
+                               [:data :results_metadata :columns])]
+          (is (seq metadata))
+          (is (= [[1 1  14 37.65  2.07  39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]
+                  [2 1 123 110.93  6.1 117.03 nil  "2018-05-15T08:04:04.58Z" 3 "Mediocre Wooden Bench"]]
+                 (remappings-with-metadata metadata))))))))
+        ;; doesn't currently work with any other metadata.
 
 (deftest remappings-with-implicit-joins-test
   (mt/with-temporary-setting-values [report-timezone "UTC"]
     (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
       (testing "Queries with implicit joins should still work when FK remaps are used (#13641)"
-        (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                                             (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
-                                                                             (mt/id :products :title)))
-          (let [query (mt/mbql-query orders
-                        {:source-query {:source-table $$orders
-                                        :filter       [:= $user_id 1]}
-                         :filter       [:= $product_id->products.category "Doohickey"]
-                         :order-by     [[:asc $id] [:asc $product_id->products.category]]
-                         :limit        1})]
-            (mt/with-native-query-testing-context query
-              (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 "Rustic Paper Car"]]
-                     (mt/formatted-rows [int int int 2.0 2.0 2.0 identity str int str]
-                       (qp/process-query query)))))))))))
+        (mt/dataset test-data
+          (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                               (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
+                                                                               (mt/id :products :title)))
+            (let [query (mt/mbql-query orders
+                          {:source-query {:source-table $$orders
+                                          :filter       [:= $user_id 1]}
+                           :filter       [:= $product_id->products.category "Doohickey"]
+                           :order-by     [[:asc $id] [:asc $product_id->products.category]]
+                           :limit        1})]
+              (mt/with-native-query-testing-context query
+                (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 "Rustic Paper Car"]]
+                       (mt/formatted-rows [int int int 2.0 2.0 2.0 identity str int str]
+                         (qp/process-query query))))))))))))
 
 (deftest ^:parallel multiple-fk-remaps-test
   (testing "Should be able to do multiple FK remaps via different FKs from Table A to Table B (#9236)"
@@ -290,58 +292,60 @@
                          ;; mongodb doesn't support foreign keys required by this test
                          :mongo)
     (testing "Remapped columns in joined source queries should work (#15578)"
-      (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                                           qp.test-util/mock-fks-metadata-provider
-                                           (lib.tu/remap-metadata-provider (mt/id :orders :product_id) (mt/id :products :title)))
-        (binding [qp.test-util/*enable-fk-support-for-disabled-drivers-in-tests* true]
-          (let [query (mt/mbql-query products
-                        {:joins    [{:source-query {:source-table $$orders
-                                                    :breakout     [$orders.product_id]
-                                                    :aggregation  [[:sum $orders.quantity]]}
-                                     :alias        "Orders"
-                                     :condition    [:= $id &Orders.orders.product_id]
-                                     :fields       [&Orders.title
-                                                    &Orders.*sum/Integer]}]
-                         :fields   [$title $category]
-                         :order-by [[:asc $id]]
-                         :limit    3})]
-            (mt/with-native-query-testing-context query
-              (let [results (qp/process-query query)]
-                (when (= driver/*driver* :h2)
-                  (testing "Metadata"
-                    (is (= [["TITLE"    "Title"]
-                            ["CATEGORY" "Category"]
-                            ["TITLE_2"  "Orders → Title"]
-                            ["sum"      "Orders → Sum"]]
-                           (map (juxt :name :display_name) (mt/cols results))))))
-                (is (= [["Rustic Paper Wallet"       "Gizmo"     "Rustic Paper Wallet"       347]
-                        ["Small Marble Shoes"        "Doohickey" "Small Marble Shoes"        352]
-                        ["Synergistic Granite Chair" "Doohickey" "Synergistic Granite Chair" 286]]
-                       (mt/formatted-rows [str str str int]
-                         results)))))))))))
+      (mt/dataset test-data
+        (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                             qp.test-util/mock-fks-metadata-provider
+                                             (lib.tu/remap-metadata-provider (mt/id :orders :product_id) (mt/id :products :title)))
+          (binding [qp.test-util/*enable-fk-support-for-disabled-drivers-in-tests* true]
+            (let [query (mt/mbql-query products
+                          {:joins    [{:source-query {:source-table $$orders
+                                                      :breakout     [$orders.product_id]
+                                                      :aggregation  [[:sum $orders.quantity]]}
+                                       :alias        "Orders"
+                                       :condition    [:= $id &Orders.orders.product_id]
+                                       :fields       [&Orders.title
+                                                      &Orders.*sum/Integer]}]
+                           :fields   [$title $category]
+                           :order-by [[:asc $id]]
+                           :limit    3})]
+              (mt/with-native-query-testing-context query
+                (let [results (qp/process-query query)]
+                  (when (= driver/*driver* :h2)
+                    (testing "Metadata"
+                      (is (= [["TITLE"    "Title"]
+                              ["CATEGORY" "Category"]
+                              ["TITLE_2"  "Orders → Title"]
+                              ["sum"      "Orders → Sum"]]
+                             (map (juxt :name :display_name) (mt/cols results))))))
+                  (is (= [["Rustic Paper Wallet"       "Gizmo"     "Rustic Paper Wallet"       347]
+                          ["Small Marble Shoes"        "Doohickey" "Small Marble Shoes"        352]
+                          ["Synergistic Granite Chair" "Doohickey" "Synergistic Granite Chair" 286]]
+                         (mt/formatted-rows [str str str int]
+                           results))))))))))))
 
 (deftest ^:parallel inception-style-nested-query-with-joins-test
   (testing "source query > source query > query with join (with remappings) should work (#14724)"
     ;; this error only seems to be triggered when actually using Cards as sources (and include the source metadata)
-    ;; this is only triggered when using the results metadata from the Card itself --  see #19895
-    (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                                         (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
-                                                                         (mt/id :products :title))
-                                         (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
-                                          [(mt/mbql-query orders
-                                             {:fields   [$id $product_id]
-                                              :joins    [{:source-table $$products
-                                                          :alias        "Products"
-                                                          :condition    [:= $product_id &Products.products.id]
-                                                          :fields       [$id
-                                                                         &Products.products.title]}]
-                                              :order-by [[:asc $id]]
-                                              :limit    3})
-                                           (mt/mbql-query nil {:source-table "card__1"})
-                                           (mt/mbql-query nil {:source-table "card__2"})]))
-      (let [q3 (:dataset-query (lib.metadata/card (qp.store/metadata-provider) 3))]
-        (mt/with-native-query-testing-context q3
-          (is (= [[1  14 "Awesome Concrete Shoes" "Awesome Concrete Shoes"]
-                  [2 123 "Mediocre Wooden Bench"  "Mediocre Wooden Bench"]
-                  [3 105 "Fantastic Wool Shirt"   "Fantastic Wool Shirt"]]
-                 (mt/rows (qp/process-query q3)))))))))
+    (mt/dataset test-data
+      ;; this is only triggered when using the results metadata from the Card itself --  see #19895
+      (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                           (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
+                                                                           (mt/id :products :title))
+                                           (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                                            [(mt/mbql-query orders
+                                               {:fields   [$id $product_id]
+                                                :joins    [{:source-table $$products
+                                                            :alias        "Products"
+                                                            :condition    [:= $product_id &Products.products.id]
+                                                            :fields       [$id
+                                                                           &Products.products.title]}]
+                                                :order-by [[:asc $id]]
+                                                :limit    3})
+                                             (mt/mbql-query nil {:source-table "card__1"})
+                                             (mt/mbql-query nil {:source-table "card__2"})]))
+        (let [q3 (:dataset-query (lib.metadata/card (qp.store/metadata-provider) 3))]
+          (mt/with-native-query-testing-context q3
+            (is (= [[1  14 "Awesome Concrete Shoes" "Awesome Concrete Shoes"]
+                    [2 123 "Mediocre Wooden Bench"  "Mediocre Wooden Bench"]
+                    [3 105 "Fantastic Wool Shirt"   "Fantastic Wool Shirt"]]
+                   (mt/rows (qp/process-query q3))))))))))
