@@ -1,3 +1,4 @@
+import type { BinningMetadata } from "metabase-types/api";
 import {
   createOrdersQuantityDatasetColumn,
   createPeopleLatitudeDatasetColumn,
@@ -87,7 +88,10 @@ describe("drill-thru/zoom-in.binning (metabase#36177)", () => {
           },
           breakouts: [
             {
-              column: { ...breakoutColumn, binning_info: binningMetadata },
+              column: {
+                ...breakoutColumn,
+                binning_info: binningMetadata as BinningMetadata,
+              },
               value: 20,
             },
           ],
