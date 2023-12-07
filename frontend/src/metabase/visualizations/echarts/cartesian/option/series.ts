@@ -179,7 +179,6 @@ export const buildEChartsSeries = (
         case "scatter":
           return buildEChartsScatterSeries(
             seriesModel,
-            seriesSettings,
             settings,
             chartModel.dimensionModel.dataKey,
             yAxisIndex,
