@@ -14,6 +14,7 @@ type SetupOpts = {
   parameters: Parameter[]; // when empty, is an empty array
   parameterValues?: Record<string, any>; // when empty, is undefined
   skipLoader?: boolean;
+  isEditing: boolean;
 };
 
 async function setup(overrides: Partial<SetupOpts> = {}) {
@@ -25,6 +26,7 @@ async function setup(overrides: Partial<SetupOpts> = {}) {
     selectedTabId: null,
     parameters: [],
     parameterValues: undefined,
+    isEditing: false,
     ...overrides,
   };
   const mockLoadDashboardParams = jest.fn();
@@ -49,7 +51,7 @@ async function setup(overrides: Partial<SetupOpts> = {}) {
         isFullscreen={false}
         isNightMode={false}
         isSharing={false}
-        isEditing={false}
+        isEditing={props.isEditing}
         isEditingParameter={false}
         isNavbarOpen={false}
         isHeaderVisible={false}
@@ -97,6 +99,7 @@ async function setup(overrides: Partial<SetupOpts> = {}) {
       selectedTabId={opts.selectedTabId}
       parameters={opts.parameters}
       parameterValues={opts.parameterValues}
+      isEditing={opts.isEditing}
     />,
   );
 
@@ -152,6 +155,17 @@ describe("Dashboard data fetching", () => {
     });
     expect(mocks.mockFetchDashboardCardMetadata).toHaveBeenCalledTimes(0);
     expect(mocks.mockFetchDashboardCardData).toHaveBeenCalledTimes(1);
+  });
+
+  it("should not fetch card data when parameters change and isEditing", async () => {
+    const mocks = await setup();
+    jest.clearAllMocks();
+    mocks.rerender({
+      parameters: [createMockActionParameter()],
+      isEditing: true,
+    });
+    expect(mocks.mockFetchDashboardCardMetadata).toHaveBeenCalledTimes(0);
+    expect(mocks.mockFetchDashboardCardData).toHaveBeenCalledTimes(0);
   });
 
   it("should fetch card data when parameter properties change", async () => {
