@@ -61,3 +61,9 @@ export const ExtensionOption = styled.span<ExtensionOptionProps>`
     color: ${color("brand")};
   }
 `;
+
+export const SharingPaneImg = styled.img`
+  &:hover {
+    color: ${color("brand")};
+  }
+`;
