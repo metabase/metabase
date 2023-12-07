@@ -243,6 +243,18 @@ describeEE("formatting > whitelabel", () => {
         .and("include", "https://www.metabase.com/help?");
     });
 
+    it("should link to metabase help when the whitelabel feature is disabled (eg OSS)", () => {
+      setTokenFeatures("none");
+
+      cy.signInAsNormalUser();
+      cy.visit("/");
+      openSettingsMenu();
+
+      helpLink()
+        .should("have.attr", "href")
+        .and("include", "https://www.metabase.com/help?");
+    });
+
     it("it should validate the url", () => {
       cy.signInAsAdmin();
       cy.visit("/admin/settings/whitelabel");
