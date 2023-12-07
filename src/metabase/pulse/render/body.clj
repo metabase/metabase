@@ -82,22 +82,6 @@
     :else
     (str value)))
 
-(s/defn ^:private get-format
-  [timezone-id :- (s/maybe s/Str) col visualization-settings]
-  (cond
-    ;; for numbers, return a format function that has already computed the differences.
-    ;; todo: do the same for temporal strings
-    (types/temporal-field? col)
-    #(datetime/format-temporal-str timezone-id % col visualization-settings)
-
-    ;; todo integer columns with a unit
-    (or (isa? (:effective_type col) :type/Number)
-        (isa? (:base_type col) :type/Number))
-    (common/number-formatter col visualization-settings)
-
-    :else
-    str))
-
 ;;; --------------------------------------------------- Rendering ----------------------------------------------------
 
 (defn- create-remapping-lookup
@@ -158,7 +142,7 @@
    viz-settings
    {:keys [bar-column min-value max-value]}]
   (let [formatters (into []
-                         (map #(get-format timezone-id % viz-settings))
+                         (map #(common/get-format timezone-id % viz-settings))
                          cols)]
     (for [row rows]
       {:bar-width (some-> (and bar-column (bar-column row))

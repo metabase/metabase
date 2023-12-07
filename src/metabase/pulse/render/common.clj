@@ -4,8 +4,10 @@
    [clojure.string :as str]
    [hiccup.util]
    [metabase.public-settings :as public-settings]
+   [metabase.pulse.render.datetime :as datetime]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.shared.util.currency :as currency]
+   [metabase.types :as types]
    [metabase.util.ui-logic :as ui-logic]
    [potemkin.types :as p.types]
    [schema.core :as s])
@@ -94,6 +96,7 @@
                                                                  (:type/Number global-settings)
                                                                  column-settings)
         integral?       (isa? (or effective_type base_type) :type/Integer)
+        relation?       (isa? semantic_type :Relation/*)
         percent?        (or (isa? semantic_type :type/Percentage) (= number-style "percent"))
         scientific?     (= number-style "scientific")
         [decimal grouping] (or number-separators
@@ -102,20 +105,17 @@
         symbols            (doto (DecimalFormatSymbols.)
                              (cond-> decimal (.setDecimalSeparator decimal))
                              (cond-> grouping (.setGroupingSeparator grouping)))
-        base               (cond-> (if (= number-style "scientific") "0" "#,##0")
+        base               (cond-> (if (or scientific? relation?) "0" "#,##0")
                              (not grouping) (str/replace #"," ""))]
     (fn [value]
       (if (number? value)
         (let [scaled-value (* value (or scale 1))
-              percent-scaled-value (* 100 scaled-value)
               decimals-in-value (digits-after-decimal (if percent? (* 100 scaled-value) scaled-value))
               decimal-digits (cond
                                decimals decimals ;; if user ever specifies # of decimals, use that
                                integral? 0
                                currency? (get-in currency/currency [(keyword (or currency "USD")) :decimal_digits])
-                               (and percent? (> percent-scaled-value 100))   (min 2 decimals-in-value) ;; 5.5432 -> %554.32
-                               ;; This needs configuration. I don't see why we don't keep more significant digits.
-                               (and percent? (> 100 percent-scaled-value 1)) (min 0 decimals-in-value) ;; 0.2555 -> %26
+                               percent?  (min 2 decimals-in-value) ;; 5.5432 -> %554.32
                                :else (if (>= scaled-value 1)
                                        (min 2 decimals-in-value) ;; values greater than 1 round to 2 decimal places
                                        (let [n-figs (sig-figs-after-decimal scaled-value decimal)]
@@ -191,3 +191,20 @@
   (->> rows
        (filter (every-pred x-axis-fn y-axis-fn))
        (map coerce-bignum-to-int)))
+
+(s/defn get-format
+  "Get the format for a column based on its timezone, column metadata, and visualization-settings"
+  [timezone-id :- (s/maybe s/Str) col visualization-settings]
+  (cond
+    ;; for numbers, return a format function that has already computed the differences.
+    ;; todo: do the same for temporal strings
+    (types/temporal-field? col)
+    #(datetime/format-temporal-str timezone-id % col visualization-settings)
+
+    ;; todo integer columns with a unit
+    (or (isa? (:effective_type col) :type/Number)
+        (isa? (:base_type col) :type/Number))
+    (number-formatter col visualization-settings)
+
+    :else
+    str))

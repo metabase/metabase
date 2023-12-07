@@ -10,6 +10,7 @@ import {
   leftSidebar,
   main,
   modal,
+  getIframeBody,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -1239,16 +1240,6 @@ function dragColumnHeader(el, xDistance = 50) {
       })
       .trigger("mouseup");
   });
-}
-
-function getIframeBody(selector = "iframe") {
-  return cy
-    .get(selector)
-    .its("0.contentDocument")
-    .should("exist")
-    .its("body")
-    .should("not.be.null")
-    .then(cy.wrap);
 }
 
 function openColumnSettings(columnName) {

@@ -183,7 +183,7 @@ function setup({
   );
 
   function getRecentClause() {
-    expect(onSelect).toHaveBeenCalled();
+    expect(onSelect).toHaveBeenCalledWith(expect.anything());
     const [clause] = onSelect.mock.lastCall;
     return clause;
   }
@@ -196,7 +196,6 @@ function setup({
     metadata,
     query,
     stageIndex,
-    getRecentClause,
     getRecentClauseInfo,
     onSelect,
   };

@@ -64,7 +64,11 @@
                    ::mb.viz/number-separators ",."})))
       (is (= "10%" (format 0.1 {::mb.viz/number-style "percent"})))
       (is (= "1%" (format 0.01 {::mb.viz/number-style "percent"})))
-      (is (= "0.00001%" (format 0.0000001 {::mb.viz/number-style "percent"}))))
+      (is (= "0%" (format 0.000000 {::mb.viz/number-style "percent"})))
+      ;; This is not zero, so should show decimal places
+      (is (= "0.00%" (format 0.0000001 {::mb.viz/number-style "percent"})))
+      (is (= "0.00001%" (format 0.0000001 {::mb.viz/number-style "percent"
+                                           ::mb.viz/decimals          5}))))
     (testing "Match UI 'natural formatting' behavior for decimal values with no column formatting present"
       ;; basically, for numbers greater than 1, round to 2 decimal places,
       ;; and do not display decimals if they end up as zeroes
@@ -96,6 +100,19 @@
         (is (= "3.1" (fmt-with-type :type/Decimal 3.1)))
         (is (= "3.01" (fmt-with-type :type/Decimal 3.010)))
         (is (= "0.25" (fmt-with-type :type/Decimal 0.254)))))
+    (testing "Relation types do not do special formatting"
+      (letfn [(fmt-with-type
+                ([type value] (fmt-with-type type value nil))
+                ([type value decimals]
+                 (let [fmt-fn (common/number-formatter {:id 1 :semantic_type type}
+                                                       {::mb.viz/column-settings
+                                                        {{::mb.viz/field-id 1}
+                                                         (merge
+                                                           {:effective_type type}
+                                                           (when decimals {::mb.viz/decimals decimals}))}})]
+                   (str (fmt-fn value)))))]
+        (is (= "1000" (fmt-with-type :type/PK 1000)))
+        (is (= "1000" (fmt-with-type :type/FK 1000)))))
     (testing "Does not throw on nils"
         (is (nil?
              ((common/number-formatter {:id 1}

@@ -17,7 +17,8 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -1547,3 +1548,12 @@
                   (-> query
                       (lib/remove-field -1 col)
                       lib/fields))))))))
+
+(deftest ^:parallel resolve-field-metadata-test
+  (testing "Make sure fallback name for a Field ref makes sense"
+    (mu/disable-enforcement
+      (is (=? {:lib/type        :metadata/column
+               :lib/source-uuid string?
+               :name            "12345"
+               :display-name    "12345"}
+              (lib.metadata.calculation/metadata lib.tu/venues-query -1 [:field {:lib/uuid (str (random-uuid))} 12345]))))))
