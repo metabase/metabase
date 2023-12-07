@@ -21,7 +21,7 @@ export function FilterOperatorPicker<T extends string>({
 }: FilterOperatorPickerProps<T>) {
   const data = useMemo(
     () =>
-      options.map(option => ({ name: option.name, value: option.operator })),
+      options.map(option => ({ label: option.name, value: option.operator })),
     [options],
   );
 
