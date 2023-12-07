@@ -2,8 +2,7 @@
   (:require
    [clojure.data.csv :as csv]
    [java-time.api :as t]
-    #_{:clj-kondo/ignore [:consistent-alias]}
-   [metabase.pulse.render.common :as p.common]
+   [metabase.formatter :as formatter]
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.util.date-2 :as u.date])
@@ -32,7 +31,7 @@
       (begin! [_ {{:keys [ordered-cols results_timezone]} :data} viz-settings]
         (swap! ordered-formatters (constantly
                                     (mapv (fn [col]
-                                            (p.common/get-format results_timezone col viz-settings))
+                                            (formatter/create-formatter results_timezone col viz-settings))
                                           ordered-cols)))
         (csv/write-csv writer [(map (some-fn :display_name :name) ordered-cols)])
         (.flush writer))

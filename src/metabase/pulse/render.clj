@@ -1,10 +1,10 @@
 (ns metabase.pulse.render
   (:require
    [hiccup.core :refer [h]]
+   [metabase.formatter :as formatter]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.pulse.markdown :as markdown]
    [metabase.pulse.render.body :as body]
-   [metabase.pulse.render.common :as common]
    [metabase.pulse.render.image-bundle :as image-bundle]
    [metabase.pulse.render.png :as png]
    [metabase.pulse.render.style :as style]
@@ -30,7 +30,7 @@
   [card]
   (h (urls/card-url (:id card))))
 
-(s/defn ^:private make-title-if-needed :- (s/maybe common/RenderedPulseCard)
+(s/defn ^:private make-title-if-needed :- (s/maybe formatter/RenderedPulseCard)
   [render-type card dashcard]
   (when *include-title*
     (let [card-name    (or (-> dashcard :visualization_settings :card.title)
@@ -57,7 +57,7 @@
                                  :width 16
                                  :src   (:image-src image-bundle)}])]]]]})))
 
-(s/defn ^:private make-description-if-needed :- (s/maybe common/RenderedPulseCard)
+(s/defn ^:private make-description-if-needed :- (s/maybe formatter/RenderedPulseCard)
   [dashcard card]
   (when *include-description*
     (when-let [description (or (get-in dashcard [:visualization_settings :card.description])
@@ -73,7 +73,7 @@
   [{display-type :display, card-name :name, :as card} maybe-dashcard {:keys [cols rows], :as data}]
   (let [col-sample-count          (delay (count (take 3 cols)))
         row-sample-count          (delay (count (take 2 rows)))
-        [col-1-rowfn col-2-rowfn] (common/graphing-column-row-fns card data)
+        [col-1-rowfn col-2-rowfn] (formatter/graphing-column-row-fns card data)
         col-1                     (delay (col-1-rowfn cols))
         col-2                     (delay (col-2-rowfn cols))]
     (letfn [(chart-type [tyype reason & args]
@@ -125,7 +125,7 @@
   [card]
   ((some-fn :include_csv :include_xls) card))
 
-(s/defn ^:private render-pulse-card-body :- common/RenderedPulseCard
+(s/defn ^:private render-pulse-card-body :- formatter/RenderedPulseCard
   [render-type timezone-id :- (s/maybe s/Str) card dashcard {:keys [data error] :as results}]
   (try
     (when error
@@ -146,7 +146,7 @@
           (body/render :render-error nil nil nil nil nil))))))
 
 
-(s/defn render-pulse-card :- common/RenderedPulseCard
+(s/defn render-pulse-card :- formatter/RenderedPulseCard
   "Render a single `card` for a `Pulse` to Hiccup HTML. `result` is the QP results. Returns a map with keys
 
 - attachments
@@ -191,7 +191,7 @@
   [timezone-id card results]
   (:content (render-pulse-card :inline timezone-id card nil results)))
 
-(s/defn render-pulse-section :- common/RenderedPulseCard
+(s/defn render-pulse-section :- formatter/RenderedPulseCard
   "Render a single Card section of a Pulse to a Hiccup form (representating HTML)."
   [timezone-id {card :card, dashcard :dashcard, result :result}]
   (let [{:keys [attachments content]} (binding [*include-title*       true
@@ -209,5 +209,5 @@
 
 (s/defn png-from-render-info :- bytes
   "Create a PNG file (as a byte array) from rendering info."
-  [rendered-info :- common/RenderedPulseCard width]
+  [rendered-info :- formatter/RenderedPulseCard width]
   (png/render-html-to-png rendered-info width))

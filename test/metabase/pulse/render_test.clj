@@ -195,7 +195,7 @@
                            :as            question-card} {:dataset_query {:type     :query
                                                                           :database (mt/id)
                                                                           :query    {:source-table (format "card__%s" model-card-id)}}}]
-        ;; NOTE -- The logic in metabase.pulse.render.common/number-formatter renders values between 1 and 100 as an
+        ;; NOTE -- The logic in metabase.formatter/number-formatter renders values between 1 and 100 as an
         ;; integer value. IDK if this is what we want long term, but this captures the current logic. If we do extend
         ;; the significant digits in the formatter, we'll need to modify this test as well.
         (letfn [(create-comparison-results [query-results card]

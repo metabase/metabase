@@ -1,12 +1,12 @@
-(ns metabase.pulse.render.common-test
+(ns metabase.formatter-test
   (:refer-clojure :exclude [format])
   (:require
    [clojure.test :refer :all]
-   [metabase.pulse.render.common :as common]
+   [metabase.formatter :as formatter]
    [metabase.shared.models.visualization-settings :as mb.viz]))
 
 (defn format [value viz]
-  (str ((common/number-formatter {:id 1}
+  (str ((formatter/number-formatter {:id 1}
                                  {::mb.viz/column-settings
                                   {{::mb.viz/field-id 1} viz}})
         value)))
@@ -85,12 +85,12 @@
       (letfn [(fmt-with-type
                 ([type value] (fmt-with-type type value nil))
                 ([type value decimals]
-                 (let [fmt-fn (common/number-formatter {:id 1 :effective_type type}
-                                                       {::mb.viz/column-settings
-                                                        {{::mb.viz/field-id 1}
-                                                         (merge
-                                                          {:effective_type type}
-                                                          (when decimals {::mb.viz/decimals decimals}))}})]
+                 (let [fmt-fn (formatter/number-formatter {:id 1 :effective_type type}
+                                                          {::mb.viz/column-settings
+                                                           {{::mb.viz/field-id 1}
+                                                            (merge
+                                                              {:effective_type type}
+                                                              (when decimals {::mb.viz/decimals decimals}))}})]
                    (str (fmt-fn value)))))]
         (is (= "3" (fmt-with-type :type/Integer 3)))
         (is (= "3" (fmt-with-type :type/Integer 3.0)))
@@ -104,26 +104,26 @@
       (letfn [(fmt-with-type
                 ([type value] (fmt-with-type type value nil))
                 ([type value decimals]
-                 (let [fmt-fn (common/number-formatter {:id 1 :semantic_type type}
-                                                       {::mb.viz/column-settings
-                                                        {{::mb.viz/field-id 1}
-                                                         (merge
-                                                           {:effective_type type}
-                                                           (when decimals {::mb.viz/decimals decimals}))}})]
+                 (let [fmt-fn (formatter/number-formatter {:id 1 :semantic_type type}
+                                                          {::mb.viz/column-settings
+                                                           {{::mb.viz/field-id 1}
+                                                            (merge
+                                                              {:effective_type type}
+                                                              (when decimals {::mb.viz/decimals decimals}))}})]
                    (str (fmt-fn value)))))]
         (is (= "1000" (fmt-with-type :type/PK 1000)))
         (is (= "1000" (fmt-with-type :type/FK 1000)))))
     (testing "Does not throw on nils"
-        (is (nil?
-             ((common/number-formatter {:id 1}
-                                       {::mb.viz/column-settings
-                                        {{::mb.viz/column-id 1}
-                                         {::mb.viz/number-style "percent"}}})
-              nil))))
-    (testing "Does not throw on non-numeric types"
-        (is (= "bob"
-               ((common/number-formatter {:id 1}
+      (is (nil?
+            ((formatter/number-formatter {:id 1}
                                          {::mb.viz/column-settings
                                           {{::mb.viz/column-id 1}
                                            {::mb.viz/number-style "percent"}}})
-                "bob"))))))
+             nil))))
+    (testing "Does not throw on non-numeric types"
+      (is (= "bob"
+             ((formatter/number-formatter {:id 1}
+                                          {::mb.viz/column-settings
+                                           {{::mb.viz/column-id 1}
+                                            {::mb.viz/number-style "percent"}}})
+              "bob"))))))

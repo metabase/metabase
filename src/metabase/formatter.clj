@@ -1,10 +1,13 @@
-(ns metabase.pulse.render.common
+(ns metabase.formatter
+  "Provides functions that support formatting results data. In particular, customizing formatting for when timezone,
+   column metadata, and visualization-settings are known. These functions can be used for uniform rendering of all
+   artifacts such as generated CSV or image files that need consistent formatting across the board."
   (:require
    [clojure.pprint :refer [cl-format]]
    [clojure.string :as str]
    [hiccup.util]
+   [metabase.formatter.datetime :as datetime]
    [metabase.public-settings :as public-settings]
-   [metabase.pulse.render.datetime :as datetime]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.shared.util.currency :as currency]
    [metabase.types :as types]
@@ -192,8 +195,8 @@
        (filter (every-pred x-axis-fn y-axis-fn))
        (map coerce-bignum-to-int)))
 
-(s/defn get-format
-  "Get the format for a column based on its timezone, column metadata, and visualization-settings"
+(s/defn create-formatter
+  "Create a formatter for a column based on its timezone, column metadata, and visualization-settings"
   [timezone-id :- (s/maybe s/Str) col visualization-settings]
   (cond
     ;; for numbers, return a format function that has already computed the differences.
