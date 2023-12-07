@@ -12,9 +12,11 @@ export const OPERATOR_OPTIONS: Record<
   "is-null": {
     operator: "is-null",
     valueCount: 0,
+    isAdvanced: true,
   },
   "not-null": {
     operator: "not-null",
     valueCount: 0,
+    isAdvanced: true,
   },
 };

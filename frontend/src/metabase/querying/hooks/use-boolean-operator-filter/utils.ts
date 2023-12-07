@@ -1,12 +1,12 @@
 import * as Lib from "metabase-lib";
 import { OPERATOR_OPTIONS } from "./constants";
 
-export function hasValidValues(
+export function isValidFilter(
   operator: Lib.BooleanFilterOperatorName,
+  column: Lib.ColumnMetadata,
   values: boolean[],
 ) {
-  const { valueCount } = OPERATOR_OPTIONS[operator];
-  return values.length === valueCount;
+  return getFilterParts(operator, column, values) != null;
 }
 
 export function getFilterClause(
@@ -14,13 +14,23 @@ export function getFilterClause(
   column: Lib.ColumnMetadata,
   values: boolean[],
 ) {
-  if (!hasValidValues(operator, values)) {
+  const filterParts = getFilterParts(operator, column, values);
+  return filterParts != null ? Lib.booleanFilterClause(filterParts) : undefined;
+}
+
+function getFilterParts(
+  operator: Lib.BooleanFilterOperatorName,
+  column: Lib.ColumnMetadata,
+  values: boolean[],
+): Lib.BooleanFilterParts | undefined {
+  const { valueCount } = OPERATOR_OPTIONS[operator];
+  if (values.length !== valueCount) {
     return undefined;
   }
 
-  return Lib.booleanFilterClause({
+  return {
     operator,
     column,
     values,
-  });
+  };
 }

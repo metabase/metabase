@@ -75,10 +75,7 @@ function getFilterParts(
   if (!values.every(isNotEmpty)) {
     return undefined;
   }
-  if (hasMultipleValues && values.length === 0) {
-    return undefined;
-  }
-  if (values.length !== valueCount) {
+  if (hasMultipleValues ? values.length === 0 : values.length !== valueCount) {
     return undefined;
   }
 

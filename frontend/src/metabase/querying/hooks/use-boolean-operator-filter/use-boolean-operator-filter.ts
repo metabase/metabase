@@ -30,8 +30,8 @@ export function useBooleanOperatorFilter({
 
   const [operator, setOperator] = useState(filterParts?.operator ?? "=");
   const [values, setValues] = useState(() => filterParts?.values ?? []);
-  const { valueCount } = OPERATOR_OPTIONS[operator];
-  const [isExpanded] = useState(valueCount === 0);
+  const { isAdvanced } = OPERATOR_OPTIONS[operator];
+  const [isExpanded] = useState(isAdvanced);
 
   const setOperatorAndValues = (newOperator: Lib.BooleanFilterOperatorName) => {
     setOperator(newOperator);

@@ -19,16 +19,13 @@ export function getDefaultValues(
     .map((value, index) => values[index] ?? value);
 }
 
-export function hasValidValues(
+export function isValidFilter(
   operator: Lib.StringFilterOperatorName,
+  column: Lib.ColumnMetadata,
   values: string[] = [],
+  options: Lib.StringFilterOptions,
 ) {
-  const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
-  if (!values.every(isNotEmpty)) {
-    return false;
-  }
-
-  return hasMultipleValues ? values.length > 0 : values.length === valueCount;
+  return getFilterParts(operator, column, values, options) != null;
 }
 
 export function getFilterClause(
@@ -37,9 +34,28 @@ export function getFilterClause(
   values: string[],
   options: Lib.StringFilterOptions,
 ) {
-  if (!hasValidValues(operator, values)) {
-    return null;
+  const filterParts = getFilterParts(operator, column, values, options);
+  return filterParts != null ? Lib.stringFilterClause(filterParts) : undefined;
+}
+
+function getFilterParts(
+  operator: Lib.StringFilterOperatorName,
+  column: Lib.ColumnMetadata,
+  values: string[],
+  options: Lib.StringFilterOptions,
+): Lib.StringFilterParts | undefined {
+  const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
+  if (!values.every(isNotEmpty)) {
+    return undefined;
+  }
+  if (hasMultipleValues ? values.length === 0 : values.length !== valueCount) {
+    return undefined;
   }
 
-  return Lib.stringFilterClause({ operator, column, values, options });
+  return {
+    operator,
+    column,
+    values,
+    options,
+  };
 }
