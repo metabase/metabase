@@ -124,7 +124,6 @@ function ProfileLink({ user, adminItems, onLogout }) {
             <h2
               style={{ fontSize: "1.75em" }}
               className="text-dark"
-              // Screenshot 2023-12-04 at 11.40.55AM
             >{t`Thanks for using ${applicationName}!`}</h2>
             <div className="pt2">
               <h3 className="text-dark mb1">

@@ -69,8 +69,7 @@ const TimelineEmptyState = ({
         </EmptyStateThread>
         <EmptyStateMessage>
           {canWrite
-            ? // Screenshot 2023-12-07 at 5.57.06PM
-              t`Add events to ${applicationName} to show important milestones, launches, or anything else, right alongside your data.`
+            ? t`Add events to ${applicationName} to show important milestones, launches, or anything else, right alongside your data.`
             : t`Events in ${applicationName} let you see important milestones, launches, or anything else, right alongside your data.`}
         </EmptyStateMessage>
         {canWrite && (

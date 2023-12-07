@@ -71,7 +71,6 @@ const SlackChannelField = ({
         onChange={handleChange}
       />
       {hasPrivateChannelWarning && (
-        // Screenshot 2023-12-07 at 5.48.08PM
         <div className="mt1">{t`In order to send subscriptions and alerts to private Slack channels, you must first add the ${applicationName} bot to them.`}</div>
       )}
     </div>

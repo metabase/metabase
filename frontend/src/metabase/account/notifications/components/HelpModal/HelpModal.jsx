@@ -31,7 +31,6 @@ const HelpModal = ({ onClose }) => {
       onClose={handleClose}
     >
       <ModalMessage>
-        {/* Screenshot 2023-11-24 at 7.18.17PM */}
         {t`It’s possible you may also receive emails from ${applicationName} if you’re a member of an email distribution list, like “team@mycompany.com” and that list is used as the recipient for an alert or dashboard subscription instead of your individual email.`}
       </ModalMessage>
       <ModalMessage>
@@ -56,7 +55,6 @@ const getAdminLink = (email, text) => {
 
 const getAdminMessage = (email, applicationName) => {
   const adminLink = getAdminLink(email, t`your instance administrator`);
-  // Screenshot 2023-11-24 at 7.18.17PM
   return jt`${applicationName} doesn’t manage those lists, so we’d recommend contacting ${adminLink}. `;
 };
 

@@ -30,8 +30,7 @@ const TimelineEmptyState = ({
       <EmptyStateIcon name="star" />
       <EmptyStateText>
         {canWrite
-          ? // Screenshot 2023-12-07 at 5.59.06PM
-            t`Add events to ${applicationName} to show helpful context alongside your data.`
+          ? t`Add events to ${applicationName} to show helpful context alongside your data.`
           : t`Events in ${applicationName} let you see helpful context alongside your data.`}
       </EmptyStateText>
       {canWrite && (

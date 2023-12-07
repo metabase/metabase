@@ -53,7 +53,6 @@ export const ForgotPasswordForm = ({
           <FormInput
             name="email"
             title={t`Email address`}
-            // Screenshot 2023-11-24 at 10.00.38 PM
             placeholder={t`The email you use for your ${applicationName} account`}
             autoFocus
           />

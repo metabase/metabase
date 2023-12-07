@@ -7,8 +7,6 @@ import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 export const NoDatabasesEmptyState = () => {
   const applicationName = useSelector(getApplicationName);
   return (
-    // Screenshot 2023-12-04 at 11.35.00AM
-    // Screenshot 2023-12-07 at 5.30.11PM
     <AdminAwareEmptyState
       title={t`${applicationName} is no fun without any data`}
       adminMessage={t`Your databases will appear here once you connect one`}

@@ -120,7 +120,6 @@ export default function SharingPane({
         }
       >
         <PublicLinkHeader>{t`Public link`}</PublicLinkHeader>
-        {/* Screenshot 2023-12-07 at 5.18.45PM */}
         <Description className="mb1">{t`Share this ${resourceType} with people who don't have a ${applicationName} account using the URL below:`}</Description>
         <CopyWidget value={publicLink} />
         {extensions && extensions.length > 0 && (

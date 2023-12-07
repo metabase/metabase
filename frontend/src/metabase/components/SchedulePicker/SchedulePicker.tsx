@@ -278,7 +278,6 @@ class SchedulePicker extends Component<SchedulePickerProps> {
 
 function MetabaseTimeZone() {
   const applicationName = useSelector(getApplicationName);
-  // Screenshot 2023-11-27 at 12.52.32PM
   return <>{t`your ${applicationName} timezone`}</>;
 }
 

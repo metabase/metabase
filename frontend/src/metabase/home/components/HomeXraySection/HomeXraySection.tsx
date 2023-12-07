@@ -69,7 +69,6 @@ const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
     <div>
       {isSample ? (
         <HomeCaption primary>
-          {/* Screenshot 2023-11-27 at 1.58.59PM */}
           {t`Try out these sample x-rays to see what ${applicationName} can do.`}
         </HomeCaption>
       ) : canSelectSchema ? (

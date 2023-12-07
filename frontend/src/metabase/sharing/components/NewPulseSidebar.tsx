@@ -104,7 +104,6 @@ export function NewPulseSidebar({
                   </Link>
                 )}.`}
               {slackConfigured &&
-                // Screenshot 2023-12-07 at 5.44.51PM
                 t`Pick a channel and a schedule, and ${applicationName} will do the rest.`}
             </Text>
           </div>

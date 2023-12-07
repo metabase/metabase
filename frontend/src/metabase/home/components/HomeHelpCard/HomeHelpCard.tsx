@@ -11,7 +11,6 @@ export const HomeHelpCard = (): JSX.Element => {
   return (
     <CardRoot href={MetabaseSettings.learnUrl()} aria-labelledby={cardTitleId}>
       <CardIcon name="reference" />
-      {/* Screenshot 2023-11-27 at 1.53.32PM */}
       <CardTitle id={cardTitleId}>{t`${applicationName} tips`}</CardTitle>
     </CardRoot>
   );

@@ -8,7 +8,6 @@ export function useClickBehaviorOptionName(
   value: ClickBehaviorType | "menu",
   dashcard: DashboardCard,
 ) {
-  // Screenshot 2023-11-27 at 1.34.08PM
   const applicationName = useSelector(getApplicationName);
   if (value === "menu") {
     return hasActionsMenu(dashcard)

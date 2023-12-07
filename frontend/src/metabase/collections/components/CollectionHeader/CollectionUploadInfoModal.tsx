@@ -26,7 +26,6 @@ export const UploadInfoModal = ({
       <ModalContent title=" " onClose={onClose}>
         <InfoModalContainer>
           <NewBadge>{t`New`}</NewBadge>
-          {/* Screenshot 2023-11-27 at 12.28.36PM */}
           <InfoModalTitle>{t`Uploads CSVs to ${applicationName}`}</InfoModalTitle>
           {isAdmin ? (
             <>

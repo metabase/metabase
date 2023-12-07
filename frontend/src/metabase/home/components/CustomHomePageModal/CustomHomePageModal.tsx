@@ -108,7 +108,6 @@ export const CustomHomePageModal = ({
           </Button>,
         ]}
       >
-        {/* Screenshot 2023-11-27 at 1.50.00PM */}
         <p>{t`Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, ${applicationName} will redirect them to the default homepage. You can update or reset the homepage at any time in Admin Settings > Settings > General.`}</p>
         <DashboardSelector
           value={dashboardId}
