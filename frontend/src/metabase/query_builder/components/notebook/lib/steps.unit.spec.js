@@ -52,6 +52,7 @@ const getQuestionStepsForMBQLQuery = query =>
       .query()
       .setQuery(query)
       .question(),
+    {},
   );
 
 describe("new query", () => {

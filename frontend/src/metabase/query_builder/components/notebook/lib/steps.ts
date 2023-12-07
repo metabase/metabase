@@ -142,7 +142,7 @@ const STEPS: NotebookStepDef[] = [
 /**
  * Returns an array of "steps" to be displayed in the notebook for one "stage" (nesting) of a query
  */
-export function getQuestionSteps(question: Question, openSteps = {}) {
+export function getQuestionSteps(question: Question, openSteps: OpenSteps) {
   const allSteps: NotebookStep[] = [];
 
   if (question.isStructured()) {
