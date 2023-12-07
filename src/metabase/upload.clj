@@ -1,6 +1,7 @@
 (ns metabase.upload
   (:require
    [clj-bom.core :as bom]
+   [clojure.data :as data]
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -18,6 +19,7 @@
    [metabase.models.collection :as collection]
    [metabase.models.humanization :as humanization]
    [metabase.models.permissions :as perms]
+   [metabase.models.table :as table]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.sync :as sync]
@@ -492,11 +494,60 @@
 ;;;; |  Appends
 ;;;; +------------------+
 
-(defn- append-csv!*
-  [_database _table _file]
-  ;; TODO
-  true)
+(defn- base-type->upload-type [base-type]
+  (case base-type
+    :type/BigInteger             ::int
+    :type/Integer                ::int
+    :type/Text                   ::text
+    :type/Boolean                ::boolean
+    :type/Date                   ::date
+    :type/DateTime               ::datetime
+    :type/DateTimeWithZoneOffset ::offset-datetime
+    :type/Float                  ::float))
 
+(defn- check-schema
+  "Returns the normalized header"
+  [table header]
+  ;; TODO: check for duplicates
+  (let [table-cols           (t2/select :model/Field :table_id (:id table))
+        table-cols-by-normed (-> (into {}
+                                       (map (fn [col]
+                                              [(normalize-column-name (:name col)) col]))
+                                       table-cols)
+                                 (dissoc "_mb_row_id"))
+        normalized-header->header (into (ordered-map/ordered-map)
+                                        (map (fn [col]
+                                               [(normalize-column-name col) col]))
+                                        header)
+        normed first
+        normalized-header (map normed normalized-header->header)
+        [extra missing _both] (data/diff (set normalized-header)
+                                        (set (map normed table-cols-by-normed)))]
+    (if (and (nil? extra) (nil? missing))
+      {:parse-rows (fn [rows]
+                     (let [rows' rows ;; TODO: remove auto-pk columns here
+                           col-upload-types (map (comp base-type->upload-type :base_type table-cols-by-normed) normalized-header)]
+                       (parse-rows* col-upload-types rows')))
+       :table-col-names (map (comp :name table-cols-by-normed) normalized-header)}
+      (throw (ex-info (tru "The schema of the CSV file does not match the schema of the table.")
+                      {:status-code 422})))))
+
+(defn- append-csv!*
+  [database table file]
+  (with-open [reader (bom/bom-reader file)]
+    (let [[header & rows] (csv/read-csv reader)
+          {:keys [parse-rows table-col-names]} (check-schema table header)
+          ;; TODO real
+          schema+table-name (if (str/blank? (:schema table))
+                              (:name table)
+                              (str (:schema table) "." (:name table)))]
+      ;; for row in rows, insert into table, the same way as upload-csv!
+      (try
+        (driver/insert-into! (driver.u/database->driver database) (:id database) schema+table-name table-col-names (parse-rows rows))
+        (catch Throwable e
+          ;; TODO: insert rows failure handling
+          (throw (ex-info (ex-message e) {:status-code 400}))))))
+  true)
 
 ;;;; +------------------+
 ;;;; |  public interface
@@ -542,7 +593,7 @@
    :- [:map
        [:table-id ms/PositiveInt]
        [:file (ms/InstanceOfClass File)]]]
-  (let [table (api/write-check (t2/select-one :model/Table :id table-id))
-        database (t2/select-one :model/Database :id (:db_id table))]
+  (let [table    (api/write-check (t2/select-one :model/Table :id table-id))
+        database (table/database table)]
     (check-can-append database table)
     (append-csv!* database table file)))

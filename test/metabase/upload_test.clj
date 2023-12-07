@@ -1070,13 +1070,12 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- basic-db-definition [database-name]
+  ;; Note this creates a table with an auto-incrementing "ID" integer column
   (tx/map->DatabaseDefinition
    {:database-name     database-name
-    :table-definitions [{:table-name        "baz"
-                         :field-definitions [{:field-name "_mb_row_id", :base-type :type/BigInteger, :semantic-type :type/SerializedJSON}
-                                             {:field-name "first_name", :base-type :type/Text}
-                                             {:field-name "last_name", :base-type :type/Text}]
-                         :rows              [[1, "row_one"]]}]}))
+    :table-definitions [{:table-name        "table_one"
+                         :field-definitions [{:field-name "name", :base-type :type/Text}]
+                         :rows              [["Obi-Wan Kenobi"]]}]}))
 
 (defn append-csv-with-defaults!
   "Upload a small CSV file to the given collection ID. Default args can be overridden"
@@ -1084,16 +1083,19 @@
       :or {uploads-enabled   true
            user-id           (mt/user->id :crowberto)
            file              (csv-file-with
-                              ["first_name,last_name"
-                               "Luke,Skywalker"
-                               "Darth,Vader"]
-                              (str "example csv file.csv"))}}]
+                              ["id,name"
+                               "2,Luke Skywalker"
+                               "3,Darth Vader"]
+                              (str (mt/random-name) ".csv"))}}]
   (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
     (mt/with-current-user user-id
       (mt/dataset (basic-db-definition (mt/random-name))
-        (let [table (t2/select-one :model/Table :db_id (mt/id))]
+        (let [tables (t2/select :model/Table :db_id (mt/id))
+              table (first tables)]
+          (assert (= (count tables) 1))
           (@#'upload/append-csv! {:table-id (or table-id (:id table))
-                                  :file file}))))))
+                                  :file     file})))))
+  (io/delete-file file))
 
 (defn catch-ex-info* [f]
   (try
@@ -1104,9 +1106,6 @@
 (defmacro catch-ex-info
   [& body]
   `(catch-ex-info* (fn [] ~@body)))
-
-(catch-ex-info
- (append-csv-with-defaults! :table-id Integer/MAX_VALUE))
 
 (deftest append-csv-test
   (mt/test-driver :h2
@@ -1125,3 +1124,31 @@
         (is (= {:message "Uploads are not supported on H2 databases."
                 :data    {:status-code 422}}
                (catch-ex-info (append-csv-with-defaults!))))))))
+
+(defn do-with-uploads-allowed
+  "Set uploads-enabled to true, and uses an admin user, run the thunk"
+  [thunk]
+  (mt/with-temporary-setting-values [uploads-enabled true]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (thunk))))
+
+(defmacro with-uploads-allowed [& body]
+  `(do-with-uploads-allowed (fn [] ~@body)))
+
+(deftest append-csv-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (with-uploads-allowed
+      (testing "Happy path"
+        (doseq [csv-rows [["id,name" "2,Luke Skywalker" "3,Darth Vader"]
+                          ["name,id" "Luke Skywalker,2" "Darth Vader,3"]]]
+          (mt/dataset (basic-db-definition (mt/random-name))
+            (let [table (t2/select-one :model/Table :db_id (mt/id))
+                  file  (csv-file-with csv-rows (mt/random-name))]
+              (is (true? (upload/append-csv! {:file     file
+                                              :table-id (:id table)})))
+              (testing "Check the data was uploaded into the table correctly"
+                (is (= [[1 "Obi-Wan Kenobi"]
+                        [2 "Luke Skywalker"]
+                        [3 "Darth Vader"]]
+                       (rows-for-table table))))
+              (io/delete-file file))))))))
