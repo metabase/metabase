@@ -1,11 +1,8 @@
 import { useMemo, useState } from "react";
-import {
-  getAvailableOperatorOptions,
-  getDefaultOperator,
-} from "metabase/querying/utils/filters";
+import { getAvailableOperatorOptions } from "metabase/querying/utils/filters";
 import * as Lib from "metabase-lib";
 import { OPERATOR_OPTIONS } from "./constants";
-import { getDefaultValues, getFilterClause, hasValidValues } from "./utils";
+import { getDefaultValues, getFilterClause, isValidFilter } from "./utils";
 import type { NumberValue } from "./types";
 
 interface UseNumberFilterProps {
@@ -35,10 +32,7 @@ export function useNumberFilter({
   );
 
   const [operator, setOperator] = useState(
-    getDefaultOperator(
-      availableOperators,
-      filterParts?.operator ?? defaultOperator,
-    ),
+    filterParts?.operator ?? defaultOperator,
   );
 
   const [values, setValues] = useState(() =>
@@ -46,7 +40,7 @@ export function useNumberFilter({
   );
 
   const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
-  const isValid = hasValidValues(operator, values);
+  const isValid = isValidFilter(operator, column, values);
 
   const setOperatorAndValues = (newOperator: Lib.NumberFilterOperatorName) => {
     setOperator(newOperator);

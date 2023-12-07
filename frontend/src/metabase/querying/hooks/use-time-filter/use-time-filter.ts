@@ -1,8 +1,5 @@
 import { useMemo, useState } from "react";
-import {
-  getAvailableOperatorOptions,
-  getDefaultOperator,
-} from "metabase/querying/utils/filters";
+import { getAvailableOperatorOptions } from "metabase/querying/utils/filters";
 import * as Lib from "metabase-lib";
 import { OPERATOR_OPTIONS } from "./constants";
 import { getDefaultValues, getFilterClause, hasValidValues } from "./utils";
@@ -31,14 +28,10 @@ export function useTimeFilter({
     [query, stageIndex, column],
   );
 
-  const [operator, setOperator] = useState(
-    getDefaultOperator(availableOperators, filterParts?.operator ?? "<"),
-  );
-
+  const [operator, setOperator] = useState(filterParts?.operator ?? "<");
   const [values, setValues] = useState<TimeValue[]>(() =>
     getDefaultValues(operator, filterParts?.values),
   );
-
   const { valueCount } = OPERATOR_OPTIONS[operator];
   const isValid = hasValidValues(values);
 

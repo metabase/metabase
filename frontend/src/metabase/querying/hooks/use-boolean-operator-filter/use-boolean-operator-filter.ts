@@ -1,8 +1,5 @@
 import { useMemo, useState } from "react";
-import {
-  getAvailableOperatorOptions,
-  getDefaultOperator,
-} from "metabase/querying/utils/filters";
+import { getAvailableOperatorOptions } from "metabase/querying/utils/filters";
 import * as Lib from "metabase-lib";
 import { OPERATOR_OPTIONS } from "./constants";
 import { getFilterClause } from "./utils";
@@ -31,10 +28,7 @@ export function useBooleanOperatorFilter({
     [query, stageIndex, column],
   );
 
-  const [operator, setOperator] = useState(
-    getDefaultOperator(availableOperators, filterParts?.operator ?? "="),
-  );
-
+  const [operator, setOperator] = useState(filterParts?.operator ?? "=");
   const [values, setValues] = useState(() => filterParts?.values ?? []);
   const { valueCount } = OPERATOR_OPTIONS[operator];
   const [isExpanded] = useState(valueCount === 0);

@@ -22,11 +22,3 @@ export function getAvailableOperatorOptions<
       ...option,
     }));
 }
-
-export function getDefaultOperator<
-  T extends FilterOperatorOption<Lib.FilterOperatorName>,
->(options: T[], preferredOperator: T["operator"]): T["operator"] {
-  return options.some(option => option.operator === preferredOperator)
-    ? preferredOperator
-    : options[0].operator;
-}
