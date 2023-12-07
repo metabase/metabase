@@ -38,6 +38,7 @@ export function FilterModal({
   onClose,
 }: FilterModalProps) {
   const [query, setQuery] = useState(initialQuery);
+  const [version, setVersion] = useState(1);
   const [isChanged, setIsChanged] = useState(false);
   const groupItems = useMemo(() => getColumnGroupItems(query), [query]);
   const canRemoveFilters = useMemo(() => hasFilters(query), [query]);
@@ -50,11 +51,13 @@ export function FilterModal({
 
   const handleChange = (newQuery: Lib.Query) => {
     setQuery(newQuery);
-    handleInput();
+    setIsChanged(true);
   };
 
-  const handleRemove = () => {
-    handleChange(removeFilters(query));
+  const handleReset = () => {
+    setQuery(removeFilters(query));
+    setVersion(version + 1);
+    setIsChanged(true);
   };
 
   const handleSubmit = () => {
@@ -80,7 +83,7 @@ export function FilterModal({
               {groupItems.length > 1 && <TabList groupItems={groupItems} />}
               {groupItems.map(groupItem => (
                 <TabPanel
-                  key={groupItem.key}
+                  key={`${groupItem.key}:${version}`}
                   query={query}
                   groupItem={groupItem}
                   onChange={handleChange}
@@ -95,7 +98,7 @@ export function FilterModal({
             variant="subtle"
             color="text.1"
             disabled={!canRemoveFilters}
-            onClick={handleRemove}
+            onClick={handleReset}
           >
             {t`Clear all filters`}
           </Button>
