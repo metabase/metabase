@@ -197,6 +197,5 @@ export function selectSavedQuestionsToJoin(
       .contains("Saved Questions")
       .click();
     cy.findByText(secondQuestionName).click();
-    cy.button("Save").click();
   });
 }
