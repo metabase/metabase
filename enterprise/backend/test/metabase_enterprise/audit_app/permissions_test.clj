@@ -21,9 +21,12 @@
     :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(use-fixtures :once (fixtures/initialize :db :plugins))
 
 (deftest audit-db-view-names-test
   (testing "`audit-db-view-names` includes all views in the app DB prefixed with `v_`"
@@ -103,12 +106,17 @@
                #"Unable to make audit collections writable."
                (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :write)))))))))
 
+;; TODO: re-enable these tests once they're no longer flaky
 (defn- install-audit-db-if-needed!
   "Checks if there's an audit-db. if not, it will create it and serialize audit content, including the
   `default-audit-collection`. If the audit-db is there, this does nothing."
   []
-  (when-not (t2/select-one :model/Database :is_audit true)
-    (mbc/ensure-audit-db-installed!)))
+  (let [coll (boolean (perms/default-audit-collection))
+        default-audit-id (:id (perms/default-audit-collection))
+        cards (t2/exists? :model/Card :collection_id default-audit-id)
+        dashboards (t2/exists? :model/Dashboard :collection_id default-audit-id)]
+    (when-not (and coll cards dashboards)
+      (mbc/ensure-audit-db-installed!))))
 
 (deftest can-write-false-for-audit-card-content-test
   (install-audit-db-if-needed!)
