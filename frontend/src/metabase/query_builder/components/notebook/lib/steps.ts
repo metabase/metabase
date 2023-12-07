@@ -20,23 +20,12 @@ type NotebookStepDef = Pick<NotebookStep, "type" | "revert"> & {
   subSteps?: (query: Lib.Query, stageIndex: number) => number;
 };
 
-function convertStageQueryToLegacyStageQuery(
-  query: Query,
-  legacyQuery: StructuredQuery,
-  stageIndex: number,
-) {
-  const legacyDatasetQuery = Lib.toLegacyQuery(query);
-  const legacyStructuredQuery = legacyQuery.setDatasetQuery(legacyDatasetQuery);
-  const stagedLegacyQueries = legacyStructuredQuery.queries();
-  return stagedLegacyQueries[stageIndex];
-}
-
 const STEPS: NotebookStepDef[] = [
   {
     type: "data",
     valid: query => !query.sourceQuery(),
     active: _query => true,
-    revert: null,
+    revert: query => query, // this step is non-reversible (i.e. non-removable)
   },
   {
     type: "join",
@@ -49,20 +38,18 @@ const STEPS: NotebookStepDef[] = [
     active: (legacyQuery, index, topLevelQuery, stageIndex) =>
       typeof index === "number" &&
       Lib.joins(topLevelQuery, stageIndex).length > index,
-    revert: (legacyQuery, index, topLevelQuery, stageIndex) => {
+    revert: (query, stageIndex, index) => {
       if (typeof index !== "number") {
-        return legacyQuery;
+        return query;
       }
-      const join = Lib.joins(topLevelQuery, stageIndex)[index];
+
+      const join = Lib.joins(query, stageIndex)[index];
+
       if (!join) {
-        return legacyQuery;
+        return query;
       }
-      const nextQuery = Lib.removeClause(topLevelQuery, stageIndex, join);
-      return convertStageQueryToLegacyStageQuery(
-        nextQuery,
-        legacyQuery,
-        stageIndex,
-      );
+
+      return Lib.removeClause(query, stageIndex, join);
     },
   },
   {
@@ -74,24 +61,41 @@ const STEPS: NotebookStepDef[] = [
       );
     },
     active: query => query.hasExpressions(),
-    revert: query => query.clearExpressions(),
+    revert: (query, stageIndex) => {
+      const expressions = Lib.expressions(query, stageIndex);
+
+      return expressions.reduce((query, expression) => {
+        return Lib.removeClause(query, stageIndex, expression);
+      }, query);
+    },
   },
   {
     type: "filter",
     valid: query => query.hasData(),
     active: query => query.hasFilters(),
-    revert: query => query.clearFilters(),
+    revert: (query, stageIndex) => {
+      const filters = Lib.filters(query, stageIndex);
+
+      return filters.reduce((query, filter) => {
+        return Lib.removeClause(query, stageIndex, filter);
+      }, query);
+    },
   },
   {
     // NOTE: summarize is a combination of aggregate and breakout
     type: "summarize",
     valid: query => query.hasData(),
     active: query => query.hasAggregations() || query.hasBreakouts(),
-    revert: query =>
-      // only clear if there are aggregations or breakouts because it will also clear `fields`
-      query.hasAggregations() || query.hasBreakouts()
-        ? query.clearBreakouts().clearAggregations()
-        : query,
+    revert: (query, stageIndex) => {
+      const clauses = [
+        ...Lib.aggregations(query, stageIndex),
+        ...Lib.breakouts(query, stageIndex),
+      ];
+
+      return clauses.reduce((query, clause) => {
+        return Lib.removeClause(query, stageIndex, clause);
+      }, query);
+    },
   },
   {
     type: "sort",
@@ -101,13 +105,8 @@ const STEPS: NotebookStepDef[] = [
       (!query.sourceQuery() || query.hasAnyClauses()),
     active: (legacyQuery, itemIndex, query, stageIndex) =>
       Lib.orderBys(query, stageIndex).length > 0,
-    revert: (legacyQuery, itemIndex, query, stageIndex) => {
-      const reverted = Lib.clearOrderBys(query, stageIndex);
-      return convertStageQueryToLegacyStageQuery(
-        reverted,
-        legacyQuery,
-        stageIndex,
-      );
+    revert: (query, stageIndex) => {
+      return Lib.clearOrderBys(query, stageIndex);
     },
   },
   {
@@ -118,13 +117,8 @@ const STEPS: NotebookStepDef[] = [
       (!query.sourceQuery() || query.hasAnyClauses()),
     active: (legacyQuery, itemIndex, query, stageIndex) =>
       Lib.hasLimit(query, stageIndex),
-    revert: (legacyQuery, itemIndex, query, stageIndex) => {
-      const reverted = Lib.limit(query, stageIndex, null);
-      return convertStageQueryToLegacyStageQuery(
-        reverted,
-        legacyQuery,
-        stageIndex,
-      );
+    revert: (query, stageIndex) => {
+      return Lib.limit(query, stageIndex, null);
     },
   },
 ];
@@ -247,15 +241,9 @@ function getStageSteps(
         ),
       testID: getTestId(STEP, itemIndex),
       revert: STEP.revert
-        ? (query: StructuredQuery) =>
+        ? (query: Lib.Query) =>
             STEP.revert
-              ? STEP.revert(
-                  query,
-                  itemIndex,
-                  topLevelQuery,
-                  stageIndex,
-                  metadata,
-                )
+              ? STEP.revert(query, stageIndex, itemIndex ?? undefined)
               : null
         : null,
       // `actions`, `previewQuery`, `next` and `previous` will be set later
@@ -283,7 +271,7 @@ function getStageSteps(
     }),
   );
 
-  let previewQuery: Query | null = topLevelQuery;
+  let previewQuery: Lib.Query | null = topLevelQuery;
 
   let actions = [];
   // iterate over steps in reverse so we can revert query for previewing and accumulate valid actions
@@ -312,11 +300,9 @@ function getStageSteps(
     // revert the previewQuery for this step
     if (step.revert && previewQuery) {
       previewQuery = step.revert(
-        stageQuery,
-        step.itemIndex,
         previewQuery,
         step.stageIndex,
-        metadata,
+        step.itemIndex ?? undefined,
       );
     }
   }

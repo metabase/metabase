@@ -22,6 +22,12 @@ export type NotebookStepFn<ReturnType> = (
   metadata: Metadata,
 ) => ReturnType;
 
+type RevertFn = (
+  query: Query,
+  stageIndex: number,
+  index?: number,
+) => Query | null;
+
 export interface NotebookStep {
   id: string;
   type: NotebookStepType;
@@ -33,7 +39,7 @@ export interface NotebookStep {
   active: boolean;
   visible: boolean;
   testID: string;
-  revert: NotebookStepFn<StructuredQuery | null> | null;
+  revert: RevertFn | null;
   actions: NotebookStepAction[];
   previewQuery: Query | null;
   next: NotebookStep | null;
