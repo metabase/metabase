@@ -484,7 +484,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-postgres-ee'
-        test-args: ":exclude-tags '[:mb/once]' :only metabase-enterprise.advanced-permissions.common-test/upload-csv-test"
+        test-args: ":only metabase-enterprise.advanced-permissions.common-test/upload-csv-test"
 
   be-tests-postgres-latest-ee:
     needs: files-changed
@@ -518,6 +518,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-postgres-latest-ee'
+        test-args: ":only metabase-enterprise.advanced-permissions.common-test/upload-csv-test"
 
   be-tests-presto-jdbc-ee:
     needs: files-changed
