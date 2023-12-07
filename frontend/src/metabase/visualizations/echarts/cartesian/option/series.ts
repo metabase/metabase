@@ -16,7 +16,7 @@ import { getMetricDisplayValueGetter } from "metabase/visualizations/echarts/car
 import { buildEChartsScatterSeries } from "../scatter/series";
 import { getSeriesYAxisIndex } from "./utils";
 
-export const buildEChartsLabelOptions = (
+const buildEChartsLabelOptions = (
   seriesModel: SeriesModel,
   settings: ComputedVisualizationSettings,
   { getColor, fontFamily, formatValue }: RenderingContext,
