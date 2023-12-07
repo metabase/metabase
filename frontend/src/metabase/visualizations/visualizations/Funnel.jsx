@@ -231,13 +231,12 @@ export default class Funnel extends Component {
     const { headerIcon, settings, showTitle } = this.props;
     const hasTitle = showTitle && settings["card.title"];
 
-    const { actionButtons, className, onChangeCardAndRun, series } =
-      this.props;
+    const { actionButtons, className, onChangeCardAndRun, series } = this.props;
 
-    let component = <FunnelNormal {...this.props} className="flex-full" />
+    let component = <FunnelNormal {...this.props} className="flex-full" />;
 
     if (settings["funnel.type"] === "bar") {
-      component = <FunnelBar {...this.props} />
+      component = <FunnelBar {...this.props} />;
     }
 
     return (
@@ -260,7 +259,7 @@ export default class Funnel extends Component {
               onChangeCardAndRun={onChangeCardAndRun}
             />
           )}
-          {component}
+        {component}
       </div>
     );
   }
