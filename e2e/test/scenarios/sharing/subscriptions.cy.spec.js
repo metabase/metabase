@@ -18,7 +18,7 @@ import {
   sendEmailAndVisitIt,
   clickSend,
   viewEmailPage,
-  openPublicLinkDropdown,
+  openPublicLinkPopoverFromMenu,
   openEmbedModalFromMenu,
 } from "e2e/support/helpers";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
@@ -39,7 +39,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
     cy.findByLabelText("subscriptions").should("not.exist");
 
-    openPublicLinkDropdown();
+    openPublicLinkPopoverFromMenu();
     cy.findByTestId("public-link-popover-content").should("be.visible");
 
     // close link popover

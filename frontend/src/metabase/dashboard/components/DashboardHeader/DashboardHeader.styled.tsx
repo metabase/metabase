@@ -21,7 +21,7 @@ export const DashboardHeaderButton = styled(Button)<{
   padding: 0.25rem 0.5rem;
   height: 2rem;
   min-width: 2rem;
-  color: ${props => (props.isActive ? color("brand") : color("text-dark"))};
+  color: ${props => (props.isActive ? color("brand") : color("text-medium"))};
   font-size: 1rem;
 
   &:hover {

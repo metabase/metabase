@@ -10,7 +10,7 @@ import {
   leftSidebar,
   main,
   modal,
-  openPublicLinkDropdown,
+  openPublicLinkPopoverFromMenu,
   openStaticEmbeddingModal,
 } from "e2e/support/helpers";
 
@@ -679,7 +679,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
 
         it("should display pivot table in a public link", () => {
-          openPublicLinkDropdown();
+          openPublicLinkPopoverFromMenu();
           cy.findByTestId("public-link-popover-content")
             .findByTestId("public-link-text")
             .invoke("text")

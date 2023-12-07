@@ -115,7 +115,7 @@ export function visitIframe() {
   });
 }
 
-export function openPublicLinkDropdown() {
+export function openPublicLinkPopoverFromMenu() {
   cy.icon("share").click();
   cy.findByTestId("embed-header-menu")
     .findByTestId("embed-menu-public-link-item")
@@ -144,7 +144,7 @@ export function openNewPublicLinkDropdown(resourceType) {
     "sharingEnabled",
   );
 
-  openPublicLinkDropdown();
+  openPublicLinkPopoverFromMenu();
 
   cy.wait("@sharingEnabled").then(
     ({

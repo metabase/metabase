@@ -1,5 +1,5 @@
 import {
-  openPublicLinkDropdown,
+  openPublicLinkPopoverFromMenu,
   restore,
   visitQuestion,
 } from "e2e/support/helpers";
@@ -34,7 +34,7 @@ describe("issue 17019", () => {
   });
 
   it("question filters should work for embedding/public sharing scenario (metabase#17019)", () => {
-    openPublicLinkDropdown();
+    openPublicLinkPopoverFromMenu();
 
     cy.findByTestId("public-link-popover-content")
       .findByTestId("public-link-text")
