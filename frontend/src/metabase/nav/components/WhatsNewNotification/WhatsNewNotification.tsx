@@ -62,7 +62,6 @@ export function WhatsNewNotification() {
           </DismissIconButtonWrapper>
         </Flex>
 
-        {/* It doesn't make sense to whitelabel this name because the URL is going to bring users to Metabase release note anyway */}
         <Text weight="bold" size="sm">{t`Metabase has been updated`}</Text>
 
         <Anchor

@@ -13,7 +13,6 @@ function LogoBadge({
   const logoSize = variant === "large" ? 42 : 28;
   const Metabase = (
     <MetabaseName key="metabase" isDark={dark} variant={variant}>
-      {/* We don't want to apply whitelabeled name to powered by Metabase banner */}
       Metabase
     </MetabaseName>
   );

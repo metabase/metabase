@@ -29,8 +29,6 @@ export function DatabasePromptBanner({ location }: DatabasePromptBannerProps) {
 
   return (
     <DatabasePromptBannerRoot role="banner">
-      {/* Don't replace this because this is a banner for admins who set up Metabase.
-      They should already know they're using Metabase, not the whitelabeled application */}
       <Prompt>{t`Connect to your database to get the most from Metabase.`}</Prompt>
       <CallToActions>
         <GetHelpButton
