@@ -9,6 +9,7 @@ import { Tooltip, Text, Box } from "metabase/ui";
 export type DashboardEmbedHeaderButtonProps = {
   onClick?: () => void;
   disabled?: boolean;
+  hasBackground?: boolean;
 };
 
 const getTooltipLabel = ({
@@ -27,7 +28,11 @@ const getTooltipLabel = ({
 
 export const DashboardEmbedHeaderButton = forwardRef(
   function DashboardEmbedHeaderButton(
-    { onClick, disabled = false }: DashboardEmbedHeaderButtonProps,
+    {
+      onClick,
+      disabled = false,
+      hasBackground = true,
+    }: DashboardEmbedHeaderButtonProps,
     ref: Ref<HTMLButtonElement>,
   ) {
     const isPublicSharingEnabled = useSelector(state =>
@@ -46,12 +51,17 @@ export const DashboardEmbedHeaderButton = forwardRef(
 
     return (
       <Tooltip
+        py="0.6rem"
+        px="0.75rem"
+        bg="bg.3"
+        offset={hasBackground ? -12 : 0}
         label={
           <Text c="inherit" size="sm" fw={700}>
             {tooltipLabel}
           </Text>
         }
-        offset={8}
+        withArrow
+        arrowSize={10}
       >
         <Box>
           <DashboardHeaderButton
@@ -61,6 +71,7 @@ export const DashboardEmbedHeaderButton = forwardRef(
             disabled={disabled}
             onClick={onHeaderButtonClick}
             ref={ref}
+            hasBackground={hasBackground}
           />
         </Box>
       </Tooltip>

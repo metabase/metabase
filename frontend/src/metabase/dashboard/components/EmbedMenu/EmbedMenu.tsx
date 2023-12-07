@@ -70,6 +70,19 @@ const EmbedMenuInner = ({
   const [isOpen, setIsOpen] = useState(false);
   const [menuMode, setMenuMode] = useState(initialMenuMode);
 
+  const hasButtonBackground = resourceType === "dashboard";
+
+  const target = ({
+    onClick,
+    disabled = false,
+  }: { onClick?: () => void; disabled?: boolean } = {}) => (
+    <DashboardEmbedHeaderButton
+      onClick={onClick}
+      disabled={disabled}
+      hasBackground={hasButtonBackground}
+    />
+  );
+
   const onMenuSelect = (menuMode: EmbedMenuModes) => {
     setIsOpen(true);
     setMenuMode(menuMode);
@@ -80,13 +93,11 @@ const EmbedMenuInner = ({
       hasPublicLink={hasPublicLink}
       openPublicLinkPopover={() => onMenuSelect("public-link-popover")}
       openEmbedModal={onModalOpen}
-      target={<DashboardEmbedHeaderButton />}
+      target={target()}
     />
   );
 
-  const renderEmbedModalTrigger = () => (
-    <DashboardEmbedHeaderButton onClick={onModalOpen} />
-  );
+  const renderEmbedModalTrigger = () => target({ onClick: onModalOpen });
 
   const onClosePublicLinkPopover = () => {
     setIsOpen(false);
@@ -97,22 +108,18 @@ const EmbedMenuInner = ({
     return resourceType === "dashboard" ? (
       <DashboardPublicLinkPopover
         dashboard={resource}
-        target={
-          <DashboardEmbedHeaderButton
-            onClick={isOpen ? onClosePublicLinkPopover : () => setIsOpen(true)}
-          />
-        }
+        target={target({
+          onClick: isOpen ? onClosePublicLinkPopover : () => setIsOpen(true),
+        })}
         isOpen={isOpen}
         onClose={onClosePublicLinkPopover}
       />
     ) : (
       <QuestionPublicLinkPopover
         question={resource}
-        target={
-          <DashboardEmbedHeaderButton
-            onClick={isOpen ? onClosePublicLinkPopover : () => setIsOpen(true)}
-          />
-        }
+        target={target({
+          onClick: isOpen ? onClosePublicLinkPopover : () => setIsOpen(true),
+        })}
         isOpen={isOpen}
         onClose={onClosePublicLinkPopover}
       />
@@ -120,7 +127,7 @@ const EmbedMenuInner = ({
   };
 
   const renderEmbeddingDisabled = () => {
-    return <DashboardEmbedHeaderButton disabled />;
+    return target({ disabled: true });
   };
 
   const getEmbedContent = (menuMode: EmbedMenuModes) => {
