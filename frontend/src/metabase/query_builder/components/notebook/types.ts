@@ -15,9 +15,9 @@ export type NotebookStepType =
   | "limit";
 
 export type NotebookStepFn<ReturnType> = (
-  query: StructuredQuery,
+  legacyQuery: StructuredQuery,
   index: number | undefined | null,
-  topLevelQuery: Query,
+  query: Query,
   stageIndex: number,
 ) => ReturnType;
 
