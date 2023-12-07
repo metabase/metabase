@@ -20,6 +20,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -472,7 +473,16 @@
            sql (sql/format honey)
            result (apply run-native-query sql)
            [db-generated ss-generated] (-> result mt/rows first)]
-       (is (= db-generated ss-generated))))))
+       (is (= db-generated ss-generated)
+           (format (str "\n---\n"
+                        "results timezone == %s\n"
+                        "report timezone == %s\n"
+                        "database timezone == %s\n"
+                        "system timezone == %s\n")
+                   (qp.timezone/results-timezone-id)
+                   (qp.timezone/report-timezone-id-if-supported)
+                   (qp.timezone/database-timezone-id)
+                   (qp.timezone/system-timezone-id)))))))
 
 (deftest server-side-relative-datetime-test
   (mt/test-driver
@@ -504,6 +514,69 @@
              (mt/with-system-timezone-id "Europe/Prague"
                (let [test-thunk (getdate-vs-ss-ts-test-thunk-generator)]
                  (test-thunk))))))))))
+
+(comment
+  ;; For local testing.
+  (defn- generate-tz-tests [fs tzs thunks]
+    (letfn [(combine-acc [acc [f & fs*] tzs]
+              (if (nil? f)
+                acc
+                (recur (into acc (mapcat (fn [thunk*] (for [tz tzs] #(f tz thunk*)))) acc)
+                       fs*
+                       tzs)))]
+      (combine-acc (vec thunks) fs tzs)))
+
+  ;; For local testing.
+  (defn- generate-test-thunks
+    "Generate test thunks of product units x tests"
+    [units values]
+    (for [unit units
+          value values
+          :let [test-thunk (getdate-vs-ss-ts-test-thunk-generator unit value)]]
+      (fn []
+        (testing (format "unit = %s, value = %s" unit value)
+          (test-thunk)))))
+
+  ;; Following is meant for local testing and not to be run in the CI. Feel free to tweak the values.
+  (deftest tz-settings-combinations-test
+    (mt/test-driver
+     :redshift
+     (mt/with-metadata-provider (mt/id)
+       (let [thunks-with-various-values-units (generate-test-thunks [:day :week :month] [-1 0 1])
+             tz-setters [qp.test-util/do-with-report-timezone-id
+                         test.tz/do-with-system-timezone-id]
+             tzs ["America/Los_Angeles"
+                  "Europe/Prague"]
+             testcases (generate-tz-tests tz-setters tzs thunks-with-various-values-units)]
+         #_{:clj-kondo/ignore [:discouraged-var]}
+         (time (doseq [testcase testcases]
+                 (time (testcase))))))))
+  )
+
+(comment
+  (def tz-setters [qp.test-util/do-with-report-timezone-id
+                   test.tz/do-with-system-timezone-id
+                   qp.test-util/do-with-database-timezone-id
+                   qp.test-util/do-with-results-timezone-id])
+  (def tzs ["America/Los_Angeles"
+            "Europe/Prague"
+            "UTC"])
+  (-> (generate-test-thunks [:day :week :month :year] [-30 -7 -1 0 1 7 30]) count)
+  ;; => 28
+  (->> (generate-test-thunks [:day :week :month :year] [-30 -7 -1 0 1 7 30])
+       (generate-tz-tests tz-setters tzs)
+       count)
+  ;; => 7168
+
+  (def some-tz-setters [qp.test-util/do-with-report-timezone-id
+                        test.tz/do-with-system-timezone-id])
+  (def some-tzs ["America/Los_Angeles"
+            "Europe/Prague"])
+  (->> (generate-test-thunks [:day :week :month :year] [-1 0 1])
+       (generate-tz-tests some-tz-setters some-tzs)
+       count)
+  ;; => 108
+  )
 
 (deftest server-side-relative-datetime-various-units-test
   (mt/test-driver

@@ -1,150 +1,206 @@
 import {
-  ORDERS,
-  ORDERS_ID,
-  SAMPLE_DB_ID,
+  createOrdersCreatedAtDatasetColumn,
+  createOrdersCreatedAtField,
+  createOrdersIdDatasetColumn,
+  createOrdersIdField,
+  createOrdersTable,
+  createOrdersTotalDatasetColumn,
+  createProductsCategoryDatasetColumn,
+  createSampleDatabase,
+  PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
+import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
-import type { DrillThruType } from "metabase-lib";
-import { drillThru } from "metabase-lib";
-import type {
-  ApplyDrillTestCase,
-  DrillDisplayInfoTestCase,
-} from "metabase-lib/tests/drills-common";
-import { getDrillsQueryParameters } from "metabase-lib/tests/drills-common";
-import { getAvailableDrillByType } from "metabase-lib/test-helpers";
-
-const DRILL_TYPE: DrillThruType = "drill-thru/distribution";
+import {
+  createQuery,
+  findDrillThru,
+  createColumnClickObject,
+  createRawCellClickObject,
+  queryDrillThru,
+  createQueryWithClauses,
+  createAggregatedCellClickObject,
+} from "metabase-lib/test-helpers";
+import {
+  createCountDatasetColumn,
+  createNotEditableQuery,
+  createOrdersCommentDatasetColumn,
+  createOrdersCommentField,
+  createOrdersDescriptionDatasetColumn,
+  createOrdersDescriptionField,
+  createOrdersSerializedJSONDatasetColumn,
+  createOrdersSerializedJSONField,
+} from "./drills-common";
 
 describe("drill-thru/distribution", () => {
-  describe("availableDrillThrus", () => {
-    it.each<DrillDisplayInfoTestCase>([
+  const drillType = "drill-thru/distribution";
+  const stageIndex = 0;
+
+  describe("raw query", () => {
+    const defaultQuery = createQuery();
+    const defaultColumn = createOrdersTotalDatasetColumn();
+
+    it("should drill thru a numeric column", () => {
+      const clickObject = createColumnClickObject({
+        column: createOrdersTotalDatasetColumn(),
+      });
+      const { drill } = findDrillThru(
+        defaultQuery,
+        stageIndex,
+        clickObject,
+        drillType,
+      );
+      const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
+      expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+      expect(Lib.breakouts(newQuery, stageIndex)).toHaveLength(1);
+    });
+
+    it("should drill thru a date column", () => {
+      const clickObject = createColumnClickObject({
+        column: createOrdersCreatedAtDatasetColumn(),
+      });
+      const { drill } = findDrillThru(
+        defaultQuery,
+        stageIndex,
+        clickObject,
+        drillType,
+      );
+      const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
+      expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+      expect(Lib.breakouts(newQuery, stageIndex)).toHaveLength(1);
+    });
+
+    it("should drill thru a text column", () => {
+      const query = Lib.withDifferentTable(defaultQuery, PRODUCTS_ID);
+      const clickObject = createColumnClickObject({
+        column: createProductsCategoryDatasetColumn(),
+      });
+      const { drill } = findDrillThru(
+        query,
+        stageIndex,
+        clickObject,
+        drillType,
+      );
+      const newQuery = Lib.drillThru(defaultQuery, stageIndex, drill);
+      expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+      expect(Lib.breakouts(newQuery, stageIndex)).toHaveLength(1);
+    });
+
+    it("should not drill thru a cell", () => {
+      const clickObject = createRawCellClickObject({
+        column: defaultColumn,
+        value: 10,
+      });
+      const drill = queryDrillThru(
+        defaultQuery,
+        stageIndex,
+        clickObject,
+        drillType,
+      );
+      expect(drill).toBeNull();
+    });
+
+    it("should not drill thru a cell with null value", () => {
+      const clickObject = createRawCellClickObject({
+        column: defaultColumn,
+        value: null,
+      });
+      const drill = queryDrillThru(
+        defaultQuery,
+        stageIndex,
+        clickObject,
+        drillType,
+      );
+      expect(drill).toBeNull();
+    });
+
+    it("should not drill thru a PK column", () => {
+      const clickObject = createColumnClickObject({
+        column: createOrdersIdDatasetColumn(),
+      });
+      const drill = queryDrillThru(
+        defaultQuery,
+        stageIndex,
+        clickObject,
+        drillType,
+      );
+      expect(drill).toBeNull();
+    });
+
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should not drill thru a non-editable query (metabase#36125)", () => {
+      const query = createNotEditableQuery(defaultQuery);
+      const clickObject = createColumnClickObject({
+        column: defaultColumn,
+      });
+      const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
+      expect(drill).toBeNull();
+    });
+
+    it.each([
       {
-        clickType: "header",
-        queryType: "unaggregated",
-        columnName: "USER_ID",
-        expectedParameters: {
-          type: "drill-thru/distribution",
-        },
+        field: createOrdersCreatedAtField(),
+        column: createOrdersIdDatasetColumn(),
       },
       {
-        clickType: "header",
-        queryType: "unaggregated",
-        columnName: "TAX",
-        expectedParameters: {
-          type: "drill-thru/distribution",
-        },
+        field: createOrdersSerializedJSONField(),
+        column: createOrdersSerializedJSONDatasetColumn(),
       },
       {
-        clickType: "header",
-        queryType: "unaggregated",
-        columnName: "QUANTITY",
-        expectedParameters: {
-          type: "drill-thru/distribution",
-        },
+        field: createOrdersDescriptionField(),
+        column: createOrdersDescriptionDatasetColumn(),
+      },
+      {
+        field: createOrdersCommentField(),
+        column: createOrdersCommentDatasetColumn(),
       },
     ])(
-      `should return "${DRILL_TYPE}" drill config for $columnName $clickType in $queryType query`,
-      ({
-        columnName,
-        clickType,
-        queryType,
-        queryTable = "ORDERS",
-        customQuestion,
-        expectedParameters,
-      }) => {
-        const { drillDisplayInfo } = getAvailableDrillByType({
-          drillType: DRILL_TYPE,
-          clickType,
-          clickedColumnName: columnName,
-          ...getDrillsQueryParameters(queryType, queryTable, customQuestion),
+      'should not thru a "$field.semantic_type" column',
+      ({ field, column }) => {
+        const metadata = createMockMetadata({
+          databases: [
+            createSampleDatabase({
+              tables: [
+                createOrdersTable({
+                  fields: [createOrdersIdField(), field],
+                }),
+              ],
+            }),
+          ],
         });
-
-        expect(drillDisplayInfo).toEqual(expectedParameters);
+        const query = createQuery({ metadata });
+        const clickObject = createColumnClickObject({ column });
+        const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
+        expect(drill).toBeNull();
       },
     );
   });
 
-  describe("drillThru", () => {
-    it.each<ApplyDrillTestCase>([
-      {
-        clickType: "header",
-        columnName: "USER_ID",
-        queryType: "unaggregated",
-        expectedQuery: {
-          aggregation: [["count"]],
-          breakout: [
-            ["field", ORDERS.USER_ID, { "base-type": "type/Integer" }],
-          ],
-          "source-table": ORDERS_ID,
-        },
-      },
-      {
-        clickType: "header",
-        columnName: "SUBTOTAL",
-        queryType: "unaggregated",
-        expectedQuery: {
-          aggregation: [["count"]],
-          breakout: [
-            [
-              "field",
-              ORDERS.SUBTOTAL,
-              {
-                "base-type": "type/Float",
-                binning: {
-                  strategy: "default",
-                },
-              },
-            ],
-          ],
-          "source-table": ORDERS_ID,
-        },
-      },
-      {
-        // distribution drill result for FK columns creates extra binning, which is wrong (metabase#34343)
-        clickType: "header",
-        columnName: "CREATED_AT",
-        queryType: "unaggregated",
-        expectedQuery: {
-          aggregation: [["count"]],
-          breakout: [
-            [
-              "field",
-              ORDERS.CREATED_AT,
-              {
-                "base-type": "type/DateTime",
-                "temporal-unit": "month",
-              },
-            ],
-          ],
-          "source-table": ORDERS_ID,
-        },
-      },
-    ])(
-      `should return correct result on "${DRILL_TYPE}" drill apply to $columnName on $clickType in $queryType query`,
-      ({
-        columnName,
-        clickType,
-        queryType,
-        queryTable,
-        customQuestion,
-        drillArgs = [],
-        expectedQuery,
-      }) => {
-        const { drill, stageIndex, query } = getAvailableDrillByType({
-          drillType: DRILL_TYPE,
-          clickType,
-          clickedColumnName: columnName,
-          ...getDrillsQueryParameters(queryType, queryTable, customQuestion),
-        });
+  describe("aggregated query", () => {
+    const defaultQuery = createQueryWithClauses({
+      aggregations: [{ operatorName: "count" }],
+      breakouts: [{ columnName: "TOTAL", tableName: "ORDERS" }],
+    });
 
-        const updatedQuery = drillThru(query, stageIndex, drill, ...drillArgs);
-
-        expect(Lib.toLegacyQuery(updatedQuery)).toEqual({
-          database: SAMPLE_DB_ID,
-          query: expectedQuery,
-          type: "query",
-        });
-      },
-    );
+    it("should not drill thru an aggregated column", () => {
+      const clickObject = createAggregatedCellClickObject({
+        aggregation: {
+          column: createCountDatasetColumn(),
+          value: 10,
+        },
+        breakouts: [
+          {
+            column: createOrdersTotalDatasetColumn({ source: "breakout" }),
+            value: 20,
+          },
+        ],
+      });
+      const drill = queryDrillThru(
+        defaultQuery,
+        stageIndex,
+        clickObject,
+        drillType,
+      );
+      expect(drill).toBeNull();
+    });
   });
 });

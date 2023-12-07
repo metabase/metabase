@@ -23,9 +23,9 @@
 
   There is another quite different case: clicking the legend of a chart with multiple bars or lines broken out by
   category. Then `column` is nil!"
-  [query                                        :- ::lib.schema/query
-   stage-number                                 :- :int
-   {:keys [column column-ref dimensions value]} :- ::lib.schema.drill-thru/context]
+  [query                                                      :- ::lib.schema/query
+   stage-number                                               :- :int
+   {:keys [column column-ref dimensions value], :as _context} :- ::lib.schema.drill-thru/context]
   ;; Clicking on breakouts is weird. Clicking on Count(People) by State: Minnesota yields a FE `clicked` with:
   ;; - column is COUNT
   ;; - row[0] has col: STATE, value: "Minnesota"
@@ -50,7 +50,10 @@
      :type       :drill-thru/underlying-records
      ;; TODO: This is a bit confused for non-COUNT aggregations. Perhaps it should just always be 10 or something?
      ;; Note that some languages have different plurals for exactly 2, or for 1, 2-5, and 6+.
-     :row-count  (if (number? value) value 2)
+     :row-count  (if (and (number? value)
+                          (not (neg? value)))
+                   value
+                   2)
      :table-name (when-let [table-or-card (or (some->> query lib.util/source-table-id (lib.metadata/table query))
                                               (some->> query lib.util/source-card-id  (lib.metadata/card  query)))]
                    (lib.metadata.calculation/display-name query stage-number table-or-card))
@@ -69,7 +72,7 @@
    column       :- lib.metadata/ColumnMetadata
    value        :- :any]
   (let [filter-clauses (or (when (lib.binning/binning column)
-                             (when-let [{:keys [min-value max-value]} (lib.binning/resolve-bin-width column value)]
+                             (when-let [{:keys [min-value max-value]} (lib.binning/resolve-bin-width query column value)]
                                (let [unbinned-column (lib.binning/with-binning column nil)]
                                  [(lib.filter/>= unbinned-column min-value)
                                   (lib.filter/< unbinned-column max-value)])))
@@ -80,27 +83,27 @@
      query
      filter-clauses)))
 
-(defmethod lib.drill-thru.common/drill-thru-method :drill-thru/underlying-records
-  [query _stage-number {:keys [column-ref dimensions]} & _]
-  (let [top-query   (lib.underlying/top-level-query query)
-        ;; Drop all aggregations, breakouts, sort orders, etc. to get the underlying records.
-        ;; Note that the input _stage-number is deliberately ignored. The top-level query may have fewer stages than the
-        ;; input query; all operations are performed on the final stage of the top-level query.
-        base-query  (lib.util/update-query-stage top-query -1
-                                                 dissoc :aggregation :breakout :order-by :limit :fields)
+(defn drill-underlying-records
+  "Drops aggregations, breakouts, orders, limits and field, then applies a filter for each of the dimensions (including
+  for metrics, and aggregations that imply a filter like `:sum-where`).
+
+  Extracted to a helper since it's reused by automatic-insights drill."
+  [query {:keys [column-ref dimensions] :as _context}]
+  (let [;; Drop all aggregations, breakouts, sort orders, etc. to get the underlying records.
+        ;; Note that all operations are performed on the final stage of input query.
+        base-query  (lib.util/update-query-stage query -1 dissoc :aggregation :breakout :order-by :limit :fields)
         ;; Turn any non-aggregation dimensions into filters.
         ;; eg. if we drilled into a temporal bucket, add a filter for the [:= breakout-column that-month].
         filtered    (reduce (fn [q {:keys [column value]}]
                               (drill-filter q -1 column value))
                             base-query
                             (for [dimension dimensions
-                                  :let [top (update dimension :column #(lib.underlying/top-level-column query %))]
-                                  :when (-> top :column :lib/source (not= :source/aggregations))]
-                              top))
+                                  :when (-> dimension :column :lib/source (not= :source/aggregations))]
+                              dimension))
         ;; The column-ref should be an aggregation ref - look up the full aggregation.
         aggregation (when-let [agg-uuid (last column-ref)]
                       (m/find-first #(= (lib.options/uuid %) agg-uuid)
-                                    (lib.aggregation/aggregations top-query -1)))]
+                                    (lib.aggregation/aggregations query -1)))]
     ;; Apply the filters derived from the aggregation.
     (reduce #(lib.filter/filter %1 -1 %2)
             filtered
@@ -122,3 +125,13 @@
 
                 ;; Default: no filters to add.
                 nil)))))
+
+(defmethod lib.drill-thru.common/drill-thru-method :drill-thru/underlying-records
+  [query _stage-number context & _]
+  ;; Note that the input _stage-number is deliberately ignored. The top-level query may have fewer stages than the
+  ;; input query; all operations are performed on the final stage of the top-level query.
+  (drill-underlying-records (lib.underlying/top-level-query query)
+                            (update context :dimensions
+                                    (fn [dims]
+                                      (for [dim dims]
+                                        (update dim :column #(lib.underlying/top-level-column query %)))))))

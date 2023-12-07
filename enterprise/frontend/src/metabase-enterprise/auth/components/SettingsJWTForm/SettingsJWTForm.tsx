@@ -16,24 +16,19 @@ import { Flex, Stack } from "metabase/ui";
 import { FormSection } from "metabase/containers/FormikForm";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import type { SettingValue } from "metabase-types/api";
+import type { SettingElement } from "metabase/admin/settings/types";
 
 type SettingValues = { [key: string]: SettingValue };
 
-type SettingElement = {
-  // Similar to SettingElement from "metabase/admin/settings/types" but with required key
-  key: string;
-  display_name?: string;
-  description?: string;
+type JWTFormSettingElement = Omit<SettingElement, "key"> & {
+  key: string; // ensuring key is required
   is_env_setting?: boolean;
   env_name?: string;
-  placeholder?: string;
-  default?: any;
-  required?: boolean;
-  autoFocus?: boolean;
+  default?: string;
 };
 
 type Props = {
-  elements: SettingElement[];
+  elements: JWTFormSettingElement[];
   settingValues: SettingValues;
   onSubmit: (values: SettingValues) => void;
 };

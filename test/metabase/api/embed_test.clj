@@ -503,6 +503,13 @@
              (dissoc-id-and-name
               (client/client :get 200 (dashboard-url dash))))))))
 
+(deftest bad-dashboard-id-fails
+  (with-embedding-enabled-and-new-secret-key
+    (let [dashboard-url (str "embed/dashboard/" (sign {:resource {:dashboard "8"}
+                                                       :params   {}}))]
+      (is (= "Dashboard id should be a positive integer."
+             (client/client :get 400 dashboard-url))))))
+
 (deftest we-should-fail-when-attempting-to-use-an-expired-token-2
   (with-embedding-enabled-and-new-secret-key
     (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
