@@ -42,6 +42,10 @@ class DashboardInner extends Component {
     isSharing: false,
   };
 
+  constructor(props) {
+    super(props);
+  }
+
   static getDerivedStateFromProps({ parameters }, { parametersListLength }) {
     const visibleParameters = getVisibleParameters(parameters);
     return visibleParameters.length !== parametersListLength
@@ -50,14 +54,14 @@ class DashboardInner extends Component {
   }
 
   async componentDidMount() {
-    await this.loadDashboard();
+    await this.loadDashboard(this.props.dashboardId);
   }
 
   async componentDidUpdate(prevProps) {
     updateParametersWidgetStickiness(this);
 
     if (prevProps.dashboardId !== this.props.dashboardId) {
-      await this.loadDashboard();
+      await this.loadDashboard(this.props.dashboardId);
       return;
     }
 
@@ -69,7 +73,6 @@ class DashboardInner extends Component {
 
     if (
       !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
-      !_.isEqual(prevProps.parameters, this.props.parameters) ||
       (!prevProps.dashboard && this.props.dashboard)
     ) {
       this.props.fetchDashboardCardData({ reload: false, clearCache: true });
@@ -80,39 +83,51 @@ class DashboardInner extends Component {
     this.props.cancelFetchDashboardCardData();
   }
 
-  async loadDashboard() {
-    const p = this.props;
-    p.initialize({ clearCache: !p.isNavigatingBackToDashboard });
-    p.loadDashboardParams();
+  async loadDashboard(dashboardId) {
+    const {
+      editingOnLoad,
+      addCardOnLoad,
+      addCardToDashboard,
+      fetchDashboard,
+      initialize,
+      loadDashboardParams,
+      location,
+      setErrorPage,
+      isNavigatingBackToDashboard,
+    } = this.props;
 
-    const result = await p.fetchDashboard({
-      dashId: p.dashboardId,
-      queryParams: p.location.query,
+    initialize({ clearCache: !isNavigatingBackToDashboard });
+
+    loadDashboardParams();
+
+    const result = await fetchDashboard({
+      dashId: dashboardId,
+      queryParams: location.query,
       options: {
-        clearCache: !p.isNavigatingBackToDashboard,
-        preserveParameters: p.isNavigatingBackToDashboard,
+        clearCache: !isNavigatingBackToDashboard,
+        preserveParameters: isNavigatingBackToDashboard,
       },
     });
 
     if (result.error) {
-      p.setErrorPage(result.payload);
+      setErrorPage(result.payload);
       return;
     }
 
     try {
-      if (p.editingOnLoad) {
+      if (editingOnLoad) {
         this.setEditing(this.props.dashboard);
       }
-      if (p.addCardOnLoad != null) {
-        p.addCardToDashboard({
-          dashId: p.dashboardId,
-          cardId: p.addCardOnLoad,
-          tabId: p.dashboard?.tabs[0]?.id ?? null,
+      if (addCardOnLoad != null) {
+        addCardToDashboard({
+          dashId: dashboardId,
+          cardId: addCardOnLoad,
+          tabId: this.props.dashboard.tabs[0]?.id ?? null,
         });
       }
     } catch (error) {
       if (error.status === 404) {
-        p.setErrorPage({ ...error, context: "dashboard" });
+        setErrorPage({ ...error, context: "dashboard" });
       } else {
         console.error(error);
         this.setState({ error });
@@ -141,113 +156,133 @@ class DashboardInner extends Component {
   };
 
   onAddQuestion = () => {
-    this.setEditing(this.props.dashboard);
+    const { dashboard } = this.props;
+    this.setEditing(dashboard);
     this.props.toggleSidebar(SIDEBAR_NAME.addQuestion);
   };
 
-  shouldRenderAsNightMode() {
-    return this.props.isNightMode && this.props.isFullscreen;
-  }
-
   renderContent = () => {
-    const p = this.props;
-    const canWrite = p.dashboard?.can_write ?? false;
-    const dashboardHasCards = p.dashboard?.dashcards.length > 0 ?? false;
+    const { dashboard, selectedTabId, isNightMode, isFullscreen } = this.props;
+
+    const canWrite = dashboard?.can_write ?? false;
+
+    const dashboardHasCards = dashboard?.dashcards.length > 0 ?? false;
+
     const tabHasCards =
-      p.dashboard?.dashcards.filter(
+      dashboard?.dashcards.filter(
         c =>
-          p.selectedTabId !== undefined &&
-          c.dashboard_tab_id === p.selectedTabId,
+          selectedTabId !== undefined && c.dashboard_tab_id === selectedTabId,
       ).length > 0 ?? false;
+
+    const shouldRenderAsNightMode = isNightMode && isFullscreen;
 
     if (!dashboardHasCards && !canWrite) {
       return (
         <DashboardEmptyStateWithoutAddPrompt
-          isNightMode={this.shouldRenderAsNightMode()}
+          isNightMode={shouldRenderAsNightMode}
         />
       );
     }
-
     if (!dashboardHasCards) {
       return (
         <DashboardEmptyState
-          dashboard={p.dashboard}
-          isNightMode={this.shouldRenderAsNightMode()}
+          dashboard={dashboard}
+          isNightMode={shouldRenderAsNightMode}
           addQuestion={this.onAddQuestion}
-          closeNavbar={p.closeNavbar}
+          closeNavbar={this.props.closeNavbar}
         />
       );
     }
-
     if (dashboardHasCards && !tabHasCards) {
       return (
         <DashboardEmptyStateWithoutAddPrompt
-          isNightMode={this.shouldRenderAsNightMode()}
+          isNightMode={shouldRenderAsNightMode}
         />
       );
     }
-
     return (
       <DashboardGridConnected
         {...this.props}
-        dashboard={p.dashboard}
-        isNightMode={this.shouldRenderAsNightMode()}
+        dashboard={this.props.dashboard}
+        isNightMode={shouldRenderAsNightMode}
         onEditingChange={this.setEditing}
       />
     );
   };
 
   render() {
-    const p = this.props;
-    const visibleParameters = getVisibleParameters(p.parameters);
+    const {
+      addParameter,
+      dashboard,
+      isEditing,
+      isEditingParameter,
+      isFullscreen,
+      isNightMode,
+      isSharing,
+      parameters,
+      parameterValues,
+      draftParameterValues,
+      editingParameter,
+      setParameterValue,
+      setParameterIndex,
+      setEditingParameter,
+      isHeaderVisible,
+      isAutoApplyFilters,
+    } = this.props;
+
+    const { error, isParametersWidgetSticky } = this.state;
+
+    const shouldRenderAsNightMode = isNightMode && isFullscreen;
+
+    const visibleParameters = getVisibleParameters(parameters);
 
     const parametersWidget = (
       <SyncedParametersList
         parameters={getValuePopulatedParameters(
-          p.parameters,
-          p.isAutoApplyFilters ? p.parameterValues : p.draftParameterValues,
+          parameters,
+          isAutoApplyFilters ? parameterValues : draftParameterValues,
         )}
-        editingParameter={p.editingParameter}
-        dashboard={p.dashboard}
-        isFullscreen={p.isFullscreen}
-        isNightMode={this.shouldRenderAsNightMode()}
-        isEditing={p.isEditing}
-        setParameterValue={p.setParameterValue}
-        setParameterIndex={p.setParameterIndex}
-        setEditingParameter={p.setEditingParameter}
+        editingParameter={editingParameter}
+        dashboard={dashboard}
+        isFullscreen={isFullscreen}
+        isNightMode={shouldRenderAsNightMode}
+        isEditing={isEditing}
+        setParameterValue={setParameterValue}
+        setParameterIndex={setParameterIndex}
+        setEditingParameter={setEditingParameter}
       />
     );
 
     const shouldRenderParametersWidgetInViewMode =
-      !p.isEditing && !p.isFullscreen && visibleParameters.length > 0;
+      !isEditing && !isFullscreen && visibleParameters.length > 0;
 
     const shouldRenderParametersWidgetInEditMode =
-      p.isEditing && visibleParameters.length > 0;
+      isEditing && visibleParameters.length > 0;
 
     const cardsContainerShouldHaveMarginTop =
       !shouldRenderParametersWidgetInViewMode &&
-      (!p.isEditing || p.isEditingParameter);
+      (!isEditing || isEditingParameter);
 
     return (
       <DashboardLoadingAndErrorWrapper
-        isFullHeight={p.isEditing || p.isSharing}
-        isFullscreen={p.isFullscreen}
-        isNightMode={this.shouldRenderAsNightMode()}
-        loading={!p.dashboard}
-        error={this.state.error}
+        isFullHeight={isEditing || isSharing}
+        isFullscreen={isFullscreen}
+        isNightMode={shouldRenderAsNightMode}
+        loading={!dashboard}
+        error={error}
       >
         {() => (
           <DashboardStyled>
-            {p.isHeaderVisible && (
+            {isHeaderVisible && (
               <DashboardHeaderContainer
-                isFullscreen={p.isFullscreen}
-                isNightMode={this.shouldRenderAsNightMode()}
+                isFullscreen={isFullscreen}
+                isNightMode={shouldRenderAsNightMode}
               >
                 <DashboardHeader
                   {...this.props}
                   onEditingChange={this.setEditing}
                   setDashboardAttribute={this.setDashboardAttribute}
-                  addParameter={p.addParameter}
+                  addParameter={addParameter}
                   parametersWidget={parametersWidget}
                   onSharingClick={this.onSharingClick}
                 />
@@ -255,7 +290,7 @@ class DashboardInner extends Component {
                 {shouldRenderParametersWidgetInEditMode && (
                   <ParametersWidgetContainer
                     data-testid="edit-dashboard-parameters-widget-container"
-                    isEditing={p.isEditing}
+                    isEditing={isEditing}
                   >
                     {parametersWidget}
                   </ParametersWidgetContainer>
@@ -263,17 +298,17 @@ class DashboardInner extends Component {
               </DashboardHeaderContainer>
             )}
 
-            <DashboardBody isEditingOrSharing={p.isEditing || p.isSharing}>
+            <DashboardBody isEditingOrSharing={isEditing || isSharing}>
               <ParametersAndCardsContainer
                 data-testid="dashboard-parameters-and-cards"
                 shouldMakeDashboardHeaderStickyAfterScrolling={
-                  !p.isFullscreen && (p.isEditing || p.isSharing)
+                  !isFullscreen && (isEditing || isSharing)
                 }
               >
                 {shouldRenderParametersWidgetInViewMode && (
                   <ParametersWidgetContainer
                     data-testid="dashboard-parameters-widget-container"
-                    isSticky={this.state.isParametersWidgetSticky}
+                    isSticky={isParametersWidgetSticky}
                   >
                     {parametersWidget}
                     <FilterApplyButton />
