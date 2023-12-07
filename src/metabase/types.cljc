@@ -345,14 +345,32 @@
   [field :- SnakeCasedField]
   (field-is-type? :type/Temporal field))
 
+(def ^:private assignable-hierarchy
+  (make-hierarchy))
+
+(defn declare-assignable
+  "Declare that a value of type `x` assignable to a variable of type `y`."
+  [x y]
+  #?(:clj (alter-var-root #'assignable-hierarchy derive x y)
+     :cljs (set! assignable-hierarchy (derive assignable-hierarchy x y))))
+
+(declare-assignable :type/Integer :type/Decimal)
+
+(defn assignable?
+  "Is a value of type `x` assignable to a variable of type `y`?"
+  [x y]
+  (or (isa? assignable-hierarchy x y)
+      (boolean (some #(assignable? x %) (descendants y)))
+      (boolean (some #(assignable? % y) (parents x)))))
+
 (defn- most-specific-common-ancestor*
   "Impl for [[most-specific-common-ancestor]]."
   [x y]
   (cond
-    (= x :type/*) nil
-    (= y :type/*) nil
-    (isa? x y)    y
-    (isa? y x)    x
+    (= x :type/*)     nil
+    (= y :type/*)     nil
+    (assignable? x y) y
+    (assignable? y x) x
     ;; if we haven't had a match yet, recursively try using parent types.
     :else
     (some (fn [x']
