@@ -587,6 +587,10 @@
       (ex-info (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver)))
                {:status-code 422})
 
+      (not (:is_upload table))
+      (ex-info (tru "The table must be an uploaded table.")
+               {:status-code 422})
+
       (not (perms/set-has-full-permissions? @api/*current-user-permissions-set*
                                             (perms/data-perms-path (u/the-id db) (:schema table))))
       (ex-info (tru "You don''t have permissions to do that.")
