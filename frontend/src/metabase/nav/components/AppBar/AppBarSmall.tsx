@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import type { User } from "metabase-types/api";
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
 import { ProfileLink } from "../ProfileLink";
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
@@ -18,7 +17,6 @@ import {
 } from "./AppBarSmall.styled";
 
 export interface AppBarSmallProps {
-  currentUser: User;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
   isLogoVisible?: boolean;
@@ -32,7 +30,6 @@ export interface AppBarSmallProps {
 }
 
 const AppBarSmall = ({
-  currentUser,
   isNavBarOpen,
   isNavBarEnabled,
   isLogoVisible,
