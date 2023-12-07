@@ -7,11 +7,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import { Icon } from "metabase/core/components/Icon";
 
-import {
-  getSignedPreviewUrl,
-  getUnsignedPreviewUrl,
-  getSignedToken,
-} from "metabase/public/lib/embed";
+import { getSignedPreviewUrl, getSignedToken } from "metabase/public/lib/embed";
 import { color } from "metabase/lib/colors";
 
 import { getSetting } from "metabase/selectors/settings";
@@ -162,18 +158,6 @@ class EmbedModalContent extends Component {
             <div className="ml-auto mr-auto" style={{ maxWidth: 1040 }}>
               <SharingPane
                 {...this.props}
-                publicUrl={getUnsignedPreviewUrl(
-                  siteUrl,
-                  resourceType,
-                  resource.public_uuid,
-                  displayOptions,
-                )}
-                iframeUrl={getUnsignedPreviewUrl(
-                  siteUrl,
-                  resourceType,
-                  resource.public_uuid,
-                  displayOptions,
-                )}
                 onChangeEmbedType={embedType => this.setState({ embedType })}
               />
             </div>

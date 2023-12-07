@@ -109,7 +109,14 @@ describe("EmbedMenu", () => {
         expect(screen.queryByLabelText("share icon")).not.toBeInTheDocument();
       });
 
-      // TODO: Test for rendering button for non-admins when a public link is created
+      it("should render the button if there is a public link", () => {
+        setup({
+          hasPublicLink: true,
+          isAdmin: false,
+          publicLinksEnabled: true,
+        });
+        expect(screen.getByLabelText("share icon")).toBeInTheDocument();
+      });
     });
   });
 
@@ -162,6 +169,29 @@ describe("EmbedMenu", () => {
       });
     });
 
-    // TODO: Write tests for showing the popover when the user is non-admin and a public link has/hasn't been created
+    describe("when user is non-admin", () => {
+      it("should not render the button if a link hasn't been created", async () => {
+        setup({
+          hasPublicLink: false,
+          publicLinksEnabled: true,
+          isAdmin: false,
+        });
+        expect(screen.queryByLabelText("share icon")).not.toBeInTheDocument();
+      });
+
+      it("should render the public link popover immediately on button click if a public link has been created", async () => {
+        setup({
+          hasPublicLink: true,
+          publicLinksEnabled: true,
+          isAdmin: false,
+        });
+
+        userEvent.click(screen.getByLabelText("share icon"));
+
+        expect(
+          await screen.findByTestId("public-link-popover-content"),
+        ).toBeInTheDocument();
+      });
+    });
   });
 });

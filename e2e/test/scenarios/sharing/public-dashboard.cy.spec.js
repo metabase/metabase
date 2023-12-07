@@ -4,6 +4,8 @@ import {
   visitPublicDashboard,
   filterWidget,
   popover,
+  openNewPublicLinkDropdown,
+  createPublicDashboardLink,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -95,12 +97,7 @@ describe("scenarios > public > dashboard", () => {
       visitDashboard(id);
     });
 
-    cy.icon("share").click();
-
-    cy.findByRole("heading", { name: "Enable sharing" })
-      .parent()
-      .findByRole("switch")
-      .check();
+    openNewPublicLinkDropdown("dashboard");
 
     cy.wait("@publicLink").then(({ response }) => {
       expect(response.body.uuid).not.to.be.null;
@@ -114,11 +111,41 @@ describe("scenarios > public > dashboard", () => {
         // expect this input field to be populated with the actual value.
         .click()
         .parent()
-        .findByDisplayValue(/^http/)
+        .findByText(/^http/)
         .then($input => {
-          expect($input.val()).to.match(PUBLIC_DASHBOARD_REGEX);
+          expect($input.text()).to.match(PUBLIC_DASHBOARD_REGEX);
         });
     });
+  });
+
+  it("should only allow non-admin users to see a public link if one has already been created", () => {
+    cy.get("@dashboardId").then(id => {
+      createPublicDashboardLink(id);
+      cy.signOut();
+    });
+
+    cy.signInAsNormalUser().then(() => {
+      cy.get("@dashboardId").then(id => {
+        visitDashboard(id);
+      });
+
+      cy.icon("share").click();
+
+      cy.findByTestId("public-link-popover-content").within(() => {
+        cy.findByText("Public link").should("be.visible");
+        cy.findByTestId("public-link-text").contains(PUBLIC_DASHBOARD_REGEX);
+        cy.findByText("Remove public URL").should("not.exist");
+      });
+    });
+  });
+
+  it("should not allow users to see the embed button or the public link dropdown if a link hasn't been created", () => {
+    cy.signInAsNormalUser();
+    cy.get("@dashboardId").then(id => {
+      visitDashboard(id);
+    });
+
+    cy.findByTestId("dashboard-header").icon("share").should("not.exist");
   });
 
   Object.entries(USERS).map(([userType, setUser]) =>

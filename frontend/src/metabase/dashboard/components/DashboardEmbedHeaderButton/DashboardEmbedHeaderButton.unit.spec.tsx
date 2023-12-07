@@ -6,15 +6,18 @@ import {
 import { renderWithProviders, screen } from "__support__/ui";
 import { DashboardEmbedHeaderButton } from "./DashboardEmbedHeaderButton";
 
-const setup = ({ isPublicSharingEnabled = true } = {}) => {
+const setup = ({ isPublicSharingEnabled = true, disabled = false } = {}) => {
   const onClick = jest.fn();
-  renderWithProviders(<DashboardEmbedHeaderButton onClick={onClick} />, {
-    storeInitialState: createMockState({
-      settings: createMockSettingsState({
-        "enable-public-sharing": isPublicSharingEnabled,
+  renderWithProviders(
+    <DashboardEmbedHeaderButton onClick={onClick} disabled={disabled} />,
+    {
+      storeInitialState: createMockState({
+        settings: createMockSettingsState({
+          "enable-public-sharing": isPublicSharingEnabled,
+        }),
       }),
-    }),
-  });
+    },
+  );
   return { onClick };
 };
 
@@ -29,6 +32,14 @@ describe("DashboardEmbedHeaderButton", () => {
     setup({ isPublicSharingEnabled: false });
     userEvent.hover(screen.getByLabelText("share icon"));
     expect(screen.getByText("Embedding")).toBeInTheDocument();
+  });
+
+  it('should render "You must enable Embedding" label when the button is disabled', () => {
+    setup({ disabled: true });
+    userEvent.hover(screen.getByLabelText("share icon"));
+    expect(
+      screen.getByText("You must enable Embedding in the settings"),
+    ).toBeInTheDocument();
   });
 
   it("should call onClick when the button is clicked", () => {

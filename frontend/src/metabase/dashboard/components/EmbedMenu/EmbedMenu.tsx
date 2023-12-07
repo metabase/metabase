@@ -1,11 +1,14 @@
 import { useState } from "react";
+import type { Dashboard } from "metabase-types/api";
+import {
+  DashboardPublicLinkPopover,
+  QuestionPublicLinkPopover,
+} from "metabase/dashboard/components/PublicLinkPopover";
 import { DashboardEmbedHeaderButton } from "metabase/dashboard/components/DashboardEmbedHeaderButton";
 import { DashboardEmbedHeaderMenu } from "metabase/dashboard/components/DashboardEmbedHeaderMenu";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import type { Dashboard } from "metabase-types/api";
-import { Popover } from "metabase/ui";
 import type Question from "metabase-lib/Question";
 
 export type EmbedMenuModes =
@@ -54,13 +57,31 @@ export const EmbedMenu = (props: EmbedMenuProps) => {
   return <EmbedMenuInner {...props} />;
 };
 
-const EmbedMenuInner = ({ hasPublicLink, onModalOpen }: EmbedMenuProps) => {
+const EmbedMenuInner = ({
+  resource,
+  resourceType,
+  hasPublicLink,
+  onModalOpen,
+}: EmbedMenuProps) => {
   const initialMenuMode: EmbedMenuModes = useEmbedMenuMode({
     hasPublicLink,
   });
 
   const [isOpen, setIsOpen] = useState(false);
   const [menuMode, setMenuMode] = useState(initialMenuMode);
+
+  const hasButtonBackground = resourceType === "dashboard";
+
+  const target = ({
+    onClick,
+    disabled = false,
+  }: { onClick?: () => void; disabled?: boolean } = {}) => (
+    <DashboardEmbedHeaderButton
+      onClick={onClick}
+      disabled={disabled}
+      hasBackground={hasButtonBackground}
+    />
+  );
 
   const onMenuSelect = (menuMode: EmbedMenuModes) => {
     setIsOpen(true);
@@ -72,13 +93,11 @@ const EmbedMenuInner = ({ hasPublicLink, onModalOpen }: EmbedMenuProps) => {
       hasPublicLink={hasPublicLink}
       openPublicLinkPopover={() => onMenuSelect("public-link-popover")}
       openEmbedModal={onModalOpen}
-      target={<DashboardEmbedHeaderButton />}
+      target={target()}
     />
   );
 
-  const renderEmbedModalTrigger = () => (
-    <DashboardEmbedHeaderButton onClick={onModalOpen} />
-  );
+  const renderEmbedModalTrigger = () => target({ onClick: onModalOpen });
 
   const onClosePublicLinkPopover = () => {
     setIsOpen(false);
@@ -86,22 +105,29 @@ const EmbedMenuInner = ({ hasPublicLink, onModalOpen }: EmbedMenuProps) => {
   };
 
   const renderPublicLinkPopover = () => {
-    return (
-      <Popover opened={isOpen} onClose={onClosePublicLinkPopover}>
-        <Popover.Target>
-          <DashboardEmbedHeaderButton
-            onClick={isOpen ? onClosePublicLinkPopover : () => setIsOpen(true)}
-          />
-        </Popover.Target>
-        <Popover.Dropdown>
-          <div>Public Link Popover</div>
-        </Popover.Dropdown>
-      </Popover>
+    return resourceType === "dashboard" ? (
+      <DashboardPublicLinkPopover
+        dashboard={resource}
+        target={target({
+          onClick: isOpen ? onClosePublicLinkPopover : () => setIsOpen(true),
+        })}
+        isOpen={isOpen}
+        onClose={onClosePublicLinkPopover}
+      />
+    ) : (
+      <QuestionPublicLinkPopover
+        question={resource}
+        target={target({
+          onClick: isOpen ? onClosePublicLinkPopover : () => setIsOpen(true),
+        })}
+        isOpen={isOpen}
+        onClose={onClosePublicLinkPopover}
+      />
     );
   };
 
   const renderEmbeddingDisabled = () => {
-    return <DashboardEmbedHeaderButton disabled />;
+    return target({ disabled: true });
   };
 
   const getEmbedContent = (menuMode: EmbedMenuModes) => {

@@ -38,12 +38,18 @@ export const DashboardEmbedHeaderMenu = ({
           p="md"
           icon={<Icon name="link" />}
           onClick={openPublicLinkPopover}
+          data-testid="embed-menu-public-link-item"
         >
           <Title c="inherit" order={4}>
             {publicLinkOptionLabel}
           </Title>
         </Menu.Item>
-        <Menu.Item p="md" icon={<Icon name="embed" />} onClick={openEmbedModal}>
+        <Menu.Item
+          data-testid="embed-menu-embed-modal-item"
+          p="md"
+          icon={<Icon name="embed" />}
+          onClick={openEmbedModal}
+        >
           <Title c="inherit" order={4}>
             {t`Embed`}
           </Title>

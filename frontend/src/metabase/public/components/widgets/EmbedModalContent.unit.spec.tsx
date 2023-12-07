@@ -17,7 +17,6 @@ describe("EmbedModalContent", () => {
     );
 
     expect(screen.getByText("Sharing")).toBeInTheDocument();
-    expect(screen.getByText("Public link")).toBeInTheDocument();
     expect(screen.getByText("Public embed")).toBeInTheDocument();
     expect(screen.getByText("Embed in your application")).toBeInTheDocument();
   });

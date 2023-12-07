@@ -1,9 +1,7 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
 import { t, jt } from "ttag";
 import cx from "classnames";
 import Button from "metabase/core/components/Button";
-import { Icon } from "metabase/core/components/Icon";
 import Toggle from "metabase/core/components/Toggle";
 import CopyWidget from "metabase/components/CopyWidget";
 import Confirm from "metabase/components/Confirm";
@@ -14,11 +12,8 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   Description,
   EmbedWidgetHeader,
-  ExtensionOption,
   Header,
-  IconContainer,
   PublicEmbedHeader,
-  PublicLinkHeader,
 } from "./SharingPane.styled";
 
 type Resource = {
@@ -48,16 +43,12 @@ export default function SharingPane({
   resourceType,
   onCreatePublicLink,
   onDisablePublicLink,
-  extensions = [],
   getPublicUrl,
   onChangeEmbedType,
   isAdmin,
   isPublicSharingEnabled,
   isApplicationEmbeddingEnabled,
 }: SharingPaneProps) {
-  const [extensionState, setExtension] = useState<Extension>(null);
-
-  const publicLink = getPublicUrl(resource, extensionState);
   const iframeSource = getPublicEmbedHTML(getPublicUrl(resource));
 
   const shouldDisableEmbedding = !isAdmin || !isApplicationEmbeddingEnabled;
@@ -104,38 +95,6 @@ export default function SharingPane({
           </div>
         </div>
       )}
-
-      <SharingOption
-        className={cx("border-bottom", {
-          disabled: !resource.public_uuid,
-        })}
-        illustration={
-          <IconContainer>
-            <Icon name="link" size={32} />
-          </IconContainer>
-        }
-      >
-        <PublicLinkHeader>{t`Public link`}</PublicLinkHeader>
-        <Description className="mb1">{t`Share this ${resourceType} with people who don't have a Metabase account using the URL below:`}</Description>
-        <CopyWidget value={publicLink} />
-        {extensions && extensions.length > 0 && (
-          <div className="mt1">
-            {extensions.map(extension => (
-              <ExtensionOption
-                key={extension}
-                isSelected={extension === extensionState}
-                onClick={() =>
-                  setExtension(extensionState =>
-                    extension === extensionState ? null : extension,
-                  )
-                }
-              >
-                {extension}{" "}
-              </ExtensionOption>
-            ))}
-          </div>
-        )}
-      </SharingOption>
 
       <SharingOption
         className={cx("border-bottom", {
@@ -204,6 +163,7 @@ function ResponsiveImage({ imageUrl }: { imageUrl: string }) {
 }
 
 const imageRegExp = /(?<baseUrl>.*)(?<extension>\.[A-z]{3,4})/;
+
 function getSrcSet(imageUrl: string) {
   const { baseUrl, extension } = imageRegExp.exec(imageUrl)?.groups as {
     baseUrl: string;

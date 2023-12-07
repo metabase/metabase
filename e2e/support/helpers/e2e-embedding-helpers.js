@@ -114,3 +114,53 @@ export function visitIframe() {
     cy.visit(iframe.src);
   });
 }
+
+export function openPublicLinkPopoverFromMenu() {
+  cy.icon("share").click();
+  cy.findByTestId("embed-header-menu")
+    .findByTestId("embed-menu-public-link-item")
+    .click();
+}
+
+export function openEmbedModalFromMenu() {
+  cy.icon("share").click();
+  cy.findByTestId("embed-header-menu")
+    .findByTestId("embed-menu-embed-modal-item")
+    .click();
+}
+
+export function openStaticEmbeddingModal() {
+  cy.intercept("GET", "/api/session/properties").as("sessionProperties");
+
+  openEmbedModalFromMenu();
+
+  cy.get(".Modal--full").findByText("Embed in your application").click();
+  cy.wait("@sessionProperties");
+}
+
+// @param {("card"|"dashboard")} resourceType - The type of resource we are sharing
+export function openNewPublicLinkDropdown(resourceType) {
+  cy.intercept("POST", `/api/${resourceType}/*/public_link`).as(
+    "sharingEnabled",
+  );
+
+  openPublicLinkPopoverFromMenu();
+
+  cy.wait("@sharingEnabled").then(
+    ({
+      response: {
+        body: { uuid },
+      },
+    }) => {
+      cy.wrap(uuid).as("uuid");
+    },
+  );
+}
+
+export function createPublicQuestionLink(questionId) {
+  cy.request("POST", `/api/card/${questionId}/public_link`, {});
+}
+
+export function createPublicDashboardLink(dashboardId) {
+  cy.request("POST", `/api/dashboard/${dashboardId}/public_link`, {});
+}

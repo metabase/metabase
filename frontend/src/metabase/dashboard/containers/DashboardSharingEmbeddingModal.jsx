@@ -13,7 +13,6 @@ import {
   updateEnableEmbedding,
   updateEmbeddingParams,
 } from "../actions";
-import { ModalTrigger } from "./DashboardSharingEmbeddingModal.styled";
 
 const defaultProps = {
   isLinkEnabled: true,
