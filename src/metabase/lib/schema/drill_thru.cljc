@@ -174,10 +174,12 @@
 
 (mr/def ::drill-thru.automatic-insights
   [:merge
-   ::drill-thru.common.with-column
+   ::drill-thru.common
    [:map
     [:type     [:= :drill-thru/automatic-insights]]
-    [:lib/type [:= :metabase.lib.drill-thru/drill-thru]]]])
+    [:lib/type [:= :metabase.lib.drill-thru/drill-thru]]
+    [:column-ref [:maybe [:ref ::lib.schema.ref/ref]]]
+    [:dimensions [:ref ::context.row]]]])
 
 (mr/def ::drill-thru.zoom-in.timeseries.next-unit
   [:enum :quarter :month :week :day :hour :minute])
