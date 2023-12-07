@@ -1069,8 +1069,9 @@
 ;;; |                                           append-csv!                                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- basic-db-definition [database-name]
-  ;; Note this creates a table with an auto-incrementing "ID" integer column
+(defn basic-db-definition
+  "This creates a table with an auto-incrementing integer ID column, and a name column."
+  [database-name]
   (tx/map->DatabaseDefinition
    {:database-name     database-name
     :table-definitions [{:table-name        "table_one"
