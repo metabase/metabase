@@ -230,22 +230,10 @@ function getStageSteps(
       itemIndex: itemIndex,
       topLevelQuery,
       query: stageQuery,
-      valid: STEP.valid(
-        stageQuery,
-        itemIndex,
-        topLevelQuery,
-        stageIndex,
-        metadata,
-      ),
+      valid: STEP.valid(topLevelQuery, metadata),
       active,
       visible:
-        STEP.valid(
-          stageQuery,
-          itemIndex,
-          topLevelQuery,
-          stageIndex,
-          metadata,
-        ) && Boolean(active || openSteps[id]),
+        STEP.valid(topLevelQuery, metadata) && Boolean(active || openSteps[id]),
       testID: getTestId(STEP, itemIndex),
       revert: STEP.revert
         ? (query: Lib.Query) =>
